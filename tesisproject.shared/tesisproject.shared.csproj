@@ -6,4 +6,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <Folder Include="DTOs\External\" />
+    <Folder Include="DTOs\Project\" />
+    <Folder Include="Enums\" />
+    <Folder Include="Common\" />
+    <Folder Include="Validations\" />
+  </ItemGroup>
+
 </Project>
