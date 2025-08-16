@@ -4,7 +4,7 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
 {
     public interface IUnitOfWork : IAsyncDisposable
     {
-        IProjectRepository Projects { get; }  // agrega aquí más repos a futuro
+        IProjectRepository Projects { get; }
         Task<int> SaveChangesAsync();
     }
 }

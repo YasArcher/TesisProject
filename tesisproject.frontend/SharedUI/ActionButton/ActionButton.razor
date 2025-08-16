@@ -1,0 +1,23 @@
+﻿<button class="@BuildClass()"
+        disabled="@(_isBusy || Disabled)"
+        @onclick="OnClickInternal">
+    <span class="inline-flex items-center gap-2">
+        @if (_isBusy)
+        {
+            <span class="animate-spin inline-block h-4 w-4 border-2 border-current border-t-transparent rounded-full"></span>
+        }
+        else if (Icon is not null)
+        {
+            @Icon
+        }
+
+        @if (!string.IsNullOrWhiteSpace(Text))
+        {
+            <span>@Text</span>
+        }
+        else
+        {
+            @ChildContent
+        }
+    </span>
+</button>

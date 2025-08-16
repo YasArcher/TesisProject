@@ -7,7 +7,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tesisproject.backend", "tes
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tesisproject.shared", "tesisproject.shared\tesisproject.shared.csproj", "{179644C6-B57C-47AA-B9DC-5B6D493E2D95}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tesisproject.frontend", "tesisprojecto.frontend\tesisproject.frontend.csproj", "{45BB606A-33D6-4FE6-963F-7B00F4489A5D}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tesisproject.frontend", "tesisproject.frontend\tesisproject.frontend.csproj", "{45BB606A-33D6-4FE6-963F-7B00F4489A5D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
