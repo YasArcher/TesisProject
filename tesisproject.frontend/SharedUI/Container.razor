@@ -1,0 +1,89 @@
+﻿@typeparam TItem
+<div class="relative">
+    <!-- Container principal con gradiente sutil y sombra moderna -->
+    <div class="bg-gradient-to-br from-white to-gray-50 border border-gray-200/60 rounded-xl shadow-lg shadow-gray-200/50 overflow-hidden">
+
+        @if (Items is not null && Items.Any())
+        {
+            <!-- Header con contador de elementos (opcional) -->
+            @if (ShowItemCount)
+            {
+                <div class="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200/40">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-gray-700">
+                            @Title
+                        </h3>
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            @Items.Count() @(Items.Count() == 1 ? "elemento" : "elementos")
+                        </span>
+                    </div>
+                </div>
+            }
+
+            <!-- Contenedor de elementos con padding responsivo -->
+            <div class="p-4 sm:p-6">
+                <!-- Grid responsivo para los elementos -->
+                <div class="@GridClasses">
+                    @foreach (var item in Items)
+                    {
+                        <!-- Wrapper para cada elemento con animaciones -->
+                        <div class="transform transition-all duration-200 hover:scale-[1.02] hover:shadow-md rounded-lg">
+                            @ChildContent(item)
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- Estado vacío mejorado -->
+            <div class="flex flex-col items-center justify-center py-16 px-6">
+                <!-- Icono SVG personalizable -->
+                <div class="w-16 h-16 mb-4 text-gray-300">
+                    @if (EmptyStateIcon != null)
+                    {
+                        @EmptyStateIcon
+                    }
+                    else
+                    {
+                        <!-- Icono por defecto -->
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" class="w-full h-full">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
+                        </svg>
+                    }
+                </div>
+
+                <!-- Texto principal del estado vacío -->
+                <h3 class="text-lg font-medium text-gray-900 mb-2">
+                    @EmptyStateTitle
+                </h3>
+
+                <!-- Descripción del estado vacío -->
+                <p class="text-sm text-gray-500 text-center max-w-sm mb-6">
+                    @EmptyStateDescription
+                </p>
+
+                <!-- Acción opcional para estado vacío -->
+                @if (EmptyStateAction != null)
+                {
+                    <div class="flex gap-3">
+                        @EmptyStateAction
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <!-- Indicador de carga opcional -->
+    @if (IsLoading)
+    {
+        <div class="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-xl flex items-center justify-center">
+            <div class="flex items-center space-x-3">
+                <div class="animate-spin rounded-full h-6 w-6 border-2 border-blue-500 border-t-transparent"></div>
+                <span class="text-sm font-medium text-gray-700">Cargando...</span>
+            </div>
+        </div>
+    }
+</div>

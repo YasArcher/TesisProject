@@ -1,0 +1,206 @@
+﻿@page "/tailwind-test"
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@layout MainLayout
+
+<PageTitle>🚀 Test Completo de Tailwind CSS</PageTitle>
+
+<style>
+    @@keyframes float {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-20px); }
+    }
+    .float { animation: float 3s ease-in-out infinite; }
+</style>
+
+<!-- Hero Section -->
+<div class="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-red-500 relative overflow-hidden">
+    <!-- Animated Background Elements -->
+    <div class="absolute inset-0">
+        <div class="absolute top-20 left-20 w-32 h-32 bg-white opacity-10 rounded-full animate-pulse"></div>
+        <div class="absolute top-40 right-32 w-24 h-24 bg-yellow-400 opacity-20 rounded-full animate-bounce delay-300"></div>
+        <div class="absolute bottom-20 left-40 w-40 h-40 bg-blue-400 opacity-15 rounded-full float"></div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
+        <div class="text-center">
+            <h1 class="text-6xl md:text-8xl font-extrabold drop-shadow-2xl animate-bounce mb-4">
+                <span class="bg-gradient-to-r from-yellow-400 via-red-500 to-pink-500 bg-clip-text text-transparent">
+                    🚀 Tailwind
+                </span>
+            </h1>
+            <h2 class="text-4xl md:text-6xl font-bold text-white drop-shadow-lg animate-pulse">
+                ¡FUNCIONA en Blazor! 🎉
+            </h2>
+        </div>
+        
+        <!-- Info Card -->
+        <div class="mt-12 p-8 bg-white/90 backdrop-blur-sm text-gray-800 rounded-3xl shadow-2xl max-w-2xl mx-4 transform hover:scale-105 transition-all duration-300">
+            <div class="text-center">
+                <div class="text-6xl mb-4">✅</div>
+                <h3 class="text-2xl font-bold mb-4 text-green-600">¡Verificación Exitosa en Razor!</h3>
+                <p class="text-lg leading-relaxed">
+                    Si puedes ver gradientes, animaciones, sombras, blur effects, 
+                    y esta tarjeta con bordes redondeados, entonces 
+                    <span class="font-bold text-purple-600">Tailwind CSS está completamente funcional</span>
+                    en tu aplicación Blazor.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Interactive Buttons -->
+        <div class="mt-8 flex flex-wrap gap-4 justify-center">
+            <button @onclick="ShowAlert" class="group px-8 py-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-bold rounded-full shadow-lg hover:shadow-2xl hover:scale-110 transform transition-all duration-300 relative overflow-hidden">
+                <span class="relative z-10">🎯 Probar Interacción</span>
+                <div class="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+            </button>
+            
+            <button @onclick="ToggleColors" class="px-8 py-4 bg-gradient-to-r from-green-400 to-blue-500 text-white font-bold rounded-full shadow-lg hover:shadow-2xl hover:scale-110 transform transition-all duration-300 hover:rotate-3">
+                🌈 Cambiar Colores
+            </button>
+            
+            <button @onclick="AddAnimation" class="px-8 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-full shadow-lg hover:shadow-2xl hover:scale-110 transform transition-all duration-300 hover:-rotate-3">
+                ✨ Más Animación
+            </button>
+        </div>
+        
+        @if (!string.IsNullOrEmpty(alertMessage))
+        {
+            <div class="mt-6 p-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-2xl shadow-lg animate-bounce">
+                <strong class="font-bold">🎉 @alertMessage</strong>
+            </div>
+        }
+    </div>
+</div>
+
+<!-- Features Section -->
+<div class="py-20 bg-gray-900 text-white">
+    <div class="max-w-6xl mx-auto px-4">
+        <h2 class="text-4xl font-bold text-center mb-16 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+            Funcionalidades Probadas en Blazor ✅
+        </h2>
+        
+        <!-- Grid of Features -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Gradients -->
+            <div class="p-6 bg-gradient-to-br from-pink-500 to-violet-500 rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300">
+                <div class="text-3xl mb-4">🎨</div>
+                <h3 class="text-xl font-bold mb-2">Gradientes</h3>
+                <p class="text-white/90">Fondos degradados funcionando perfectamente</p>
+            </div>
+            
+            <!-- Animations -->
+            <div class="p-6 bg-gradient-to-br from-green-500 to-teal-500 rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300 hover:rotate-1">
+                <div class="text-3xl mb-4 animate-spin">⚡</div>
+                <h3 class="text-xl font-bold mb-2">Animaciones</h3>
+                <p class="text-white/90">Bounce, pulse, spin y hover effects</p>
+            </div>
+            
+            <!-- Shadows -->
+            <div class="p-6 bg-gradient-to-br from-orange-500 to-red-500 rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-300">
+                <div class="text-3xl mb-4 drop-shadow-lg">💎</div>
+                <h3 class="text-xl font-bold mb-2">Sombras</h3>
+                <p class="text-white/90">Drop shadows y box shadows</p>
+            </div>
+            
+            <!-- Blazor Integration -->
+            <div class="p-6 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300">
+                <div class="text-3xl mb-4">⚡</div>
+                <h3 class="text-xl font-bold mb-2">Integración Blazor</h3>
+                <p class="text-white/90">@@onclick events y data binding</p>
+            </div>
+            
+            <!-- Typography -->
+            <div class="p-6 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300">
+                <div class="text-3xl mb-4">🔤</div>
+                <h3 class="text-xl font-bold mb-2">Tipografía</h3>
+                <p class="text-white/90">Fuentes, tamaños y text clipping</p>
+            </div>
+            
+            <!-- Responsive -->
+            <div class="p-6 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-2xl shadow-xl transform hover:scale-105 transition-all duration-300">
+                <div class="text-3xl mb-4">📱</div>
+                <h3 class="text-xl font-bold mb-2">Responsive</h3>
+                <p class="text-white/90">Breakpoints md:, lg: funcionando</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Interactive Demo Section -->
+<div class="py-20 @(currentBgColor) transition-all duration-1000">
+    <div class="max-w-4xl mx-auto px-4 text-center">
+        <h2 class="text-4xl font-bold text-white mb-8">Demo Interactivo con Blazor</h2>
+        <div @onclick="AnimateBox" 
+             class="w-32 h-32 @(currentBoxColor) rounded-2xl shadow-2xl mx-auto transform transition-all duration-500 hover:rotate-45 hover:scale-150 cursor-pointer @(isAnimating ? "animate-bounce scale-125 rotate-180" : "")"></div>
+        <p class="text-white mt-6 text-lg">👆 Haz click en el cubo para más efectos</p>
+        <p class="text-white/80 mt-2">Clicks realizados: @clickCount</p>
+    </div>
+</div>
+
+<!-- Status Bar -->
+<div class="fixed bottom-4 right-4 bg-green-500 text-white px-6 py-3 rounded-full shadow-2xl animate-pulse">
+    <span class="font-bold">🟢 Tailwind CSS + Blazor Activo</span>
+</div>
+
+@code {
+    private string alertMessage = "";
+    private int colorIndex = 0;
+    private int clickCount = 0;
+    private bool isAnimating = false;
+    
+    private readonly string[] bgColors = {
+        "bg-gradient-to-r from-indigo-600 to-purple-600",
+        "bg-gradient-to-r from-green-600 to-teal-600", 
+        "bg-gradient-to-r from-orange-600 to-red-600",
+        "bg-gradient-to-r from-pink-600 to-violet-600"
+    };
+    
+    private readonly string[] boxColors = {
+        "bg-yellow-400",
+        "bg-pink-400", 
+        "bg-green-400", 
+        "bg-blue-400", 
+        "bg-purple-400",
+        "bg-red-400",
+        "bg-indigo-400"
+    };
+    
+    private string currentBgColor => bgColors[colorIndex % bgColors.Length];
+    private string currentBoxColor => boxColors[clickCount % boxColors.Length];
+    
+    private async Task ShowAlert()
+    {
+        alertMessage = "¡Tailwind CSS está funcionando perfectamente en Blazor!";
+        StateHasChanged();
+        await Task.Delay(3000);
+        alertMessage = "";
+        StateHasChanged();
+    }
+    
+    private void ToggleColors()
+    {
+        colorIndex++;
+        StateHasChanged();
+    }
+    
+    private async Task AddAnimation()
+    {
+        isAnimating = true;
+        StateHasChanged();
+        await Task.Delay(1000);
+        isAnimating = false;
+        StateHasChanged();
+    }
+    
+    private async Task AnimateBox()
+    {
+        clickCount++;
+        isAnimating = true;
+        StateHasChanged();
+        await Task.Delay(500);
+        isAnimating = false;
+        StateHasChanged();
+    }
+}

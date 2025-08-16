@@ -1,11 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.DTOs.Project;
 using tesisproject.shared.Entities.Core;
 
 namespace tesisproject.backend.Controllers
 {
-    [Authorize(Roles = "Admin")]
+    //[Authorize(Roles = "Admin")]
     [ApiController]
     // This controller manages project entities.
     [Route("api/[controller]")]
@@ -48,5 +49,13 @@ namespace tesisproject.backend.Controllers
             await _uow.SaveChangesAsync();
             return NoContent();
         }
+
+        [HttpGet("list")]
+        public async Task<ActionResult<IEnumerable<ProjectListItemDto>>> GetList()
+        {
+            var list = await _uow.Projects.GetProjectListAsync();
+            return Ok(list);
+        }
+
     }
 }

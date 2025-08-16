@@ -1,0 +1,33 @@
+﻿@typeparam TItem
+<div class="w-full relative inline-flex items-center gap-2">
+    <select class="@BuildSelectClasses() w-full appearance-none bg-white border text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+            value="@_selectedKey"
+            @onchange="OnChanged"
+            disabled="@(Disabled)"
+            aria-disabled="@(Disabled)">
+        @if (!string.IsNullOrWhiteSpace(Placeholder))
+        {
+            <option value="" disabled selected="@(_selectedKey is null || _selectedKey == string.Empty)">
+                @Placeholder
+            </option>
+        }
+
+        @if (_options is not null)
+        {
+            @foreach (var opt in _options)
+            {
+                <option value="@opt.Key">@opt.Text</option>
+            }
+        }
+    </select>
+
+    @if (AllowClear)
+    {
+        <button type="button"
+                class="absolute right-2 rounded-md px-2 py-1 text-xs border border-gray-300 hover:bg-gray-50 disabled:opacity-40"
+                @onclick="ClearSelection"
+                disabled="@(_selectedKey is null || _selectedKey == string.Empty || Disabled)">
+            Clear
+        </button>
+    }
+</div>

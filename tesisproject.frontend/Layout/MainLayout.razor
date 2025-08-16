@@ -1,0 +1,21 @@
+﻿@using tesisproject.frontend.SharedUI
+@using Microsoft.AspNetCore.Components
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+
+<div class="flex h-screen">
+    @if (ShowSidebar)
+    {
+        <aside class="w-64 shrink-0 border-r border-gray-800 bg-[#181818] overflow-y-auto">
+            <SideBar />
+        </aside>
+    }
+
+    <div class="flex-1 flex flex-col min-w-0">
+        
+        <main class="flex-1 overflow-auto bg-[#1e1e1e]">
+            @Body
+        </main>
+    </div>
+</div>
+

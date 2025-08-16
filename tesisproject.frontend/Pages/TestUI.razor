@@ -1,0 +1,423 @@
+﻿@page "/testuI"
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.ConfirmDialog
+@using System.ComponentModel.DataAnnotations
+@using tesisproject.frontend.SharedUI.SelectInput
+@using tesisproject.frontend.SharedUI.DateInput
+@using tesisproject.frontend.SharedUI.Table
+@using tesisproject.frontend.SharedUI.Tabs
+@using tesisproject.frontend.SharedUI.Feedback
+@using tesisproject.frontend.SharedUI.Card
+@using tesisproject.frontend.SharedUI.TextInput
+
+
+@inject IModalService Modals
+@inject Blazored.Toast.Services.IToastService ToastService
+
+<PageTitle>UI Demo</PageTitle>
+<h3 class="text-xl font-semibold mb-4">Modal Demo</h3>
+<div class="space-x-3">
+    <button class='px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700' @onclick='() => Modals.Open("modal-one")'>
+        Open Modal One
+    </button>
+    <button class='px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700' @onclick='() => Modals.Open("modal-two")'>
+        Open Modal Two
+    </button>
+</div>
+
+<Modal Id="modal-one"
+       Title="Small Info"
+       Size="ModalSize.Sm"
+       CloseOnBackdrop="true"
+       CloseOnEscape="true"
+       OnClose="OnAnyModalClosed">
+    <ChildContent>
+        <p>This is a small modal. Click outside or press ESC to close.</p>
+    </ChildContent>
+    <Footer>
+        <button class='px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300' @onclick='() => Modals.Close("modal-one")'>
+            Close
+        </button>
+        <button class='ml-2 px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700' @onclick='() => Modals.Close("modal-one")'>
+            Confirm
+        </button>
+    </Footer>
+</Modal>
+
+<Modal Id="modal-two"
+       Title="Large Form"
+       Size="ModalSize.Lg"
+       ShowCloseButton="true"
+       CloseOnBackdrop="false">
+    <ChildContent>
+        <div class="space-y-3">
+            <label class="block text-sm">
+                Name
+                <input class="mt-1 w-full rounded-xl border px-3 py-2" />
+            </label>
+            <label class="block text-sm">
+                Email
+                <input type="email" class="mt-1 w-full rounded-xl border px-3 py-2" />
+            </label>
+        </div>
+    </ChildContent>
+    <Footer>
+        <button class='px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300' @onclick='() => Modals.Close("modal-two")'>
+            Cancel
+        </button>
+        <button class='ml-2 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700' @onclick='() => Modals.Close("modal-two")'>
+            Save
+        </button>
+    </Footer>
+</Modal>
+
+
+@code {
+    private Task OnAnyModalClosed() => Task.CompletedTask;
+}
+
+<h3 class="text-xl font-semibold mb-4">Confirm Demo</h3>
+
+<div class="p-6 space-y-4">
+<ActionButton Text="Delete"
+              ExecuteAsync="OnDeleteClick"
+              Class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-xl" />
+
+
+</div>
+
+<ConfirmDialog @bind-IsOpen="ConfirmOpen"
+    Title="Delete item?"
+    Message="@($"You are about to delete '{PendingId}'. This action cannot be undone.")"
+    Intent="ConfirmIntent.Danger"                              
+    ConfirmText="Yes, delete"
+    CancelText="Cancel"
+    OnConfirm="PerformDeleteAsync"
+    OnCancel="OnCancelAsync" />
+
+@code {
+    private bool ConfirmOpen;
+    private string? PendingId;
+
+    private Task OnDeleteClick()
+    {
+        PendingId = "PRJ-001";
+        ConfirmOpen = true;
+        return Task.CompletedTask;
+    }
+
+    private Task PerformDeleteAsync()
+    {
+        Console.WriteLine($"Deleted {PendingId}");
+        return Task.CompletedTask;
+    }
+
+    private Task OnCancelAsync() => Task.CompletedTask;
+}
+
+<button @onclick="ShowToast">Show Toast</button>
+
+@code {
+    private void ShowToast()
+    {
+        ToastService.ShowSuccess("Saved successfully!");
+    }
+}
+
+<h3 class="text-xl font-semibold mb-4">SelectInput Demo</h3>
+
+<SelectInput TItem="CountryDto"
+             Items="@Countries"
+             Value="@SelectedCountry"
+             ValueChanged="@(v => SelectedCountry = v)"
+             GetText="@(c => c.Name)"
+             GetKey="@(c => c.Id)"
+             Placeholder="Choose a country"
+             Size="SelectSize.Md"
+             AllowClear="true" />
+
+
+<div class="mt-4 text-sm text-gray-700">
+    Selected: @((SelectedCountry is null) ? "(none)" : $"{SelectedCountry.Name} ({SelectedCountry.Id})")
+</div>
+
+@code {
+    private class CountryDto
+    {
+        public string Id { get; set; } = default!;
+        public string Name { get; set; } = default!;
+    }
+
+    private List<CountryDto> Countries = new()
+    {
+        new() { Id = "EC", Name = "Ecuador" },
+        new() { Id = "DE", Name = "Germany" },
+        new() { Id = "US", Name = "United States" },
+    };
+
+    private CountryDto? SelectedCountry;
+}
+
+<h3 class="text-xl font-semibold mb-4">DateInput demo</h3>
+
+<EditForm Model="_model" OnValidSubmit="OnSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- 1) Con EditForm y validación por DataAnnotations -->
+        <div>
+            <DateInput Label="Birthdate"
+                       For="@(() => _model.Birthdate)"
+                       Value="@_model.Birthdate"
+                       ValueChanged="@(v => _model.Birthdate = v)"
+                       Min="@_min"
+                       Max="@_max"
+                       Required="true" />
+            <p class="mt-2 text-sm text-gray-600">
+                Current: @_model.Birthdate?.ToString("yyyy-MM-dd") ?? "(null)"
+            </p>
+        </div>
+
+        <!-- 2) Uso simple con estado local (sin DataAnnotations) -->
+        <div>
+            <DateInput Label="Event date"
+                       Value="@_eventDate"
+                       ValueChanged="@(v => _eventDate = v)"
+                       Min="@_min"
+                       Max="@_max" />
+            <p class="mt-2 text-sm text-gray-600">
+                Current: @_eventDate?.ToString("yyyy-MM-dd") ?? "(null)"
+            </p>
+        </div>
+    </div>
+
+    <div class="mt-6 flex gap-2">
+        <button type="submit" class="px-4 py-2 rounded-md bg-blue-600 text-white">Submit</button>
+        <button type="button" class="px-4 py-2 rounded-md border" @onclick="Reset">Reset</button>
+    </div>
+</EditForm>
+
+@code {
+    private DemoModel _model = new();
+    private DateOnly? _eventDate;
+    private readonly DateOnly _min = new(1990, 1, 1);
+    private readonly DateOnly _max = new(2030, 12, 31);
+
+    private void OnSubmit() { /* demo only */ }
+    private void Reset()
+    {
+        _model = new();
+        _eventDate = null;
+    }
+
+    public class DemoModel
+    {
+        [Required(ErrorMessage = "Birthdate is required")]
+        public DateOnly? Birthdate { get; set; }
+    }
+}
+
+<h3 class="text-xl font-semibold mb-4">Table demo</h3>
+<DataTable TItem="ProjectItem"
+           Items="PagedItems"
+           Columns="ProjectColumns"
+           PageSize="PageSize"
+           Total="Projects.Count"
+           CurrentPage="@CurrentPage"
+           OnPageChanged="OnPageChanged">
+    <!-- Optional custom row template:
+    <RowTemplate Context="p">
+        <td class="px-4 py-3">@p.ProjectId</td>
+        <td class="px-4 py-3">@p.Name</td>
+        <td class="px-4 py-3">@p.State</td>
+        <td class="px-4 py-3">@p.CreatedAt.ToShortDateString()</td>
+    </RowTemplate>
+    -->
+</DataTable>
+
+@code {
+    // Demo DTO for table (keep demo independent from your Entities if you want)
+    public sealed class ProjectItem
+    {
+        [Required] public string ProjectId { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string State { get; set; } = "Draft";
+        public DateOnly CreatedAt { get; set; }
+    }
+
+    private List<ProjectItem> Projects = new();
+    private IReadOnlyList<ColumnDef<ProjectItem>> ProjectColumns => new[]
+    {
+        new ColumnDef<ProjectItem>("ID",     p => p.ProjectId, "12rem"),
+        new ColumnDef<ProjectItem>("Name",   p => p.Name),
+        new ColumnDef<ProjectItem>("State",  p => p.State, Width: "8rem"),
+        new ColumnDef<ProjectItem>("Created",p => p.CreatedAt)
+    };
+
+    private int PageSize = 10;
+    private int CurrentPage = 1;
+
+    private IEnumerable<ProjectItem> PagedItems =>
+        Projects.Skip((CurrentPage - 1) * PageSize).Take(PageSize);
+
+    protected override void OnInitialized()
+    {
+        // Seed demo data
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        for (int i = 1; i <= 53; i++)
+        {
+            Projects.Add(new ProjectItem
+            {
+                ProjectId = $"PRJ-{i:0000}",
+                Name = $"Project #{i}",
+                State = i % 3 == 0 ? "Closed" : (i % 2 == 0 ? "Active" : "Draft"),
+                CreatedAt = today.AddDays(-i)
+            });
+        }
+    }
+
+    private void OnPageChanged(int page)
+    {
+        CurrentPage = page;
+        StateHasChanged();
+    }
+}
+
+<h3 class="text-xl font-semibold mb-4">Feedback Demo</h3>
+<div class="space-y-8 p-6">
+    <section class="space-y-3">
+        <h2 class="text-lg font-semibold">Spinner</h2>
+        <div class="flex items-center gap-6">
+            <Spinner />
+            <Spinner Size="32" Label="Loading projects..." />
+            <Spinner Size="48" Label="Please wait" />
+        </div>
+    </section>
+
+    <section class="space-y-3">
+        <h2 class="text-lg font-semibold">Skeletons</h2>
+        <div class="flex items-center gap-6">
+            <Skeleton Width="160" Height="20" />
+            <Skeleton Width="80" Height="80" Shape="SkeletonShape.Circle" />
+            <Skeleton Width="220" Height="14" Rounded="false" />
+        </div>
+    </section>
+
+    <section class="space-y-3">
+        <h2 class="text-lg font-semibold">List loading state</h2>
+        <button class="px-4 py-2 rounded-lg bg-blue-600 text-white" @onclick="ToggleLoading">Toggle Loading</button>
+
+        @if (isLoading)
+        {
+            <div class="space-y-4">
+                @for (var i = 0; i < 5; i++)
+                {
+                    <div class="flex items-center gap-4">
+                        <Skeleton Shape="SkeletonShape.Circle" Width="40" Height="40" />
+                        <div class="flex-1 space-y-2">
+                            <Skeleton Width="50" Height="14" />
+                            <Skeleton Width="35" Height="12" />
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <ul class="divide-y divide-gray-200 bg-white rounded-xl border">
+                @foreach (var p in projects)
+                {
+                    <li class="p-4 flex items-center gap-4 hover:bg-gray-50">
+                        <img src="https://placehold.co/40x40" class="w-10 h-10 rounded-full" alt="avatar" />
+                        <div>
+                            <div class="font-medium">@p.Name</div>
+                            <div class="text-sm text-gray-500">@p.Description</div>
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+</div>
+
+@code {
+    private bool isLoading = true;
+
+    private List<ProjectVm> projects = new()
+    {
+        new("DIDE Platform", "University project tracking"),
+        new("Analytics", "Dashboards and KPIs"),
+        new("Docs", "Internal documentation portal"),
+        new("Mobile App", "Companion application"),
+        new("Auth", "Identity & Access Management")
+    };
+
+    private void ToggleLoading() => isLoading = !isLoading;
+
+    private record ProjectVm(string Name, string Description);
+}
+
+<h3 class="text-xl font-semibold mb-4">Tabs Demo</h3>
+
+<Tabs Variant="TabVariant.Underline" OnChange="OnChanged" ActiveKey="@active">
+    <Tab Key="overview" Title="Overview">
+        <div class="p-4 bg-white border rounded-md">This is the Overview content.</div>
+    </Tab>
+    <Tab Key="details" Title="Details">
+        <div class="p-4 bg-white border rounded-md">Here are some Details.</div>
+    </Tab>
+    <Tab Key="settings" Title="Settings">
+        <div class="p-4 bg-white border rounded-md">Adjust your Settings here.</div>
+    </Tab>
+</Tabs>
+
+<div class="mt-6"></div>
+
+<Tabs Variant="TabVariant.Pills">
+    <Tab Key="one" Title="One">
+        <p class="p-4">Pills variant — Tab One.</p>
+    </Tab>
+    <Tab Key="two" Title="Two">
+        <p class="p-4">Pills variant — Tab Two.</p>
+    </Tab>
+    <Tab Key="three" Title="Three">
+        <p class="p-4">Pills variant — Tab Three.</p>
+    </Tab>
+</Tabs>
+
+@code {
+    private string active = "overview";
+    private void OnChanged(string key) => active = key;
+}
+
+<h3 class="text-xl font-bold mb-4">Card Demo</h3>
+
+<Card Tone="CardTone.Info" Class="max-w-md mb-6">
+    <CardHeader>
+        Info Card
+    </CardHeader>
+    <CardBody>
+        <p>This is the card body with some details.</p>
+    </CardBody>
+    <CardFooter>
+        <button class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded-lg">
+            Action
+        </button>
+    </CardFooter>
+</Card>
+
+<Card Tone="CardTone.Danger" Class="max-w-md">
+    <CardHeader>
+        Danger Card
+    </CardHeader>
+    <CardBody>
+        <p>Critical warning message or error detail here.</p>
+    </CardBody>
+    <CardFooter>
+        <button class="bg-red-500 hover:bg-red-600 text-white px-4 py-1 rounded-lg">
+            Fix Now
+        </button>
+    </CardFooter>
+</Card>
