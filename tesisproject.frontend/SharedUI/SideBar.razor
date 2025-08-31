@@ -1,24 +1,43 @@
 ﻿@using Microsoft.AspNetCore.Components.Routing
+@using tesisproject.frontend.SharedUI.ActionButton
 
-<div class="top-row navbar navbar-dark">
-    <a class="navbar-brand" href="/">tesisproject.frontend</a>
-    <button class="navbar-toggler" @onclick="ToggleNavMenu">
-        <span class="navbar-toggler-icon"></span>
-    </button>
+<!-- Top bar -->
+<div class="sticky top-0 z-40 h-16 shadow flex items-center justify-between px-4 nav-primary">
+    <a class="font-semibold text-lg tracking-tight text-white hover:text-white-85 transition"
+       href="/">
+        tesisproject.frontend
+    </a>
+
+    <!-- Toggler (mobile) -->
+    <ActionButton Execute="ToggleNavMenu"
+                  Variant="ButtonVariant.Ghost"
+                  Size="ButtonSize.Sm"
+                  Class="md:hidden inline-flex items-center justify-center p-2 rounded-md bg-primary-subtle-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-accent"
+                  aria-label="Toggle navigation">
+        <Icon>
+            <!-- Hamburger icon -->
+            <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+        </Icon>
+    </ActionButton>
 </div>
 
-<div class="nav-scroll @NavMenuCssClass">
-    <nav class="nav flex-column">
+<!-- Side / collapsible nav -->
+<div class="@MenuCss md:block md:w-64 border-t md:border-t-0 md:border-r md:fixed md:top-16 md:bottom-0 md:left-0 nav-primary-sidebar">
+    <nav class="px-3 py-4 space-y-1 overflow-y-auto max-h-[calc(100vh-4rem)] md:max-h-full">
         @foreach (var group in GroupedItems)
         {
             if (!string.IsNullOrWhiteSpace(group.Key))
             {
-                <div class="nav-section">@group.Key</div>
+                <div class="mt-4 mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-white-60">
+                    @group.Key
+                </div>
             }
-
             @foreach (var item in group)
             {
-                <NavLink class="nav-link"
+                <NavLink class="block rounded-lg px-3 py-2 text-white-75 nav-link-hover transition"
+                         ActiveClass="nav-link-active"
                          href="@item.Href"
                          Match="@(item.Exact ? NavLinkMatch.All : NavLinkMatch.Prefix)">
                     @item.Text

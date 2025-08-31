@@ -9,18 +9,18 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="NewFolder\**" />
     <Compile Remove="Services\Auth\Interfaces\**" />
-    <Content Remove="NewFolder\**" />
     <Content Remove="Services\Auth\Interfaces\**" />
-    <EmbeddedResource Remove="NewFolder\**" />
     <EmbeddedResource Remove="Services\Auth\Interfaces\**" />
-    <None Remove="NewFolder\**" />
     <None Remove="Services\Auth\Interfaces\**" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Remove="Features\Projects\Pages\Component.razor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="SharedUI\SelectInput\SelectInput.razor.css" />
   </ItemGroup>
 
   <ItemGroup>

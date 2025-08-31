@@ -15,7 +15,7 @@ namespace tesisproject.shared.Entities.Core
         public Guid GroupId { get; set; }              // id_grupo (FK -> Group)
 
         // Usuario externo consumido por API
-        [Required, StringLength(64)]
+        [Required]
         public int UserId { get; set; }                // id_usuario (usuario externo)
 
         [StringLength(60), Required]

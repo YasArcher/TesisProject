@@ -1,16 +1,16 @@
 ﻿<div class="w-full">
     @if (!string.IsNullOrWhiteSpace(Label))
     {
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label class="block text-sm font-medium text-foreground mb-1">
             @Label
             @if (Required)
             {
-                <span class="text-red-600">*</span>
+                <span class="text-error">*</span>
             }
         </label>
     }
-
-    <input class="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @(HasError ? "ring-2 ring-red-500 border-red-500 focus:ring-red-500 focus:border-red-500" : "")"
+    <input type="@InputType"
+           class="w-full rounded-md border border-border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary @(HasError ? "ring-2 ring-error border-error focus:ring-error focus:border-error" : "")"
            placeholder="@Placeholder"
            value="@_value"
            maxlength="@MaxLength"
@@ -18,14 +18,12 @@
            aria-invalid="@(HasError ? "true" : "false")"
            aria-required="@(Required ? "true" : "false")"
            @oninput="OnInputAsync" />
-
-
     @if (HasError)
     {
-        <p class="mt-1 text-sm text-red-600">@ErrorMessage</p>
+        <p class="mt-1 text-sm text-error">@ErrorMessage</p>
     }
     else if (!string.IsNullOrWhiteSpace(HelpText))
     {
-        <p class="mt-1 text-sm text-gray-500">@HelpText</p>
+        <p class="mt-1 text-sm text-muted">@HelpText</p>
     }
 </div>

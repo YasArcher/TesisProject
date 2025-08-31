@@ -24,10 +24,11 @@ namespace tesisproject.frontend.SharedUI.ConfirmDialog
 
         protected string ConfirmButtonClasses => Intent switch
         {
-            ConfirmIntent.Danger => "inline-flex items-center rounded-xl px-4 py-2 text-sm font-semibold text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring",
-            ConfirmIntent.Warning => "inline-flex items-center rounded-xl px-4 py-2 text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 focus:outline-none focus:ring",
-            _ /* Neutral */        => "inline-flex items-center rounded-xl px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring",
+            ConfirmIntent.Danger => "btn-primary-solid bg-danger hover:bg-danger-hover text-on-danger focus:ring-accent",
+            ConfirmIntent.Warning => "btn-primary-solid bg-warning hover:bg-warning-hover text-on-warning focus:ring-accent",
+            _ /* Neutral */       => "btn-primary-solid bg-primary hover:bg-primary-hover text-white focus:ring-accent",
         };
+
 
         protected async Task ConfirmAsync()
         {

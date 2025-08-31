@@ -5,6 +5,8 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
     public interface IUnitOfWork : IAsyncDisposable
     {
         IProjectRepository Projects { get; }
+        IGroupRepository Groups { get; }
+        IGroupMemberRepository GroupMembers { get; }
         Task<int> SaveChangesAsync();
     }
 }

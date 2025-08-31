@@ -1,5 +1,6 @@
 ﻿<button class="@BuildClass()"
         disabled="@(_isBusy || Disabled)"
+        @attributes="AdditionalAttributes"
         @onclick="OnClickInternal">
     <span class="inline-flex items-center gap-2">
         @if (_isBusy)

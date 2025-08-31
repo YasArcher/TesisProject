@@ -35,7 +35,7 @@ try
     using var s2 = await bootHttp.GetStreamAsync(envFile);
     builder.Configuration.AddJsonStream(s2);
 }
-catch { /* optional */ }
+catch { /* Luego veo que pongo :v */ }
 
 // 4) BaseAddress del backend
 var apiBase = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
@@ -51,7 +51,6 @@ builder.Services.AddHttpClient("Backend", c =>
 })
 .AddHttpMessageHandler<AuthMessageHandler>();
 
-// Este será el HttpClient por defecto que usan tus servicios
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Backend"));
 
 // 6) Wrapper API

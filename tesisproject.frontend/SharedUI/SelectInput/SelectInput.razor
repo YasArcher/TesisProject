@@ -1,6 +1,16 @@
 ﻿@typeparam TItem
+@using tesisproject.frontend.SharedUI.ActionButton
+
 <div class="w-full relative inline-flex items-center gap-2">
-    <select class="@BuildSelectClasses() w-full appearance-none bg-white border text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60 disabled:cursor-not-allowed"
+    <select class="@BuildSelectClasses()
+                   w-full appearance-none
+                   bg-background
+                   border border-border
+                   text-foreground
+                   rounded-lg
+                   focus:outline-none
+                   focus:ring-2 focus:ring-primary
+                   disabled:bg-muted disabled:cursor-not-allowed"
             value="@_selectedKey"
             @onchange="OnChanged"
             disabled="@(Disabled)"
@@ -11,7 +21,6 @@
                 @Placeholder
             </option>
         }
-
         @if (_options is not null)
         {
             @foreach (var opt in _options)
@@ -23,11 +32,11 @@
 
     @if (AllowClear)
     {
-        <button type="button"
-                class="absolute right-2 rounded-md px-2 py-1 text-xs border border-gray-300 hover:bg-gray-50 disabled:opacity-40"
-                @onclick="ClearSelection"
-                disabled="@(_selectedKey is null || _selectedKey == string.Empty || Disabled)">
-            Clear
-        </button>
+        <ActionButton Text="Clear"
+                      Execute="ClearSelection"
+                      Size="ButtonSize.Sm"
+                      Variant="ButtonVariant.Outline"
+                      Class="btn-primary-outline absolute right-2 px-2 py-1 text-xs disabled:bg-muted"
+                      Disabled="@(_selectedKey is null || _selectedKey == string.Empty || Disabled)" />
     }
 </div>

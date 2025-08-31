@@ -1,34 +1,46 @@
 ﻿@inherits ConfirmDialogBase
+@using tesisproject.frontend.SharedUI.ActionButton
 
 @if (IsOpen)
 {
-    <div class="fixed inset-0 z-50 flex items-center justify-center" tabindex="-1" @onkeydown="HandleKeyDown" aria-modal="true" role="dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <div class="fixed inset-0 z-50 flex items-center justify-center"
+         tabindex="-1"
+         @onkeydown="HandleKeyDown"
+         aria-modal="true"
+         role="dialog"
+         aria-labelledby="confirm-title"
+         aria-describedby="confirm-message">
+
         <!-- Backdrop -->
-        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @onclick="OnBackdropClick"></div>
+        <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"
+             @onclick="OnBackdropClick"></div>
 
         <!-- Dialog -->
-        <div class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl ring-1 ring-black/5 p-6">
+        <div class="relative w-full max-w-md rounded-2xl bg-background shadow-2xl ring-1 ring-border p-6">
             <div class="mb-4">
-                <h2 id="confirm-title" class="text-lg font-semibold text-gray-900">@Title</h2>
+                <h2 id="confirm-title" class="text-lg font-semibold text-foreground">@Title</h2>
                 @if (!string.IsNullOrWhiteSpace(Message))
                 {
-                    <p id="confirm-message" class="mt-2 text-sm text-gray-600">@Message</p>
+                    <p id="confirm-message" class="mt-2 text-sm text-muted">@Message</p>
                 }
             </div>
 
             <div class="mt-6 flex items-center justify-end gap-3">
-                <button type="button"
-                        class="inline-flex items-center rounded-xl border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring"
-                        @onclick="CancelAsync">
-                    @CancelText
-                </button>
+                <!-- Botón cancelar -->
+                <ActionButton Text="@CancelText"
+                              Execute="CancelAsync"
+                              Intent="ButtonIntent.Neutral"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Sm" />
 
-                <button type="button"
-                        class="@ConfirmButtonClasses"
-                        @onclick="ConfirmAsync">
-                    @ConfirmText
-                </button>
+                <!-- Botón confirmar -->
+                <ActionButton Text="@ConfirmText"
+                              Execute="ConfirmAsync"
+                              Intent="ButtonIntent.Danger"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Sm" />
             </div>
         </div>
     </div>
 }
+

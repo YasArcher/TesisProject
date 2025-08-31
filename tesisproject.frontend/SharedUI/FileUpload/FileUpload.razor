@@ -1,0 +1,80 @@
+﻿@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.frontend.SharedUI.ActionButton
+
+<div class="@ContainerClass">
+    <div class="flex items-center justify-center w-full">
+        <!-- Label = solo zona clicable -->
+        <label for="@Id" class="@GetDropZoneClass()">
+            @if (IsUploading)
+            {
+                <svg class="w-8 h-8 mb-4 text-muted animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                    <path class="opacity-75" fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                <span class="mb-2 text-sm text-muted font-semibold">Subiendo archivo...</span>
+            }
+            else if (UploadedFile is not null)
+            {
+                <svg class="w-8 h-8 mb-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="mb-2 text-sm text-secondary font-semibold">@UploadedFile.Name</span>
+                <span class="text-xs text-muted">@FormatFileSize(UploadedFile.Size)</span>
+            }
+            else
+            {
+                <svg class="w-8 h-8 mb-4 text-muted" aria-hidden="true" fill="none" viewBox="0 0 20 16">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2" />
+                </svg>
+                <span class="mb-2 text-sm text-muted font-semibold">@UploadText</span>
+                @if (!string.IsNullOrEmpty(AcceptedTypes))
+                {
+                    <span class="text-xs text-muted">@GetAcceptedTypesText()</span>
+                }
+                @if (MaxFileSizeMB > 0)
+                {
+                    <span class="text-xs text-muted">Tamaño máximo: @MaxFileSizeMB MB</span>
+                }
+            }
+
+            <InputFile id="@Id"
+                       class="hidden"
+                       OnChange="OnInputFileChange"
+                       accept="@AcceptedTypes"
+                       disabled="@(IsUploading || IsDisabled)" />
+        </label>
+    </div>
+
+    @* Botón remover FUERA del label *@
+    @if (AllowRemove && UploadedFile is not null)
+    {
+        <div class="mt-3 text-center">
+            <ActionButton Text="Remover archivo"
+                          Execute="RemoveFile"
+                          Intent="ButtonIntent.Danger"
+                          Variant="ButtonVariant.Filled"
+                          Size="ButtonSize.Sm" />
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="mt-2 p-3 bg-error-subtle border border-error rounded-lg">
+            <p class="text-sm text-error font-medium">@ErrorMessage</p>
+        </div>
+    }
+
+    @if (ShowProgress && Progress > 0)
+    {
+        <div class="mt-4">
+            <div class="bg-border rounded-full h-2 overflow-hidden">
+                <div class="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
+                     style="@ProgressStyle"></div>
+            </div>
+            <p class="text-xs text-muted mt-2 text-center">@Progress% completado</p>
+        </div>
+    }
+</div>
