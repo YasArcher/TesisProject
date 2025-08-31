@@ -1,0 +1,60 @@
+﻿@using Microsoft.AspNetCore.Components.Web
+
+<div class="@BuildRootClasses()"
+     @onmousedown:document="OnDocumentMouseDown"
+     @onkeydown:window="OnWindowKeyDown">
+    <!-- Toggle button -->
+    <button type="button"
+            class="inline-flex items-center gap-2 rounded-xl px-2.5 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+            aria-haspopup="menu"
+            aria-expanded="@_open"
+            @onclick="Toggle"
+            @onclick:stopPropagation="true">
+        <span class="relative inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 text-white overflow-hidden">
+            @if (!string.IsNullOrWhiteSpace(UserAvatarUrl))
+            {
+                <img src="@UserAvatarUrl" alt="User avatar" class="h-full w-full object-cover" />
+            }
+            else
+            {
+                <span class="text-sm font-semibold">
+                    @((UserName is { Length: > 0 } ? UserName![0].ToString().ToUpperInvariant() : "U"))
+                </span>
+            }
+        </span>
+
+        @if (!Compact && !string.IsNullOrWhiteSpace(UserName))
+        {
+            <span class="hidden sm:flex flex-col leading-tight text-left">
+                <span class="text-gray-900 dark:text-gray-100 text-sm font-medium">@UserName</span>
+                @if (!string.IsNullOrWhiteSpace(UserEmail))
+                {
+                    <span class="text-gray-500 dark:text-gray-400 text-[11px]">@UserEmail</span>
+                }
+            </span>
+        }
+    </button>
+
+    <!-- Dropdown -->
+    @if (_open)
+    {
+        <div class="absolute right-0 mt-2 min-w-[220px] origin-top-right rounded-2xl border border-gray-200/70 dark:border-gray-800/70 bg-white dark:bg-gray-900 shadow-xl ring-1 ring-black/5 focus:outline-none animate-[fadeIn_120ms_ease-out] will-change-transform"
+             role="menu" aria-orientation="vertical" tabindex="-1">
+            <div class="py-2">
+                @foreach (var item in ResolveItems())
+                {
+                    if (item.Key == "logout")
+                    {
+                        <div class="my-1 border-t border-gray-100 dark:border-gray-800"></div>
+                    }
+                    <button type="button"
+                            role="menuitem"
+                            class="w-full text-left px-3 py-2 text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 @((item.Dangerous ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-200"))"
+                            @onclick="() => InvokeItem(item)">
+                        @item.Text
+                    </button>
+                }
+            </div>
+        </div>
+    }
+</div>

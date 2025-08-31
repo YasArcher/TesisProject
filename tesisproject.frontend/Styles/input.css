@@ -1,1 +1,260 @@
 ﻿@import "tailwindcss";
+@source "../**/*.{razor,cshtml,html,js,ts,cs,css}";
+
+/* COLORES BASE DE TEMAS - SIMPLIFICADOS */
+:root {
+    --color-background: #f9fafb;
+    --color-foreground: #111827;
+    --color-primary: #2563eb;
+    --color-secondary: #10b981;
+    --color-accent: #f59e0b;
+    --color-border: #d1d5db;
+    --color-error: #ef4444;
+    --color-muted: #6b7280;
+    --color-page-bg: #E3E2E1;
+    --color-footer-text: #999999;
+}
+
+.dark {
+    --color-background: #0f172a;
+    --color-foreground: #e5e7eb;
+    --color-primary: #3b82f6;
+    --color-secondary: #34d399;
+    --color-accent: #fbbf24;
+    --color-border: #374151;
+    --color-error: #f87171;
+    --color-muted: #9ca3af;
+    --color-page-bg: #111827;
+    --color-footer-text: #9ca3af;
+}
+
+.corporate {
+    --color-background: #ffffff;
+    --color-foreground: #0f172a;
+    --color-primary: #1e3a8a;
+    --color-secondary: #9333ea;
+    --color-accent: #ef4444;
+    --color-border: #e5e7eb;
+    --color-error: #dc2626;
+    --color-muted: #64748b;
+    --color-page-bg: #f8fafc;
+    --color-footer-text: #64748b;
+}
+
+.pastel {
+    --color-background: #fefefe;
+    --color-foreground: #374151;
+    --color-primary: #f472b6;
+    --color-secondary: #60a5fa;
+    --color-accent: #fcd34d;
+    --color-border: #e2e8f0;
+    --color-error: #f87171;
+    --color-muted: #94a3b8;
+    --color-page-bg: #f8fafc;
+    --color-footer-text: #94a3b8;
+}
+
+.institucional {
+    --color-background: #E3E2E1;
+    --color-foreground: #111827;
+    --color-primary: #7A1E19;
+    --color-secondary: #6e6e6e;
+    --color-accent: #999999;
+    --color-border: #d1d5db;
+    --color-error: #991b1b;
+    --color-muted: #6b7280;
+    --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --color-page-bg: #E3E2E1;
+    --color-footer-text: #999999;
+}
+
+/* CONFIGURACIÓN TAILWIND */
+@theme {
+    --color-background: var(--color-background);
+    --color-foreground: var(--color-foreground);
+    --color-primary: var(--color-primary);
+    --color-secondary: var(--color-secondary);
+    --color-accent: var(--color-accent);
+    --color-border: var(--color-border);
+    --color-error: var(--color-error);
+    --color-muted: var(--color-muted);
+    --color-page-bg: var(--color-page-bg);
+    --color-footer-text: var(--color-footer-text);
+    --font-sans: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+/* ============================================ */
+/* UTILIDADES GLOBALES DE DEGRADADOS REUTILIZABLES */
+/* ============================================ */
+
+/* ===== BACKGROUNDS CON DEGRADADOS ===== */
+.bg-primary-hover:hover {
+    background-color: color-mix(in srgb, var(--color-primary) 85%, black);
+}
+
+.bg-primary-active:active,
+.bg-primary-pressed {
+    background-color: color-mix(in srgb, var(--color-primary) 75%, black);
+}
+
+.bg-primary-light {
+    background-color: color-mix(in srgb, var(--color-primary) 80%, white);
+}
+
+.bg-primary-lighter {
+    background-color: color-mix(in srgb, var(--color-primary) 60%, white);
+}
+
+.bg-primary-subtle {
+    background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.bg-primary-subtle-hover:hover {
+    background-color: color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+/* Secondary variants */
+.bg-secondary-hover:hover {
+    background-color: color-mix(in srgb, var(--color-secondary) 85%, black);
+}
+
+.bg-secondary-light {
+    background-color: color-mix(in srgb, var(--color-secondary) 80%, white);
+}
+
+.bg-secondary-subtle {
+    background-color: color-mix(in srgb, var(--color-secondary) 10%, transparent);
+}
+
+/* ===== TEXTOS CON DEGRADADOS ===== */
+.text-primary-hover:hover {
+    color: color-mix(in srgb, var(--color-primary) 85%, black);
+}
+
+.text-primary-light {
+    color: color-mix(in srgb, var(--color-primary) 80%, white);
+}
+
+.text-primary-muted {
+    color: color-mix(in srgb, var(--color-primary) 70%, transparent);
+}
+
+.text-white-85 {
+    color: color-mix(in srgb, white 85%, transparent);
+}
+
+.text-white-75 {
+    color: color-mix(in srgb, white 75%, transparent);
+}
+
+.text-white-60 {
+    color: color-mix(in srgb, white 60%, transparent);
+}
+
+/* ===== BORDES CON DEGRADADOS ===== */
+.border-primary-hover:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 85%, black);
+}
+
+.border-primary-light {
+    border-color: color-mix(in srgb, var(--color-primary) 85%, white);
+}
+
+.border-primary-subtle {
+    border-color: color-mix(in srgb, var(--color-primary) 85%, black);
+}
+
+/* ===== RINGS/FOCUS CON DEGRADADOS ===== */
+.ring-primary-hover:hover {
+    --tw-ring-color: color-mix(in srgb, var(--color-primary) 50%, transparent);
+}
+
+.focus\:ring-primary-subtle:focus {
+    --tw-ring-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+/* ===== COMBINACIONES COMUNES PARA COMPONENTES ===== */
+
+/* Para navegación */
+.nav-primary {
+    background-color: var(--color-primary);
+    color: white;
+}
+
+.nav-primary-sidebar {
+    background-color: var(--color-primary);
+    color: color-mix(in srgb, white 85%, transparent);
+    border-color: color-mix(in srgb, var(--color-primary) 85%, black);
+}
+
+.nav-link-hover:hover {
+    color: white;
+    background-color: color-mix(in srgb, var(--color-primary) 85%, black);
+}
+
+.nav-link-active {
+    background-color: var(--color-secondary);
+    color: white;
+}
+
+    .nav-link-active:hover {
+        background-color: color-mix(in srgb, var(--color-secondary) 85%, black);
+    }
+
+/* Para botones */
+.btn-primary-solid {
+    background-color: var(--color-primary);
+    color: white;
+    transition: all 0.2s ease;
+}
+
+    .btn-primary-solid:hover {
+        background-color: color-mix(in srgb, var(--color-primary) 85%, black);
+        transform: translateY(-1px);
+    }
+
+    .btn-primary-solid:active {
+        background-color: color-mix(in srgb, var(--color-primary) 75%, black);
+        transform: translateY(0);
+    }
+
+.btn-primary-outline {
+    background-color: transparent;
+    border: 2px solid var(--color-primary);
+    color: var(--color-primary);
+    transition: all 0.2s ease;
+}
+
+    .btn-primary-outline:hover {
+        background-color: var(--color-primary);
+        color: white;
+    }
+
+.btn-primary-ghost {
+    background-color: transparent;
+    color: var(--color-primary);
+    transition: all 0.2s ease;
+}
+
+    .btn-primary-ghost:hover {
+        background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+    }
+
+/* Para cards y containers */
+.card-hover-primary:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary) 15%, transparent);
+}
+
+/* ===== ESTADOS DISABLED UNIVERSALES ===== */
+.disabled\:bg-muted:disabled,
+.disabled\:bg-muted[disabled] {
+    background-color: var(--color-muted);
+    color: color-mix(in srgb, var(--color-foreground) 50%, transparent);
+    cursor: not-allowed;
+}
+
+/* Aplicar la fuente a todo el cuerpo */
+body {
+    font-family: var(--font-sans);
+}

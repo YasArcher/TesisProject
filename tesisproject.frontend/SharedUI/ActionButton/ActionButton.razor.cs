@@ -5,8 +5,10 @@ namespace tesisproject.frontend.SharedUI.ActionButton
     public partial class ActionButton : ComponentBase
     {
         // Public API
-        [Parameter, EditorRequired] public Func<Task> ExecuteAsync { get; set; } = default!;
+        [Parameter, EditorRequired] public EventCallback Execute { get; set; }
 
+        [Parameter(CaptureUnmatchedValues = true)]
+        public Dictionary<string, object>? AdditionalAttributes { get; set; }
         [Parameter] public string? Text { get; set; }
         [Parameter] public RenderFragment? ChildContent { get; set; }
         [Parameter] public RenderFragment? Icon { get; set; }
@@ -18,7 +20,7 @@ namespace tesisproject.frontend.SharedUI.ActionButton
         [Parameter] public bool Disabled { get; set; }
         [Parameter] public bool ConfirmBeforeExecute { get; set; } = false;
         [Parameter] public string ConfirmMessage { get; set; } = "Are you sure?";
-        [Parameter] public string? Class { get; set; } // extra Tailwind classes (optional)
+        [Parameter] public string? Class { get; set; } 
 
         // Internal state
         protected bool _isBusy = false;
@@ -35,8 +37,8 @@ namespace tesisproject.frontend.SharedUI.ActionButton
             _isBusy = true;
             try
             {
-                if (ExecuteAsync is not null)
-                    await ExecuteAsync.Invoke();
+                if (Execute.HasDelegate)
+                    await Execute.InvokeAsync();
             }
             finally
             {
@@ -53,7 +55,7 @@ namespace tesisproject.frontend.SharedUI.ActionButton
 
         protected string BuildClass()
         {
-            var baseCls = "inline-flex select-none items-center justify-center font-medium transition-colors rounded-2xl focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed";
+            var baseCls = "inline-flex select-none items-center justify-center font-medium transition-all duration-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed";
 
             var sizeCls = Size switch
             {
@@ -65,30 +67,61 @@ namespace tesisproject.frontend.SharedUI.ActionButton
                 _ => "text-sm px-4 py-2"
             };
 
-            var (bg, txt, ring, hover) = GetPalette(Intent);
-
             var variantCls = Variant switch
             {
-                ButtonVariant.Filled => $"{bg} {txt} {hover} {ring}",
-                ButtonVariant.Outline => $"border {txt} {ring} hover:bg-black/5 dark:hover:bg-white/10 border-current",
-                ButtonVariant.Ghost => $"{txt} {ring} hover:bg-black/5 dark:hover:bg-white/10",
-                ButtonVariant.Soft => $"bg-black/5 dark:bg-white/10 {txt} {ring} hover:bg-black/10 dark:hover:bg-white/20",
-                _ => $"{bg} {txt} {hover} {ring}",
+                ButtonVariant.Filled => GetFilledVariantClass(Intent),
+                ButtonVariant.Outline => GetOutlineVariantClass(Intent),
+                ButtonVariant.Ghost => GetGhostVariantClass(Intent),
+                ButtonVariant.Soft => GetSoftVariantClass(Intent),
+                _ => GetFilledVariantClass(Intent),
             };
 
             return $"{baseCls} {sizeCls} {variantCls} {Class}".Trim();
         }
 
-        protected static (string bg, string txt, string ring, string hover) GetPalette(ButtonIntent intent)
-            => intent switch
-            {
-                ButtonIntent.Add or ButtonIntent.Success => ("bg-emerald-600", "text-white", "focus:ring-emerald-500", "hover:bg-emerald-700"),
-                ButtonIntent.Accept => ("bg-blue-600", "text-white", "focus:ring-blue-500", "hover:bg-blue-700"),
-                ButtonIntent.Delete => ("bg-rose-600", "text-white", "focus:ring-rose-500", "hover:bg-rose-700"),
-                ButtonIntent.Warning => ("bg-amber-500", "text-black", "focus:ring-amber-500", "hover:bg-amber-600"),
-                ButtonIntent.Info => ("bg-sky-600", "text-white", "focus:ring-sky-500", "hover:bg-sky-700"),
-                ButtonIntent.Danger => ("bg-red-600", "text-white", "focus:ring-red-500", "hover:bg-red-700"),
-                _ => ("bg-gray-800", "text-white", "focus:ring-gray-600", "hover:bg-gray-900")
-            };
+        protected string GetFilledVariantClass(ButtonIntent intent) => intent switch
+        {
+            // Usa PRIMARY institucional como botón principal
+            ButtonIntent.Accept or ButtonIntent.Info => "btn-primary-solid",
+
+            // Success/Add - usando secondary como success
+            ButtonIntent.Add or ButtonIntent.Success => "bg-secondary text-white bg-secondary-hover focus:ring-2",
+
+            // Warning - usando accent
+            ButtonIntent.Warning => "bg-accent text-white hover:bg-accent focus:ring-2",
+
+            // Danger/Delete - usando error
+            ButtonIntent.Danger or ButtonIntent.Delete => "bg-error text-white hover:bg-error focus:ring-2",
+
+            // Neutral - usando muted
+            _ => "bg-muted text-foreground hover:bg-muted focus:ring-2"
+        };
+
+        protected string GetOutlineVariantClass(ButtonIntent intent) => intent switch
+        {
+            ButtonIntent.Accept or ButtonIntent.Info => "btn-primary-outline",
+            ButtonIntent.Add or ButtonIntent.Success => "border-2 border-secondary text-secondary hover:bg-secondary hover:text-white",
+            ButtonIntent.Warning => "border-2 border-accent text-accent hover:bg-accent hover:text-white",
+            ButtonIntent.Danger or ButtonIntent.Delete => "border-2 border-error text-error hover:bg-error hover:text-white",
+            _ => "border-2 border-muted text-muted hover:bg-muted hover:text-foreground"
+        };
+
+        protected string GetGhostVariantClass(ButtonIntent intent) => intent switch
+        {
+            ButtonIntent.Accept or ButtonIntent.Info => "btn-primary-ghost",
+            ButtonIntent.Add or ButtonIntent.Success => "text-secondary hover:bg-secondary-subtle",
+            ButtonIntent.Warning => "text-accent hover:bg-accent/10",
+            ButtonIntent.Danger or ButtonIntent.Delete => "text-error hover:bg-error/10",
+            _ => "text-muted hover:bg-muted/10"
+        };
+
+        protected string GetSoftVariantClass(ButtonIntent intent) => intent switch
+        {
+            ButtonIntent.Accept or ButtonIntent.Info => "bg-primary-subtle text-primary bg-primary-subtle-hover",
+            ButtonIntent.Add or ButtonIntent.Success => "bg-secondary-subtle text-secondary hover:bg-secondary-subtle",
+            ButtonIntent.Warning => "text-accent hover:bg-accent/20" + " " + "bg-accent/10",
+            ButtonIntent.Danger or ButtonIntent.Delete => "text-error hover:bg-error/20" + " " + "bg-error/10",
+            _ => "text-muted hover:bg-muted/20" + " " + "bg-muted/10"
+        };
     }
 }

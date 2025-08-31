@@ -1,0 +1,6 @@
+﻿/* ===== Utilities adicionales que SÍ aportan ===== */
+
+/* Divide usando el color de borde del tema */
+.divide-border > * + * {
+    border-top-color: var(--color-border);
+}

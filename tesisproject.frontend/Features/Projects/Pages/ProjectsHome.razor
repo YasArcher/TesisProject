@@ -3,6 +3,7 @@
 @using tesisproject.shared.DTOs.Project
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.Features.Projects.Components
+@using tesisproject.frontend.SharedUI.ActionButton
 @inject IApiClient Api
 
 <Container TItem="ProjectListItemDto"
@@ -15,10 +16,14 @@
            EmptyStateDescription="Comienza creando tu primer proyecto para organizar tu trabajo.">
 
     <EmptyStateAction>
-        <button @onclick="CreateNewProject"
-                class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 font-medium">
-            Crear Nuevo Proyecto
-        </button>
+        <ActionButton Text="Crear Nuevo Proyecto"
+                      Execute="CreateNewProject"
+                      Intent="ButtonIntent.Accept"
+                      Variant="ButtonVariant.Filled"
+                      Size="ButtonSize.Sm"
+                      Disabled="@isLoading"
+                      Class="px-4 py-2 rounded-md" />
+
     </EmptyStateAction>
     <ChildContent Context="project">
         <ProjectCard Item="project" />

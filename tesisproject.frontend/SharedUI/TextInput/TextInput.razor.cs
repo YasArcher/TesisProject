@@ -16,6 +16,8 @@ namespace tesisproject.frontend.SharedUI.TextInput
         [Parameter] public string? HelpText { get; set; }
         [Parameter] public int? MaxLength { get; set; }
         [Parameter] public int DebounceMs { get; set; } = 300;
+        [Parameter] public string InputType { get; set; } = "text";
+
 
         // ---- Optional: hook into EditForm validation (keeps your surface API intact) ----
         [CascadingParameter] private EditContext? EditContext { get; set; }

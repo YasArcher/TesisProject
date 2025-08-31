@@ -497,7 +497,6 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("nvarchar(60)");
 
                     b.Property<int>("UserId")
-                        .HasMaxLength(64)
                         .HasColumnType("int");
 
                     b.HasKey("GroupMemberId");

@@ -1,45 +1,52 @@
 ﻿@typeparam TItem
+@using tesisproject.frontend.SharedUI.ActionButton
 
 <div class="w-full overflow-x-auto">
-    <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50 sticky top-0 z-10">
+    <table class="min-w-full divide-y divide-border">
+        <thead class="bg-primary-subtle sticky top-0 z-10">
             <tr>
                 @for (var i = 0; i < Columns.Count; i++)
                 {
                     var col = Columns[i];
                     var sortable = col.Sortable;
+
                     <th scope="col"
-                        class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider select-none"
+                        class="px-4 py-3 text-left text-xs font-semibold text-foreground uppercase tracking-wider select-none"
                         style="@(string.IsNullOrWhiteSpace(col.Width) ? null : $"width:{col.Width}")">
-                        <button type="button"
-                                class="inline-flex items-center gap-1 group"
-                                disabled="@(sortable ? null : true)"
-                                @onclick="(() => OnHeaderClick(i))">
-                            <span>@col.Title</span>
-                            @if (sortable)
-                            {
-                                <span class="text-gray-400 group-hover:text-gray-600 text-[10px]">
-                                    @GetSortGlyph(i)
-                                </span>
-                            }
-                        </button>
+
+                        <ActionButton Execute="@(() => OnHeaderClick(i))"
+                                      Variant="ButtonVariant.Ghost"
+                                      Size="ButtonSize.Sm"
+                                      Disabled="@( !sortable )"
+                                      Class="btn-primary-ghost inline-flex items-center gap-1 group px-0 py-0">
+                            <ChildContent>
+                                <span>@col.Title</span>
+                                @if (sortable)
+                                {
+                                    <span class="text-muted group-hover:text-primary text-[10px]">
+                                        @GetSortGlyph(i)
+                                    </span>
+                                }
+                            </ChildContent>
+                        </ActionButton>
+
                     </th>
                 }
             </tr>
         </thead>
 
-        <tbody class="bg-white divide-y divide-gray-100">
+        <tbody class="bg-background divide-y divide-border">
             @if (ViewItems is null || !ViewItems.Any())
             {
-                <tr class="odd:bg-gray-50 hover:bg-gray-50">
-                    <td class="px-4 py-4 text-sm text-gray-500" colspan="@Columns.Count">@EmptyText</td>
+                <tr class="odd:bg-primary-subtle hover:bg-primary-subtle-hover">
+                    <td class="px-4 py-4 text-sm text-muted" colspan="@Columns.Count">@EmptyText</td>
                 </tr>
             }
             else if (RowTemplate is not null)
             {
                 @foreach (var item in ViewItems)
                 {
-                    <tr class="odd:bg-gray-50 hover:bg-gray-50">
+                    <tr class="odd:bg-primary-subtle hover:bg-primary-subtle-hover">
                         @RowTemplate(item)
                     </tr>
                 }
@@ -48,10 +55,10 @@
             {
                 @foreach (var item in ViewItems)
                 {
-                    <tr class="odd:bg-gray-50 hover:bg-gray-50">
+                    <tr class="odd:bg-primary-subtle hover:bg-primary-subtle-hover">
                         @for (var i = 0; i < Columns.Count; i++)
                         {
-                            <td class="px-4 py-3 text-sm text-gray-700 align-middle">
+                            <td class="px-4 py-3 text-sm text-foreground align-middle">
                                 @Columns[i].ValueSelector(item)
                             </td>
                         }
@@ -65,38 +72,44 @@
 @if (ShowPager)
 {
     <nav class="mt-4 flex items-center justify-between" aria-label="Table pagination">
-        <div class="text-sm text-gray-600">
-            Page <span class="font-medium">@CurrentPage</span> of <span class="font-medium">@TotalPages</span>
+        <div class="text-sm text-muted">
+            Page <span class="font-medium text-foreground">@CurrentPage</span>
+            of <span class="font-medium text-foreground">@TotalPages</span>
         </div>
 
         <div class="inline-flex items-center gap-1">
-            <button class="px-3 py-1.5 border rounded-lg text-sm disabled:opacity-50"
-                    disabled="@(_isFirstPage)"
-                    @onclick="PrevPage">
-                Prev
-            </button>
+            <ActionButton Text="Prev"
+                          Execute="PrevPage"
+                          Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Sm"
+                          Disabled="@_isFirstPage"
+                          Class="btn-primary-outline px-3 py-1.5 rounded-lg text-sm" />
 
             @foreach (var p in VisiblePages)
             {
                 if (p == -1)
                 {
-                    <span class="px-2 text-gray-500">…</span>
+                    <span class="px-2 text-muted">…</span>
                 }
                 else
                 {
-                    <button class="px-3 py-1.5 border rounded-lg text-sm
-                                               @(p == CurrentPage ? "bg-gray-900 text-white border-gray-900" : "bg-white")"
-                            @onclick="(() => ChangePage(p))">
-                        @p
-                    </button>
+                    var isActive = p == CurrentPage;
+
+                    <ActionButton Text="@p.ToString()"
+                                  Execute="@( () => ChangePage(p) )"
+                                  Variant="@( isActive ? ButtonVariant.Filled : ButtonVariant.Outline )"
+                                  Size="ButtonSize.Sm"
+                                  Class="@( isActive ? "btn-primary-solid" : "btn-primary-outline" )"
+                                  AdditionalAttributes="@(isActive ? new Dictionary<string, object>{{"aria-pressed","true"}} : null)" />
                 }
             }
 
-            <button class="px-3 py-1.5 border rounded-lg text-sm disabled:opacity-50"
-                    disabled="@(_isLastPage)"
-                    @onclick="NextPage">
-                Next
-            </button>
+            <ActionButton Text="Next"
+                          Execute="NextPage"
+                          Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Sm"
+                          Disabled="@_isLastPage"
+                          Class="btn-primary-outline px-3 py-1.5 rounded-lg text-sm" />
         </div>
     </nav>
 }

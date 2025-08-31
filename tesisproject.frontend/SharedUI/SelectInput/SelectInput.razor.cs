@@ -1,27 +1,20 @@
 ﻿using Microsoft.AspNetCore.Components;
-
 namespace tesisproject.frontend.SharedUI.SelectInput
 {
     public partial class SelectInput<TItem> : ComponentBase
     {
         private sealed record Option(string Key, string Text, TItem Item);
-
         private List<Option>? _options;
         private string _selectedKey = string.Empty;
 
         [Parameter] public IEnumerable<TItem>? Items { get; set; }
-
         /// <summary>Current selected value (nullable supported).</summary>
         [Parameter] public TItem? Value { get; set; }
-
         [Parameter] public EventCallback<TItem?> ValueChanged { get; set; }
-
         /// <summary>Returns the display text for an item (required).</summary>
         [Parameter, EditorRequired] public Func<TItem, string> GetText { get; set; } = default!;
-
         /// <summary>Returns a unique key for an item (optional). If not provided, GetText(item) is used.</summary>
         [Parameter] public Func<TItem, string>? GetKey { get; set; }
-
         [Parameter] public string? Placeholder { get; set; } = "Select an option";
         [Parameter] public bool Disabled { get; set; }
         [Parameter] public bool AllowClear { get; set; } = false;
@@ -63,7 +56,6 @@ namespace tesisproject.frontend.SharedUI.SelectInput
         private async Task OnChanged(ChangeEventArgs e)
         {
             var newKey = e.Value?.ToString() ?? string.Empty;
-
             if (string.IsNullOrEmpty(newKey))
             {
                 _selectedKey = string.Empty;
@@ -73,7 +65,6 @@ namespace tesisproject.frontend.SharedUI.SelectInput
 
             var match = _options?.FirstOrDefault(o => o.Key == newKey);
             _selectedKey = newKey;
-
             if (match is not null)
                 await ValueChanged.InvokeAsync(match.Item);
             else
@@ -89,10 +80,10 @@ namespace tesisproject.frontend.SharedUI.SelectInput
 
         private string BuildSelectClasses() => Size switch
         {
-            SelectSize.Sm => "px-2 py-1 text-sm border-gray-300",
-            SelectSize.Md => "px-3 py-2 text-base border-gray-300",
-            SelectSize.Lg => "px-4 py-3 text-lg border-gray-300",
-            _ => "px-3 py-2 text-base border-gray-300"
+            SelectSize.Sm => "px-2 py-1 text-sm",
+            SelectSize.Md => "px-3 py-2 text-base",
+            SelectSize.Lg => "px-4 py-3 text-lg",
+            _ => "px-3 py-2 text-base"
         };
     }
 }

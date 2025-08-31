@@ -1,5 +1,5 @@
 ﻿<CascadingValue Value="this">
-    <!-- Force child <Tab> to register before rendering headers -->
+    <!-- Registrar <Tab> antes de renderizar headers -->
     <div hidden>@ChildContent</div>
 
     <div class="w-full">
@@ -10,12 +10,25 @@
                 var idx = i;
                 var item = _items[idx];
                 var isActive = item.Key == ActiveKey;
-                var common = "px-3 md:px-4 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 rounded-md transition";
+
+                // Base: accesibilidad + tema
+                var common = "px-3 md:px-4 py-2 text-sm font-medium rounded-md transition " +
+                "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus:ring-primary";
 
                 var classes = Variant switch
                 {
-                    TabVariant.Underline => $"{common} rounded-b-none border-b-2 {(isActive ? "border-sky-600 text-sky-700" : "border-transparent text-gray-600 hover:text-gray-800 hover:border-gray-300")}",
-                    TabVariant.Pills => $"{common} {(isActive ? "bg-sky-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200")}",
+                    // Subrayado (usa colores del tema)
+                    TabVariant.Underline => $"{common} rounded-b-none border-b-2 " +
+                    (isActive
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted hover:text-foreground hover:border-border"),
+
+                    // Pastillas (usa tokens del proyecto)
+                    TabVariant.Pills => $"{common} " +
+                    (isActive
+                    ? "btn-primary-solid"
+                    : "bg-primary-subtle text-foreground hover:bg-primary-subtle-hover"),
+
                     _ => common
                 };
 
@@ -37,7 +50,10 @@
         <div class="mt-3">
             @if (_activeItem is not null)
             {
-                <div id="panel-@_activeItem.Key" role="tabpanel" aria-labelledby="tab-@_activeItem.Key" class="outline-none">
+                <div id="panel-@_activeItem.Key"
+                     role="tabpanel"
+                     aria-labelledby="tab-@_activeItem.Key"
+                     class="outline-none">
                     @_activeItem.Content
                 </div>
             }

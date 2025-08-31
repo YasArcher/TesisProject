@@ -1,42 +1,43 @@
 ﻿@inherits ModalBase
-
+@using tesisproject.frontend.SharedUI.ActionButton
 @if (IsOpen)
 {
     <div class="fixed inset-0 z-50" tabindex="0" @ref="_keyTarget" @onkeydown="HandleKeyDown">
         <!-- Backdrop -->
-        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" 
-             @onclick="OnBackdropClick"></div>
-
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" @onclick="OnBackdropClick"></div>
         <!-- Dialog -->
         <div class="fixed inset-0 flex items-center justify-center p-4">
-            <div class="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl border border-black/5 w-full overflow-hidden @DialogMaxWidth"
+            <div class="bg-background rounded-2xl shadow-2xl border border-border w-full overflow-hidden @DialogMaxWidth"
                  style="max-height: 90vh;">
-
                 <!-- Header -->
-                <div class="px-6 py-4 border-b border-black/10 flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">@Title</h3>
+                <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-foreground">@Title</h3>
                     @if (ShowCloseButton)
                     {
-                        <button type="button" class="inline-flex items-center justify-center rounded-xl px-3 py-2 text-sm 
-                                                   hover:bg-black/5 dark:hover:bg-white/5"
-                                @onclick="Close">
-                            <span class="sr-only">Close</span>
-                            <!-- X icon -->
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5">
-                                <path fill-rule="evenodd" d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 11-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
+                        <ActionButton Execute="Close"
+                                      Variant="ButtonVariant.Ghost"
+                                      Size="ButtonSize.Sm"
+                                      Class="btn-primary-ghost inline-flex items-center justify-center rounded-xl px-2 py-2">
+                            <Icon>
+                                <span class="sr-only">Close</span>
+                                <!-- X icon -->
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                     fill="currentColor" class="size-5">
+                                    <path fill-rule="evenodd"
+                                          d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 11-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z"
+                                          clip-rule="evenodd" />
+                                </svg>
+                            </Icon>
+                        </ActionButton>
                     }
                 </div>
-
                 <!-- Body -->
                 <div class="px-6 py-5 overflow-auto" style="max-height: calc(90vh - 7.5rem);">
                     @ChildContent
                 </div>
-
                 @if (Footer is not null)
                 {
-                    <div class="px-6 py-4 border-t border-black/10 bg-gray-50 dark:bg-neutral-800">
+                    <div class="px-6 py-4 border-t border-border bg-primary-subtle">
                         @Footer
                     </div>
                 }

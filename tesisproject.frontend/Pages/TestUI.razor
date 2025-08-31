@@ -10,12 +10,59 @@
 @using tesisproject.frontend.SharedUI.Feedback
 @using tesisproject.frontend.SharedUI.Card
 @using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.frontend.SharedUI.Header
+@using tesisproject.frontend.SharedUI.UserMenu
+@using tesisproject.frontend.SharedUI.Notifications
+@using tesisproject.frontend.SharedUI.FileUpload
+@using Microsoft.AspNetCore.Components.Forms
 
 
 @inject IModalService Modals
-@inject Blazored.Toast.Services.IToastService ToastService
+@inject IToastService toastService
 
 <PageTitle>UI Demo</PageTitle>
+@*
+<Header BrandName="Mi Aplicación"
+        ShowSearch="true"
+        ShowNotifications="true"
+        ShowUserMenu="true"
+        UserName="Juan Pérez"
+        UserEmail="juan@ejemplo.com"
+        OnSearchChanged="HandleSearch"
+        OnUserMenuClick="HandleUserMenu"
+        OnNotificationClick="HandleNotification" />
+
+@code {
+    private async Task HandleSearch(string searchTerm)
+    {
+        // Lógica de búsqueda
+        Console.WriteLine($"Buscando: {searchTerm}");
+    }
+
+    private async Task HandleUserMenu(string action)
+    {
+        switch (action)
+        {
+            case "profile":
+                // Navegar a perfil
+                break;
+            case "settings":
+                // Navegar a configuración
+                break;
+            case "logout":
+                // Cerrar sesión
+                break;
+        }
+    }
+
+    private async Task HandleNotification(string notificationId)
+    {
+        // Manejar click en notificación
+        Console.WriteLine($"Notificación clickeada: {notificationId}");
+    }
+}
+*@
+
 <h3 class="text-xl font-semibold mb-4">Modal Demo</h3>
 <div class="space-x-3">
     <button class='px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700' @onclick='() => Modals.Open("modal-one")'>
@@ -80,30 +127,33 @@
 <h3 class="text-xl font-semibold mb-4">Confirm Demo</h3>
 
 <div class="p-6 space-y-4">
-<ActionButton Text="Delete"
-              ExecuteAsync="OnDeleteClick"
-              Class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-xl" />
-
-
+    <ActionButton Text="Delete"
+                  Execute="OnDeleteClick"
+                  Class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-xl" />
 </div>
 
 <ConfirmDialog @bind-IsOpen="ConfirmOpen"
-    Title="Delete item?"
-    Message="@($"You are about to delete '{PendingId}'. This action cannot be undone.")"
-    Intent="ConfirmIntent.Danger"                              
-    ConfirmText="Yes, delete"
-    CancelText="Cancel"
-    OnConfirm="PerformDeleteAsync"
-    OnCancel="OnCancelAsync" />
+               Title="Delete item?"
+               Message="@($"You are about to delete '{PendingId}'. This action cannot be undone.")"
+               Intent="ConfirmIntent.Danger"
+               ConfirmText="Yes, delete"
+               CancelText="Cancel"
+               OnConfirm="PerformDeleteAsync"
+               OnCancel="OnCancelAsync" />
+
+<ActionButton Text="Mostrar Toast"
+              Execute="ShowToast"
+              Class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl" />
 
 @code {
+    // Estado del Confirm
     private bool ConfirmOpen;
     private string? PendingId;
 
     private Task OnDeleteClick()
     {
         PendingId = "PRJ-001";
-        ConfirmOpen = true;
+        ConfirmOpen = true; // solo el flujo de confirm lo toca
         return Task.CompletedTask;
     }
 
@@ -114,16 +164,16 @@
     }
 
     private Task OnCancelAsync() => Task.CompletedTask;
-}
 
-<button @onclick="ShowToast">Show Toast</button>
-
-@code {
-    private void ShowToast()
+    // Toast SIN tocar ConfirmOpen
+    private Task ShowToast()
     {
-        ToastService.ShowSuccess("Saved successfully!");
+        toastService.ShowSuccess("Project deleted");
+        // NO mover ConfirmOpen aquí
+        return Task.CompletedTask;
     }
 }
+
 
 <h3 class="text-xl font-semibold mb-4">SelectInput Demo</h3>
 
@@ -421,3 +471,248 @@
         </button>
     </CardFooter>
 </Card>
+
+<h3>Ejemplos de uso del componente FileUpload</h3>
+
+<!-- EJEMPLO 1: Upload básico de imágenes -->
+<div class="mb-8">
+    <h4 class="text-lg font-semibold mb-4">1. Upload de imágenes básico</h4>
+    <FileUpload @ref="imageUpload"
+                AcceptedTypes=".jpg,.jpeg,.png,.webp,image/*"
+                MaxFileSizeMB="5"
+                UploadText="Selecciona una imagen"
+                OnFileSelected="OnImageSelected"
+                OnError="OnUploadError" />
+
+    @if (selectedImage != null)
+    {
+        <div class="mt-4 p-4 bg-secondary-subtle rounded-lg">
+            <p><strong>Archivo seleccionado:</strong> @selectedImage.Name</p>
+            <p><strong>Tamaño:</strong> @FormatBytes(selectedImage.Size)</p>
+            <p><strong>Tipo:</strong> @selectedImage.ContentType</p>
+        </div>
+    }
+</div>
+
+<!-- EJEMPLO 2: Upload de documentos con validación estricta -->
+<div class="mb-8">
+    <h4 class="text-lg font-semibold mb-4">2. Upload de documentos PDF/Word</h4>
+    <FileUpload AcceptedTypes=".pdf,.doc,.docx,application/pdf"
+                MaxFileSizeMB="10"
+                UploadText="Sube tu documento (PDF o Word)"
+                OnFileSelected="OnDocumentSelected"
+                ShowProgress="true"
+                Progress="@documentProgress"
+                IsUploading="@isDocumentUploading" />
+
+    <div class="mt-2 flex gap-2">
+        <ActionButton Text="Simular Upload"
+                      Execute="SimulateDocumentUpload"
+                      Intent="ButtonIntent.Info"
+                      Disabled="@(selectedDocument == null || isDocumentUploading)" />
+    </div>
+</div>
+
+<!-- EJEMPLO 3: Upload múltiple con preview -->
+<div class="mb-8">
+    <h4 class="text-lg font-semibold mb-4">3. Upload múltiple de archivos</h4>
+    <FileUpload Multiple="true"
+                AcceptedTypes=".jpg,.png,.pdf,.txt,.doc,.docx"
+                MaxFileSizeMB="20"
+                UploadText="Selecciona múltiples archivos"
+                OnFilesSelected="OnMultipleFilesSelected"
+                AllowRemove="true"
+                OnFileRemoved="OnFilesRemoved" />
+
+    @if (selectedFiles?.Any() == true)
+    {
+        <div class="mt-4">
+            <h5 class="font-semibold mb-2">Archivos seleccionados (@selectedFiles.Count):</h5>
+            <div class="grid gap-2">
+                @foreach (var file in selectedFiles)
+                {
+                    <div class="flex items-center justify-between p-3 bg-background border border-border rounded-lg">
+                        <div>
+                            <span class="font-medium">@file.Name</span>
+                            <span class="text-sm text-muted ml-2">(@FormatBytes(file.Size))</span>
+                        </div>
+                        <ActionButton Text="Quitar"
+                                      Execute="@(() => RemoveFile(file))"
+                                      Intent="ButtonIntent.Danger"
+                                      Variant="ButtonVariant.Ghost"
+                                      Size="ButtonSize.Sm" />
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- EJEMPLO 4: Upload con validación personalizada y estados -->
+<div class="mb-8">
+    <h4 class="text-lg font-semibold mb-4">4. Upload con validación avanzada</h4>
+    <FileUpload @ref="advancedUpload"
+                AcceptedTypes=".csv,.xlsx,.json"
+                MaxFileSizeMB="50"
+                UploadText="Sube archivo de datos (CSV, Excel, JSON)"
+                OnFileSelected="OnDataFileSelected"
+                ShowProgress="true"
+                IsDisabled="@isAdvancedDisabled"
+                ContainerClass="w-full max-w-md" />
+
+    <div class="mt-4 flex gap-2">
+        <ActionButton Text="@(isAdvancedDisabled ? "Habilitar" : "Deshabilitar")"
+                      Execute="ToggleAdvancedUpload"
+                      Intent="ButtonIntent.Warning" />
+
+        <ActionButton Text="Limpiar errores"
+                      Execute="ClearAdvancedErrors"
+                      Intent="ButtonIntent.Info"
+                      Variant="ButtonVariant.Ghost" />
+
+        <ActionButton Text="Simular error"
+                      Execute="SimulateAdvancedError"
+                      Intent="ButtonIntent.Danger"
+                      Variant="ButtonVariant.Ghost" />
+    </div>
+</div>
+
+@code {
+    // Referencias a componentes
+    private FileUpload? imageUpload;
+    private FileUpload? advancedUpload;
+
+    // Estados para ejemplo 1
+    private IBrowserFile? selectedImage;
+
+    // Estados para ejemplo 2
+    private IBrowserFile? selectedDocument;
+    private bool isDocumentUploading = false;
+    private int documentProgress = 0;
+
+    // Estados para ejemplo 3
+    private List<IBrowserFile>? selectedFiles = new();
+
+    // Estados para ejemplo 4
+    private bool isAdvancedDisabled = false;
+
+    // EVENTO: Imagen seleccionada
+    private async Task OnImageSelected(IBrowserFile file)
+    {
+        selectedImage = file;
+        Console.WriteLine($"Imagen seleccionada: {file.Name}");
+
+        // Aquí podrías procesar la imagen, subirla al servidor, etc.
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // EVENTO: Documento seleccionado
+    private async Task OnDocumentSelected(IBrowserFile file)
+    {
+        selectedDocument = file;
+        Console.WriteLine($"Documento seleccionado: {file.Name}");
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // EVENTO: Múltiples archivos seleccionados
+    private async Task OnMultipleFilesSelected(List<IBrowserFile> files)
+    {
+        selectedFiles = files;
+        Console.WriteLine($"Archivos seleccionados: {files.Count}");
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // EVENTO: Archivos removidos (múltiple)
+    private void OnFilesRemoved()
+    {
+        selectedFiles?.Clear();
+        Console.WriteLine("Archivos removidos");
+        InvokeAsync(StateHasChanged);
+    }
+
+    // EVENTO: Archivo de datos seleccionado
+    private void OnDataFileSelected(IBrowserFile file)
+    {
+        Console.WriteLine($"Archivo de datos: {file.Name}");
+
+        // Validación personalizada
+        if (file.Name.Contains("test"))
+        {
+            advancedUpload?.SetError("Los archivos de prueba no están permitidos");
+            return;
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    // EVENTO: Error general
+    private void OnUploadError(string error)
+    {
+        Console.WriteLine($"Error de upload: {error}");
+        // Aquí podrías mostrar notificaciones, logs, etc.
+    }
+
+    // ACCIÓN: Simular upload de documento con progreso
+    private async Task SimulateDocumentUpload()
+    {
+        if (selectedDocument == null) return;
+
+        isDocumentUploading = true;
+        documentProgress = 0;
+
+        // Simular progreso de upload
+        for (int i = 0; i <= 100; i += 10)
+        {
+            documentProgress = i;
+            StateHasChanged();
+            await Task.Delay(200); // Simular tiempo de upload
+        }
+
+        isDocumentUploading = false;
+        Console.WriteLine($"Documento {selectedDocument.Name} subido exitosamente");
+    }
+
+    // ACCIÓN: Remover archivo individual (múltiple)
+    private void RemoveFile(IBrowserFile file)
+    {
+        selectedFiles?.Remove(file);
+        InvokeAsync(StateHasChanged);
+    }
+
+    // ACCIÓN: Toggle habilitar/deshabilitar upload avanzado
+    private void ToggleAdvancedUpload()
+    {
+        isAdvancedDisabled = !isAdvancedDisabled;
+        InvokeAsync(StateHasChanged);
+    }
+
+    // ACCIÓN: Limpiar errores del upload avanzado
+    private void ClearAdvancedErrors()
+    {
+        advancedUpload?.ClearError();
+    }
+
+    // ACCIÓN: Simular error en upload avanzado
+    private void SimulateAdvancedError()
+    {
+        advancedUpload?.SetError("Error simulado: El servidor no está disponible");
+    }
+
+    // HELPER: Formatear bytes
+    private string FormatBytes(long bytes)
+    {
+        if (bytes == 0) return "0 Bytes";
+
+        string[] sizes = { "Bytes", "KB", "MB", "GB" };
+        int i = 0;
+        double dblBytes = bytes;
+
+        while (dblBytes >= 1024 && i < sizes.Length - 1)
+        {
+            dblBytes /= 1024;
+            i++;
+        }
+
+        return $"{Math.Round(dblBytes, 2)} {sizes[i]}";
+    }
+}

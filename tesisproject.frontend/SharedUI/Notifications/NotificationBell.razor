@@ -1,0 +1,89 @@
+﻿@using Microsoft.AspNetCore.Components.Web
+@using tesisproject.frontend.SharedUI.ActionButton
+
+<div class="@BuildRootClasses()"
+     @onmousedown:document="OnDocumentMouseDown"
+     @onkeydown:window="OnWindowKeyDown">
+
+    <!-- Botón campana (en barra primaria) -->
+    <button type="button"
+            aria-label="Notifications"
+            aria-haspopup="menu"
+            aria-expanded="@_open"
+            class="relative rounded-xl p-2 hover:bg-nav-hover-bg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            @onclick="ToggleAsync"
+            @onclick:stopPropagation="true">
+        <!-- Bell icon -->
+        <svg xmlns="http://www.w3.org/2000/svg"
+             class="h-5 w-5 text-white-85" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" />
+        </svg>
+
+        @if (Count > 0)
+        {
+            <span class="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center rounded-full px-1.5 min-w-[18px] h-[18px] text-[10px] font-semibold bg-accent text-white">
+                @(Count > 9 ? "9+" : Count.ToString())
+            </span>
+        }
+    </button>
+
+    @if (_open)
+    {
+        <!-- Panel dropdown -->
+        <div class="absolute right-0 mt-2 min-w-[320px] max-h-[70vh] overflow-auto origin-top-right rounded-2xl border border-surface bg-surface shadow-xl ring-1 ring-black/5 focus:outline-none"
+             role="menu" aria-orientation="vertical" tabindex="-1">
+
+            <div class="px-3 py-2 flex items-center justify-between">
+                <span class="text-sm font-semibold text-body">Notifications</span>
+
+                <button class="text-xs rounded-lg px-2 py-1 hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-accent"
+                        @onclick="() => OnMarkAllRead.InvokeAsync()">
+                    Mark all as read
+                </button>
+            </div>
+
+            <div class="border-t border-surface"></div>
+
+            @if (Items is null || !Items.Any())
+            {
+                <div class="px-4 py-6 text-center text-sm text-muted">
+                    @EmptyText
+                </div>
+            }
+            else
+            {
+                <ul class="py-1">
+                    @foreach (var n in Items)
+                    {
+                        <li>
+                            <button type="button"
+                                    class="w-full text-left px-3 py-2 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-xl">
+                                <div class="flex items-start gap-3" @onclick="@(() => OnItemClick.InvokeAsync(n.Id))">
+                                    <span class="mt-1 h-2.5 w-2.5 rounded-full @TypeAccent(n.Type)"></span>
+
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-sm font-medium text-body truncate">@n.Title</span>
+                                            <span class="text-[11px] text-muted whitespace-nowrap">@RelativeTime(n.CreatedAt)</span>
+                                        </div>
+
+                                        @if (!string.IsNullOrWhiteSpace(n.Description))
+                                        {
+                                            <p class="text-[12px] text-body line-clamp-2">
+                                                @n.Description
+                                            </p>
+                                        }
+                                    </div>
+
+                                    <span class="mt-1 h-2 w-2 rounded-full bg-accent transition-opacity @UnreadDot(n.Unread)" aria-hidden="true"></span>
+                                </div>
+                            </button>
+                        </li>
+                    }
+                </ul>
+            }
+        </div>
+    }
+</div>
