@@ -73,6 +73,15 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+// Services
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddHttpClient<IExternalUsersService, ExternalUsersService>(client =>
+{
+    // Si corres el Express en local: http://localhost:3000/api/
+    client.BaseAddress = new Uri(builder.Configuration["ExternalUsers:BaseUrl"]!);
+    client.Timeout = TimeSpan.FromSeconds(10);
+});
+builder.Services.AddScoped<IGroupService, GroupService>();
 
 // Construir la aplicación
 var app = builder.Build();
