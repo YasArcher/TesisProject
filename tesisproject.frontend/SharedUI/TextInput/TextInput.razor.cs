@@ -6,7 +6,7 @@ namespace tesisproject.frontend.SharedUI.TextInput
 {
     public partial class TextInput : ComponentBase, IHasValidationState, IDisposable
     {
-        // ---- Public API (requested) ----
+        // ---- Public API (existing) ----
         [Parameter] public string? Label { get; set; }
         [Parameter] public string? Value { get; set; }
         [Parameter] public EventCallback<string?> ValueChanged { get; set; }
@@ -18,14 +18,11 @@ namespace tesisproject.frontend.SharedUI.TextInput
         [Parameter] public int DebounceMs { get; set; } = 300;
         [Parameter] public string InputType { get; set; } = "text";
 
+        // ---- NEW: Password toggle functionality ----
+        [Parameter] public bool ShowPasswordToggle { get; set; } = false;
 
-        // ---- Optional: hook into EditForm validation (keeps your surface API intact) ----
+        // ---- Optional: hook into EditForm validation ----
         [CascadingParameter] private EditContext? EditContext { get; set; }
-
-        /// <summary>
-        /// Optional expression to link this input to a model field in EditForm.
-        /// If provided, the component will display DataAnnotations validation messages.
-        /// </summary>
         [Parameter] public Expression<Func<string?>>? For { get; set; }
 
         // ---- IHasValidationState ----
@@ -37,9 +34,18 @@ namespace tesisproject.frontend.SharedUI.TextInput
         private CancellationTokenSource? _debounceCts;
         private FieldIdentifier? _fieldId;
 
+        // NEW: Password visibility state
+        private bool _showPassword = false;
+
         protected override void OnInitialized()
         {
             _value = Value;
+
+            // Auto-enable password toggle for password inputs
+            if (InputType == "password" && !ShowPasswordToggle)
+            {
+                ShowPasswordToggle = true;
+            }
 
             if (EditContext != null && For != null)
             {
@@ -47,13 +53,11 @@ namespace tesisproject.frontend.SharedUI.TextInput
                 EditContext.OnValidationStateChanged += OnValidationStateChanged;
             }
 
-            // Initial local validation (for Required/MaxLength)
             RecomputeErrors();
         }
 
         protected override void OnParametersSet()
         {
-            // Keep internal in sync if external changes
             if (_value != Value)
             {
                 _value = Value;
@@ -61,11 +65,32 @@ namespace tesisproject.frontend.SharedUI.TextInput
             }
         }
 
+        // NEW: Method to get the actual input type
+        private string GetActualInputType()
+        {
+            if (InputType == "password" && ShowPasswordToggle && _showPassword)
+            {
+                return "text";
+            }
+            return InputType;
+        }
+
+        // NEW: Toggle password visibility
+        private void TogglePasswordVisibility()
+        {
+            _showPassword = !_showPassword;
+        }
+
+        // NEW: Check if should show toggle button
+        private bool ShouldShowPasswordToggle()
+        {
+            return ShowPasswordToggle && InputType == "password";
+        }
+
         private async Task OnInputAsync(ChangeEventArgs e)
         {
             _value = e.Value?.ToString();
 
-            // Cancel previous pending debounce
             _debounceCts?.Cancel();
             _debounceCts?.Dispose();
 
@@ -81,12 +106,12 @@ namespace tesisproject.frontend.SharedUI.TextInput
                 if (!token.IsCancellationRequested)
                 {
                     await ValueChanged.InvokeAsync(_value);
-                    RecomputeErrors(); // validate after change
+                    RecomputeErrors();
                 }
             }
             catch (TaskCanceledException)
             {
-                // Swallow: expected when typing quickly
+                // Expected when typing quickly
             }
         }
 
@@ -103,14 +128,12 @@ namespace tesisproject.frontend.SharedUI.TextInput
 
         private void RecomputeErrors()
         {
-            // Prefer EditForm messages if For is provided
             if (_fieldId.HasValue && EditContext != null)
             {
                 ErrorMessage = EditContext.GetValidationMessages(_fieldId.Value).FirstOrDefault();
                 if (!string.IsNullOrWhiteSpace(ErrorMessage)) return;
             }
 
-            // Fallback: lightweight local checks
             ErrorMessage = null;
 
             if (Required && string.IsNullOrWhiteSpace(_value))
