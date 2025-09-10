@@ -10,11 +10,11 @@ namespace tesisproject.shared.Entities.Core
 {
     public class Document
     {
-        public Guid DocumentId { get; set; }               // PK
-        public Guid? RelatedDocumentId { get; set; }       // FK al único documento relacionado
+        public int DocumentId { get; set; }               // PK
+        public int? RelatedDocumentId { get; set; }       // FK al único documento relacionado
 
         [Required]
-        public Guid DocumentTypeId { get; set; }              // FK -> DocumentType (catálogo)
+        public int DocumentTypeId { get; set; }              // FK -> DocumentType (catálogo)
 
         [Required, StringLength(300)]
         public string DocumentPath { get; set; } = string.Empty;

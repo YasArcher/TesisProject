@@ -18,7 +18,7 @@ public partial class SideBar
         new MenuItem("TailwindTest", "/tailwind-test"),
         new MenuItem("Projects", "/projects"),
         new MenuItem("TestUI", "/testui"),
-        new MenuItem("Grupos", "/grupos"),
+        new MenuItem("Grupos", "/groups"),
     };
 
     IEnumerable<IGrouping<string?, MenuItem>> GroupedItems => _items.GroupBy(i => i.Section);

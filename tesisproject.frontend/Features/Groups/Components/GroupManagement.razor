@@ -1,0 +1,127 @@
+﻿@* GroupManagement.razor *@
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.Features.Groups.Components
+@using tesisproject.frontend.SharedUI.Tabs
+@using tesisproject.shared.DTOs.Group.Response
+@using tesisproject.shared.DTOs.External
+
+@inject IGroupService GroupService
+
+<div class="space-y-6">
+    <Tabs ActiveKey="@currentTabKey" OnChange="OnTabChanged">
+        <Tab Key="tipo1" Title="Grupo Tipo 1">
+            <GroupTabContent ProjectType="ProjectType.Tipo1"
+                             Groups="@GetGroupsByType(ProjectType.Tipo1)"
+                             SelectedGroupId="@selectedGroupIds.GetValueOrDefault(ProjectType.Tipo1)"
+                             OnGroupSelected="@(gid => HandleGroupSelected(ProjectType.Tipo1, gid))"
+                             GroupMembers="@GetMembersFor(ProjectType.Tipo1)"
+                             IsLoading="@isLoading"
+                             IsLoadingMembers="@GetIsLoadingMembers(ProjectType.Tipo1)" />
+        </Tab>
+
+        <Tab Key="tipo2" Title="Grupo Tipo 2">
+            <GroupTabContent ProjectType="ProjectType.Tipo2"
+                             Groups="@GetGroupsByType(ProjectType.Tipo2)"
+                             SelectedGroupId="@selectedGroupIds.GetValueOrDefault(ProjectType.Tipo2)"
+                             OnGroupSelected="@(gid => HandleGroupSelected(ProjectType.Tipo2, gid))"
+                             GroupMembers="@GetMembersFor(ProjectType.Tipo2)"
+                             IsLoading="@isLoading"
+                             IsLoadingMembers="@GetIsLoadingMembers(ProjectType.Tipo2)" />
+        </Tab>
+    </Tabs>
+</div>
+
+@code {
+    private string currentTabKey = "tipo1";
+
+    // IDs fijos mapeados a tus tipos
+    private static readonly int DevelopmentId = 0;
+    private static readonly int InnovationId  = 1;
+
+    // Estado por tipo de proyecto
+    private readonly Dictionary<ProjectType, int?> selectedGroupIds = new();
+    private readonly Dictionary<ProjectType, List<ExternalUserDTO>> membersByType = new();
+    private readonly Dictionary<ProjectType, bool> isLoadingMembersByType = new()
+    {
+        { ProjectType.Tipo1, false },
+        { ProjectType.Tipo2, false },
+    };
+
+    // Grupos cargados
+    private List<GroupResponseDTO> allGroups = new();
+    private bool isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadGroupsAsync();
+        await EnsureDefaultSelectionFor(CurrentType());
+    }
+
+    private async Task LoadGroupsAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+        try
+        {
+            var resp = await GroupService.GetListAsync("", 0, 20);
+            allGroups = resp.Response ?? new();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private ProjectType CurrentType() => currentTabKey == "tipo2" ? ProjectType.Tipo2 : ProjectType.Tipo1;
+
+    private List<GroupResponseDTO> GetGroupsByType(ProjectType projectType)
+    {
+        var target = projectType switch
+        {
+            ProjectType.Tipo1 => DevelopmentId, // o InnovationId si prefieres
+            ProjectType.Tipo2 => InnovationId,
+            _ => DevelopmentId
+        };
+        return allGroups.Where(g => g.GroupTypeId == target).ToList();
+    }
+
+    private async Task OnTabChanged(string newTabKey)
+    {
+        currentTabKey = newTabKey;
+        await EnsureDefaultSelectionFor(CurrentType());
+        StateHasChanged();
+    }
+
+    private async Task EnsureDefaultSelectionFor(ProjectType type)
+    {
+        if (selectedGroupIds.GetValueOrDefault(type) is null)
+        {
+            var first = GetGroupsByType(type).FirstOrDefault();
+            if (first is not null)
+                await HandleGroupSelected(type, first.GroupId);
+        }
+    }
+
+    private async Task HandleGroupSelected(ProjectType projectType, int groupId)
+    {
+        selectedGroupIds[projectType] = groupId;
+
+        isLoadingMembersByType[projectType] = true;
+        StateHasChanged();
+
+        var res = await GroupService.GetMembersByGroupIdAsync(groupId);
+        membersByType[projectType] = res.Response ?? new List<ExternalUserDTO>();
+
+        isLoadingMembersByType[projectType] = false;
+        StateHasChanged();
+    }
+
+    private List<ExternalUserDTO> GetMembersFor(ProjectType t)
+        => membersByType.TryGetValue(t, out var list) ? list : new();
+
+    private bool GetIsLoadingMembers(ProjectType t)
+        => isLoadingMembersByType.TryGetValue(t, out var v) && v;
+
+    public enum ProjectType { Tipo1, Tipo2 }
+}

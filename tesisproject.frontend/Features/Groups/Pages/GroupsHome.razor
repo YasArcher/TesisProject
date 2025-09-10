@@ -1,1 +1,35 @@
-﻿
+﻿@page "/groups"
+@using tesisproject.frontend.Features.Groups.Components
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Tabs
+@using tesisproject.frontend.SharedUI.Card
+
+<div>
+    <div class="flex items-center justify-between px-6 py-4 rounded-lg shadow-sm bg-primary text-white">
+    <!-- Título -->
+        <h1 class="text-xl font-bold tracking-tight">Grupos</h1>
+
+    <!-- Botón Crear -->
+        <ActionButton Text="Crear"
+                    Execute="@OnCreateClick"
+                    Intent="ButtonIntent.Add"
+                    Variant="ButtonVariant.Outline"
+                    Size="ButtonSize.Md"
+                    Class="btn-primary-solid" />
+    </div>
+    <div>
+        <GroupManagement>
+
+        </GroupManagement>
+    </div>
+</div>
+
+
+@code {
+    private void OnCreateClick()
+    {
+        Console.WriteLine("Crear grupo clickeado");
+    }
+    private string active = "Investigacion";
+    private void OnChanged(string key) => active = key;
+}

@@ -10,13 +10,13 @@ namespace tesisproject.shared.Entities.Core
 {
     public class ProjectScope
     {
-        public Guid ProjectScopeId { get; set; }        // id_proyecto_alcance
+        public int ProjectScopeId { get; set; }        // id_proyecto_alcance
 
         [Required, StringLength(50)]
-        public string ProjectId { get; set; } = string.Empty;  // id_proyecto (FK -> Project)
+        public int ProjectId { get; set; }  // id_proyecto (FK -> Project)
 
         [Required]
-        public Guid ScopeTypeId { get; set; }           // id_tipo_alcance (FK -> ScopeType catálogo)
+        public int ScopeTypeId { get; set; }           // id_tipo_alcance (FK -> ScopeType catálogo)
 
         [StringLength(300)]
         public string? Description { get; set; }       // descripción del alcance (opcional)

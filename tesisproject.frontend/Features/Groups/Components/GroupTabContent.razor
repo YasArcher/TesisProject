@@ -1,0 +1,166 @@
+﻿@* GroupTabContent.razor *@
+@using static tesisproject.frontend.Features.Groups.Components.GroupManagement
+@using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.Features.Groups.Components
+@using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.Group.Response
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px]">
+
+    <!-- Panel izquierdo: Lista de Grupos -->
+    <div class="flex flex-col min-h-0">
+        <Container TItem="GroupResponseDTO"
+                   Items="@FilteredGroups"
+                   Title="GRUPOS"
+                   ShowItemCount="true"
+                   GridClasses="grid grid-cols-1 gap-4"
+                   EmptyStateTitle="No hay grupos"
+                   EmptyStateDescription="Aún no existen grupos para este tipo."
+                   IsLoading="@IsLoading">
+
+            <ChildContent Context="group">
+                <button type="button"
+                        class="text-left"
+                        @onclick="() => SelectGroupAsync(group.GroupId)">
+                    <GroupCard Item="@group" Selected="@(group.GroupId == SelectedGroupId)" />
+                </button>
+            </ChildContent>
+
+            <EmptyStateAction>
+                <button class="btn-primary-solid text-sm">+ Crear Grupo</button>
+            </EmptyStateAction>
+        </Container>
+
+        <!-- Buscador de grupos -->
+        <div class="mt-4">
+            <div class="relative">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg class="h-5 w-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+                <input type="text"
+                       class="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+                       placeholder="🔍 Buscar grupos..."
+                       @bind="searchTerm"
+                       @bind:event="oninput" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel derecho: Detalles del grupo seleccionado -->
+    <div class="flex flex-col min-h-0">
+        @if (SelectedGroup is not null)
+        {
+            <div class="mb-4 p-4 bg-primary-subtle border border-border rounded-xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h2 class="text-xl font-semibold text-foreground mb-1">📝 @SelectedGroup.Name</h2>
+                        <p class="text-sm text-muted">@ProjectType • @GroupMembers.Count miembros</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success text-success-foreground">
+                            ● Activo
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 min-h-0 flex flex-col">
+                <!-- Buscador de miembros -->
+                <div class="mb-3">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                        </div>
+                        <input type="text"
+                               class="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted focus:ring-2 focus:ring-primary focus:border-transparent transition-colors"
+                               placeholder="🔍 Buscar miembros..."
+                               @bind="memberSearchTerm"
+                               @bind:event="oninput" />
+                    </div>
+                </div>
+
+                <div class="flex-1 min-h-0 overflow-y-auto">
+                    <Container TItem="ExternalUserDTO"
+                               Items="@FilteredMembers"
+                               Title="INTEGRANTES"
+                               ShowItemCount="true"
+                               GridClasses="grid grid-cols-1 gap-3"
+                               EmptyStateTitle="Sin miembros"
+                               EmptyStateDescription="Este grupo aún no tiene miembros asignados"
+                               IsLoading="@IsLoadingMembers">
+                        <ChildContent Context="member">
+                            <MemberCard Item="@member" OnRemoved="HandleMemberRemoved" />
+                        </ChildContent>
+                        <EmptyStateAction>
+                            <button class="btn-primary-outline text-sm">+ Agregar Miembro</button>
+                        </EmptyStateAction>
+                    </Container>
+                </div>
+
+                <div class="mt-4 flex gap-3">
+                    <button class="btn-primary-outline text-sm">+ Agregar Miembro</button>
+                    <button class="btn-secondary-outline text-sm">⚙️ Configurar Grupo</button>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="flex-1 flex items-center justify-center p-8 border-2 border-dashed border-border rounded-xl">
+                <div class="text-center">
+                    <h3 class="text-lg font-medium text-foreground mb-2">Selecciona un grupo</h3>
+                    <p class="text-sm text-muted">Elige un grupo de la lista para ver sus integrantes y detalles</p>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnReloadGroups { get; set; } // <- nuevo
+    [Parameter] public ProjectType ProjectType { get; set; }
+    [Parameter] public List<GroupResponseDTO> Groups { get; set; } = new();
+    [Parameter] public int? SelectedGroupId { get; set; }
+    [Parameter] public EventCallback<int> OnGroupSelected { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool IsLoadingMembers { get; set; }
+    [Parameter] public List<ExternalUserDTO> GroupMembers { get; set; } = new();
+
+    private string searchTerm = "";
+    private string memberSearchTerm = "";
+
+    private GroupResponseDTO? SelectedGroup =>
+        Groups.FirstOrDefault(g => g.GroupId == SelectedGroupId);
+
+    private List<GroupResponseDTO> FilteredGroups =>
+        string.IsNullOrWhiteSpace(searchTerm)
+            ? Groups
+            : Groups.Where(g => g.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
+
+    private List<ExternalUserDTO> FilteredMembers =>
+        string.IsNullOrWhiteSpace(memberSearchTerm)
+            ? GroupMembers
+            : GroupMembers.Where(m =>
+                   (!string.IsNullOrWhiteSpace(m.FullName) && m.FullName.Contains(memberSearchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                   (!string.IsNullOrWhiteSpace(m.Email) && m.Email.Contains(memberSearchTerm, StringComparison.OrdinalIgnoreCase))
+              ).ToList();
+
+    private async Task SelectGroupAsync(int groupId)
+    {
+        if (OnGroupSelected.HasDelegate)
+            await OnGroupSelected.InvokeAsync(groupId);
+    }
+    private async Task HandleMemberRemoved(int memberId)
+    {
+        GroupMembers = GroupMembers.Where(m => m.UserGroupId != memberId).ToList();
+        if (OnReloadGroups.HasDelegate)
+            await OnReloadGroups.InvokeAsync();
+
+        StateHasChanged();
+    }
+}

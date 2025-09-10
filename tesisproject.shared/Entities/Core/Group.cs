@@ -10,10 +10,10 @@ namespace tesisproject.shared.Entities.Core
 {
     public class Group
     {
-        public Guid GroupId { get; set; }  // PK
+        public int GroupId { get; set; }  // PK
 
         [Required]
-        public Guid GroupTypeId { get; set; }  // FK explícita
+        public int GroupTypeId { get; set; }  // FK explícita
 
         [Required, StringLength(120)]
         public string Name { get; set; } = string.Empty;

@@ -4,11 +4,12 @@ namespace tesisproject.frontend.SharedUI.ActionButton
 {
     public partial class ActionButton : ComponentBase
     {
-        // Public API
+        // ---- Public API ----
         [Parameter, EditorRequired] public EventCallback Execute { get; set; }
 
         [Parameter(CaptureUnmatchedValues = true)]
         public Dictionary<string, object>? AdditionalAttributes { get; set; }
+
         [Parameter] public string? Text { get; set; }
         [Parameter] public RenderFragment? ChildContent { get; set; }
         [Parameter] public RenderFragment? Icon { get; set; }
@@ -20,18 +21,37 @@ namespace tesisproject.frontend.SharedUI.ActionButton
         [Parameter] public bool Disabled { get; set; }
         [Parameter] public bool ConfirmBeforeExecute { get; set; } = false;
         [Parameter] public string ConfirmMessage { get; set; } = "Are you sure?";
-        [Parameter] public string? Class { get; set; } 
+        [Parameter] public string? Class { get; set; }
 
-        // Internal state
+        // ---- Confirmation dialog customization ----
+        [Parameter] public string ConfirmTitle { get; set; } = "Confirmation";
+        [Parameter] public string ConfirmButtonText { get; set; } = "Yes";
+        [Parameter] public string CancelButtonText { get; set; } = "Cancel";
+
+        // ---- Internal state ----
         protected bool _isBusy = false;
+        private bool _showConfirmDialog = false;
+        private bool _hasBeenUsedForConfirmation = false;
+        private TaskCompletionSource<bool>? _confirmTaskSource;
 
+        // ---- Optimization methods ----
+        protected bool CanShowConfirmDialog()
+        {
+            return ConfirmBeforeExecute &&
+                   IsDestructive(Intent) &&
+                   (_showConfirmDialog || _hasBeenUsedForConfirmation);
+        }
+
+        // ---- Click handling ----
         protected async Task OnClickInternal()
         {
             if (_isBusy || Disabled) return;
 
             if (ConfirmBeforeExecute && IsDestructive(Intent))
             {
-                if (!await ConfirmAsync(ConfirmMessage)) return;
+                _hasBeenUsedForConfirmation = true;
+                var confirmed = await ShowConfirmationAsync();
+                if (!confirmed) return;
             }
 
             _isBusy = true;
@@ -47,12 +67,38 @@ namespace tesisproject.frontend.SharedUI.ActionButton
             }
         }
 
+        // ---- Confirmation dialog methods ----
+        private async Task<bool> ShowConfirmationAsync()
+        {
+            _showConfirmDialog = true;
+            _confirmTaskSource = new TaskCompletionSource<bool>();
+            StateHasChanged();
+
+            return await _confirmTaskSource.Task;
+        }
+
+        private void OnConfirmDialogResult(bool confirmed)
+        {
+            _showConfirmDialog = false;
+            _confirmTaskSource?.SetResult(confirmed);
+            StateHasChanged();
+        }
+
+        // ---- Utility methods ----
         protected static bool IsDestructive(ButtonIntent intent)
             => intent == ButtonIntent.Delete || intent == ButtonIntent.Danger;
 
-        // Reemplaza por tu modal o IJSRuntime si lo deseas
-        protected Task<bool> ConfirmAsync(string message) => Task.FromResult(true);
+        protected tesisproject.frontend.SharedUI.ConfirmDialog.ConfirmIntent GetConfirmIntent()
+        {
+            return Intent switch
+            {
+                ButtonIntent.Delete or ButtonIntent.Danger => tesisproject.frontend.SharedUI.ConfirmDialog.ConfirmIntent.Danger,
+                ButtonIntent.Warning => tesisproject.frontend.SharedUI.ConfirmDialog.ConfirmIntent.Warning,
+                _ => tesisproject.frontend.SharedUI.ConfirmDialog.ConfirmIntent.Neutral
+            };
+        }
 
+        // ---- CSS class building ----
         protected string BuildClass()
         {
             var baseCls = "inline-flex select-none items-center justify-center font-medium transition-all duration-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed";
@@ -81,19 +127,10 @@ namespace tesisproject.frontend.SharedUI.ActionButton
 
         protected string GetFilledVariantClass(ButtonIntent intent) => intent switch
         {
-            // Usa PRIMARY institucional como botón principal
             ButtonIntent.Accept or ButtonIntent.Info => "btn-primary-solid",
-
-            // Success/Add - usando secondary como success
             ButtonIntent.Add or ButtonIntent.Success => "bg-secondary text-white bg-secondary-hover focus:ring-2",
-
-            // Warning - usando accent
             ButtonIntent.Warning => "bg-accent text-white hover:bg-accent focus:ring-2",
-
-            // Danger/Delete - usando error
             ButtonIntent.Danger or ButtonIntent.Delete => "bg-error text-white hover:bg-error focus:ring-2",
-
-            // Neutral - usando muted
             _ => "bg-muted text-foreground hover:bg-muted focus:ring-2"
         };
 

@@ -4,13 +4,14 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace tesisproject.shared.DTOs.Project
+namespace tesisproject.shared.DTOs.Project.Response
 {
     /// <summary>
     /// Represents a single item in the project list.
     /// </summary>
-    public record ProjectListItemDto(
-        string ProjectId,
+    public record ProjectListResponseDTO(
+        int ProjectId,
+        string ProjectCode,
         string ProjectName,
         string ProjectStateName,
         string ProjectTypeName,
@@ -20,4 +21,3 @@ namespace tesisproject.shared.DTOs.Project
         decimal? ExecutionPercentage
     );
 }
-

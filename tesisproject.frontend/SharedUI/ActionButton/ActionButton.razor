@@ -1,4 +1,6 @@
-﻿<button class="@BuildClass()"
+﻿@using tesisproject.frontend.SharedUI.ConfirmDialog
+
+<button class="@BuildClass()"
         disabled="@(_isBusy || Disabled)"
         @attributes="AdditionalAttributes"
         @onclick="OnClickInternal">
@@ -22,3 +24,16 @@
         }
     </span>
 </button>
+
+@* OPTIMIZACIÓN: Solo renderiza ConfirmDialog cuando es necesario *@
+@if (CanShowConfirmDialog())
+{
+    <ConfirmDialog IsOpen="@_showConfirmDialog"
+                   Title="@ConfirmTitle"
+                   Message="@ConfirmMessage"
+                   Intent="@GetConfirmIntent()"
+                   ConfirmText="@ConfirmButtonText"
+                   CancelText="@CancelButtonText"
+                   OnConfirm="() => OnConfirmDialogResult(true)"
+                   OnCancel="() => OnConfirmDialogResult(false)" />
+}

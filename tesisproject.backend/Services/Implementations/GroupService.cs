@@ -1,9 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
-using tesisproject.shared.DTOs.Group;
+using tesisproject.shared.DTOs.External;
+using tesisproject.shared.DTOs.Group.Request;
+using tesisproject.shared.DTOs.Group.Response;
 using tesisproject.shared.Entities.Core;
-using Microsoft.EntityFrameworkCore;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -18,21 +20,23 @@ namespace tesisproject.backend.Services.Implementations
             _external = external;
         }
 
-        public async Task<GroupResponseDTO> CreateAsync(CreateGroupRequestDTO request, CancellationToken ct)
+        public async Task<GroupResponseDTO> CreateAsync(AddGroupRequestDTO request, CancellationToken ct)
         {
-            var name = request.Name.Trim();
+            var name = (request.Name ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(name))
+                throw new ArgumentException("Group name is required.");
+
             if (await _uow.Groups.NameExistsAsync(name, ct))
                 throw new ArgumentException("A group with the same name already exists.");
 
             var entity = new Group
             {
-                GroupId = Guid.NewGuid(),
                 GroupTypeId = request.GroupTypeId,
                 Name = name
             };
 
             await _uow.Groups.AddAsync(entity, ct);
-            await _uow.SaveChangesAsync();
+            await _uow.SaveChangesAsync(ct);
 
             return new GroupResponseDTO
             {
@@ -42,7 +46,7 @@ namespace tesisproject.backend.Services.Implementations
             };
         }
 
-        public async Task<GroupResponseDTO?> GetByIdAsync(Guid id, CancellationToken ct)
+        public async Task<GroupResponseDTO?> GetByIdAsync(int id, CancellationToken ct)
         {
             var group = await _uow.Groups.GetByIdAsync(id, includeMembers: true, ct);
             if (group is null) return null;
@@ -51,89 +55,12 @@ namespace tesisproject.backend.Services.Implementations
             {
                 GroupId = group.GroupId,
                 GroupTypeId = group.GroupTypeId,
-                Name = group.Name,
-                Members = group.Members.Select(m => new GroupMemberResponseDTO
-                {
-                    GroupMemberId = m.GroupMemberId,
-                    ExternalUserId = m.UserId,
-                    MemberRole = m.MemberRole,
-                    JoinedAt = m.JoinedAt
-                }).ToList()
+                Name = group.Name
             };
         }
 
-        public async Task<IEnumerable<GroupResponseDTO>> ListAsync(string? search, int skip, int take, CancellationToken ct)
-        {
-            var q = _uow.Groups.Query();
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var s = search.Trim();
-                q = q.Where(g => EF.Functions.Like(g.Name, $"%{s}%"));
-            }
-
-            return await q.OrderBy(g => g.Name)
-                          .Skip(skip)
-                          .Take(take)
-                          .Select(g => new GroupResponseDTO
-                          {
-                              GroupId = g.GroupId,
-                              GroupTypeId = g.GroupTypeId,
-                              Name = g.Name,
-                              Members = new()
-                          })
-                          .ToListAsync(ct);
-        }
-
-        public async Task<GroupMemberResponseDTO> AddMemberAsync(Guid groupId, AddGroupMemberRequestDTO request, CancellationToken ct)
-        {
-            if (groupId != request.GroupId)
-                throw new ArgumentException("Route id and payload GroupId must match.");
-
-            var group = await _uow.Groups.GetByIdAsync(groupId, includeMembers: false, ct);
-            if (group is null)
-                throw new KeyNotFoundException("Group not found.");
-
-            var existsUser = await _external.UserExistsAsync(request.ExternalUserId, ct);
-            if (!existsUser)
-                throw new ArgumentException("External user not found in external Users API.");
-
-            var duplicated = await _uow.GroupMembers.ExistsAsync(request.GroupId, request.ExternalUserId, ct);
-            if (duplicated)
-                throw new ArgumentException("This user is already a member of the group.");
-
-            var member = new GroupMember
-            {
-                GroupMemberId = Guid.NewGuid(),
-                GroupId = request.GroupId,
-                UserId = request.ExternalUserId,
-                MemberRole = request.MemberRole!.Trim(),
-                JoinedAt = request.JoinedAt
-            };
-
-            await _uow.GroupMembers.AddAsync(member, ct);
-            await _uow.SaveChangesAsync();
-
-            return new GroupMemberResponseDTO
-            {
-                GroupMemberId = member.GroupMemberId,
-                ExternalUserId = member.UserId,
-                MemberRole = member.MemberRole,
-                JoinedAt = member.JoinedAt
-            };
-        }
-
-        public async Task<bool> RemoveMemberAsync(Guid groupId, Guid memberId, CancellationToken ct)
-        {
-            var member = await _uow.GroupMembers.GetByIdAsync(memberId, ct);
-            if (member is null || member.GroupId != groupId) return false;
-
-            await _uow.GroupMembers.RemoveAsync(member, ct);
-            await _uow.SaveChangesAsync();
-            return true;
-        }
-        async Task<IReadOnlyList<GroupResponseDTO>> IGroupService.ListAsync(
-            string? search, int skip, int take, CancellationToken ct)
+        // ÚNICO ListAsync que coincide con la interfaz
+        public async Task<IReadOnlyList<GroupResponseDTO>> ListAsync(string? search, int skip, int take, CancellationToken ct)
         {
             // saneo de paginación
             if (skip < 0) skip = 0;
@@ -156,14 +83,75 @@ namespace tesisproject.backend.Services.Implementations
                                {
                                    GroupId = g.GroupId,
                                    GroupTypeId = g.GroupTypeId,
-                                   Name = g.Name,
-                                   // en listados no necesitamos miembros -> lista vacía
-                                   Members = new List<GroupMemberResponseDTO>()
+                                   Name = g.Name
                                })
                                .ToListAsync(ct);
 
-            // IReadOnlyList para exponer inmutabilidad
-            return items;
+            return items; // List<T> es IReadOnlyList<T> compatible en retorno
+        }
+
+        public async Task<GroupMemberResponseDTO> AddMemberAsync(int groupId, AddGroupMemberRequestDTO request, CancellationToken ct)
+        {
+            if (groupId != request.GroupId)
+                throw new ArgumentException("Route id and payload GroupId must match.");
+
+            var group = await _uow.Groups.GetByIdAsync(groupId, includeMembers: false, ct);
+            if (group is null)
+                throw new KeyNotFoundException("Group not found.");
+
+            // Validar usuario externo
+            var externalUser = await _external.GetByIdAsync(request.ExternalUserId, ct);
+            if (externalUser is null)
+                throw new ArgumentException("External user not found in external Users API.");
+
+            // Evitar duplicados
+            var duplicated = await _uow.GroupMembers.ExistsAsync(request.GroupId, request.ExternalUserId, ct);
+            if (duplicated)
+                throw new ArgumentException("This user is already a member of the group.");
+
+            // Validar rol
+            var role = (request.MemberRole ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(role))
+                throw new ArgumentException("Member role is required.");
+
+            var member = new GroupMember
+            {
+                GroupId = request.GroupId,
+                UserId = request.ExternalUserId,
+                MemberRole = role,
+                JoinedAt =  DateTime.UtcNow
+            };
+
+            await _uow.GroupMembers.AddAsync(member, ct);
+            await _uow.SaveChangesAsync(ct);
+
+            return new GroupMemberResponseDTO
+            {
+                GroupMemberId = member.GroupMemberId,
+                ExternalUserId = member.UserId,
+                MemberRole = member.MemberRole,
+                JoinedAt = member.JoinedAt
+            };
+        }
+
+        public async Task<bool> RemoveMemberAsync(int groupId, int memberId, CancellationToken ct)
+        {
+            var member = await _uow.GroupMembers.GetByIdAsync(memberId, ct);
+            if (member is null || member.GroupId != groupId)
+                return false;
+            _uow.GroupMembers.Remove(member);
+            var rows = await _uow.SaveChangesAsync(ct);
+            return rows > 0;
+        }
+        public async Task<List<ExternalUserDTO>> GetExternalUsersByGroupAsync(int groupId, CancellationToken ct)
+        {
+            // (opcional pero recomendado) valida que el grupo exista
+            if (!await _uow.Groups.ExistsAsync(g => g.GroupId == groupId, ct))
+                throw new KeyNotFoundException("Group not found.");
+
+
+            // delega en tu servicio de integración
+            return await _external.GetByGroupIdAsync(groupId, ct);
         }
     }
 }

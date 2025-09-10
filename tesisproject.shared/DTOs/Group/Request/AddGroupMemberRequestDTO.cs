@@ -5,12 +5,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace tesisproject.shared.DTOs.Group
+namespace tesisproject.shared.DTOs.Group.Request
 {
     public class AddGroupMemberRequestDTO
     {
         [Required]
-        public Guid GroupId { get; set; }
+        public int GroupId { get; set; }
 
         /// <summary>
         /// External user id (from external Users API).
@@ -20,7 +20,5 @@ namespace tesisproject.shared.DTOs.Group
 
         [Required, StringLength(60)]
         public string MemberRole { get; set; } = string.Empty;
-
-        public DateTime? JoinedAt { get; set; }
     }
 }

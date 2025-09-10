@@ -9,12 +9,12 @@ namespace tesisproject.shared.Entities.Core
 {
     public class Budget
     {
-        public Guid BudgetId { get; set; }                 // id_presupuesto
+        public int BudgetId { get; set; }                 // id_presupuesto
 
         [Required, StringLength(50)]
-        public string ProjectId { get; set; } = string.Empty; // id_proyecto (FK -> Project)
+        public int ProjectId { get; set; } // id_proyecto (FK -> Project)
         [Required]
-        public Guid ApprovedByUserId { get; set; }        // id_usuario_aprobador (FK -> UserSystem)
+        public int ApprovedByUserId { get; set; }        // id_usuario_aprobador (FK -> UserSystem)
 
         [Range(0, double.MaxValue)]
         public decimal InitialAmount { get; set; }        // monto inicial

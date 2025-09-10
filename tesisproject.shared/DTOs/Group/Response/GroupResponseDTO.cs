@@ -4,14 +4,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace tesisproject.shared.DTOs.Group
+namespace tesisproject.shared.DTOs.Group.Response
 {
     public class GroupResponseDTO
     {
-        public Guid GroupId { get; set; }
-        public Guid GroupTypeId { get; set; }
+        public int GroupId { get; set; }
+        public int GroupTypeId { get; set; }
         public string Name { get; set; } = string.Empty;
-
-        public List<GroupMemberResponseDTO> Members { get; set; } = new();
     }
 }

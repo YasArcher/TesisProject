@@ -1,8 +1,10 @@
-﻿namespace tesisproject.backend.Services.Interfaces
+﻿using tesisproject.shared.DTOs.External;
+
+namespace tesisproject.backend.Services.Interfaces
 {
     public interface IExternalUsersService
     {
-        /// <summary>Checks whether an external user exists in the external Users API.</summary>
-        Task<bool> UserExistsAsync(int externalUserId, CancellationToken ct = default);
+        Task<ExternalUserDTO?> GetByIdAsync(int userId, CancellationToken ct = default);
+        Task<List<ExternalUserDTO>> GetByGroupIdAsync(int groupId, CancellationToken ct = default);
     }
 }

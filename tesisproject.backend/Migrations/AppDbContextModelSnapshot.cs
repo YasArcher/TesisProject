@@ -224,9 +224,11 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.DocumentType", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -240,9 +242,11 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.GroupType", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -256,9 +260,11 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ProjectExtensionType", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("IsBudgetExecutable")
                         .HasColumnType("bit");
@@ -275,9 +281,11 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ProjectState", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -291,9 +299,11 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ProjectType", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -307,9 +317,11 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ScopeType", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -323,9 +335,11 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.TransactionType", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -339,9 +353,11 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.VisitState", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -355,15 +371,17 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Budget", b =>
                 {
-                    b.Property<Guid>("BudgetId")
+                    b.Property<int>("BudgetId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BudgetId"));
 
                     b.Property<DateTime?>("ApprovedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid>("ApprovedByUserId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("ApprovedByUserId")
+                        .HasColumnType("int");
 
                     b.Property<decimal>("CertifiedAmount")
                         .HasColumnType("decimal(18,2)");
@@ -374,10 +392,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<decimal>("InitialAmount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("ProjectId")
-                        .IsRequired()
+                    b.Property<int>("ProjectId")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("int");
 
                     b.HasKey("BudgetId");
 
@@ -389,15 +406,17 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.BudgetTransaction", b =>
                 {
-                    b.Property<Guid>("BudgetTransactionId")
+                    b.Property<int>("BudgetTransactionId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BudgetTransactionId"));
 
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<Guid>("BudgetId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("BudgetId")
+                        .HasColumnType("int");
 
                     b.Property<string>("BudgetItem")
                         .IsRequired()
@@ -409,17 +428,17 @@ namespace tesisproject.backend.Migrations
                     b.Property<DateTime>("CertifiedAt")
                         .HasColumnType("date");
 
-                    b.Property<Guid>("CertifiedByUserId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("CertifiedByUserId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime>("ExecutedAt")
                         .HasColumnType("date");
 
-                    b.Property<Guid?>("ExecutedByUserId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int?>("ExecutedByUserId")
+                        .HasColumnType("int");
 
-                    b.Property<Guid>("TransactionTypeId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("TransactionTypeId")
+                        .HasColumnType("int");
 
                     b.HasKey("BudgetTransactionId");
 
@@ -432,20 +451,22 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Document", b =>
                 {
-                    b.Property<Guid>("DocumentId")
+                    b.Property<int>("DocumentId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DocumentId"));
 
                     b.Property<string>("DocumentPath")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
-                    b.Property<Guid>("DocumentTypeId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("DocumentTypeId")
+                        .HasColumnType("int");
 
-                    b.Property<Guid?>("RelatedDocumentId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int?>("RelatedDocumentId")
+                        .HasColumnType("int");
 
                     b.HasKey("DocumentId");
 
@@ -460,12 +481,14 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Group", b =>
                 {
-                    b.Property<Guid>("GroupId")
+                    b.Property<int>("GroupId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
 
-                    b.Property<Guid>("GroupTypeId")
-                        .HasColumnType("uniqueidentifier");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("GroupId"));
+
+                    b.Property<int>("GroupTypeId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -481,14 +504,19 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.GroupMember", b =>
                 {
-                    b.Property<Guid>("GroupMemberId")
+                    b.Property<int>("GroupMemberId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
 
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("uniqueidentifier");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("GroupMemberId"));
+
+                    b.Property<int>("GroupId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("JoinedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LeftAt")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("MemberRole")
@@ -508,21 +536,28 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Project", b =>
                 {
-                    b.Property<string>("ProjectId")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.Property<int>("ProjectId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uniqueidentifier");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProjectId"));
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
 
                     b.Property<decimal?>("ExecutionPercentage")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<Guid?>("InitialDocumentId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int?>("InitialDocumentId")
+                        .HasColumnType("int");
 
-                    b.Property<Guid>("ProjectGroupId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("ProjectCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("ProjectGroupId")
+                        .HasColumnType("int");
 
                     b.Property<string>("ProjectName")
                         .IsRequired()
@@ -533,11 +568,11 @@ namespace tesisproject.backend.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<Guid>("ProjectStateId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("ProjectStateId")
+                        .HasColumnType("int");
 
-                    b.Property<Guid>("ProjectTypeId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("ProjectTypeId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("RealEndDate")
                         .HasColumnType("date");
@@ -546,8 +581,8 @@ namespace tesisproject.backend.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<Guid?>("SenesytGroupId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int?>("SenesytGroupId")
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("date");
@@ -572,23 +607,24 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.ProjectExtension", b =>
                 {
-                    b.Property<Guid>("ProjectExtensionId")
+                    b.Property<int>("ProjectExtensionId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProjectExtensionId"));
 
                     b.Property<DateTime?>("ApprovedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid?>("DocumentId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int?>("DocumentId")
+                        .HasColumnType("int");
 
-                    b.Property<Guid>("ProjectExtensionTypeId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("ProjectExtensionTypeId")
+                        .HasColumnType("int");
 
-                    b.Property<string>("ProjectId")
-                        .IsRequired()
+                    b.Property<int>("ProjectId")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("RequestedAt")
                         .HasColumnType("datetime2");
@@ -606,21 +642,22 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.ProjectScope", b =>
                 {
-                    b.Property<Guid>("ProjectScopeId")
+                    b.Property<int>("ProjectScopeId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProjectScopeId"));
 
                     b.Property<string>("Description")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
-                    b.Property<string>("ProjectId")
-                        .IsRequired()
+                    b.Property<int>("ProjectId")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("int");
 
-                    b.Property<Guid>("ScopeTypeId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("ScopeTypeId")
+                        .HasColumnType("int");
 
                     b.HasKey("ProjectScopeId");
 
@@ -633,27 +670,28 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Visit", b =>
                 {
-                    b.Property<Guid>("VisitId")
+                    b.Property<int>("VisitId")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
 
-                    b.Property<Guid?>("DocumentId")
-                        .HasColumnType("uniqueidentifier");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VisitId"));
+
+                    b.Property<int?>("DocumentId")
+                        .HasColumnType("int");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<string>("ProjectId")
-                        .IsRequired()
+                    b.Property<int>("ProjectId")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("int");
 
                     b.Property<DateTime?>("VisitDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid>("VisitStateId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("VisitStateId")
+                        .HasColumnType("int");
 
                     b.HasKey("VisitId");
 

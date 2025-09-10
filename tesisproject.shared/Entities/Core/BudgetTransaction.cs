@@ -11,14 +11,14 @@ namespace tesisproject.shared.Entities.Core
 {
     public class BudgetTransaction
     {
-        public Guid BudgetTransactionId { get; set; }  // id_transaccion_presupuestaria
+        public int BudgetTransactionId { get; set; }  // id_transaccion_presupuestaria
         [Required]
-        public Guid BudgetId { get; set; }            // id_presupuesto (FK -> Budget)
+        public int BudgetId { get; set; }            // id_presupuesto (FK -> Budget)
         [Required]
-        public Guid TransactionTypeId { get; set; }   // id_tipo_transaccion (FK -> TransactionType catálogo)
+        public int TransactionTypeId { get; set; }   // id_tipo_transaccion (FK -> TransactionType catálogo)
         [Required]
-        public Guid CertifiedByUserId { get; set; }  // id_usuario_certificador (FK -> UserSystem)
-        public Guid? ExecutedByUserId { get; set; }  // id_usuario_ejecutor (FK -> UserSystem)
+        public int CertifiedByUserId { get; set; }  // id_usuario_certificador (FK -> UserSystem)
+        public int? ExecutedByUserId { get; set; }  // id_usuario_ejecutor (FK -> UserSystem)
         [Range(0, double.MaxValue)]
         public decimal Amount { get; set; }         // monto
         [Column(TypeName = "date"), Required]
