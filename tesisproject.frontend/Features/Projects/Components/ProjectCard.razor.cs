@@ -1,12 +1,13 @@
 ﻿using Microsoft.AspNetCore.Components;
+using tesisproject.shared.DTOs.Project.Response;
 
 namespace tesisproject.frontend.Features.Projects.Components
 {
     public partial class ProjectCard
     {
-        [Parameter] public ProjectListItemDto Item { get; set; } = default!;
+        [Parameter] public ProjectListResponseDTO Item { get; set; } = default!;
 
-        [Parameter] public EventCallback<ProjectListItemDto> OnShowDetails { get; set; }
+        [Parameter] public EventCallback<ProjectListResponseDTO> OnShowDetails { get; set; }
 
         private Task GoToProjectAsync()
         {

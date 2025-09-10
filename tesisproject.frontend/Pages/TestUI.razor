@@ -17,6 +17,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 
 
+
 @inject IModalService Modals
 @inject IToastService toastService
 
@@ -63,6 +64,14 @@
 }
 *@
 
+@*TextInput*@
+
+<h3 class="text-xl font-semibold mb-4">TextInput</h3>
+<TextInput Value="Mi texto fijo"
+           Label="Contraseña"
+           InputType="password"
+           Placeholder="Ingresa tu contraseña" />
+
 <h3 class="text-xl font-semibold mb-4">Modal Demo</h3>
 <div class="space-x-3">
     <button class='px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700' @onclick='() => Modals.Open("modal-one")'>
@@ -72,6 +81,7 @@
         Open Modal Two
     </button>
 </div>
+
 
 <Modal Id="modal-one"
        Title="Small Info"
@@ -83,12 +93,15 @@
         <p>This is a small modal. Click outside or press ESC to close.</p>
     </ChildContent>
     <Footer>
-        <button class='px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300' @onclick='() => Modals.Close("modal-one")'>
-            Close
-        </button>
-        <button class='ml-2 px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700' @onclick='() => Modals.Close("modal-one")'>
-            Confirm
-        </button>
+
+        <ActionButton Text="Close"
+                      Execute='() => Modals.Close("modal-one")'
+                      Variant="ButtonVariant.Ghost"/>
+
+        <!-- Botón azul (Confirm modal) -->
+        <ActionButton Text="Confirm"
+                      Execute='() => Modals.Close("modal-one")'
+                      Variant="ButtonVariant.Soft" />
     </Footer>
 </Modal>
 

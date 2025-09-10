@@ -5,12 +5,12 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace tesisproject.shared.DTOs.Group
+namespace tesisproject.shared.DTOs.Group.Request
 {
-    public class CreateGroupRequestDTO
+    public class AddGroupRequestDTO
     {
         [Required]
-        public Guid GroupTypeId { get; set; }
+        public int GroupTypeId { get; set; }
 
         [Required, StringLength(120)]
         public string Name { get; set; } = string.Empty;

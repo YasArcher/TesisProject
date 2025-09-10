@@ -1,6 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 using tesisproject.backend.Data;
-using tesisproject.backend.Repositories.Implementations;
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 
@@ -14,15 +14,21 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public IGroupRepository Groups { get; }
         public IGroupMemberRepository GroupMembers { get; }
 
-        public UnitOfWork(AppDbContext ctx)
+        public UnitOfWork(
+            AppDbContext ctx,
+            IProjectRepository projectRepository,
+            IGroupRepository groupRepository,
+            IGroupMemberRepository groupMemberRepository)
         {
             _ctx = ctx;
-            Projects = new ProjectRepository(_ctx);
-            Groups = new GroupRepository(_ctx);
-            GroupMembers = new GroupMemberRepository(_ctx);
+            Projects = projectRepository;
+            Groups = groupRepository;
+            GroupMembers = groupMemberRepository;
         }
 
-        public Task<int> SaveChangesAsync() => _ctx.SaveChangesAsync();
+        public Task<int> SaveChangesAsync(CancellationToken ct = default)
+            => _ctx.SaveChangesAsync(ct);
+
         public ValueTask DisposeAsync() => _ctx.DisposeAsync();
     }
 }

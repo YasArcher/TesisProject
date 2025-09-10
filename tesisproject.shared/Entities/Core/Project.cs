@@ -11,19 +11,20 @@ namespace tesisproject.shared.Entities.Core
 {
     public class Project
     {
-        [Key, StringLength(50)]
-        public string ProjectId { get; set; } = string.Empty;    // id_proyecto (string en tu diagrama)
+        public int ProjectId { get; set; }        // id_proyecto (string en tu diagrama)
+        [StringLength(20)]
+        public string ProjectCode { get; set; } = string.Empty; // código_proyecto (código único generado)
 
         [Required]
-        public Guid CreatedByUserId { get; set; }                 // id_creado_por (usuario externo)
+        public int CreatedByUserId { get; set; }                 // id_creado_por (usuario externo)
         [Required]
-        public Guid ProjectTypeId { get; set; }                   // id_tipo_proyecto (catálogo)
+        public int ProjectTypeId { get; set; }                   // id_tipo_proyecto (catálogo)
         [Required]
-        public Guid ProjectStateId { get; set; }              // id_tipo_estado_proyecto (catálogo)
+        public int ProjectStateId { get; set; }              // id_tipo_estado_proyecto (catálogo)
         [Required]
-        public Guid ProjectGroupId { get; set; }                  // id_grupo_proyecto (FK -> Group)
-        public Guid? SenesytGroupId { get; set; }                // id_grupo_senseyt (si aplica, nullable)
-        public Guid? InitialDocumentId { get; set; }              // id_documento_inicial (FK -> Document)
+        public int ProjectGroupId { get; set; }                  // id_grupo_proyecto (FK -> Group)
+        public int? SenesytGroupId { get; set; }                // id_grupo_senseyt (si aplica, nullable)
+        public int? InitialDocumentId { get; set; }              // id_documento_inicial (FK -> Document)
         [Required, StringLength(120)]
         public string ProjectName { get; set; } = string.Empty;  // nombre_proyecto
 

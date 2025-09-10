@@ -10,7 +10,7 @@ namespace tesisproject.shared.Entities.Base
 {
     public abstract class CatalogEntityBase: ICatalogEntity
     {
-        public Guid Id { get; set; }
+        public int Id { get; set; }
 
         [Required, StringLength(100)]
         public string Name { get; set; } = string.Empty;

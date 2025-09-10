@@ -55,6 +55,8 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().Cre
 
 // 6) Wrapper API
 builder.Services.AddScoped<IApiClient, ApiClient>();
+builder.Services.AddScoped<IProjectClientService, ProjectClientService>();
+builder.Services.AddScoped<IGroupService, GroupService>();
 
 // 7) Provider de autenticación
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();

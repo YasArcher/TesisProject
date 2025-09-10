@@ -1,4 +1,5 @@
-﻿using tesisproject.backend.Repositories.Interfaces;
+﻿using System.Threading;
+using tesisproject.backend.Repositories.Interfaces;
 
 namespace tesisproject.backend.UnitOfWork.Interfaces
 {
@@ -7,6 +8,7 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
         IProjectRepository Projects { get; }
         IGroupRepository Groups { get; }
         IGroupMemberRepository GroupMembers { get; }
-        Task<int> SaveChangesAsync();
+
+        Task<int> SaveChangesAsync(CancellationToken ct = default);
     }
 }

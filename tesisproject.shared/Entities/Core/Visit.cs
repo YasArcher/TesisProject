@@ -10,15 +10,15 @@ namespace tesisproject.shared.Entities.Core
 {
     public class Visit
     {
-        public Guid VisitId { get; set; }                 // id_visita
+        public int VisitId { get; set; }                 // id_visita
 
         [Required, StringLength(50)]
-        public string ProjectId { get; set; } = string.Empty;  // id_proyecto (FK -> Project)
-        
+        public int ProjectId { get; set; }  // id_proyecto (FK -> Project)
+
         [Required]
-        public Guid VisitStateId { get; set; }             // id_tipo_visita (FK -> VisitType catálogo)
+        public int VisitStateId { get; set; }             // id_tipo_visita (FK -> VisitType catálogo)
         
-        public Guid? DocumentId { get; set; }             // id_documento (FK -> Document, opcional)
+        public int? DocumentId { get; set; }             // id_documento (FK -> Document, opcional)
 
         public DateTime? VisitDate { get; set; }         // fecha de la visita
 

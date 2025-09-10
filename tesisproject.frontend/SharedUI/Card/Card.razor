@@ -1,6 +1,6 @@
 ﻿@inherits CardBase
 <CascadingValue Value="this">
-    <div class="@ContainerClasses">
+    <div @attributes="MergedAttributes">
         @ChildContent
     </div>
 </CascadingValue>

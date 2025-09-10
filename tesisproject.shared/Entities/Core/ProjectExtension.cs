@@ -10,14 +10,14 @@ namespace tesisproject.shared.Entities.Core
 {
     public class ProjectExtension
     {
-        public Guid ProjectExtensionId { get; set; }       // id_prorroga
+        public int ProjectExtensionId { get; set; }       // id_prorroga
 
         [Required, StringLength(50)]
-        public string ProjectId { get; set; } = string.Empty;  // id_proyecto (FK -> Project)
+        public int ProjectId { get; set; }  // id_proyecto (FK -> Project)
         [Required]
-        public Guid ProjectExtensionTypeId { get; set; } // id_tipo_prorroga (FK -> ProjectExtensionType catálogo)
+        public int ProjectExtensionTypeId { get; set; } // id_tipo_prorroga (FK -> ProjectExtensionType catálogo)
 
-        public Guid? DocumentId { get; set; }              // id_documento (respaldo, opcional)
+        public int? DocumentId { get; set; }              // id_documento (respaldo, opcional)
 
         public DateTime? RequestedAt { get; set; }        // fecha solicitud
         public DateTime? ApprovedAt { get; set; }         // fecha aprobación

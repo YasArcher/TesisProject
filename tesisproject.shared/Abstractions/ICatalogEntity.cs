@@ -8,7 +8,7 @@ namespace tesisproject.shared.Abstractions
 {
     public interface ICatalogEntity
     {
-        Guid Id { get; set; }
+        int Id { get; set; }
         string Name { get; set; }
     }
 }

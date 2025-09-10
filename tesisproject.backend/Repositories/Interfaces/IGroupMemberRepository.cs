@@ -2,12 +2,15 @@
 
 namespace tesisproject.backend.Repositories.Interfaces
 {
-    public interface IGroupMemberRepository
+    public interface IGroupMemberRepository : IGenericRepository<GroupMember>
     {
-        Task AddAsync(GroupMember entity, CancellationToken ct = default);
-        Task RemoveAsync(GroupMember entity, CancellationToken ct = default);
-        Task<GroupMember?> GetByIdAsync(Guid id, CancellationToken ct = default);
-        Task<bool> ExistsAsync(Guid groupId, int externalUserId, CancellationToken ct = default);
-        IQueryable<GroupMember> QueryByGroup(Guid groupId);
+        Task<GroupMember?> GetByIdAsync(int id, CancellationToken ct = default);
+        Task<bool> ExistsAsync(int groupId, int externalUserId, CancellationToken ct = default);
+        Task<List<GroupMember>> GetMembersByGroupAsync(int groupId, CancellationToken ct = default);
+
+        /// <summary>
+        /// Base query filtered by GroupId. Services pueden proyectar/ordenar/paginar.
+        /// </summary>
+        IQueryable<GroupMember> QueryByGroup(int groupId, bool asNoTracking = true);
     }
 }

@@ -9,10 +9,10 @@ namespace tesisproject.shared.Entities.Core
 {
     public class GroupMember
     {
-        public Guid GroupMemberId { get; set; }        // id_integrante_grupo
+        public int GroupMemberId { get; set; }        // id_integrante_grupo
 
         [Required]
-        public Guid GroupId { get; set; }              // id_grupo (FK -> Group)
+        public int GroupId { get; set; }              // id_grupo (FK -> Group)
 
         // Usuario externo consumido por API
         [Required]
@@ -22,6 +22,8 @@ namespace tesisproject.shared.Entities.Core
         public string MemberRole { get; set; } = string.Empty; // rol del integrante (ej. "Líder", "Miembro", etc.)
 
         public DateTime? JoinedAt { get; set; }       // fecha de ingreso (opcional)
+
+        public DateTime? LeftAt { get; set; }         // fecha de salida (opcional)
 
         //Navegaciones
         public Group Group { get; set; } = null!;      // Navegación
