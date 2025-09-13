@@ -35,8 +35,8 @@
     private string currentTabKey = "tipo1";
 
     // IDs fijos mapeados a tus tipos
-    private static readonly int DevelopmentId = 0;
-    private static readonly int InnovationId  = 1;
+    private static readonly int DevelopmentId = 1;
+    private static readonly int InnovationId  = 2;
 
     // Estado por tipo de proyecto
     private readonly Dictionary<ProjectType, int?> selectedGroupIds = new();
@@ -63,7 +63,7 @@
         StateHasChanged();
         try
         {
-            var resp = await GroupService.GetListAsync("", 0, 20);
+            var resp = await GroupService.GetListAsync();
             allGroups = resp.Response ?? new();
         }
         finally

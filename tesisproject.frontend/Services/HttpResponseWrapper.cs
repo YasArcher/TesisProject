@@ -1,7 +1,5 @@
 ﻿namespace tesisproject.frontend.Services
 {
-    public readonly struct NoContent { }
-
     public sealed class HttpResponseWrapper<T>
     {
         public bool Success { get; }

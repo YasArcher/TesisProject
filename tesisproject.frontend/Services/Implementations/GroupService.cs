@@ -3,6 +3,7 @@ using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.DTOs.External;
 using tesisproject.shared.DTOs.Group.Request;
 using tesisproject.shared.DTOs.Group.Response;
+using tesisproject.shared.Responses;
 
 namespace tesisproject.frontend.Services.Implementations
 {
@@ -17,9 +18,9 @@ namespace tesisproject.frontend.Services.Implementations
         //        GROUPS
         // =========================
 
-        public Task<HttpResponseWrapper<List<GroupResponseDTO>?>> GetListAsync(string? search, int skip = 0, int take = 20, CancellationToken ct = default)
+        public Task<HttpResponseWrapper<List<GroupResponseDTO>?>> GetListAsync(CancellationToken ct = default)
         {
-            return _api.GetAsync<List<GroupResponseDTO>>($"{_baseUrl}?search={search}&skip={skip}&take={take}", ct);
+            return _api.GetAsync<List<GroupResponseDTO>>($"{_baseUrl}", ct);
         }
 
         public Task<HttpResponseWrapper<GroupResponseDTO?>> GetByIdAsync(int id, CancellationToken ct = default)
@@ -50,7 +51,7 @@ namespace tesisproject.frontend.Services.Implementations
             return _api.PostAsync<AddGroupMemberRequestDTO, GroupMemberResponseDTO>($"{_baseUrl}/{groupId}/members", request, ct);
         }
 
-        public Task<HttpResponseWrapper<NoContent>> RemoveMemberAsync(int groupId, int memberId, CancellationToken ct = default)
+        public Task<HttpResponseWrapper<NoContent?>> RemoveMemberAsync(int groupId, int memberId, CancellationToken ct = default)
         {
             return _api.DeleteAsync($"{_baseUrl}/{groupId}/members/{memberId}", ct);
         }

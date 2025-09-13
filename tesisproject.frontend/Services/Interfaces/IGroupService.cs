@@ -1,6 +1,7 @@
 ﻿using tesisproject.shared.DTOs.External;
 using tesisproject.shared.DTOs.Group.Request;
 using tesisproject.shared.DTOs.Group.Response;
+using tesisproject.shared.Responses;
 
 namespace tesisproject.frontend.Services.Interfaces
 {
@@ -10,7 +11,7 @@ namespace tesisproject.frontend.Services.Interfaces
         //        GROUPS
         // =========================
         /// <summary>Get a paginated list of groups.</summary>
-        Task<HttpResponseWrapper<List<GroupResponseDTO>?>> GetListAsync(string? search, int skip = 0, int take = 20, CancellationToken ct = default);
+        Task<HttpResponseWrapper<List<GroupResponseDTO>?>> GetListAsync( CancellationToken ct = default);
 
         /// <summary>Get a single group by its id.</summary>
         Task<HttpResponseWrapper<GroupResponseDTO?>> GetByIdAsync(int id, CancellationToken ct = default);
@@ -30,7 +31,7 @@ namespace tesisproject.frontend.Services.Interfaces
         Task<HttpResponseWrapper<GroupMemberResponseDTO?>> AddMemberAsync(int groupId, AddGroupMemberRequestDTO request, CancellationToken ct = default);
 
         /// <summary>Remove a member from a group.</summary>
-        Task<HttpResponseWrapper<NoContent>> RemoveMemberAsync(int groupId, int memberId, CancellationToken ct = default);
+        Task<HttpResponseWrapper<NoContent?>> RemoveMemberAsync(int groupId, int memberId, CancellationToken ct = default);
 
         // Future:
         // Task<HttpResponseWrapper<NoContent>> UpdateMemberRoleAsync(int groupId, Guid memberId, UpdateRoleRequestDto request, CancellationToken ct = default);

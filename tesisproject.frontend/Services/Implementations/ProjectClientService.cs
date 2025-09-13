@@ -11,7 +11,7 @@ public class ProjectClientService : IProjectClientService
 
     public Task<HttpResponseWrapper<List<ProjectListResponseDTO>?>> GetListAsync(bool onlyActive, CancellationToken ct = default)
     {
-        return _api.GetAsync<List<ProjectListResponseDTO>>($"api/projects/list??onlyActive={onlyActive}", ct);
+        return _api.GetAsync<List<ProjectListResponseDTO>>($"api/projects?onlyActive={onlyActive}", ct);
     }
 
     public Task<HttpResponseWrapper<ProjectListResponseDTO?>> GetByIdAsync(int id, CancellationToken ct = default)
