@@ -1,9 +1,8 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.Services.Interfaces;
-using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.DTOs.Project.Request;
 using tesisproject.shared.DTOs.Project.Response;
-using tesisproject.shared.Entities.Core;
 
 namespace tesisproject.backend.Controllers
 {
@@ -16,40 +15,39 @@ namespace tesisproject.backend.Controllers
         public ProjectsController(IProjectService service) => _service = service;
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Project>>> GetAll()
-            => Ok(await _service.GetAllAsync());
+        public async Task<ActionResult<IEnumerable<ProjectListResponseDTO>>> GetAll(CancellationToken ct)
+            => Ok(await _service.GetAllAsync(ct));
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<Project>> GetById(int id)
+        public async Task<ActionResult<ProjectListResponseDTO>> GetById(int id, CancellationToken ct)
         {
-            var p = await _service.GetByIdAsync(id);
-            return p is null ? NotFound() : Ok(p);
+            var dto = await _service.GetByIdAsync(id, ct);
+            return dto is null ? NotFound() : Ok(dto);
         }
 
         [HttpPost]
-        public async Task<ActionResult<Project>> Create(Project body)
+        public async Task<ActionResult<ProjectListResponseDTO>> Create(AddProjectRequestDTO body, CancellationToken ct)
         {
-            var created = await _service.CreateAsync(body);
+            var created = await _service.CreateAsync(body, ct);
             return CreatedAtAction(nameof(GetById), new { id = created.ProjectId }, created);
         }
 
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update(int id, Project body)
+        public async Task<IActionResult> Update(int id, UpdateProjectRequestDTO body, CancellationToken ct)
         {
-            if (id != body.ProjectId) return BadRequest("Route id and body id must match.");
-            var ok = await _service.UpdateAsync(id, body);
+            var ok = await _service.UpdateAsync(id, body, ct);
             return ok ? NoContent() : NotFound();
         }
 
         [HttpDelete("{id:int}")]
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> Delete(int id, CancellationToken ct)
         {
-            var ok = await _service.DeleteAsync(id);
+            var ok = await _service.DeleteAsync(id, ct);
             return ok ? NoContent() : NotFound();
         }
 
-        [HttpGet("list")]
-        public async Task<ActionResult<IEnumerable<ProjectListResponseDTO>>> GetList()
-            => Ok(await _service.GetListAsync());
+        [HttpGet("by-type/{projectTypeId:int}")]
+        public async Task<ActionResult<IEnumerable<ProjectListResponseDTO>>> GetByType(int projectTypeId, CancellationToken ct)
+            => Ok(await _service.GetByTypeAsync(projectTypeId, ct));
     }
 }

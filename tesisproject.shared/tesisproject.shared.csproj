@@ -9,7 +9,6 @@
   <ItemGroup>
     <Folder Include="DTOs\Budgets\Response\" />
     <Folder Include="DTOs\Budgets\Request\" />
-    <Folder Include="DTOs\Project\Request\" />
     <Folder Include="Enums\" />
     <Folder Include="Common\" />
     <Folder Include="Validations\" />
