@@ -1,11 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.External;
 using tesisproject.shared.DTOs.Group.Request;
 using tesisproject.shared.DTOs.Group.Response;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -20,138 +20,215 @@ namespace tesisproject.backend.Services.Implementations
             _external = external;
         }
 
-        public async Task<GroupResponseDTO> CreateAsync(AddGroupRequestDTO request, CancellationToken ct)
+        // ================= READS =================
+
+        public async Task<ServiceResult<GroupResponseDTO>> GetByIdAsync(int id, CancellationToken ct = default)
         {
-            var name = (request.Name ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Group name is required.");
-
-            if (await _uow.Groups.NameExistsAsync(name, ct))
-                throw new ArgumentException("A group with the same name already exists.");
-
-            var entity = new Group
+            try
             {
-                GroupTypeId = request.GroupTypeId,
-                Name = name
-            };
+                var group = await _uow.Groups.GetByIdAsync(id, includeMembers: false, ct);
+                if (group is null)
+                    return ServiceResult<GroupResponseDTO>.Fail("Group not found.", ErrorType.NotFound);
 
-            await _uow.Groups.AddAsync(entity, ct);
-            await _uow.SaveChangesAsync(ct);
+                var dto = new GroupResponseDTO
+                {
+                    GroupId = group.GroupId,
+                    GroupTypeId = group.GroupTypeId,
+                    Name = group.Name
+                };
 
-            return new GroupResponseDTO
-            {
-                GroupId = entity.GroupId,
-                GroupTypeId = entity.GroupTypeId,
-                Name = entity.Name
-            };
-        }
-
-        public async Task<GroupResponseDTO?> GetByIdAsync(int id, CancellationToken ct)
-        {
-            var group = await _uow.Groups.GetByIdAsync(id, includeMembers: true, ct);
-            if (group is null) return null;
-
-            return new GroupResponseDTO
-            {
-                GroupId = group.GroupId,
-                GroupTypeId = group.GroupTypeId,
-                Name = group.Name
-            };
-        }
-
-        // ÚNICO ListAsync que coincide con la interfaz
-        public async Task<IReadOnlyList<GroupResponseDTO>> ListAsync(string? search, int skip, int take, CancellationToken ct)
-        {
-            // saneo de paginación
-            if (skip < 0) skip = 0;
-            if (take <= 0) take = 20;
-            const int MaxTake = 100;
-            if (take > MaxTake) take = MaxTake;
-
-            var q = _uow.Groups.Query(); // IQueryable<Group> AsNoTracking()
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var s = search.Trim();
-                q = q.Where(g => EF.Functions.Like(g.Name, $"%{s}%"));
+                return ServiceResult<GroupResponseDTO>.Ok(dto, "Group retrieved");
             }
-
-            var items = await q.OrderBy(g => g.Name)
-                               .Skip(skip)
-                               .Take(take)
-                               .Select(g => new GroupResponseDTO
-                               {
-                                   GroupId = g.GroupId,
-                                   GroupTypeId = g.GroupTypeId,
-                                   Name = g.Name
-                               })
-                               .ToListAsync(ct);
-
-            return items; // List<T> es IReadOnlyList<T> compatible en retorno
-        }
-
-        public async Task<GroupMemberResponseDTO> AddMemberAsync(int groupId, AddGroupMemberRequestDTO request, CancellationToken ct)
-        {
-            if (groupId != request.GroupId)
-                throw new ArgumentException("Route id and payload GroupId must match.");
-
-            var group = await _uow.Groups.GetByIdAsync(groupId, includeMembers: false, ct);
-            if (group is null)
-                throw new KeyNotFoundException("Group not found.");
-
-            // Validar usuario externo
-            var externalUser = await _external.GetByIdAsync(request.ExternalUserId, ct);
-            if (externalUser is null)
-                throw new ArgumentException("External user not found in external Users API.");
-
-            // Evitar duplicados
-            var duplicated = await _uow.GroupMembers.ExistsAsync(request.GroupId, request.ExternalUserId, ct);
-            if (duplicated)
-                throw new ArgumentException("This user is already a member of the group.");
-
-            // Validar rol
-            var role = (request.MemberRole ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(role))
-                throw new ArgumentException("Member role is required.");
-
-            var member = new GroupMember
+            catch (Exception ex)
             {
-                GroupId = request.GroupId,
-                UserId = request.ExternalUserId,
-                MemberRole = role,
-                JoinedAt =  DateTime.UtcNow
-            };
+                return ServiceResult<GroupResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+            }
+        }
 
-            await _uow.GroupMembers.AddAsync(member, ct);
-            await _uow.SaveChangesAsync(ct);
-
-            return new GroupMemberResponseDTO
+        public async Task<ServiceResult<IReadOnlyList<GroupResponseDTO>>> ListAsync(string? search, int skip, int take, CancellationToken ct = default)
+        {
+            try
             {
-                GroupMemberId = member.GroupMemberId,
-                ExternalUserId = member.UserId,
-                MemberRole = member.MemberRole,
-                JoinedAt = member.JoinedAt
-            };
+                // sanitize pagination
+                if (skip < 0) skip = 0;
+                if (take <= 0) take = 20;
+                const int MaxTake = 100;
+                if (take > MaxTake) take = MaxTake;
+
+                var q = _uow.Groups.Query(); // IQueryable<Group> (AsNoTracking en repo)
+
+                if (!string.IsNullOrWhiteSpace(search))
+                {
+                    var s = search.Trim();
+                    q = q.Where(g => EF.Functions.Like(g.Name, $"%{s}%"));
+                }
+
+                var items = await q
+                    .OrderBy(g => g.Name)
+                    .Skip(skip)
+                    .Take(take)
+                    .Select(g => new GroupResponseDTO
+                    {
+                        GroupId = g.GroupId,
+                        GroupTypeId = g.GroupTypeId,
+                        Name = g.Name
+                    })
+                    .ToListAsync(ct);
+
+                if (items.Count == 0)
+                    return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail("No groups found.", ErrorType.NotFound);
+
+                return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Ok(items, "Groups retrieved");
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+            }
         }
 
-        public async Task<bool> RemoveMemberAsync(int groupId, int memberId, CancellationToken ct)
+        // ================= WRITES =================
+
+        public async Task<ServiceResult<GroupResponseDTO>> CreateAsync(AddGroupRequestDTO request, CancellationToken ct = default)
         {
-            var member = await _uow.GroupMembers.GetByIdAsync(memberId, ct);
-            if (member is null || member.GroupId != groupId)
-                return false;
-            _uow.GroupMembers.Remove(member);
-            var rows = await _uow.SaveChangesAsync(ct);
-            return rows > 0;
+            try
+            {
+                var name = (request.Name ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(name))
+                    return ServiceResult<GroupResponseDTO>.Fail("Group name is required.", ErrorType.Validation);
+
+                var exists = await _uow.Groups.NameExistsAsync(name, ct);
+                if (exists)
+                    return ServiceResult<GroupResponseDTO>.Fail("A group with the same name already exists.", ErrorType.Conflict);
+
+                var entity = new Group
+                {
+                    GroupTypeId = request.GroupTypeId,
+                    Name = name
+                };
+
+                await _uow.Groups.AddAsync(entity, ct);
+                await _uow.SaveChangesAsync(ct);
+
+                var dto = new GroupResponseDTO
+                {
+                    GroupId = entity.GroupId,
+                    GroupTypeId = entity.GroupTypeId,
+                    Name = entity.Name
+                };
+
+                // Si tu ServiceResult tiene Created, úsalo; si no, Ok está bien.
+                return ServiceResult<GroupResponseDTO>.Ok(dto, "Group created");
+            }
+            catch (DbUpdateException dbex)
+            {
+                return ServiceResult<GroupResponseDTO>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<GroupResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+            }
         }
-        public async Task<List<ExternalUserDTO>> GetExternalUsersByGroupAsync(int groupId, CancellationToken ct)
+
+        public async Task<ServiceResult<GroupMemberResponseDTO>> AddMemberAsync(int groupId, AddGroupMemberRequestDTO request, CancellationToken ct = default)
         {
-            // (opcional pero recomendado) valida que el grupo exista
-            if (!await _uow.Groups.ExistsAsync(g => g.GroupId == groupId, ct))
-                throw new KeyNotFoundException("Group not found.");
+            try
+            {
+                if (groupId != request.GroupId)
+                    return ServiceResult<GroupMemberResponseDTO>.Fail("Route id and payload GroupId must match.", ErrorType.Validation);
 
+                var group = await _uow.Groups.GetByIdAsync(groupId, includeMembers: false, ct);
+                if (group is null)
+                    return ServiceResult<GroupMemberResponseDTO>.Fail("Group not found.", ErrorType.NotFound);
 
-            // delega en tu servicio de integración
-            return await _external.GetByGroupIdAsync(groupId, ct);
+                // External user must exist in external API (tablas externas según tu diseño)
+                var externalUser = await _external.GetByIdAsync(request.ExternalUserId, ct);
+                if (externalUser is null)
+                    return ServiceResult<GroupMemberResponseDTO>.Fail("External user not found.", ErrorType.Validation);
+
+                // Avoid duplicates
+                var duplicated = await _uow.GroupMembers.ExistsAsync(request.GroupId, request.ExternalUserId, ct);
+                if (duplicated)
+                    return ServiceResult<GroupMemberResponseDTO>.Fail("This user is already a member of the group.", ErrorType.Conflict);
+
+                // Role required
+                var role = (request.MemberRole ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(role))
+                    return ServiceResult<GroupMemberResponseDTO>.Fail("Member role is required.", ErrorType.Validation);
+
+                var member = new GroupMember
+                {
+                    GroupId = request.GroupId,
+                    UserId = request.ExternalUserId,
+                    MemberRole = role,
+                    JoinedAt = DateTime.UtcNow
+                };
+
+                await _uow.GroupMembers.AddAsync(member, ct);
+                await _uow.SaveChangesAsync(ct);
+
+                var dto = new GroupMemberResponseDTO
+                {
+                    GroupMemberId = member.GroupMemberId,
+                    ExternalUserId = member.UserId,
+                    MemberRole = member.MemberRole,
+                    JoinedAt = member.JoinedAt
+                };
+
+                return ServiceResult<GroupMemberResponseDTO>.Ok(dto, "Member added to group");
+            }
+            catch (DbUpdateException dbex)
+            {
+                return ServiceResult<GroupMemberResponseDTO>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<GroupMemberResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+            }
+        }
+
+        public async Task<ServiceResult<NoContent>> RemoveMemberAsync(int groupId, int memberId, CancellationToken ct = default)
+        {
+            try
+            {
+                var member = await _uow.GroupMembers.GetByIdAsync(memberId, ct);
+                if (member is null || member.GroupId != groupId)
+                    return ServiceResult<NoContent>.Fail("Group member not found.", ErrorType.NotFound);
+
+                _uow.GroupMembers.Remove(member);
+                await _uow.SaveChangesAsync(ct);
+
+                return ServiceResult<NoContent>.Ok(new NoContent(), "Member removed");
+            }
+            catch (DbUpdateException dbex)
+            {
+                return ServiceResult<NoContent>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
+            }
+        }
+
+        public async Task<ServiceResult<List<ExternalUserDTO>>> GetExternalUsersByGroupAsync(int groupId, CancellationToken ct = default)
+        {
+            try
+            {
+                var exists = await _uow.Groups.ExistsAsync(g => g.GroupId == groupId, ct);
+                if (!exists)
+                    return ServiceResult<List<ExternalUserDTO>>.Fail("Group not found.", ErrorType.NotFound);
+
+                // Consume API externa (recuerda: no crear tablas locales para usuario/facultad_carrera)
+                var users = await _external.GetByGroupIdAsync(groupId, ct);
+
+                if (users is null || users.Count == 0)
+                    return ServiceResult<List<ExternalUserDTO>>.Fail("No external users found for this group.", ErrorType.NotFound);
+
+                return ServiceResult<List<ExternalUserDTO>>.Ok(users, "External users retrieved");
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<List<ExternalUserDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+            }
         }
     }
 }

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Project.Request;
 using tesisproject.shared.DTOs.Project.Response;
+using tesisproject.shared.Responses;
+using tesisproject.backend.Controllers.Extensions;
 
 namespace tesisproject.backend.Controllers
 {
@@ -15,39 +17,27 @@ namespace tesisproject.backend.Controllers
         public ProjectsController(IProjectService service) => _service = service;
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ProjectListResponseDTO>>> GetAll(CancellationToken ct)
-            => Ok(await _service.GetAllAsync(ct));
+        public async Task<ActionResult<ApiResponse<List<ProjectListResponseDTO>>>> GetAll(CancellationToken ct)
+            => (await _service.GetAllAsync(ct)).ToActionResult();
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ProjectListResponseDTO>> GetById(int id, CancellationToken ct)
-        {
-            var dto = await _service.GetByIdAsync(id, ct);
-            return dto is null ? NotFound() : Ok(dto);
-        }
+        public async Task<ActionResult<ApiResponse<ProjectListResponseDTO>>> GetById(int id, CancellationToken ct)
+            => (await _service.GetByIdAsync(id, ct)).ToActionResult();
 
         [HttpPost]
-        public async Task<ActionResult<ProjectListResponseDTO>> Create(AddProjectRequestDTO body, CancellationToken ct)
-        {
-            var created = await _service.CreateAsync(body, ct);
-            return CreatedAtAction(nameof(GetById), new { id = created.ProjectId }, created);
-        }
+        public async Task<ActionResult<ApiResponse<ProjectListResponseDTO>>> Create(AddProjectRequestDTO body, CancellationToken ct)
+            => (await _service.CreateAsync(body, ct)).ToActionResult();
 
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> Update(int id, UpdateProjectRequestDTO body, CancellationToken ct)
-        {
-            var ok = await _service.UpdateAsync(id, body, ct);
-            return ok ? NoContent() : NotFound();
-        }
+        public async Task<ActionResult<ApiResponse<NoContent>>> Update(int id, UpdateProjectRequestDTO body, CancellationToken ct)
+            => (await _service.UpdateAsync(id, body, ct)).ToActionResult();
 
         [HttpDelete("{id:int}")]
-        public async Task<IActionResult> Delete(int id, CancellationToken ct)
-        {
-            var ok = await _service.DeleteAsync(id, ct);
-            return ok ? NoContent() : NotFound();
-        }
+        public async Task<ActionResult<ApiResponse<NoContent>>> Delete(int id, CancellationToken ct)
+            => (await _service.DeleteAsync(id, ct)).ToActionResult();
 
         [HttpGet("by-type/{projectTypeId:int}")]
-        public async Task<ActionResult<IEnumerable<ProjectListResponseDTO>>> GetByType(int projectTypeId, CancellationToken ct)
-            => Ok(await _service.GetByTypeAsync(projectTypeId, ct));
+        public async Task<ActionResult<ApiResponse<List<ProjectListResponseDTO>>>> GetByType(int projectTypeId, CancellationToken ct)
+            => (await _service.GetByTypeAsync(projectTypeId, ct)).ToActionResult();
     }
 }
