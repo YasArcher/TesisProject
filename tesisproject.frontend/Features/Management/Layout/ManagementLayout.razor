@@ -1,0 +1,17 @@
+﻿@namespace tesisproject.frontend.Features.Management.Layout
+@inherits LayoutComponentBase
+
+
+<div class="layout">
+    <aside class="sidebar">
+        <nav>
+            <ul>
+                <li><NavLink href="/analytics/prediction" Match="NavLinkMatch.Prefix">Data Entry</NavLink></li>
+                <li><NavLink href="/manage/dashboards" Match="NavLinkMatch.Prefix">Dashboards &amp; BI</NavLink></li>
+                <li><NavLink href="/manage/ai" Match="NavLinkMatch.Prefix">AI (Recs & Predictions)</NavLink></li>
+            </ul>
+        </nav>
+    </aside>
+    <div style="background:#22c55e;color:#000;padding:.25rem .5rem">MANAGEMENT LAYOUT</div>
+    <main class="content">@Body</main>
+</div>

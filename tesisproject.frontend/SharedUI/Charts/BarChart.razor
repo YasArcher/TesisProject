@@ -1,0 +1,53 @@
+﻿<div class="bar-chart" style="height:@($"{Height}px")">
+    @for (int i = 0; i < Values.Length; i++)
+    {
+        var v = Values[i];
+        var h = Max == 0 ? 0 : (int)Math.Round((double)v / Max * 100);
+        <div class="bar" title="@($"{Labels[i]}: {v}")">
+            <div class="bar-fill" style="height:@($"{h}%")"></div>
+            <div class="bar-label">@Labels[i]</div>
+        </div>
+    }
+</div>
+
+<style>
+    .bar-chart {
+        display: flex;
+        align-items: flex-end;
+        gap: .5rem;
+        width: 100%;
+    }
+
+    .bar {
+        flex: 1 1 0;
+        min-width: 16px;
+        display: flex;
+        flex-direction: column;
+        align-items: center
+    }
+
+    .bar-fill {
+        width: 100%;
+        background: #0d6efd33;
+        border: 1px solid #0d6efd55;
+        border-radius: .4rem .4rem 0 0
+    }
+
+    .bar-label {
+        font-size: .7rem;
+        color: #6c757d;
+        margin-top: .25rem;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis
+    }
+</style>
+
+@code {
+    [Parameter] public string[] Labels { get; set; } = Array.Empty<string>();
+    [Parameter] public int[] Values { get; set; } = Array.Empty<int>();
+    [Parameter] public int Height { get; set; } = 200;
+
+    private int Max => Values.Length == 0 ? 0 : Values.Max();
+}

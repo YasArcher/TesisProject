@@ -1,0 +1,38 @@
+﻿@namespace tesisproject.frontend.SharedUI
+<div class="@ColCss">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <label class="form-label" for="@Id">@Label</label>
+    }
+    <select id="@Id" class="form-select" value="@Value" @onchange="OnChange">
+        @if (!string.IsNullOrWhiteSpace(Placeholder))
+        {
+            <option value="">@Placeholder</option>
+        }
+        @if (Options is not null)
+        {
+            @foreach (var opt in Options)
+            {
+                <option value="@opt">@opt</option>
+            }
+        }
+    </select>
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+
+    [Parameter] public IEnumerable<string>? Options { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    [Parameter] public string? ColCss { get; set; } = "col-12 col-md-4";
+
+    private async Task OnChange(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

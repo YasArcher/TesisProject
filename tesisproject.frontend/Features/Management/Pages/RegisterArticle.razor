@@ -1,0 +1,485 @@
+﻿@page "/articulos/registrar"
+@inject tesisproject.frontend.Services.Interfaces.IArticlesClient ArticlesApi
+@using System.ComponentModel.DataAnnotations
+@using tesisproject.shared.DTOs.Articles
+@using tesisproject.shared.Abstractions
+
+<AppHeroHeader Title="Artículos Científicos" Subtitle="Registro">
+    <Actions>
+        <a class="btn btn-light">Borrador</a>
+        <button class="btn btn-primary" type="button">Reportería</button>
+    </Actions>
+</AppHeroHeader>
+
+<AppPillTabs Class="mb-3" Items="@Pills" />
+
+@if (!string.IsNullOrWhiteSpace(serverError))
+{
+    <div class="alert alert-danger">@serverError</div>
+}
+@if (!string.IsNullOrWhiteSpace(serverOk))
+{
+    <div class="alert alert-success">@serverOk</div>
+}
+
+<EditForm Model="@Model" OnValidSubmit="@OnSave">
+    <DataAnnotationsValidator />
+    <ValidationSummary class="alert alert-warning rounded-2 mt-0 mb-3" />
+
+    <div class="row g-4">
+        <!-- ===== Columna principal ===== -->
+        <div class="col-12 col-lg-8">
+
+            <!-- 0) PERÍODO ACADÉMICO -->
+            <AppGlassCard Title="Período Académico" Icon="📅" Class="mb-3">
+                <div class="row g-3">
+                    <AppFormSelect Label="Período" Id="periodo"
+                                   ColCss="col-12 col-md-6"
+                                   Placeholder="Seleccione…"
+                                   Options="@PeriodoOptions"
+                                   @bind-Value="Model.PeriodoAcademico" />
+
+                    <AppFormInput Label="Año" Id="anio"
+                                  Type="number" Placeholder="2025"
+                                  ColCss="col-12 col-md-6"
+                                  @bind-Value="Model.Anio" />
+                </div>
+            </AppGlassCard>
+
+            <!-- 1) IDENTIFICACIÓN Y REVISTA -->
+            <AppGlassCard Title="Identificación y Revista" Icon="📑" Class="mb-3">
+                <div class="row g-3">
+                    <AppFormInput Label="Código Publicación" Id="codPublicacion"
+                                  Placeholder="DOI o código interno"
+                                  ColCss="col-12 col-md-6"
+                                  @bind-Value="Model.CodigoPublicacion" />
+                    <AppFormInput Label="Código ISSN" Id="issn"
+                                  Placeholder="1234-5678"
+                                  ColCss="col-12 col-md-6"
+                                  @bind-Value="Model.CodigoISSN" />
+
+                    <AppFormTextarea Label="Título Publicación" Id="titulo"
+                                     Rows="3" ColCss="col-12"
+                                     Placeholder="Escribe el título…"
+                                     @bind-Value="Model.Titulo" />
+
+                    <AppFormInput Label="Nombre revista" Id="revista"
+                                  Placeholder="Journal of…"
+                                  ColCss="col-12 col-md-6"
+                                  @bind-Value="Model.NombreRevista" />
+
+                    <AppFormInput Label="Volumen Revista" Id="VolRevista"
+                                  Placeholder="79"
+                                  ColCss="col-12 col-md-3"
+                                  @bind-Value="Model.VolumenRevista" />
+
+                    <AppFormInput Label="Número revista" Id="numRevista"
+                                  Placeholder="42(3)"
+                                  ColCss="col-12 col-md-3"
+                                  @bind-Value="Model.NumeroRevista" />
+
+                    <AppFormInput Label="Número de páginas" Id="numPaginas"
+                                  Placeholder="12"
+                                  ColCss="col-12 col-md-3"
+                                  @bind-Value="Model.NumeroPaginas" />
+
+                    <AppFormInput Label="SJR (SCImago)" Id="sjr"
+                                  Type="number" Placeholder="0.000"
+                                  ColCss="col-12 col-md-3"
+                                  @bind-Value="Model.SJR" />
+                    <AppFormInput Label="Fecha Publicación" Id="fechaPub"
+                                  Type="date"
+                                  ColCss="col-12 col-md-6"
+                                  @bind-Value="Model.FechaPublicacion" />
+                </div>
+            </AppGlassCard>
+
+            <!-- 2) CLASIFICACIÓN / INDEXACIÓN / QUARTIL -->
+            <AppGlassCard Title="Clasificación e Indexación" Icon="🧭" Class="mb-3">
+                <div class="row g-3">
+                    <AppFormSelect Label="Base datos indexado" Id="baseIndex"
+                                   ColCss="col-12 col-md-4"
+                                   Options="@BaseDatosOptions"
+                                   @bind-Value="Model.BaseDatos" />
+                    <AppFormSelect Label="Campo Amplio" Id="campoAmplio"
+                                   ColCss="col-12 col-md-4"
+                                   Options="@CampoAmplioOptions"
+                                   @bind-Value="Model.CampoAmplio" />
+                    <AppFormSelect Label="Campo Específico" Id="campoEspecifico"
+                                   ColCss="col-12 col-md-4"
+                                   Options="@CampoEspecificoOptions"
+                                   @bind-Value="Model.CampoEspecifico" />
+                    <AppFormSelect Label="Campo Detallado" Id="campoDetallado"
+                                   ColCss="col-12"
+                                   Options="@CampoDetalladoOptions"
+                                   @bind-Value="Model.CampoDetallado" />
+                    <AppFormSelect Label="Quartil" Id="quartil"
+                                   ColCss="col-12 col-md-6"
+                                   Options="@QuartilOptions"
+                                   @bind-Value="Model.Quartil" />
+                    <AppFormInput Label="Filiación" Id="filiacion"
+                                  Placeholder="Universidad Nacional de Colombia"
+                                  ColCss="col-12 col-md-6"
+                                  @bind-Value="Model.Filiacion" />
+                </div>
+            </AppGlassCard>
+
+            <!-- 3) ESTADO & ACCESO -->
+            <AppGlassCard Title="Estado & Acceso" Icon="🏷️" Class="mb-3">
+                <div class="row g-3">
+                    <AppFormSelect Label="Estado" Id="estado"
+                                   ColCss="col-12 col-md-6"
+                                   Options="@EstadoOptions"
+                                   @bind-Value="Model.Estado" />
+                    <AppFormSelect Label="Acceso Abierto" Id="openAccess"
+                                   Placeholder="SÍ / NO"
+                                   ColCss="col-12 col-md-6"
+                                   Options="@OpenAccessOptions"
+                                   @bind-Value="Model.AccesoAbierto" />
+                </div>
+            </AppGlassCard>
+
+            <!-- 4) ENLACES -->
+            <AppGlassCard Title="Enlaces" Icon="🔗" Class="mb-3">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <AppUrlVisit Label="Link Publicación" Id="linkPub"
+                                     @bind-Value="Model.LinkPublicacion" />
+                    </div>
+                    <div class="col-12">
+                        <AppUrlVisit Label="Link Revista" Id="linkRev"
+                                     @bind-Value="Model.EnlaceRevista" />
+                    </div>
+                </div>
+            </AppGlassCard>
+
+            <!-- 5) PARTICIPANTES 1..5 -->
+            <AppGlassCard Title="Participantes" Icon="👥">
+                <AppParticipantRow Index="1"
+                                   @bind-Identificacion="Model.Identificacion1"
+                                   @bind-Nombre="Model.Nombre1"
+                                   @bind-Participacion="Model.Participacion1" />
+                <AppParticipantRow Index="2"
+                                   @bind-Identificacion="Model.Identificacion2"
+                                   @bind-Nombre="Model.Nombre2"
+                                   @bind-Participacion="Model.Participacion2" />
+                <AppParticipantRow Index="3"
+                                   @bind-Identificacion="Model.Identificacion3"
+                                   @bind-Nombre="Model.Nombre3"
+                                   @bind-Participacion="Model.Participacion3" />
+                <AppParticipantRow Index="4"
+                                   @bind-Identificacion="Model.Identificacion4"
+                                   @bind-Nombre="Model.Nombre4"
+                                   @bind-Participacion="Model.Participacion4" />
+                <AppParticipantRow Index="5"
+                                   @bind-Identificacion="Model.Identificacion5"
+                                   @bind-Nombre="Model.Nombre5"
+                                   @bind-Participacion="Model.Participacion5" />
+            </AppGlassCard>
+
+            <!-- 6) ARTICULACIÓN (proyecto/linea/grupo) -->
+            <AppGlassCard Title="Articulación" Icon="🔗">
+                <div class="row g-3">
+                    <AppFormInput Label="Código único del proyecto articulado"
+                                  ColCss="col-12 col-md-6"
+                                  @bind-Value="Model.CodigoProyectoArticulado" />
+                    <AppFormInput Label="Proyecto de investigación e innovación articulado"
+                                  ColCss="col-12 col-md-6"
+                                  @bind-Value="Model.ProyectoArticulado" />
+                    <AppFormInput Label="Línea de Investigación articulado"
+                                  ColCss="col-12 col-md-6"
+                                  @bind-Value="Model.LineaInvestigacionArticulada" />
+                    <AppFormInput Label="Grupo de Investigación articulado"
+                                  ColCss="col-12 col-md-6"
+                                  @bind-Value="Model.GrupoInvestigacionArticulado" />
+                </div>
+            </AppGlassCard>
+
+        </div>
+
+        <!-- ===== Aside (resumen) ===== -->
+        <div class="col-12 col-lg-4">
+            <div class="sticky-aside">
+                <AppGlassCard Title="Resumen" Icon="🔎" Class="mb-3">
+                    <div class="mb-2">
+                        <div class="text-muted small mb-1">Título</div>
+                        <div class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.Titulo) ? Model.Titulo : "—")</div>
+                    </div>
+                    <div class="small text-muted">Período: @(Model.PeriodoAcademico ?? "—")</div>
+                    <div class="small text-muted">ISSN: @(Model.CodigoISSN ?? "—")</div>
+                    <div class="small text-muted mb-2">SJR: @(Model.SJR ?? "—")</div>
+
+                    <div class="d-flex flex-wrap gap-2 mt-2" aria-label="Resumen de metadatos">
+                        <span class="summary-chip"><span class="dot @GetAccessDot()" aria-hidden="true"></span> Acceso: @(Model.AccesoAbierto ?? "—")</span>
+                        <span class="summary-chip"><span class="dot @GetEstadoDot()" aria-hidden="true"></span> Estado: @(Model.Estado ?? "—")</span>
+                        <span class="summary-chip"><span class="dot dot-primary" aria-hidden="true"></span> BD: @(Model.BaseDatos ?? "—")</span>
+                    </div>
+
+                    <div class="mt-3 d-flex gap-2">
+                        <a class="btn btn-sm btn-outline-primary @((string.IsNullOrWhiteSpace(Model.LinkPublicacion) ? "disabled" : null))"
+                           target="_blank" rel="noopener"
+                           href="@(string.IsNullOrWhiteSpace(Model.LinkPublicacion) ? "#" : Model.LinkPublicacion)">
+                            Ver publicación
+                        </a>
+                        <a class="btn btn-sm btn-outline-secondary @((string.IsNullOrWhiteSpace(Model.EnlaceRevista) ? "disabled" : null))"
+                           target="_blank" rel="noopener"
+                           href="@(string.IsNullOrWhiteSpace(Model.EnlaceRevista) ? "#" : Model.EnlaceRevista)">
+                            Ver revista
+                        </a>
+                    </div>
+                </AppGlassCard>
+            </div>
+        </div>
+
+        <!-- ACCIONES -->
+        <div class="col-12">
+            <div class="form-actions-sticky d-flex justify-content-end gap-2" role="toolbar" aria-label="Acciones del formulario">
+                <button type="button" class="btn btn-light border" @onclick="OnCancel" disabled="@saving">Cancelar</button>
+                <button type="submit" class="btn btn-primary" disabled="@saving">
+                    @(saving ? "Guardando..." : "Guardar")
+                </button>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+@code {
+    /* ===== Tabs ===== */
+    private IEnumerable<AppPillTabs.PillTab> Pills => new[]
+    {
+        new AppPillTabs.PillTab{ Label="Registro", Icon="🧾", Active=true },
+        new AppPillTabs.PillTab{ Label="Autores",  Icon="👥" },
+        new AppPillTabs.PillTab{ Label="Listados", Icon="📋" }
+    };
+
+    /* ===== Catálogos ===== */
+    private readonly string[] PeriodoOptions = { "2025-I", "2025-II", "2026-I" };
+    private readonly string[] OpenAccessOptions = { "SÍ", "NO" };
+    private readonly string[] EstadoOptions = { "PUBLICADO", "ACEPTADO", "EN REVISIÓN", "RECHAZADO" };
+    private readonly string[] BaseDatosOptions = { "SCOPUS", "WoS", "DOAJ", "Otro" };
+    private readonly string[] QuartilOptions = { "Q1", "Q2", "Q3", "Q4" };
+    private readonly string[] CampoAmplioOptions =
+    {
+        "Artes y humanidades",
+        "Ciencias sociales, periodismo e información y derecho",
+        "Administración",
+        "Ciencias naturales, matemáticas y estadística",
+        "Tecnologías de la información y la comunicación (TIC)",
+        "Salud y bienestar",
+        "Servicios"
+    };
+    private readonly string[] CampoEspecificoOptions =
+    {
+        "Artes","Humanidades","Idiomas",
+        "Ciencias sociales y del comportamiento","Periodismo e información",
+        "Ciencias biológicas y afines","Medio ambiente","Ciencias físicas","Matemáticas y estadística",
+        "TIC","Ingeniería y profesiones afines","Industria y producción","Arquitectura y construcción",
+        "Agricultura","Silvicultura","Pesca","Veterinaria",
+        "Salud","Bienestar",
+        "Servicios personales","Servicios de protección","Servicios de seguridad","Servicio de transporte"
+    };
+    private readonly string[] CampoDetalladoOptions =
+    {
+        "1-12A Técnicas audiovisuales y producción para medios de comunicación",
+        "2-12A Diseño",
+        "3-12A Artes",
+        "5-12A Música y artes escénicas",
+        "1-22A Religión y Teología",
+        "2-22A Historia y Arqueología",
+        "3-22A Filosofía",
+        "1-32A Idiomas",
+        "2-32A Literatura y lingüística",
+        "1-13A Economía",
+        "2-13A Ciencias políticas",
+        "3-13A Psicología",
+        "4-13A Estudios sociales y culturales",
+        "1-15A Biología", "2-15A Bioquímica", "83-15A Biomedicina", "84-15A Genética", "86-15A Neurociencias",
+        "1-35A Química", "2-35A Ciencias de la Tierra",
+        "1-45A Matemáticas", "2-45A Estadísticas",
+        "1-16A Computación", "3-16A Desarrollo y análisis de software", "81-16A Sistemas de Información",
+        "1-17A Química aplicada", "3-17A Electricidad y energía", "4-17A Electrónica, automatización y sonido",
+        "5-17A Mecánica", "6-17A Vehículos, barcos y aeronaves", "84-17A Telecomunicaciones", "85-17A Nanotecnología",
+        "1-27A Procesamiento de alimentos", "3-27A Productos textiles", "4-27A Minería y extracción",
+        "5-27A Producción industrial", "7-27A Diseño industrial y de procesos",
+        "1-37A Arquitectura, urbanismo y restauración", "2-37A Construcción e ingeniería civil",
+        "1-18A Producción agrícola y ganadera", "2-28A Silvicultura", "1-38A Pesca", "1-48A Veterinaria",
+        "1-19A Odontología", "3-19A Enfermería y obstetricia", "4-19A Diagnóstico y tratamiento", "6-19A Farmacia", "8-19A Salud Pública",
+        "2-110A Peluquería y belleza", "3-110A Hotelería y gastronomía", "5-110A Turismo",
+        "1-210A Prevención y gestión de riesgos", "2-210A Salud y seguridad ocupacional",
+        "1-310A Educación policial, militar y defensa", "2-310A Seguridad ciudadana",
+        "1-410A Gestión del transporte", "81-45A Logística y transporte"
+    };
+
+    /* ===== Estado de UI ===== */
+    private bool saving = false;
+    private string? serverError;
+    private string? serverOk;
+
+    /* ===== Modelo ===== */
+    private ArticleFormModel Model { get; set; } = new();
+
+    private void OnCancel()
+    {
+        serverError = serverOk = null;
+        Model = new();
+    }
+
+    private async Task OnSave()
+    {
+        serverError = serverOk = null;
+        saving = true;
+        try
+        {
+            var req = ToCreateRequest(Model);
+            var res = await ArticlesApi.CreateAsync(req);
+
+            if (!res.Succeeded)
+            {
+                serverError = res.Error ?? "Error al guardar el artículo";
+                return;
+            }
+
+            serverOk = $"Artículo guardado con Id {res.Value}.";
+            Model = new();
+        }
+        catch (Exception ex)
+        {
+            serverError = ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+
+    private string GetAccessDot() =>
+        string.Equals(Model.AccesoAbierto, "SÍ", StringComparison.OrdinalIgnoreCase) ? "dot-success" :
+        string.Equals(Model.AccesoAbierto, "NO", StringComparison.OrdinalIgnoreCase) ? "dot-danger" : "dot-primary";
+
+    private string GetEstadoDot()
+    {
+        var e = (Model.Estado ?? "").ToUpperInvariant();
+        return e switch
+        {
+            "PUBLICADO" => "dot-success",
+            "ACEPTADO" => "dot-primary",
+            "EN REVISIÓN" => "dot-warning",
+            "RECHAZADO" => "dot-danger",
+            _ => "dot-primary"
+        };
+    }
+
+    /* ===== Mapeo UI -> DTO ===== */
+    private static CreateArticleRequest ToCreateRequest(ArticleFormModel m)
+    {
+        int? ToInt(string? s) => int.TryParse(s, out var v) ? v : null;
+        decimal? ToDec(string? s) => decimal.TryParse(s, out var v) ? v : null;
+        DateTime? ToDate(string? s) => DateTime.TryParse(s, out var d) ? d : null;
+
+        var participantes = new List<ArticleParticipantRequest>();
+        void MaybeAdd(int idx, string? id, string? nombre, string? part)
+        {
+            if (!string.IsNullOrWhiteSpace(nombre))
+                participantes.Add(new ArticleParticipantRequest { Index = idx, Identificacion = id, Nombre = nombre, Participacion = part });
+        }
+
+        MaybeAdd(1, m.Identificacion1, m.Nombre1, m.Participacion1);
+        MaybeAdd(2, m.Identificacion2, m.Nombre2, m.Participacion2);
+        MaybeAdd(3, m.Identificacion3, m.Nombre3, m.Participacion3);
+        MaybeAdd(4, m.Identificacion4, m.Nombre4, m.Participacion4);
+        MaybeAdd(5, m.Identificacion5, m.Nombre5, m.Participacion5);
+
+        return new CreateArticleRequest
+        {
+            PeriodoAcademico = m.PeriodoAcademico,
+            Anio = ToInt(m.Anio),
+            CodigoPublicacion = m.CodigoPublicacion,
+            CodigoISSN = m.CodigoISSN,
+            Titulo = m.Titulo,
+            NombreRevista = m.NombreRevista,
+            VolumenRevista = m.VolumenRevista,
+            NumeroRevista = m.NumeroRevista,
+            NumeroPaginas = ToInt(m.NumeroPaginas),
+            SJR = ToDec(m.SJR),
+            FechaPublicacion = ToDate(m.FechaPublicacion),
+            BaseDatos = m.BaseDatos,
+            CampoAmplio = m.CampoAmplio,
+            CampoEspecifico = m.CampoEspecifico,
+            CampoDetallado = m.CampoDetallado,
+            Quartil = m.Quartil,
+            Filiacion = m.Filiacion,
+            Estado = m.Estado,
+            AccesoAbierto = m.AccesoAbierto,
+            LinkPublicacion = m.LinkPublicacion,
+            EnlaceRevista = m.EnlaceRevista,
+            CodigoProyectoArticulado = m.CodigoProyectoArticulado,
+            ProyectoArticulado = m.ProyectoArticulado,
+            LineaInvestigacionArticulada = m.LineaInvestigacionArticulada,
+            GrupoInvestigacionArticulado = m.GrupoInvestigacionArticulado,
+            Participantes = participantes
+        };
+    }
+
+    /* ===== Modelo con validaciones básicas ===== */
+    private sealed class ArticleFormModel
+    {
+        // Período
+        [Required(ErrorMessage = "El período es obligatorio")]
+        public string? PeriodoAcademico { get; set; }
+        public string? Anio { get; set; }
+
+        // Identificación/Revista
+        public string? CodigoPublicacion { get; set; }
+        [Required(ErrorMessage = "El título es obligatorio")]
+        public string? Titulo { get; set; }
+        public string? BaseDatos { get; set; }   // Base datos indexado
+        public string? CodigoISSN { get; set; }
+        public string? NombreRevista { get; set; }
+        public string? NumeroRevista { get; set; }
+        public string? VolumenRevista { get; set; }
+        public string? NumeroPaginas { get; set; }
+        public string? SJR { get; set; }
+        public string? FechaPublicacion { get; set; }   // date en UI
+
+        // Clasificación
+        public string? CampoAmplio { get; set; }
+        public string? CampoEspecifico { get; set; }
+        public string? CampoDetallado { get; set; }
+        public string? Quartil { get; set; }
+        public string? Filiacion { get; set; }
+
+        // Estado & Acceso
+        [Required(ErrorMessage = "El estado es obligatorio")]
+        public string? Estado { get; set; }
+        public string? AccesoAbierto { get; set; }
+
+        // Enlaces
+        [Url(ErrorMessage = "URL inválida")]
+        public string? LinkPublicacion { get; set; }
+        [Url(ErrorMessage = "URL inválida")]
+        public string? EnlaceRevista { get; set; }
+
+        // Participantes
+        public string? Identificacion1 { get; set; }
+        public string? Nombre1 { get; set; }
+        public string? Participacion1 { get; set; }
+        public string? Identificacion2 { get; set; }
+        public string? Nombre2 { get; set; }
+        public string? Participacion2 { get; set; }
+        public string? Identificacion3 { get; set; }
+        public string? Nombre3 { get; set; }
+        public string? Participacion3 { get; set; }
+        public string? Identificacion4 { get; set; }
+        public string? Nombre4 { get; set; }
+        public string? Participacion4 { get; set; }
+        public string? Identificacion5 { get; set; }
+        public string? Nombre5 { get; set; }
+        public string? Participacion5 { get; set; }
+
+        // Articulación
+        public string? CodigoProyectoArticulado { get; set; }
+        public string? ProyectoArticulado { get; set; }
+        public string? LineaInvestigacionArticulada { get; set; }
+        public string? GrupoInvestigacionArticulado { get; set; }
+    }
+}

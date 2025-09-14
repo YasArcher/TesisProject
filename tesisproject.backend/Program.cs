@@ -1,75 +1,84 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using System.Text.Json.Serialization;
+using Microsoft.OpenApi.Models;
+using AutoMapper;
+
 using tesisproject.backend.Data;
-using tesisproject.backend.Data.Identity;
-using tesisproject.backend.Services.Implementations;
-using tesisproject.backend.Services.Interfaces;
-using tesisproject.backend.UnitOfWork.Implementations;
-using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.backend.Mapping;                       // ArticleMapping
+using tesisproject.backend.Repositories.Interfaces;       // IArticlesRepository
+using tesisproject.backend.Repositories.Implementations;  // ArticlesRepository
+using tesisproject.backend.UnitOfWork.Interfaces;         // IUnitOfWork
+using tesisproject.backend.UnitOfWork.Implementations;    // UnitOfWork
+using tesisproject.backend.Services;                      // ProjectsService (si está aquí)
+using tesisproject.backend.Services.Implementations;      // ArticlesService
+using tesisproject.shared.Abstractions.Articles;          // IArticlesService
+using tesisproject.shared.Abstractions.Project;           // IProjectsService
+using tesisproject.shared.DTOs.Project;                   // DTOs de Projects
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers()
-    .AddJsonOptions(o => o.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles);
-
-builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-// Identity (sin UI, solo Core + Roles + EF Stores)
-builder.Services
-    .AddIdentityCore<ApplicationUser>(opt =>
-    {
-        opt.Password.RequiredLength = 6;
-        opt.Password.RequireDigit = false;
-        opt.Password.RequireUppercase = false;
-        opt.Password.RequireNonAlphanumeric = false;
-    })
-    .AddRoles<IdentityRole<Guid>>()
-    .AddEntityFrameworkStores<AppDbContext>()
-    .AddDefaultTokenProviders();
-
-// JWT
-var key = Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!);
-builder.Services.AddAuthentication(o =>
+// Kestrel: HTTP y HTTPS en dev
+builder.WebHost.ConfigureKestrel(k =>
 {
-    o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    o.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(o =>
-{
-    o.RequireHttpsMetadata = false; // ponlo en true en prod con HTTPS
-    o.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        ClockSkew = TimeSpan.Zero
-    };
+    k.ListenLocalhost(5040);                      // HTTP
+    k.ListenLocalhost(7040, o => o.UseHttps());  // HTTPS
 });
 
-builder.Services.AddAuthorization();
+// DbContext (usa tu cadena "Default"; si falta, un fallback seguro)
+var cs = builder.Configuration.GetConnectionString("Default")
+         ?? "Server=.;Database=TesisDB;Trusted_Connection=True;TrustServerCertificate=True";
+builder.Services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(cs));
 
+// AutoMapper (requiere paquetes AutoMapper y AutoMapper.Extensions.Microsoft.DependencyInjection)
+builder.Services.AddAutoMapper(typeof(ArticleMapping).Assembly);
+
+// DI (Projects y Articles)
+builder.Services.AddScoped<IProjectsService, ProjectsService>();
+builder.Services.AddScoped<IArticlesRepository, ArticlesRepository>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<ITokenService, JwtTokenService>();
+builder.Services.AddScoped<IArticlesService, ArticlesService>();
 
+// CORS para tu frontend
+builder.Services.AddCors(o => o.AddPolicy("wasm", p => p
+    .WithOrigins("https://localhost:7065")
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+));
+
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Tesis API", Version = "v1" });
+});
+
+// Controllers (por ejemplo, ArticlesController)
+builder.Services.AddControllers();
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment()) { app.UseSwagger(); app.UseSwaggerUI(); }
+// Middleware
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Tesis API v1");
+    c.RoutePrefix = "swagger";
+});
 
 app.UseHttpsRedirection();
+app.UseCors("wasm");
 
-app.UseAuthentication();
-app.UseAuthorization();
-
+// Controllers (Articles, etc.)
 app.MapControllers();
+
+// Minimal API de Projects (lo que ya tenías)
+var projects = app.MapGroup("/api/projects");
+projects.MapGet("/", (IProjectsService svc, CancellationToken ct) => svc.GetAllAsync(ct)).WithOpenApi();
+projects.MapGet("/{id}", (int id, IProjectsService svc, CancellationToken ct) => svc.GetByIdAsync(id, ct)).WithOpenApi();
+projects.MapPost("/", (CreateProjectRequest req, IProjectsService svc, CancellationToken ct) => svc.CreateAsync(req, ct)).WithOpenApi();
+projects.MapPut("/", (UpdateProjectRequest req, IProjectsService svc, CancellationToken ct) => svc.UpdateAsync(req, ct)).WithOpenApi();
+projects.MapDelete("/{id}", (int id, IProjectsService svc, CancellationToken ct) => svc.DeleteAsync(id, ct)).WithOpenApi();
+
+// Healthcheck
+app.MapGet("/ping", () => "pong");
+
 app.Run();

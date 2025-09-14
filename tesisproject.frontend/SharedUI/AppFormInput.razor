@@ -1,0 +1,30 @@
+﻿@namespace tesisproject.frontend.SharedUI
+<div class="@ColCss">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <label for="@Id" class="form-label">@Label</label>
+    }
+    <input id="@Id"
+           class="form-control"
+           type="@Type"
+           placeholder="@Placeholder"
+           value="@Value"
+           @oninput="OnInput" />
+</div>
+
+@code {
+    [Parameter] public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string Type { get; set; } = "text";
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? ColCss { get; set; } = "col-12 col-md-6";
+
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    private async Task OnInput(ChangeEventArgs e)
+    {
+        Value = e.Value?.ToString();
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

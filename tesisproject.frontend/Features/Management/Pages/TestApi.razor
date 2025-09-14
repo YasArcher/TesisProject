@@ -1,0 +1,62 @@
+﻿@page "/test-api"
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject IConfiguration Config
+
+<h3>Test API /api/projects</h3>
+
+<p><b>Front URL:</b> @Nav.BaseUri</p>
+<p><b>ApiBaseUrl (config):</b> @Config["ApiBaseUrl"]</p>
+<p><b>HttpClient.BaseAddress:</b> @Http.BaseAddress</p>
+
+@if (!string.IsNullOrWhiteSpace(error))
+{
+    <p class="text-danger">@error</p>
+}
+else if (items is null)
+{
+
+    <p>Cargando…</p>
+}
+else if (items.Count == 0)
+{
+
+    <p>Sin registros.</p>
+}
+else
+{
+    <ul>
+        @foreach (var p in items)
+        {
+            <li>@p.Id — @p.Code — @p.Name</li>
+        }
+    </ul>
+}
+
+@code {
+    List<tesisproject.shared.DTOs.Project.ProjectDto>? items;
+    string? error;
+
+    public record Result<T>(bool Succeeded, T? Value, string? Error);
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // PRUEBA 1: URL RELATIVA (usa BaseAddress)
+            var res = await Http.GetFromJsonAsync<
+                Result<List<tesisproject.shared.DTOs.Project.ProjectDto>>
+            >("/api/projects");
+
+            // Si quieres, descomenta esta PRUEBA 2: URL ABSOLUTA directa al backend
+            // var res = await Http.GetFromJsonAsync<
+            //     Result<List<tesisproject.shared.DTOs.Project.ProjectDto>>
+            // >("https://localhost:7040/api/projects");
+
+            if (res is null) { error = "Sin respuesta"; return; }
+            if (!res.Succeeded) { error = res.Error ?? "Error"; return; }
+            items = res.Value ?? [];
+        }
+        catch (Exception ex) { error = ex.Message; }
+    }
+}

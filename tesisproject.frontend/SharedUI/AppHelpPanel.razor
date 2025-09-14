@@ -1,0 +1,27 @@
+﻿@namespace tesisproject.frontend.SharedUI
+<div class="rounded-3 border bg-white p-3 shadow-sm @Class">
+    @if (!string.IsNullOrWhiteSpace(Title))
+    {
+        <h6 class="mb-3">@Title</h6>
+    }
+    @if (Items is not null)
+    {
+        <ul class="small mb-0">
+            @foreach (var it in Items)
+            {
+                <li>@it</li>
+            }
+        </ul>
+    }
+    else
+    {
+        @ChildContent
+    }
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public IEnumerable<string>? Items { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

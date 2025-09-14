@@ -1,0 +1,50 @@
+﻿@if (Items?.Count > 0)
+{
+    <div class="d-flex align-items-center gap-3">
+        <div class="donut" style="--bg:@BuildGradient(); width:@($"{Height}px"); height:@($"{Height}px")"></div>
+        <div class="small text-muted">Total: <strong>@Items.Values.Sum()</strong></div>
+    </div>
+}
+
+<style>
+    .donut {
+        background: conic-gradient(var(--bg));
+        border-radius: 50%;
+        position: relative;
+    }
+
+        .donut::after {
+            content: "";
+            position: absolute;
+            inset: 16%;
+            background: white;
+            border-radius: 50%;
+        }
+</style>
+
+@code {
+    [Parameter] public Dictionary<string, int> Items { get; set; } = new();
+    [Parameter] public int Height { get; set; } = 220;
+
+    private static readonly string[] Colors = new[]{
+        "#0d6efd","#198754","#6f42c1","#fd7e14","#dc3545","#20c997","#6c757d"
+    };
+
+    private string BuildGradient()
+    {
+        if (Items.Count == 0) return "#e9ecef 0 100%";
+        var total = Items.Values.Sum();
+        double acc = 0;
+        var parts = new List<string>();
+        int idx = 0;
+        foreach (var v in Items.Values)
+        {
+            var pct = total == 0 ? 0 : (double)v / total * 100.0;
+            var next = acc + pct;
+            var col = Colors[idx++ % Colors.Length];
+            parts.Add($"{col} {acc:0.##}% {next:0.##}%");
+            acc = next;
+        }
+        return string.Join(",", parts);
+    }
+}

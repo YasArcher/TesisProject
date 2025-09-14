@@ -1,0 +1,21 @@
+﻿@namespace tesisproject.frontend.SharedUI
+<ul class="nav nav-pills app-pill-tabs @Class">
+    @foreach (var t in Items)
+    {
+        <li class="nav-item">
+            <a class="nav-link @(t.Active ? "active" : null)" href="@(!string.IsNullOrWhiteSpace(t.Href) ? t.Href : "#")">
+                @if (!string.IsNullOrWhiteSpace(t.Icon))
+                {
+                    <span class="me-1">@t.Icon</span>
+                }
+                @t.Label
+            </a>
+        </li>
+    }
+</ul>
+
+@code {
+    public sealed class PillTab { public string Label { get; set; } = ""; public string? Icon { get; set; } public string? Href { get; set; } = "#"; public bool Active { get; set; } }
+    [Parameter] public IEnumerable<PillTab> Items { get; set; } = Array.Empty<PillTab>();
+    [Parameter] public string? Class { get; set; }
+}

@@ -1,0 +1,26 @@
+﻿@namespace tesisproject.frontend.SharedUI
+@inherits ComponentBase
+<ul class="nav nav-tabs @Class">
+    @foreach (var item in Items)
+    {
+        <li class="nav-item">
+            <a class="nav-link @(item.Active ? "active" : null)"
+               aria-current="@(item.Active ? "page" : null)"
+               href="@(!string.IsNullOrWhiteSpace(item.Href) ? item.Href : "#")">
+                @item.Label
+            </a>
+        </li>
+    }
+</ul>
+
+@code {
+    public sealed class TabItem
+    {
+        public string Label { get; set; } = string.Empty;
+        public string? Href { get; set; } = "#";
+        public bool Active { get; set; } = false;
+    }
+
+    [Parameter] public IEnumerable<TabItem> Items { get; set; } = Array.Empty<TabItem>();
+    [Parameter] public string? Class { get; set; }
+}

@@ -22,35 +22,7 @@ namespace tesisproject.backend.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Name")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("NormalizedName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedName")
-                        .IsUnique()
-                        .HasDatabaseName("RoleNameIndex")
-                        .HasFilter("[NormalizedName] IS NOT NULL");
-
-                    b.ToTable("AspNetRoles", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.Article", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -58,856 +30,178 @@ namespace tesisproject.backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<string>("AccesoAbierto")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("AspNetRoleClaims", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
+                    b.Property<int?>("Anio")
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("AspNetUserClaims", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
-                {
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("ProviderKey")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("LoginProvider", "ProviderKey");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("AspNetUserLogins", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("UserId", "RoleId");
-
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("AspNetUserRoles", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Value")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("UserId", "LoginProvider", "Name");
-
-                    b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("tesisproject.backend.Data.Identity.ApplicationUser", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<int>("AccessFailedCount")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ConcurrencyStamp")
-                        .IsConcurrencyToken()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Email")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<bool>("EmailConfirmed")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("FullName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("LockoutEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<DateTimeOffset?>("LockoutEnd")
-                        .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("NormalizedEmail")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("NormalizedUserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<string>("PasswordHash")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("PhoneNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("PhoneNumberConfirmed")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("SecurityStamp")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("UserName")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("NormalizedEmail")
-                        .HasDatabaseName("EmailIndex");
-
-                    b.HasIndex("NormalizedUserName")
-                        .IsUnique()
-                        .HasDatabaseName("UserNameIndex")
-                        .HasFilter("[NormalizedUserName] IS NOT NULL");
-
-                    b.ToTable("AspNetUsers", (string)null);
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.DocumentType", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
+                    b.Property<string>("BaseDatos")
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.HasKey("Id");
-
-                    b.ToTable("documentTypes");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.GroupType", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("groupTypes");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ProjectExtensionType", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<bool>("IsBudgetExecutable")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ProjectExtensionType");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ProjectState", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ProjectState");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ProjectType", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("projectTypes");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ScopeType", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("scopeTypes");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.TransactionType", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("transactionTypes");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.VisitState", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("visitStates");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Budget", b =>
-                {
-                    b.Property<Guid>("BudgetId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("ApprovedByUserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("CertifiedAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("ExecutedAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<decimal>("InitialAmount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<string>("ProjectId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.HasKey("BudgetId");
-
-                    b.HasIndex("ProjectId")
-                        .IsUnique();
-
-                    b.ToTable("budgets");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.BudgetTransaction", b =>
-                {
-                    b.Property<Guid>("BudgetTransactionId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal>("Amount")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<Guid>("BudgetId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("BudgetItem")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CURNumber")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CertifiedAt")
-                        .HasColumnType("date");
-
-                    b.Property<Guid>("CertifiedByUserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("ExecutedAt")
-                        .HasColumnType("date");
-
-                    b.Property<Guid?>("ExecutedByUserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("TransactionTypeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("BudgetTransactionId");
-
-                    b.HasIndex("BudgetId");
-
-                    b.HasIndex("TransactionTypeId");
-
-                    b.ToTable("budgetTransactions");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Document", b =>
-                {
-                    b.Property<Guid>("DocumentId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("DocumentPath")
-                        .IsRequired()
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
-                    b.Property<Guid>("DocumentTypeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid?>("RelatedDocumentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("DocumentId");
-
-                    b.HasIndex("DocumentTypeId");
-
-                    b.HasIndex("RelatedDocumentId")
-                        .IsUnique()
-                        .HasFilter("[RelatedDocumentId] IS NOT NULL");
-
-                    b.ToTable("documents");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Group", b =>
-                {
-                    b.Property<Guid>("GroupId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("GroupTypeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
-                    b.HasKey("GroupId");
-
-                    b.HasIndex("GroupTypeId");
-
-                    b.ToTable("groups");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.GroupMember", b =>
-                {
-                    b.Property<Guid>("GroupMemberId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("JoinedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("MemberRole")
-                        .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
-
-                    b.Property<int>("UserId")
-                        .HasMaxLength(64)
-                        .HasColumnType("int");
-
-                    b.HasKey("GroupMemberId");
-
-                    b.HasIndex("GroupId");
-
-                    b.ToTable("groupMembers");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Project", b =>
-                {
-                    b.Property<string>("ProjectId")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<Guid>("CreatedByUserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<decimal?>("ExecutionPercentage")
-                        .HasColumnType("decimal(18,2)");
-
-                    b.Property<Guid?>("InitialDocumentId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("ProjectGroupId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ProjectName")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("nvarchar(120)");
-
-                    b.Property<string>("ProjectObjective")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<Guid>("ProjectStateId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("ProjectTypeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("RealEndDate")
-                        .HasColumnType("date");
-
-                    b.Property<string>("ResearchLine")
+                    b.Property<string>("CampoAmplio")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
 
-                    b.Property<Guid?>("SenesytGroupId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("CampoDetallado")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
-                    b.Property<DateTime?>("StartDate")
-                        .HasColumnType("date");
+                    b.Property<string>("CampoEspecifico")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
-                    b.Property<DateTime?>("TentativeEndDate")
-                        .HasColumnType("date");
+                    b.Property<string>("CodigoISSN")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
-                    b.HasKey("ProjectId");
+                    b.Property<string>("CodigoProyectoArticulado")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.HasIndex("InitialDocumentId");
+                    b.Property<string>("CodigoPublicacion")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
-                    b.HasIndex("ProjectGroupId");
-
-                    b.HasIndex("ProjectStateId");
-
-                    b.HasIndex("ProjectTypeId");
-
-                    b.HasIndex("SenesytGroupId");
-
-                    b.ToTable("projects");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.ProjectExtension", b =>
-                {
-                    b.Property<Guid>("ProjectExtensionId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime?>("ApprovedAt")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid?>("DocumentId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("EnlaceRevista")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
-                    b.Property<Guid>("ProjectExtensionTypeId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("ProjectId")
-                        .IsRequired()
+                    b.Property<string>("Estado")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<DateTime?>("RequestedAt")
+                    b.Property<DateTime?>("FechaPublicacion")
                         .HasColumnType("datetime2");
 
-                    b.HasKey("ProjectExtensionId");
-
-                    b.HasIndex("DocumentId");
-
-                    b.HasIndex("ProjectExtensionTypeId");
-
-                    b.HasIndex("ProjectId");
-
-                    b.ToTable("projectExtensions");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.ProjectScope", b =>
-                {
-                    b.Property<Guid>("ProjectScopeId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("Description")
+                    b.Property<string>("Filiacion")
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
-                    b.Property<string>("ProjectId")
-                        .IsRequired()
+                    b.Property<string>("GrupoInvestigacionArticulado")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LineaInvestigacionArticulada")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LinkPublicacion")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("NombreRevista")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<int?>("NumeroPaginas")
+                        .HasColumnType("int");
+
+                    b.Property<string>("NumeroRevista")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<Guid>("ScopeTypeId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("PeriodoAcademico")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("ProjectScopeId");
+                    b.Property<string>("ProyectoArticulado")
+                        .HasColumnType("nvarchar(max)");
 
-                    b.HasIndex("ProjectId");
+                    b.Property<string>("Quartil")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
 
-                    b.HasIndex("ScopeTypeId");
+                    b.Property<decimal?>("SJR")
+                        .HasPrecision(6, 3)
+                        .HasColumnType("decimal(6,3)");
 
-                    b.ToTable("projectScopes");
+                    b.Property<string>("Titulo")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("VolumenRevista")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Articles");
                 });
 
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Visit", b =>
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ArticleParticipant", b =>
                 {
-                    b.Property<Guid>("VisitId")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
 
-                    b.Property<Guid?>("DocumentId")
-                        .HasColumnType("uniqueidentifier");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("Notes")
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
+                    b.Property<int>("ArticleId")
+                        .HasColumnType("int");
 
-                    b.Property<string>("ProjectId")
+                    b.Property<string>("Identificacion")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Index")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Nombre")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("Participacion")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ArticleId", "Index")
+                        .IsUnique();
+
+                    b.ToTable("ArticleParticipants");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Project", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                        .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("VisitDate")
+                    b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<Guid>("VisitStateId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("VisitId");
+                    b.HasKey("Id");
 
-                    b.HasIndex("DocumentId");
-
-                    b.HasIndex("ProjectId");
-
-                    b.HasIndex("VisitStateId");
-
-                    b.ToTable("visits");
+                    b.ToTable("Projects");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ArticleParticipant", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
+                    b.HasOne("tesisproject.backend.Data.Entities.Article", "Article")
+                        .WithMany("Participantes")
+                        .HasForeignKey("ArticleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Article");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.Article", b =>
                 {
-                    b.HasOne("tesisproject.backend.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
-                {
-                    b.HasOne("tesisproject.backend.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("tesisproject.backend.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
-                {
-                    b.HasOne("tesisproject.backend.Data.Identity.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Budget", b =>
-                {
-                    b.HasOne("tesisproject.shared.Entities.Core.Project", "Project")
-                        .WithOne("Budget")
-                        .HasForeignKey("tesisproject.shared.Entities.Core.Budget", "ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Project");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.BudgetTransaction", b =>
-                {
-                    b.HasOne("tesisproject.shared.Entities.Core.Budget", "Budget")
-                        .WithMany()
-                        .HasForeignKey("BudgetId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("tesisproject.shared.Entities.Catalogs.TransactionType", "TransactionType")
-                        .WithMany()
-                        .HasForeignKey("TransactionTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Budget");
-
-                    b.Navigation("TransactionType");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Document", b =>
-                {
-                    b.HasOne("tesisproject.shared.Entities.Catalogs.DocumentType", "DocumentType")
-                        .WithMany()
-                        .HasForeignKey("DocumentTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("tesisproject.shared.Entities.Core.Document", "RelatedDocument")
-                        .WithOne("ReverseRelation")
-                        .HasForeignKey("tesisproject.shared.Entities.Core.Document", "RelatedDocumentId");
-
-                    b.Navigation("DocumentType");
-
-                    b.Navigation("RelatedDocument");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Group", b =>
-                {
-                    b.HasOne("tesisproject.shared.Entities.Catalogs.GroupType", "GroupType")
-                        .WithMany()
-                        .HasForeignKey("GroupTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("GroupType");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.GroupMember", b =>
-                {
-                    b.HasOne("tesisproject.shared.Entities.Core.Group", "Group")
-                        .WithMany("Members")
-                        .HasForeignKey("GroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Group");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Project", b =>
-                {
-                    b.HasOne("tesisproject.shared.Entities.Core.Document", "InitialDocument")
-                        .WithMany()
-                        .HasForeignKey("InitialDocumentId");
-
-                    b.HasOne("tesisproject.shared.Entities.Core.Group", "ProjectGroup")
-                        .WithMany()
-                        .HasForeignKey("ProjectGroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("tesisproject.shared.Entities.Catalogs.ProjectState", "ProjectState")
-                        .WithMany()
-                        .HasForeignKey("ProjectStateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("tesisproject.shared.Entities.Catalogs.ProjectType", "ProjectType")
-                        .WithMany()
-                        .HasForeignKey("ProjectTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("tesisproject.shared.Entities.Core.Group", "SenesytGroup")
-                        .WithMany()
-                        .HasForeignKey("SenesytGroupId");
-
-                    b.Navigation("InitialDocument");
-
-                    b.Navigation("ProjectGroup");
-
-                    b.Navigation("ProjectState");
-
-                    b.Navigation("ProjectType");
-
-                    b.Navigation("SenesytGroup");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.ProjectExtension", b =>
-                {
-                    b.HasOne("tesisproject.shared.Entities.Core.Document", "Document")
-                        .WithMany()
-                        .HasForeignKey("DocumentId");
-
-                    b.HasOne("tesisproject.shared.Entities.Catalogs.ProjectExtensionType", "ProjectExtensionType")
-                        .WithMany()
-                        .HasForeignKey("ProjectExtensionTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("tesisproject.shared.Entities.Core.Project", "Project")
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Document");
-
-                    b.Navigation("Project");
-
-                    b.Navigation("ProjectExtensionType");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.ProjectScope", b =>
-                {
-                    b.HasOne("tesisproject.shared.Entities.Core.Project", "Project")
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("tesisproject.shared.Entities.Catalogs.ScopeType", "ScopeType")
-                        .WithMany()
-                        .HasForeignKey("ScopeTypeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Project");
-
-                    b.Navigation("ScopeType");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Visit", b =>
-                {
-                    b.HasOne("tesisproject.shared.Entities.Core.Document", "Document")
-                        .WithMany()
-                        .HasForeignKey("DocumentId");
-
-                    b.HasOne("tesisproject.shared.Entities.Core.Project", "Project")
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("tesisproject.shared.Entities.Catalogs.VisitState", "VisitState")
-                        .WithMany()
-                        .HasForeignKey("VisitStateId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Document");
-
-                    b.Navigation("Project");
-
-                    b.Navigation("VisitState");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Document", b =>
-                {
-                    b.Navigation("ReverseRelation");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Group", b =>
-                {
-                    b.Navigation("Members");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Project", b =>
-                {
-                    b.Navigation("Budget");
+                    b.Navigation("Participantes");
                 });
 #pragma warning restore 612, 618
         }

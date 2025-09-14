@@ -4,3 +4,10 @@ GET {{tesisproject.backend_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+### Health Check - Ping
+GET https://localhost:port/api/health/ping
+Accept: application/json
+
+### Health Check - Database
+GET https://localhost:port/api/health/database
+Accept: application/json

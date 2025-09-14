@@ -7,17 +7,16 @@ namespace tesisproject.backend.UnitOfWork.Implementations
 {
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly AppDbContext _ctx;
+        private readonly AppDbContext _db;
+        public IArticlesRepository Articles { get; }
 
-        public IProjectRepository Projects { get; }
-
-        public UnitOfWork(AppDbContext ctx)
+        public UnitOfWork(AppDbContext db)
         {
-            _ctx = ctx;
-            Projects = new ProjectRepository(_ctx);
+            _db = db;
+            Articles = new ArticlesRepository(db);
         }
 
-        public async Task<int> SaveChangesAsync() => await _ctx.SaveChangesAsync();
-        public ValueTask DisposeAsync() => _ctx.DisposeAsync();
+        public Task<int> SaveChangesAsync(CancellationToken ct = default) => _db.SaveChangesAsync(ct);
+        public ValueTask DisposeAsync() => _db.DisposeAsync();
     }
 }

@@ -4,7 +4,7 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
 {
     public interface IUnitOfWork : IAsyncDisposable
     {
-        IProjectRepository Projects { get; }
-        Task<int> SaveChangesAsync();
+        IArticlesRepository Articles { get; }
+        Task<int> SaveChangesAsync(CancellationToken ct = default);
     }
 }

@@ -1,0 +1,8 @@
+﻿@page "/manage"
+@using Microsoft.AspNetCore.Components
+@inject NavigationManager Nav
+
+@code {
+    protected override void OnInitialized()
+        => Nav.NavigateTo("/manage/dashboards", true);
+}

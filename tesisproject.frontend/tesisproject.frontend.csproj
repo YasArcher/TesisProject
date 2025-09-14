@@ -9,13 +9,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="NewFolder\**" />
+    <Compile Remove="Features\Articles\**" />
     <Compile Remove="Services\Auth\Interfaces\**" />
-    <Content Remove="NewFolder\**" />
+    <Content Remove="Features\Articles\**" />
     <Content Remove="Services\Auth\Interfaces\**" />
-    <EmbeddedResource Remove="NewFolder\**" />
+    <EmbeddedResource Remove="Features\Articles\**" />
     <EmbeddedResource Remove="Services\Auth\Interfaces\**" />
-    <None Remove="NewFolder\**" />
+    <None Remove="Features\Articles\**" />
     <None Remove="Services\Auth\Interfaces\**" />
   </ItemGroup>
 
@@ -37,9 +37,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Features\Articles\" />
-    <Folder Include="Models\" />
-    <Folder Include="Utils\" />
+    <Folder Include="State\" />
   </ItemGroup>
 
 </Project>

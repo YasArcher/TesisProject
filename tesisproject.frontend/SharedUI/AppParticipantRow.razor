@@ -1,0 +1,27 @@
+﻿@namespace tesisproject.frontend.SharedUI
+<div class="app-glass-card rounded-2xl shadow-soft mb-2">
+  <div class="p-3">
+    <h6 class="text-uppercase small fw-semibold mb-3">Participante N°@Index.ToString("00")</h6>
+    <div class="row g-2">
+      <AppFormInput Label="Identificación" ColCss="col-12 col-md-4"
+                    @bind-Value="Identificacion" />
+      <AppFormInput Label="Nombre" ColCss="col-12 col-md-4"
+                    @bind-Value="Nombre" />
+      <AppFormInput Label="Participación" ColCss="col-12 col-md-4"
+                    @bind-Value="Participacion" />
+    </div>
+  </div>
+</div>
+
+@code {
+  [Parameter] public int Index { get; set; } = 1;
+
+  [Parameter] public string? Identificacion { get; set; }
+  [Parameter] public EventCallback<string?> IdentificacionChanged { get; set; }
+
+  [Parameter] public string? Nombre { get; set; }
+  [Parameter] public EventCallback<string?> NombreChanged { get; set; }
+
+  [Parameter] public string? Participacion { get; set; }
+  [Parameter] public EventCallback<string?> ParticipacionChanged { get; set; }
+}

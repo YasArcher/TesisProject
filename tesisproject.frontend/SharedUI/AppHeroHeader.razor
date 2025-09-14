@@ -1,0 +1,23 @@
+﻿@namespace tesisproject.frontend.SharedUI
+<div class="hero-header rounded-2xl mb-4 position-relative overflow-hidden">
+    <div class="hero-overlay"></div>
+    <div class="hero-content d-flex align-items-center justify-content-between px-4 py-4">
+        <div>
+            <h2 class="hero-title m-0">@Title</h2>
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <p class="hero-sub m-0 mt-1">@Subtitle</p>
+            }
+        </div>
+        @if (Actions is not null)
+        {
+            <div class="d-flex gap-2">@Actions</div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+}

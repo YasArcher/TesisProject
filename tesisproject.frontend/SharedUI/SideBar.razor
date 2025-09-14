@@ -1,29 +1,88 @@
 ﻿@using Microsoft.AspNetCore.Components.Routing
+@namespace tesisproject.frontend.SharedUI
 
-<div class="top-row navbar navbar-dark">
-    <a class="navbar-brand" href="/">tesisproject.frontend</a>
-    <button class="navbar-toggler" @onclick="ToggleNavMenu">
-        <span class="navbar-toggler-icon"></span>
-    </button>
-</div>
-
-<div class="nav-scroll @NavMenuCssClass">
-    <nav class="nav flex-column">
-        @foreach (var group in GroupedItems)
-        {
-            if (!string.IsNullOrWhiteSpace(group.Key))
+<div class="sidebar menu-bg h-100 d-flex flex-column @(_collapsed ? "is-collapsed" : null)">
+    <!-- Branding -->
+    <div class="sidebar-brand d-flex align-items-center justify-content-between px-3 py-3 border-bottom border-white/20">
+        <div class="d-flex align-items-center">
+            <div class="brand-mark d-inline-flex align-items-center justify-content-center me-2">
+                <span class="fw-bold">SI</span>
+            </div>
+            <div class="brand-text">
+                <div class="fw-semibold lh-1">Sistema Integrado</div>
+                <small class="opacity-75 lh-1">de Documentación</small>
+            </div>
+        </div>
+        <button type="button"
+                class="btn btn-sm text-white border-0 bg-transparent opacity-75"
+                title="@(_collapsed ? "Expandir menú" : "Colapsar menú")"
+                @onclick="Toggle">
+            @if (_collapsed)
             {
-                <div class="nav-section">@group.Key</div>
+                <span>»</span>
             }
-
-            @foreach (var item in group)
+            else
             {
-                <NavLink class="nav-link"
-                         href="@item.Href"
-                         Match="@(item.Exact ? NavLinkMatch.All : NavLinkMatch.Prefix)">
-                    @item.Text
+
+                <span>«</span>
+            }
+        </button>
+    </div>
+
+    <!-- Nav -->
+    <nav class="sidebar-nav flex-grow-1 px-2 py-3">
+        <div class="sidebar-section text-uppercase small fw-semibold text-white-50 px-2 mb-2">Principal</div>
+        <ul class="nav flex-column gap-1">
+            <li class="nav-item">
+                <NavLink href="/articulos/registrar"
+                         Match="NavLinkMatch.Prefix"
+                         class="nav-link d-flex align-items-center gap-2 px-3 py-2 text-white/90"
+                         ActiveClass="active">
+                    <span class="icon">📄</span>
+                    <span class="label">Artículos Científicos</span>
                 </NavLink>
-            }
-        }
+            </li>
+            <li class="nav-item">
+                <NavLink href="/management/bi"
+                         Match="NavLinkMatch.Prefix"
+                         class="nav-link d-flex align-items-center gap-2 px-3 py-2 text-white/90"
+                         ActiveClass="active">
+                    <span class="icon">📊</span>
+                    <span class="label">Dashboard</span>
+                </NavLink>
+            </li>
+            <li class="nav-item">
+                <NavLink href="/test-api"
+                         Match="NavLinkMatch.Prefix"
+                         class="nav-link d-flex align-items-center gap-2 px-3 py-2 text-white/90"
+                         ActiveClass="active">
+                    <span class="icon">📊</span>
+                    <span class="label">TestApi</span>
+                </NavLink>
+            </li>
+
+        </ul>
+
+        <div class="sidebar-section text-uppercase small fw-semibold text-white-50 px-2 mt-4 mb-2">Inteligencia</div>
+        <ul class="nav flex-column gap-1">
+            <li class="nav-item">
+                <NavLink href="/analytics/prediction"
+                         class="nav-link d-flex align-items-center gap-2 px-3 py-2 text-white/90"
+                         ActiveClass="active">
+                    <span class="icon">🤖</span>
+                    <span class="label">Predicción y Recomendación</span>
+                </NavLink>
+            </li>
+        </ul>
     </nav>
+
+    <!-- Footer -->
+    <div class="mt-auto px-3 py-3 border-top border-white/20">
+        <small class="opacity-75">&copy; @DateTime.Now.Year</small>
+    </div>
 </div>
+
+@code {
+    private bool _collapsed = false;
+    private void Toggle() => _collapsed = !_collapsed;
+}

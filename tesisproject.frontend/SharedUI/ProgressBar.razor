@@ -1,0 +1,10 @@
+﻿@namespace tesisproject.frontend.SharedUI
+@inherits ComponentBase
+
+<div class="h-2 w-full rounded bg-slate-800 overflow-hidden">
+    <div class="h-full bg-emerald-500" style="width:@Percent%"></div>
+</div>
+
+@code {
+    [Parameter] public double Percent { get; set; } // 0..100
+}

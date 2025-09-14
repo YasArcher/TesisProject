@@ -1,0 +1,32 @@
+﻿@namespace tesisproject.frontend.SharedUI
+
+<svg viewBox="0 0 600 @Height" preserveAspectRatio="none" class="w-full h-48 sm:h-56">
+    @foreach (var (x, i) in Data.Select((d, i) => (d, i)))
+    {
+        var bw = 600.0 / Math.Max(1, Data.Count());
+        var h = MaxValue <= 0 ? 0 : (x.Value / MaxValue) * (Height - 20);
+        var bx = i * bw + 8;
+        var by = Height - h - 4;
+        <rect x="@bx" y="@by" width="@(bw - 12)" height="@h" rx="6" class="fill-indigo-500 opacity-80"></rect>
+    }
+    <line x1="0" y1="@Height" x2="600" y2="@Height" class="stroke-slate-700"></line>
+</svg>
+
+<div class="mt-2 grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-2 text-[10px] text-slate-400">
+    @foreach (var (x, i) in Data.Select((d, i) => (d, i)).Take(16))
+    {
+        <div class="truncate" title="@x.Label">@x.Label</div>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<(string Label, double Value)> Data { get; set; } = Enumerable.Empty<(string, double)>();
+    [Parameter] public double MaxValue { get; set; } = 0;
+    [Parameter] public int Height { get; set; } = 160;
+
+    protected override void OnParametersSet()
+    {
+        if (MaxValue <= 0 && Data.Any())
+            MaxValue = Data.Max(d => d.Value);
+    }
+}

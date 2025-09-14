@@ -1,38 +1,60 @@
-﻿using Microsoft.AspNetCore.Identity;
-using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore;
-using tesisproject.backend.Data.Identity;
-using tesisproject.shared.Entities.Catalogs;
-using tesisproject.shared.Entities.Core;
+﻿using Microsoft.EntityFrameworkCore;
+using tesisproject.backend.Data.Entities;
 
-namespace tesisproject.backend.Data
+namespace tesisproject.backend.Data;
+
+public class AppDbContext : DbContext
 {
-    public class AppDbContext
-        : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
+    public AppDbContext(DbContextOptions<AppDbContext> opt) : base(opt) { }
+
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<Article> Articles => Set<Article>();
+    public DbSet<ArticleParticipant> ArticleParticipants => Set<ArticleParticipant>();
+    protected override void OnModelCreating(ModelBuilder m)
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+        base.OnModelCreating(m);
 
-        // DbSets Core
-        public DbSet<Budget> budgets => Set<Budget>();
-        public DbSet<BudgetTransaction> budgetTransactions => Set<BudgetTransaction>();
-        public DbSet<Document> documents => Set<Document>();
-        public DbSet<Group> groups => Set<Group>();
-        public DbSet<GroupMember> groupMembers => Set<GroupMember>();
-        public DbSet<Project> projects => Set<Project>();
-        public DbSet<ProjectExtension> projectExtensions => Set<ProjectExtension>();
-        public DbSet<ProjectScope> projectScopes => Set<ProjectScope>();
-        public DbSet<Visit> visits => Set<Visit>();
-        // DbSets Catalogs
-        public DbSet<DocumentType> documentTypes => Set<DocumentType>();
-        public DbSet<GroupType> groupTypes => Set<GroupType>();
-        public DbSet<ProjectType> projectTypes => Set<ProjectType>();
-        public DbSet<ScopeType> scopeTypes => Set<ScopeType>();
-        public DbSet<TransactionType> transactionTypes => Set<TransactionType>();
-        public DbSet<VisitState> visitStates => Set<VisitState>();
-
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        m.Entity<Article>(e =>
         {
-            base.OnModelCreating(modelBuilder);
-        }
+            e.Property(x => x.Titulo).HasMaxLength(1000);
+            e.Property(x => x.NombreRevista).HasMaxLength(300);
+            e.Property(x => x.CodigoPublicacion).HasMaxLength(200);
+            e.Property(x => x.CodigoISSN).HasMaxLength(32);
+            e.Property(x => x.VolumenRevista).HasMaxLength(50);
+            e.Property(x => x.NumeroRevista).HasMaxLength(50);
+            e.Property(x => x.BaseDatos).HasMaxLength(100);
+            e.Property(x => x.CampoAmplio).HasMaxLength(200);
+            e.Property(x => x.CampoEspecifico).HasMaxLength(200);
+            e.Property(x => x.CampoDetallado).HasMaxLength(200);
+            e.Property(x => x.Quartil).HasMaxLength(10);
+            e.Property(x => x.Filiacion).HasMaxLength(300);
+            e.Property(x => x.Estado).HasMaxLength(50);
+            e.Property(x => x.AccesoAbierto).HasMaxLength(10);
+            e.Property(x => x.LinkPublicacion).HasMaxLength(1000);
+            e.Property(x => x.EnlaceRevista).HasMaxLength(1000);
+            e.Property(x => x.SJR).HasPrecision(6, 3);
+        });
+
+        m.Entity<ArticleParticipant>(e =>
+        {
+            e.Property(x => x.Identificacion).HasMaxLength(100);
+            e.Property(x => x.Nombre).HasMaxLength(300);
+            e.Property(x => x.Participacion).HasMaxLength(200);
+
+            e.HasOne(x => x.Article)
+             .WithMany(a => a.Participantes)
+             .HasForeignKey(x => x.ArticleId)
+             .OnDelete(DeleteBehavior.Cascade);
+
+            e.HasIndex(x => new { x.ArticleId, x.Index }).IsUnique();
+        });
     }
+}
+
+public class Project
+{
+    public int Id { get; set; }
+    public string Code { get; set; } = default!;
+    public string Name { get; set; } = default!;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

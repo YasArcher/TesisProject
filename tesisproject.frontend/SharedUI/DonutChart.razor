@@ -1,0 +1,21 @@
+﻿@namespace tesisproject.frontend.SharedUI
+
+<div class="flex items-center gap-4">
+    <svg viewBox="0 0 42 42" class="w-20 h-20">
+        <circle cx="21" cy="21" r="15.915" class="fill-none stroke-slate-800" stroke-width="6"></circle>
+        <circle cx="21" cy="21" r="15.915" class="fill-none stroke-emerald-500" stroke-width="6"
+                stroke-dasharray="@DashArray" stroke-dashoffset="25"></circle>
+    </svg>
+    <div>
+        <div class="text-slate-200 text-xl font-semibold">@Pct%</div>
+        <div class="text-slate-400 text-xs">@Etiqueta</div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public double Parte { get; set; }
+    [Parameter] public double Total { get; set; } = 1;
+    [Parameter] public string Etiqueta { get; set; } = "Abierto";
+    private string Pct => (Total <= 0 ? 0 : Parte / Total * 100.0).ToString("0.0");
+    private string DashArray => $"{Pct}, 100";
+}

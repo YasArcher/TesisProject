@@ -1,0 +1,28 @@
+﻿@namespace tesisproject.frontend.SharedUI
+@inherits ComponentBase
+<div class="card rounded-2xl shadow border-0 @Class">
+    <div class="card-header bg-white rounded-top-2xl d-flex align-items-center justify-content-between">
+        <div>
+            @if (!string.IsNullOrWhiteSpace(Title))
+            {
+                <h4 class="mb-0">@Title</h4>
+            }
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <small class="text-muted">@Subtitle</small>
+            }
+        </div>
+        @HeaderRight
+    </div>
+    <div class="card-body">
+        @ChildContent
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? HeaderRight { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

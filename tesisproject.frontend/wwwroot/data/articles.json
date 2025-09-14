@@ -1,0 +1,26 @@
+[
+  {
+    "id": "A001",
+    "title": "Deep Learning for Recommender Systems",
+    "authors": [ "Chinnasamy", "Wong" ],
+    "venue": "Heliyon",
+    "year": 2023,
+    "keywords": [ "deep learning", "collaborative filtering" ],
+    "doi": "10.1016/j.heliyon.2023.e22844",
+    "url": "https://doi.org/10.1016/j.heliyon.2023.e22844",
+    "openAccess": true,
+    "citationCount": 42
+  },
+  {
+    "id": "A002",
+    "title": "Temporal Big Data Analytics for Agility",
+    "authors": [ "Mach-Króla", "Hadasik" ],
+    "venue": "Decision Support Systems",
+    "year": 2023,
+    "keywords": [ "TBDA", "agility" ],
+    "doi": "10.1016/example.2023.000001",
+    "url": "https://example.com/tbda",
+    "openAccess": false,
+    "citationCount": 15
+  }
+]
