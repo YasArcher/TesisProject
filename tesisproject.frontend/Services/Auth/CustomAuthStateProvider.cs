@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components.Authorization;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using tesisproject.frontend.Services.Interfaces;
 
@@ -18,30 +19,52 @@ namespace tesisproject.frontend.Services.Auth
 
             try
             {
-                var claims = ParseClaimsFromJwt(token).ToList();
+                var claims = ParseClaimsFromJwt(token);
 
-                // exp opcional
-                var exp = claims.FirstOrDefault(c => c.Type == "exp")?.Value;
-                if (long.TryParse(exp, out var expUnix))
+                var expStr = claims.FirstOrDefault(c => c.Type == "exp")?.Value;
+                if (long.TryParse(expStr, out var expUnix))
                 {
-                    if (DateTimeOffset.UtcNow >= DateTimeOffset.FromUnixTimeSeconds(expUnix))
+                    var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    if (now >= expUnix)
+                    {
+                        await _tokenStore.ClearAsync();
                         return Anonymous();
+                    }
                 }
 
-                var identity = new ClaimsIdentity(claims, "jwt");
+                var identity = new ClaimsIdentity(
+                    claims,
+                    authenticationType: "jwt",
+                    nameType: "name",
+                    roleType: "role"
+                );
+
                 return new AuthenticationState(new ClaimsPrincipal(identity));
             }
             catch
             {
+                await _tokenStore.ClearAsync();
                 return Anonymous();
             }
         }
 
+        public async Task SetTokenAsync(string token)
+        {
+            await _tokenStore.SetAsync(token);
+            NotifyUserAuthentication(token);
+        }
+
         public void NotifyUserAuthentication(string token)
         {
-            var identity = new ClaimsIdentity(ParseClaimsFromJwt(token), "jwt");
-            NotifyAuthenticationStateChanged(
-                Task.FromResult(new AuthenticationState(new ClaimsPrincipal(identity))));
+            var identity = new ClaimsIdentity(
+                ParseClaimsFromJwt(token),
+                authenticationType: "jwt",
+                nameType: "name",
+                roleType: "role"
+            );
+
+            var authState = new AuthenticationState(new ClaimsPrincipal(identity));
+            NotifyAuthenticationStateChanged(Task.FromResult(authState));
         }
 
         public void NotifyUserLogout() =>
@@ -50,23 +73,41 @@ namespace tesisproject.frontend.Services.Auth
         private static AuthenticationState Anonymous() =>
             new(new ClaimsPrincipal(new ClaimsIdentity()));
 
-        private static IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
+        private static List<Claim> ParseClaimsFromJwt(string jwt)
         {
-            var parts = jwt.Split('.');
-            if (parts.Length != 3) yield break;
-
-            var payload = parts[1].Replace('-', '+').Replace('_', '/');
-            switch (payload.Length % 4) { case 2: payload += "=="; break; case 3: payload += "="; break; }
-            var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(payload));
-            var kv = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
-
-            if (kv is null) yield break;
-            foreach (var (k, v) in kv)
+            // Construimos lista para evitar yield en try/catch
+            var claims = new List<Claim>();
+            try
             {
-                if (v is JsonElement je && je.ValueKind == JsonValueKind.Array)
-                    foreach (var item in je.EnumerateArray()) yield return new Claim(k, item.ToString());
-                else
-                    yield return new Claim(k, v?.ToString() ?? "");
+                var parts = jwt.Split('.');
+                if (parts.Length != 3) return claims;
+
+                var payload = parts[1].Replace('-', '+').Replace('_', '/');
+                payload = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
+
+                var json = Encoding.UTF8.GetString(Convert.FromBase64String(payload));
+                var kv = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
+                if (kv is null) return claims;
+
+                foreach (var (k, v) in kv)
+                {
+                    if (v is JsonElement je && je.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in je.EnumerateArray())
+                            claims.Add(new Claim(k, item.ToString()));
+                    }
+                    else
+                    {
+                        claims.Add(new Claim(k, v?.ToString() ?? string.Empty));
+                    }
+                }
+
+                return claims;
+            }
+            catch
+            {
+                // token inválido → lista vacía
+                return new List<Claim>();
             }
         }
     }

@@ -3,11 +3,11 @@ using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using tesisproject.backend.Data;
-using tesisproject.backend.Data.Identity;
 using tesisproject.backend.Options;
 using tesisproject.backend.Repositories.Implementations;
 using tesisproject.backend.Repositories.Interfaces;
@@ -26,7 +26,7 @@ ConfigureAuthentication(builder);
 ConfigureCors(builder);
 ConfigureOptions(builder);
 ConfigureHttpClients(builder);
-ConfigureDependencyInjection(builder);
+ConfigureDependencyInjection(builder); // <- registra RefreshTokenService + JwtTokenService
 ConfigureApiDocumentation(builder);
 
 var app = builder.Build();
@@ -69,48 +69,72 @@ static void ConfigureDatabase(WebApplicationBuilder builder)
 static void ConfigureIdentity(WebApplicationBuilder builder)
 {
     builder.Services
-        .AddIdentityCore<ApplicationUser>(options =>
+        .AddIdentityCore<IdentityUser<int>>(options =>
         {
-            // Password requirements
             options.Password.RequiredLength = 6;
             options.Password.RequireDigit = false;
             options.Password.RequireUppercase = false;
             options.Password.RequireNonAlphanumeric = false;
-
-            // User requirements
             options.User.RequireUniqueEmail = true;
         })
-        .AddRoles<IdentityRole<Guid>>()
+        .AddRoles<IdentityRole<int>>()
         .AddEntityFrameworkStores<AppDbContext>()
+        .AddSignInManager<SignInManager<IdentityUser<int>>>()
         .AddDefaultTokenProviders();
+
+    builder.Services.AddHttpContextAccessor();
 }
+
 
 static void ConfigureAuthentication(WebApplicationBuilder builder)
 {
-    var jwtSettings = builder.Configuration.GetSection("Jwt");
-    var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
+    var jwt = builder.Configuration.GetSection("Jwt");
+    var keyRaw = jwt["Key"] ?? throw new InvalidOperationException("Jwt:Key missing");
+    if (keyRaw.Length < 32) throw new InvalidOperationException("Jwt:Key must be >= 32 chars");
+    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyRaw));
 
-    builder.Services.AddAuthentication(options =>
-    {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(options =>
-    {
-        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
-        options.SaveToken = true;
-        options.TokenValidationParameters = new TokenValidationParameters
+    // Importante: no mapear automáticamente a ClaimTypes.*
+    JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
+
+    builder.Services
+        .AddAuthentication(options =>
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtSettings["Issuer"],
-            ValidAudience = jwtSettings["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(key),
-            ClockSkew = TimeSpan.Zero
-        };
-    });
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
+        {
+            options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
+            options.SaveToken = true;
+
+            // Si tu TokenService emite "role" y "name" (recomendado)
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = jwt["Issuer"],
+                ValidAudience = jwt["Audience"],
+                IssuerSigningKey = key,
+
+                // Mantén skew bajo pero no 0 para evitar falsos 401 por desfase de reloj
+                ClockSkew = TimeSpan.FromMinutes(2),
+
+                // <- Claves para que Roles/Name funcionen limpio en Blazor y Policies
+                NameClaimType = "name",
+                RoleClaimType = "role",
+            };
+
+            // (Opcional) evita el mapeo por instancia también
+            options.MapInboundClaims = false;
+
+            // (Opcional) logging de fallos
+            // options.Events = new JwtBearerEvents
+            // {
+            //     OnAuthenticationFailed = ctx => { /* log */ return Task.CompletedTask; }
+            // };
+        });
 
     builder.Services.AddAuthorization();
 }
@@ -119,7 +143,7 @@ static void ConfigureCors(WebApplicationBuilder builder)
 {
     var corsOrigins = builder.Configuration
         .GetSection("Cors:AllowedOrigins")
-        .Get<string[]>() ?? ["https://localhost:7065"];
+        .Get<string[]>() ?? new[] { "https://localhost:7065" };
 
     builder.Services.AddCors(options =>
     {
@@ -132,6 +156,7 @@ static void ConfigureCors(WebApplicationBuilder builder)
         });
     });
 }
+
 
 static void ConfigureOptions(WebApplicationBuilder builder)
 {
@@ -154,6 +179,9 @@ static void ConfigureHttpClients(WebApplicationBuilder builder)
         client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
         client.DefaultRequestHeaders.Add("User-Agent", "TesisProject/1.0");
     });
+
+    // (Opcional) Un cliente “raw” si usas handler de refresh en FE
+    // builder.Services.AddHttpClient("raw");
 }
 
 static void ConfigureDependencyInjection(WebApplicationBuilder builder)
@@ -175,7 +203,14 @@ static void ConfigureDependencyInjection(WebApplicationBuilder builder)
     builder.Services.AddScoped<IGroupMemberRepository, GroupMemberRepository>();
 
     // Application Services
+    // ITokenService desacoplado (CreateAccessToken(Guid userId, string? email, IList<string> roles))
+    builder.Services.AddScoped<IAuthService, AuthService>();
     builder.Services.AddScoped<ITokenService, JwtTokenService>();
+
+    // Refresh tokens (persistencia y rotación)
+    builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
+
+    // Otros servicios de aplicación
     builder.Services.AddScoped<IProjectService, ProjectService>();
     builder.Services.AddScoped<IGroupService, GroupService>();
 }

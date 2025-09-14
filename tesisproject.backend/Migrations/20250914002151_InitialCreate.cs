@@ -15,7 +15,8 @@ namespace tesisproject.backend.Migrations
                 name: "AspNetRoles",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     ConcurrencyStamp = table.Column<string>(type: "nvarchar(max)", nullable: true)
@@ -29,8 +30,8 @@ namespace tesisproject.backend.Migrations
                 name: "AspNetUsers",
                 columns: table => new
                 {
-                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    FullName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
                     UserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
@@ -52,7 +53,7 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "documentTypes",
+                name: "DocumentTypes",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -61,11 +62,11 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_documentTypes", x => x.Id);
+                    table.PrimaryKey("PK_DocumentTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "groupTypes",
+                name: "GroupTypes",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -74,7 +75,7 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_groupTypes", x => x.Id);
+                    table.PrimaryKey("PK_GroupTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -105,7 +106,7 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "projectTypes",
+                name: "ProjectTypes",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -114,11 +115,11 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_projectTypes", x => x.Id);
+                    table.PrimaryKey("PK_ProjectTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "scopeTypes",
+                name: "ScopeTypes",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -127,11 +128,11 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_scopeTypes", x => x.Id);
+                    table.PrimaryKey("PK_ScopeTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "transactionTypes",
+                name: "TransactionTypes",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -140,11 +141,11 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_transactionTypes", x => x.Id);
+                    table.PrimaryKey("PK_TransactionTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
-                name: "visitStates",
+                name: "VisitStates",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -153,7 +154,7 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_visitStates", x => x.Id);
+                    table.PrimaryKey("PK_VisitStates", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -162,7 +163,7 @@ namespace tesisproject.backend.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    RoleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    RoleId = table.Column<int>(type: "int", nullable: false),
                     ClaimType = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ClaimValue = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
@@ -183,7 +184,7 @@ namespace tesisproject.backend.Migrations
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<int>(type: "int", nullable: false),
                     ClaimType = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     ClaimValue = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
@@ -205,7 +206,7 @@ namespace tesisproject.backend.Migrations
                     LoginProvider = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     ProviderKey = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     ProviderDisplayName = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    UserId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -222,8 +223,8 @@ namespace tesisproject.backend.Migrations
                 name: "AspNetUserRoles",
                 columns: table => new
                 {
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    RoleId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    RoleId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -246,7 +247,7 @@ namespace tesisproject.backend.Migrations
                 name: "AspNetUserTokens",
                 columns: table => new
                 {
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<int>(type: "int", nullable: false),
                     LoginProvider = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(450)", nullable: false),
                     Value = table.Column<string>(type: "nvarchar(max)", nullable: true)
@@ -263,7 +264,32 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "documents",
+                name: "RefreshTokens",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    TokenHash = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    ExpiresAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RevokedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ReplacedByTokenHash = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedByIp = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    RevokedByIp = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_RefreshTokens", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_RefreshTokens_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Documents",
                 columns: table => new
                 {
                     DocumentId = table.Column<int>(type: "int", nullable: false)
@@ -274,22 +300,22 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_documents", x => x.DocumentId);
+                    table.PrimaryKey("PK_Documents", x => x.DocumentId);
                     table.ForeignKey(
-                        name: "FK_documents_documentTypes_DocumentTypeId",
+                        name: "FK_Documents_DocumentTypes_DocumentTypeId",
                         column: x => x.DocumentTypeId,
-                        principalTable: "documentTypes",
+                        principalTable: "DocumentTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_documents_documents_RelatedDocumentId",
+                        name: "FK_Documents_Documents_RelatedDocumentId",
                         column: x => x.RelatedDocumentId,
-                        principalTable: "documents",
+                        principalTable: "Documents",
                         principalColumn: "DocumentId");
                 });
 
             migrationBuilder.CreateTable(
-                name: "groups",
+                name: "Groups",
                 columns: table => new
                 {
                     GroupId = table.Column<int>(type: "int", nullable: false)
@@ -299,17 +325,17 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_groups", x => x.GroupId);
+                    table.PrimaryKey("PK_Groups", x => x.GroupId);
                     table.ForeignKey(
-                        name: "FK_groups_groupTypes_GroupTypeId",
+                        name: "FK_Groups_GroupTypes_GroupTypeId",
                         column: x => x.GroupTypeId,
-                        principalTable: "groupTypes",
+                        principalTable: "GroupTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "groupMembers",
+                name: "GroupMembers",
                 columns: table => new
                 {
                     GroupMemberId = table.Column<int>(type: "int", nullable: false)
@@ -322,17 +348,17 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_groupMembers", x => x.GroupMemberId);
+                    table.PrimaryKey("PK_GroupMembers", x => x.GroupMemberId);
                     table.ForeignKey(
-                        name: "FK_groupMembers_groups_GroupId",
+                        name: "FK_GroupMembers_Groups_GroupId",
                         column: x => x.GroupId,
-                        principalTable: "groups",
+                        principalTable: "Groups",
                         principalColumn: "GroupId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "projects",
+                name: "Projects",
                 columns: table => new
                 {
                     ProjectId = table.Column<int>(type: "int", nullable: false)
@@ -354,39 +380,45 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_projects", x => x.ProjectId);
+                    table.PrimaryKey("PK_Projects", x => x.ProjectId);
                     table.ForeignKey(
-                        name: "FK_projects_ProjectState_ProjectStateId",
+                        name: "FK_Projects_AspNetUsers_CreatedByUserId",
+                        column: x => x.CreatedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Projects_Documents_InitialDocumentId",
+                        column: x => x.InitialDocumentId,
+                        principalTable: "Documents",
+                        principalColumn: "DocumentId");
+                    table.ForeignKey(
+                        name: "FK_Projects_Groups_ProjectGroupId",
+                        column: x => x.ProjectGroupId,
+                        principalTable: "Groups",
+                        principalColumn: "GroupId",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Projects_Groups_SenesytGroupId",
+                        column: x => x.SenesytGroupId,
+                        principalTable: "Groups",
+                        principalColumn: "GroupId");
+                    table.ForeignKey(
+                        name: "FK_Projects_ProjectState_ProjectStateId",
                         column: x => x.ProjectStateId,
                         principalTable: "ProjectState",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_projects_documents_InitialDocumentId",
-                        column: x => x.InitialDocumentId,
-                        principalTable: "documents",
-                        principalColumn: "DocumentId");
-                    table.ForeignKey(
-                        name: "FK_projects_groups_ProjectGroupId",
-                        column: x => x.ProjectGroupId,
-                        principalTable: "groups",
-                        principalColumn: "GroupId",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_projects_groups_SenesytGroupId",
-                        column: x => x.SenesytGroupId,
-                        principalTable: "groups",
-                        principalColumn: "GroupId");
-                    table.ForeignKey(
-                        name: "FK_projects_projectTypes_ProjectTypeId",
+                        name: "FK_Projects_ProjectTypes_ProjectTypeId",
                         column: x => x.ProjectTypeId,
-                        principalTable: "projectTypes",
+                        principalTable: "ProjectTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "budgets",
+                name: "Budgets",
                 columns: table => new
                 {
                     BudgetId = table.Column<int>(type: "int", nullable: false)
@@ -400,17 +432,17 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_budgets", x => x.BudgetId);
+                    table.PrimaryKey("PK_Budgets", x => x.BudgetId);
                     table.ForeignKey(
-                        name: "FK_budgets_projects_ProjectId",
+                        name: "FK_Budgets_Projects_ProjectId",
                         column: x => x.ProjectId,
-                        principalTable: "projects",
+                        principalTable: "Projects",
                         principalColumn: "ProjectId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "projectExtensions",
+                name: "ProjectExtensions",
                 columns: table => new
                 {
                     ProjectExtensionId = table.Column<int>(type: "int", nullable: false)
@@ -423,28 +455,28 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_projectExtensions", x => x.ProjectExtensionId);
+                    table.PrimaryKey("PK_ProjectExtensions", x => x.ProjectExtensionId);
                     table.ForeignKey(
-                        name: "FK_projectExtensions_ProjectExtensionType_ProjectExtensionTypeId",
+                        name: "FK_ProjectExtensions_Documents_DocumentId",
+                        column: x => x.DocumentId,
+                        principalTable: "Documents",
+                        principalColumn: "DocumentId");
+                    table.ForeignKey(
+                        name: "FK_ProjectExtensions_ProjectExtensionType_ProjectExtensionTypeId",
                         column: x => x.ProjectExtensionTypeId,
                         principalTable: "ProjectExtensionType",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_projectExtensions_documents_DocumentId",
-                        column: x => x.DocumentId,
-                        principalTable: "documents",
-                        principalColumn: "DocumentId");
-                    table.ForeignKey(
-                        name: "FK_projectExtensions_projects_ProjectId",
+                        name: "FK_ProjectExtensions_Projects_ProjectId",
                         column: x => x.ProjectId,
-                        principalTable: "projects",
+                        principalTable: "Projects",
                         principalColumn: "ProjectId",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "projectScopes",
+                name: "ProjectScopes",
                 columns: table => new
                 {
                     ProjectScopeId = table.Column<int>(type: "int", nullable: false)
@@ -455,23 +487,23 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_projectScopes", x => x.ProjectScopeId);
+                    table.PrimaryKey("PK_ProjectScopes", x => x.ProjectScopeId);
                     table.ForeignKey(
-                        name: "FK_projectScopes_projects_ProjectId",
+                        name: "FK_ProjectScopes_Projects_ProjectId",
                         column: x => x.ProjectId,
-                        principalTable: "projects",
+                        principalTable: "Projects",
                         principalColumn: "ProjectId",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_projectScopes_scopeTypes_ScopeTypeId",
+                        name: "FK_ProjectScopes_ScopeTypes_ScopeTypeId",
                         column: x => x.ScopeTypeId,
-                        principalTable: "scopeTypes",
+                        principalTable: "ScopeTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "visits",
+                name: "Visits",
                 columns: table => new
                 {
                     VisitId = table.Column<int>(type: "int", nullable: false)
@@ -484,28 +516,28 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_visits", x => x.VisitId);
+                    table.PrimaryKey("PK_Visits", x => x.VisitId);
                     table.ForeignKey(
-                        name: "FK_visits_documents_DocumentId",
+                        name: "FK_Visits_Documents_DocumentId",
                         column: x => x.DocumentId,
-                        principalTable: "documents",
+                        principalTable: "Documents",
                         principalColumn: "DocumentId");
                     table.ForeignKey(
-                        name: "FK_visits_projects_ProjectId",
+                        name: "FK_Visits_Projects_ProjectId",
                         column: x => x.ProjectId,
-                        principalTable: "projects",
+                        principalTable: "Projects",
                         principalColumn: "ProjectId",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_visits_visitStates_VisitStateId",
+                        name: "FK_Visits_VisitStates_VisitStateId",
                         column: x => x.VisitStateId,
-                        principalTable: "visitStates",
+                        principalTable: "VisitStates",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "budgetTransactions",
+                name: "BudgetTransactions",
                 columns: table => new
                 {
                     BudgetTransactionId = table.Column<int>(type: "int", nullable: false)
@@ -522,17 +554,17 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_budgetTransactions", x => x.BudgetTransactionId);
+                    table.PrimaryKey("PK_BudgetTransactions", x => x.BudgetTransactionId);
                     table.ForeignKey(
-                        name: "FK_budgetTransactions_budgets_BudgetId",
+                        name: "FK_BudgetTransactions_Budgets_BudgetId",
                         column: x => x.BudgetId,
-                        principalTable: "budgets",
+                        principalTable: "Budgets",
                         principalColumn: "BudgetId",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_budgetTransactions_transactionTypes_TransactionTypeId",
+                        name: "FK_BudgetTransactions_TransactionTypes_TransactionTypeId",
                         column: x => x.TransactionTypeId,
-                        principalTable: "transactionTypes",
+                        principalTable: "TransactionTypes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
@@ -577,106 +609,122 @@ namespace tesisproject.backend.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_budgets_ProjectId",
-                table: "budgets",
+                name: "IX_Budgets_ProjectId",
+                table: "Budgets",
                 column: "ProjectId",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_budgetTransactions_BudgetId",
-                table: "budgetTransactions",
+                name: "IX_BudgetTransactions_BudgetId",
+                table: "BudgetTransactions",
                 column: "BudgetId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_budgetTransactions_TransactionTypeId",
-                table: "budgetTransactions",
+                name: "IX_BudgetTransactions_TransactionTypeId",
+                table: "BudgetTransactions",
                 column: "TransactionTypeId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_documents_DocumentTypeId",
-                table: "documents",
+                name: "IX_Documents_DocumentTypeId",
+                table: "Documents",
                 column: "DocumentTypeId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_documents_RelatedDocumentId",
-                table: "documents",
+                name: "IX_Documents_RelatedDocumentId",
+                table: "Documents",
                 column: "RelatedDocumentId",
                 unique: true,
                 filter: "[RelatedDocumentId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
-                name: "IX_groupMembers_GroupId",
-                table: "groupMembers",
+                name: "IX_GroupMembers_GroupId",
+                table: "GroupMembers",
                 column: "GroupId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_groups_GroupTypeId",
-                table: "groups",
+                name: "IX_Groups_GroupTypeId",
+                table: "Groups",
                 column: "GroupTypeId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_projectExtensions_DocumentId",
-                table: "projectExtensions",
+                name: "IX_ProjectExtensions_DocumentId",
+                table: "ProjectExtensions",
                 column: "DocumentId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_projectExtensions_ProjectExtensionTypeId",
-                table: "projectExtensions",
+                name: "IX_ProjectExtensions_ProjectExtensionTypeId",
+                table: "ProjectExtensions",
                 column: "ProjectExtensionTypeId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_projectExtensions_ProjectId",
-                table: "projectExtensions",
+                name: "IX_ProjectExtensions_ProjectId",
+                table: "ProjectExtensions",
                 column: "ProjectId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_projects_InitialDocumentId",
-                table: "projects",
+                name: "IX_Projects_CreatedByUserId",
+                table: "Projects",
+                column: "CreatedByUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Projects_InitialDocumentId",
+                table: "Projects",
                 column: "InitialDocumentId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_projects_ProjectGroupId",
-                table: "projects",
+                name: "IX_Projects_ProjectGroupId",
+                table: "Projects",
                 column: "ProjectGroupId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_projects_ProjectStateId",
-                table: "projects",
+                name: "IX_Projects_ProjectStateId",
+                table: "Projects",
                 column: "ProjectStateId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_projects_ProjectTypeId",
-                table: "projects",
+                name: "IX_Projects_ProjectTypeId",
+                table: "Projects",
                 column: "ProjectTypeId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_projects_SenesytGroupId",
-                table: "projects",
+                name: "IX_Projects_SenesytGroupId",
+                table: "Projects",
                 column: "SenesytGroupId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_projectScopes_ProjectId",
-                table: "projectScopes",
+                name: "IX_ProjectScopes_ProjectId",
+                table: "ProjectScopes",
                 column: "ProjectId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_projectScopes_ScopeTypeId",
-                table: "projectScopes",
+                name: "IX_ProjectScopes_ScopeTypeId",
+                table: "ProjectScopes",
                 column: "ScopeTypeId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_visits_DocumentId",
-                table: "visits",
+                name: "IX_RefreshTokens_TokenHash",
+                table: "RefreshTokens",
+                column: "TokenHash",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RefreshTokens_UserId",
+                table: "RefreshTokens",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Visits_DocumentId",
+                table: "Visits",
                 column: "DocumentId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_visits_ProjectId",
-                table: "visits",
+                name: "IX_Visits_ProjectId",
+                table: "Visits",
                 column: "ProjectId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_visits_VisitStateId",
-                table: "visits",
+                name: "IX_Visits_VisitStateId",
+                table: "Visits",
                 column: "VisitStateId");
         }
 
@@ -699,61 +747,64 @@ namespace tesisproject.backend.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
-                name: "budgetTransactions");
+                name: "BudgetTransactions");
 
             migrationBuilder.DropTable(
-                name: "groupMembers");
+                name: "GroupMembers");
 
             migrationBuilder.DropTable(
-                name: "projectExtensions");
+                name: "ProjectExtensions");
 
             migrationBuilder.DropTable(
-                name: "projectScopes");
+                name: "ProjectScopes");
 
             migrationBuilder.DropTable(
-                name: "visits");
+                name: "RefreshTokens");
+
+            migrationBuilder.DropTable(
+                name: "Visits");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
 
             migrationBuilder.DropTable(
-                name: "AspNetUsers");
+                name: "Budgets");
 
             migrationBuilder.DropTable(
-                name: "budgets");
-
-            migrationBuilder.DropTable(
-                name: "transactionTypes");
+                name: "TransactionTypes");
 
             migrationBuilder.DropTable(
                 name: "ProjectExtensionType");
 
             migrationBuilder.DropTable(
-                name: "scopeTypes");
+                name: "ScopeTypes");
 
             migrationBuilder.DropTable(
-                name: "visitStates");
+                name: "VisitStates");
 
             migrationBuilder.DropTable(
-                name: "projects");
+                name: "Projects");
+
+            migrationBuilder.DropTable(
+                name: "AspNetUsers");
+
+            migrationBuilder.DropTable(
+                name: "Documents");
+
+            migrationBuilder.DropTable(
+                name: "Groups");
 
             migrationBuilder.DropTable(
                 name: "ProjectState");
 
             migrationBuilder.DropTable(
-                name: "documents");
+                name: "ProjectTypes");
 
             migrationBuilder.DropTable(
-                name: "groups");
+                name: "DocumentTypes");
 
             migrationBuilder.DropTable(
-                name: "projectTypes");
-
-            migrationBuilder.DropTable(
-                name: "documentTypes");
-
-            migrationBuilder.DropTable(
-                name: "groupTypes");
+                name: "GroupTypes");
         }
     }
 }

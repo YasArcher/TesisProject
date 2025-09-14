@@ -20,9 +20,16 @@ namespace tesisproject.shared.DTOs.Auth
         [Required] public string Password { get; set; } = string.Empty;
     }
 
+    // Respuesta estándar tipo Supabase
     public class AuthResponse
     {
+        public string TokenType { get; set; } = "Bearer";
         public string AccessToken { get; set; } = string.Empty;
-        public DateTime ExpiresAtUtc { get; set; }
+        public DateTime AccessTokenExpiresAtUtc { get; set; }
+
+        // Refresh solo en cookie HttpOnly (recomendado). 
+        // Si quieres exponerlo por cuerpo (menos seguro) añade:
+        public string? RefreshToken { get; set; }
+        public DateTime? RefreshTokenExpiresAtUtc { get; set; }
     }
 }
