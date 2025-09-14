@@ -1,38 +1,68 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using tesisproject.backend.Data.Identity;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Entities.Auth;
 
 namespace tesisproject.backend.Data
 {
     public class AppDbContext
-        : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>
+        : IdentityDbContext<IdentityUser<int>, IdentityRole<int>, int>
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        // DbSets Core
-        public DbSet<Budget> budgets => Set<Budget>();
-        public DbSet<BudgetTransaction> budgetTransactions => Set<BudgetTransaction>();
-        public DbSet<Document> documents => Set<Document>();
-        public DbSet<Group> groups => Set<Group>();
-        public DbSet<GroupMember> groupMembers => Set<GroupMember>();
-        public DbSet<Project> projects => Set<Project>();
-        public DbSet<ProjectExtension> projectExtensions => Set<ProjectExtension>();
-        public DbSet<ProjectScope> projectScopes => Set<ProjectScope>();
-        public DbSet<Visit> visits => Set<Visit>();
-        // DbSets Catalogs
-        public DbSet<DocumentType> documentTypes => Set<DocumentType>();
-        public DbSet<GroupType> groupTypes => Set<GroupType>();
-        public DbSet<ProjectType> projectTypes => Set<ProjectType>();
-        public DbSet<ScopeType> scopeTypes => Set<ScopeType>();
-        public DbSet<TransactionType> transactionTypes => Set<TransactionType>();
-        public DbSet<VisitState> visitStates => Set<VisitState>();
+        // ===== DbSets Core =====
+        public DbSet<Budget> Budgets => Set<Budget>();
+        public DbSet<BudgetTransaction> BudgetTransactions => Set<BudgetTransaction>();
+        public DbSet<Document> Documents => Set<Document>();
+        public DbSet<Group> Groups => Set<Group>();
+        public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
+        public DbSet<Project> Projects => Set<Project>();
+        public DbSet<ProjectExtension> ProjectExtensions => Set<ProjectExtension>();
+        public DbSet<ProjectScope> ProjectScopes => Set<ProjectScope>();
+        public DbSet<Visit> Visits => Set<Visit>();
 
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        // ===== DbSets Catalogs =====
+        public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
+        public DbSet<GroupType> GroupTypes => Set<GroupType>();
+        public DbSet<ProjectType> ProjectTypes => Set<ProjectType>();
+        public DbSet<ScopeType> ScopeTypes => Set<ScopeType>();
+        public DbSet<TransactionType> TransactionTypes => Set<TransactionType>();
+        public DbSet<VisitState> VisitStates => Set<VisitState>();
+
+        // ===== Auth =====
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+        protected override void OnModelCreating(ModelBuilder builder)
         {
-            base.OnModelCreating(modelBuilder);
+            base.OnModelCreating(builder);
+
+            // FK de Project → AspNetUsers (int ahora)
+            builder.Entity<Project>(b =>
+            {
+                b.HasIndex(p => p.CreatedByUserId);
+
+                b.HasOne<IdentityUser<int>>()
+                 .WithMany()
+                 .HasForeignKey(p => p.CreatedByUserId)
+                 .HasPrincipalKey(u => u.Id)
+                 .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // RefreshTokens → AspNetUsers (int)
+            builder.Entity<RefreshToken>(b =>
+            {
+                b.Property(x => x.TokenHash).IsRequired().HasMaxLength(128);
+                b.HasIndex(x => x.TokenHash).IsUnique();
+
+                b.HasOne<IdentityUser<int>>()
+                 .WithMany()
+                 .HasForeignKey(x => x.UserId)
+                 .HasPrincipalKey(u => u.Id)
+                 .OnDelete(DeleteBehavior.Cascade);
+            });
+
         }
     }
 }

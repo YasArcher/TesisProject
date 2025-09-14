@@ -22,11 +22,13 @@ namespace tesisproject.backend.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<int>", b =>
                 {
-                    b.Property<Guid>("Id")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
@@ -50,7 +52,7 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("AspNetRoles", (string)null);
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -64,8 +66,8 @@ namespace tesisproject.backend.Migrations
                     b.Property<string>("ClaimValue")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uniqueidentifier");
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -74,90 +76,13 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("AspNetRoleClaims", (string)null);
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUser<int>", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ClaimType")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("ClaimValue")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("AspNetUserClaims", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
-                {
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("ProviderKey")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("ProviderDisplayName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("LoginProvider", "ProviderKey");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("AspNetUserLogins", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("RoleId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("UserId", "RoleId");
-
-                    b.HasIndex("RoleId");
-
-                    b.ToTable("AspNetUserRoles", (string)null);
-                });
-
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
-                {
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("LoginProvider")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.Property<string>("Value")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("UserId", "LoginProvider", "Name");
-
-                    b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("tesisproject.backend.Data.Identity.ApplicationUser", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("int");
@@ -172,9 +97,6 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
-
-                    b.Property<string>("FullName")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
@@ -222,6 +144,127 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<int>", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClaimType")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ClaimValue")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AspNetUserClaims", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
+                {
+                    b.Property<string>("LoginProvider")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ProviderKey")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("ProviderDisplayName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("LoginProvider", "ProviderKey");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("AspNetUserLogins", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<int>", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RoleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("UserId", "RoleId");
+
+                    b.HasIndex("RoleId");
+
+                    b.ToTable("AspNetUserRoles", (string)null);
+                });
+
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
+                {
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LoginProvider")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<string>("Value")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("UserId", "LoginProvider", "Name");
+
+                    b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("tesisproject.shared.Entities.Auth.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CreatedByIp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ReplacedByTokenHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RevokedByIp")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.DocumentType", b =>
                 {
                     b.Property<int>("Id")
@@ -237,7 +280,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("documentTypes");
+                    b.ToTable("DocumentTypes");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.GroupType", b =>
@@ -255,7 +298,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("groupTypes");
+                    b.ToTable("GroupTypes");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ProjectExtensionType", b =>
@@ -312,7 +355,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("projectTypes");
+                    b.ToTable("ProjectTypes");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ScopeType", b =>
@@ -330,7 +373,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("scopeTypes");
+                    b.ToTable("ScopeTypes");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.TransactionType", b =>
@@ -348,7 +391,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("transactionTypes");
+                    b.ToTable("TransactionTypes");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.VisitState", b =>
@@ -366,7 +409,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("visitStates");
+                    b.ToTable("VisitStates");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Budget", b =>
@@ -401,7 +444,7 @@ namespace tesisproject.backend.Migrations
                     b.HasIndex("ProjectId")
                         .IsUnique();
 
-                    b.ToTable("budgets");
+                    b.ToTable("Budgets");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.BudgetTransaction", b =>
@@ -446,7 +489,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasIndex("TransactionTypeId");
 
-                    b.ToTable("budgetTransactions");
+                    b.ToTable("BudgetTransactions");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Document", b =>
@@ -476,7 +519,7 @@ namespace tesisproject.backend.Migrations
                         .IsUnique()
                         .HasFilter("[RelatedDocumentId] IS NOT NULL");
 
-                    b.ToTable("documents");
+                    b.ToTable("Documents");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Group", b =>
@@ -499,7 +542,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasIndex("GroupTypeId");
 
-                    b.ToTable("groups");
+                    b.ToTable("Groups");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.GroupMember", b =>
@@ -531,7 +574,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasIndex("GroupId");
 
-                    b.ToTable("groupMembers");
+                    b.ToTable("GroupMembers");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Project", b =>
@@ -592,6 +635,8 @@ namespace tesisproject.backend.Migrations
 
                     b.HasKey("ProjectId");
 
+                    b.HasIndex("CreatedByUserId");
+
                     b.HasIndex("InitialDocumentId");
 
                     b.HasIndex("ProjectGroupId");
@@ -602,7 +647,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasIndex("SenesytGroupId");
 
-                    b.ToTable("projects");
+                    b.ToTable("Projects");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.ProjectExtension", b =>
@@ -637,7 +682,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasIndex("ProjectId");
 
-                    b.ToTable("projectExtensions");
+                    b.ToTable("ProjectExtensions");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.ProjectScope", b =>
@@ -665,7 +710,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasIndex("ScopeTypeId");
 
-                    b.ToTable("projectScopes");
+                    b.ToTable("ProjectScopes");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Visit", b =>
@@ -701,54 +746,63 @@ namespace tesisproject.backend.Migrations
 
                     b.HasIndex("VisitStateId");
 
-                    b.ToTable("visits");
+                    b.ToTable("Visits");
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<int>", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<System.Guid>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<int>", b =>
                 {
-                    b.HasOne("tesisproject.backend.Data.Identity.ApplicationUser", null)
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<System.Guid>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
                 {
-                    b.HasOne("tesisproject.backend.Data.Identity.ApplicationUser", null)
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<System.Guid>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserRole<int>", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", null)
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole<int>", null)
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("tesisproject.backend.Data.Identity.ApplicationUser", null)
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<System.Guid>", b =>
+            modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
                 {
-                    b.HasOne("tesisproject.backend.Data.Identity.ApplicationUser", null)
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("tesisproject.shared.Entities.Auth.RefreshToken", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -826,6 +880,12 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Project", b =>
                 {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("tesisproject.shared.Entities.Core.Document", "InitialDocument")
                         .WithMany()
                         .HasForeignKey("InitialDocumentId");
