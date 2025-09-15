@@ -34,11 +34,10 @@
 @code {
     private string currentTabKey = "tipo1";
 
-    // IDs fijos mapeados a tus tipos
-    private static readonly int DevelopmentId = 1;
-    private static readonly int InnovationId  = 2;
+    // Mapeo de tipos (coincidir con tu backend)
+    private static readonly int DevelopmentId = 1; // Tipo1
+    private static readonly int InnovationId = 2; // Tipo2
 
-    // Estado por tipo de proyecto
     private readonly Dictionary<ProjectType, int?> selectedGroupIds = new();
     private readonly Dictionary<ProjectType, List<ExternalUserDTO>> membersByType = new();
     private readonly Dictionary<ProjectType, bool> isLoadingMembersByType = new()
@@ -47,7 +46,6 @@
         { ProjectType.Tipo2, false },
     };
 
-    // Grupos cargados
     private List<GroupResponseDTO> allGroups = new();
     private bool isLoading = false;
 
@@ -73,13 +71,42 @@
         }
     }
 
+    // === NUEVO: recargar y seleccionar opcionalmente ===
+    public async Task ReloadAsync(int? selectGroupId = null, int? selectGroupTypeId = null)
+    {
+        await LoadGroupsAsync();
+
+        if (selectGroupId.HasValue)
+        {
+            // Si sabemos el tipo, mejor calculamos la pestaña destino
+            ProjectType? targetType = null;
+            if (selectGroupTypeId.HasValue)
+                targetType = MapGroupTypeIdToProjectType(selectGroupTypeId.Value);
+            else
+                targetType = InferTypeFromGroupId(selectGroupId.Value);
+
+            if (targetType.HasValue)
+            {
+                // Cambiar a la pestaña del tipo
+                currentTabKey = targetType.Value == ProjectType.Tipo2 ? "tipo2" : "tipo1";
+                await HandleGroupSelected(targetType.Value, selectGroupId.Value);
+                StateHasChanged();
+                return;
+            }
+        }
+
+        // Si no hay id o no se pudo inferir, asegurar selección por defecto del tab actual
+        await EnsureDefaultSelectionFor(CurrentType());
+        StateHasChanged();
+    }
+
     private ProjectType CurrentType() => currentTabKey == "tipo2" ? ProjectType.Tipo2 : ProjectType.Tipo1;
 
     private List<GroupResponseDTO> GetGroupsByType(ProjectType projectType)
     {
         var target = projectType switch
         {
-            ProjectType.Tipo1 => DevelopmentId, // o InnovationId si prefieres
+            ProjectType.Tipo1 => DevelopmentId,
             ProjectType.Tipo2 => InnovationId,
             _ => DevelopmentId
         };
@@ -122,6 +149,22 @@
 
     private bool GetIsLoadingMembers(ProjectType t)
         => isLoadingMembersByType.TryGetValue(t, out var v) && v;
+
+    // === Helpers para mapear tipo ===
+    private ProjectType? MapGroupTypeIdToProjectType(int groupTypeId)
+        => groupTypeId switch
+        {
+            1 => ProjectType.Tipo1,
+            2 => ProjectType.Tipo2,
+            _ => null
+        };
+
+    private ProjectType? InferTypeFromGroupId(int groupId)
+    {
+        var g = allGroups.FirstOrDefault(x => x.GroupId == groupId);
+        if (g is null) return null;
+        return MapGroupTypeIdToProjectType(g.GroupTypeId);
+    }
 
     public enum ProjectType { Tipo1, Tipo2 }
 }

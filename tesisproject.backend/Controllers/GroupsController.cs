@@ -33,11 +33,8 @@ namespace tesisproject.backend.Controllers
         // GET: api/Groups?search=&skip=0&take=20
         [HttpGet]
         public async Task<ActionResult<ApiResponse<IReadOnlyList<GroupResponseDTO>>>> List(
-            [FromQuery] string? search,
-            [FromQuery] int skip = 0,
-            [FromQuery] int take = 20,
             CancellationToken ct = default)
-            => (await _service.ListAsync(search, skip, take, ct)).ToActionResult();
+            => (await _service.ListAsync(ct)).ToActionResult();
 
         // POST: api/Groups/{id}/members
         [HttpPost("{id:int}/members")]

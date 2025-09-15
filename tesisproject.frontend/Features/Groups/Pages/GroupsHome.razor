@@ -1,35 +1,95 @@
 ﻿@page "/groups"
-@using tesisproject.frontend.Features.Groups.Components
-@using tesisproject.frontend.SharedUI.ActionButton
-@using tesisproject.frontend.SharedUI.Tabs
-@using tesisproject.frontend.SharedUI.Card
 
-<div>
+@using tesisproject.frontend.Features.Groups.Components
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.Group.Request
+@using tesisproject.shared.DTOs.Group.Response
+@using tesisproject.shared.Responses
+@using tesisproject.frontend.Services
+
+@inject IToastService Toast
+@inject IGroupService GroupService
+
+<div class="space-y-4">
+    <!-- Header -->
     <div class="flex items-center justify-between px-6 py-4 rounded-lg shadow-sm bg-primary text-white">
-    <!-- Título -->
         <h1 class="text-xl font-bold tracking-tight">Grupos</h1>
 
-    <!-- Botón Crear -->
         <ActionButton Text="Crear"
-                    Execute="@OnCreateClick"
-                    Intent="ButtonIntent.Add"
-                    Variant="ButtonVariant.Outline"
-                    Size="ButtonSize.Md"
-                    Class="btn-primary-solid" />
+                      Execute="@OnCreateClick"
+                      Intent="ButtonIntent.Add"
+                      Variant="ButtonVariant.Outline"
+                      Size="ButtonSize.Md"
+                      Class="btn-primary-solid" />
     </div>
-    <div>
-        <GroupManagement>
 
-        </GroupManagement>
+    <!-- Content -->
+    <div>
+        <GroupManagement @ref="_groupMgmt" />
     </div>
 </div>
 
+<!-- Modal “dumb child” -->
+<GroupCreateModal @key="_modalKey" @* fuerza nueva instancia al abrir (resetea el form) *@
+                  ModalId="group-create-modal"
+                  @bind-IsOpen="_openCreate"
+                  TypeALabel="Administrative"
+                  TypeBLabel="Academic"
+                  OnSubmit="HandleCreate"
+                  OnCancel="HandleCancel" />
 
 @code {
+    private bool _openCreate;
+    private int _modalKey = 0;      // cambia para forzar recreación del modal
+    private GroupManagement? _groupMgmt;
+
     private void OnCreateClick()
     {
-        Console.WriteLine("Crear grupo clickeado");
+        _modalKey++;                // resetea estado interno del modal
+        _openCreate = true;         // abre el modal
+        StateHasChanged();
     }
-    private string active = "Investigacion";
-    private void OnChanged(string key) => active = key;
+
+    private async Task HandleCreate(AddGroupRequestDTO dto)
+    {
+        try
+        {
+            var response = await GroupService.CreateAsync(dto);
+
+            if (response.Success)
+            {
+                Toast.ShowSuccess("Grupo creado exitosamente.");
+
+                // Id del grupo creado (si tu servicio lo retorna)
+                var createdId = response.Response?.GroupId;   // ajusta si tu tipo difiere
+                var createdTypeId = dto.GroupTypeId;          // 1 / 2 según tu mapping
+
+                _openCreate = false;                          // cierra modal
+
+                if (_groupMgmt is not null)
+                {
+                    // refresca y selecciona el nuevo grupo
+                    await _groupMgmt.ReloadAsync(createdId, createdTypeId);
+                }
+
+                StateHasChanged();
+                return;
+            }
+
+            Toast.ShowError(response.Error ?? "Error al crear el grupo.");
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Excepción al crear el grupo: {ex.Message}");
+        }
+    }
+
+
+    private Task HandleCancel()
+    {
+        _openCreate = false;        // cierra el modal si el usuario cancela / cierra
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
 }

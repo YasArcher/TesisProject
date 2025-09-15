@@ -45,28 +45,14 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-        public async Task<ServiceResult<IReadOnlyList<GroupResponseDTO>>> ListAsync(string? search, int skip, int take, CancellationToken ct = default)
+        public async Task<ServiceResult<IReadOnlyList<GroupResponseDTO>>> ListAsync(CancellationToken ct = default)
         {
             try
             {
-                // sanitize pagination
-                if (skip < 0) skip = 0;
-                if (take <= 0) take = 20;
-                const int MaxTake = 100;
-                if (take > MaxTake) take = MaxTake;
 
-                var q = _uow.Groups.Query(); // IQueryable<Group> (AsNoTracking en repo)
-
-                if (!string.IsNullOrWhiteSpace(search))
-                {
-                    var s = search.Trim();
-                    q = q.Where(g => EF.Functions.Like(g.Name, $"%{s}%"));
-                }
-
+                var q = _uow.Groups.Query();
                 var items = await q
                     .OrderBy(g => g.Name)
-                    .Skip(skip)
-                    .Take(take)
                     .Select(g => new GroupResponseDTO
                     {
                         GroupId = g.GroupId,
@@ -116,7 +102,6 @@ namespace tesisproject.backend.Services.Implementations
                     Name = entity.Name
                 };
 
-                // Si tu ServiceResult tiene Created, úsalo; si no, Ok está bien.
                 return ServiceResult<GroupResponseDTO>.Ok(dto, "Group created");
             }
             catch (DbUpdateException dbex)
@@ -142,7 +127,7 @@ namespace tesisproject.backend.Services.Implementations
 
                 // External user must exist in external API (tablas externas según tu diseño)
                 var externalUser = await _external.GetByIdAsync(request.ExternalUserId, ct);
-                if (externalUser is null)
+                if (externalUser.Data is null)
                     return ServiceResult<GroupMemberResponseDTO>.Fail("External user not found.", ErrorType.Validation);
 
                 // Avoid duplicates
@@ -220,10 +205,10 @@ namespace tesisproject.backend.Services.Implementations
                 // Consume API externa (recuerda: no crear tablas locales para usuario/facultad_carrera)
                 var users = await _external.GetByGroupIdAsync(groupId, ct);
 
-                if (users is null || users.Count == 0)
+                if (users.Data is null || users.Data.Count == 0)
                     return ServiceResult<List<ExternalUserDTO>>.Fail("No external users found for this group.", ErrorType.NotFound);
 
-                return ServiceResult<List<ExternalUserDTO>>.Ok(users, "External users retrieved");
+                return ServiceResult<List<ExternalUserDTO>>.Ok(users.Data, "External users retrieved");
             }
             catch (Exception ex)
             {

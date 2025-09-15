@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
@@ -167,22 +168,45 @@ static void ConfigureOptions(WebApplicationBuilder builder)
 
 static void ConfigureHttpClients(WebApplicationBuilder builder)
 {
-    builder.Services.AddHttpClient<IExternalUsersService, ExternalUsersService>(client =>
-    {
-        var baseUrl = builder.Configuration["ExternalUsers:BaseUrl"];
-        if (!string.IsNullOrWhiteSpace(baseUrl))
-        {
-            client.BaseAddress = new Uri(baseUrl);
-        }
+    // 1) Bindea las opciones una sola vez
+    builder.Services.Configure<ExternalApiOptions>(
+        builder.Configuration.GetSection(ExternalApiOptions.SectionName));
 
-        var timeoutSeconds = builder.Configuration.GetValue<int>("ExternalUsers:TimeoutSeconds", 30);
-        client.Timeout = TimeSpan.FromSeconds(timeoutSeconds);
-        client.DefaultRequestHeaders.Add("User-Agent", "TesisProject/1.0");
+    // 2) Lee una instantánea para iniciar el HttpClient nombrado
+    var optsSnapshot = builder.Configuration
+        .GetSection(ExternalApiOptions.SectionName)
+        .Get<ExternalApiOptions>() ?? new ExternalApiOptions();
+
+    // 3) HttpClient compartido para TODOS los servicios externos
+    builder.Services.AddHttpClient("ExternalApi", client =>
+    {
+        if (!string.IsNullOrWhiteSpace(optsSnapshot.BaseUrl))
+            client.BaseAddress = new Uri(optsSnapshot.BaseUrl);
+
+        client.Timeout = TimeSpan.FromSeconds(optsSnapshot.TimeoutSeconds);
+        if (!string.IsNullOrWhiteSpace(optsSnapshot.UserAgent))
+            client.DefaultRequestHeaders.Add("User-Agent", optsSnapshot.UserAgent);
     });
 
-    // (Opcional) Un cliente “raw” si usas handler de refresh en FE
-    // builder.Services.AddHttpClient("raw");
+    // 4) Registra los servicios reusando el cliente nombrado
+    builder.Services.AddScoped<IExternalUsersService, ExternalUsersService>(sp =>
+    {
+        var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("ExternalApi");
+        var uow = sp.GetRequiredService<IUnitOfWork>();
+        var options = sp.GetRequiredService<IOptions<ExternalApiOptions>>();
+        var logger = sp.GetRequiredService<ILogger<ExternalUsersService>>();
+        return new ExternalUsersService(http, uow, options, logger);
+    });
+
+    builder.Services.AddScoped<IExternalAcademicsService, ExternalAcademicsService>(sp =>
+    {
+        var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("ExternalApi");
+        var options = sp.GetRequiredService<IOptions<ExternalApiOptions>>();
+        var logger = sp.GetRequiredService<ILogger<ExternalAcademicsService>>();
+        return new ExternalAcademicsService(http, options, logger);
+    });
 }
+
 
 static void ConfigureDependencyInjection(WebApplicationBuilder builder)
 {
@@ -213,6 +237,7 @@ static void ConfigureDependencyInjection(WebApplicationBuilder builder)
     // Otros servicios de aplicación
     builder.Services.AddScoped<IProjectService, ProjectService>();
     builder.Services.AddScoped<IGroupService, GroupService>();
+    builder.Services.AddHttpClient<IExternalAcademicsService, ExternalAcademicsService>();
 }
 
 static void ConfigureApiDocumentation(WebApplicationBuilder builder)

@@ -43,7 +43,7 @@ namespace tesisproject.frontend.Services.Implementations
 
         public Task<HttpResponseWrapper<List<ExternalUserDTO>?>> GetMembersByGroupIdAsync(int groupId, CancellationToken ct = default)
         {
-            return _api.GetAsync<List<ExternalUserDTO>>($"{_baseUrl}/{groupId}/external-users", ct);
+            return _api.GetAsync<List<ExternalUserDTO>>($"{_baseUrl}/{groupId}/members", ct);
         }
 
         public Task<HttpResponseWrapper<GroupMemberResponseDTO?>> AddMemberAsync(int groupId, AddGroupMemberRequestDTO request, CancellationToken ct = default)
