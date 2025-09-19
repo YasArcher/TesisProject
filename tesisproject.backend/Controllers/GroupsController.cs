@@ -1,10 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using tesisproject.backend.Controllers.Extensions;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.External;
 using tesisproject.shared.DTOs.Group.Request;
 using tesisproject.shared.DTOs.Group.Response;
 using tesisproject.shared.Responses;
-using tesisproject.backend.Controllers.Extensions;
 
 namespace tesisproject.backend.Controllers
 {
@@ -33,19 +33,21 @@ namespace tesisproject.backend.Controllers
         // GET: api/Groups?search=&skip=0&take=20
         [HttpGet]
         public async Task<ActionResult<ApiResponse<IReadOnlyList<GroupResponseDTO>>>> List(
-            [FromQuery] string? search,
-            [FromQuery] int skip = 0,
-            [FromQuery] int take = 20,
             CancellationToken ct = default)
-            => (await _service.ListAsync(search, skip, take, ct)).ToActionResult();
+            => (await _service.ListAsync(ct)).ToActionResult();
+        // PUT: api/Groups
+        [HttpPut]
+        public async Task<ActionResult<ApiResponse<GroupResponseDTO>>> Update(
+            [FromBody] UpdateGroupRequestDTO request,
+            CancellationToken ct)
+            => (await _service.UpdateAsync(request, ct)).ToActionResult();
 
-        // POST: api/Groups/{id}/members
-        [HttpPost("{id:int}/members")]
+        // POST: api/Groups/members
+        [HttpPost("members")]
         public async Task<ActionResult<ApiResponse<GroupMemberResponseDTO>>> AddMember(
-            int id,
             [FromBody] AddGroupMemberRequestDTO request,
             CancellationToken ct)
-            => (await _service.AddMemberAsync(id, request, ct)).ToActionResult();
+            => (await _service.AddMemberAsync(request, ct)).ToActionResult();
 
         // DELETE: api/Groups/{groupId}/members/{memberId}
         [HttpDelete("{groupId:int}/members/{memberId:int}")]

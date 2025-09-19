@@ -27,5 +27,6 @@ namespace tesisproject.shared.Entities.Core
 
         // Navegaciones
         public Project Project { get; set; } = null!;    // Navegación a Project
+        public ICollection<BudgetTransaction> Transactions { get; set; } = new List<BudgetTransaction>();
     }
 }

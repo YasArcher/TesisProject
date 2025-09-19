@@ -10,19 +10,8 @@
         transform: translateY(0.5px);
     }
 
-/* estado seleccionado (persistente) */
-.card-selected {
-    /* oscurece ligeramente el fondo con un tinte primario */
-    background-color: color-mix(in srgb, var(--color-primary) 12%, var(--color-background));
-    border-color: var(--color-primary);
-    /* sutil halo interno para diferenciar aún más */
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 25%, transparent) inset, 0 4px 12px color-mix(in srgb, var(--color-primary) 12%, transparent);
-}
-
-/* foco accesible reforzado (usa tu ring primario sutil) */
-.card-selectable:focus {
-    outline: none;
-    /* ya tienes utilidades de ring primario sutil */
-    /* si prefieres CSS puro: */
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 30%, transparent);
-}
+    /* foco accesible */
+    .card-selectable:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 30%, transparent);
+    }

@@ -1,0 +1,48 @@
+﻿@using Microsoft.AspNetCore.Components
+
+<div class="@($"relative {Class}")" role="search">
+    <!-- Icon (prefix) -->
+    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        @if (Prefix is not null)
+        {
+            @Prefix
+        }
+        else
+        {
+            <svg class="h-5 w-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+        }
+    </div>
+
+    <!-- Input -->
+    <input @ref="_inputRef"
+           type="text"
+           class="@($"w-full pl-10 pr-9 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted focus:ring-2 focus:ring-primary focus:border-transparent transition-colors {InputClass}")"
+           placeholder="@Placeholder"
+           aria-label="@AriaLabel"
+           value="@Value"
+           @oninput="OnInput" />
+
+    <!-- Clear (suffix) -->
+    @if (!string.IsNullOrWhiteSpace(Value))
+    {
+        <button type="button"
+                class="absolute inset-y-0 right-0 pr-2 flex items-center text-muted hover:text-foreground"
+                aria-label="Clear search"
+                @onclick="Clear">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    }
+
+    @if (Suffix is not null)
+    {
+        <div class="absolute inset-y-0 right-8 pr-2 flex items-center">
+            @Suffix
+        </div>
+    }
+</div>

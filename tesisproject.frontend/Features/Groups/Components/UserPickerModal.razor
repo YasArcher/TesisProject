@@ -1,0 +1,170 @@
+﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.External
+
+<Modal Id="@ModalId"
+       Title="Add member to group"
+       IsOpen="@IsOpen"
+       IsOpenChanged="IsOpenChanged"
+       ShowCloseButton="true"
+       CloseOnBackdrop="true"
+       CloseOnEscape="true"
+       Size="ModalSize.Lg"
+       OnClose="HandleClose">
+
+    <ChildContent>
+        <div class="space-y-4">
+
+            <!-- Search -->
+            <div class="relative">
+                <input class="w-full rounded-xl border border-border bg-background px-3 py-2 pr-9 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-uta-header)]"
+                       placeholder="Search by name..."
+                       @bind="search" @bind:event="oninput" />
+                <svg class="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted" viewBox="0 0 24 24" fill="none">
+                    <path stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"
+                          d="m21 21-4.3-4.3M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z" />
+                </svg>
+            </div>
+
+            <!-- Users grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[420px] overflow-y-auto pr-1">
+                @if (FilteredUsers?.Any() != true)
+                {
+                    <div class="col-span-full text-sm text-muted py-6 text-center">
+                        No users found.
+                    </div>
+                }
+                else
+                {
+                    @foreach (var u in FilteredUsers!)
+                    {
+                        var selected = SelectedUserId == u.UserId;
+                        <button type="button"
+                                class="@UserCardClass(selected)"
+                                aria-pressed="@(selected)"
+                                aria-label="@($"Select user {u.FullName}")"
+                                @onclick="() => SelectUser(u.UserId)"
+                                @onkeydown="(KeyboardEventArgs e) => OnCardKeyDown(e, u.UserId)">
+                            <div class="flex items-center justify-between w-full">
+                                <h3 class="text-sm font-medium text-foreground truncate">@u.FullName</h3>
+
+                                @if (selected)
+                                {
+                                    <span class="inline-flex items-center justify-center rounded-full bg-primary-subtle text-[color:var(--color-uta-header)] w-6 h-6">
+                                        <!-- check icon -->
+                                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none">
+                                            <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                  d="M20 6 9 17l-5-5" />
+                                        </svg>
+                                    </span>
+                                }
+                            </div>
+                        </button>
+                    }
+                }
+            </div>
+
+            @if (ShowValidation && SelectedUserId is null)
+            {
+                <p class="text-sm text-[color:var(--color-error)]">Please select a user.</p>
+            }
+        </div>
+    </ChildContent>
+
+    <Footer>
+        <div class="flex items-center justify-end gap-2">
+            <ActionButton Text="Cancel"
+                          Execute="OnCancelClicked"
+                          Variant="ButtonVariant.Ghost"
+                          Size="ButtonSize.Sm"
+                          Class="inline-flex items-center justify-center rounded-xl px-4 py-2" />
+            <ActionButton Text="Add"
+                          Execute="Submit"
+                          Variant="ButtonVariant.Soft"
+                          Size="ButtonSize.Sm"
+                          Class="btn-primary inline-flex items-center justify-center rounded-xl px-4 py-2">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="size-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path fill-rule="evenodd" d="M11 4.5a.75.75 0 0 1 .75.75V11h5.75a.75.75 0 0 1 0 1.5H11.75v5.75a.75.75 0 0 1-1.5 0V12.5H4.5a.75.75 0 0 1 0-1.5h5.75V5.25A.75.75 0 0 1 11 4.5Z" clip-rule="evenodd" />
+                    </svg>
+                </Icon>
+            </ActionButton>
+        </div>
+    </Footer>
+</Modal>
+
+@code {
+    /* ========== Public API ========== */
+    [Parameter] public string ModalId { get; set; } = "user-picker-modal";
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    /// <summary>Users to list (only FullName is shown).</summary>
+    [Parameter] public IEnumerable<ExternalUserDTO>? Users { get; set; }
+
+    /// <summary>Emits the selected UserId when confirming.</summary>
+    [Parameter] public EventCallback<int> OnSubmit { get; set; }
+
+    /// <summary>Notifies cancel/close.</summary>
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    /// <summary>Optional preselected user.</summary>
+    [Parameter] public int? InitialSelectedUserId { get; set; }
+
+    /* ========== State ========== */
+    private int? SelectedUserId;
+    private string search = string.Empty;
+    private bool ShowValidation;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen && SelectedUserId is null && InitialSelectedUserId is not null)
+            SelectedUserId = InitialSelectedUserId;
+    }
+
+    private IEnumerable<ExternalUserDTO>? FilteredUsers =>
+        string.IsNullOrWhiteSpace(search)
+            ? Users
+            : Users?.Where(u => (u.FullName ?? string.Empty)
+                .Contains(search, StringComparison.OrdinalIgnoreCase));
+
+    private static string UserCardClass(bool selected) =>
+        selected
+            ? "w-full text-left rounded-2xl transition-shadow card-hover-primary card-selectable " +
+              "bg-primary-subtle border border-primary ring-2 ring-primary/20 px-4 py-3 focus:outline-none"
+            : "w-full text-left rounded-2xl transition-shadow card-hover-primary card-selectable " +
+              "bg-background border border-border px-4 py-3 hover:bg-primary-subtle/50 focus:outline-none";
+
+    private void SelectUser(int userId)
+    {
+        SelectedUserId = userId;
+        ShowValidation = false;
+        StateHasChanged();
+    }
+
+    private Task OnCardKeyDown(KeyboardEventArgs e, int userId)
+    {
+        if (e.Key is "Enter" or " ")
+        {
+            SelectUser(userId);
+        }
+        return Task.CompletedTask;
+    }
+
+    private async Task Submit()
+    {
+        if (SelectedUserId is null)
+        {
+            ShowValidation = true;
+            return;
+        }
+
+        ShowValidation = false;
+        await OnSubmit.InvokeAsync(SelectedUserId.Value);
+    }
+
+    private async Task OnCancelClicked() => await OnCancel.InvokeAsync();
+    private async Task HandleClose() => await OnCancel.InvokeAsync();
+}

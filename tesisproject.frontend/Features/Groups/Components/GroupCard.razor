@@ -1,14 +1,20 @@
 ﻿@using tesisproject.frontend.SharedUI.Card
 
 <Card Tone="CardTone.Default"
-      class="@CardCss"
-      @onclick="HandleClick"
+      Class="@(
+              Selected
+              ? "rounded-2xl transition-shadow card-hover-primary card-selectable bg-primary-subtle border-primary ring-2 ring-primary/20"
+              : "rounded-2xl transition-shadow card-hover-primary card-selectable bg-background border border-border"
+            )"
       tabindex="0"
-      role="button"
       aria-pressed="@Selected"
-      aria-label="@($"Select group {Item.Name}")">
-
+      aria-label="@($"Select group {Item.Name}")"
+      @onclick="HandleClick"
+      @onkeydown="OnKeyDown">
     <CardHeader>
         <h3 class="text-lg font-semibold text-foreground">@Item.Name</h3>
     </CardHeader>
+    <CardFooter>
+
+    </CardFooter>
 </Card>

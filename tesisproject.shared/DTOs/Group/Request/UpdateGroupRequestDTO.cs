@@ -7,17 +7,16 @@ using System.Threading.Tasks;
 
 namespace tesisproject.shared.DTOs.Group.Request
 {
-    public class AddGroupMemberRequestDTO
+    public class UpdateGroupRequestDTO
     {
         [Required]
         public int GroupId { get; set; }
 
-        /// <summary>
-        /// External user id (from external Users API).
-        /// </summary>
-        public int ExternalUserId { get; set; } = 0;
+        [Required]
+        public int GroupTypeId { get; set; }
 
-        [Required, StringLength(60)]
-        public string MemberRole { get; set; } = string.Empty;
+        [Required]
+        [MaxLength(200)]
+        public string Name { get; set; } = string.Empty;
     }
 }
