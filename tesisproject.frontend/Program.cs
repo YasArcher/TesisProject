@@ -57,6 +57,7 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().Cre
 builder.Services.AddScoped<IApiClient, ApiClient>();
 builder.Services.AddScoped<IProjectClientService, ProjectClientService>();
 builder.Services.AddScoped<IGroupService, GroupService>();
+builder.Services.AddScoped<IExternalUserService, ExternalUserClientService>();
 
 // 7) Provider de autenticación
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();

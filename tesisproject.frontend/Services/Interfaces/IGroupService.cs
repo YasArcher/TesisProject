@@ -18,6 +18,8 @@ namespace tesisproject.frontend.Services.Interfaces
 
         /// <summary>Create a new group.</summary>
         Task<HttpResponseWrapper<GroupResponseDTO?>> CreateAsync(AddGroupRequestDTO request, CancellationToken ct = default);
+        /// <summary>Update a group.</summary>
+        Task<HttpResponseWrapper<GroupResponseDTO?>> UpdateAsync(UpdateGroupRequestDTO request, CancellationToken ct = default);
         /// <summary>Delete a group.</summary>
         Task<HttpResponseWrapper<NoContent>> DeleteAsync(int id, CancellationToken ct = default);
 
@@ -28,7 +30,7 @@ namespace tesisproject.frontend.Services.Interfaces
         Task<HttpResponseWrapper<List<ExternalUserDTO>?>> GetMembersByGroupIdAsync(int groupId, CancellationToken ct = default);
 
         /// <summary>Add a member to an existing group.</summary>
-        Task<HttpResponseWrapper<GroupMemberResponseDTO?>> AddMemberAsync(int groupId, AddGroupMemberRequestDTO request, CancellationToken ct = default);
+        Task<HttpResponseWrapper<GroupMemberResponseDTO?>> AddMemberAsync(AddGroupMemberRequestDTO request, CancellationToken ct = default);
 
         /// <summary>Remove a member from a group.</summary>
         Task<HttpResponseWrapper<NoContent?>> RemoveMemberAsync(int groupId, int memberId, CancellationToken ct = default);

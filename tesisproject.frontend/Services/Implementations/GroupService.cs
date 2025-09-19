@@ -32,6 +32,10 @@ namespace tesisproject.frontend.Services.Implementations
         {
             return _api.PostAsync<AddGroupRequestDTO, GroupResponseDTO>($"{_baseUrl}", request, ct);
         }
+        public Task<HttpResponseWrapper<GroupResponseDTO?>> UpdateAsync(UpdateGroupRequestDTO request, CancellationToken ct = default)
+        {
+            return _api.PutAsync<UpdateGroupRequestDTO, GroupResponseDTO>($"{_baseUrl}", request, ct);
+        }
         public Task<HttpResponseWrapper<NoContent>> DeleteAsync(int id, CancellationToken ct = default)
         {
             throw new NotImplementedException();
@@ -46,9 +50,9 @@ namespace tesisproject.frontend.Services.Implementations
             return _api.GetAsync<List<ExternalUserDTO>>($"{_baseUrl}/{groupId}/members", ct);
         }
 
-        public Task<HttpResponseWrapper<GroupMemberResponseDTO?>> AddMemberAsync(int groupId, AddGroupMemberRequestDTO request, CancellationToken ct = default)
+        public Task<HttpResponseWrapper<GroupMemberResponseDTO?>> AddMemberAsync(AddGroupMemberRequestDTO request, CancellationToken ct = default)
         {
-            return _api.PostAsync<AddGroupMemberRequestDTO, GroupMemberResponseDTO>($"{_baseUrl}/{groupId}/members", request, ct);
+            return _api.PostAsync<AddGroupMemberRequestDTO, GroupMemberResponseDTO>($"{_baseUrl}/members", request, ct);
         }
 
         public Task<HttpResponseWrapper<NoContent?>> RemoveMemberAsync(int groupId, int memberId, CancellationToken ct = default)

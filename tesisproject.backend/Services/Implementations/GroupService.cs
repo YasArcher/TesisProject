@@ -45,6 +45,43 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
+        //Actualizar grupo con DTO
+
+        public async Task<ServiceResult<GroupResponseDTO>> UpdateAsync(UpdateGroupRequestDTO request, CancellationToken ct = default)
+        {
+            try
+            {
+                var group = await _uow.Groups.GetByIdAsync(request.GroupId, includeMembers: false, ct);
+                if (group is null)
+                    return ServiceResult<GroupResponseDTO>.Fail("Group not found.", ErrorType.NotFound);
+                var name = (request.Name ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(name))
+                    return ServiceResult<GroupResponseDTO>.Fail("Group name is required.", ErrorType.Validation);
+                //var exists = await _uow.Groups.NameExistsAsync(name, id, ct);
+                //if (exists)
+                //    return ServiceResult<GroupResponseDTO>.Fail("A group with the same name already exists.", ErrorType.Conflict);
+                group.Name = name;
+                group.GroupTypeId = request.GroupTypeId;
+                _uow.Groups.Update(group);
+                await _uow.SaveChangesAsync(ct);
+                var dto = new GroupResponseDTO
+                {
+                    GroupId = group.GroupId,
+                    GroupTypeId = group.GroupTypeId,
+                    Name = group.Name
+                };
+                return ServiceResult<GroupResponseDTO>.Ok(dto, "Group updated");
+            }
+            catch (DbUpdateException dbex)
+            {
+                return ServiceResult<GroupResponseDTO>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<GroupResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+            }
+        }
+
         public async Task<ServiceResult<IReadOnlyList<GroupResponseDTO>>> ListAsync(CancellationToken ct = default)
         {
             try
@@ -114,14 +151,12 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-        public async Task<ServiceResult<GroupMemberResponseDTO>> AddMemberAsync(int groupId, AddGroupMemberRequestDTO request, CancellationToken ct = default)
+        public async Task<ServiceResult<GroupMemberResponseDTO>> AddMemberAsync(AddGroupMemberRequestDTO request, CancellationToken ct = default)
         {
             try
             {
-                if (groupId != request.GroupId)
-                    return ServiceResult<GroupMemberResponseDTO>.Fail("Route id and payload GroupId must match.", ErrorType.Validation);
 
-                var group = await _uow.Groups.GetByIdAsync(groupId, includeMembers: false, ct);
+                var group = await _uow.Groups.GetByIdAsync(request.GroupId, includeMembers: false, ct);
                 if (group is null)
                     return ServiceResult<GroupMemberResponseDTO>.Fail("Group not found.", ErrorType.NotFound);
 

@@ -5,7 +5,7 @@
 @using tesisproject.frontend.SharedUI.ActionButton
 
 <Modal Id="@ModalId"
-       Title="Create group"
+       Title="@ModalTitle"
        IsOpen="@IsOpen"
        IsOpenChanged="IsOpenChanged"
        ShowCloseButton="true"
@@ -29,7 +29,7 @@
                     <ValidationMessage For="@(() => Model.Name)" />
                 </div>
 
-                <!-- GROUP TYPE (2 tipos) -->
+                <!-- GROUP TYPE -->
                 <div>
                     <label class="block text-sm font-medium mb-2 text-foreground">
                         Group type <span class="text-red-600">*</span>
@@ -39,18 +39,23 @@
                     <div class="inline-flex rounded-xl border border-border overflow-hidden">
                         <button type="button"
                                 class="@GetTypeBtnClass(GroupTypeOption.TypeA)"
-                                @onclick="() => SelectType(GroupTypeOption.TypeA)">
+                                @onclick="() => SelectType(GroupTypeOption.TypeA)"
+                                disabled="@IsTypeSelectorDisabled">
                             @TypeALabel
                         </button>
                         <button type="button"
                                 class="@GetTypeBtnClass(GroupTypeOption.TypeB)"
-                                @onclick="() => SelectType(GroupTypeOption.TypeB)">
+                                @onclick="() => SelectType(GroupTypeOption.TypeB)"
+                                disabled="@IsTypeSelectorDisabled">
                             @TypeBLabel
                         </button>
                     </div>
 
                     <!-- Fallback accesible -->
-                    <select class="sr-only" @bind="Model.GroupTypeId" aria-label="Group type">
+                    <select class="sr-only"
+                            @bind="Model.GroupTypeId"
+                            aria-label="Group type"
+                            disabled="@IsTypeSelectorDisabled">
                         <option value="@((int)GroupTypeOption.TypeA)">@TypeALabel</option>
                         <option value="@((int)GroupTypeOption.TypeB)">@TypeBLabel</option>
                     </select>
@@ -64,21 +69,19 @@
 
     <Footer>
         <div class="flex items-center justify-end gap-2">
-            <ActionButton Execute="OnCancelClicked"
+            <ActionButton Text="Cancel"
+                          Execute="OnCancelClicked"
                           Variant="ButtonVariant.Ghost"
                           Size="ButtonSize.Sm"
-                          Class="inline-flex items-center justify-center rounded-xl px-4 py-2">
-                <Text>Cancel</Text>
-            </ActionButton>
-
-            <ActionButton Text="Create"
+                          Class="inline-flex items-center justify-center rounded-xl px-4 py-2" />
+            <ActionButton Text="@PrimaryButtonText"
                           Execute="Submit"
                           Variant="ButtonVariant.Soft"
                           Size="ButtonSize.Sm"
                           Class="btn-primary inline-flex items-center justify-center rounded-xl px-4 py-2">
                 <Icon>
                     <svg xmlns="http://www.w3.org/2000/svg" class="size-5" viewBox="0 0 24 24" fill="currentColor">
-                        <path fill-rule="evenodd" d="M2.25 12a9.75 9.75 0 1119.5 0 9.75 9.75 0 01-19.5 0zm14.28-3.53a.75.75 0 00-1.06-1.06L10 13.88l-1.97-1.97a.75.75 0 10-1.06 1.06l2.5 2.5a.75.75 0 001.06 0l6.06-6.06z" clip-rule="evenodd"/>
+                        <path fill-rule="evenodd" d="M2.25 12a9.75 9.75 0 1119.5 0 9.75 9.75 0 01-19.5 0zm14.28-3.53a.75.75 0 00-1.06-1.06L10 13.88l-1.97-1.97a.75.75 0 10-1.06 1.06l2.5 2.5a.75.75 0 001.06 0l6.06-6.06z" clip-rule="evenodd" />
                     </svg>
                 </Icon>
             </ActionButton>
@@ -87,50 +90,84 @@
 </Modal>
 
 @code {
-    // ===== Opciones de tipo (2 tipos) =====
     private enum GroupTypeOption { TypeA = 1, TypeB = 2 }
+
+    // ===== Modo / Texto =====
+    [Parameter] public bool IsEdit { get; set; } = false;
+    [Parameter] public GroupResponseDTO? GroupToEdit { get; set; } // fuente para precargar
+    [Parameter] public bool AllowChangeTypeInEdit { get; set; } = true;
+
+    private string ModalTitle => IsEdit ? "Edit group" : "Create group";
+    private string PrimaryButtonText => IsEdit ? "Update" : "Create";
+    private bool IsTypeSelectorDisabled => IsEdit && !AllowChangeTypeInEdit;
 
     // Labels configurables
     [Parameter] public string TypeALabel { get; set; } = "Type 1";
     [Parameter] public string TypeBLabel { get; set; } = "Type 2";
 
-    // ===== API pública del componente =====
-    [Parameter] public string ModalId { get; set; } = "group-create-modal";
-
+    // ===== API del modal =====
+    [Parameter] public string ModalId { get; set; } = "group-modal";
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
 
-    // Emite el DTO listo al padre
-    [Parameter] public EventCallback<AddGroupRequestDTO> OnSubmit { get; set; }
-    // Notifica cancel/close al padre
+    // Callbacks separadas para claridad de Clean Architecture
+    [Parameter] public EventCallback<AddGroupRequestDTO> OnCreate { get; set; }
+    [Parameter] public EventCallback<UpdateGroupRequestDTO> OnUpdate { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
 
-    // Ajusta si tu DTO tiene otros nombres/propiedades
+    // Modelo interno del formulario (solo campos editables)
     private AddGroupRequestDTO Model = new()
     {
         Name = string.Empty,
         GroupTypeId = (int)GroupTypeOption.TypeA
     };
 
-    // ===== UI helpers tipo =====
-    private void SelectType(GroupTypeOption opt) => Model.GroupTypeId = (int)opt;
+    protected override void OnParametersSet()
+    {
+        // Si estamos en modo edición, precargamos desde el ResponseDTO
+        if (IsEdit && GroupToEdit is not null)
+        {
+            Model.Name = GroupToEdit.Name;
+            Model.GroupTypeId = GroupToEdit.GroupTypeId;
+        }
+    }
+
+    private void SelectType(GroupTypeOption opt)
+    {
+        if (IsTypeSelectorDisabled) return;
+        Model.GroupTypeId = (int)opt;
+    }
 
     private string GetTypeBtnClass(GroupTypeOption opt)
     {
         var isActive = Model.GroupTypeId == (int)opt;
-        return $"px-4 py-2 text-sm font-medium " +
+        var disabled = IsTypeSelectorDisabled ? "opacity-60 cursor-not-allowed" : "";
+        return $"px-4 py-2 text-sm font-medium border-r border-border first:rounded-l-xl last:rounded-r-xl {disabled} " +
                (isActive
-                 ? "bg-primary-subtle text-[color:var(--color-uta-header)] border-r border-border first:rounded-l-xl last:rounded-r-xl"
-                 : "bg-transparent text-foreground/80 hover:bg-muted/60 border-r border-border first:rounded-l-xl last:rounded-r-xl");
+                 ? "bg-primary-subtle text-[color:var(--color-uta-header)]"
+                 : "bg-transparent text-foreground/80 hover:bg-muted/60");
     }
 
-    // ===== Acciones =====
     private async Task Submit()
-        => await OnSubmit.InvokeAsync(Model);
+    {
+        if (IsEdit && GroupToEdit is not null)
+        {
+            // Map a Update DTO
+            var dto = new UpdateGroupRequestDTO
+            {
+                GroupId = GroupToEdit.GroupId,
+                Name = Model.Name,
+                GroupTypeId = Model.GroupTypeId
+            };
+            await OnUpdate.InvokeAsync(dto);
+        }
+        else
+        {
+            // Create con el mismo model
+            await OnCreate.InvokeAsync(Model);
+        }
+    }
 
-    private async Task OnCancelClicked()
-        => await OnCancel.InvokeAsync();
-
-    private async Task HandleClose()
-        => await OnCancel.InvokeAsync(); // si se cierra por X/Escape/backdrop, también notificamos
+    private async Task OnCancelClicked() => await OnCancel.InvokeAsync();
+    private async Task HandleClose() => await OnCancel.InvokeAsync();
 }
