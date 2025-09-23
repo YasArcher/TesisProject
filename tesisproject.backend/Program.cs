@@ -225,6 +225,7 @@ static void ConfigureDependencyInjection(WebApplicationBuilder builder)
     builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
     builder.Services.AddScoped<IGroupRepository, GroupRepository>();
     builder.Services.AddScoped<IGroupMemberRepository, GroupMemberRepository>();
+    builder.Services.AddScoped<IBudgetRepository, BudgetRepository>();
 
     // Application Services
     // ITokenService desacoplado (CreateAccessToken(Guid userId, string? email, IList<string> roles))
@@ -238,6 +239,7 @@ static void ConfigureDependencyInjection(WebApplicationBuilder builder)
     builder.Services.AddScoped<IProjectService, ProjectService>();
     builder.Services.AddScoped<IGroupService, GroupService>();
     builder.Services.AddHttpClient<IExternalAcademicsService, ExternalAcademicsService>();
+    builder.Services.AddScoped<IBudgetService, BudgetService>();
 }
 
 static void ConfigureApiDocumentation(WebApplicationBuilder builder)

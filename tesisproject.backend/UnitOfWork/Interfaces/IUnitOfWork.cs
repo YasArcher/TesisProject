@@ -8,6 +8,7 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
         IProjectRepository Projects { get; }
         IGroupRepository Groups { get; }
         IGroupMemberRepository GroupMembers { get; }
+        IBudgetRepository Budgets { get; }
 
         Task<int> SaveChangesAsync(CancellationToken ct = default);
     }
