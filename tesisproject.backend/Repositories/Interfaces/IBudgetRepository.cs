@@ -7,5 +7,11 @@ namespace tesisproject.backend.Repositories.Interfaces
         Task<Budget?> GetDetailAsync(int budgetId, bool includeTransactions = false, CancellationToken ct = default);
         Task<Budget?> GetByProjectIdAsync(int projectId, bool includeTransactions = false, CancellationToken ct = default);
         Task<bool> ExistsForProjectAsync(int projectId, CancellationToken ct = default);
+
+        // Transactions
+        Task AddTransactionAsync(BudgetTransaction tx, CancellationToken ct = default);
+        Task<BudgetTransaction?> GetTransactionByIdAsync(int txId, CancellationToken ct = default);
+        Task<int?> FindBudgetIdByTransactionAsync(int txId, CancellationToken ct = default);
+        Task<List<BudgetTransaction>> GetTransactionsAsync(int budgetId, CancellationToken ct = default);
     }
 }
