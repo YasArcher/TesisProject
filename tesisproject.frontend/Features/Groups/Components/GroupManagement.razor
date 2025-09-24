@@ -1,11 +1,12 @@
 ﻿@using tesisproject.frontend.SharedUI.Tabs
 @using tesisproject.shared.DTOs.Group.Response
+@using tesisproject.shared.DTOs.Group.Request
 @using tesisproject.shared.DTOs.External
 @using tesisproject.shared.Enums
 
 <div class="space-y-6">
     <Tabs ActiveKey="@CurrentTabKey" OnChange="OnTabChanged">
-        <Tab Key="tipo1" Title="Grupo Tipo 1">
+        <Tab Key="tipo1" Title="Grupo Investigacion">
             <GroupTabContent ProjectType="ProjectType.Type1"
                              Groups="GroupsTipo1"
                              SelectedGroupId="SelectedGroupIdTipo1"
@@ -13,10 +14,14 @@
                              GroupMembers="MembersTipo1"
                              IsLoading="IsLoading"
                              IsLoadingMembers="IsLoadingMembersTipo1"
-                             OnReloadGroups="OnReloadGroups" />
+                             OnReloadGroups="OnReloadGroups"
+                             OnRequestAddMember="OnRequestAddMember"
+                             OnRequestUpdateGroup="OnRequestUpdateGroup"
+                             OnRequestRemoveMember="OnRequestRemoveMember"
+                             OnAskCandidates="OnAskCandidates" />
         </Tab>
 
-        <Tab Key="tipo2" Title="Grupo Tipo 2">
+        <Tab Key="tipo2" Title="Grupo Senesyt">
             <GroupTabContent ProjectType="ProjectType.Type2"
                              Groups="GroupsTipo2"
                              SelectedGroupId="SelectedGroupIdTipo2"
@@ -24,13 +29,16 @@
                              GroupMembers="MembersTipo2"
                              IsLoading="IsLoading"
                              IsLoadingMembers="IsLoadingMembersTipo2"
-                             OnReloadGroups="OnReloadGroups" />
+                             OnReloadGroups="OnReloadGroups"
+                             OnRequestAddMember="OnRequestAddMember"
+                             OnRequestUpdateGroup="OnRequestUpdateGroup"
+                             OnRequestRemoveMember="OnRequestRemoveMember"
+                             OnAskCandidates="OnAskCandidates" />
         </Tab>
     </Tabs>
 </div>
 
 @code {
-
     // ===== Estado controlado desde el PADRE (página) =====
     [Parameter] public string CurrentTabKey { get; set; } = "tipo1";
     [Parameter] public EventCallback<string> CurrentTabKeyChanged { get; set; }
@@ -48,9 +56,15 @@
     [Parameter] public bool IsLoadingMembersTipo1 { get; set; }
     [Parameter] public bool IsLoadingMembersTipo2 { get; set; }
 
-    // Eventos hacia el PADRE
+    // Eventos hacia el PADRE (página)
     [Parameter] public EventCallback<(ProjectType type, int groupId)> OnGroupSelected { get; set; }
     [Parameter] public EventCallback OnReloadGroups { get; set; }
+
+    // Passthrough CRUD hacia Page
+    [Parameter] public EventCallback<AddGroupMemberRequestDTO> OnRequestAddMember { get; set; }
+    [Parameter] public EventCallback<UpdateGroupRequestDTO> OnRequestUpdateGroup { get; set; }
+    [Parameter] public EventCallback<int> OnRequestRemoveMember { get; set; }
+    [Parameter] public Func<int, Task<List<ExternalUserDTO>>> OnAskCandidates { get; set; } = default!;
 
     private async Task OnTabChanged(string newKey)
         => await CurrentTabKeyChanged.InvokeAsync(newKey);
