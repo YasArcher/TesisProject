@@ -13,6 +13,7 @@
 
 @inject IToastService Toast
 @inject IGroupService GroupService
+@inject IExternalUserService ExternalUserService
 
 <div class="space-y-4">
     <!-- Header -->
@@ -41,7 +42,11 @@
                          IsLoadingMembersTipo1="@isLoadingMembersTipo1"
                          IsLoadingMembersTipo2="@isLoadingMembersTipo2"
                          OnGroupSelected="HandleGroupSelected"
-                         OnReloadGroups="ReloadAfterMemberChange" />
+                         OnReloadGroups="ReloadAfterMemberChange"
+                         OnRequestAddMember="HandleAddMember"
+                         OnRequestUpdateGroup="HandleUpdateGroup"
+                         OnRequestRemoveMember="HandleRemoveMember"
+                         OnAskCandidates="HandleAskCandidates" />
     </div>
 </div>
 
@@ -64,7 +69,7 @@
     // ====== Estado de datos ======
     private List<GroupResponseDTO> allGroups = new();
 
-    // IMPORTANT: el hijo espera List<...>
+    // El hijo espera List<...> concretas
     private List<GroupResponseDTO> groupsTipo1 => allGroups.Where(g => g.GroupTypeId == 1).ToList();
     private List<GroupResponseDTO> groupsTipo2 => allGroups.Where(g => g.GroupTypeId == 2).ToList();
 
@@ -100,7 +105,6 @@
             if (response.Success)
             {
                 Toast.ShowSuccess("Grupo creado exitosamente.");
-
                 var createdId = response.Response?.GroupId;
                 var createdTypeId = dto.GroupTypeId;
 
@@ -135,7 +139,7 @@
         return Task.CompletedTask;
     }
 
-    // ====== Carga de datos (solo en el padre) ======
+    // ====== Carga de datos ======
     private async Task LoadGroupsAsync()
     {
         isLoading = true; StateHasChanged();
@@ -212,7 +216,6 @@
 
     private async Task ReloadAfterMemberChange()
     {
-        // Re-carga miembros del grupo actualmente seleccionado en la pestaña activa
         if (currentTabKey == "tipo1" && selectedGroupIdTipo1 is int g1)
             await LoadMembersFor(ProjectType.Type1, g1);
         else if (currentTabKey == "tipo2" && selectedGroupIdTipo2 is int g2)
@@ -224,4 +227,53 @@
     private static ProjectType MapGroupTypeIdToProjectType(int groupTypeId)
         => groupTypeId == 2 ? ProjectType.Type2 : ProjectType.Type1;
 
+    // ====== CRUD (desde hijos) ======
+
+    private async Task HandleAddMember(AddGroupMemberRequestDTO dto)
+    {
+        var res = await GroupService.AddMemberAsync(dto);
+        if (!res.Success) { Toast.ShowError(res.Error ?? "No se pudo agregar el miembro."); return; }
+        Toast.ShowSuccess("Miembro agregado.");
+        await ReloadAfterMemberChange();
+    }
+
+    private async Task HandleUpdateGroup(UpdateGroupRequestDTO dto)
+    {
+        var res = await GroupService.UpdateAsync(dto);
+        if (!res.Success) { Toast.ShowError(res.Error ?? "No se pudo actualizar el grupo."); return; }
+        Toast.ShowSuccess("Grupo actualizado.");
+        await LoadGroupsAsync();
+        await ReloadAfterMemberChange();
+    }
+
+    private async Task HandleRemoveMember(int userGroupId)
+    {
+        // TODO: reemplazar por tu endpoint real cuando exista:
+        // var res = await GroupService.RemoveMemberAsync(userGroupId);
+        // if (!res.Success) { Toast.ShowError(res.Error ?? "No se pudo eliminar el miembro."); return; }
+        // Toast.ShowSuccess("Miembro eliminado.");
+        // await ReloadAfterMemberChange();
+
+        Toast.ShowInfo("Eliminar miembro: implementar RemoveMemberAsync en IGroupService.");
+        await Task.CompletedTask;
+    }
+
+    private async Task<List<ExternalUserDTO>> HandleAskCandidates(int groupId)
+    {
+        var all = await ExternalUserService.GetListAsync();
+        if (!all.Success)
+        {
+            Toast.ShowError(all.Error ?? "No se pudieron cargar usuarios.");
+            return new();
+        }
+
+        // Determina miembros actuales del tab activo
+        var existing = currentTabKey == "tipo2" ? membersTipo2 : membersTipo1;
+        var existingIds = new HashSet<int>(existing.Select(m => m.UserId));
+
+        return (all.Response ?? new())
+            .Where(u => !existingIds.Contains(u.UserId))
+            .OrderBy(u => u.FullName)
+            .ToList();
+    }
 }

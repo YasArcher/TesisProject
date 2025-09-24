@@ -2,15 +2,13 @@
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.Features.Groups.Components
 @using tesisproject.frontend.SharedUI.SearchInput
+@using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.shared.DTOs.External
 @using tesisproject.shared.DTOs.Group.Request
 @using tesisproject.shared.DTOs.Group.Response
 @using tesisproject.shared.Enums
-@using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.Services.Interfaces
 
-@inject IExternalUserService ExternalUserService
-@inject IGroupService GroupService
 @inject IToastService Toast
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[600px]">
@@ -43,7 +41,7 @@
                 </ChildContent>
 
                 <EmptyStateAction>
-                    <button class="btn-primary-solid text-sm">+ Crear Grupo</button>
+                    <button class="btn-primary-solid text-sm" disabled>+ Crear Grupo</button>
                 </EmptyStateAction>
             </Container>
         </div>
@@ -86,6 +84,8 @@
                                EmptyStateDescription="Este grupo aún no tiene miembros asignados"
                                IsLoading="@IsLoadingMembers">
                         <ChildContent Context="member">
+                            @* Si MemberCard emite un ID de relación (UserGroupId),
+                               lo redirigimos hacia el padre: *@
                             <MemberCard Item="@member" OnRemoved="HandleMemberRemoved" />
                         </ChildContent>
                         <EmptyStateAction>
@@ -150,13 +150,13 @@
 @if (SelectedGroup is not null)
 {
     <GroupCreateModal ModalId="group-edit-modal"
-                IsOpen="@_showGroupModal"
-                IsOpenChanged="(bool v) => _showGroupModal = v"
-                IsEdit="true"
-                GroupToEdit="@SelectedGroup"
-                AllowChangeTypeInEdit="true"
-                OnUpdate="HandleUpdateGroupAsync"
-                OnCancel="@(()=> _showGroupModal = false)" />
+                      IsOpen="@_showGroupModal"
+                      IsOpenChanged="(bool v) => _showGroupModal = v"
+                      IsEdit="true"
+                      GroupToEdit="@SelectedGroup"
+                      AllowChangeTypeInEdit="true"
+                      OnUpdate="HandleUpdateGroupAsync"
+                      OnCancel="@(()=> _showGroupModal = false)" />
 }
 
 @code {
@@ -170,7 +170,13 @@
     [Parameter] public bool IsLoadingMembers { get; set; }
     [Parameter] public List<ExternalUserDTO> GroupMembers { get; set; } = new();
 
-    /* ===== Estado local ===== */
+    // === Eventos hacia el padre (CRUD + candidatos) ===
+    [Parameter] public EventCallback<AddGroupMemberRequestDTO> OnRequestAddMember { get; set; }
+    [Parameter] public EventCallback<UpdateGroupRequestDTO> OnRequestUpdateGroup { get; set; }
+    [Parameter] public EventCallback<int> OnRequestRemoveMember { get; set; }
+    [Parameter] public Func<int, Task<List<ExternalUserDTO>>> OnAskCandidates { get; set; } = default!;
+
+    /* ===== Estado local UI ===== */
     private string searchTerm = "";
     private string memberSearchTerm = "";
 
@@ -178,7 +184,6 @@
     private bool _showUserPicker;
     private List<ExternalUserDTO> _candidates = new();
     private int? _preselectedUserId;
-    private bool _busyAdd;
 
     // Group edit modal state
     private bool _showGroupModal;
@@ -207,12 +212,14 @@
             await OnGroupSelected.InvokeAsync(groupId);
     }
 
-    private async Task HandleMemberRemoved(int memberId)
+    // Se emite hacia el padre para eliminar (no se toca estado de dominio aquí)
+    private async Task HandleMemberRemoved(int userGroupId)
     {
-        GroupMembers = GroupMembers.Where(m => m.UserGroupId != memberId).ToList();
+        if (OnRequestRemoveMember.HasDelegate)
+            await OnRequestRemoveMember.InvokeAsync(userGroupId);
+
         if (OnReloadGroups.HasDelegate)
             await OnReloadGroups.InvokeAsync();
-        StateHasChanged();
     }
 
     private async Task OnAddMemberClick()
@@ -223,20 +230,8 @@
             return;
         }
 
-        var resp = await ExternalUserService.GetListAsync();
-
-        if (!resp.Success)
-        {
-            Toast.ShowError(resp.Error ?? "Couldn't load users to add.");
-            return;
-        }
-
-        var all = resp.Response ?? new List<ExternalUserDTO>();
-        var existingIds = new HashSet<int>(GroupMembers.Select(m => m.UserId));
-
-        _candidates = all.Where(u => !existingIds.Contains(u.UserId))
-                         .OrderBy(u => u.FullName)
-                         .ToList();
+        var candidates = await OnAskCandidates.Invoke(SelectedGroupId.Value);
+        _candidates = candidates;
 
         if (_candidates.Count == 0)
         {
@@ -260,26 +255,13 @@
         {
             ExternalUserId = userId,
             GroupId = SelectedGroupId.Value,
-            MemberRole = "Sapo"
+            MemberRole = "Sapo" // ajusta el rol si corresponde
         };
 
-        var resp = await GroupService.AddMemberAsync(request);
-
-        if (!resp.Success)
-        {
-            Toast.ShowError(resp.Error ?? "Couldn't add the member.");
-            return;
-        }
-
+        await OnRequestAddMember.InvokeAsync(request);
         _showUserPicker = false;
-
-        if (OnReloadGroups.HasDelegate)
-            await OnReloadGroups.InvokeAsync();
-
-        Toast.ShowSuccess("Member added successfully.");
     }
 
-    // === Abrir modal en modo edición con el grupo seleccionado ===
     private Task OnConfigureGroupClick()
     {
         if (SelectedGroup is null)
@@ -292,21 +274,9 @@
         return Task.CompletedTask;
     }
 
-    // === Guardar cambios del modal (Update) ===
     private async Task HandleUpdateGroupAsync(UpdateGroupRequestDTO dto)
     {
-        var resp = await GroupService.UpdateAsync(dto);
-        if (!resp.Success)
-        {
-            Toast.ShowError(resp.Error ?? "Couldn't update the group.");
-            return;
-        }
-
+        await OnRequestUpdateGroup.InvokeAsync(dto);
         _showGroupModal = false;
-        Toast.ShowSuccess("Group updated successfully.");
-
-        // Refrescar datos
-        if (OnReloadGroups.HasDelegate)
-            await OnReloadGroups.InvokeAsync();
     }
 }
