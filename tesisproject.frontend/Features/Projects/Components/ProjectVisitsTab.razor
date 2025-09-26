@@ -1,0 +1,54 @@
+﻿@* @using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.SharedUI.ActionButton
+
+<div class="space-y-4">
+    <div class="flex justify-between items-center">
+        <h3 class="text-base font-semibold">Visitas</h3>
+        <ActionButton Text="Nueva visita"
+                      Intent="ButtonIntent.Info"
+                      Variant="ButtonVariant.Filled"
+                      Size="ButtonSize.Sm"
+                      Execute="@(()=> OnAddVisit.InvokeAsync())" />
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="text-sm text-muted">Cargando visitas…</div>
+    }
+    else if (Items?.Count is 0 or null)
+    {
+        <Container TItem="object"
+                   Items="new List<object>()"
+                   Title="VISITAS"
+                   EmptyStateTitle="Sin visitas"
+                   EmptyStateDescription="Aún no se han registrado visitas." />
+    }
+    else
+    {
+        <ul class="space-y-2">
+            @foreach (var v in Items!)
+            {
+                <li class="rounded-lg border p-3 flex justify-between items-center">
+                    <div>
+                        <div class="font-medium">@v.Title</div>
+                        <div class="text-sm text-muted">
+                            Fecha: @v.VisitDate.ToString("yyyy-MM-dd") • Estado: @v.StateName
+                        </div>
+                    </div>
+                    <ActionButton Text="Abrir"
+                                  Intent="ButtonIntent.Neutral"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm"
+                                  Execute="@(()=> OnOpenVisit.InvokeAsync(v.VisitId))" />
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    [Parameter] public List<ProjectVisitListItemDTO>? Items { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public EventCallback OnAddVisit { get; set; }
+    [Parameter] public EventCallback<int> OnOpenVisit { get; set; }
+} *@

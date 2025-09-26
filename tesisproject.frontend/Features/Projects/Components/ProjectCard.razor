@@ -1,6 +1,6 @@
 ﻿@using tesisproject.frontend.SharedUI.Card
 @using tesisproject.frontend.SharedUI.ActionButton
-@inject NavigationManager Nav
+@inherits ComponentBase
 
 <Card Tone="CardTone.Default"
       Class="bg-background border border-border rounded-2xl card-hover-primary transition-shadow">
@@ -36,29 +36,26 @@
 
     <CardFooter>
         <div class="flex gap-2">
-            <!-- Open -->
             <ActionButton Text="Open"
                           Intent="ButtonIntent.Accept"
                           Variant="ButtonVariant.Filled"
                           Size="ButtonSize.Sm"
                           Class="rounded-md"
-                          Execute="GoToProjectAsync">
+                          Execute="@(() => OnOpen.InvokeAsync(Item))">
                 <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg"
-                         class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
                          stroke="currentColor" stroke-width="2">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
                 </Icon>
             </ActionButton>
 
-            <!-- Details -->
             <ActionButton Text="Details"
                           Intent="ButtonIntent.Neutral"
                           Variant="ButtonVariant.Outline"
                           Size="ButtonSize.Sm"
                           Class="rounded-md"
-                          Execute="ShowDetailsAsync" />
+                          Execute="@(() => OnShowDetails.InvokeAsync(Item))" />
         </div>
     </CardFooter>
 </Card>

@@ -39,5 +39,9 @@ namespace tesisproject.backend.Controllers
         [HttpGet("by-type/{projectTypeId:int}")]
         public async Task<ActionResult<ApiResponse<List<ProjectListResponseDTO>>>> GetByType(int projectTypeId, CancellationToken ct)
             => (await _service.GetByTypeAsync(projectTypeId, ct)).ToActionResult();
+
+        [HttpGet("detail/{projectId:int}")]
+        public async Task<ActionResult<ApiResponse<ProjectDetailResponseDTO>>> GetProjectDetail(int projectId, CancellationToken ct)
+            => (await _service.GetProjectDetailAsync(projectId, ct)).ToActionResult();
     }
 }

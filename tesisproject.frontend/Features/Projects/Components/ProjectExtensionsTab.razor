@@ -1,0 +1,53 @@
+﻿@* @using tesisproject.frontend.SharedUI.ActionButton
+
+<div class="space-y-4">
+    <div class="flex justify-between items-center">
+        <h3 class="text-base font-semibold">Prórrogas</h3>
+        <ActionButton Text="Solicitar prórroga"
+                      Intent="ButtonIntent.Warning"
+                      Variant="ButtonVariant.Outline"
+                      Size="ButtonSize.Sm"
+                      Execute="@(()=> OnRequestNew.InvokeAsync())" />
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="text-sm text-muted">Cargando prórrogas…</div>
+    }
+    else if (Items?.Count is 0 or null)
+    {
+        <div class="text-sm text-muted">No hay prórrogas registradas.</div>
+    }
+    else
+    {
+        <div class="grid gap-3">
+            @foreach (var e in Items!)
+            {
+                <div class="rounded-lg border p-3 flex justify-between">
+                    <div>
+                        <div class="font-medium">Solicitud #@e.ExtensionId — @e.StatusName</div>
+                        <div class="text-sm text-muted">
+                            Solicitado: @e.RequestDate.ToString("yyyy-MM-dd")
+                            @if (e.ApprovedDate is not null)
+                            {
+                                <span> • Aprobado: @e.ApprovedDate?.ToString("yyyy-MM-dd")</span>
+                            }
+                        </div>
+                    </div>
+                    <ActionButton Text="Abrir"
+                                  Intent="ButtonIntent.Neutral"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm"
+                                  Execute="@(()=> OnOpen.InvokeAsync(e.ExtensionId))" />
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public List<ProjectExtensionListItemDTO>? Items { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public EventCallback OnRequestNew { get; set; }
+    [Parameter] public EventCallback<int> OnOpen { get; set; }
+} *@

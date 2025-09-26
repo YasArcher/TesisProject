@@ -1,0 +1,233 @@
+﻿@using tesisproject.shared.DTOs.Project.Response
+
+<div class="space-y-6">
+    @if (IsLoading)
+    {
+        <div class="flex items-center gap-3 p-4 bg-primary-subtle rounded-lg">
+            <div class="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
+            <div class="text-sm text-primary">Cargando detalles del proyecto...</div>
+        </div>
+    }
+    else if (Item is null)
+    {
+        <div class="p-4 bg-error/10 border border-error/20 rounded-lg">
+            <div class="text-sm text-error">No se encontraron datos del proyecto.</div>
+        </div>
+    }
+    else
+    {
+        <!-- Información General -->
+        <div class="bg-background border border-border rounded-lg p-4">
+            <h3 class="text-lg font-semibold text-foreground mb-4 border-b border-border pb-2">
+                Información General
+            </h3>
+            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div>
+                    <div class="text-xs text-muted font-medium mb-1">ID del Proyecto</div>
+                    <div class="font-semibold text-primary">#@Item.ProjectId</div>
+                </div>
+                <div>
+                    <div class="text-xs text-muted font-medium mb-1">Código</div>
+                    <div class="font-medium">@(string.IsNullOrEmpty(Item.ProjectCode) ? "Sin código" : Item.ProjectCode)</div>
+                </div>
+                <div>
+                    <div class="text-xs text-muted font-medium mb-1">Nombre del Proyecto</div>
+                    <div class="font-medium">@(string.IsNullOrEmpty(Item.ProjectName) ? "Sin nombre" : Item.ProjectName)</div>
+                </div>
+                <div>
+                    <div class="text-xs text-muted font-medium mb-1">Tipo</div>
+                    <div class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-primary-subtle text-primary">
+                        @(string.IsNullOrEmpty(Item.ProjectTypeName) ? "Sin tipo" : Item.ProjectTypeName)
+                    </div>
+                </div>
+                <div>
+                    <div class="text-xs text-muted font-medium mb-1">Estado</div>
+                    <div class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-secondary-subtle text-secondary">
+                        @(string.IsNullOrEmpty(Item.ProjectStateName) ? "Sin estado" : Item.ProjectStateName)
+                    </div>
+                </div>
+                <div>
+                    <div class="text-xs text-muted font-medium mb-1">Progreso</div>
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 bg-border rounded-full h-2">
+                            <div class="bg-secondary h-2 rounded-full" style="width: @Item.ExecutionPercentage%"></div>
+                        </div>
+                        <span class="text-sm font-medium">@Item.ExecutionPercentage.ToString("F1")%</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fechas -->
+        <div class="bg-background border border-border rounded-lg p-4">
+            <h3 class="text-lg font-semibold text-foreground mb-4 border-b border-border pb-2">
+                Cronograma
+            </h3>
+            <div class="grid gap-4 md:grid-cols-3">
+                <div>
+                    <div class="text-xs text-muted font-medium mb-1">Fecha de Inicio</div>
+                    <div class="font-medium">
+                        @if (Item.StartDate.HasValue)
+                        {
+                            <span class="text-foreground">@Item.StartDate.Value.ToString("dd/MM/yyyy")</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted italic">No definida</span>
+                        }
+                    </div>
+                </div>
+                <div>
+                    <div class="text-xs text-muted font-medium mb-1">Fin Tentativo</div>
+                    <div class="font-medium">
+                        @if (Item.TentativeEndDate.HasValue)
+                        {
+                            <span class="text-foreground">@Item.TentativeEndDate.Value.ToString("dd/MM/yyyy")</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted italic">No definida</span>
+                        }
+                    </div>
+                </div>
+                <div>
+                    <div class="text-xs text-muted font-medium mb-1">Fin Real</div>
+                    <div class="font-medium">
+                        @if (Item.RealEndDate.HasValue)
+                        {
+                            <span class="text-foreground">@Item.RealEndDate.Value.ToString("dd/MM/yyyy")</span>
+                        }
+                        else
+                        {
+                            <span class="text-muted italic">No finalizado</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grupos -->
+        <div class="bg-background border border-border rounded-lg p-4">
+            <h3 class="text-lg font-semibold text-foreground mb-4 border-b border-border pb-2">
+                Grupos Asignados
+            </h3>
+            <div class="grid gap-4 md:grid-cols-2">
+                <div>
+                    <div class="text-xs text-muted font-medium mb-1">Grupo Principal</div>
+                    <div class="font-medium">
+                        @if (!string.IsNullOrEmpty(Item.ProjectGroupName))
+                        {
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 bg-primary rounded-full"></div>
+                                <span>@Item.ProjectGroupName</span>
+                                <span class="text-xs text-muted">(ID: @Item.ProjectGroupId)</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted italic">Sin grupo asignado</span>
+                        }
+                    </div>
+                </div>
+                <div>
+                    <div class="text-xs text-muted font-medium mb-1">Grupo SENESCYT</div>
+                    <div class="font-medium">
+                        @if (Item.SenesytGroupId.HasValue && !string.IsNullOrEmpty(Item.SenesytGroupName))
+                        {
+                            <div class="flex items-center gap-2">
+                                <div class="w-2 h-2 bg-accent rounded-full"></div>
+                                <span>@Item.SenesytGroupName</span>
+                                <span class="text-xs text-muted">(ID: @Item.SenesytGroupId)</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted italic">No asignado</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Descripción y Línea de Investigación -->
+        <div class="bg-background border border-border rounded-lg p-4">
+            <h3 class="text-lg font-semibold text-foreground mb-4 border-b border-border pb-2">
+                Descripción
+            </h3>
+            <div class="space-y-4">
+                <div>
+                    <div class="text-xs text-muted font-medium mb-2">Objetivo del Proyecto</div>
+                    <div class="text-sm bg-page-bg p-3 rounded-md border">
+                        @if (!string.IsNullOrEmpty(Item.ProjectObjective))
+                        {
+                            @Item.ProjectObjective
+                        }
+                        else
+                        {
+                            <span class="text-muted italic">Sin objetivo definido</span>
+                        }
+                    </div>
+                </div>
+                <div>
+                    <div class="text-xs text-muted font-medium mb-2">Línea de Investigación</div>
+                    <div class="text-sm">
+                        @if (!string.IsNullOrEmpty(Item.ResearchLine))
+                        {
+                            <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full bg-accent/10 text-accent border border-accent/20">
+                                @Item.ResearchLine
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="text-muted italic">Sin línea de investigación</span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Presupuesto -->
+        <div class="bg-background border border-border rounded-lg p-4">
+            <h3 class="text-lg font-semibold text-foreground mb-4 border-b border-border pb-2">
+                Presupuesto
+            </h3>
+            @if (Item.BudgetId > 0)
+            {
+                <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                        <div class="text-xs text-muted font-medium mb-1">ID de Presupuesto</div>
+                        <div class="font-semibold text-primary">#@Item.BudgetId</div>
+                    </div>
+                    <div>
+                        <div class="text-xs text-muted font-medium mb-1">Monto Inicial</div>
+                        <div class="font-semibold text-lg text-foreground">
+                            @Item.BudgetAmount.ToString("C", new System.Globalization.CultureInfo("es-EC"))
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-3 p-3 bg-primary-subtle rounded-md">
+                    <div class="text-xs text-primary font-medium">
+                        💡 Para ver detalles completos del presupuesto (certificado, ejecutado, transacciones), acceder a la pestaña "Presupuesto"
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="flex items-center gap-3 p-4 bg-muted/10 rounded-lg border border-muted/20">
+                    <div class="w-8 h-8 bg-muted/20 rounded-full flex items-center justify-center">
+                        <span class="text-muted text-sm">💰</span>
+                    </div>
+                    <div>
+                        <div class="font-medium text-muted">Sin presupuesto asignado</div>
+                        <div class="text-xs text-muted/75">Este proyecto aún no tiene un presupuesto configurado</div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public ProjectDetailResponseDTO? Item { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+}

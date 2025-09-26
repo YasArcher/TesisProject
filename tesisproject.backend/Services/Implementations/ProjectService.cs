@@ -207,6 +207,52 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
+        public async Task<ServiceResult<ProjectDetailResponseDTO>> GetProjectDetailAsync(int projectId, CancellationToken ct = default)
+        {
+            try
+            {
+                var dto = await _uow.Projects
+                    .Query()
+                    .Where(p => p.ProjectId == projectId)
+                    .Select(p => new ProjectDetailResponseDTO
+                    {
+                        // --- General ---
+                        ProjectId = p.ProjectId,
+                        ProjectCode = p.ProjectCode ?? string.Empty,
+                        ProjectName = p.ProjectName ?? string.Empty,
+                        ProjectObjective = p.ProjectObjective ?? string.Empty,
+                        ResearchLine = p.ResearchLine ?? string.Empty,
+                        ProjectTypeId = p.ProjectTypeId,
+                        ProjectTypeName = p.ProjectType.Name ?? string.Empty,
+                        ProjectStateId = p.ProjectStateId,
+                        ProjectStateName = p.ProjectState.Name ?? string.Empty,
+                        StartDate = p.StartDate,
+                        TentativeEndDate = p.TentativeEndDate,
+                        RealEndDate = p.RealEndDate,
+                        ExecutionPercentage = p.ExecutionPercentage ?? 0,
+
+                        // --- Groups ---
+                        ProjectGroupId = p.ProjectGroupId,
+                        ProjectGroupName = p.ProjectGroup.Name ?? string.Empty,
+                        SenesytGroupId = p.SenesytGroupId,
+                        SenesytGroupName = p.SenesytGroup != null ? p.SenesytGroup.Name : null,
+
+                        // --- Budget --- ✅ CORREGIDO
+                        BudgetId = p.Budget != null ? p.Budget.BudgetId : 0,
+                        BudgetAmount = p.Budget != null ? p.Budget.InitialAmount : 0,
+                    })
+                    .FirstOrDefaultAsync(ct);
+
+                return dto is null
+                    ? ServiceResult<ProjectDetailResponseDTO>.Fail("Project not found.", ErrorType.NotFound)
+                    : ServiceResult<ProjectDetailResponseDTO>.Ok(dto, "Project detail retrieved");
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<ProjectDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+            }
+        }
+
         private static Project MapToEntity(AddProjectRequestDTO dto) => new()
         {
             ProjectCode = dto.ProjectCode ?? string.Empty,

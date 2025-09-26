@@ -1,0 +1,117 @@
+﻿@* Features/Projects/Components/ProjectAccrualModal.razor *@
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.shared.DTOs.Budgets.Request
+
+@if (IsOpen)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <EditForm Model="_model" OnValidSubmit="HandleSubmit">
+            <DataAnnotationsValidator />
+            <div class="w-full max-w-lg rounded-xl bg-white shadow-lg border">
+                <!-- Header -->
+                <div class="px-4 py-3 border-b flex items-center justify-between">
+                    <h3 class="text-base font-semibold">Devengar transacción</h3>
+                    <button type="button"
+                            class="text-sm px-2 py-1 rounded hover:bg-gray-100"
+                            @onclick="Close"
+                            disabled="@IsSaving">
+                        ✕
+                    </button>
+                </div>
+
+                <!-- Body -->
+                <div class="p-4 space-y-4">
+                    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                    {
+                        <div class="text-sm text-red-600">@ErrorMessage</div>
+                    }
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <!-- Fecha de devengo -->
+                        <div class="space-y-1">
+                            <label class="text-xs font-medium">Fecha de devengo</label>
+                            <InputDate @bind-Value="_model.ExecutedAt"
+                                       class="w-full rounded-md border px-3 py-2 text-sm"
+                                       disabled="@IsSaving" />
+                            <small class="text-xs text-muted">Vacío = hoy (UTC)</small>
+                        </div>
+
+                        <!-- CUR -->
+                        <div class="space-y-1">
+                            <label class="text-xs font-medium">CUR (opcional)</label>
+                            <InputText @bind-Value="_model.CURNumber"
+                                       class="w-full rounded-md border px-3 py-2 text-sm"
+                                       disabled="@IsSaving" />
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-4 py-3 border-t flex justify-end gap-2">
+                    <button type="button"
+                            class="px-3 py-2 rounded-md border text-sm hover:bg-gray-50"
+                            @onclick="Close"
+                            disabled="@IsSaving">
+                        Cancelar
+                    </button>
+
+                    <button type="submit"
+                            class="px-3 py-2 rounded-md text-sm text-white"
+                            disabled="@IsSaving"
+                            style="background-color: var(--color-primary);">
+                        @(IsSaving ? "Devengando..." : "Confirmar devengo")
+                    </button>
+                </div>
+            </div>
+        </EditForm>
+    </div>
+}
+
+@code {
+    // Controlado por el padre
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+
+    // Semilla opcional
+    [Parameter] public ExecuteDevengadoRequestDTO? Value { get; set; }
+
+    // Eventos
+    [Parameter] public EventCallback<ExecuteDevengadoRequestDTO> OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private ExecuteDevengadoRequestDTO _model = new();
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen)
+        {
+            _model = Value is not null
+                ? new ExecuteDevengadoRequestDTO
+                {
+                    BudgetTransactionId = Value.BudgetTransactionId,
+                    ExecutedByUserId = Value.ExecutedByUserId,
+                    CURNumber = Value.CURNumber,
+                    ExecutedAt = Value.ExecutedAt
+                }
+                : new ExecuteDevengadoRequestDTO();
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (OnSubmit.HasDelegate)
+            await OnSubmit.InvokeAsync(_model);
+    }
+
+    private async Task Close()
+    {
+        if (OnCancel.HasDelegate)
+            await OnCancel.InvokeAsync();
+
+        if (IsOpenChanged.HasDelegate)
+            await IsOpenChanged.InvokeAsync(false);
+    }
+}

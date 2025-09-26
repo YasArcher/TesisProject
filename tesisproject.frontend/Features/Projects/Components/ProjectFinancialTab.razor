@@ -1,0 +1,158 @@
+﻿@* Features/Projects/Components/ProjectFinancialTab.razor *@
+@using System.Globalization
+@using Microsoft.AspNetCore.Components
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.Budgets.Request
+@using tesisproject.shared.Enums
+
+<div class="space-y-4">
+    <div class="flex justify-between items-center">
+        <h3 class="text-base font-semibold">Resumen financiero</h3>
+
+        <div class="flex gap-2">
+            <ActionButton Text="Nueva certificación"
+                          Intent="ButtonIntent.Accept"
+                          Variant="ButtonVariant.Filled"
+                          Size="ButtonSize.Sm"
+                          Execute="@(()=> OnAddCertification.InvokeAsync())" />
+
+            @if (Mode == AccrualActionMode.SelectAndToolbar)
+            {
+                <ActionButton Text="Devengar seleccionado"
+                              Intent="ButtonIntent.Neutral"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Sm"
+                              Execute="@(()=> OnExecuteDevengado.InvokeAsync(SelectedTransactionId!.Value))"
+                              Disabled="@(!CanExecuteSelected)" />
+            }
+        </div>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="text-sm text-muted">Cargando presupuesto y transacciones…</div>
+    }
+    else if (Budget is null)
+    {
+        <div class="text-sm text-muted">Este proyecto no tiene presupuesto registrado.</div>
+    }
+    else
+    {
+        <div class="grid md:grid-cols-3 gap-3">
+            <div class="rounded-lg border p-3">
+                <div class="text-xs text-muted">Presupuesto</div>
+                <div class="text-lg font-semibold">@FormatMoney(Budget.InitialAmount)</div>
+            </div>
+            <div class="rounded-lg border p-3">
+                <div class="text-xs text-muted">Certificado</div>
+                <div class="text-lg font-semibold">@FormatMoney(Budget.CertifiedAmount)</div>
+            </div>
+            <div class="rounded-lg border p-3">
+                <div class="text-xs text-muted">Devengado</div>
+                <div class="text-lg font-semibold">@FormatMoney(Budget.ExecutedAmount)</div>
+            </div>
+        </div>
+
+        <h4 class="text-sm font-medium mt-4">Transacciones</h4>
+
+        @if (Transactions is null || Transactions.Count == 0)
+        {
+            <div class="text-sm text-muted">Aún no hay transacciones.</div>
+        }
+        else
+        {
+            <div class="rounded-lg border overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-muted/50">
+                        <tr>
+                            <th class="text-left p-2">#</th>
+                            <th class="text-left p-2">Certificada</th>
+                            <th class="text-left p-2">Devengada</th>
+                            <th class="text-right p-2">Monto</th>
+                            <th class="text-left p-2">Partida</th>
+                            <th class="text-left p-2">CUR</th>
+                            <th class="text-left p-2">Estado</th>
+                            @if (Mode == AccrualActionMode.RowButton)
+                            {
+                                <th class="text-right p-2">Acción</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var t in Transactions!)
+                        {
+                            var isSelected = t.BudgetTransactionId == SelectedTransactionId;
+                            var rowClass = isSelected ? "bg-gray-50" : null;
+
+                            <tr class="border-t hover:bg-gray-50 @rowClass"
+                                @onclick="@(() => Select(t.BudgetTransactionId))">
+                                <td class="p-2">@t.BudgetTransactionId</td>
+                                <td class="p-2">@FormatDate(t.CertifiedAt)</td>
+                                <td class="p-2">@FormatDate(t.ExecutedAt)</td>
+                                <td class="p-2 text-right">@FormatMoney(t.Amount)</td>
+                                <td class="p-2">@t.BudgetItem</td>
+                                <td class="p-2">@(!string.IsNullOrWhiteSpace(t.CURNumber) ? t.CURNumber : "-")</td>
+                                <td class="p-2">
+                                    @if (IsExecuted(t.ExecutedAt))
+                                    {
+                                        <span class="px-2 py-1 rounded text-xs bg-green-100 text-green-700">Ejecutado</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800">Certificado</span>
+                                    }
+                                </td>
+
+                                @if (Mode == AccrualActionMode.RowButton)
+                                {
+                                    <td class="p-2 text-right">
+                                        <button class="px-2 py-1 rounded border text-xs hover:bg-gray-100"
+                                                disabled="@IsExecuted(t.ExecutedAt)"
+                                                @onclick:stopPropagation="true"
+                                                @onclick="@(() => OnExecuteDevengado.InvokeAsync(t.BudgetTransactionId))">
+                                            Devengar
+                                        </button>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    // ===== Datos =====
+    [Parameter] public BudgetDTO? Budget { get; set; }
+    [Parameter] public List<BudgetTransactionDTO>? Transactions { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+
+    // ===== Eventos (padre) =====
+    [Parameter] public EventCallback OnAddCertification { get; set; }
+    [Parameter] public EventCallback<int> OnExecuteDevengado { get; set; }
+
+    // ===== Configuración de modo =====
+    [Parameter] public AccrualActionMode Mode { get; set; } = AccrualActionMode.RowButton;
+
+    // ===== Selección =====
+    private int? SelectedTransactionId { get; set; }
+    private bool CanExecuteSelected =>
+        SelectedTransactionId.HasValue &&
+        (Transactions?.Any(x => x.BudgetTransactionId == SelectedTransactionId && !IsExecuted(x.ExecutedAt)) ?? false);
+
+    private void Select(int id) => SelectedTransactionId = id;
+
+    // ===== Utilidades de UI =====
+    private static string FormatDate(DateTime? dt)
+        => (dt.HasValue && dt.Value != DateTime.MinValue)
+            ? dt.Value.ToString("yyyy-MM-dd")
+            : "-";
+
+    private static string FormatMoney(decimal amount)
+        => amount.ToString("N2", CultureInfo.InvariantCulture);
+
+    private static bool IsExecuted(DateTime? executedAt)
+        => executedAt.HasValue && executedAt.Value != DateTime.MinValue;
+}
