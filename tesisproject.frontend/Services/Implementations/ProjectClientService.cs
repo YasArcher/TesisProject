@@ -18,4 +18,9 @@ public class ProjectClientService : IProjectClientService
     {
         return _api.GetAsync<ProjectListResponseDTO>($"api/projects/{id}", ct);
     }
+    public Task<HttpResponseWrapper<ProjectDetailResponseDTO?>> GetDetailAsync(int projectId, CancellationToken ct = default)
+    {
+        return _api.GetAsync<ProjectDetailResponseDTO>($"api/projects/detail/{projectId}", ct);
+    }
+
 }

@@ -255,8 +255,8 @@ namespace tesisproject.backend.Services.Implementations
                     return ServiceResult<BudgetTransactionDTO>.Fail("Transaction already executed.", ErrorType.Validation);
 
                 // Validación: no puedes devengar más de lo certificado
-                if (budget.ExecutedAmount + tx.Amount > budget.CertifiedAmount)
-                    return ServiceResult<BudgetTransactionDTO>.Fail("Execution exceeds certified amount.", ErrorType.Validation);
+                //if (budget.ExecutedAmount + tx.Amount > budget.CertifiedAmount)
+                //    return ServiceResult<BudgetTransactionDTO>.Fail("Execution exceeds certified amount.", ErrorType.Validation);
 
                 // Marcar como ejecutado
                 tx.ExecutedAt = (request.ExecutedAt ?? DateTime.UtcNow).Date;

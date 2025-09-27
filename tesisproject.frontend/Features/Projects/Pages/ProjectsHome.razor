@@ -1,21 +1,21 @@
-﻿@page "/projects"
+﻿@page "/projects/home"
 @using tesisproject.frontend.Features.Projects.Components
-@using tesisproject.frontend.Services.Implementations
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.ActionButton
-@using tesisproject.shared.DTOs.Project
 @using tesisproject.shared.DTOs.Project.Response
 @inject IProjectClientService ProjectService
+@inject NavigationManager Nav
 
 <Container TItem="ProjectListResponseDTO"
-           Items="@GetProjects()"
+           Items="projects ?? new()"
            Title="Mis Proyectos"
            ShowItemCount="true"
            IsLoading="@isLoading"
            GridClasses="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6"
            EmptyStateTitle="No tienes proyectos aún"
            EmptyStateDescription="Comienza creando tu primer proyecto para organizar tu trabajo.">
+
     <EmptyStateAction>
         <ActionButton Text="Crear Nuevo Proyecto"
                       Execute="CreateNewProject"
@@ -25,8 +25,14 @@
                       Disabled="@isLoading"
                       Class="px-4 py-2 rounded-md" />
     </EmptyStateAction>
+
     <ChildContent Context="project">
-        <ProjectCard Item="project" />
+        @* Usa @key si el Container no lo hace internamente *@
+        <div @key="project.ProjectId">
+            <ProjectCard Item="project"
+                         OnOpen="HandleOpen"
+                         OnShowDetails="HandleShowDetails" />
+        </div>
     </ChildContent>
 </Container>
 
@@ -35,51 +41,41 @@
     private bool isLoading = true;
     private string? errorMessage;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadProjects();
-    }
-
-    private List<ProjectListResponseDTO> GetProjects()
-    {
-        return projects ?? new List<ProjectListResponseDTO>();
-    }
+    protected override async Task OnInitializedAsync() => await LoadProjects();
 
     private async Task LoadProjects()
     {
-        isLoading = true;
-        errorMessage = null;
-
+        isLoading = true; errorMessage = null;
         try
         {
-            var response = await ProjectService.GetListAsync(onlyActive: true);
-
-            if (response.Success)
-            {
-                projects = response.Response ?? new List<ProjectListResponseDTO>();
-            }
-            else
-            {
-                errorMessage = response.Error ?? "Error desconocido al cargar proyectos";
-                projects = new List<ProjectListResponseDTO>();
-                Console.WriteLine($"Error loading projects: {errorMessage}");
-            }
+            var resp = await ProjectService.GetListAsync(onlyActive: true);
+            projects = resp.Success ? resp.Response ?? new() : new();
+            if (!resp.Success) errorMessage = resp.Error ?? "Error desconocido al cargar proyectos";
         }
         catch (Exception ex)
         {
             errorMessage = $"Error de conexión: {ex.Message}";
-            Console.WriteLine($"Exception loading projects: {ex.Message}");
-            projects = new List<ProjectListResponseDTO>();
+            projects = new();
         }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
-        }
+        finally { isLoading = false; StateHasChanged(); }
+    }
+
+    // Navegación y acciones desde el padre
+    private Task HandleOpen(ProjectListResponseDTO item)
+    {
+        Nav.NavigateTo($"/projects/{item.ProjectId}");
+        return Task.CompletedTask;
+    }
+
+    private Task HandleShowDetails(ProjectListResponseDTO item)
+    {
+        // Abrir modal, sidebar, etc. (solo ejemplo)
+        Console.WriteLine($"Show details for {item.ProjectName}");
+        return Task.CompletedTask;
     }
 
     private void CreateNewProject()
     {
-        // En espera
+        Nav.NavigateTo("/projects/create");
     }
 }

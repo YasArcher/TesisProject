@@ -16,7 +16,7 @@ public partial class SideBar
     {
         new MenuItem("Home", "/", true),
         new MenuItem("TailwindTest", "/tailwind-test"),
-        new MenuItem("Projects", "/projects"),
+        new MenuItem("Projects", "/projects/home"),
         new MenuItem("TestUI", "/testui"),
         new MenuItem("Grupos", "/groups"),
     };

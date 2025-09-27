@@ -1,0 +1,370 @@
+﻿@page "/projects/{ProjectId:int}"
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.SharedUI.Tabs
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.Project.Response
+@using tesisproject.frontend.Features.Projects.Components
+@using tesisproject.shared.DTOs.Budgets.Request
+@inject IProjectClientService ProjectService
+@inject IBudgetClientService BudgetService
+@inject NavigationManager Nav
+
+<div class="min-h-screen">
+    <!-- Header con título del proyecto -->
+    <div class="mb-4 p-4 rounded-xl border bg-background">
+        <div class="flex items-start justify-between">
+            <div>
+                <h1 class="text-xl font-semibold">
+                    @(_project?.ProjectName ?? "Cargando proyecto…")
+                </h1>
+                <p class="text-sm text-muted">
+                    @if (!string.IsNullOrWhiteSpace(_error))
+                    {
+                        <span class="text-red-600">@_error</span>
+                    }
+                    else if (_project is not null)
+                    {
+                        <span>State: @_project.ProjectStateName • Type: @_project.ProjectTypeName</span>
+                    }
+                </p>
+            </div>
+            <div class="flex gap-2">
+                <ActionButton Text="Volver"
+                              Intent="ButtonIntent.Neutral"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Sm"
+                              Execute="@(()=> { Nav.NavigateTo("/projects/home"); return Task.CompletedTask; })" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <Tabs ActiveKey="@_activeTab" OnChange="OnTabChanged">
+        <Tab Key="overview" Title="Detalles">
+            <ProjectOverviewTab Item="_project" IsLoading="@_loadingOverview" />
+        </Tab>
+
+        @* ===== Pestañas deshabilitadas por ahora (comentadas para evitar errores) =====
+        <Tab Key="visits" Title="Visitas">
+            <ProjectVisitsTab Items="_visits"
+                              IsLoading="@_loadingVisits"
+                              OnAddVisit="HandleAddVisit"
+                              OnOpenVisit="HandleOpenVisit" />
+        </Tab>
+
+        <Tab Key="extensions" Title="Prórrogas">
+            <ProjectExtensionsTab Items="_extensions"
+                                  IsLoading="@_loadingExtensions"
+                                  OnRequestNew="HandleRequestExtension"
+                                  OnOpen="HandleOpenExtension" />
+        </Tab>
+        *@
+
+        <!-- ===== Presupuesto (Financiero) ===== -->
+        <Tab Key="financial" Title="Presupuesto">
+            <ProjectFinancialTab Budget="_budget"
+                                 Transactions="_transactions"
+                                 IsLoading="_loadingBudget"
+                                 OnAddCertification="HandleAddCertification"
+                                 OnExecuteDevengado="HandleExecuteDevengado" />
+        </Tab>
+    </Tabs>
+</div>
+
+<!-- ===== Modal Certificación (presentacional, controlado por el padre) ===== -->
+<ProjectCertificationModal IsOpen="@_certModalOpen"
+                           IsOpenChanged="v => _certModalOpen = v"
+                           Value="@_certSeed"
+                           IsSaving="@_savingCert"
+                           ErrorMessage="@_certError"
+                           OnSubmit="OnSubmitCertification"
+                           OnCancel="OnCancelCertification" />
+
+<!-- ===== Modal Devengado (presentacional, controlado por el padre) ===== -->
+<ProjectAccrualModal IsOpen="@_accrualModalOpen"
+                     IsOpenChanged="v => _accrualModalOpen = v"
+                     Value="@_accrualSeed"
+                     IsSaving="@_savingAccrual"
+                     ErrorMessage="@_accrualError"
+                     OnSubmit="OnSubmitAccrual"
+                     OnCancel="OnCancelAccrual" />
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+
+    // ======= Estado general =======
+    private ProjectDetailResponseDTO? _project;
+    private string _activeTab = "overview";
+    private bool _loadingOverview;
+    private string? _error;
+
+    // ======= Estados y colecciones de otras pestañas (comentados para evitar errores) =======
+    // private bool _loadingVisits, _loadingExtensions, _loadingFinancial;
+    // private List<ProjectVisitListItemDTO> _visits = new();
+    // private List<ProjectExtensionListItemDTO> _extensions = new();
+    // private FinancialSummaryDTO? _financial;
+    // private List<FinancialMovementDTO> _movements = new();
+
+    // ======= Presupuesto =======
+    private BudgetDTO? _budget;
+    private List<BudgetTransactionDTO>? _transactions;
+    private bool _loadingBudget;
+    private string? _budgetError;
+
+    // ======= Modal Certificación (UI) =======
+    private bool _certModalOpen;
+    private bool _savingCert;
+    private string? _certError;
+    private AddCertificationRequestDTO _certSeed = new();
+    private int _currentUserId = 1; // TODO: setear desde sesión/claims
+
+    // ======= Modal Devengado (UI) =======
+    private bool _accrualModalOpen;
+    private bool _savingAccrual;
+    private string? _accrualError;
+    private ExecuteDevengadoRequestDTO _accrualSeed = new();
+
+    // ======= Lifecycle =======
+    protected override async Task OnInitializedAsync()
+    {
+        await EnsureTabDataAsync(_activeTab);
+    }
+
+    private async Task OnTabChanged(string newKey)
+    {
+        _activeTab = newKey;
+        await EnsureTabDataAsync(newKey);
+        StateHasChanged();
+    }
+
+    /// Lazy-load / Refresh por tab (Overview y Financial recargan SIEMPRE al entrar)
+    private async Task EnsureTabDataAsync(string tabKey)
+    {
+        switch (tabKey)
+        {
+            case "overview":
+                _loadingOverview = true;
+                _error = null;
+                try
+                {
+                    var detail = await ProjectService.GetDetailAsync(ProjectId);
+                    if (detail.Success)
+                    {
+                        _project = detail.Response;
+                    }
+                    else
+                    {
+                        _project = null;
+                        _error = detail.Error ?? "No se pudo cargar el proyecto.";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _project = null;
+                    _error = $"Error de conexión: {ex.Message}";
+                }
+                finally
+                {
+                    _loadingOverview = false;
+                }
+                break;
+
+            // case "visits":
+            //     if (_visits.Count == 0)
+            //     {
+            //         _loadingVisits = true;
+            //         var r = await ProjectService.GetVisitsAsync(ProjectId);
+            //         if (r.Success) _visits = r.Response ?? new();
+            //         _loadingVisits = false;
+            //     }
+            //     break;
+
+            // case "extensions":
+            //     if (_extensions.Count == 0)
+            //     {
+            //         _loadingExtensions = true;
+            //         var r = await ProjectService.GetExtensionsAsync(ProjectId);
+            //         if (r.Success) _extensions = r.Response ?? new();
+            //         _loadingExtensions = false;
+            //     }
+            //     break;
+
+            case "financial":
+                _loadingBudget = true;
+                _budgetError = null;
+
+                try
+                {
+                    // 1) Presupuesto por proyecto
+                    var b = await BudgetService.GetBudgetAsync(ProjectId);
+                    if (b.Success)
+                    {
+                        _budget = b.Response; // puede ser null si no hay presupuesto
+
+                        // 2) Si existe presupuesto, cargar transacciones
+                        if (_budget is not null)
+                        {
+                            var tr = await BudgetService.GetListBudgetTransactionAsync(_budget.BudgetId);
+                            if (tr.Success)
+                                _transactions = tr.Response ?? new();
+                            else
+                            {
+                                _transactions = new();
+                                _budgetError = tr.Error ?? "No se pudieron cargar las transacciones.";
+                            }
+                        }
+                        else
+                        {
+                            _transactions = null;
+                        }
+                    }
+                    else
+                    {
+                        _budget = null;
+                        _transactions = null;
+                        _budgetError = b.Error ?? "No se pudo cargar el presupuesto.";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _budget = null;
+                    _transactions = null;
+                    _budgetError = $"Error de conexión: {ex.Message}";
+                }
+                finally
+                {
+                    _loadingBudget = false;
+                }
+                break;
+        }
+    }
+
+    // ===== Eventos (acciones) de otras pestañas — comentados =====
+    // private Task HandleAddVisit() => Task.CompletedTask;
+    // private Task HandleOpenVisit(int visitId) => Task.CompletedTask;
+    // private Task HandleRequestExtension() => Task.CompletedTask;
+    // private Task HandleOpenExtension(int extensionId) => Task.CompletedTask;
+    // private Task HandleAddMovement() => Task.CompletedTask;
+
+    // ===== Acciones: Certificación =====
+    private Task HandleAddCertification()
+    {
+        if (_budget is null) return Task.CompletedTask;
+
+        _certError = null;
+        _savingCert = false;
+        _certSeed = new AddCertificationRequestDTO
+        {
+            BudgetId = _budget.BudgetId,
+            CertifiedByUserId = _currentUserId,
+            CertifiedAt = null,  // backend puede poner hoy UTC
+            Amount = 0,
+            BudgetItem = string.Empty,
+            CURNumber = null
+        };
+
+        _certModalOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnSubmitCertification(AddCertificationRequestDTO dto)
+    {
+        if (_budget is null) return;
+
+        try
+        {
+            _savingCert = true;
+            _certError = null;
+
+            var res = await BudgetService.CreateCertificationAsync(_budget.BudgetId, dto);
+            if (!res.Success)
+            {
+                _certError = res.Error ?? "No se pudo crear la certificación.";
+                return;
+            }
+
+            _certModalOpen = false;
+            await ReloadBudgetTabAsync();
+        }
+        catch (Exception ex)
+        {
+            _certError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _savingCert = false;
+        }
+    }
+
+    private Task OnCancelCertification()
+    {
+        _certModalOpen = false;
+        _certError = null;
+        return Task.CompletedTask;
+    }
+
+    // ===== Acciones: Devengado =====
+    private Task HandleExecuteDevengado(int budgetTransactionId)
+    {
+        if (_budget is null) return Task.CompletedTask;
+
+        _accrualError = null;
+        _savingAccrual = false;
+        _accrualSeed = new ExecuteDevengadoRequestDTO
+        {
+            BudgetTransactionId = budgetTransactionId,
+            ExecutedByUserId = _currentUserId,
+            ExecutedAt = null, // backend puede poner hoy UTC
+            CURNumber = null
+        };
+
+        _accrualModalOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnSubmitAccrual(ExecuteDevengadoRequestDTO dto)
+    {
+        if (_budget is null) return;
+
+        try
+        {
+            _savingAccrual = true;
+            _accrualError = null;
+
+            var res = await BudgetService.ExecuteAccrualAsync(_budget.BudgetId, dto);
+            if (!res.Success)
+            {
+                _accrualError = res.Error ?? "No se pudo ejecutar el devengo.";
+                return;
+            }
+
+            _accrualModalOpen = false;
+            await ReloadBudgetTabAsync();
+        }
+        catch (Exception ex)
+        {
+            _accrualError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _savingAccrual = false;
+        }
+    }
+
+    private Task OnCancelAccrual()
+    {
+        _accrualModalOpen = false;
+        _accrualError = null;
+        return Task.CompletedTask;
+    }
+
+    // ===== Util =====
+    private async Task ReloadBudgetTabAsync()
+    {
+        await EnsureTabDataAsync("financial");
+        StateHasChanged();
+    }
+}
