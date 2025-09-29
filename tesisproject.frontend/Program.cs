@@ -76,5 +76,8 @@ builder.Services.AddScoped<IDataEntryService, DataEntryMockService>();
 builder.Services.AddScoped<IInsightsService, InsightsMockService>();
 builder.Services.AddScoped<IRecService, RecMockService>();
 builder.Services.AddScoped<IPredictService, PredictMockService>();
+builder.Services.AddScoped<tesisproject.frontend.Services.Interfaces.ICatalogsService,
+                           tesisproject.frontend.Services.Implementations.CatalogsService>();
+
 
 await builder.Build().RunAsync();

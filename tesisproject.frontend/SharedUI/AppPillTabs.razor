@@ -1,21 +1,48 @@
-﻿@namespace tesisproject.frontend.SharedUI
-<ul class="nav nav-pills app-pill-tabs @Class">
-    @foreach (var t in Items)
+﻿@using Microsoft.AspNetCore.Components
+
+<ul class="nav nav-pills @Class">
+    @foreach (var tab in Items ?? Enumerable.Empty<AppPillTabs.PillTab>())
     {
-        <li class="nav-item">
-            <a class="nav-link @(t.Active ? "active" : null)" href="@(!string.IsNullOrWhiteSpace(t.Href) ? t.Href : "#")">
-                @if (!string.IsNullOrWhiteSpace(t.Icon))
-                {
-                    <span class="me-1">@t.Icon</span>
-                }
-                @t.Label
-            </a>
-        </li>
+        var active = tab.Active ? "active" : null;
+        if (!string.IsNullOrWhiteSpace(tab.Href))
+        {
+            <li class="nav-item">
+                <a class="nav-link @active" href="@tab.Href">
+                    @if (!string.IsNullOrWhiteSpace(tab.Icon))
+                    {
+                        <span>@tab.Icon</span>
+                    }
+         @tab.Label
+                </a>
+            </li>
+        }
+        else
+        {
+            <li class="nav-item">
+                <button type="button" class="nav-link @active" @onclick="() => Select(tab)">
+                    @if (!string.IsNullOrWhiteSpace(tab.Icon))
+                    {
+                        <span>@tab.Icon</span>
+                    }
+         @tab.Label
+                </button>
+            </li>
+        }
     }
 </ul>
 
 @code {
-    public sealed class PillTab { public string Label { get; set; } = ""; public string? Icon { get; set; } public string? Href { get; set; } = "#"; public bool Active { get; set; } }
-    [Parameter] public IEnumerable<PillTab> Items { get; set; } = Array.Empty<PillTab>();
+    [Parameter] public IEnumerable<PillTab>? Items { get; set; }
     [Parameter] public string? Class { get; set; }
+    [Parameter] public EventCallback<PillTab> OnSelect { get; set; }
+
+    private Task Select(PillTab tab) => OnSelect.HasDelegate ? OnSelect.InvokeAsync(tab) : Task.CompletedTask;
+
+    public class PillTab
+    {
+        public string Label { get; set; } = "";
+        public string? Icon { get; set; }
+        public bool Active { get; set; }
+        public string? Href { get; set; }   // <- NUEVO: permite navegar
+    }
 }

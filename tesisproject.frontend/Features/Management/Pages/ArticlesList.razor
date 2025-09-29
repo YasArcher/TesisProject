@@ -1,0 +1,201 @@
+﻿@page "/articulos/listado"
+@using System.Linq
+@using ArticleDto = tesisproject.shared.DTOs.Articles.ArticleDto
+@inject tesisproject.frontend.Services.Interfaces.IArticlesClient ArticlesApi
+@inject NavigationManager Nav
+
+<AppPillTabs Class="mb-3" Items="@Pills" />
+
+@code {
+    protected IReadOnlyList<AppPillTabs.PillTab> Pills => new List<AppPillTabs.PillTab>
+    {
+        new() { Label="Registro", Icon="🧾",              Href="/articulos/registrar" },
+        new() { Label="Autores",  Icon="👥",              Href="/articulos/autores"   },
+        new() { Label="Listados", Icon="📋", Active=true, Href="/articulos/listado"   }
+    };
+}
+
+<div class="container py-3">
+    <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+        <div>
+            <h2 class="h5 mb-0">Artículos registrados</h2>
+            <div class="text-muted small">Consulta y gestiona los artículos ya guardados.</div>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2">
+            <div class="input-group">
+                <span class="input-group-text">🔎</span>
+                <input class="form-control" placeholder="Buscar por título, revista, ISSN…" @bind="search" @bind:after="ApplyFilter" />
+            </div>
+
+            <div class="btn-group" role="group" aria-label="Vista">
+                <button class="btn btn-outline-secondary" @onclick="@(() => SetView(ViewMode.Cards))" disabled="@(view == ViewMode.Cards)">Cards</button>
+                <button class="btn btn-outline-secondary" @onclick="@(() => SetView(ViewMode.Table))" disabled="@(view == ViewMode.Table)">Tabla</button>
+            </div>
+
+            <button class="btn btn-outline-primary" @onclick="Reload" disabled="@loading">Refrescar</button>
+            <button class="btn btn-primary" @onclick="New">Nuevo</button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <div class="alert alert-danger">@error</div>
+    }
+    else if (loading)
+    {
+        <div class="alert alert-info">Cargando…</div>
+    }
+    else if (view == ViewMode.Cards)
+    {
+        @if (filtered.Count == 0)
+        {
+            <div class="alert alert-warning">No se encontraron artículos.</div>
+        }
+        else
+        {
+            <div class="row g-3">
+                @foreach (var a in filtered)
+                {
+                    // ✅ Variables locales sin "@{ }" (evita RZ1010)
+                    var link = a?.LinkPublicacion;
+                    var disabled = string.IsNullOrWhiteSpace(link) ? "disabled" : null;
+                    var href = string.IsNullOrWhiteSpace(link) ? "#" : link;
+
+                    <div class="col-12 col-md-6 col-xl-4">
+                        <div class="card h-100 shadow-sm">
+                            <div class="card-body d-flex flex-column">
+                                <div class="d-flex align-items-start justify-content-between">
+                                    <h5 class="card-title mb-0 text-truncate" title="@(a?.Titulo ?? "")">
+                                        @(!string.IsNullOrWhiteSpace(a?.Titulo) ? a!.Titulo : "(Sin título)")
+                                    </h5>
+                                    <span class="badge text-bg-light ms-2">@((a?.Estado ?? "—"))</span>
+                                </div>
+                                <div class="text-muted small mt-1">
+                                    <div><strong>Revista:</strong> @((a?.NombreRevista ?? "—"))</div>
+                                    <div><strong>ISSN:</strong> @((a?.CodigoISSN ?? "—"))</div>
+                                    <div><strong>Período:</strong> @((a?.PeriodoAcademico ?? "—"))</div>
+                                    <div><strong>Fecha pub.:</strong> @(a?.FechaPublicacion?.ToString("yyyy-MM-dd") ?? "—")</div>
+                                </div>
+
+                                <div class="mt-auto pt-3 d-flex gap-2">
+                                    <button class="btn btn-sm btn-outline-primary" @onclick="@(() => Edit(a!.Id))">Editar</button>
+                                    <a class="btn btn-sm btn-outline-secondary @disabled"
+                                       target="_blank" rel="noopener" href="@href">
+                                        Ver publicación
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+    else
+    {
+        @if (filtered.Count == 0)
+        {
+            <div class="alert alert-warning">No se encontraron artículos.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th style="width:72px;">Id</th>
+                            <th>Título</th>
+                            <th>Revista</th>
+                            <th>Período</th>
+                            <th>Estado</th>
+                            <th>Fecha pub.</th>
+                            <th>SJR</th>
+                            <th style="width:160px;">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var a in filtered ?? Enumerable.Empty<ArticleDto>())
+                        {
+                            var id = a?.Id ?? 0;
+                            var titulo = a?.Titulo ?? "—";
+                            var revista = a?.NombreRevista ?? "—";
+                            var periodo = a?.PeriodoAcademico ?? "—";
+                            var estado = a?.Estado ?? "—";
+                            var fpub = a?.FechaPublicacion?.ToString("yyyy-MM-dd") ?? "—";
+                            var sjr = a?.SJR?.ToString("0.###") ?? "—";
+                            var link = a?.LinkPublicacion;
+                            var disabled = string.IsNullOrWhiteSpace(link) ? "disabled" : null;
+                            var href = string.IsNullOrWhiteSpace(link) ? "#" : link!;
+
+                            <tr>
+                                <td>@id</td>
+                                <td class="text-truncate" style="max-width:320px" title="@titulo">@titulo</td>
+                                <td class="text-truncate" style="max-width:220px" title="@revista">@revista</td>
+                                <td>@periodo</td>
+                                <td>@estado</td>
+                                <td>@fpub</td>
+                                <td>@sjr</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" @onclick="@(() => Edit(id))">Editar</button>
+                                        <a class="btn btn-outline-secondary @disabled"
+                                           target="_blank" rel="noopener" href="@href">
+                                            Ver
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+
+                </table>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    enum ViewMode { Cards, Table }
+
+    List<ArticleDto> items = new();
+    List<ArticleDto> filtered = new();
+    string? error, search;
+    bool loading = true;
+    ViewMode view = ViewMode.Cards;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        loading = true; error = null;
+        try
+        {
+            var res = await ArticlesApi.GetAllAsync();
+            if (!res.Succeeded || res.Value is null) { error = res.Error ?? "No se pudo obtener el listado."; return; }
+            items = res.Value.ToList();
+            ApplyFilter();
+        }
+        catch (Exception ex) { error = ex.Message; }
+        finally { loading = false; }
+    }
+
+    private void ApplyFilter()
+    {
+        var q = (search ?? "").Trim().ToUpperInvariant();
+        if (string.IsNullOrEmpty(q))
+            filtered = items.OrderByDescending(a => a.Id).ToList();
+        else
+            filtered = items.Where(a =>
+                (a.Titulo ?? "").ToUpperInvariant().Contains(q)
+             || (a.NombreRevista ?? "").ToUpperInvariant().Contains(q)
+             || (a.CodigoISSN ?? "").ToUpperInvariant().Contains(q))
+             .OrderByDescending(a => a.Id)
+             .ToList();
+    }
+
+    private async Task Reload() => await LoadAsync();
+    private void SetView(ViewMode m) => view = m;
+    private void Edit(int id) => Nav.NavigateTo($"/articulos/editar/{id}");
+    private void New() => Nav.NavigateTo("/articulos/registrar");
+}

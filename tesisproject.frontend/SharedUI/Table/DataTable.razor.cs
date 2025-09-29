@@ -35,7 +35,8 @@ namespace tesisproject.frontend.SharedUI.Table
         protected override void OnParametersSet()
         {
             // Recompute the view on parameter or sort changes.
-            ViewItems = ApplySorting(Items ?? Enumerable.Empty<TItem>());
+            var source = Items ?? Enumerable.Empty<TItem>();
+            ViewItems = ApplySorting(source);
         }
 
         private IEnumerable<TItem> ApplySorting(IEnumerable<TItem> source)
@@ -43,30 +44,42 @@ namespace tesisproject.frontend.SharedUI.Table
             if (_sortIndex is null || _sortDirection == SortDirection.None)
                 return source;
 
-            var col = Columns[_sortIndex.Value];
-            var asc = source.OrderBy(
-                item => col.ValueSelector(item),
-                new AscObjectComparer()
-            );
+            var idx = _sortIndex.Value;
+            if (idx < 0 || idx >= Columns.Count) return source;
 
-            return _sortDirection == SortDirection.Asc ? asc : asc.Reverse();
+            var col = Columns[idx];
+            var selector = col.ValueSelector ?? (_ => (object?)null);
+
+            // Usa comparador seguro para object? (nulls al final)
+            return _sortDirection == SortDirection.Asc
+                ? source.OrderBy(selector, ObjectComparer.Instance)
+                : source.OrderByDescending(selector, ObjectComparer.Instance);
         }
 
-        private sealed class AscObjectComparer : IComparer<object?>
+        private sealed class ObjectComparer : IComparer<object?>
         {
+            public static readonly ObjectComparer Instance = new();
+            private ObjectComparer() { }
+
             public int Compare(object? x, object? y)
             {
                 if (ReferenceEquals(x, y)) return 0;
-                if (x is null) return 1;        // nulls last
+                if (x is null) return 1;   // nulls last
                 if (y is null) return -1;
 
-                if (x is IComparable cx && (y is null || x.GetType().IsAssignableFrom(y.GetType()) || y.GetType().IsAssignableFrom(x.GetType())))
+                // Si son comparables y "compatibles", compara directamente
+                if (x is IComparable cx)
                 {
-                    try { return cx.CompareTo(y); }
-                    catch { /* fall through */ }
+                    var xt = x.GetType();
+                    var yt = y.GetType();
+                    if (xt.IsAssignableFrom(yt) || yt.IsAssignableFrom(xt))
+                    {
+                        try { return cx.CompareTo(y); }
+                        catch { /* continúa */ }
+                    }
                 }
 
-                // Fallback to ordinal string comparison
+                // Fallback: comparación ordinal de strings
                 return string.CompareOrdinal(x.ToString(), y.ToString());
             }
         }
@@ -134,7 +147,7 @@ namespace tesisproject.frontend.SharedUI.Table
             }
         }
 
-        private async void ChangePage(int page)
+        private async Task ChangePage(int page)
         {
             if (!ShowPager) return;
             page = Math.Min(Math.Max(1, page), TotalPages);
@@ -143,7 +156,7 @@ namespace tesisproject.frontend.SharedUI.Table
             await OnPageChanged.InvokeAsync(page);
         }
 
-        private void PrevPage() => ChangePage(CurrentPage - 1);
-        private void NextPage() => ChangePage(CurrentPage + 1);
+        private Task PrevPage() => ChangePage(CurrentPage - 1);
+        private Task NextPage() => ChangePage(CurrentPage + 1);
     }
 }
