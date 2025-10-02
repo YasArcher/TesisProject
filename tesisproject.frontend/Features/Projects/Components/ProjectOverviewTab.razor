@@ -1,228 +1,270 @@
 ﻿@using tesisproject.shared.DTOs.Project.Response
+@using tesisproject.frontend.Utils
 
-<div class="space-y-6">
+<div class="p-6 max-w-7xl mx-auto space-y-8">
     @if (IsLoading)
     {
-        <div class="flex items-center gap-3 p-4 bg-primary-subtle rounded-lg">
-            <div class="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
-            <div class="text-sm text-primary">Cargando detalles del proyecto...</div>
+        <div class="flex items-center justify-center gap-4 p-8 bg-primary-subtle rounded-xl border border-primary/20">
+            <div class="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full"></div>
+            <div class="text-primary font-medium">Cargando detalles del proyecto...</div>
         </div>
     }
     else if (Item is null)
     {
-        <div class="p-4 bg-error/10 border border-error/20 rounded-lg">
-            <div class="text-sm text-error">No se encontraron datos del proyecto.</div>
+        <div class="flex items-center justify-center gap-4 p-8 bg-error/10 border border-error/20 rounded-xl">
+            <div class="w-10 h-10 bg-error/20 rounded-full flex items-center justify-center">
+                <span class="text-error text-xl">⚠️</span>
+            </div>
+            <div>
+                <div class="font-semibold text-error">No se encontraron datos</div>
+                <div class="text-sm text-error/75">El proyecto solicitado no está disponible</div>
+            </div>
         </div>
     }
     else
     {
-        <!-- Información General -->
-        <div class="bg-background border border-border rounded-lg p-4">
-            <h3 class="text-lg font-semibold text-foreground mb-4 border-b border-border pb-2">
-                Información General
-            </h3>
-            <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <div>
-                    <div class="text-xs text-muted font-medium mb-1">ID del Proyecto</div>
-                    <div class="font-semibold text-primary">#@Item.ProjectId</div>
-                </div>
-                <div>
-                    <div class="text-xs text-muted font-medium mb-1">Código</div>
-                    <div class="font-medium">@(string.IsNullOrEmpty(Item.ProjectCode) ? "Sin código" : Item.ProjectCode)</div>
-                </div>
-                <div>
-                    <div class="text-xs text-muted font-medium mb-1">Nombre del Proyecto</div>
-                    <div class="font-medium">@(string.IsNullOrEmpty(Item.ProjectName) ? "Sin nombre" : Item.ProjectName)</div>
-                </div>
-                <div>
-                    <div class="text-xs text-muted font-medium mb-1">Tipo</div>
-                    <div class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-primary-subtle text-primary">
-                        @(string.IsNullOrEmpty(Item.ProjectTypeName) ? "Sin tipo" : Item.ProjectTypeName)
-                    </div>
-                </div>
-                <div>
-                    <div class="text-xs text-muted font-medium mb-1">Estado</div>
-                    <div class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-full bg-secondary-subtle text-secondary">
-                        @(string.IsNullOrEmpty(Item.ProjectStateName) ? "Sin estado" : Item.ProjectStateName)
-                    </div>
-                </div>
-                <div>
-                    <div class="text-xs text-muted font-medium mb-1">Progreso</div>
-                    <div class="flex items-center gap-2">
-                        <div class="flex-1 bg-border rounded-full h-2">
-                            <div class="bg-secondary h-2 rounded-full" style="width: @Item.ExecutionPercentage%"></div>
+        <!-- Grid principal -->
+        <div class="grid gap-8 lg:grid-cols-3">
+
+            <!-- Columna izquierda: Información principal -->
+            <div class="lg:col-span-2 space-y-8">
+
+                <!-- Fechas del proyecto -->
+                <div class="bg-background border border-border rounded-xl p-6 shadow-sm">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />
+                            </svg>
+
                         </div>
-                        <span class="text-sm font-medium">@Item.ExecutionPercentage.ToString("F1")%</span>
+                        <h3 class="text-lg font-semibold text-foreground">Fechas Clave del Proyecto</h3>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Fechas -->
-        <div class="bg-background border border-border rounded-lg p-4">
-            <h3 class="text-lg font-semibold text-foreground mb-4 border-b border-border pb-2">
-                Cronograma
-            </h3>
-            <div class="grid gap-4 md:grid-cols-3">
-                <div>
-                    <div class="text-xs text-muted font-medium mb-1">Fecha de Inicio</div>
-                    <div class="font-medium">
-                        @if (Item.StartDate.HasValue)
-                        {
-                            <span class="text-foreground">@Item.StartDate.Value.ToString("dd/MM/yyyy")</span>
-                        }
-                        else
-                        {
-                            <span class="text-muted italic">No definida</span>
-                        }
-                    </div>
-                </div>
-                <div>
-                    <div class="text-xs text-muted font-medium mb-1">Fin Tentativo</div>
-                    <div class="font-medium">
-                        @if (Item.TentativeEndDate.HasValue)
-                        {
-                            <span class="text-foreground">@Item.TentativeEndDate.Value.ToString("dd/MM/yyyy")</span>
-                        }
-                        else
-                        {
-                            <span class="text-muted italic">No definida</span>
-                        }
-                    </div>
-                </div>
-                <div>
-                    <div class="text-xs text-muted font-medium mb-1">Fin Real</div>
-                    <div class="font-medium">
-                        @if (Item.RealEndDate.HasValue)
-                        {
-                            <span class="text-foreground">@Item.RealEndDate.Value.ToString("dd/MM/yyyy")</span>
-                        }
-                        else
-                        {
-                            <span class="text-muted italic">No finalizado</span>
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Grupos -->
-        <div class="bg-background border border-border rounded-lg p-4">
-            <h3 class="text-lg font-semibold text-foreground mb-4 border-b border-border pb-2">
-                Grupos Asignados
-            </h3>
-            <div class="grid gap-4 md:grid-cols-2">
-                <div>
-                    <div class="text-xs text-muted font-medium mb-1">Grupo Principal</div>
-                    <div class="font-medium">
-                        @if (!string.IsNullOrEmpty(Item.ProjectGroupName))
-                        {
-                            <div class="flex items-center gap-2">
-                                <div class="w-2 h-2 bg-primary rounded-full"></div>
-                                <span>@Item.ProjectGroupName</span>
-                                <span class="text-xs text-muted">(ID: @Item.ProjectGroupId)</span>
+                    <div class="grid gap-6 sm:grid-cols-3">
+                        <div class="relative">
+                            <div class="absolute left-0 top-0 w-1 h-full bg-primary/20 rounded-full"></div>
+                            <div class="pl-4">
+                                <div class="text-xs text-primary font-semibold mb-2 uppercase tracking-wide">Inicio</div>
+                                <div class="font-semibold text-lg">
+                                    @if (Item.StartDate.HasValue)
+                                    {
+                                        <span class="text-foreground">@Item.StartDate.ToSpanishDate()</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted italic">No definida</span>
+                                    }
+                                </div>
                             </div>
-                        }
-                        else
-                        {
-                            <span class="text-muted italic">Sin grupo asignado</span>
-                        }
-                    </div>
-                </div>
-                <div>
-                    <div class="text-xs text-muted font-medium mb-1">Grupo SENESCYT</div>
-                    <div class="font-medium">
-                        @if (Item.SenesytGroupId.HasValue && !string.IsNullOrEmpty(Item.SenesytGroupName))
-                        {
-                            <div class="flex items-center gap-2">
-                                <div class="w-2 h-2 bg-accent rounded-full"></div>
-                                <span>@Item.SenesytGroupName</span>
-                                <span class="text-xs text-muted">(ID: @Item.SenesytGroupId)</span>
+                        </div>
+
+                        <div class="relative">
+                            <div class="absolute left-0 top-0 w-1 h-full bg-secondary/20 rounded-full"></div>
+                            <div class="pl-4">
+                                <div class="text-xs text-secondary font-semibold mb-2 uppercase tracking-wide">Fin Previsto</div>
+                                <div class="font-semibold text-lg">
+                                    @if (Item.TentativeEndDate.HasValue)
+                                    {
+                                        <span class="text-foreground">@Item.TentativeEndDate.ToSpanishDate()</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted italic">No definida</span>
+                                    }
+                                </div>
                             </div>
-                        }
-                        else
-                        {
-                            <span class="text-muted italic">No asignado</span>
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
+                        </div>
 
-        <!-- Descripción y Línea de Investigación -->
-        <div class="bg-background border border-border rounded-lg p-4">
-            <h3 class="text-lg font-semibold text-foreground mb-4 border-b border-border pb-2">
-                Descripción
-            </h3>
-            <div class="space-y-4">
-                <div>
-                    <div class="text-xs text-muted font-medium mb-2">Objetivo del Proyecto</div>
-                    <div class="text-sm bg-page-bg p-3 rounded-md border">
-                        @if (!string.IsNullOrEmpty(Item.ProjectObjective))
-                        {
-                            @Item.ProjectObjective
-                        }
-                        else
-                        {
-                            <span class="text-muted italic">Sin objetivo definido</span>
-                        }
-                    </div>
-                </div>
-                <div>
-                    <div class="text-xs text-muted font-medium mb-2">Línea de Investigación</div>
-                    <div class="text-sm">
-                        @if (!string.IsNullOrEmpty(Item.ResearchLine))
-                        {
-                            <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full bg-accent/10 text-accent border border-accent/20">
-                                @Item.ResearchLine
-                            </span>
-                        }
-                        else
-                        {
-                            <span class="text-muted italic">Sin línea de investigación</span>
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Presupuesto -->
-        <div class="bg-background border border-border rounded-lg p-4">
-            <h3 class="text-lg font-semibold text-foreground mb-4 border-b border-border pb-2">
-                Presupuesto
-            </h3>
-            @if (Item.BudgetId > 0)
-            {
-                <div class="grid gap-4 md:grid-cols-2">
-                    <div>
-                        <div class="text-xs text-muted font-medium mb-1">ID de Presupuesto</div>
-                        <div class="font-semibold text-primary">#@Item.BudgetId</div>
-                    </div>
-                    <div>
-                        <div class="text-xs text-muted font-medium mb-1">Monto Inicial</div>
-                        <div class="font-semibold text-lg text-foreground">
-                            @Item.BudgetAmount.ToString("C", new System.Globalization.CultureInfo("es-EC"))
+                        <div class="relative">
+                            <div class="absolute left-0 top-0 w-1 h-full bg-accent/20 rounded-full"></div>
+                            <div class="pl-4">
+                                <div class="text-xs text-accent font-semibold mb-2 uppercase tracking-wide">Fin Real</div>
+                                <div class="font-semibold text-lg">
+                                    @if (Item.RealEndDate.HasValue)
+                                    {
+                                        <span class="text-foreground">@Item.RealEndDate.ToSpanishDate()</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted italic">En progreso</span>
+                                    }
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="mt-3 p-3 bg-primary-subtle rounded-md">
-                    <div class="text-xs text-primary font-medium">
-                        💡 Para ver detalles completos del presupuesto (certificado, ejecutado, transacciones), acceder a la pestaña "Presupuesto"
+                <!-- Descripción -->
+                <div class="bg-background border border-border rounded-xl p-6 shadow-sm">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                 fill="currentColor" class="w-6 h-6" aria-hidden="true">
+                                <path fill-rule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5H5.625ZM7.5 15a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5A.75.75 0 0 1 7.5 15Zm.75 2.25a.75.75 0 0 0 0 1.5H12a.75.75 0 0 0 0-1.5H8.25Z" clip-rule="evenodd" />
+                                <path d="M12.971 1.816A5.23 5.23 0 0 1 14.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 0 1 3.434 1.279 9.768 9.768 0 0 0-6.963-6.963Z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-foreground">Descripción del Proyecto</h3>
+                    </div>
+
+                    <div class="space-y-6">
+                        <!-- Objetivo -->
+                        <div>
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                         fill="currentColor" class="w-6 h-6" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <h4 class="text-sm font-semibold text-muted uppercase tracking-wide">Objetivo</h4>
+                            </div>
+                            <div class="bg-page-bg border border-border rounded-lg p-4">
+                                @if (!string.IsNullOrEmpty(Item.ProjectObjective))
+                                {
+                                    <p class="text-foreground leading-relaxed">@Item.ProjectObjective</p>
+                                }
+                                else
+                                {
+                                    <p class="text-muted italic">Sin objetivo definido</p>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Línea de investigación -->
+                        <div>
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                         fill="currentColor" class="w-6 h-6" aria-hidden="true">
+                                        <path fill-rule="evenodd" d="M10.5 3.798v5.02a3 3 0 0 1-.879 2.121l-2.377 2.377a9.845 9.845 0 0 1 5.091 1.013 8.315 8.315 0 0 0 5.713.636l.285-.071-3.954-3.955a3 3 0 0 1-.879-2.121v-5.02a23.614 23.614 0 0 0-3 0Zm4.5.138a.75.75 0 0 0 .093-1.495A24.837 24.837 0 0 0 12 2.25a25.048 25.048 0 0 0-3.093.191A.75.75 0 0 0 9 3.936v4.882a1.5 1.5 0 0 1-.44 1.06l-6.293 6.294c-1.62 1.621-.903 4.475 1.471 4.88 2.686.46 5.447.698 8.262.698 2.816 0 5.576-.239 8.262-.697 2.373-.406 3.092-3.26 1.47-4.881L15.44 9.879A1.5 1.5 0 0 1 15 8.818V3.936Z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <h4 class="text-sm font-semibold text-muted uppercase tracking-wide">Línea de Investigación</h4>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(Item.ResearchLine))
+                            {
+                                <span class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-full bg-accent/10 text-accent border border-accent/20">
+                                    🔬 @Item.ResearchLine
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-muted italic">Sin línea de investigación definida</span>
+                            }
+                        </div>
                     </div>
                 </div>
-            }
-            else
-            {
-                <div class="flex items-center gap-3 p-4 bg-muted/10 rounded-lg border border-muted/20">
-                    <div class="w-8 h-8 bg-muted/20 rounded-full flex items-center justify-center">
-                        <span class="text-muted text-sm">💰</span>
+
+            </div>
+
+            <!-- Columna derecha: Información complementaria -->
+            <div class="space-y-8">
+
+                <!-- Grupos asignados -->
+                <div class="bg-background border border-border rounded-xl p-6 shadow-sm">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 bg-secondary/10 rounded-xl flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path fill-rule="evenodd" d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z" clip-rule="evenodd" />
+                                <path d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z" />
+                            </svg>
+
+                        </div>
+                        <h3 class="text-lg font-semibold text-foreground">Grupos</h3>
                     </div>
-                    <div>
-                        <div class="font-medium text-muted">Sin presupuesto asignado</div>
-                        <div class="text-xs text-muted/75">Este proyecto aún no tiene un presupuesto configurado</div>
+
+                    <div class="space-y-4">
+                        <div class="bg-page-bg border border-border rounded-lg p-4">
+                            <div class="text-xs font-semibold text-muted mb-2 uppercase tracking-wide">Grupo Principal</div>
+                            @if (!string.IsNullOrEmpty(Item.ProjectGroupName))
+                            {
+                                <div class="flex items-center gap-3">
+                                    <div class="w-3 h-3 bg-primary rounded-full flex-shrink-0"></div>
+                                    <div>
+                                        <div class="font-medium text-foreground">@Item.ProjectGroupName</div>
+                                        <div class="text-xs text-muted">ID: @Item.ProjectGroupId</div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-muted italic">Sin grupo asignado</div>
+                            }
+                        </div>
+
+                        <div class="bg-page-bg border border-border rounded-lg p-4">
+                            <div class="text-xs font-semibold text-muted mb-2 uppercase tracking-wide">SENESCYT</div>
+                            @if (Item.SenesytGroupId.HasValue && !string.IsNullOrEmpty(Item.SenesytGroupName))
+                            {
+                                <div class="flex items-center gap-3">
+                                    <div class="w-3 h-3 bg-accent rounded-full flex-shrink-0"></div>
+                                    <div>
+                                        <div class="font-medium text-foreground">@Item.SenesytGroupName</div>
+                                        <div class="text-xs text-muted">ID: @Item.SenesytGroupId</div>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-muted italic">No asignado</div>
+                            }
+                        </div>
                     </div>
                 </div>
-            }
+
+                <!-- Presupuesto -->
+                <div class="bg-background border border-border rounded-xl p-6 shadow-sm">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path d="M12 7.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z" />
+                                <path fill-rule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v9.75c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 14.625v-9.75ZM8.25 9.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM18.75 9a.75.75 0 0 0-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75V9.75a.75.75 0 0 0-.75-.75h-.008ZM4.5 9.75A.75.75 0 0 1 5.25 9h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V9.75Z" clip-rule="evenodd" />
+                                <path d="M2.25 18a.75.75 0 0 0 0 1.5c5.4 0 10.63.722 15.6 2.075 1.19.324 2.4-.558 2.4-1.82V18.75a.75.75 0 0 0-.75-.75H2.25Z" />
+                            </svg>
+
+                        </div>
+                        <h3 class="text-lg font-semibold text-foreground">Presupuesto</h3>
+                    </div>
+
+                    @if (Item.BudgetId > 0)
+                    {
+                        <div class="space-y-4">
+                            <div class="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                                <div class="text-xs font-semibold text-primary mb-2 uppercase tracking-wide">ID Presupuesto</div>
+                                <div class="text-2xl font-bold text-primary">#@Item.BudgetId</div>
+                            </div>
+
+                            <div class="bg-page-bg border border-border rounded-lg p-4">
+                                <div class="text-xs font-semibold text-muted mb-2 uppercase tracking-wide">Monto Inicial</div>
+                                <div class="text-3xl font-bold text-foreground">
+                                    @Item.BudgetAmount.ToString("C", new System.Globalization.CultureInfo("es-EC"))
+                                </div>
+                            </div>
+
+                            <div class="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                                <div class="flex items-start gap-3">
+                                    <span class="text-primary text-lg flex-shrink-0">💡</span>
+                                    <div class="text-sm text-primary">
+                                        <strong>Información completa:</strong> Para ver detalles del presupuesto (certificado, ejecutado, transacciones), accede a la pestaña "Presupuesto"
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="bg-muted/10 border border-muted/20 rounded-lg p-6 text-center">
+                            <div class="w-16 h-16 bg-muted/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <span class="text-muted text-2xl">💰</span>
+                            </div>
+                            <div class="font-semibold text-muted mb-2">Sin presupuesto asignado</div>
+                            <div class="text-sm text-muted/75">Este proyecto aún no tiene un presupuesto configurado</div>
+                        </div>
+                    }
+                </div>
+            </div>
         </div>
     }
 </div>

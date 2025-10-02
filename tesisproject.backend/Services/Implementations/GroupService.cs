@@ -250,5 +250,29 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<List<ExternalUserDTO>>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
+        public async Task<ServiceResult<IReadOnlyList<GroupResponseDTO>>> GetByProjectAsync(int projectId, CancellationToken ct = default)
+        {
+            try
+            {
+                var groups = await _uow.Groups.GetByProjectIdAsync(projectId, ct);
+
+                if (groups.Count == 0)
+                    return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail("Project not found or it has no associated groups.", ErrorType.NotFound);
+
+                var dtos = groups.Select(g => new GroupResponseDTO
+                {
+                    GroupId = g.GroupId,
+                    GroupTypeId = g.GroupTypeId,
+                    Name = g.Name
+                }).ToList();
+
+                return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Ok(dtos, "Groups by project retrieved");
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+            }
+        }
+
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System.Linq.Expressions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
+using System.Threading;
 
 namespace tesisproject.frontend.SharedUI.TextInput
 {
@@ -15,7 +16,7 @@ namespace tesisproject.frontend.SharedUI.TextInput
         [Parameter] public bool Required { get; set; }
         [Parameter] public string? HelpText { get; set; }
         [Parameter] public int? MaxLength { get; set; }
-        [Parameter] public int DebounceMs { get; set; } = 300;
+        [Parameter] public int DebounceMs { get; set; } = 0;
         [Parameter] public string InputType { get; set; } = "text";
 
         // ---- NEW: Password toggle functionality ----
@@ -37,15 +38,16 @@ namespace tesisproject.frontend.SharedUI.TextInput
         // NEW: Password visibility state
         private bool _showPassword = false;
 
+        // NEW: secuencia de cambios para descartar emisiones atrasadas
+        private long _inputSeq = 0;
+
         protected override void OnInitialized()
         {
             _value = Value;
 
             // Auto-enable password toggle for password inputs
             if (InputType == "password" && !ShowPasswordToggle)
-            {
                 ShowPasswordToggle = true;
-            }
 
             if (EditContext != null && For != null)
             {
@@ -58,42 +60,32 @@ namespace tesisproject.frontend.SharedUI.TextInput
 
         protected override void OnParametersSet()
         {
-            if (_value != Value)
+            // Solo sincroniza si el padre realmente cambió el Value
+            if (!Equals(_value, Value))
             {
                 _value = Value;
                 RecomputeErrors();
             }
         }
 
-        // NEW: Method to get the actual input type
-        private string GetActualInputType()
-        {
-            if (InputType == "password" && ShowPasswordToggle && _showPassword)
-            {
-                return "text";
-            }
-            return InputType;
-        }
+        // Mostrar/ocultar contraseña
+        private string GetActualInputType() =>
+            (InputType == "password" && ShowPasswordToggle && _showPassword) ? "text" : InputType;
 
-        // NEW: Toggle password visibility
-        private void TogglePasswordVisibility()
-        {
-            _showPassword = !_showPassword;
-        }
+        private void TogglePasswordVisibility() => _showPassword = !_showPassword;
 
-        // NEW: Check if should show toggle button
-        private bool ShouldShowPasswordToggle()
-        {
-            return ShowPasswordToggle && InputType == "password";
-        }
+        private bool ShouldShowPasswordToggle() => ShowPasswordToggle && InputType == "password";
 
         private async Task OnInputAsync(ChangeEventArgs e)
         {
             _value = e.Value?.ToString();
 
+            // Cada input incrementa la versión
+            var mySeq = Interlocked.Increment(ref _inputSeq);
+
+            // Reinicia CTS del debounce
             _debounceCts?.Cancel();
             _debounceCts?.Dispose();
-
             _debounceCts = new CancellationTokenSource();
             var token = _debounceCts.Token;
 
@@ -103,15 +95,23 @@ namespace tesisproject.frontend.SharedUI.TextInput
                 if (delay > 0)
                     await Task.Delay(delay, token);
 
-                if (!token.IsCancellationRequested)
+                if (token.IsCancellationRequested) return;
+
+                // Solo emite si sigue siendo la última versión registrada
+                if (mySeq == Volatile.Read(ref _inputSeq))
                 {
-                    await ValueChanged.InvokeAsync(_value);
+                    // Evita re-renders innecesarios si el padre ya tiene ese mismo valor
+                    if (ValueChanged.HasDelegate)
+                        await InvokeAsync(() => ValueChanged.InvokeAsync(_value));
+
+                    // Recalcula errores en el local
                     RecomputeErrors();
                 }
+                // Si no coincide, era una emisión vieja: ignorar.
             }
             catch (TaskCanceledException)
             {
-                // Expected when typing quickly
+                // typing rápido: esperado
             }
         }
 

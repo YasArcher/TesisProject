@@ -1,0 +1,52 @@
+﻿@namespace tesisproject.frontend.SharedUI.StatCard
+@inherits StatCardBase
+
+<div class="@BuildWrapperClass()"
+     role="group"
+     @onclick="HandleClick"
+     style="@Style">
+    <div class="stat-card-body">
+        <div class="stat-card-header">
+            @if (!string.IsNullOrWhiteSpace(Title))
+            {
+                <div class="stat-card-title">@Title</div>
+            }
+
+            @if (Icon is not null)
+            {
+                <div class="stat-card-icon">
+                    @Icon
+                </div>
+            }
+        </div>
+
+        <div class="stat-card-value">
+            @if (IsLoading)
+            {
+                <span class="stat-skeleton"></span>
+            }
+            else if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <span class="stat-error">@Error</span>
+            }
+            else
+            {
+                @if (ChildContent is not null)
+                {
+                    @ChildContent
+                }
+                else
+                {
+                    <span>@(FormattedValue ?? Value)</span>
+                }
+            }
+        </div>
+
+        @if (Footer is not null)
+        {
+            <div class="stat-card-footer">
+                @Footer
+            </div>
+        }
+    </div>
+</div>

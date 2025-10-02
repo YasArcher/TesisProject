@@ -80,6 +80,28 @@ namespace tesisproject.frontend.SharedUI
 
         #endregion
 
+        #region Parámetros de scroll
+
+        /// <summary>
+        /// Altura máxima del contenedor con scroll. Ejemplos: "400px", "50vh", "calc(100vh - 200px)"
+        /// </summary>
+        [Parameter]
+        public string? MaxHeight { get; set; }
+
+        /// <summary>
+        /// Indica si habilitar el scroll interno
+        /// </summary>
+        [Parameter]
+        public bool EnableScroll { get; set; } = false;
+
+        /// <summary>
+        /// Tipo de scrollbar. Por defecto es "auto"
+        /// </summary>
+        [Parameter]
+        public ScrollbarType ScrollbarType { get; set; } = ScrollbarType.Auto;
+
+        #endregion
+
         #region Layouts predefinidos
 
         /// <summary>
@@ -119,5 +141,69 @@ namespace tesisproject.frontend.SharedUI
         }
 
         #endregion
+
+        #region Métodos privados
+
+        /// <summary>
+        /// Genera el estilo CSS para el contenedor principal
+        /// </summary>
+        private string GetContainerStyle()
+        {
+            if (!EnableScroll || string.IsNullOrEmpty(MaxHeight))
+                return "";
+
+            // Si MaxHeight es "100%", usar altura completa del contenedor padre
+            if (MaxHeight == "100%")
+                return "height: 100%; display: flex; flex-direction: column;";
+
+            return $"max-height: {MaxHeight};";
+        }
+
+        /// <summary>
+        /// Genera las clases CSS para el área de scroll
+        /// </summary>
+        private string GetScrollClasses()
+        {
+            if (!EnableScroll)
+                return "";
+
+            var baseClasses = "overflow-y-auto";
+
+            return ScrollbarType switch
+            {
+                ScrollbarType.Hidden => $"{baseClasses} scrollbar-hide",
+                ScrollbarType.Thin => $"{baseClasses} scrollbar-thin scrollbar-thumb-border scrollbar-track-background",
+                ScrollbarType.Custom => $"{baseClasses} custom-scrollbar",
+                _ => baseClasses
+            };
+        }
+
+        #endregion
+    }
+
+    /// <summary>
+    /// Tipos de scrollbar disponibles
+    /// </summary>
+    public enum ScrollbarType
+    {
+        /// <summary>
+        /// Scrollbar estándar del navegador
+        /// </summary>
+        Auto,
+
+        /// <summary>
+        /// Scrollbar oculta pero funcional
+        /// </summary>
+        Hidden,
+
+        /// <summary>
+        /// Scrollbar delgada estilizada
+        /// </summary>
+        Thin,
+
+        /// <summary>
+        /// Scrollbar personalizada
+        /// </summary>
+        Custom
     }
 }

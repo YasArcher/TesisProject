@@ -32,5 +32,14 @@ namespace tesisproject.frontend.SharedUI.Header
             var elevated = Variant == HeaderVariant.Elevated ? "shadow-sm" : "";
             return $"sticky top-0 z-40 bg-white/80 dark:bg-gray-900/70 backdrop-blur {border} {elevated} {Class}".Trim();
         }
+        private void CloseNotifications()
+        {
+            _notificationsOpen = false;
+        }
+
+        private void CloseUserMenu()
+        {
+            _userMenuOpen = false;
+        }
     }
 }

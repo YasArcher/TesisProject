@@ -1,43 +1,51 @@
 ﻿@typeparam TItem
-
 <div class="relative">
     <!-- Container principal tematizado -->
-    <div class="bg-background border border-border rounded-xl shadow-lg shadow-[color-mix(in_srgb,var(--color-foreground)_10%,transparent)] overflow-hidden">
-
+    <div class="bg-background border border-border rounded-xl shadow-lg shadow-[color-mix(in_srgb,var(--color-foreground)_10%,transparent)] overflow-hidden flex flex-col"
+         style="@GetContainerStyle()">
+        
         @if (Items is not null && Items.Any())
         {
-            @if (ShowItemCount)
+            @if (ShowItemCount || !string.IsNullOrEmpty(Title))
             {
-                <!-- Header con contador -->
-                <div class="px-6 py-4 bg-primary-subtle border-b border-border">
+                <!-- Header fijo con contador -->
+                <div class="px-6 py-4 bg-primary-subtle border-b border-border flex-shrink-0">
                     <div class="flex items-center justify-between">
-                        <h3 class="text-sm font-semibold text-foreground">
-                            @Title
-                        </h3>
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-subtle text-foreground">
-                            @Items.Count() @(Items.Count() == 1 ? "elemento" : "elementos")
-                        </span>
+                        @if (!string.IsNullOrEmpty(Title))
+                        {
+                            <h3 class="text-sm font-semibold text-foreground">
+                                @Title
+                            </h3>
+                        }
+                        @if (ShowItemCount)
+                        {
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-subtle text-foreground">
+                                @Items.Count() @(Items.Count() == 1 ? "elemento" : "elementos")
+                            </span>
+                        }
                     </div>
                 </div>
             }
-
-            <!-- Contenedor de elementos -->
-            <div class="p-4 sm:p-6">
-                <div class="@GridClasses">
-                    @foreach (var item in Items)
-                    {
-                        <!-- Wrapper item -->
-                        <div class="transform transition-all duration-200 hover:scale-[1.02] hover:shadow-md rounded-lg">
-                            @ChildContent(item)
-                        </div>
-                    }
+            
+            <!-- Contenedor de elementos con scroll -->
+            <div class="@GetScrollClasses() flex-1">
+                <div class="p-4 sm:p-6">
+                    <div class="@GridClasses">
+                        @foreach (var item in Items)
+                        {
+                            <!-- Wrapper item -->
+                            <div class="transform transition-all duration-200 hover:scale-[1.02] hover:shadow-md rounded-lg">
+                                @ChildContent(item)
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
         }
         else
         {
             <!-- Estado vacío -->
-            <div class="flex flex-col items-center justify-center py-16 px-6">
+            <div class="flex flex-col items-center justify-center py-16 px-6 flex-1">
                 <div class="w-16 h-16 mb-4 text-muted">
                     @if (EmptyStateIcon is not null)
                     {
@@ -51,15 +59,12 @@
                         </svg>
                     }
                 </div>
-
                 <h3 class="text-lg font-medium text-foreground mb-2">
                     @EmptyStateTitle
                 </h3>
-
                 <p class="text-sm text-muted text-center max-w-sm mb-6">
                     @EmptyStateDescription
                 </p>
-
                 @if (EmptyStateAction is not null)
                 {
                     <div class="flex gap-3">
@@ -69,11 +74,11 @@
             </div>
         }
     </div>
-
+    
     @if (IsLoading)
     {
         <!-- Overlay de carga tematizado -->
-        <div class="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-xl flex items-center justify-center">
+        <div class="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-xl flex items-center justify-center z-10">
             <div class="flex items-center space-x-3">
                 <div class="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
                 <span class="text-sm font-medium text-foreground">Cargando...</span>

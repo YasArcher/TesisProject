@@ -1,30 +1,19 @@
-﻿@* Features/Projects/Components/ProjectFinancialTab.razor *@
-@using System.Globalization
+﻿@using System.Globalization
 @using Microsoft.AspNetCore.Components
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.StatCard
 @using tesisproject.shared.DTOs.Budgets.Request
 @using tesisproject.shared.Enums
 
-<div class="space-y-4">
+<div class="p-6 space-y-4">
     <div class="flex justify-between items-center">
         <h3 class="text-base font-semibold">Resumen financiero</h3>
-
         <div class="flex gap-2">
             <ActionButton Text="Nueva certificación"
                           Intent="ButtonIntent.Accept"
                           Variant="ButtonVariant.Filled"
                           Size="ButtonSize.Sm"
                           Execute="@(()=> OnAddCertification.InvokeAsync())" />
-
-            @if (Mode == AccrualActionMode.SelectAndToolbar)
-            {
-                <ActionButton Text="Devengar seleccionado"
-                              Intent="ButtonIntent.Neutral"
-                              Variant="ButtonVariant.Outline"
-                              Size="ButtonSize.Sm"
-                              Execute="@(()=> OnExecuteDevengado.InvokeAsync(SelectedTransactionId!.Value))"
-                              Disabled="@(!CanExecuteSelected)" />
-            }
         </div>
     </div>
 
@@ -38,88 +27,66 @@
     }
     else
     {
+        <!-- Summary stats -->
         <div class="grid md:grid-cols-3 gap-3">
-            <div class="rounded-lg border p-3">
-                <div class="text-xs text-muted">Presupuesto</div>
-                <div class="text-lg font-semibold">@FormatMoney(Budget.InitialAmount)</div>
-            </div>
-            <div class="rounded-lg border p-3">
-                <div class="text-xs text-muted">Certificado</div>
-                <div class="text-lg font-semibold">@FormatMoney(Budget.CertifiedAmount)</div>
-            </div>
-            <div class="rounded-lg border p-3">
-                <div class="text-xs text-muted">Devengado</div>
-                <div class="text-lg font-semibold">@FormatMoney(Budget.ExecutedAmount)</div>
+            <StatCard Title="Presupuesto"
+                      FormattedValue="@FormatMoney(Budget.InitialAmount)"
+                      Variant="StatCardVariant.Outlined"
+                      Emphasis="StatCardEmphasis.Normal"
+                      Size="StatCardSize.Md" >
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                        <path d="M12 7.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z" />
+                        <path fill-rule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v9.75c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 14.625v-9.75ZM8.25 9.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM18.75 9a.75.75 0 0 0-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75V9.75a.75.75 0 0 0-.75-.75h-.008ZM4.5 9.75A.75.75 0 0 1 5.25 9h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V9.75Z" clip-rule="evenodd" />
+                        <path d="M2.25 18a.75.75 0 0 0 0 1.5c5.4 0 10.63.722 15.6 2.075 1.19.324 2.4-.558 2.4-1.82V18.75a.75.75 0 0 0-.75-.75H2.25Z" />
+                    </svg>
+
+                </Icon>
+            </StatCard>
+
+            <StatCard Title="Certificado"
+                      FormattedValue="@FormatMoney(Budget.CertifiedAmount)"
+                      Variant="StatCardVariant.Outlined"
+                      Emphasis="StatCardEmphasis.Normal"
+                      Size="StatCardSize.Md">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                        <path fill-rule="evenodd" d="M9 1.5H5.625c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5Zm6.61 10.936a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 14.47a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                        <path d="M12.971 1.816A5.23 5.23 0 0 1 14.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 0 1 3.434 1.279 9.768 9.768 0 0 0-6.963-6.963Z" />
+                    </svg>
+
+
+                </Icon>
+            </StatCard>
+
+            <StatCard Title="Devengado"
+                      FormattedValue="@FormatMoney(Budget.ExecutedAmount)"
+                      Variant="StatCardVariant.Outlined"
+                      Emphasis="StatCardEmphasis.Normal"
+                      Size="StatCardSize.Md">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                        <path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75ZM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 0 1-1.875-1.875V8.625ZM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 0 1 3 19.875v-6.75Z" />
+                    </svg>
+
+
+                </Icon>
+            </StatCard>
+        </div>
+
+        <div class="flex justify-between items-center mt-4">
+            <h4 class="text-sm font-medium">Transacciones</h4>
+            <div class="text-xs text-muted">
+                @if (Transactions?.Count > 0)
+                {
+                    <span>Total: @Transactions.Count transacciones</span>
+                }
             </div>
         </div>
 
-        <h4 class="text-sm font-medium mt-4">Transacciones</h4>
-
-        @if (Transactions is null || Transactions.Count == 0)
-        {
-            <div class="text-sm text-muted">Aún no hay transacciones.</div>
-        }
-        else
-        {
-            <div class="rounded-lg border overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-muted/50">
-                        <tr>
-                            <th class="text-left p-2">#</th>
-                            <th class="text-left p-2">Certificada</th>
-                            <th class="text-left p-2">Devengada</th>
-                            <th class="text-right p-2">Monto</th>
-                            <th class="text-left p-2">Partida</th>
-                            <th class="text-left p-2">CUR</th>
-                            <th class="text-left p-2">Estado</th>
-                            @if (Mode == AccrualActionMode.RowButton)
-                            {
-                                <th class="text-right p-2">Acción</th>
-                            }
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var t in Transactions!)
-                        {
-                            var isSelected = t.BudgetTransactionId == SelectedTransactionId;
-                            var rowClass = isSelected ? "bg-gray-50" : null;
-
-                            <tr class="border-t hover:bg-gray-50 @rowClass"
-                                @onclick="@(() => Select(t.BudgetTransactionId))">
-                                <td class="p-2">@t.BudgetTransactionId</td>
-                                <td class="p-2">@FormatDate(t.CertifiedAt)</td>
-                                <td class="p-2">@FormatDate(t.ExecutedAt)</td>
-                                <td class="p-2 text-right">@FormatMoney(t.Amount)</td>
-                                <td class="p-2">@t.BudgetItem</td>
-                                <td class="p-2">@(!string.IsNullOrWhiteSpace(t.CURNumber) ? t.CURNumber : "-")</td>
-                                <td class="p-2">
-                                    @if (IsExecuted(t.ExecutedAt))
-                                    {
-                                        <span class="px-2 py-1 rounded text-xs bg-green-100 text-green-700">Ejecutado</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800">Certificado</span>
-                                    }
-                                </td>
-
-                                @if (Mode == AccrualActionMode.RowButton)
-                                {
-                                    <td class="p-2 text-right">
-                                        <button class="px-2 py-1 rounded border text-xs hover:bg-gray-100"
-                                                disabled="@IsExecuted(t.ExecutedAt)"
-                                                @onclick:stopPropagation="true"
-                                                @onclick="@(() => OnExecuteDevengado.InvokeAsync(t.BudgetTransactionId))">
-                                            Devengar
-                                        </button>
-                                    </td>
-                                }
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        }
+        <BudgetTransactionTable Transactions="@Transactions"
+                                OnExecuteDevengado="@OnExecuteDevengado"
+                                PageSize="@TransactionPageSize" />
     }
 </div>
 
@@ -129,30 +96,14 @@
     [Parameter] public List<BudgetTransactionDTO>? Transactions { get; set; }
     [Parameter] public bool IsLoading { get; set; }
 
+    // ===== Configuración de paginación =====
+    [Parameter] public int TransactionPageSize { get; set; } = 15; // Configurable desde el componente padre
+
     // ===== Eventos (padre) =====
     [Parameter] public EventCallback OnAddCertification { get; set; }
     [Parameter] public EventCallback<int> OnExecuteDevengado { get; set; }
 
-    // ===== Configuración de modo =====
-    [Parameter] public AccrualActionMode Mode { get; set; } = AccrualActionMode.RowButton;
-
-    // ===== Selección =====
-    private int? SelectedTransactionId { get; set; }
-    private bool CanExecuteSelected =>
-        SelectedTransactionId.HasValue &&
-        (Transactions?.Any(x => x.BudgetTransactionId == SelectedTransactionId && !IsExecuted(x.ExecutedAt)) ?? false);
-
-    private void Select(int id) => SelectedTransactionId = id;
-
     // ===== Utilidades de UI =====
-    private static string FormatDate(DateTime? dt)
-        => (dt.HasValue && dt.Value != DateTime.MinValue)
-            ? dt.Value.ToString("yyyy-MM-dd")
-            : "-";
-
     private static string FormatMoney(decimal amount)
         => amount.ToString("N2", CultureInfo.InvariantCulture);
-
-    private static bool IsExecuted(DateTime? executedAt)
-        => executedAt.HasValue && executedAt.Value != DateTime.MinValue;
 }

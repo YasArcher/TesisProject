@@ -3,120 +3,119 @@
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Forms
 @using tesisproject.shared.DTOs.Budgets.Request
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.frontend.SharedUI.DateInput
 
-@if (IsOpen)
-{
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-        <EditForm Model="_model" OnValidSubmit="HandleSubmit">
+<Modal Id="CertificationModal"
+       Title="Nueva certificación"
+       IsOpen="@IsOpen"
+       ShowCloseButton="true"
+       CloseOnBackdrop="true"
+       CloseOnEscape="true"
+       Size="ModalSize.Md"
+       OnClose="Close"
+       IsOpenChanged="IsOpenChanged">
+
+    <ChildContent>
+        <EditForm EditContext="_editContext">
             <DataAnnotationsValidator />
-            <div class="w-full max-w-lg rounded-xl bg-white shadow-lg border">
-                <!-- Header -->
-                <div class="px-4 py-3 border-b flex items-center justify-between">
-                    <h3 class="text-base font-semibold">Nueva certificación</h3>
-                    <button type="button"
-                            class="text-sm px-2 py-1 rounded hover:bg-gray-100"
-                            @onclick="Close"
-                            disabled="@IsSaving">
-                        ✕
-                    </button>
+
+            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+            {
+                <div class="mb-3 text-sm text-error">@ErrorMessage</div>
+            }
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Monto (*) -->
+                <div>
+                    <label class="block text-sm font-medium text-foreground mb-1">Monto *</label>
+                    <InputNumber @bind-Value="_model.Amount"
+                                 class="w-full rounded-md border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary disabled:opacity-60"
+                                 disabled="@IsSaving" />
+                    <ValidationMessage For="@(() => _model.Amount)" />
                 </div>
 
-                <!-- Body -->
-                <div class="p-4 space-y-4">
-                    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
-                    {
-                        <div class="text-sm text-red-600">@ErrorMessage</div>
-                    }
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <!-- Monto -->
-                        <div class="space-y-1">
-                            <label class="text-xs font-medium">Monto *</label>
-                            <InputNumber @bind-Value="_model.Amount"
-                                         class="w-full rounded-md border px-3 py-2 text-sm"
-                                         disabled="@IsSaving" />
-                            <ValidationMessage For="@(() => _model.Amount)" />
-                        </div>
-
-                        <!-- Fecha certificación -->
-                        <div class="space-y-1">
-                            <label class="text-xs font-medium">Fecha certificación</label>
-                            <InputDate @bind-Value="_model.CertifiedAt"
-                                       class="w-full rounded-md border px-3 py-2 text-sm"
-                                       disabled="@IsSaving" />
-                            <small class="text-xs text-muted">Vacío = hoy (UTC)</small>
-                        </div>
-                    </div>
-
-                    <!-- Partida -->
-                    <div class="space-y-1">
-                        <label class="text-xs font-medium">Partida presupuestaria *</label>
-                        <InputText @bind-Value="_model.BudgetItem"
-                                   class="w-full rounded-md border px-3 py-2 text-sm"
-                                   disabled="@IsSaving" />
-                        <ValidationMessage For="@(() => _model.BudgetItem)" />
-                    </div>
-
-                    <!-- CUR (opcional) -->
-                    <div class="space-y-1">
-                        <label class="text-xs font-medium">CUR (opcional)</label>
-                        <InputText @bind-Value="_model.CURNumber"
-                                   class="w-full rounded-md border px-3 py-2 text-sm"
-                                   disabled="@IsSaving" />
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="px-4 py-3 border-t flex justify-end gap-2">
-                    <button type="button"
-                            class="px-3 py-2 rounded-md border text-sm hover:bg-gray-50"
-                            @onclick="Close"
-                            disabled="@IsSaving">
-                        Cancelar
-                    </button>
-
-                    <button type="submit"
-                            class="px-3 py-2 rounded-md text-sm text-white"
-                            disabled="@IsSaving"
-                            style="background-color: var(--color-primary);">
-                        @(IsSaving ? "Guardando..." : "Guardar certificación")
-                    </button>
+                <!-- Fecha certificación -->
+                <div>
+                    <DateInput Label="Fecha certificación"
+                               Value="@_certifiedDate"
+                               ValueChanged="OnCertifiedDateChanged"
+                               Disabled="@IsSaving" />
+                    <p class="mt-1 text-xs text-muted">Vacío = hoy (UTC)</p>
                 </div>
             </div>
+
+            <!-- Partida presupuestaria (*) -->
+            <div class="mt-4">
+                <TextInput Label="Partida presupuestaria"
+                           Placeholder="Ej.: 510201 Servicios profesionales"
+                           Value="@_model.BudgetItem"
+                           ValueChanged="(v => _model.BudgetItem = v ?? string.Empty)"
+                           For="@(() => _model.BudgetItem)"
+                           Required="true"
+                           MaxLength="120"
+                           Disabled="@IsSaving" />
+                <ValidationMessage For="@(() => _model.BudgetItem)" />
+            </div>
+
+            <!-- CUR (opcional) -->
+            <div class="mt-4">
+                <TextInput Label="CUR (opcional)"
+                           Placeholder="Ej.: 120-2025-000123"
+                           Value="@_model.CURNumber"
+                           ValueChanged="(v => _model.CURNumber = v)"
+                           For="@(() => _model.CURNumber)"
+                           MaxLength="50"
+                           Disabled="@IsSaving" />
+            </div>
         </EditForm>
-    </div>
-}
+    </ChildContent>
+
+    <Footer>
+        <div class="flex justify-end gap-2">
+            <ActionButton Text="Cancelar"
+                          Variant="ButtonVariant.Ghost"
+                          Intent="ButtonIntent.Neutral"
+                          Size="ButtonSize.Sm"
+                          Disabled="@IsSaving"
+                          Execute="Close"
+                          Class="btn-primary-ghost" />
+
+            <ActionButton Text="@(IsSaving ? "Guardando..." : "Guardar certificación")"
+                          Variant="ButtonVariant.Filled"
+                          Intent="ButtonIntent.Accept"
+                          Size="ButtonSize.Sm"
+                          Disabled="@IsSaving"
+                          Execute="OnSaveClick"
+                          Class="btn-primary-solid" />
+        </div>
+    </Footer>
+</Modal>
 
 @code {
-    // ===== Parámetros (controlados por el padre) =====
+    // Parámetros
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
-
-    // Para inicializar el modelo sin que el modal haga lógica externa
     [Parameter] public int BudgetId { get; set; }
     [Parameter] public int CertifiedByUserId { get; set; }
-
-    // Estado visual controlado por el padre
     [Parameter] public bool IsSaving { get; set; } = false;
     [Parameter] public string? ErrorMessage { get; set; }
-
-    // Si el padre quiere “prellenar” algo (opcional)
     [Parameter] public AddCertificationRequestDTO? Value { get; set; }
-
-    // Evento al guardar (el padre recibirá el DTO y hará la lógica)
     [Parameter] public EventCallback<AddCertificationRequestDTO> OnSubmit { get; set; }
-
-    // Evento al cerrar/cancelar
     [Parameter] public EventCallback OnCancel { get; set; }
 
-    // ===== Estado interno del modal (solo UI) =====
     private AddCertificationRequestDTO _model = new();
+    private EditContext _editContext = default!;
+
+    // DateInput: propiedad local
+    private DateOnly? _certifiedDate;
 
     protected override void OnParametersSet()
     {
         if (IsOpen)
         {
-            // Si el padre pasa un Value, úsalo; si no, inicializa uno nuevo
             _model = Value is not null
                 ? new AddCertificationRequestDTO
                 {
@@ -131,10 +130,35 @@
                 {
                     BudgetId = BudgetId,
                     CertifiedByUserId = CertifiedByUserId,
-                    // Deja null para que el backend asigne hoy (UTC) si así lo deseas
                     CertifiedAt = null
                 };
+
+            // DTO(DateTime?) -> UI(DateOnly?)
+            _certifiedDate = _model.CertifiedAt.HasValue
+                ? DateOnly.FromDateTime(DateTime.SpecifyKind(_model.CertifiedAt.Value, DateTimeKind.Utc))
+                : (DateOnly?)null;
+
+            _editContext = new EditContext(_model);
+            _editContext.OnValidationStateChanged += (_, __) => InvokeAsync(StateHasChanged);
         }
+    }
+
+    private Task OnCertifiedDateChanged(DateOnly? d)
+    {
+        _certifiedDate = d;
+        // UI(DateOnly?) -> DTO(DateTime? en UTC 00:00)
+        _model.CertifiedAt = d.HasValue
+            ? new DateTime(d.Value.Year, d.Value.Month, d.Value.Day, 0, 0, 0, DateTimeKind.Utc)
+            : (DateTime?)null;
+        return Task.CompletedTask;
+    }
+
+    private async Task OnSaveClick()
+    {
+        if (IsSaving) return;
+
+        if (_editContext.Validate())
+            await HandleSubmit();
     }
 
     private async Task HandleSubmit()
@@ -145,9 +169,9 @@
 
     private async Task Close()
     {
+        if (IsSaving) return;
         if (OnCancel.HasDelegate)
             await OnCancel.InvokeAsync();
-
         if (IsOpenChanged.HasDelegate)
             await IsOpenChanged.InvokeAsync(false);
     }

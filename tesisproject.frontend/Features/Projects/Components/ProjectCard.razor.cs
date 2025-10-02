@@ -7,6 +7,5 @@ namespace tesisproject.frontend.Features.Projects.Components
     {
         [Parameter] public ProjectListResponseDTO Item { get; set; } = default!;
         [Parameter] public EventCallback<ProjectListResponseDTO> OnOpen { get; set; }
-        [Parameter] public EventCallback<ProjectListResponseDTO> OnShowDetails { get; set; }
     }
 }

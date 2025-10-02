@@ -8,16 +8,16 @@ namespace tesisproject.frontend.SharedUI.Table
         [Parameter] public IEnumerable<TItem>? Items { get; set; }
         [Parameter] public IReadOnlyList<ColumnDef<TItem>> Columns { get; set; } = Array.Empty<ColumnDef<TItem>>();
 
-        // Optional row template (when provided, you render <td> cells inside)
+        // Optional row template
         [Parameter] public RenderFragment<TItem>? RowTemplate { get; set; }
 
         // Sorting state
         private int? _sortIndex = null;
         private SortDirection _sortDirection = SortDirection.None;
 
-        // Optional pager (server- or client-driven)
+        // Pager (client-driven por defecto; compatible con server-side si lo usas)
         [Parameter] public int? PageSize { get; set; }
-        [Parameter] public int? Total { get; set; } // total rows across all pages (when paging)
+        [Parameter] public int? Total { get; set; } // total rows
         [Parameter] public int CurrentPage { get; set; } = 1; // 1-based
         [Parameter] public EventCallback<int> OnPageChanged { get; set; }
 
@@ -34,8 +34,18 @@ namespace tesisproject.frontend.SharedUI.Table
 
         protected override void OnParametersSet()
         {
-            // Recompute the view on parameter or sort changes.
-            ViewItems = ApplySorting(Items ?? Enumerable.Empty<TItem>());
+            // Clamp de página si cambian Total/PageSize desde el padre
+            if (ShowPager && CurrentPage > TotalPages) CurrentPage = TotalPages;
+            if (CurrentPage < 1) CurrentPage = 1;
+
+            RecomputeView();
+        }
+
+        private void RecomputeView()
+        {
+            var src = Items ?? Enumerable.Empty<TItem>();
+            var sorted = ApplySorting(src);
+            ViewItems = ApplyPaging(sorted);
         }
 
         private IEnumerable<TItem> ApplySorting(IEnumerable<TItem> source)
@@ -44,12 +54,22 @@ namespace tesisproject.frontend.SharedUI.Table
                 return source;
 
             var col = Columns[_sortIndex.Value];
+
+            // Orden ascendente usando IComparable cuando sea posible
             var asc = source.OrderBy(
                 item => col.ValueSelector(item),
                 new AscObjectComparer()
             );
 
             return _sortDirection == SortDirection.Asc ? asc : asc.Reverse();
+        }
+
+        private IEnumerable<TItem> ApplyPaging(IEnumerable<TItem> source)
+        {
+            if (!ShowPager) return source;
+
+            var skip = (CurrentPage - 1) * PageSize!.Value;
+            return source.Skip(skip).Take(PageSize!.Value);
         }
 
         private sealed class AscObjectComparer : IComparer<object?>
@@ -66,7 +86,7 @@ namespace tesisproject.frontend.SharedUI.Table
                     catch { /* fall through */ }
                 }
 
-                // Fallback to ordinal string comparison
+                // Fallback a string ordinal
                 return string.CompareOrdinal(x.ToString(), y.ToString());
             }
         }
@@ -91,8 +111,10 @@ namespace tesisproject.frontend.SharedUI.Table
                 };
             }
 
-            // Recompute sorted view
-            ViewItems = ApplySorting(Items ?? Enumerable.Empty<TItem>());
+            // Si se cambia el sort, volvemos a la página 1
+            if (ShowPager) CurrentPage = 1;
+
+            RecomputeView();
             StateHasChanged();
         }
 
@@ -102,7 +124,6 @@ namespace tesisproject.frontend.SharedUI.Table
             return _sortDirection == SortDirection.Asc ? "▲" : "▼";
         }
 
-        // Pager helpers (when used with server-side paging, Items should be the current page slice)
         private IEnumerable<int> VisiblePages
         {
             get
@@ -119,14 +140,14 @@ namespace tesisproject.frontend.SharedUI.Table
                 if (start > 1)
                 {
                     pages.Add(1);
-                    if (start > 2) pages.Add(-1); // ellipsis
+                    if (start > 2) pages.Add(-1); // …
                 }
 
                 for (var p = start; p <= end; p++) pages.Add(p);
 
                 if (end < TotalPages)
                 {
-                    if (end < TotalPages - 1) pages.Add(-1); // ellipsis
+                    if (end < TotalPages - 1) pages.Add(-1);
                     pages.Add(TotalPages);
                 }
 
@@ -140,6 +161,11 @@ namespace tesisproject.frontend.SharedUI.Table
             page = Math.Min(Math.Max(1, page), TotalPages);
             if (page == CurrentPage) return;
 
+            CurrentPage = page;
+            RecomputeView();
+            StateHasChanged();
+
+            // Opcional: notifica al padre si lo necesita
             await OnPageChanged.InvokeAsync(page);
         }
 

@@ -13,5 +13,11 @@ namespace tesisproject.backend.Repositories.Interfaces
         /// Verifica existencia de nombre (case-insensitive). Útil para crear/editar.
         /// </summary>
         Task<bool> NameExistsAsync(string name, CancellationToken ct = default);
+        /// <summary>
+        /// Trae los grupos asociados a un proyecto específico.
+        /// </summary>
+
+        Task<List<Group>> GetByProjectIdAsync(int projectId, CancellationToken ct = default);
+
     }
 }

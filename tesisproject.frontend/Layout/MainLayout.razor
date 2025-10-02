@@ -1,18 +1,61 @@
 ﻿@using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.SharedUI.Header
 @using Microsoft.AspNetCore.Components
 @inherits LayoutComponentBase
 @inject NavigationManager Nav
 
-<div class="flex h-screen bg-page-bg text-foreground">
-    @if (ShowSidebar)
-    {
-        <aside class="w-64 shrink-0 border-r border-border bg-secondary overflow-y-auto">
-            <SideBar />
-        </aside>
-    }
+<div class="flex h-screen bg-page-bg text-foreground flex-col overflow-hidden">
+    <!-- ===== Header arriba de todo (por encima del sidebar) ===== -->
+    <Header Title="tesisproject.frontend"
+            Variant="HeaderVariant.Default"
+            ShowBorder="true"
+            Class="nav-primary-sidebar z-50"
+            LogoUrl="/images/logo.png"
+            BrandName="">
+        <HeaderNav>
+            <!-- Botón hamburguesa -->
+            <button @onclick="ToggleSidebar"
+                    class="inline-flex items-center justify-center p-2 rounded-lg bg-primary-subtle-hover
+                       transition-colors focus:outline-none focus:ring-2 focus:ring-accent text-white"
+                    aria-label="Toggle navigation">
+                <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 7h16M4 12h16M4 17h16" />
+                </svg>
+            </button>
+        </HeaderNav>
+        <HeaderActions>
+        </HeaderActions>
+        <HeaderUser>
+        </HeaderUser>
+    </Header>
 
-    <div class="flex-1 flex flex-col min-w-0">
-        <main class="flex-1 overflow-auto bg-background">
+    <!-- ===== Cuerpo: Sidebar + Contenido ===== -->
+    <div class="flex flex-1 min-w-0 min-h-0 overflow-hidden">
+        @if (ShowSidebar)
+        {
+            <!-- Sidebar Desktop - SIN scroll -->
+            <aside class="hidden md:block md:w-64 shrink-0 nav-primary-sidebar overflow-hidden">
+                <SideBar />
+            </aside>
+
+            <!-- Sidebar Móvil (overlay) -->
+            @if (IsSidebarOpen)
+            {
+                <div class="fixed inset-0 z-40 md:hidden" @onclick="ToggleSidebar">
+                    <!-- Backdrop -->
+                    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+                    <!-- Panel lateral -->
+                    <aside class="relative w-64 h-full nav-primary-sidebar overflow-y-auto shadow-2xl
+                                                   transform transition-transform duration-300"
+                           @onclick:stopPropagation="true">
+                        <SideBar />
+                    </aside>
+                </div>
+            }
+        }
+
+        <!-- Contenido principal - SIN scroll, deja que las páginas manejen su propio scroll -->
+        <main class="flex-1 overflow-hidden bg-background">
             @Body
         </main>
     </div>
