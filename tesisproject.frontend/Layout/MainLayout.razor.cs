@@ -1,16 +1,20 @@
 ﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
 
 namespace tesisproject.frontend.Layout
 {
-    public partial class MainLayout
+    public partial class MainLayout : IDisposable
     {
+        private bool IsSidebarOpen = false;
+
         private static readonly string[] SidebarRoutes =
         [
-            "/",             // home
-            "/projects",     // sección de proyectos
-            "/tailwind-test" // demo
+            "/",
+            "/projects",
+            "/tailwind-test"
         ];
 
+        // Sidebar visible solo en rutas incluidas
         private bool ShowSidebar
         {
             get
@@ -20,15 +24,35 @@ namespace tesisproject.frontend.Layout
                     ? Nav.Uri[baseUri.Length..]
                     : Nav.Uri;
 
-                // Asegura que empiece con "/"
                 if (!relative.StartsWith("/"))
                     relative = "/" + relative;
 
-                // Coincidencia por prefijo de segmento
                 return SidebarRoutes.Any(r =>
                     relative.Equals(r, StringComparison.OrdinalIgnoreCase) ||
                     relative.StartsWith(r.EndsWith("/") ? r : r + "/", StringComparison.OrdinalIgnoreCase));
             }
+        }
+
+        protected override void OnInitialized()
+        {
+            Nav.LocationChanged += OnLocationChanged;
+        }
+
+        private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+        {
+            // Cuando cambia de ruta, cierra el sidebar móvil
+            IsSidebarOpen = false;
+            StateHasChanged();
+        }
+
+        private void ToggleSidebar()
+        {
+            IsSidebarOpen = !IsSidebarOpen;
+        }
+
+        public void Dispose()
+        {
+            Nav.LocationChanged -= OnLocationChanged;
         }
     }
 }

@@ -1,0 +1,103 @@
+﻿@using System.Globalization
+@using Microsoft.AspNetCore.Components
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Table
+@using tesisproject.shared.DTOs.Budgets.Request
+@using tesisproject.shared.Enums
+@using tesisproject.frontend.Utils
+
+<DataTable TItem="BudgetTransactionDTO"
+           Items="@Transactions"
+           Columns="@_columns"
+           EmptyText="@EmptyText"
+           RowTemplate="@TransactionRowTemplate"
+           PageSize="@PageSize"
+           Total="@TotalTransactions" />
+
+@code {
+    // ===== Parámetros =====
+    [Parameter] public List<BudgetTransactionDTO>? Transactions { get; set; }
+    [Parameter] public string EmptyText { get; set; } = "Aún no hay transacciones.";
+    [Parameter] public EventCallback<int> OnExecuteDevengado { get; set; }
+    [Parameter] public int PageSize { get; set; } = 3;
+
+    private int TotalTransactions => Transactions?.Count ?? 0;
+
+    // ===== Columnas (ordenan por valor crudo) =====
+    private IReadOnlyList<ColumnDef<BudgetTransactionDTO>> _columns = new[]
+    {
+        new ColumnDef<BudgetTransactionDTO>("#",           t => t.BudgetTransactionId,                Width: "80px",  Sortable: true),
+        new ColumnDef<BudgetTransactionDTO>("Certificada", t => (object?) t.CertifiedAt,              Width: "150px", Sortable: true),
+        new ColumnDef<BudgetTransactionDTO>("Devengada",   t => (object?) t.ExecutedAt,               Width: "150px", Sortable: true),
+        new ColumnDef<BudgetTransactionDTO>("Monto",       t => t.Amount,                             Width: "120px", Sortable: true),
+        new ColumnDef<BudgetTransactionDTO>("Partida",     t => t.BudgetItem ?? "",                                  Sortable: true),
+        new ColumnDef<BudgetTransactionDTO>("CUR",         t => !string.IsNullOrWhiteSpace(t.CURNumber) ? t.CURNumber : "-", Width: "120px", Sortable: true),
+        new ColumnDef<BudgetTransactionDTO>("Estado",      t => "",                                   Width: "120px", Sortable: false),
+        new ColumnDef<BudgetTransactionDTO>("Acción",      t => "",                                   Width: "100px", Sortable: false)
+    };
+
+    // ===== Row Template (formateo visual con helpers) =====
+    private RenderFragment<BudgetTransactionDTO> TransactionRowTemplate => transaction => @<text>
+    <td class="px-4 py-3 text-sm text-foreground align-middle">
+        @transaction.BudgetTransactionId
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle">
+        @DateCell(transaction.CertifiedAt)
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle">
+        @DateCell(transaction.ExecutedAt)
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle text-right">
+        @FormatMoney(transaction.Amount)
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle">
+        @transaction.BudgetItem
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle">
+        @(!string.IsNullOrWhiteSpace(transaction.CURNumber) ? transaction.CURNumber : "-")
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle">
+        @if (IsExecuted(transaction.ExecutedAt))
+                {
+        <span class="px-2 py-1 rounded text-xs bg-green-100 text-green-700">Ejecutado</span>
+                }
+                else
+                {
+        <span class="px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800">Certificado</span>
+                }
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle text-right">
+        <ActionButton Text="Devengar"
+                      Intent="ButtonIntent.Accept"
+                      Variant="ButtonVariant.Outline"
+                      Size="ButtonSize.Xs"
+                      Disabled="@IsExecuted(transaction.ExecutedAt)"
+                      Execute="@(() => OnExecuteDevengado.InvokeAsync(transaction.BudgetTransactionId))" />
+    </td>
+</text>;
+
+    // ===== Celdas y utilidades =====
+    private static RenderFragment DateCell(DateTime? dt) => builder =>
+    {
+        var text = dt.ToSpanishShortDate(); // "-", o dd/MM/yyyy
+        var title = $"{dt.ToSpanishDate()} • {dt.ToRelativeTime()}"; // "Sin fecha" o "01 de enero de 2025 • Hace 3 días"
+
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "title", title);
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
+
+    private static string FormatMoney(decimal amount)
+        => amount.ToString("N2", CultureInfo.InvariantCulture);
+
+    private static bool IsExecuted(DateTime? executedAt)
+        => executedAt.HasValue && executedAt.Value != DateTime.MinValue;
+}

@@ -1,54 +1,209 @@
-﻿@* @using tesisproject.frontend.SharedUI
+﻿@* Features/Projects/Components/ProjectVisitsTab.razor *@
+@using tesisproject.frontend.SharedUI
+@using System.Text.Json;
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Utils
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Visit.Request
+@using tesisproject.shared.DTOs.Visit.Response
 
-<div class="space-y-4">
-    <div class="flex justify-between items-center">
-        <h3 class="text-base font-semibold">Visitas</h3>
-        <ActionButton Text="Nueva visita"
-                      Intent="ButtonIntent.Info"
-                      Variant="ButtonVariant.Filled"
-                      Size="ButtonSize.Sm"
-                      Execute="@(()=> OnAddVisit.InvokeAsync())" />
+<div class="flex flex-col h-full">
+    <!-- Header fijo -->
+    <div class="flex-shrink-0 pb-4 border-b border-border">
+        <div class="flex justify-between items-center gap-4">
+            <div>
+                <h3 class="text-lg font-semibold text-foreground">Visitas del Proyecto</h3>
+                @if (Items?.Count > 0)
+                {
+                    <p class="text-sm text-muted mt-0.5">@Items.Count @(Items.Count == 1 ? "visita registrada" : "visitas registradas")</p>
+                }
+            </div>
+
+          @*   <ActionButton Text="Nueva Visita"
+                          Intent="ButtonIntent.Add"
+                          Variant="ButtonVariant.Filled"
+                          Size="ButtonSize.Md"
+                          Execute="@(() => OnAddVisit.InvokeAsync())">
+                <Icon>
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                </Icon>
+            </ActionButton> *@
+        </div>
     </div>
 
-    @if (IsLoading)
-    {
-        <div class="text-sm text-muted">Cargando visitas…</div>
-    }
-    else if (Items?.Count is 0 or null)
-    {
-        <Container TItem="object"
-                   Items="new List<object>()"
-                   Title="VISITAS"
-                   EmptyStateTitle="Sin visitas"
-                   EmptyStateDescription="Aún no se han registrado visitas." />
-    }
-    else
-    {
-        <ul class="space-y-2">
-            @foreach (var v in Items!)
-            {
-                <li class="rounded-lg border p-3 flex justify-between items-center">
-                    <div>
-                        <div class="font-medium">@v.Title</div>
-                        <div class="text-sm text-muted">
-                            Fecha: @v.VisitDate.ToString("yyyy-MM-dd") • Estado: @v.StateName
+    <!-- Contenido con scroll -->
+    <div class="flex-1 overflow-y-auto py-4 -mx-1 px-1">
+        @if (IsLoading)
+        {
+            <div class="flex flex-col items-center justify-center py-12 gap-3">
+                <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <p class="text-sm text-muted">Cargando visitas...</p>
+            </div>
+        }
+        else if (Items?.Count is 0 or null)
+        {
+            <div class="flex flex-col items-center justify-center py-12 px-4 text-center">
+                <div class="w-16 h-16 rounded-full bg-primary-subtle flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                </div>
+                <h4 class="text-base font-semibold text-foreground mb-2">Sin visitas registradas</h4>
+                <p class="text-sm text-muted max-w-sm">
+                    Aún no se han registrado visitas para este proyecto. Haz clic en "Nueva Visita" para comenzar.
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="space-y-3">
+                @foreach (var v in Items!)
+                {
+                    <article class="group relative rounded-xl border border-border bg-background p-4 transition-all duration-200 hover:border-primary hover:shadow-md">
+                        <!-- Indicador de estado lateral -->
+                        <div class="absolute left-0 top-4 bottom-4 w-1 rounded-r-full @GetStateColorClass(v.VisitStateId)"></div>
+
+                        <div class="flex flex-col gap-3 pl-3">
+                            <!-- Header -->
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <h4 class="font-semibold text-foreground truncate">
+                                            @v.ProjectName
+                                        </h4>
+                                        @StateBadge(v.VisitStateId, v.VisitStateName)
+                                    </div>
+
+                                    <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
+                                        <span class="flex items-center gap-1.5">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                            @v.VisitDate.ToSpanishShortDate()
+                                        </span>
+
+                                        <span class="flex items-center gap-1.5">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                            </svg>
+                                            ID: @v.VisitId
+                                        </span>
+
+                                        @if (v.DocumentId is int docId)
+                                        {
+                                            <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary-subtle text-secondary border border-secondary/20">
+                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                </svg>
+                                                Doc #@docId
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+
+                                <!-- Selector de estado -->
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <select class="px-3 py-1.5 text-sm font-medium rounded-lg border border-border bg-background text-foreground hover:bg-primary-subtle focus:outline-none focus:ring-2 focus:ring-primary transition-colors cursor-pointer"
+                                            value="@v.VisitStateId"
+                                            @onchange="(e) => OnChangeStateAsync(v, int.Parse(e.Value!.ToString()!))">
+                                        @foreach (var st in _states)
+                                        {
+                                            <option value="@st.Id">@st.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Notas -->
+                            @if (!string.IsNullOrWhiteSpace(v.Notes))
+                            {
+                                <div class="rounded-lg bg-primary-subtle/50 border border-primary/10 p-3">
+                                    <div class="flex items-start gap-2">
+                                        <svg class="w-4 h-4 text-primary mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        <p class="text-sm text-foreground/90 leading-relaxed flex-1">@v.Notes</p>
+                                    </div>
+                                </div>
+                            }
                         </div>
-                    </div>
-                    <ActionButton Text="Abrir"
-                                  Intent="ButtonIntent.Neutral"
-                                  Variant="ButtonVariant.Outline"
-                                  Size="ButtonSize.Sm"
-                                  Execute="@(()=> OnOpenVisit.InvokeAsync(v.VisitId))" />
-                </li>
-            }
-        </ul>
-    }
+                    </article>
+                }
+            </div>
+        }
+    </div>
 </div>
 
 @code {
-    [Parameter] public List<ProjectVisitListItemDTO>? Items { get; set; }
+    // ===== Parámetros =====
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public List<VisitListResponseDTO>? Items { get; set; }
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public EventCallback OnAddVisit { get; set; }
     [Parameter] public EventCallback<int> OnOpenVisit { get; set; }
-} *@
+    [Parameter] public EventCallback<(int visitId, int newStateId)> OnChangeVisitState { get; set; }
+
+    // ===== Estados disponibles =====
+    private readonly (int Id, string Name)[] _states = new[]
+    {
+        (1, "Scheduled"),
+        (2, "Completed"),
+        (3, "In Progress"),
+        (4, "Cancelled")
+    };
+
+    // ===== Color del indicador lateral según estado =====
+    private string GetStateColorClass(int stateId) => stateId switch
+    {
+        1 => "bg-secondary",      // Scheduled
+        3 => "bg-primary",        // In Progress
+        2 => "bg-accent",         // Completed
+        4 => "bg-error",          // Cancelled
+        _ => "bg-muted"
+    };
+
+    // ===== Badge de estado =====
+    private RenderFragment StateBadge(int id, string name) => builder =>
+    {
+        var (bgClass, textClass, borderClass, icon) = id switch
+        {
+            1 => ("bg-secondary-subtle", "text-secondary", "border-secondary/20",
+                  "<svg class='w-3 h-3' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'/></svg>"),
+            3 => ("bg-primary-subtle", "text-primary", "border-primary/20",
+                  "<svg class='w-3 h-3' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M13 10V3L4 14h7v7l9-11h-7z'/></svg>"),
+            2 => ("bg-accent/20", "text-accent", "border-accent/30",
+                  "<svg class='w-3 h-3' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M5 13l4 4L19 7'/></svg>"),
+            4 => ("bg-error/10", "text-error", "border-error/30",
+                  "<svg class='w-3 h-3' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M6 18L18 6M6 6l12 12'/></svg>"),
+            _ => ("bg-muted/20", "text-muted", "border-muted/30", "")
+        };
+
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", $"inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border {bgClass} {textClass} {borderClass}");
+        if (!string.IsNullOrEmpty(icon))
+        {
+            builder.AddMarkupContent(2, icon);
+        }
+        builder.AddContent(3, name);
+        builder.CloseElement();
+    };
+    private async Task OnChangeStateAsync(VisitListResponseDTO v, int newStateId)
+    {
+        if (v.VisitStateId == newStateId) return;
+
+        // Optimista solo visual, sin tocar backend
+        var prevId = v.VisitStateId;
+        var prevName = v.VisitStateName;
+
+        v.VisitStateId = newStateId;
+        v.VisitStateName = _states.FirstOrDefault(s => s.Id == newStateId).Name ?? "Unknown";
+        StateHasChanged();
+
+        await OnChangeVisitState.InvokeAsync((v.VisitId, newStateId));
+
+        // Nota: No revertimos aquí. El padre decide si revertir o refrescar.
+    }
+
+}

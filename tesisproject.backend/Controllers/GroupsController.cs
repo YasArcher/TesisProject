@@ -63,5 +63,13 @@ namespace tesisproject.backend.Controllers
             int groupId,
             CancellationToken ct)
             => (await _service.GetExternalUsersByGroupAsync(groupId, ct)).ToActionResult();
+
+        // GET: api/Groups/by-project/123
+        [HttpGet("by-project/{projectId:int}")]
+        public async Task<ActionResult<ApiResponse<IReadOnlyList<GroupResponseDTO>>>> GetByProject(
+            int projectId,
+            CancellationToken ct)
+            => (await _service.GetByProjectAsync(projectId, ct)).ToActionResult();
+
     }
 }

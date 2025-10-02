@@ -7,6 +7,12 @@
     [Parameter, EditorRequired]
     public string Title { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Optional icon fragment shown before the Title (e.g. a Heroicon SVG/component).
+    /// </summary>
+    [Parameter]
+    public RenderFragment? Icon { get; set; }
+
     [Parameter, EditorRequired]
     public RenderFragment? ChildContent { get; set; }
 
@@ -19,7 +25,8 @@
         {
             Key = Key,
             Title = Title,
-            Content = ChildContent!
+            Content = ChildContent!,
+            Icon = Icon
         });
     }
 

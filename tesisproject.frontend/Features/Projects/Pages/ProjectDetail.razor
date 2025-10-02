@@ -6,73 +6,142 @@
 @using tesisproject.shared.DTOs.Project.Response
 @using tesisproject.frontend.Features.Projects.Components
 @using tesisproject.shared.DTOs.Budgets.Request
+@using tesisproject.shared.DTOs.ProjectExtensions.Response
+@using tesisproject.shared.DTOs.Visit.Request
+@using tesisproject.shared.DTOs.Visit.Response
+
+@inject IVisitClientService VisitService
 @inject IProjectClientService ProjectService
 @inject IBudgetClientService BudgetService
+@inject IProjectExtensionClientService ProjectExtensionService
 @inject NavigationManager Nav
 
-<div class="min-h-screen">
-    <!-- Header con título del proyecto -->
-    <div class="mb-4 p-4 rounded-xl border bg-background">
-        <div class="flex items-start justify-between">
-            <div>
-                <h1 class="text-xl font-semibold">
-                    @(_project?.ProjectName ?? "Cargando proyecto…")
+<div class="flex flex-col h-full">
+    <!-- Header -->
+    <div class="sticky top-0 z-10 rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm shrink-0">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <!-- Izquierda -->
+            <div class="space-y-3 min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="inline-flex items-center px-3 py-1 text-sm font-bold rounded-full bg-primary text-white shrink-0">
+                        #@_project?.ProjectId
+                    </span>
+
+                    @if (!string.IsNullOrEmpty(_project?.ProjectCode))
+                    {
+                        <span class="text-sm text-muted font-mono bg-muted/20 px-2 py-1 rounded max-w-full truncate">
+                            @_project?.ProjectCode
+                        </span>
+                    }
+                </div>
+
+                <h1 class="text-2xl lg:text-3xl font-bold text-foreground leading-tight break-words text-balance">
+                    @(string.IsNullOrEmpty(_project?.ProjectName) ? "Proyecto Sin Nombre" : _project?.ProjectName)
                 </h1>
-                <p class="text-sm text-muted">
-                    @if (!string.IsNullOrWhiteSpace(_error))
-                    {
-                        <span class="text-red-600">@_error</span>
-                    }
-                    else if (_project is not null)
-                    {
-                        <span>State: @_project.ProjectStateName • Type: @_project.ProjectTypeName</span>
-                    }
-                </p>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-primary-subtle text-primary border border-primary/20">
+                        @(_project?.ProjectTypeName ?? "Sin tipo")
+                    </span>
+
+                    <span class="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-secondary-subtle text-secondary border border-secondary/20">
+                        @(_project?.ProjectStateName ?? "Sin estado")
+                    </span>
+                </div>
             </div>
-            <div class="flex gap-2">
-                <ActionButton Text="Volver"
-                              Intent="ButtonIntent.Neutral"
-                              Variant="ButtonVariant.Outline"
-                              Size="ButtonSize.Sm"
-                              Execute="@(()=> { Nav.NavigateTo("/projects/home"); return Task.CompletedTask; })" />
+
+            <!-- Derecha -->
+            <div class="lg:text-right space-y-2 shrink-0">
+                <div class="text-sm font-medium text-muted">Progreso del Proyecto</div>
+                <div class="flex items-center gap-4">
+                    <div class="w-32 bg-border rounded-full h-3 relative overflow-hidden">
+                        <div class="bg-secondary h-3 rounded-full transition-all duration-500"
+                             style="width:@((_project?.ExecutionPercentage ?? 0).ToString("F1"))%"></div>
+                    </div>
+                    <span class="text-2xl font-bold text-secondary">
+                        @((_project?.ExecutionPercentage ?? 0).ToString("F1"))%
+                    </span>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Tabs -->
-    <Tabs ActiveKey="@_activeTab" OnChange="OnTabChanged">
-        <Tab Key="overview" Title="Detalles">
-            <ProjectOverviewTab Item="_project" IsLoading="@_loadingOverview" />
-        </Tab>
+    <div class="flex-1 overflow-y-auto min-h-0">
+        <Tabs ActiveKey="@_activeTab" OnChange="OnTabChanged">
 
-        @* ===== Pestañas deshabilitadas por ahora (comentadas para evitar errores) =====
-        <Tab Key="visits" Title="Visitas">
-            <ProjectVisitsTab Items="_visits"
-                              IsLoading="@_loadingVisits"
-                              OnAddVisit="HandleAddVisit"
-                              OnOpenVisit="HandleOpenVisit" />
-        </Tab>
+            <Tab Key="overview" Title="Detalles">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                        <path d="M11.625 16.5a1.875 1.875 0 1 0 0-3.75 1.875 1.875 0 0 0 0 3.75Z" />
+                        <path fill-rule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875Zm6 16.5c.66 0 1.277-.19 1.797-.518l1.048 1.048a.75.75 0 0 0 1.06-1.06l-1.047-1.048A3.375 3.375 0 1 0 11.625 18Z" clip-rule="evenodd" />
+                        <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
+                    </svg>
 
-        <Tab Key="extensions" Title="Prórrogas">
-            <ProjectExtensionsTab Items="_extensions"
-                                  IsLoading="@_loadingExtensions"
-                                  OnRequestNew="HandleRequestExtension"
-                                  OnOpen="HandleOpenExtension" />
-        </Tab>
-        *@
+                </Icon>
 
-        <!-- ===== Presupuesto (Financiero) ===== -->
-        <Tab Key="financial" Title="Presupuesto">
-            <ProjectFinancialTab Budget="_budget"
-                                 Transactions="_transactions"
-                                 IsLoading="_loadingBudget"
-                                 OnAddCertification="HandleAddCertification"
-                                 OnExecuteDevengado="HandleExecuteDevengado" />
-        </Tab>
-    </Tabs>
+                <ChildContent>
+                    <ProjectOverviewTab Item="_project" IsLoading="@_loadingOverview" />
+                </ChildContent>
+            </Tab>
+
+            <Tab Key="visits" Title="Visitas">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                        <path fill-rule="evenodd" d="M7.502 6h7.128A3.375 3.375 0 0 1 18 9.375v9.375a3 3 0 0 0 3-3V6.108c0-1.505-1.125-2.811-2.664-2.94a48.972 48.972 0 0 0-.673-.05A3 3 0 0 0 15 1.5h-1.5a3 3 0 0 0-2.663 1.618c-.225.015-.45.032-.673.05C8.662 3.295 7.554 4.542 7.502 6ZM13.5 3A1.5 1.5 0 0 0 12 4.5h4.5A1.5 1.5 0 0 0 15 3h-1.5Z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M3 9.375C3 8.339 3.84 7.5 4.875 7.5h9.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 0 1 3 20.625V9.375ZM6 12a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V12Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75ZM6 15a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V15Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75ZM6 18a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V18Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
+                    </svg>
+
+                </Icon>
+                <ChildContent>
+                    <ProjectVisitsTab ProjectId="@ProjectId"
+                                      Items="_visits"
+                                      IsLoading="@_loadingVisits"
+                                      OnAddVisit="HandleAddVisit"
+                                      OnOpenVisit="HandleOpenVisit"
+                                      OnChangeVisitState="HandleChangeVisitStateAsync" />
+
+                </ChildContent>
+            </Tab>
+
+            <Tab Key="financial" Title="Presupuesto">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                        <path fill-rule="evenodd" d="M3.75 3.375c0-1.036.84-1.875 1.875-1.875H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375Zm10.5 1.875a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25ZM12 10.5a.75.75 0 0 1 .75.75v.028a9.727 9.727 0 0 1 1.687.28.75.75 0 1 1-.374 1.452 8.207 8.207 0 0 0-1.313-.226v1.68l.969.332c.67.23 1.281.85 1.281 1.704 0 .158-.007.314-.02.468-.083.931-.83 1.582-1.669 1.695a9.776 9.776 0 0 1-.561.059v.028a.75.75 0 0 1-1.5 0v-.029a9.724 9.724 0 0 1-1.687-.278.75.75 0 0 1 .374-1.453c.425.11.864.186 1.313.226v-1.68l-.968-.332C9.612 14.974 9 14.354 9 13.5c0-.158.007-.314.02-.468.083-.931.831-1.582 1.67-1.694.185-.025.372-.045.56-.06v-.028a.75.75 0 0 1 .75-.75Zm-1.11 2.324c.119-.016.239-.03.36-.04v1.166l-.482-.165c-.208-.072-.268-.211-.268-.285 0-.113.005-.225.015-.336.013-.146.14-.309.374-.34Zm1.86 4.392V16.05l.482.165c.208.072.268.211.268.285 0 .113-.005.225-.015.336-.012.146-.14.309-.374.34-.12.016-.24.03-.361.04Z" clip-rule="evenodd" />
+                    </svg>
+
+                </Icon>
+                <ChildContent>
+                    <ProjectFinancialTab Budget="_budget"
+                                         Transactions="_transactions"
+                                         IsLoading="_loadingBudget"
+                                         OnAddCertification="HandleAddCertification"
+                                         OnExecuteDevengado="HandleExecuteDevengado" />
+                </ChildContent>
+
+            </Tab>
+
+            <Tab Key="extensions" Title="Prórrogas">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                        <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
+                    </svg>
+
+                </Icon>
+
+                <ChildContent>
+                    <ProjectExtensionsTab Items="_extensions"
+                                          IsLoading="_loadingExtensions"
+                                          OnRequestNew="HandleRequestExtension"
+                                          OnOpen="HandleOpenExtension" />
+                </ChildContent>
+            </Tab>
+
+        </Tabs>
+    </div>
 </div>
 
-<!-- ===== Modal Certificación (presentacional, controlado por el padre) ===== -->
+<!-- Modales presupuesto -->
 <ProjectCertificationModal IsOpen="@_certModalOpen"
                            IsOpenChanged="v => _certModalOpen = v"
                            Value="@_certSeed"
@@ -81,7 +150,6 @@
                            OnSubmit="OnSubmitCertification"
                            OnCancel="OnCancelCertification" />
 
-<!-- ===== Modal Devengado (presentacional, controlado por el padre) ===== -->
 <ProjectAccrualModal IsOpen="@_accrualModalOpen"
                      IsOpenChanged="v => _accrualModalOpen = v"
                      Value="@_accrualSeed"
@@ -99,12 +167,10 @@
     private bool _loadingOverview;
     private string? _error;
 
-    // ======= Estados y colecciones de otras pestañas (comentados para evitar errores) =======
-    // private bool _loadingVisits, _loadingExtensions, _loadingFinancial;
-    // private List<ProjectVisitListItemDTO> _visits = new();
-    // private List<ProjectExtensionListItemDTO> _extensions = new();
-    // private FinancialSummaryDTO? _financial;
-    // private List<FinancialMovementDTO> _movements = new();
+    // ======= Visitas =======
+    private List<VisitListResponseDTO>? _visits;
+    private bool _loadingVisits;
+    private string? _visitsError;
 
     // ======= Presupuesto =======
     private BudgetDTO? _budget;
@@ -112,14 +178,19 @@
     private bool _loadingBudget;
     private string? _budgetError;
 
-    // ======= Modal Certificación (UI) =======
+    // ======= Modales presupuesto =======
     private bool _certModalOpen;
     private bool _savingCert;
     private string? _certError;
     private AddCertificationRequestDTO _certSeed = new();
-    private int _currentUserId = 1; // TODO: setear desde sesión/claims
+    private int _currentUserId = 1; // TODO: obtener de claims
 
-    // ======= Modal Devengado (UI) =======
+    // ======= Prórrogas =======
+    private List<ProjectExtensionListResponseDTO>? _extensions;
+    private bool _loadingExtensions;
+    private string? _extensionsError;
+
+
     private bool _accrualModalOpen;
     private bool _savingAccrual;
     private string? _accrualError;
@@ -138,7 +209,7 @@
         StateHasChanged();
     }
 
-    /// Lazy-load / Refresh por tab (Overview y Financial recargan SIEMPRE al entrar)
+    /// Lazy-load / Refresh por tab
     private async Task EnsureTabDataAsync(string tabKey)
     {
         switch (tabKey)
@@ -150,9 +221,7 @@
                 {
                     var detail = await ProjectService.GetDetailAsync(ProjectId);
                     if (detail.Success)
-                    {
                         _project = detail.Response;
-                    }
                     else
                     {
                         _project = null;
@@ -169,40 +238,68 @@
                     _loadingOverview = false;
                 }
                 break;
+            case "extensions":
+                _loadingExtensions = true;
+                _extensionsError = null;
+                try
+                {
+                    var res = await ProjectExtensionService.ListByProjectAsync(ProjectId);
+                    if (res.Success)
+                        _extensions = res.Response ?? new();
+                    else
+                    {
+                        _extensions = new();
+                        _extensionsError = res.Error ?? "No se pudieron cargar las prórrogas.";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _extensions = new();
+                    _extensionsError = $"Error de conexión: {ex.Message}";
+                }
+                finally
+                {
+                    _loadingExtensions = false;
+                }
+                break;
 
-            // case "visits":
-            //     if (_visits.Count == 0)
-            //     {
-            //         _loadingVisits = true;
-            //         var r = await ProjectService.GetVisitsAsync(ProjectId);
-            //         if (r.Success) _visits = r.Response ?? new();
-            //         _loadingVisits = false;
-            //     }
-            //     break;
 
-            // case "extensions":
-            //     if (_extensions.Count == 0)
-            //     {
-            //         _loadingExtensions = true;
-            //         var r = await ProjectService.GetExtensionsAsync(ProjectId);
-            //         if (r.Success) _extensions = r.Response ?? new();
-            //         _loadingExtensions = false;
-            //     }
-            //     break;
+            case "visits":
+                _loadingVisits = true;
+                _visitsError = null;
+                try
+                {
+                    var res = await VisitService.GetByProjectAsync(ProjectId);
+                    Console.WriteLine("Raw Response:");
+                    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(res));
+                    if (res.Success && res.Success == true)
+                        _visits = res.Response?.ToList() ?? new();
+                    else
+                    {
+                        _visits = new();
+                        _visitsError = res.Error ?? "No se pudieron cargar las visitas.";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _visits = new();
+                    _visitsError = $"Error de conexión: {ex.Message}";
+                }
+                finally
+                {
+                    _loadingVisits = false;
+                }
+                break;
 
             case "financial":
                 _loadingBudget = true;
                 _budgetError = null;
-
                 try
                 {
-                    // 1) Presupuesto por proyecto
                     var b = await BudgetService.GetBudgetAsync(ProjectId);
                     if (b.Success)
                     {
                         _budget = b.Response; // puede ser null si no hay presupuesto
-
-                        // 2) Si existe presupuesto, cargar transacciones
                         if (_budget is not null)
                         {
                             var tr = await BudgetService.GetListBudgetTransactionAsync(_budget.BudgetId);
@@ -240,14 +337,7 @@
         }
     }
 
-    // ===== Eventos (acciones) de otras pestañas — comentados =====
-    // private Task HandleAddVisit() => Task.CompletedTask;
-    // private Task HandleOpenVisit(int visitId) => Task.CompletedTask;
-    // private Task HandleRequestExtension() => Task.CompletedTask;
-    // private Task HandleOpenExtension(int extensionId) => Task.CompletedTask;
-    // private Task HandleAddMovement() => Task.CompletedTask;
-
-    // ===== Acciones: Certificación =====
+    // ===== Acciones presupuesto =====
     private Task HandleAddCertification()
     {
         if (_budget is null) return Task.CompletedTask;
@@ -258,7 +348,7 @@
         {
             BudgetId = _budget.BudgetId,
             CertifiedByUserId = _currentUserId,
-            CertifiedAt = null,  // backend puede poner hoy UTC
+            CertifiedAt = null,
             Amount = 0,
             BudgetItem = string.Empty,
             CURNumber = null
@@ -305,7 +395,6 @@
         return Task.CompletedTask;
     }
 
-    // ===== Acciones: Devengado =====
     private Task HandleExecuteDevengado(int budgetTransactionId)
     {
         if (_budget is null) return Task.CompletedTask;
@@ -316,7 +405,7 @@
         {
             BudgetTransactionId = budgetTransactionId,
             ExecutedByUserId = _currentUserId,
-            ExecutedAt = null, // backend puede poner hoy UTC
+            ExecutedAt = null,
             CURNumber = null
         };
 
@@ -361,10 +450,80 @@
         return Task.CompletedTask;
     }
 
+    private async Task HandleChangeVisitStateAsync((int visitId, int newStateId) e)
+    {
+        var (visitId, newStateId) = e;
+
+        try
+        {
+            var req = new UpdateVisitRequestDTO
+            {
+                VisitId = visitId,
+                ProjectId = ProjectId,
+                VisitStateId = newStateId
+            };
+
+            var resp = await VisitService.UpdateAsync(req);
+
+            if (resp.Success && resp.Response is VisitListResponseDTO updated && _visits is not null)
+            {
+                // Sincroniza la lista local con lo que diga el backend
+                var local = _visits.FirstOrDefault(x => x.VisitId == updated.VisitId);
+                if (local is not null)
+                {
+                    local.VisitStateId = updated.VisitStateId;
+                    local.VisitStateName = updated.VisitStateName;
+                }
+                StateHasChanged();
+            }
+            else
+            {
+                // Si falló, recarga la pestaña de visitas (o revierte si prefieres)
+                _visitsError = resp.Error ?? "No se pudo actualizar el estado de la visita.";
+                await EnsureTabDataAsync("visits");
+            }
+        }
+        catch (Exception ex)
+        {
+            _visitsError = $"Error de conexión: {ex.Message}";
+            await EnsureTabDataAsync("visits");
+        }
+    }
+
+
     // ===== Util =====
     private async Task ReloadBudgetTabAsync()
     {
         await EnsureTabDataAsync("financial");
         StateHasChanged();
     }
+
+    // ===== Acciones visitas =====
+    private Task HandleAddVisit()
+    {
+        // Nav.NavigateTo($"/projects/{ProjectId}/visits/new");
+        return Task.CompletedTask;
+    }
+
+    private Task HandleOpenVisit(int visitId)
+    {
+        // Nav.NavigateTo($"/visits/{visitId}");
+        return Task.CompletedTask;
+    }
+    // ===== Acciones prórrogas =====
+    private Task HandleRequestExtension()
+    {
+        // Aquí podrías abrir un modal de "nueva prórroga"
+        // o navegar a una ruta de creación:
+        // Nav.NavigateTo($"/projects/{ProjectId}/extensions/new");
+        return Task.CompletedTask;
+    }
+
+    private Task HandleOpenExtension(int projectExtensionId)
+    {
+        // Navegar a detalle de la prórroga si existe una página:
+        // Nav.NavigateTo($"/extensions/{projectExtensionId}");
+        return Task.CompletedTask;
+    }
+
 }

@@ -14,19 +14,26 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public IGroupRepository Groups { get; }
         public IGroupMemberRepository GroupMembers { get; }
         public IBudgetRepository Budgets { get; }
+        public IVisitRepository Visits { get; }
+
+        public IProjectExtensionRepository ProjectExtensions { get; set; }
 
         public UnitOfWork(
             AppDbContext ctx,
             IProjectRepository projectRepository,
             IGroupRepository groupRepository,
             IGroupMemberRepository groupMemberRepository,
-            IBudgetRepository budgets)
+            IBudgetRepository budgets,
+            IVisitRepository visitRepository,
+            IProjectExtensionRepository projectExtensions)
         {
             _ctx = ctx;
             Projects = projectRepository;
             Groups = groupRepository;
             GroupMembers = groupMemberRepository;
             Budgets = budgets;
+            Visits = visitRepository;
+            ProjectExtensions = projectExtensions;
         }
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)

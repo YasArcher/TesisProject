@@ -1,0 +1,471 @@
+﻿@using Microsoft.AspNetCore.Components
+@using System.Linq
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.SearchInput
+
+@* ============================================================
+   FilterBar (Presentational Only)
+   - Pure UI component. Receives all data via Config.
+   - No service injections. No API calls inside.
+   - Emits a normalized FilterQuery to parent via OnApply.
+   - Parent is responsible for fetching options/data and mapping results.
+   Supported controls: search, select, multiselect, daterange, numberrange, boolean
+   ============================================================ *@
+
+<div class="relative w-full">
+    <!-- Header: Search + Actions (siempre visible) -->
+    <div class="w-full bg-background border border-border rounded-xl p-3 md:p-4">
+        <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+            <div class="flex-1 min-w-0">
+                <SearchInput Value="@_search"
+                             ValueChanged="OnSearchChanged"
+                             Placeholder="@GetSearchPlaceholder()"
+                             DebounceMs="@GetDebounceMs()"
+                             Class="w-full" />
+            </div>
+            <div class="flex items-center gap-2">
+                <!-- Toggle filtros -->
+                <ActionButton Text="Filtros"
+                              Execute="ToggleExpanded"
+                              Intent="ButtonIntent.Info"
+                              Variant="@(_expanded ? ButtonVariant.Soft : ButtonVariant.Outline)"
+                              Size="ButtonSize.Sm"
+                              Class="px-3 py-2 rounded-lg flex items-center gap-2">
+
+                    <Icon>
+                        <svg class="w-4 h-4 transition-transform @(_expanded ? "rotate-180" : "")"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </Icon>
+                </ActionButton>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters Dropdown - Positioned absolutely -->
+    @if (_expanded)
+    {
+        <div class="absolute top-full left-0 right-0 z-50 mt-2 bg-background border border-border rounded-xl shadow-xl backdrop-blur-sm"
+             @onmousedown:preventDefault="true"
+             @onclick:stopPropagation="true">
+            <!-- Filters grid -->
+            <div class="p-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4">
+                    @if (Config?.Items is not null)
+                    {
+                        @foreach (var item in Config.Items)
+                        {
+                            <div class="space-y-1">
+                                <label class="text-xs font-medium text-muted">@item.Label</label>
+                                @RenderFilterControl(item)
+                                @if (!string.IsNullOrWhiteSpace(item.HelpText))
+                                {
+                                    <div class="text-xs text-muted">@item.HelpText</div>
+                                }
+                            </div>
+                        }
+                    }
+                </div>
+
+                <!-- Botones de acción y Chips en la misma fila -->
+                <div class="border-t border-border pt-4">
+                    @if (Config?.ShowChips == true && _activeChips.Count > 0)
+                    {
+                        <div class="text-xs font-medium text-muted mb-2">Filtros activos:</div>
+                    }
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <!-- Chips activos (siempre presente, aunque esté vacío) -->
+                        <div class="flex flex-wrap gap-2">
+                            @if (Config?.ShowChips == true && _activeChips.Count > 0)
+                            {
+                                @foreach (var chip in _activeChips)
+                                {
+                                    <span class="inline-flex items-center gap-2 px-2 py-1 text-xs rounded-full border border-border bg-primary-subtle">
+                                        <span class="font-medium">@chip.Label:</span>
+                                        <span>@chip.Value</span>
+                                        <button class="text-muted hover:text-foreground" @onclick="() => RemoveChip(chip.Key)" @onclick:stopPropagation="true">×</button>
+                                    </span>
+                                }
+                            }
+                        </div>
+
+                        <!-- Botones al final -->
+                        <div class="flex items-center gap-2">
+                            <ActionButton Text="Clear"
+                                          Execute="ClearAll"
+                                          Intent="ButtonIntent.Neutral"
+                                          Variant="ButtonVariant.Outline"
+                                          Size="ButtonSize.Sm"
+                                          Class="px-3 py-2 rounded-lg" />
+                            <ActionButton Text="Apply"
+                                          Execute="Apply"
+                                          Intent="ButtonIntent.Accept"
+                                          Variant="ButtonVariant.Filled"
+                                          Size="ButtonSize.Sm"
+                                          Class="px-3 py-2 rounded-lg" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- Backdrop to close filters when clicking outside -->
+    @if (_expanded)
+    {
+        <div class="fixed inset-0 z-40" @onclick="CloseFilters" @onclick:preventDefault="false"></div>
+    }
+</div>
+
+@code {
+    // ===================== Public API =====================
+    [Parameter] public FilterBarConfig? Config { get; set; }
+    [Parameter] public EventCallback<FilterQuery> OnApply { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+    [Parameter] public EventCallback<string?> OnSearchInstant { get; set; }
+
+    // ===================== Internal State =====================
+    private bool _expanded = false;
+    private string _search = string.Empty;
+    private readonly Dictionary<string, object?> _values = new();
+    private readonly List<ChipItem> _activeChips = new();
+
+    protected override void OnInitialized()
+    {
+        if (Config is null) return;
+        foreach (var it in Config.Items)
+        {
+            if (!_values.ContainsKey(it.Key)) _values[it.Key] = it.DefaultValue;
+        }
+        BuildChips();
+    }
+
+    private async Task OnSearchChanged(string s)
+    {
+        _search = s ?? string.Empty;
+
+        // emite al padre inmediatamente y SIN tocar los demás filtros
+        if (OnSearchInstant.HasDelegate)
+            await OnSearchInstant.InvokeAsync(_search);
+    }
+
+    private void ToggleExpanded() => _expanded = !_expanded;
+
+    private void CloseFilters() => _expanded = false;
+
+    private async Task Apply()
+    {
+        try
+        {
+            var query = BuildQuery();
+
+            // Aplicar filtros PRIMERO
+            await OnApply.InvokeAsync(query);
+
+            // Cerrar el dropdown DESPUÉS de aplicar filtros exitosamente
+            _expanded = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error applying filters: {ex.Message}");
+            // En caso de error, aún cerrar el dropdown
+            _expanded = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearAll()
+    {
+        _search = string.Empty;
+        _values.Clear();
+        _activeChips.Clear();
+        if (Config is not null)
+        {
+            foreach (var it in Config.Items) _values[it.Key] = it.DefaultValue;
+        }
+
+
+        // notifica que el search queda vacío para que el padre refresque al instante
+        if (OnSearchInstant.HasDelegate)
+            await OnSearchInstant.InvokeAsync(_search);
+
+        await OnClear.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private void RemoveChip(string key)
+    {
+        if (_values.ContainsKey(key))
+        {
+            _values[key] = null;
+            BuildChips();
+            StateHasChanged();
+        }
+    }
+
+    // Helper methods for complex expressions
+    private string GetSearchPlaceholder()
+    {
+        return Config?.SearchPlaceholder ?? "Search…";
+    }
+
+    private int GetDebounceMs()
+    {
+        return Config?.DebounceMs ?? 100;
+    }
+
+    private RenderFragment RenderFilterControl(FilterItemDescriptor item) => builder =>
+    {
+        var seq = 0;
+        var type = (item.Type ?? "").ToLowerInvariant();
+        _values.TryGetValue(item.Key, out var current);
+
+        switch (type)
+        {
+            case "select":
+                builder.OpenElement(seq++, "select");
+                builder.AddAttribute(seq++, "class", "w-full px-3 py-2 rounded-lg border border-border bg-background");
+                builder.AddAttribute(seq++, "value", BindConverter.FormatValue(current?.ToString() ?? string.Empty));
+                builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
+                {
+                    _values[item.Key] = e.Value?.ToString();
+                    BuildChips();
+                }));
+                builder.OpenElement(seq++, "option");
+                builder.AddAttribute(seq++, "value", string.Empty);
+                builder.AddContent(seq++, item.Placeholder ?? "Select…");
+                builder.CloseElement();
+                if (item.Options is not null)
+                {
+                    foreach (var opt in item.Options)
+                    {
+                        builder.OpenElement(seq++, "option");
+                        builder.AddAttribute(seq++, "value", opt.Value);
+                        builder.AddContent(seq++, opt.Label);
+                        builder.CloseElement();
+                    }
+                }
+                builder.CloseElement();
+                break;
+
+            case "multiselect":
+                builder.OpenElement(seq++, "select");
+                builder.AddAttribute(seq++, "multiple", true);
+                builder.AddAttribute(seq++, "class", "w-full px-3 py-2 rounded-lg border border-border bg-background");
+                var selected = current as List<string> ?? new();
+                builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
+                {
+                    var v = e.Value?.ToString();
+                    if (!string.IsNullOrWhiteSpace(v))
+                    {
+                        if (!selected.Contains(v)) selected.Add(v);
+                        _values[item.Key] = selected;
+                        BuildChips();
+                    }
+                }));
+                if (item.Options is not null)
+                {
+                    foreach (var opt in item.Options)
+                    {
+                        builder.OpenElement(seq++, "option");
+                        builder.AddAttribute(seq++, "value", opt.Value);
+                        if (selected.Contains(opt.Value)) builder.AddAttribute(seq++, "selected", true);
+                        builder.AddContent(seq++, opt.Label);
+                        builder.CloseElement();
+                    }
+                }
+                builder.CloseElement();
+                break;
+
+            case "daterange":
+                var from = GetRangePart(current, 0);
+                var to = GetRangePart(current, 1);
+                builder.OpenElement(seq++, "div");
+                builder.AddAttribute(seq++, "class", "flex items-center gap-2");
+                builder.OpenElement(seq++, "input");
+                builder.AddAttribute(seq++, "type", "date");
+                builder.AddAttribute(seq++, "class", "w-full px-3 py-2 rounded-lg border border-border bg-background");
+                builder.AddAttribute(seq++, "value", from);
+                builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
+                {
+                    _values[item.Key] = new string?[] { e.Value?.ToString(), to };
+                    BuildChips();
+                }));
+                builder.CloseElement();
+                builder.OpenElement(seq++, "input");
+                builder.AddAttribute(seq++, "type", "date");
+                builder.AddAttribute(seq++, "class", "w-full px-3 py-2 rounded-lg border border-border bg-background");
+                builder.AddAttribute(seq++, "value", to);
+                builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
+                {
+                    _values[item.Key] = new string?[] { from, e.Value?.ToString() };
+                    BuildChips();
+                }));
+                builder.CloseElement();
+                builder.CloseElement();
+                break;
+
+            case "numberrange":
+                var min = GetRangePart(current, 0);
+                var max = GetRangePart(current, 1);
+                builder.OpenElement(seq++, "div");
+                builder.AddAttribute(seq++, "class", "flex items-center gap-2");
+                builder.OpenElement(seq++, "input");
+                builder.AddAttribute(seq++, "type", "number");
+                builder.AddAttribute(seq++, "class", "w-full px-3 py-2 rounded-lg border border-border bg-background");
+                builder.AddAttribute(seq++, "value", min);
+                builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
+                {
+                    _values[item.Key] = new string?[] { e.Value?.ToString(), max };
+                    BuildChips();
+                }));
+                builder.CloseElement();
+                builder.OpenElement(seq++, "input");
+                builder.AddAttribute(seq++, "type", "number");
+                builder.AddAttribute(seq++, "class", "w-full px-3 py-2 rounded-lg border border-border bg-background");
+                builder.AddAttribute(seq++, "value", max);
+                builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
+                {
+                    _values[item.Key] = new string?[] { min, e.Value?.ToString() };
+                    BuildChips();
+                }));
+                builder.CloseElement();
+                builder.CloseElement();
+                break;
+
+            case "boolean":
+                var isChecked = false;
+                if (current is bool b) isChecked = b;
+                builder.OpenElement(seq++, "label");
+                builder.AddAttribute(seq++, "class", "inline-flex items-center gap-2 select-none");
+                builder.OpenElement(seq++, "input");
+                builder.AddAttribute(seq++, "type", "checkbox");
+                builder.AddAttribute(seq++, "class", "w-4 h-4 rounded border border-border");
+                builder.AddAttribute(seq++, "checked", isChecked);
+                builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
+                {
+                    _values[item.Key] = e.Value?.ToString()?.ToLowerInvariant() == "true";
+                    BuildChips();
+                }));
+                builder.CloseElement();
+                builder.AddContent(seq++, item.Placeholder ?? "Enabled");
+                builder.CloseElement();
+                break;
+
+            default:
+                builder.OpenElement(seq++, "div");
+                builder.AddAttribute(seq++, "class", "text-xs text-muted");
+                builder.AddContent(seq++, "Unsupported filter type: " + item.Type);
+                builder.CloseElement();
+                break;
+        }
+    };
+
+    private static string? GetRangePart(object? val, int index)
+    {
+        if (val is string s) return s;
+        if (val is string?[] arr && arr.Length > index) return arr[index];
+        if (val is List<string?> list && list.Count > index) return list[index];
+        return null;
+    }
+
+    private FilterQuery BuildQuery()
+    {
+        var q = new FilterQuery
+        {
+            Search = string.IsNullOrWhiteSpace(_search) ? null : _search,
+            Sort = Config?.DefaultSort is not null ? new List<SortRule> { Config.DefaultSort } : null,
+            Filters = new()
+        };
+
+        if (Config?.Items is null) return q;
+
+        foreach (var it in Config.Items)
+        {
+            if (string.IsNullOrWhiteSpace(it.EntityField)) continue;
+            if (!_values.TryGetValue(it.Key, out var val) || val is null) continue;
+
+            var op = it.Operators?.FirstOrDefault() ?? InferDefaultOperator(it.Type);
+            var rule = new FilterRule { Field = it.EntityField!, Operator = op };
+
+            switch ((it.Type ?? "").ToLowerInvariant())
+            {
+                case "select":
+                    rule.Value = val?.ToString();
+                    break;
+                case "multiselect":
+                    rule.Value = val as List<string> ?? new List<string>();
+                    break;
+                case "daterange":
+                case "numberrange":
+                    if (val is string?[] arr && (arr[0] is not null || arr[1] is not null)) rule.Value = arr;
+                    else if (val is List<string?> list && list.Count == 2) rule.Value = list.ToArray();
+                    else continue;
+                    break;
+                case "boolean":
+                    rule.Value = val;
+                    break;
+                default:
+                    rule.Value = val;
+                    break;
+            }
+            q.Filters.Add(rule);
+        }
+        BuildChips();
+        return q;
+    }
+
+    private static string InferDefaultOperator(string? type) => type switch
+    {
+        "select" => "eq",
+        "multiselect" => "in",
+        "daterange" => "between",
+        "numberrange" => "between",
+        "boolean" => "eq",
+        _ => "eq"
+    };
+
+    private void BuildChips()
+    {
+        _activeChips.Clear();
+        if (Config?.Items is null) return;
+
+        foreach (var it in Config.Items)
+        {
+            if (!_values.TryGetValue(it.Key, out var val) || val is null) continue;
+
+            string? display = GetDisplayValue(val, it);
+
+            if (!string.IsNullOrWhiteSpace(display))
+            {
+                _activeChips.Add(new ChipItem { Key = it.Key, Label = it.Label, Value = display! });
+            }
+        }
+    }
+
+    private string? GetDisplayValue(object val, FilterItemDescriptor item)
+    {
+        return val switch
+        {
+            bool b => b ? (item.TrueLabel ?? "Yes") : (item.FalseLabel ?? "No"),
+            List<string> list => string.Join(", ", ResolveLabels(item, list)),
+            string?[] arr => string.Join(" – ", arr.Where(s => !string.IsNullOrWhiteSpace(s))),
+            IList<string> ilist => string.Join(" – ", ilist.Where(s => !string.IsNullOrWhiteSpace(s))),
+            _ => val?.ToString()
+        };
+    }
+
+    private IEnumerable<string> ResolveLabels(FilterItemDescriptor it, List<string> values)
+    {
+        var opts = it.Options ?? new();
+        foreach (var v in values)
+        {
+            var label = opts.FirstOrDefault(o => o.Value == v)?.Label ?? v;
+            yield return label;
+        }
+    }
+}

@@ -1,42 +1,39 @@
 ﻿@using tesisproject.frontend.SharedUI.Card
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Utils
 @inherits ComponentBase
 
 <Card Tone="CardTone.Default"
       Class="bg-background border border-border rounded-2xl card-hover-primary transition-shadow">
     <CardHeader>
         <h3 class="text-lg font-semibold text-foreground">@Item.ProjectName</h3>
-
         <p class="text-sm text-muted">
-            <span class="font-medium">State:</span> @Item.ProjectStateName •
-            <span class="font-medium">Type:</span> @Item.ProjectTypeName
+            <span class="font-medium">Estado:</span> @Item.ProjectStateName •
+            <span class="font-medium">Tipo:</span> @Item.ProjectTypeName
         </p>
-
         <p class="text-sm text-muted">
-            <span class="font-medium">Group:</span> @Item.ProjectGroupName
+            <span class="font-medium">Grupo:</span> @Item.ProjectGroupName
         </p>
     </CardHeader>
-
     <CardBody>
         <div class="text-sm text-foreground grid grid-cols-2 gap-x-4 gap-y-1">
             <div>
-                <span class="font-medium">Start:</span>
-                @(Item.StartDate?.ToString("yyyy-MM-dd") ?? "N/A")
+                <span class="font-medium">Inicio:</span>
+                @Item.StartDate.ToSpanishShortDate()
             </div>
             <div>
-                <span class="font-medium">End:</span>
-                @(Item.TentativeEndDate?.ToString("yyyy-MM-dd") ?? "N/A")
+                <span class="font-medium">Fin:</span>
+                @Item.TentativeEndDate.ToSpanishShortDate()
             </div>
             <div class="col-span-2">
-                <span class="font-medium">Progress:</span>
+                <span class="font-medium">Progreso:</span>
                 @(Item.ExecutionPercentage?.ToString("0.##") ?? "0")%
             </div>
         </div>
     </CardBody>
-
     <CardFooter>
         <div class="flex gap-2">
-            <ActionButton Text="Open"
+            <ActionButton Text="Abrir"
                           Intent="ButtonIntent.Accept"
                           Variant="ButtonVariant.Filled"
                           Size="ButtonSize.Sm"
@@ -49,13 +46,6 @@
                     </svg>
                 </Icon>
             </ActionButton>
-
-            <ActionButton Text="Details"
-                          Intent="ButtonIntent.Neutral"
-                          Variant="ButtonVariant.Outline"
-                          Size="ButtonSize.Sm"
-                          Class="rounded-md"
-                          Execute="@(() => OnShowDetails.InvokeAsync(Item))" />
         </div>
     </CardFooter>
 </Card>

@@ -32,10 +32,22 @@ namespace tesisproject.backend.Repositories.Implementations
             // return _db.AsNoTracking().AnyAsync(g => EF.Functions.Collate(g.Name, "SQL_Latin1_General_CP1_CI_AS") == n, ct);
         }
 
-        // No repitas AddAsync/Query/GetAllAsync: ya los heredas del genérico.
+        public async Task<List<Group>> GetByProjectIdAsync(int projectId, CancellationToken ct = default)
+        {
+            var project = await _ctx.Set<Project>()
+                .AsNoTracking()
+                .Include(p => p.ProjectGroup)
+                .Include(p => p.SenesytGroup)
+                .FirstOrDefaultAsync(p => p.ProjectId == projectId, ct);
 
-        // Si quieres un helper para listados ordenados:
-        // public async Task<List<Group>> GetAllOrderedAsync(CancellationToken ct = default)
-        //     => await _db.AsNoTracking().OrderBy(g => g.Name).ToListAsync(ct);
+            if (project is null) return new List<Group>();
+
+            var list = new List<Group> { project.ProjectGroup };
+            if (project.SenesytGroupId.HasValue && project.SenesytGroup is not null)
+                list.Add(project.SenesytGroup);
+
+            // Si quieres devolver ordenado por nombre:
+            return list.OrderBy(g => g.Name).ToList();
+        }
     }
 }

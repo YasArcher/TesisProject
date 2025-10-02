@@ -9,11 +9,13 @@ namespace tesisproject.frontend.SharedUI.Tabs
         [Parameter] public EventCallback<string> OnChange { get; set; }
         [Parameter] public TabVariant Variant { get; set; } = TabVariant.Underline;
         [Parameter] public RenderFragment? ChildContent { get; set; }
+
         internal class TabItem
         {
             public required string Key { get; set; }
             public required string Title { get; set; }
             public required RenderFragment Content { get; set; }
+            public RenderFragment? Icon { get; set; }
         }
 
         private readonly List<TabItem> _items = new();
@@ -32,7 +34,6 @@ namespace tesisproject.frontend.SharedUI.Tabs
             }
             while (_tabRefs.Count > _items.Count)
             {
-                // Remove the last tab reference by key
                 var keyToRemove = _items.Count < _tabRefs.Count
                     ? _tabRefs.Keys.ElementAt(_tabRefs.Count - 1)
                     : null;
@@ -86,7 +87,7 @@ namespace tesisproject.frontend.SharedUI.Tabs
         {
             var key = _items[index].Key;
             await Activate(key);
-            // Focus the corresponding button if available
+
             if (index >= 0 && index < _items.Count)
             {
                 var tabKey = _items[index].Key;

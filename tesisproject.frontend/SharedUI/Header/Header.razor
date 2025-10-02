@@ -1,48 +1,54 @@
 ﻿@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.AspNetCore.Components.Routing
 
-<header class="@GetHeaderClasses()">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+<header class="@($"{GetHeaderClasses()} {Class}")">
+    <div class="px-2 sm:px-4 lg:px-6">
+        <!-- Reduce padding general -->
         <div class="flex justify-between items-center h-16">
 
             <!-- Logo/Brand Section -->
-            <div class="flex items-center space-x-4">
-                @if (!string.IsNullOrWhiteSpace(LogoUrl))
-                {
-                    <img src="@LogoUrl" alt="@BrandName" class="h-8 w-auto" />
-                }
-                else if (!string.IsNullOrWhiteSpace(BrandName))
-                {
-                    <div class="flex items-center">
-                        <span class="text-xl font-bold text-gray-900 dark:text-white">@BrandName</span>
-                    </div>
-                }
+            <div class="flex items-center space-x-2">
+                <!-- Reduce space-x -->
+                <a href="/" class="flex items-center gap-1 group">
+                    <!-- Reduce gap -->
+                    @if (!string.IsNullOrWhiteSpace(LogoUrl))
+                    {
+                        <img src="@LogoUrl" alt="@BrandName" class="h-30 w-auto" />
+                    }
+                    @if (!string.IsNullOrWhiteSpace(BrandName))
+                    {
+                        <span class="text-xl font-bold text-foreground group-hover:text-primary transition-colors">
+                            @BrandName
+                        </span>
+                    }
+                </a>
 
                 @if (ShowBreadcrumbs && Breadcrumbs?.Any() == true)
                 {
                     <nav class="hidden md:flex items-center space-x-2 text-sm">
-                        <span class="text-gray-400">/</span>
+                        <span class="text-muted">/</span>
                         @foreach (var (breadcrumb, index) in Breadcrumbs.Select((b, i) => (b, i)))
                         {
                             @if (index > 0)
                             {
-                                <span class="text-gray-400">/</span>
+                                <span class="text-muted">/</span>
                             }
                             @if (!string.IsNullOrWhiteSpace(breadcrumb.Url))
                             {
-                                <a href="@breadcrumb.Url" class="text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">
+                                <a href="@breadcrumb.Url" class="text-muted hover:text-foreground transition-colors">
                                     @breadcrumb.Text
                                 </a>
                             }
                             else
                             {
-                                <span class="text-gray-900 dark:text-white font-medium">@breadcrumb.Text</span>
+                                <span class="text-foreground font-medium">@breadcrumb.Text</span>
                             }
                         }
                     </nav>
                 }
             </div>
 
-            <!-- Center Section - Search or Navigation -->
+            <!-- Center Section - Search -->
             <div class="flex-1 flex justify-center px-2 lg:ml-6 lg:justify-end">
                 @if (ShowSearch)
                 {
@@ -50,13 +56,13 @@
                         <label for="search" class="sr-only">Search</label>
                         <div class="relative">
                             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <svg class="h-5 w-5 text-muted" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
                                 </svg>
                             </div>
                             <input id="search"
                                    name="search"
-                                   class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-xl leading-5 bg-white dark:bg-gray-800 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-sky-500 focus:border-transparent text-sm"
+                                   class="block w-full pl-10 pr-3 py-2 border border-border rounded-xl leading-5 bg-background text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm transition-all"
                                    placeholder="@SearchPlaceholder"
                                    type="search"
                                    @bind="SearchTerm"
@@ -103,10 +109,10 @@
                 @if (ShowThemeToggle)
                 {
                     <button type="button"
-                            class="rounded-xl p-2 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                            class="rounded-xl p-2 bg-primary-subtle-hover focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
                             title="Toggle theme"
                             @onclick="@(async () => await HandleThemeToggle())">
-                        <svg class="h-5 w-5 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg class="h-5 w-5 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
                     </button>
@@ -116,80 +122,80 @@
                 @if (ShowNotifications)
                 {
                     <div class="relative">
-                        <div class="@BuildNotificationsRootClasses()"
-                             @onmousedown:document="OnNotificationsDocumentMouseDown"
-                             @onkeydown:window="OnNotificationsWindowKeyDown">
-                            <button type="button"
-                                    aria-label="Notifications"
-                                    aria-haspopup="menu"
-                                    aria-expanded="@_notificationsOpen"
-                                    class="relative rounded-xl p-2 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-                                    @onclick="ToggleNotificationsAsync"
-                                    @onclick:stopPropagation="true">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600 dark:text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" />
-                                </svg>
+                        <button type="button"
+                                aria-label="Notifications"
+                                aria-haspopup="menu"
+                                aria-expanded="@_notificationsOpen"
+                                class="relative rounded-xl p-2 bg-primary-subtle-hover focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
+                                @onclick="ToggleNotificationsAsync"
+                                @onclick:stopPropagation="true">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" />
+                            </svg>
 
-                                @if (NotificationsCount > 0)
-                                {
-                                    <span class="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center rounded-full px-1.5 min-w-[18px] h-[18px] text-[10px] font-semibold bg-rose-500 text-white">
-                                        @(NotificationsCount > 9 ? "9+" : NotificationsCount.ToString())
-                                    </span>
-                                }
-                            </button>
-
-                            @if (_notificationsOpen)
+                            @if (NotificationsCount > 0)
                             {
-                                <div class="absolute right-0 mt-2 min-w-[320px] max-h-[70vh] overflow-auto origin-top-right rounded-2xl border border-gray-200/70 dark:border-gray-800/70 bg-white dark:bg-gray-900 shadow-xl ring-1 ring-black/5 focus:outline-none"
-                                     role="menu" aria-orientation="vertical" tabindex="-1">
-                                    <div class="px-3 py-2 flex items-center justify-between">
-                                        <span class="text-sm font-semibold text-gray-800 dark:text-gray-100">Notifications</span>
-                                        <button class="text-xs rounded-lg px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-sky-500"
-                                                @onclick="@(async () => await HandleMarkAllNotificationsRead())">
-                                            Mark all as read
-                                        </button>
-                                    </div>
-                                    <div class="border-t border-gray-100 dark:border-gray-800"></div>
-
-                                    @if (Notifications is null || !Notifications.Any())
-                                    {
-                                        <div class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-                                            @NotificationsEmptyText
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <ul class="py-1">
-                                            @foreach (var notification in Notifications)
-                                            {
-                                                <li>
-                                                    <button type="button"
-                                                            class="w-full text-left px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded-xl"
-                                                            @onclick="@(async () => await HandleNotificationClick(notification.Id))">
-                                                        <div class="flex items-start gap-3">
-                                                            <span class="mt-1 h-2.5 w-2.5 rounded-full @GetNotificationTypeAccent(notification.Type)"></span>
-                                                            <div class="min-w-0 flex-1">
-                                                                <div class="flex items-center gap-2">
-                                                                    <span class="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">@notification.Title</span>
-                                                                    <span class="text-[11px] text-gray-500 dark:text-gray-400 whitespace-nowrap">@GetRelativeTime(notification.CreatedAt)</span>
-                                                                </div>
-                                                                @if (!string.IsNullOrWhiteSpace(notification.Description))
-                                                                {
-                                                                    <p class="text-[12px] text-gray-600 dark:text-gray-300 line-clamp-2">
-                                                                        @notification.Description
-                                                                    </p>
-                                                                }
-                                                            </div>
-                                                            <span class="mt-1 h-2 w-2 rounded-full bg-sky-500 transition-opacity @GetUnreadDot(notification.Unread)" aria-hidden="true"></span>
-                                                        </div>
-                                                    </button>
-                                                </li>
-                                            }
-                                        </ul>
-                                    }
-                                </div>
+                                <span class="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center rounded-full px-1.5 min-w-[18px] h-[18px] text-[10px] font-semibold bg-error text-white">
+                                    @(NotificationsCount > 9 ? "9+" : NotificationsCount.ToString())
+                                </span>
                             }
-                        </div>
+                        </button>
+
+                        @if (_notificationsOpen)
+                        {
+                            <div class="fixed inset-0 z-40" @onclick="CloseNotifications"></div>
+                            <div class="absolute right-0 mt-2 min-w-[320px] max-h-[70vh] overflow-auto origin-top-right rounded-2xl border border-border bg-background shadow-xl ring-1 ring-black/5 focus:outline-none z-50"
+                                 role="menu"
+                                 aria-orientation="vertical"
+                                 tabindex="-1"
+                                 @onclick:stopPropagation="true">
+                                <div class="px-3 py-2 flex items-center justify-between">
+                                    <span class="text-sm font-semibold text-foreground">Notifications</span>
+                                    <button class="text-xs rounded-lg px-2 py-1 bg-primary-subtle-hover focus:ring-2 focus:ring-primary transition-colors"
+                                            @onclick="@(async () => await HandleMarkAllNotificationsRead())">
+                                        Mark all as read
+                                    </button>
+                                </div>
+                                <div class="border-t border-border"></div>
+
+                                @if (Notifications is null || !Notifications.Any())
+                                {
+                                    <div class="px-4 py-6 text-center text-sm text-muted">
+                                        @NotificationsEmptyText
+                                    </div>
+                                }
+                                else
+                                {
+                                    <ul class="py-1">
+                                        @foreach (var notification in Notifications)
+                                        {
+                                            <li>
+                                                <button type="button"
+                                                        class="w-full text-left px-3 py-2 bg-primary-subtle-hover focus:outline-none focus:ring-2 focus:ring-primary rounded-xl transition-colors"
+                                                        @onclick="@(async () => await HandleNotificationClick(notification.Id))">
+                                                    <div class="flex items-start gap-3">
+                                                        <span class="mt-1 h-2.5 w-2.5 rounded-full @GetNotificationTypeAccent(notification.Type)"></span>
+                                                        <div class="min-w-0 flex-1">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="text-sm font-medium text-foreground truncate">@notification.Title</span>
+                                                                <span class="text-[11px] text-muted whitespace-nowrap">@GetRelativeTime(notification.CreatedAt)</span>
+                                                            </div>
+                                                            @if (!string.IsNullOrWhiteSpace(notification.Description))
+                                                            {
+                                                                <p class="text-[12px] text-muted line-clamp-2">
+                                                                    @notification.Description
+                                                                </p>
+                                                            }
+                                                        </div>
+                                                        <span class="mt-1 h-2 w-2 rounded-full bg-primary transition-opacity @GetUnreadDot(notification.Unread)" aria-hidden="true"></span>
+                                                    </div>
+                                                </button>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+                        }
                     </div>
                 }
 
@@ -197,61 +203,61 @@
                 @if (ShowUserMenu)
                 {
                     <div class="relative">
-                        <div class="@BuildUserMenuRootClasses()"
-                             @onmousedown:document="OnUserMenuDocumentMouseDown"
-                             @onkeydown:window="OnUserMenuWindowKeyDown">
-                            <button type="button"
-                                    class="inline-flex items-center gap-2 rounded-xl px-2.5 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-                                    aria-haspopup="menu"
-                                    aria-expanded="@_userMenuOpen"
-                                    @onclick="ToggleUserMenu"
-                                    @onclick:stopPropagation="true">
-                                <span class="relative inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 text-white overflow-hidden">
-                                    @if (!string.IsNullOrWhiteSpace(UserAvatarUrl))
-                                    {
-                                        <img src="@UserAvatarUrl" alt="User avatar" class="h-full w-full object-cover" />
-                                    }
-                                    else
-                                    {
-                                        <span class="text-sm font-semibold">
-                                            @((UserName is { Length: > 0 } ? UserName![0].ToString().ToUpperInvariant() : "U"))
-                                        </span>
-                                    }
-                                </span>
-                                @if (!UserMenuCompact && !string.IsNullOrWhiteSpace(UserName))
+                        <button type="button"
+                                class="inline-flex items-center gap-2 rounded-xl px-2.5 py-1.5 bg-primary-subtle-hover focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
+                                aria-haspopup="menu"
+                                aria-expanded="@_userMenuOpen"
+                                @onclick="ToggleUserMenu"
+                                @onclick:stopPropagation="true">
+                            <span class="relative inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-secondary text-white overflow-hidden">
+                                @if (!string.IsNullOrWhiteSpace(UserAvatarUrl))
                                 {
-                                    <span class="hidden sm:flex flex-col leading-tight text-left">
-                                        <span class="text-gray-900 dark:text-gray-100 text-sm font-medium">@UserName</span>
-                                        @if (!string.IsNullOrWhiteSpace(UserEmail))
-                                        {
-                                            <span class="text-gray-500 dark:text-gray-400 text-[11px]">@UserEmail</span>
-                                        }
+                                    <img src="@UserAvatarUrl" alt="User avatar" class="h-full w-full object-cover" />
+                                }
+                                else
+                                {
+                                    <span class="text-sm font-semibold">
+                                        @((UserName is { Length: > 0 } ? UserName![0].ToString().ToUpperInvariant() : "U"))
                                     </span>
                                 }
-                            </button>
-
-                            @if (_userMenuOpen)
+                            </span>
+                            @if (!UserMenuCompact && !string.IsNullOrWhiteSpace(UserName))
                             {
-                                <div class="absolute right-0 mt-2 min-w-[220px] origin-top-right rounded-2xl border border-gray-200/70 dark:border-gray-800/70 bg-white dark:bg-gray-900 shadow-xl ring-1 ring-black/5 focus:outline-none animate-[fadeIn_120ms_ease-out] will-change-transform"
-                                     role="menu" aria-orientation="vertical" tabindex="-1">
-                                    <div class="py-2">
-                                        @foreach (var item in ResolveUserMenuItems())
-                                        {
-                                            if (item.Key == "logout")
-                                            {
-                                                <div class="my-1 border-t border-gray-100 dark:border-gray-800"></div>
-                                            }
-                                            <button type="button"
-                                                    role="menuitem"
-                                                    class="w-full text-left px-3 py-2 text-sm rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 @((item.Dangerous ? "text-red-600 dark:text-red-400" : "text-gray-700 dark:text-gray-200"))"
-                                                    @onclick="@(async () => await HandleUserMenuClick(item))">
-                                                @item.Text
-                                            </button>
-                                        }
-                                    </div>
-                                </div>
+                                <span class="hidden sm:flex flex-col leading-tight text-left">
+                                    <span class="text-sm font-medium text-foreground">@UserName</span>
+                                    @if (!string.IsNullOrWhiteSpace(UserEmail))
+                                    {
+                                        <span class="text-[11px] text-muted">@UserEmail</span>
+                                    }
+                                </span>
                             }
-                        </div>
+                        </button>
+
+                        @if (_userMenuOpen)
+                        {
+                            <div class="fixed inset-0 z-40" @onclick="CloseUserMenu"></div>
+                            <div class="absolute right-0 mt-2 min-w-[220px] origin-top-right rounded-2xl border border-border bg-background shadow-xl ring-1 ring-black/5 focus:outline-none animate-[fadeIn_120ms_ease-out] will-change-transform z-50"
+                                 role="menu"
+                                 aria-orientation="vertical"
+                                 tabindex="-1"
+                                 @onclick:stopPropagation="true">
+                                <div class="py-2">
+                                    @foreach (var item in ResolveUserMenuItems())
+                                    {
+                                        if (item.Key == "logout")
+                                        {
+                                            <div class="my-1 border-t border-border"></div>
+                                        }
+                                        <button type="button"
+                                                role="menuitem"
+                                                class="w-full text-left px-3 py-2 text-sm rounded-xl bg-primary-subtle-hover focus:outline-none focus:ring-2 focus:ring-primary transition-colors @(item.Dangerous ? "text-error" : "text-foreground")"
+                                                @onclick="@(async () => await HandleUserMenuClick(item))">
+                                            @item.Text
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
                     </div>
                 }
 
@@ -260,20 +266,20 @@
                 {
                     <div class="sm:hidden">
                         <button type="button"
-                                class="rounded-xl p-2 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                                class="rounded-xl p-2 bg-primary-subtle-hover focus:outline-none focus:ring-2 focus:ring-primary transition-colors"
                                 aria-controls="mobile-menu"
                                 aria-expanded="@_mobileMenuOpen"
                                 @onclick="ToggleMobileMenu">
                             <span class="sr-only">Open main menu</span>
                             @if (_mobileMenuOpen)
                             {
-                                <svg class="h-6 w-6 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg class="h-6 w-6 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             }
                             else
                             {
-                                <svg class="h-6 w-6 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg class="h-6 w-6 text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                                 </svg>
                             }
@@ -287,7 +293,7 @@
     <!-- Mobile menu -->
     @if (_mobileMenuOpen && ShowMobileMenuButton)
     {
-        <div class="sm:hidden border-t border-gray-200 dark:border-gray-700" id="mobile-menu">
+        <div class="sm:hidden border-t border-border" id="mobile-menu">
             <div class="px-4 pt-2 pb-3 space-y-1">
                 @if (MobileMenuContent != null)
                 {
@@ -295,11 +301,11 @@
                 }
                 @if (Actions?.Any() == true)
                 {
-                    <div class="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
+                    <div class="border-t border-border pt-2 mt-2">
                         @foreach (var action in Actions)
                         {
                             <button type="button"
-                                    class="block w-full text-left px-3 py-2 rounded-xl text-base font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
+                                    class="block w-full text-left px-3 py-2 rounded-xl text-base font-medium text-foreground bg-primary-subtle-hover transition-colors"
                                     @onclick="@(async () => await HandleActionClick(action.Key))">
                                 @action.Text
                             </button>

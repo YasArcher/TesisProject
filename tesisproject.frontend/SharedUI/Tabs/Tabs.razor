@@ -1,5 +1,8 @@
-﻿<CascadingValue Value="this">
-    <!-- Registrar <Tab> antes de renderizar headers -->
+﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+
+<CascadingValue Value="this">
+    <!-- Register <Tab> children before rendering headers -->
     <div hidden>@ChildContent</div>
 
     <div class="w-full">
@@ -11,19 +14,19 @@
                 var item = _items[idx];
                 var isActive = item.Key == ActiveKey;
 
-                // Base: accesibilidad + tema
-                var common = "px-3 md:px-4 py-2 text-sm font-medium rounded-md transition " +
+                // Base: accessibility + theme + layout (now inline-flex to place icon + title)
+                var common = "inline-flex items-center gap-2 px-3 md:px-4 py-2 text-sm font-medium rounded-md transition " +
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus:ring-primary";
 
                 var classes = Variant switch
                 {
-                    // Subrayado (usa colores del tema)
+                    // Underline (uses theme colors)
                     TabVariant.Underline => $"{common} rounded-b-none border-b-2 " +
                     (isActive
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted hover:text-foreground hover:border-border"),
 
-                    // Pastillas (usa tokens del proyecto)
+                    // Pills (uses project tokens)
                     TabVariant.Pills => $"{common} " +
                     (isActive
                     ? "btn-primary-solid"
@@ -41,7 +44,11 @@
                         aria-controls="panel-@item.Key"
                         tabindex="@(isActive ? 0 : -1)"
                         @onclick="(() => Activate(item.Key))">
-                    @item.Title
+                    @if (item.Icon is not null)
+                    {
+                        <span class="shrink-0">@item.Icon</span>
+                    }
+                    <span class="truncate">@item.Title</span>
                 </button>
             }
         </div>
