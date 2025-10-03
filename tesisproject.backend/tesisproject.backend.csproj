@@ -7,12 +7,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Data\Identity\**" />
     <Compile Remove="NewFolder1\**" />
     <Compile Remove="NewFolder\**" />
+    <Content Remove="Data\Identity\**" />
     <Content Remove="NewFolder1\**" />
     <Content Remove="NewFolder\**" />
+    <EmbeddedResource Remove="Data\Identity\**" />
     <EmbeddedResource Remove="NewFolder1\**" />
     <EmbeddedResource Remove="NewFolder\**" />
+    <None Remove="Data\Identity\**" />
     <None Remove="NewFolder1\**" />
     <None Remove="NewFolder\**" />
   </ItemGroup>
@@ -32,10 +36,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\tesisproject.shared\tesisproject.shared.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Data\Identity\" />
   </ItemGroup>
 
 </Project>

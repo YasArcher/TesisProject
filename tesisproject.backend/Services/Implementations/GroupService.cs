@@ -171,15 +171,15 @@ namespace tesisproject.backend.Services.Implementations
                     return ServiceResult<GroupMemberResponseDTO>.Fail("This user is already a member of the group.", ErrorType.Conflict);
 
                 // Role required
-                var role = (request.MemberRole ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(role))
+                var role = request.MemberRole;
+                if (role == 0)
                     return ServiceResult<GroupMemberResponseDTO>.Fail("Member role is required.", ErrorType.Validation);
 
                 var member = new GroupMember
                 {
                     GroupId = request.GroupId,
                     UserId = request.ExternalUserId,
-                    MemberRole = role,
+                    MemberRoleId = role,
                     JoinedAt = DateTime.UtcNow
                 };
 
@@ -190,7 +190,7 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     GroupMemberId = member.GroupMemberId,
                     ExternalUserId = member.UserId,
-                    MemberRole = member.MemberRole,
+                    MemberRole = member.MemberRole.Name,
                     JoinedAt = member.JoinedAt
                 };
 

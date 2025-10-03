@@ -23,6 +23,11 @@ namespace tesisproject.backend.Data
         public DbSet<ProjectScope> ProjectScopes => Set<ProjectScope>();
         public DbSet<Visit> Visits => Set<Visit>();
 
+        // 👉 Faltantes (Core)
+        public DbSet<Researcher> Researchers => Set<Researcher>();
+        public DbSet<ProjectObjective> ProjectObjectives => Set<ProjectObjective>();
+        public DbSet<ObjectiveActivitie> ObjectiveActivities => Set<ObjectiveActivitie>(); // ajusta el nombre exacto de la clase si difiere
+
         // ===== DbSets Catalogs =====
         public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
         public DbSet<GroupType> GroupTypes => Set<GroupType>();
@@ -30,6 +35,17 @@ namespace tesisproject.backend.Data
         public DbSet<ScopeType> ScopeTypes => Set<ScopeType>();
         public DbSet<TransactionType> TransactionTypes => Set<TransactionType>();
         public DbSet<VisitState> VisitStates => Set<VisitState>();
+        public DbSet<FundingType> FundingTypes => Set<FundingType>();
+        public DbSet<ProjectState> ProjectStates => Set<ProjectState>();
+        public DbSet<ProjectExtensionType> ProjectExtensionTypes => Set<ProjectExtensionType>();
+        public DbSet<KnowledgeAreaType> KnowledgeAreaTypes => Set<KnowledgeAreaType>();
+        public DbSet<ResearchLineType> ResearchLineTypes => Set<ResearchLineType>();
+
+        // 👉 Faltantes (Catalogs)
+        public DbSet<ObjectiveType> ObjectiveTypes => Set<ObjectiveType>();
+        public DbSet<ResearcherType> ResearcherTypes => Set<ResearcherType>();
+        public DbSet<ResearchDomainType> ResearchDomainTypes => Set<ResearchDomainType>();
+        public DbSet<MemberRoleType> MemberRoleTypes => Set<MemberRoleType>();
 
         // ===== Auth =====
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
@@ -62,7 +78,6 @@ namespace tesisproject.backend.Data
                  .HasPrincipalKey(u => u.Id)
                  .OnDelete(DeleteBehavior.Cascade);
             });
-
         }
     }
 }

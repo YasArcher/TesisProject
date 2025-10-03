@@ -24,6 +24,7 @@ namespace tesisproject.shared.Entities.Core
         [Required]
         public int ProjectGroupId { get; set; }                  // id_grupo_proyecto (FK -> Group)
         public int? SenesytGroupId { get; set; }                // id_grupo_senseyt (si aplica, nullable)
+        public int FundingTypeId { get; set; }               // id_tipo_financiamiento (catálogo)
         public int? InitialDocumentId { get; set; }              // id_documento_inicial (FK -> Document)
         [Required, StringLength(120)]
         public string ProjectName { get; set; } = string.Empty;  // nombre_proyecto
@@ -32,10 +33,15 @@ namespace tesisproject.shared.Entities.Core
         public string? ProjectObjective { get; set; }            // objetivo_proyecto
 
         [StringLength(200)]
-        public string? ResearchLine { get; set; }                // linea_investigacion_proyecto
+        public int ResearchLineTypeId { get; set; }                // linea_investigacion_proyecto
+        public int KnowledgeAreaTypeId { get; set; }             // area_conocimiento_proyecto (catálogo)
+        public string ApprovalResolution { get; set; } = string.Empty; // resolucion_aprobacion
+        [Column(TypeName = "date")]
+        public DateTime ApprovalDate { get; set; } // fecha_aprobacion
 
         [Column(TypeName = "date")]
         public DateTime? StartDate { get; set; }                 // fecha_inicio
+        public int DurationInMonths { get; set; }              // duracion_meses
 
         [Column(TypeName = "date")]
         public DateTime? TentativeEndDate { get; set; }          // fecha_fin_tentativa
@@ -52,5 +58,8 @@ namespace tesisproject.shared.Entities.Core
         public Group? SenesytGroup { get; set; }               // Navegación a Group (si aplica)
         public Document? InitialDocument { get; set; }         // Navegación a Document (si aplica)
         public Budget? Budget { get; set; }                         // Navegación a Budget (1 a 1)
+        public FundingType FundingType { get; set; } = null!; // Navegación a FundingType (catálogo)
+        public ResearchLineType ResearchLineType { get; set; } = null!; // Navegación a ResearchLineType (catálogo)
+        public KnowledgeAreaType KnowledgeAreaType { get; set; } = null!; // Navegación a KnowledgeAreaType (catálogo)
     }
 }

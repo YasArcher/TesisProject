@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using tesisproject.shared.Entities.Catalogs;
 
 namespace tesisproject.shared.Entities.Core
 {
@@ -18,8 +19,8 @@ namespace tesisproject.shared.Entities.Core
         [Required]
         public int UserId { get; set; }                // id_usuario (usuario externo)
 
-        [StringLength(60), Required]
-        public string MemberRole { get; set; } = string.Empty; // rol del integrante (ej. "Líder", "Miembro", etc.)
+        [Required]
+        public int? MemberRoleId { get; set; } // rol del integrante (ej. "Líder", "Miembro", etc.)
 
         public DateTime? JoinedAt { get; set; }       // fecha de ingreso (opcional)
 
@@ -27,6 +28,7 @@ namespace tesisproject.shared.Entities.Core
 
         //Navegaciones
         public Group Group { get; set; } = null!;      // Navegación
+        public MemberRoleType MemberRole { get; set; } = null!; // Navegación a MemberRoleType (catálogo)
 
     }
 }
