@@ -3,6 +3,7 @@ using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.Project.Request;
 using tesisproject.shared.DTOs.Project.Response;
+using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Responses;
 
@@ -221,7 +222,7 @@ namespace tesisproject.backend.Services.Implementations
                         ProjectCode = p.ProjectCode ?? string.Empty,
                         ProjectName = p.ProjectName ?? string.Empty,
                         ProjectObjective = p.ProjectObjective ?? string.Empty,
-                        ResearchLine = p.ResearchLine ?? string.Empty,
+                        ResearchLine = p.ResearchLineType.Name ?? string.Empty,
                         ProjectTypeId = p.ProjectTypeId,
                         ProjectTypeName = p.ProjectType.Name ?? string.Empty,
                         ProjectStateId = p.ProjectStateId,
@@ -264,7 +265,7 @@ namespace tesisproject.backend.Services.Implementations
             InitialDocumentId = dto.InitialDocumentId,
             ProjectName = dto.ProjectName,
             ProjectObjective = dto.ProjectObjective,
-            ResearchLine = dto.ResearchLine,
+            ResearchLineTypeId = dto.ResearchLine,
             StartDate = dto.StartDate,
             TentativeEndDate = dto.TentativeEndDate,
             ExecutionPercentage = 0
@@ -274,7 +275,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             target.ProjectName = dto.ProjectName;
             target.ProjectObjective = dto.ProjectObjective;
-            target.ResearchLine = dto.ResearchLine;
+            target.ResearchLineType.Name = dto.ResearchLine ?? string.Empty;
             target.ProjectTypeId = dto.ProjectTypeId;
             target.ProjectStateId = dto.ProjectStateId;
             target.ProjectGroupId = dto.ProjectGroupId;

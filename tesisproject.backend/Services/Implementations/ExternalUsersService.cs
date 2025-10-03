@@ -144,7 +144,7 @@ public class ExternalUsersService : IExternalUsersService
             {
                 roleByExternalId.TryGetValue(u.id_usuario, out var role);
                 memberIdByExternalId.TryGetValue(u.id_usuario, out var memberId);
-                return MapToDto(u, role, memberId, groupId);
+                return MapToDto(u, role.Name, memberId, groupId);
             }).ToList();
 
             if (result.Count == 0)

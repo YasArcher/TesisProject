@@ -12,8 +12,8 @@ using tesisproject.backend.Data;
 namespace tesisproject.backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250914002151_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20251003052023_Add_Corrections")]
+    partial class Add_Corrections
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -276,6 +276,9 @@ namespace tesisproject.backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -286,6 +289,27 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("DocumentTypes");
                 });
 
+            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.FundingType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FundingTypes");
+                });
+
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.GroupType", b =>
                 {
                     b.Property<int>("Id")
@@ -293,6 +317,9 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -304,6 +331,48 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("GroupTypes");
                 });
 
+            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.KnowledgeAreaType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("KnowledgeAreaTypes");
+                });
+
+            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ObjectiveType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ObjectiveTypes");
+                });
+
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ProjectExtensionType", b =>
                 {
                     b.Property<int>("Id")
@@ -311,6 +380,9 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
 
                     b.Property<bool>("IsBudgetExecutable")
                         .HasColumnType("bit");
@@ -322,7 +394,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ProjectExtensionType");
+                    b.ToTable("ProjectExtensionTypes");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ProjectState", b =>
@@ -333,6 +405,9 @@ namespace tesisproject.backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -340,7 +415,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ProjectState");
+                    b.ToTable("ProjectStates");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ProjectType", b =>
@@ -350,6 +425,9 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -361,6 +439,74 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("ProjectTypes");
                 });
 
+            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ResearchDomainType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ResearchDomainTypes");
+                });
+
+            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ResearchLineType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("ResearchDomainTypeId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResearchDomainTypeId");
+
+                    b.ToTable("ResearchLineTypes");
+                });
+
+            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ResearcherType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ResearcherTypes");
+                });
+
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ScopeType", b =>
                 {
                     b.Property<int>("Id")
@@ -368,6 +514,9 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -387,6 +536,9 @@ namespace tesisproject.backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -404,6 +556,9 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("int");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -503,6 +658,12 @@ namespace tesisproject.backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DocumentId"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
                     b.Property<string>("DocumentPath")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -512,6 +673,19 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("int");
 
                     b.Property<int?>("RelatedDocumentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ResolutionCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime?>("ResolutionDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("UpdatedByUserId")
                         .HasColumnType("int");
 
                     b.HasKey("DocumentId");
@@ -580,6 +754,42 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("GroupMembers");
                 });
 
+            modelBuilder.Entity("tesisproject.shared.Entities.Core.ObjectiveActivitie", b =>
+                {
+                    b.Property<int>("ObjectiveActivitieId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ObjectiveActivitieId"));
+
+                    b.Property<string>("ActivityDescription")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ActivityResult")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsCompleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("ObjectiveActivitiesId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ObjectiveNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ObjetiveId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("PercentajeValue")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("ObjectiveActivitieId");
+
+                    b.ToTable("ObjectiveActivities");
+                });
+
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Project", b =>
                 {
                     b.Property<int>("ProjectId")
@@ -588,13 +798,29 @@ namespace tesisproject.backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ProjectId"));
 
+                    b.Property<DateTime>("ApprovalDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ApprovalResolution")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DurationInMonths")
                         .HasColumnType("int");
 
                     b.Property<decimal?>("ExecutionPercentage")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("FundingTypeId")
+                        .HasColumnType("int");
+
                     b.Property<int?>("InitialDocumentId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("KnowledgeAreaTypeId")
                         .HasColumnType("int");
 
                     b.Property<string>("ProjectCode")
@@ -623,9 +849,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<DateTime?>("RealEndDate")
                         .HasColumnType("date");
 
-                    b.Property<string>("ResearchLine")
+                    b.Property<int>("ResearchLineTypeId")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("int");
 
                     b.Property<int?>("SenesytGroupId")
                         .HasColumnType("int");
@@ -640,13 +866,19 @@ namespace tesisproject.backend.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
+                    b.HasIndex("FundingTypeId");
+
                     b.HasIndex("InitialDocumentId");
+
+                    b.HasIndex("KnowledgeAreaTypeId");
 
                     b.HasIndex("ProjectGroupId");
 
                     b.HasIndex("ProjectStateId");
 
                     b.HasIndex("ProjectTypeId");
+
+                    b.HasIndex("ResearchLineTypeId");
 
                     b.HasIndex("SenesytGroupId");
 
@@ -688,6 +920,37 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("ProjectExtensions");
                 });
 
+            modelBuilder.Entity("tesisproject.shared.Entities.Core.ProjectObjective", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ObjectiveTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Objetive")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Result")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ObjectiveTypeId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("ProjectObjectives");
+                });
+
             modelBuilder.Entity("tesisproject.shared.Entities.Core.ProjectScope", b =>
                 {
                     b.Property<int>("ProjectScopeId")
@@ -714,6 +977,50 @@ namespace tesisproject.backend.Migrations
                     b.HasIndex("ScopeTypeId");
 
                     b.ToTable("ProjectScopes");
+                });
+
+            modelBuilder.Entity("tesisproject.shared.Entities.Core.Researcher", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActiveDirectoryId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReginaCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("ResearcherTypeId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("UpdatedByUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ResearcherTypeId");
+
+                    b.ToTable("Researchers");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Visit", b =>
@@ -812,6 +1119,17 @@ namespace tesisproject.backend.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ResearchLineType", b =>
+                {
+                    b.HasOne("tesisproject.shared.Entities.Catalogs.ResearchDomainType", "ResearchDomainType")
+                        .WithMany("ResearchLineTypes")
+                        .HasForeignKey("ResearchDomainTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ResearchDomainType");
+                });
+
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Budget", b =>
                 {
                     b.HasOne("tesisproject.shared.Entities.Core.Project", "Project")
@@ -826,7 +1144,7 @@ namespace tesisproject.backend.Migrations
             modelBuilder.Entity("tesisproject.shared.Entities.Core.BudgetTransaction", b =>
                 {
                     b.HasOne("tesisproject.shared.Entities.Core.Budget", "Budget")
-                        .WithMany()
+                        .WithMany("Transactions")
                         .HasForeignKey("BudgetId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -850,13 +1168,13 @@ namespace tesisproject.backend.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("tesisproject.shared.Entities.Core.Document", "RelatedDocument")
-                        .WithOne("ReverseRelation")
+                    b.HasOne("tesisproject.shared.Entities.Core.Document", "ReverseRelation")
+                        .WithOne("RelatedDocument")
                         .HasForeignKey("tesisproject.shared.Entities.Core.Document", "RelatedDocumentId");
 
                     b.Navigation("DocumentType");
 
-                    b.Navigation("RelatedDocument");
+                    b.Navigation("ReverseRelation");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Group", b =>
@@ -889,9 +1207,21 @@ namespace tesisproject.backend.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("tesisproject.shared.Entities.Catalogs.FundingType", "FundingType")
+                        .WithMany()
+                        .HasForeignKey("FundingTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("tesisproject.shared.Entities.Core.Document", "InitialDocument")
                         .WithMany()
                         .HasForeignKey("InitialDocumentId");
+
+                    b.HasOne("tesisproject.shared.Entities.Catalogs.KnowledgeAreaType", "KnowledgeAreaType")
+                        .WithMany()
+                        .HasForeignKey("KnowledgeAreaTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("tesisproject.shared.Entities.Core.Group", "ProjectGroup")
                         .WithMany()
@@ -911,17 +1241,29 @@ namespace tesisproject.backend.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("tesisproject.shared.Entities.Catalogs.ResearchLineType", "ResearchLineType")
+                        .WithMany()
+                        .HasForeignKey("ResearchLineTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("tesisproject.shared.Entities.Core.Group", "SenesytGroup")
                         .WithMany()
                         .HasForeignKey("SenesytGroupId");
 
+                    b.Navigation("FundingType");
+
                     b.Navigation("InitialDocument");
+
+                    b.Navigation("KnowledgeAreaType");
 
                     b.Navigation("ProjectGroup");
 
                     b.Navigation("ProjectState");
 
                     b.Navigation("ProjectType");
+
+                    b.Navigation("ResearchLineType");
 
                     b.Navigation("SenesytGroup");
                 });
@@ -951,6 +1293,25 @@ namespace tesisproject.backend.Migrations
                     b.Navigation("ProjectExtensionType");
                 });
 
+            modelBuilder.Entity("tesisproject.shared.Entities.Core.ProjectObjective", b =>
+                {
+                    b.HasOne("tesisproject.shared.Entities.Catalogs.ObjectiveType", "ObjectiveType")
+                        .WithMany()
+                        .HasForeignKey("ObjectiveTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("tesisproject.shared.Entities.Core.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ObjectiveType");
+
+                    b.Navigation("Project");
+                });
+
             modelBuilder.Entity("tesisproject.shared.Entities.Core.ProjectScope", b =>
                 {
                     b.HasOne("tesisproject.shared.Entities.Core.Project", "Project")
@@ -968,6 +1329,17 @@ namespace tesisproject.backend.Migrations
                     b.Navigation("Project");
 
                     b.Navigation("ScopeType");
+                });
+
+            modelBuilder.Entity("tesisproject.shared.Entities.Core.Researcher", b =>
+                {
+                    b.HasOne("tesisproject.shared.Entities.Catalogs.ResearcherType", "ResearcherType")
+                        .WithMany()
+                        .HasForeignKey("ResearcherTypeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ResearcherType");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Visit", b =>
@@ -995,9 +1367,19 @@ namespace tesisproject.backend.Migrations
                     b.Navigation("VisitState");
                 });
 
+            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ResearchDomainType", b =>
+                {
+                    b.Navigation("ResearchLineTypes");
+                });
+
+            modelBuilder.Entity("tesisproject.shared.Entities.Core.Budget", b =>
+                {
+                    b.Navigation("Transactions");
+                });
+
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Document", b =>
                 {
-                    b.Navigation("ReverseRelation");
+                    b.Navigation("RelatedDocument");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Group", b =>

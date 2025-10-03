@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using tesisproject.backend.Data;
 
@@ -11,9 +12,11 @@ using tesisproject.backend.Data;
 namespace tesisproject.backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251003054808_Add_Role_detail-table")]
+    partial class Add_Role_detailtable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -364,9 +367,6 @@ namespace tesisproject.backend.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
-
-                    b.Property<int>("flag")
-                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -761,6 +761,7 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int>("MemberRoleId")
+                        .HasMaxLength(60)
                         .HasColumnType("int");
 
                     b.Property<int>("UserId")

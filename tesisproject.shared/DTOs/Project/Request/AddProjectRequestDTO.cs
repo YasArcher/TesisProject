@@ -21,7 +21,7 @@ namespace tesisproject.shared.DTOs.Project.Request
         [StringLength(500)]
         public string? ProjectObjective { get; set; }
         [StringLength(200)]
-        public string? ResearchLine { get; set; }
+        public int ResearchLine { get; set; }
         public DateTime? StartDate { get; set; }
         public DateTime? TentativeEndDate { get; set; }
         public string? ProjectCode { get; set; }

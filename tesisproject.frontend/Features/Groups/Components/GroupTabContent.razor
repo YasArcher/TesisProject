@@ -261,8 +261,7 @@
         var request = new AddGroupMemberRequestDTO
         {
             ExternalUserId = userId,
-            GroupId = SelectedGroupId.Value,
-            MemberRole = "Sapo" // ajusta el rol si corresponde
+            GroupId = SelectedGroupId.Value
         };
 
         await OnRequestAddMember.InvokeAsync(request);
