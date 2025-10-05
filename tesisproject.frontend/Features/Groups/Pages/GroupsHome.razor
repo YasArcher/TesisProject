@@ -1,6 +1,5 @@
 ﻿@page "/groups"
 
-@using static tesisproject.frontend.Features.Groups.Components.GroupManagement
 @using tesisproject.frontend.Features.Groups.Components
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI.ActionButton
@@ -25,46 +24,38 @@
                       Intent="ButtonIntent.Add"
                       Variant="ButtonVariant.Outline"
                       Size="ButtonSize.Md"
-                      Class="btn-primary-solid"
-        >
-        <Icon>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-  <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clip-rule="evenodd" />
-</svg>
-
-        </Icon>
+                      Class="btn-primary-solid">
+            <Icon>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                    <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clip-rule="evenodd" />
+                </svg>
+            </Icon>
         </ActionButton>
     </div>
 
     <!-- Content -->
     <div>
-        <GroupManagement CurrentTabKey="@currentTabKey"
-                         CurrentTabKeyChanged="OnTabChanged"
-                         GroupsTipo1="@groupsTipo1"
-                         GroupsTipo2="@groupsTipo2"
-                         SelectedGroupIdTipo1="@selectedGroupIdTipo1"
-                         SelectedGroupIdTipo2="@selectedGroupIdTipo2"
-                         MembersTipo1="@membersTipo1"
-                         MembersTipo2="@membersTipo2"
+        <GroupTabContent Groups="@groups"
+                         SelectedGroupId="@selectedGroupId"
+                         OnGroupSelected="@(gid => HandleGroupSelected(gid))"
+                         GroupMembers="@members"
                          IsLoading="@isLoading"
-                         IsLoadingMembersTipo1="@isLoadingMembersTipo1"
-                         IsLoadingMembersTipo2="@isLoadingMembersTipo2"
-                         OnGroupSelected="HandleGroupSelected"
+                         IsLoadingMembers="@isLoadingMembers"
                          OnReloadGroups="ReloadAfterMemberChange"
                          OnRequestAddMember="HandleAddMember"
                          OnRequestUpdateGroup="HandleUpdateGroup"
                          OnRequestRemoveMember="HandleRemoveMember"
                          OnAskCandidates="HandleAskCandidates" />
     </div>
+
 </div>
 
 <!-- Modal “dumb child” -->
 <GroupCreateModal @key="_modalKey"
                   ModalId="group-create-modal"
                   IsEdit="false"
+                  GroupTypeId="1"
                   @bind-IsOpen="_openCreate"
-                  TypeALabel="Administrative"
-                  TypeBLabel="Academic"
                   OnCreate="HandleCreate"
                   OnCancel="HandleCancel" />
 
@@ -72,29 +63,19 @@
     // ====== Estado UI ======
     private bool _openCreate;
     private int _modalKey = 0;
-    private string currentTabKey = "tipo1";
 
     // ====== Estado de datos ======
-    private List<GroupResponseDTO> allGroups = new();
-
-    // El hijo espera List<...> concretas
-    private List<GroupResponseDTO> groupsTipo1 => allGroups.Where(g => g.GroupTypeId == 1).ToList();
-    private List<GroupResponseDTO> groupsTipo2 => allGroups.Where(g => g.GroupTypeId == 2).ToList();
-
-    private int? selectedGroupIdTipo1;
-    private int? selectedGroupIdTipo2;
-
-    private List<ExternalUserDTO> membersTipo1 = new();
-    private List<ExternalUserDTO> membersTipo2 = new();
+    private List<GroupResponseDTO> groups = new();
+    private int? selectedGroupId;
+    private List<ExternalUserDTO> members = new();
 
     private bool isLoading;
-    private bool isLoadingMembersTipo1;
-    private bool isLoadingMembersTipo2;
+    private bool isLoadingMembers;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadGroupsAsync();
-        await EnsureDefaultSelectionFor(CurrentType());
+        await EnsureDefaultSelection();
     }
 
     private void OnCreateClick()
@@ -114,7 +95,6 @@
             {
                 Toast.ShowSuccess("Grupo creado exitosamente.");
                 var createdId = response.Response?.GroupId;
-                var createdTypeId = dto.GroupTypeId;
 
                 _openCreate = false;
 
@@ -122,11 +102,7 @@
                 await LoadGroupsAsync();
 
                 if (createdId.HasValue)
-                {
-                    var targetType = MapGroupTypeIdToProjectType(createdTypeId);
-                    currentTabKey = targetType == ProjectType.Type2 ? "tipo2" : "tipo1";
-                    await HandleGroupSelected((targetType, createdId.Value));
-                }
+                    await HandleGroupSelected(createdId.Value);
 
                 StateHasChanged();
                 return;
@@ -153,8 +129,8 @@
         isLoading = true; StateHasChanged();
         try
         {
-            var resp = await GroupService.GetListAsync();
-            allGroups = resp.Response ?? new();
+            var resp = await GroupService.GetListAsync(1);
+            groups = resp.Response ?? new();
         }
         finally
         {
@@ -162,81 +138,41 @@
         }
     }
 
-    private async Task EnsureDefaultSelectionFor(ProjectType type)
+    private async Task EnsureDefaultSelection()
     {
-        if (type == ProjectType.Type1)
+        if (selectedGroupId is null)
         {
-            if (selectedGroupIdTipo1 is null)
-            {
-                var first = groupsTipo1.FirstOrDefault();
-                if (first is not null)
-                    await HandleGroupSelected((ProjectType.Type1, first.GroupId));
-            }
-        }
-        else
-        {
-            if (selectedGroupIdTipo2 is null)
-            {
-                var first = groupsTipo2.FirstOrDefault();
-                if (first is not null)
-                    await HandleGroupSelected((ProjectType.Type2, first.GroupId));
-            }
+            var first = groups.FirstOrDefault();
+            if (first is not null)
+                await HandleGroupSelected(first.GroupId);
         }
     }
 
     // Evento del hijo con tupla (tipo, id)
-    private async Task HandleGroupSelected((ProjectType type, int groupId) args)
+    private async Task HandleGroupSelected(int groupId)
     {
-        var (projectType, groupId) = args;
-        await LoadMembersFor(projectType, groupId);
+        selectedGroupId = groupId;
+        await LoadMembersFor(groupId);
     }
 
-    private async Task LoadMembersFor(ProjectType projectType, int groupId)
+
+    private async Task LoadMembersFor(int groupId)
     {
-        if (projectType == ProjectType.Type1)
-        {
-            selectedGroupIdTipo1 = groupId;
-            isLoadingMembersTipo1 = true; StateHasChanged();
+        isLoadingMembers = true; StateHasChanged();
 
-            var res = await GroupService.GetMembersByGroupIdAsync(groupId);
-            membersTipo1 = res.Response ?? new();
+        var res = await GroupService.GetMembersByGroupIdAsync(groupId);
+        members = res.Response ?? new();
 
-            isLoadingMembersTipo1 = false; StateHasChanged();
-        }
-        else
-        {
-            selectedGroupIdTipo2 = groupId;
-            isLoadingMembersTipo2 = true; StateHasChanged();
-
-            var res = await GroupService.GetMembersByGroupIdAsync(groupId);
-            membersTipo2 = res.Response ?? new();
-
-            isLoadingMembersTipo2 = false; StateHasChanged();
-        }
-    }
-
-    private async Task OnTabChanged(string newTabKey)
-    {
-        currentTabKey = newTabKey;
-        await EnsureDefaultSelectionFor(CurrentType());
-        StateHasChanged();
+        isLoadingMembers = false; StateHasChanged();
     }
 
     private async Task ReloadAfterMemberChange()
     {
-        if (currentTabKey == "tipo1" && selectedGroupIdTipo1 is int g1)
-            await LoadMembersFor(ProjectType.Type1, g1);
-        else if (currentTabKey == "tipo2" && selectedGroupIdTipo2 is int g2)
-            await LoadMembersFor(ProjectType.Type2, g2);
+        if (selectedGroupId is int gid)
+            await LoadMembersFor(gid);
     }
 
-    private ProjectType CurrentType() => currentTabKey == "tipo2" ? ProjectType.Type2 : ProjectType.Type1;
-
-    private static ProjectType MapGroupTypeIdToProjectType(int groupTypeId)
-        => groupTypeId == 2 ? ProjectType.Type2 : ProjectType.Type1;
-
     // ====== CRUD (desde hijos) ======
-
     private async Task HandleAddMember(AddGroupMemberRequestDTO dto)
     {
         var res = await GroupService.AddMemberAsync(dto);
@@ -257,11 +193,6 @@
     private async Task HandleRemoveMember(int userGroupId)
     {
         // TODO: reemplazar por tu endpoint real cuando exista:
-        // var res = await GroupService.RemoveMemberAsync(userGroupId);
-        // if (!res.Success) { Toast.ShowError(res.Error ?? "No se pudo eliminar el miembro."); return; }
-        // Toast.ShowSuccess("Miembro eliminado.");
-        // await ReloadAfterMemberChange();
-
         Toast.ShowInfo("Eliminar miembro: implementar RemoveMemberAsync en IGroupService.");
         await Task.CompletedTask;
     }
@@ -275,9 +206,7 @@
             return new();
         }
 
-        // Determina miembros actuales del tab activo
-        var existing = currentTabKey == "tipo2" ? membersTipo2 : membersTipo1;
-        var existingIds = new HashSet<int>(existing.Select(m => m.UserId));
+        var existingIds = new HashSet<int>(members.Select(m => m.UserId));
 
         return (all.Response ?? new())
             .Where(u => !existingIds.Contains(u.UserId))

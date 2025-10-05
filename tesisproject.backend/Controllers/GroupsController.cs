@@ -30,11 +30,12 @@ namespace tesisproject.backend.Controllers
             CancellationToken ct)
             => (await _service.GetByIdAsync(id, ct)).ToActionResult();
 
-        // GET: api/Groups?search=&skip=0&take=20
-        [HttpGet]
+        // GET: api/Groups/investigation
+        [HttpGet("type/{type:int}")]
         public async Task<ActionResult<ApiResponse<IReadOnlyList<GroupResponseDTO>>>> List(
+            int type,
             CancellationToken ct = default)
-            => (await _service.ListAsync(ct)).ToActionResult();
+            => (await _service.ListAsync(type,ct)).ToActionResult();
         // PUT: api/Groups
         [HttpPut]
         public async Task<ActionResult<ApiResponse<GroupResponseDTO>>> Update(

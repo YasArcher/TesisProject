@@ -18,9 +18,9 @@ namespace tesisproject.frontend.Services.Implementations
         //        GROUPS
         // =========================
 
-        public Task<HttpResponseWrapper<List<GroupResponseDTO>?>> GetListAsync(CancellationToken ct = default)
+        public Task<HttpResponseWrapper<List<GroupResponseDTO>?>> GetListAsync(int type, CancellationToken ct = default)
         {
-            return _api.GetAsync<List<GroupResponseDTO>>($"{_baseUrl}", ct);
+            return _api.GetAsync<List<GroupResponseDTO>>($"{_baseUrl}/type/{type}", ct);
         }
 
         public Task<HttpResponseWrapper<GroupResponseDTO?>> GetByIdAsync(int id, CancellationToken ct = default)

@@ -11,7 +11,7 @@ namespace tesisproject.frontend.Services.Interfaces
         //        GROUPS
         // =========================
         /// <summary>Get a paginated list of groups.</summary>
-        Task<HttpResponseWrapper<List<GroupResponseDTO>?>> GetListAsync( CancellationToken ct = default);
+        Task<HttpResponseWrapper<List<GroupResponseDTO>?>> GetListAsync(int type, CancellationToken ct = default);
 
         /// <summary>Get a single group by its id.</summary>
         Task<HttpResponseWrapper<GroupResponseDTO?>> GetByIdAsync(int id, CancellationToken ct = default);

@@ -7,41 +7,53 @@ namespace tesisproject.shared.Entities.Core
 {
     public class Document
     {
-        // ========= Identity =========
+        // ================================
+        //              Identity
+        // ================================
         [Key]
         public int DocumentId { get; set; }
 
-        // Autorreferencia (1:1). Refuerza unicidad en Fluent API con un índice único sobre RelatedDocumentId.
+        // Autorreferencia (1:1). Se refuerza unicidad por Fluent API.
         public int? RelatedDocumentId { get; set; }
 
-        // ========= Type / Storage =========
+        // ================================
+        //          Type / Storage
+        // ================================
         [Required]
-        public int DocumentTypeId { get; set; }              // FK -> DocumentType
+        public int DocumentTypeId { get; set; } // FK -> DocumentType
 
         [Required, StringLength(300)]
         public string DocumentPath { get; set; } = string.Empty;
 
-        // ========= Resolution (optional) =========
+        // ================================
+        //      Resolution (optional)
+        // ================================
         [StringLength(100)]
-        public string? ResolutionCode { get; set; }          // Número/código de resolución
+        public string? ResolutionCode { get; set; } // Número/código de resolución
 
-        public DateTime? ResolutionDate { get; set; }        // Fecha de resolución
+        public DateTime? ResolutionDate { get; set; } // Fecha de resolución
 
-        // ========= Audit =========
+        // ================================
+        //               Audit
+        // ================================
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public int CreatedByUserId { get; set; }
         public int? UpdatedByUserId { get; set; }
         public DateTime? UpdatedAt { get; set; }
 
-        // ========= Navigations =========
+        // ================================
+        //           Navigations
+        // ================================
         [ForeignKey(nameof(DocumentTypeId))]
         public DocumentType DocumentType { get; set; } = null!;
 
+        // Documento “pareja” (relación 1:1)
         [ForeignKey(nameof(RelatedDocumentId))]
         [InverseProperty(nameof(ReverseRelation))]
-        public Document? RelatedDocument { get; set; }       // Documento “pareja” (relación 1:1)
+        public Document? RelatedDocument { get; set; }
 
+        // Navegación inversa (1:1)
         [InverseProperty(nameof(RelatedDocument))]
-        public Document? ReverseRelation { get; set; }       // Navegación inversa (1:1)
+        public Document? ReverseRelation { get; set; }
     }
 }

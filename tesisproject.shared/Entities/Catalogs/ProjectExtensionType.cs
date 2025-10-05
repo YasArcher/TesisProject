@@ -7,10 +7,11 @@ using tesisproject.shared.Entities.Base;
 
 namespace tesisproject.shared.Entities.Catalogs
 {
-
     public sealed class ProjectExtensionType : CatalogEntityBase
     {
-        public bool IsBudgetExecutable { get; set; } = false;
+        // ================================
+        //        Core Information
+        // ================================
+        public bool IsBudgetExecutable { get; set; } = false; // Indica si la prórroga permite ejecutar presupuesto
     }
-
 }

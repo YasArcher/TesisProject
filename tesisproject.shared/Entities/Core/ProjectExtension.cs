@@ -10,21 +10,33 @@ namespace tesisproject.shared.Entities.Core
 {
     public class ProjectExtension
     {
+        // ================================
+        //              Keys
+        // ================================
         public int ProjectExtensionId { get; set; }       // id_prorroga
 
-        [Required, StringLength(50)]
-        public int ProjectId { get; set; }  // id_proyecto (FK -> Project)
+        // ================================
+        //           Foreign Keys
+        // ================================
         [Required]
-        public int ProjectExtensionTypeId { get; set; } // id_tipo_prorroga (FK -> ProjectExtensionType catálogo)
+        public int ProjectId { get; set; }                // id_proyecto (FK -> Project)
+
+        [Required]
+        public int ProjectExtensionTypeId { get; set; }   // id_tipo_prorroga (FK -> ProjectExtensionType catálogo)
 
         public int? DocumentId { get; set; }              // id_documento (respaldo, opcional)
 
-        public DateTime? RequestedAt { get; set; }        // fecha solicitud
-        public DateTime? ApprovedAt { get; set; }         // fecha aprobación
-        // Navegaciones
-        public Project Project { get; set; } = null!;     // Navegación a Project
-        public Document? Document { get; set; }           // Navegación a Document (opcional)
-        public ProjectExtensionType? ProjectExtensionType { get; set; } // tipo de prórroga (FK -> ProjectExtensionType)
+        // ================================
+        //              Dates
+        // ================================
+        public DateTime? RequestedAt { get; set; }        // fecha_solicitud
+        public DateTime? ApprovedAt { get; set; }         // fecha_aprobacion
 
+        // ================================
+        //      Navigation Properties
+        // ================================
+        public Project Project { get; set; } = null!;                     // Navegación a Project
+        public Document? Document { get; set; }                           // Navegación a Document (opcional)
+        public ProjectExtensionType? ProjectExtensionType { get; set; }   // Navegación a ProjectExtensionType
     }
 }

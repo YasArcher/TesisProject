@@ -930,10 +930,6 @@
     border-top-style: var(--tw-border-style);
     border-top-width: 1px;
   }
-  .border-r {
-    border-right-style: var(--tw-border-style);
-    border-right-width: 1px;
-  }
   .border-b {
     border-bottom-style: var(--tw-border-style);
     border-bottom-width: 1px;
@@ -1239,9 +1235,6 @@
   }
   .bg-sky-600 {
     background-color: var(--color-sky-600);
-  }
-  .bg-transparent {
-    background-color: transparent;
   }
   .bg-white {
     background-color: var(--color-white);
@@ -1701,12 +1694,6 @@
   .text-foreground {
     color: var(--color-foreground);
   }
-  .text-foreground\/80 {
-    color: var(--color-foreground);
-    @supports (color: color-mix(in lab, red, red)) {
-      color: color-mix(in oklab, var(--color-foreground) 80%, transparent);
-    }
-  }
   .text-foreground\/90 {
     color: var(--color-foreground);
     @supports (color: color-mix(in lab, red, red)) {
@@ -1985,18 +1972,6 @@
       }
     }
   }
-  .first\:rounded-l-xl {
-    &:first-child {
-      border-top-left-radius: var(--radius-xl);
-      border-bottom-left-radius: var(--radius-xl);
-    }
-  }
-  .last\:rounded-r-xl {
-    &:last-child {
-      border-top-right-radius: var(--radius-xl);
-      border-bottom-right-radius: var(--radius-xl);
-    }
-  }
   .hover\:translate-x-1 {
     &:hover {
       @media (hover: hover) {
@@ -2210,16 +2185,6 @@
         background-color: var(--color-muted);
         @supports (color: color-mix(in lab, red, red)) {
           background-color: color-mix(in oklab, var(--color-muted) 20%, transparent);
-        }
-      }
-    }
-  }
-  .hover\:bg-muted\/60 {
-    &:hover {
-      @media (hover: hover) {
-        background-color: var(--color-muted);
-        @supports (color: color-mix(in lab, red, red)) {
-          background-color: color-mix(in oklab, var(--color-muted) 60%, transparent);
         }
       }
     }

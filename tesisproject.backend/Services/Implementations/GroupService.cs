@@ -82,14 +82,19 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-        public async Task<ServiceResult<IReadOnlyList<GroupResponseDTO>>> ListAsync(CancellationToken ct = default)
+        public async Task<ServiceResult<IReadOnlyList<GroupResponseDTO>>> ListAsync(
+            int type,
+            CancellationToken ct = default)
         {
             try
             {
+                var query = _uow.Groups
+                    .Query()
+                    .AsNoTracking()
+                    .Where(g => g.GroupTypeId == type)
+                    .OrderBy(g => g.Name);
 
-                var q = _uow.Groups.Query();
-                var items = await q
-                    .OrderBy(g => g.Name)
+                var items = await query
                     .Select(g => new GroupResponseDTO
                     {
                         GroupId = g.GroupId,
@@ -99,15 +104,19 @@ namespace tesisproject.backend.Services.Implementations
                     .ToListAsync(ct);
 
                 if (items.Count == 0)
-                    return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail("No groups found.", ErrorType.NotFound);
+                    return ServiceResult<IReadOnlyList<GroupResponseDTO>>
+                        .Fail("No groups found.", ErrorType.NotFound);
 
-                return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Ok(items, "Groups retrieved");
+                return ServiceResult<IReadOnlyList<GroupResponseDTO>>
+                    .Ok(items, "Groups retrieved");
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<IReadOnlyList<GroupResponseDTO>>
+                    .Fail(ex.Message, ErrorType.Unexpected);
             }
         }
+
 
         // ================= WRITES =================
 
