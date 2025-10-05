@@ -1,13 +1,10 @@
-﻿@using static tesisproject.frontend.Features.Groups.Components.GroupManagement
-@using tesisproject.frontend.SharedUI
-@using tesisproject.frontend.Features.Groups.Components
+﻿@using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.SearchInput
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.External
 @using tesisproject.shared.DTOs.Group.Request
 @using tesisproject.shared.DTOs.Group.Response
-@using tesisproject.shared.Enums
-@using tesisproject.frontend.Services.Interfaces
 
 @inject IToastService Toast
 
@@ -29,7 +26,7 @@
                        ShowItemCount="true"
                        GridClasses="grid grid-cols-1 gap-4"
                        EmptyStateTitle="No hay grupos"
-                       EmptyStateDescription="Aún no existen grupos para este tipo."
+                       EmptyStateDescription="Aún no existen grupos."
                        IsLoading="@IsLoading">
 
                 <ChildContent Context="group">
@@ -45,7 +42,6 @@
                 </EmptyStateAction>
             </Container>
         </div>
-
     </div>
 
     <!-- Panel derecho: Detalles del grupo seleccionado -->
@@ -56,7 +52,7 @@
                 <div class="flex items-start justify-between">
                     <div>
                         <h2 class="text-xl font-semibold text-foreground mb-1">📝 @SelectedGroup.Name</h2>
-                        <p class="text-sm text-muted">@ProjectType • @GroupMembers.Count miembros</p>
+                        <p class="text-sm text-muted">@GroupMembers.Count miembros</p>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success text-success-foreground">
@@ -84,8 +80,6 @@
                                EmptyStateDescription="Este grupo aún no tiene miembros asignados"
                                IsLoading="@IsLoadingMembers">
                         <ChildContent Context="member">
-                            @* Si MemberCard emite un ID de relación (UserGroupId),
-                               lo redirigimos hacia el padre: *@
                             <MemberCard Item="@member" OnRemoved="HandleMemberRemoved" />
                         </ChildContent>
                         <EmptyStateAction>
@@ -110,22 +104,18 @@
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
                                 <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
                             </svg>
-
                         </Icon>
                     </ActionButton>
-
                     <ActionButton Text="Configurar Grupo"
                                   Intent="ButtonIntent.Neutral"
                                   Variant="ButtonVariant.Ghost"
                                   Size="ButtonSize.Sm"
                                   Class="text-sm"
                                   Execute="OnConfigureGroupClick"
-                                  Disabled="@(SelectedGroup is null)">
+                                  Disabled="@(SelectedGroup is null)" >
                         <Icon>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                <path fill-rule="evenodd" d="M12 6.75a5.25 5.25 0 0 1 6.775-5.025.75.75 0 0 1 .313 1.248l-3.32 3.319c.063.475.276.934.641 1.299.365.365.824.578 1.3.64l3.318-3.319a.75.75 0 0 1 1.248.313 5.25 5.25 0 0 1-5.472 6.756c-1.018-.086-1.87.1-2.309.634L7.344 21.3A3.298 3.298 0 1 1 2.7 16.657l8.684-7.151c.533-.44.72-1.291.634-2.309A5.342 5.342 0 0 1 12 6.75ZM4.117 19.125a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75h-.008a.75.75 0 0 1-.75-.75v-.008Z" clip-rule="evenodd" />
-                                <path d="m10.076 8.64-2.201-2.2V4.874a.75.75 0 0 0-.364-.643l-3.75-2.25a.75.75 0 0 0-.916.113l-.75.75a.75.75 0 0 0-.113.916l2.25 3.75a.75.75 0 0 0 .643.364h1.564l2.062 2.062 1.575-1.297Z" />
-                                <path fill-rule="evenodd" d="m12.556 17.329 4.183 4.182a3.375 3.375 0 0 0 4.773-4.773l-3.306-3.305a6.803 6.803 0 0 1-1.53.043c-.394-.034-.682-.006-.867.042a.589.589 0 0 0-.167.063l-3.086 3.748Zm3.414-1.36a.75.75 0 0 1 1.06 0l1.875 1.876a.75.75 0 1 1-1.06 1.06L15.97 17.03a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
+                                <path fill-rule="evenodd" d="M11.828 2.25c-.916 0-1.699.663-1.85 1.567l-.091.549a.798.798 0 0 1-.517.608 7.45 7.45 0 0 0-.478.198.798.798 0 0 1-.796-.064l-.453-.324a1.875 1.875 0 0 0-2.416.2l-.243.243a1.875 1.875 0 0 0-.2 2.416l.324.453a.798.798 0 0 1 .064.796 7.448 7.448 0 0 0-.198.478.798.798 0 0 1-.608.517l-.55.092a1.875 1.875 0 0 0-1.566 1.849v.344c0 .916.663 1.699 1.567 1.85l.549.091c.281.047.508.25.608.517.06.162.127.321.198.478a.798.798 0 0 1-.064.796l-.324.453a1.875 1.875 0 0 0 .2 2.416l.243.243c.648.648 1.67.733 2.416.2l.453-.324a.798.798 0 0 1 .796-.064c.157.071.316.137.478.198.267.1.47.327.517.608l.092.55c.15.903.932 1.566 1.849 1.566h.344c.916 0 1.699-.663 1.85-1.567l.091-.549a.798.798 0 0 1 .517-.608 7.52 7.52 0 0 0 .478-.198.798.798 0 0 1 .796.064l.453.324a1.875 1.875 0 0 0 2.416-.2l.243-.243c.648-.648.733-1.67.2-2.416l-.324-.453a.798.798 0 0 1-.064-.796c.071-.157.137-.316.198-.478.1-.267.327-.47.608-.517l.55-.091a1.875 1.875 0 0 0 1.566-1.85v-.344c0-.916-.663-1.699-1.567-1.85l-.549-.091a.798.798 0 0 1-.608-.517 7.507 7.507 0 0 0-.198-.478.798.798 0 0 1 .064-.796l.324-.453a1.875 1.875 0 0 0-.2-2.416l-.243-.243a1.875 1.875 0 0 0-2.416-.2l-.453.324a.798.798 0 0 1-.796.064 7.462 7.462 0 0 0-.478-.198.798.798 0 0 1-.517-.608l-.091-.55a1.875 1.875 0 0 0-1.85-1.566h-.344ZM12 15.75a3.75 3.75 0 1 0 0-7.5 3.75 3.75 0 0 0 0 7.5Z" clip-rule="evenodd" />
                             </svg>
                         </Icon>
                     </ActionButton>
@@ -161,7 +151,7 @@
                       IsOpenChanged="(bool v) => _showGroupModal = v"
                       IsEdit="true"
                       GroupToEdit="@SelectedGroup"
-                      AllowChangeTypeInEdit="true"
+                      GroupTypeId="1"
                       OnUpdate="HandleUpdateGroupAsync"
                       OnCancel="@(()=> _showGroupModal = false)" />
 }
@@ -169,7 +159,6 @@
 @code {
     /* ===== Parámetros públicos ===== */
     [Parameter] public EventCallback OnReloadGroups { get; set; }
-    [Parameter] public ProjectType ProjectType { get; set; }
     [Parameter] public List<GroupResponseDTO> Groups { get; set; } = new();
     [Parameter] public int? SelectedGroupId { get; set; }
     [Parameter] public EventCallback<int> OnGroupSelected { get; set; }
@@ -219,7 +208,6 @@
             await OnGroupSelected.InvokeAsync(groupId);
     }
 
-    // Se emite hacia el padre para eliminar (no se toca estado de dominio aquí)
     private async Task HandleMemberRemoved(int userGroupId)
     {
         if (OnRequestRemoveMember.HasDelegate)

@@ -9,7 +9,7 @@ namespace tesisproject.backend.Services.Interfaces
     {
         Task<ServiceResult<GroupResponseDTO>> CreateAsync(AddGroupRequestDTO request, CancellationToken ct = default);
         Task<ServiceResult<GroupResponseDTO>> GetByIdAsync(int id, CancellationToken ct = default);
-        Task<ServiceResult<IReadOnlyList<GroupResponseDTO>>> ListAsync(CancellationToken ct = default);
+        Task<ServiceResult<IReadOnlyList<GroupResponseDTO>>> ListAsync(int type ,CancellationToken ct = default);
         Task<ServiceResult<GroupMemberResponseDTO>> AddMemberAsync(AddGroupMemberRequestDTO request, CancellationToken ct = default);
         Task<ServiceResult<GroupResponseDTO>> UpdateAsync(UpdateGroupRequestDTO request, CancellationToken ct = default);
         Task<ServiceResult<NoContent>> RemoveMemberAsync(int groupId, int memberId, CancellationToken ct = default);

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace tesisproject.backend.Migrations
 {
     /// <inheritdoc />
-    public partial class Add_Corrections : Migration
+    public partial class Add_BD : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -53,6 +53,22 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Countries",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    IsoCode = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsoAlpha3 = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Countries", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "DocumentTypes",
                 columns: table => new
                 {
@@ -95,17 +111,18 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "KnowledgeAreaTypes",
+                name: "MemberRoleTypes",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
+                    Flag = table.Column<int>(type: "int", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_KnowledgeAreaTypes", x => x.Id);
+                    table.PrimaryKey("PK_MemberRoleTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -114,11 +131,10 @@ namespace tesisproject.backend.Migrations
                 {
                     ObjectiveActivitieId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ObjectiveActivitiesId = table.Column<int>(type: "int", nullable: false),
                     ObjetiveId = table.Column<int>(type: "int", nullable: false),
                     ObjectiveNumber = table.Column<int>(type: "int", nullable: false),
-                    ActivityDescription = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    ActivityResult = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ActivityDescription = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    ActivityResult = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
                     PercentajeValue = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     IsCompleted = table.Column<bool>(type: "bit", nullable: false)
                 },
@@ -386,6 +402,26 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Institutions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    CountryId = table.Column<int>(type: "int", nullable: true),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Institutions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Institutions_Countries_CountryId",
+                        column: x => x.CountryId,
+                        principalTable: "Countries",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Documents",
                 columns: table => new
                 {
@@ -486,6 +522,27 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ExternalResearchers",
+                columns: table => new
+                {
+                    ExternalResearcherId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    FullName = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(150)", maxLength: 150, nullable: false),
+                    PhoneNumber = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: true),
+                    InstitutionId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ExternalResearchers", x => x.ExternalResearcherId);
+                    table.ForeignKey(
+                        name: "FK_ExternalResearchers_Institutions_InstitutionId",
+                        column: x => x.InstitutionId,
+                        principalTable: "Institutions",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "GroupMembers",
                 columns: table => new
                 {
@@ -493,7 +550,7 @@ namespace tesisproject.backend.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     GroupId = table.Column<int>(type: "int", nullable: false),
                     UserId = table.Column<int>(type: "int", nullable: false),
-                    MemberRole = table.Column<string>(type: "nvarchar(60)", maxLength: 60, nullable: false),
+                    MemberRoleId = table.Column<int>(type: "int", nullable: true),
                     JoinedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     LeftAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
@@ -506,6 +563,11 @@ namespace tesisproject.backend.Migrations
                         principalTable: "Groups",
                         principalColumn: "GroupId",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_GroupMembers_MemberRoleTypes_MemberRoleId",
+                        column: x => x.MemberRoleId,
+                        principalTable: "MemberRoleTypes",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -525,7 +587,6 @@ namespace tesisproject.backend.Migrations
                     ProjectName = table.Column<string>(type: "nvarchar(120)", maxLength: 120, nullable: false),
                     ProjectObjective = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     ResearchLineTypeId = table.Column<int>(type: "int", maxLength: 200, nullable: false),
-                    KnowledgeAreaTypeId = table.Column<int>(type: "int", nullable: false),
                     ApprovalResolution = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ApprovalDate = table.Column<DateTime>(type: "date", nullable: false),
                     StartDate = table.Column<DateTime>(type: "date", nullable: true),
@@ -566,12 +627,6 @@ namespace tesisproject.backend.Migrations
                         principalTable: "Groups",
                         principalColumn: "GroupId");
                     table.ForeignKey(
-                        name: "FK_Projects_KnowledgeAreaTypes_KnowledgeAreaTypeId",
-                        column: x => x.KnowledgeAreaTypeId,
-                        principalTable: "KnowledgeAreaTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
                         name: "FK_Projects_ProjectStates_ProjectStateId",
                         column: x => x.ProjectStateId,
                         principalTable: "ProjectStates",
@@ -597,7 +652,7 @@ namespace tesisproject.backend.Migrations
                 {
                     BudgetId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ProjectId = table.Column<int>(type: "int", maxLength: 50, nullable: false),
+                    ProjectId = table.Column<int>(type: "int", nullable: false),
                     ApprovedByUserId = table.Column<int>(type: "int", nullable: false),
                     InitialAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     CertifiedAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
@@ -621,7 +676,7 @@ namespace tesisproject.backend.Migrations
                 {
                     ProjectExtensionId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ProjectId = table.Column<int>(type: "int", maxLength: 50, nullable: false),
+                    ProjectId = table.Column<int>(type: "int", nullable: false),
                     ProjectExtensionTypeId = table.Column<int>(type: "int", nullable: false),
                     DocumentId = table.Column<int>(type: "int", nullable: true),
                     RequestedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -650,6 +705,30 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ProjectExternalResearchers",
+                columns: table => new
+                {
+                    ProjectId = table.Column<int>(type: "int", nullable: false),
+                    ExternalResearcherId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProjectExternalResearchers", x => new { x.ProjectId, x.ExternalResearcherId });
+                    table.ForeignKey(
+                        name: "FK_ProjectExternalResearchers_ExternalResearchers_ExternalResearcherId",
+                        column: x => x.ExternalResearcherId,
+                        principalTable: "ExternalResearchers",
+                        principalColumn: "ExternalResearcherId",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ProjectExternalResearchers_Projects_ProjectId",
+                        column: x => x.ProjectId,
+                        principalTable: "Projects",
+                        principalColumn: "ProjectId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ProjectObjectives",
                 columns: table => new
                 {
@@ -657,8 +736,8 @@ namespace tesisproject.backend.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ProjectId = table.Column<int>(type: "int", nullable: false),
                     ObjectiveTypeId = table.Column<int>(type: "int", nullable: false),
-                    Objetive = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Result = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    Objetive = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    Result = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false)
                 },
                 constraints: table =>
                 {
@@ -683,7 +762,7 @@ namespace tesisproject.backend.Migrations
                 {
                     ProjectScopeId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ProjectId = table.Column<int>(type: "int", maxLength: 50, nullable: false),
+                    ProjectId = table.Column<int>(type: "int", nullable: false),
                     ScopeTypeId = table.Column<int>(type: "int", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: true)
                 },
@@ -710,11 +789,14 @@ namespace tesisproject.backend.Migrations
                 {
                     VisitId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ProjectId = table.Column<int>(type: "int", maxLength: 50, nullable: false),
+                    ProjectId = table.Column<int>(type: "int", nullable: false),
                     VisitStateId = table.Column<int>(type: "int", nullable: false),
                     DocumentId = table.Column<int>(type: "int", nullable: true),
-                    VisitDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Notes = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true)
+                    PerformedByUserId = table.Column<int>(type: "int", nullable: false),
+                    ScheduledDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    PerformedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    Notes = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -750,9 +832,9 @@ namespace tesisproject.backend.Migrations
                     ExecutedByUserId = table.Column<int>(type: "int", nullable: true),
                     Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     CertifiedAt = table.Column<DateTime>(type: "date", nullable: false),
-                    ExecutedAt = table.Column<DateTime>(type: "date", nullable: false),
-                    BudgetItem = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    CURNumber = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                    ExecutedAt = table.Column<DateTime>(type: "date", nullable: true),
+                    BudgetItem = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    CURNumber = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -839,14 +921,36 @@ namespace tesisproject.backend.Migrations
                 filter: "[RelatedDocumentId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ExternalResearchers_InstitutionId",
+                table: "ExternalResearchers",
+                column: "InstitutionId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_GroupMembers_GroupId",
                 table: "GroupMembers",
                 column: "GroupId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_GroupMembers_MemberRoleId",
+                table: "GroupMembers",
+                column: "MemberRoleId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Groups_GroupTypeId",
                 table: "Groups",
                 column: "GroupTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Institutions_CountryId",
+                table: "Institutions",
+                column: "CountryId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Institutions_Name_CountryId",
+                table: "Institutions",
+                columns: new[] { "Name", "CountryId" },
+                unique: true,
+                filter: "[CountryId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProjectExtensions_DocumentId",
@@ -862,6 +966,11 @@ namespace tesisproject.backend.Migrations
                 name: "IX_ProjectExtensions_ProjectId",
                 table: "ProjectExtensions",
                 column: "ProjectId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProjectExternalResearchers_ExternalResearcherId",
+                table: "ProjectExternalResearchers",
+                column: "ExternalResearcherId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProjectObjectives_ObjectiveTypeId",
@@ -887,11 +996,6 @@ namespace tesisproject.backend.Migrations
                 name: "IX_Projects_InitialDocumentId",
                 table: "Projects",
                 column: "InitialDocumentId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Projects_KnowledgeAreaTypeId",
-                table: "Projects",
-                column: "KnowledgeAreaTypeId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Projects_ProjectGroupId",
@@ -996,6 +1100,9 @@ namespace tesisproject.backend.Migrations
                 name: "ProjectExtensions");
 
             migrationBuilder.DropTable(
+                name: "ProjectExternalResearchers");
+
+            migrationBuilder.DropTable(
                 name: "ProjectObjectives");
 
             migrationBuilder.DropTable(
@@ -1020,7 +1127,13 @@ namespace tesisproject.backend.Migrations
                 name: "TransactionTypes");
 
             migrationBuilder.DropTable(
+                name: "MemberRoleTypes");
+
+            migrationBuilder.DropTable(
                 name: "ProjectExtensionTypes");
+
+            migrationBuilder.DropTable(
+                name: "ExternalResearchers");
 
             migrationBuilder.DropTable(
                 name: "ObjectiveTypes");
@@ -1038,6 +1151,9 @@ namespace tesisproject.backend.Migrations
                 name: "Projects");
 
             migrationBuilder.DropTable(
+                name: "Institutions");
+
+            migrationBuilder.DropTable(
                 name: "AspNetUsers");
 
             migrationBuilder.DropTable(
@@ -1050,9 +1166,6 @@ namespace tesisproject.backend.Migrations
                 name: "Groups");
 
             migrationBuilder.DropTable(
-                name: "KnowledgeAreaTypes");
-
-            migrationBuilder.DropTable(
                 name: "ProjectStates");
 
             migrationBuilder.DropTable(
@@ -1060,6 +1173,9 @@ namespace tesisproject.backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "ResearchLineTypes");
+
+            migrationBuilder.DropTable(
+                name: "Countries");
 
             migrationBuilder.DropTable(
                 name: "DocumentTypes");

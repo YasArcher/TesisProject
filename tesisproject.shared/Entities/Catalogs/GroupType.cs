@@ -7,8 +7,13 @@ using tesisproject.shared.Entities.Base;
 
 namespace tesisproject.shared.Entities.Catalogs
 {
-    public sealed class  GroupType: CatalogEntityBase
+    public sealed class GroupType : CatalogEntityBase
     {
-        
+        // ================================
+        //        Core Information
+        // ================================
+        // Ejemplos:
+        // 1 = Integrantes de Proyecto
+        // 2 = Integrantes de Grupo
     }
 }

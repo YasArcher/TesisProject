@@ -10,25 +10,45 @@ namespace tesisproject.shared.Entities.Core
 {
     public class Visit
     {
+        // ================================
+        //              Keys
+        // ================================
         public int VisitId { get; set; }                 // id_visita
 
-        [Required, StringLength(50)]
-        public int ProjectId { get; set; }  // id_proyecto (FK -> Project)
+        // ================================
+        //           Foreign Keys
+        // ================================
+        [Required]
+        public int ProjectId { get; set; }               // id_proyecto (FK -> Project)
 
         [Required]
-        public int VisitStateId { get; set; }             // id_tipo_visita (FK -> VisitType catálogo)
-        
+        public int VisitStateId { get; set; }            // id_estado_visita (FK -> VisitState catálogo)
+
         public int? DocumentId { get; set; }             // id_documento (FK -> Document, opcional)
 
-        public DateTime? VisitDate { get; set; }         // fecha de la visita
+        [Required]
+        public int PerformedByUserId { get; set; }       // id_usuario_responsable (quien realiza la visita)
+
+        // ================================
+        //        Core Information
+        // ================================
+        public DateTime? ScheduledDate { get; set; }     // fecha_programada
+        public DateTime? PerformedDate { get; set; }     // fecha_realizacion
 
         [StringLength(500)]
         public string? Notes { get; set; }               // observaciones
 
-        // Navegaciones
-        public Project Project { get; set; } = null!;
-        public VisitState VisitState { get; set; } = null!; 
-        public Document? Document { get; set; } 
+        // ================================
+        //            Audit
+        // ================================
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow; // fecha_registro
 
+        // ================================
+        //      Navigation Properties
+        // ================================
+        public Project Project { get; set; } = null!;            // Navegación a Project
+        public VisitState VisitState { get; set; } = null!;      // Navegación a VisitState (catálogo)
+        public Document? Document { get; set; }                  // Navegación a Document (opcional)
+        // public UserSystem PerformedByUser { get; set; } = null!; // (si la entidad existe)
     }
 }

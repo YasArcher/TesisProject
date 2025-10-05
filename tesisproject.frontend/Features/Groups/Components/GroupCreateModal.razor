@@ -22,66 +22,36 @@
                 <!-- NAME -->
                 <div>
                     <label class="block text-sm font-medium mb-1 text-foreground">
-                        Name <span class="text-red-600">*</span>
+                        Nombre <span class="text-red-600">*</span>
                     </label>
                     <InputText @bind-Value="Model.Name"
                                class="w-full rounded-xl border border-border bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-uta-header)]" />
                     <ValidationMessage For="@(() => Model.Name)" />
                 </div>
 
-                <!-- GROUP TYPE -->
-                <div>
-                    <label class="block text-sm font-medium mb-2 text-foreground">
-                        Group type <span class="text-red-600">*</span>
-                    </label>
-
-                    <!-- Segmented control -->
-                    <div class="inline-flex rounded-xl border border-border overflow-hidden">
-                        <button type="button"
-                                class="@GetTypeBtnClass(GroupTypeOption.TypeA)"
-                                @onclick="() => SelectType(GroupTypeOption.TypeA)"
-                                disabled="@IsTypeSelectorDisabled">
-                            @TypeALabel
-                        </button>
-                        <button type="button"
-                                class="@GetTypeBtnClass(GroupTypeOption.TypeB)"
-                                @onclick="() => SelectType(GroupTypeOption.TypeB)"
-                                disabled="@IsTypeSelectorDisabled">
-                            @TypeBLabel
-                        </button>
-                    </div>
-
-                    <!-- Fallback accesible -->
-                    <select class="sr-only"
-                            @bind="Model.GroupTypeId"
-                            aria-label="Group type"
-                            disabled="@IsTypeSelectorDisabled">
-                        <option value="@((int)GroupTypeOption.TypeA)">@TypeALabel</option>
-                        <option value="@((int)GroupTypeOption.TypeB)">@TypeBLabel</option>
-                    </select>
-
-                    <ValidationMessage For="@(() => Model.GroupTypeId)" />
-                </div>
-
+                <!-- GROUP TYPE (opcional: solo como espejo HTML, sin binding) -->
+                <input type="hidden" value="@Model.GroupTypeId" />
             </div>
         </EditForm>
     </ChildContent>
 
     <Footer>
         <div class="flex items-center justify-end gap-2">
-            <ActionButton Text="Cancel"
+            <ActionButton Text="Cancelar"
                           Execute="OnCancelClicked"
                           Variant="ButtonVariant.Ghost"
                           Size="ButtonSize.Sm"
                           Class="inline-flex items-center justify-center rounded-xl px-4 py-2" />
+
             <ActionButton Text="@PrimaryButtonText"
                           Execute="Submit"
                           Variant="ButtonVariant.Soft"
                           Size="ButtonSize.Sm"
                           Class="btn-primary inline-flex items-center justify-center rounded-xl px-4 py-2">
                 <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="size-5" viewBox="0 0 24 24" fill="currentColor">
-                        <path fill-rule="evenodd" d="M2.25 12a9.75 9.75 0 1119.5 0 9.75 9.75 0 01-19.5 0zm14.28-3.53a.75.75 0 00-1.06-1.06L10 13.88l-1.97-1.97a.75.75 0 10-1.06 1.06l2.5 2.5a.75.75 0 001.06 0l6.06-6.06z" clip-rule="evenodd" />
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                        <path fill-rule="evenodd" d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z" clip-rule="evenodd" />
+                        <path d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z" />
                     </svg>
                 </Icon>
             </ActionButton>
@@ -90,80 +60,59 @@
 </Modal>
 
 @code {
-    private enum GroupTypeOption { TypeA = 1, TypeB = 2 }
-
-    // ===== Modo / Texto =====
+    // Parámetros
     [Parameter] public bool IsEdit { get; set; } = false;
-    [Parameter] public GroupResponseDTO? GroupToEdit { get; set; } // fuente para precargar
-    [Parameter] public bool AllowChangeTypeInEdit { get; set; } = true;
-
-    private string ModalTitle => IsEdit ? "Edit group" : "Create group";
-    private string PrimaryButtonText => IsEdit ? "Update" : "Create";
-    private bool IsTypeSelectorDisabled => IsEdit && !AllowChangeTypeInEdit;
-
-    // Labels configurables
-    [Parameter] public string TypeALabel { get; set; } = "Type 1";
-    [Parameter] public string TypeBLabel { get; set; } = "Type 2";
-
-    // ===== API del modal =====
+    [Parameter] public GroupResponseDTO? GroupToEdit { get; set; }
     [Parameter] public string ModalId { get; set; } = "group-modal";
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
 
-    // Callbacks separadas para claridad de Clean Architecture
+    // Viene del padre
+    [Parameter] public int GroupTypeId { get; set; } = 1;
+
     [Parameter] public EventCallback<AddGroupRequestDTO> OnCreate { get; set; }
     [Parameter] public EventCallback<UpdateGroupRequestDTO> OnUpdate { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
 
-    // Modelo interno del formulario (solo campos editables)
-    private AddGroupRequestDTO Model = new()
-    {
-        Name = string.Empty,
-        GroupTypeId = (int)GroupTypeOption.TypeA
-    };
+    private string ModalTitle => IsEdit ? "Editar Grupo" : "Crear groupo";
+    private string PrimaryButtonText => IsEdit ? "Actualziar" : "Crear";
+
+    private AddGroupRequestDTO Model = new();
 
     protected override void OnParametersSet()
     {
-        // Si estamos en modo edición, precargamos desde el ResponseDTO
         if (IsEdit && GroupToEdit is not null)
         {
+            // Edit
             Model.Name = GroupToEdit.Name;
-            Model.GroupTypeId = GroupToEdit.GroupTypeId;
+            Model.GroupTypeId = GroupTypeId; // fuerza el tipo único
         }
-    }
-
-    private void SelectType(GroupTypeOption opt)
-    {
-        if (IsTypeSelectorDisabled) return;
-        Model.GroupTypeId = (int)opt;
-    }
-
-    private string GetTypeBtnClass(GroupTypeOption opt)
-    {
-        var isActive = Model.GroupTypeId == (int)opt;
-        var disabled = IsTypeSelectorDisabled ? "opacity-60 cursor-not-allowed" : "";
-        return $"px-4 py-2 text-sm font-medium border-r border-border first:rounded-l-xl last:rounded-r-xl {disabled} " +
-               (isActive
-                 ? "bg-primary-subtle text-[color:var(--color-uta-header)]"
-                 : "bg-transparent text-foreground/80 hover:bg-muted/60");
+        else
+        {
+            // Create
+            Model = new AddGroupRequestDTO
+            {
+                Name = string.Empty,
+                GroupTypeId = GroupTypeId // fuerza el tipo único
+            };
+        }
     }
 
     private async Task Submit()
     {
         if (IsEdit && GroupToEdit is not null)
         {
-            // Map a Update DTO
             var dto = new UpdateGroupRequestDTO
             {
                 GroupId = GroupToEdit.GroupId,
                 Name = Model.Name,
-                GroupTypeId = Model.GroupTypeId
+                GroupTypeId = GroupTypeId
             };
             await OnUpdate.InvokeAsync(dto);
         }
         else
         {
-            // Create con el mismo model
+            Model.GroupTypeId = GroupTypeId;
             await OnCreate.InvokeAsync(Model);
         }
     }

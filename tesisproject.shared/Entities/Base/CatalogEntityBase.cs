@@ -8,13 +8,19 @@ using tesisproject.shared.Abstractions;
 
 namespace tesisproject.shared.Entities.Base
 {
-    public abstract class CatalogEntityBase: ICatalogEntity
+    public abstract class CatalogEntityBase : ICatalogEntity
     {
-        public int Id { get; set; }
+        // ================================
+        //              Keys
+        // ================================
+        public int Id { get; set; } // Identificador único del catálogo
 
+        // ================================
+        //        Core Information
+        // ================================
         [Required, StringLength(100)]
-        public string Name { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty; // Nombre del elemento del catálogo
 
-        public bool IsActive { get; set; } = true;
+        public bool IsActive { get; set; } = true;       // Estado activo/inactivo
     }
 }

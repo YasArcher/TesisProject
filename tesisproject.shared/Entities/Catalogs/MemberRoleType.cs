@@ -7,8 +7,11 @@ using tesisproject.shared.Entities.Base;
 
 namespace tesisproject.shared.Entities.Catalogs
 {
-    public class MemberRoleType :  CatalogEntityBase
+    public class MemberRoleType : CatalogEntityBase
     {
-        public int flag { get; set; } = 1; //1: Roles de Integrantes de Proyecto, 2: Roles de Integrantes de Grupo
+        // ================================
+        //        Core Information
+        // ================================
+        public int Flag { get; set; } = 1; // 1 = Roles de Integrantes de Proyecto, 2 = Roles de Integrantes de Grupo
     }
 }

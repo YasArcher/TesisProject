@@ -7,11 +7,16 @@ using tesisproject.shared.Entities.Base;
 
 namespace tesisproject.shared.Entities.Catalogs
 {
-    public class ResearchDomainType : CatalogEntityBase
+    public class Institution : CatalogEntityBase
     {
+        // ================================
+        //           Foreign Keys
+        // ================================
+        public int? CountryId { get; set; } // id_pais (nullable)
+
         // ================================
         //      Navigation Properties
         // ================================
-        public ICollection<ResearchLineType>? ResearchLineTypes { get; set; } // Relación con líneas de investigación
+        public Country? Country { get; set; } // Navegación a Country
     }
 }

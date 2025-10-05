@@ -35,7 +35,7 @@ namespace tesisproject.backend.Services.Implementations
                     ProjectId = request.ProjectId,
                     VisitStateId = request.VisitStateId,
                     DocumentId = request.DocumentId,
-                    VisitDate = request.VisitDate,
+                    ScheduledDate = request.VisitDate,
                     Notes = request.Notes?.Trim()
                 };
 
@@ -87,7 +87,7 @@ namespace tesisproject.backend.Services.Implementations
                 // Usamos QueryWithRefs para preparar proyección directa
                 var q = _uow.Visits.QueryWithRefs();
                 var items = await q
-                    .OrderBy(v => v.VisitDate ?? DateTime.MaxValue)
+                    .OrderBy(v => v.ScheduledDate ?? DateTime.MaxValue)
                     .Select(v => new VisitListResponseDTO
                     {
                         VisitId = v.VisitId,
@@ -96,7 +96,7 @@ namespace tesisproject.backend.Services.Implementations
                         VisitStateId = v.VisitStateId,
                         VisitStateName = v.VisitState.Name,
                         DocumentId = v.DocumentId,
-                        VisitDate = v.VisitDate,
+                        VisitDate = v.ScheduledDate,
                         Notes = v.Notes
                     })
                     .ToListAsync(ct);
@@ -151,7 +151,7 @@ namespace tesisproject.backend.Services.Implementations
                 entity.ProjectId = request.ProjectId;
                 entity.VisitStateId = request.VisitStateId;
                 entity.DocumentId = request.DocumentId;
-                entity.VisitDate = request.VisitDate;
+                entity.ScheduledDate = request.VisitDate;
                 entity.Notes = request.Notes?.Trim();
 
                 _uow.Visits.Update(entity);
@@ -208,7 +208,7 @@ namespace tesisproject.backend.Services.Implementations
             VisitStateId = v.VisitStateId,
             VisitStateName = v.VisitState?.Name ?? string.Empty,
             DocumentId = v.DocumentId,
-            VisitDate = v.VisitDate,
+            VisitDate = v.ScheduledDate,
             Notes = v.Notes
         };
     }
