@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <Folder Include="DTOs\Budgets\Response\" />
-    <Folder Include="Common\" />
     <Folder Include="Validations\" />
   </ItemGroup>
 
