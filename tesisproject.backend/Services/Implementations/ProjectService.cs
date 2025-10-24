@@ -22,17 +22,20 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var data = await _uow.Projects
                     .Query()
-                    .Select(p => new ProjectListResponseDTO(
-                        p.ProjectId,
-                        p.ProjectCode,
-                        p.ProjectName,
-                        p.ProjectState.Name,
-                        p.ProjectType.Name,
-                        p.ProjectGroup.Name,
-                        p.StartDate,
-                        p.TentativeEndDate,
-                        p.ExecutionPercentage
-                    ))
+                    .Select(p => new ProjectListResponseDTO
+                    {
+                        ProjectId = p.ProjectId,
+                        ProjectCode = p.ProjectCode,
+                        ProjectName = p.ProjectName,
+                        ProjectStateName = p.ProjectState.Name,
+                        ProjectTypeName = p.ProjectType.Name,
+                        ProjectGroupName = p.ProjectGroup.Name,
+                        StartDate = p.StartDate,
+                        TentativeEndDate = p.TentativeEndDate,
+                        ExecutionPercentage = p.ExecutionPercentage,
+                        PrincipalCoordinatorFacultyId = p.FacultyId,
+                        FundingTypeId = p.FundingTypeId
+                    })
                     .ToListAsync(ct);
 
                 if (data.Count == 0)
@@ -53,17 +56,19 @@ namespace tesisproject.backend.Services.Implementations
                 var dto = await _uow.Projects
                     .Query()
                     .Where(p => p.ProjectId == id)
-                    .Select(p => new ProjectListResponseDTO(
-                        p.ProjectId,
-                        p.ProjectCode,
-                        p.ProjectName,
-                        p.ProjectState.Name,
-                        p.ProjectType.Name,
-                        p.ProjectGroup.Name,
-                        p.StartDate,
-                        p.TentativeEndDate,
-                        p.ExecutionPercentage
-                    ))
+                    .Select(p => new ProjectListResponseDTO
+                    {
+                        ProjectId = p.ProjectId,
+                        ProjectCode = p.ProjectCode,
+                        ProjectName = p.ProjectName,
+                        ProjectStateName = p.ProjectState.Name,
+                        ProjectTypeName = p.ProjectType.Name,
+                        ProjectGroupName = p.ProjectGroup.Name,
+                        StartDate = p.StartDate,
+                        TentativeEndDate = p.TentativeEndDate,
+                        ExecutionPercentage = p.ExecutionPercentage,
+                        PrincipalCoordinatorFacultyId = p.FacultyId
+                    })
                     .FirstOrDefaultAsync(ct);
 
                 return dto is null
@@ -83,17 +88,19 @@ namespace tesisproject.backend.Services.Implementations
                 var data = await _uow.Projects
                     .Query()
                     .Where(p => p.ProjectTypeId == projectTypeId)
-                    .Select(p => new ProjectListResponseDTO(
-                        p.ProjectId,
-                        p.ProjectCode,
-                        p.ProjectName,
-                        p.ProjectState.Name,
-                        p.ProjectType.Name,
-                        p.ProjectGroup.Name,
-                        p.StartDate,
-                        p.TentativeEndDate,
-                        p.ExecutionPercentage
-                    ))
+                    .Select(p => new ProjectListResponseDTO
+                    {
+                        ProjectId = p.ProjectId,
+                        ProjectCode = p.ProjectCode,
+                        ProjectName = p.ProjectName,
+                        ProjectStateName = p.ProjectState.Name,
+                        ProjectTypeName = p.ProjectType.Name,
+                        ProjectGroupName = p.ProjectGroup.Name,
+                        StartDate = p.StartDate,
+                        TentativeEndDate = p.TentativeEndDate,
+                        ExecutionPercentage = p.ExecutionPercentage,
+                        PrincipalCoordinatorFacultyId = p.FacultyId
+                    })
                     .ToListAsync(ct);
 
                 return ServiceResult<List<ProjectListResponseDTO>>.Ok(data, "Projects by type retrieved");
@@ -126,17 +133,19 @@ namespace tesisproject.backend.Services.Implementations
                 var created = await _uow.Projects
                     .Query()
                     .Where(p => p.ProjectId == entity.ProjectId)
-                    .Select(p => new ProjectListResponseDTO(
-                        p.ProjectId,
-                        p.ProjectCode,
-                        p.ProjectName,
-                        p.ProjectState.Name,
-                        p.ProjectType.Name,
-                        p.ProjectGroup.Name,
-                        p.StartDate,
-                        p.TentativeEndDate,
-                        p.ExecutionPercentage
-                    ))
+                    .Select(p => new ProjectListResponseDTO
+                    {
+                        ProjectId = p.ProjectId,
+                        ProjectCode = p.ProjectCode,
+                        ProjectName = p.ProjectName,
+                        ProjectStateName = p.ProjectState.Name,
+                        ProjectTypeName = p.ProjectType.Name,
+                        ProjectGroupName = p.ProjectGroup.Name,
+                        StartDate = p.StartDate,
+                        TentativeEndDate = p.TentativeEndDate,
+                        ExecutionPercentage = p.ExecutionPercentage,
+                        PrincipalCoordinatorFacultyId = p.FacultyId
+                    })
                     .FirstAsync(ct);
 
                 return ServiceResult<ProjectListResponseDTO>.Ok(created, "Project created");

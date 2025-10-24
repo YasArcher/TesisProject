@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using tesisproject.backend.Data;
 
@@ -11,9 +12,11 @@ using tesisproject.backend.Data;
 namespace tesisproject.backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251005075543_cambioDBContext")]
+    partial class cambioDBContext
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -885,7 +888,7 @@ namespace tesisproject.backend.Migrations
                     b.Property<DateTime?>("LeftAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("MemberRoleId")
+                    b.Property<int?>("MemberRoleId")
                         .HasColumnType("int");
 
                     b.Property<int>("UserId")
@@ -960,9 +963,6 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<decimal?>("ExecutionPercentage")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<int>("FacultyId")
-                        .HasColumnType("int");
 
                     b.Property<int>("FundingTypeId")
                         .HasColumnType("int");
@@ -1435,9 +1435,7 @@ namespace tesisproject.backend.Migrations
 
                     b.HasOne("tesisproject.shared.Entities.Catalogs.MemberRoleType", "MemberRole")
                         .WithMany()
-                        .HasForeignKey("MemberRoleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("MemberRoleId");
 
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
                         .WithMany()

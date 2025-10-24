@@ -176,15 +176,7 @@ static class StartupExtensions
                 client.DefaultRequestHeaders.Add("User-Agent", opts.UserAgent);
         });
 
-        // Typed services using the named client
-        builder.Services.AddScoped<IExternalUsersService, ExternalUsersService>(sp =>
-        {
-            var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("ExternalApi");
-            var uow = sp.GetRequiredService<IUnitOfWork>();
-            var options = sp.GetRequiredService<IOptions<ExternalApiOptions>>();
-            var logger = sp.GetRequiredService<ILogger<ExternalUsersService>>();
-            return new ExternalUsersService(http, uow, options, logger);
-        });
+        builder.Services.AddHttpClient<IExternalDirectoryClient, ExternalDirectoryClient>("ExternalApi");
 
         builder.Services.AddScoped<IExternalAcademicsService, ExternalAcademicsService>(sp =>
         {
@@ -215,6 +207,7 @@ static class StartupExtensions
         builder.Services.AddScoped<IBudgetRepository, BudgetRepository>();
         builder.Services.AddScoped<IVisitRepository, VisitRepository>();
         builder.Services.AddScoped<IProjectExtensionRepository, ProjectExtensionRepository>();
+        builder.Services.AddScoped<IAspNetUserRepository, AspNetUserRepository>();
 
         // Open generics (FIX): register generic repositories properly
         builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));

@@ -12,8 +12,8 @@ using tesisproject.backend.Data;
 namespace tesisproject.backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251005043007_Add_BD")]
-    partial class Add_BD
+    [Migration("20251019230954_Add_FacultyFK")]
+    partial class Add_FacultyFK
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -224,21 +224,6 @@ namespace tesisproject.backend.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("ProjectExternalResearchers", b =>
-                {
-                    b.Property<int>("ProjectId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ExternalResearcherId")
-                        .HasColumnType("int");
-
-                    b.HasKey("ProjectId", "ExternalResearcherId");
-
-                    b.HasIndex("ExternalResearcherId");
-
-                    b.ToTable("ProjectExternalResearchers", (string)null);
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Auth.RefreshToken", b =>
@@ -673,10 +658,17 @@ namespace tesisproject.backend.Migrations
                     b.Property<int>("ProjectId")
                         .HasColumnType("int");
 
+                    b.Property<int>("ProjectId1")
+                        .HasColumnType("int");
+
                     b.HasKey("BudgetId");
+
+                    b.HasIndex("ApprovedByUserId");
 
                     b.HasIndex("ProjectId")
                         .IsUnique();
+
+                    b.HasIndex("ProjectId1");
 
                     b.ToTable("Budgets");
                 });
@@ -723,6 +715,10 @@ namespace tesisproject.backend.Migrations
 
                     b.HasIndex("BudgetId");
 
+                    b.HasIndex("CertifiedByUserId");
+
+                    b.HasIndex("ExecutedByUserId");
+
                     b.HasIndex("TransactionTypeId");
 
                     b.ToTable("BudgetTransactions");
@@ -768,11 +764,15 @@ namespace tesisproject.backend.Migrations
 
                     b.HasKey("DocumentId");
 
+                    b.HasIndex("CreatedByUserId");
+
                     b.HasIndex("DocumentTypeId");
 
                     b.HasIndex("RelatedDocumentId")
                         .IsUnique()
                         .HasFilter("[RelatedDocumentId] IS NOT NULL");
+
+                    b.HasIndex("UpdatedByUserId");
 
                     b.ToTable("Documents");
                 });
@@ -807,6 +807,45 @@ namespace tesisproject.backend.Migrations
                     b.HasIndex("InstitutionId");
 
                     b.ToTable("ExternalResearchers");
+                });
+
+            modelBuilder.Entity("tesisproject.shared.Entities.Core.ExternalResearcherProject", b =>
+                {
+                    b.Property<int>("ExternalResearcherProjectId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ExternalResearcherProjectId"));
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CreatedByUserId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ExitDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ExternalResearcherId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ProjectId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("ExternalResearcherProjectId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("ExternalResearcherId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.ToTable("ExternalResearcherProjects");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Group", b =>
@@ -849,7 +888,7 @@ namespace tesisproject.backend.Migrations
                     b.Property<DateTime?>("LeftAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("MemberRoleId")
+                    b.Property<int>("MemberRoleId")
                         .HasColumnType("int");
 
                     b.Property<int>("UserId")
@@ -860,6 +899,8 @@ namespace tesisproject.backend.Migrations
                     b.HasIndex("GroupId");
 
                     b.HasIndex("MemberRoleId");
+
+                    b.HasIndex("UserId");
 
                     b.ToTable("GroupMembers");
                 });
@@ -922,6 +963,9 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<decimal?>("ExecutionPercentage")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("FacultyId")
+                        .HasColumnType("int");
 
                     b.Property<int>("FundingTypeId")
                         .HasColumnType("int");
@@ -1122,7 +1166,11 @@ namespace tesisproject.backend.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("CreatedByUserId");
+
                     b.HasIndex("ResearcherTypeId");
+
+                    b.HasIndex("UpdatedByUserId");
 
                     b.ToTable("Researchers");
                 });
@@ -1163,6 +1211,8 @@ namespace tesisproject.backend.Migrations
                     b.HasKey("VisitId");
 
                     b.HasIndex("DocumentId");
+
+                    b.HasIndex("PerformedByUserId");
 
                     b.HasIndex("ProjectId");
 
@@ -1222,27 +1272,12 @@ namespace tesisproject.backend.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("ProjectExternalResearchers", b =>
-                {
-                    b.HasOne("tesisproject.shared.Entities.Core.ExternalResearcher", null)
-                        .WithMany()
-                        .HasForeignKey("ExternalResearcherId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("tesisproject.shared.Entities.Core.Project", null)
-                        .WithMany()
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("tesisproject.shared.Entities.Auth.RefreshToken", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
                 });
 
@@ -1268,9 +1303,21 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Budget", b =>
                 {
-                    b.HasOne("tesisproject.shared.Entities.Core.Project", "Project")
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("tesisproject.shared.Entities.Core.Project", null)
                         .WithOne("Budget")
                         .HasForeignKey("tesisproject.shared.Entities.Core.Budget", "ProjectId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("tesisproject.shared.Entities.Core.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId1")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
@@ -1285,6 +1332,17 @@ namespace tesisproject.backend.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                        .WithMany()
+                        .HasForeignKey("CertifiedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                        .WithMany()
+                        .HasForeignKey("ExecutedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("tesisproject.shared.Entities.Catalogs.TransactionType", "TransactionType")
                         .WithMany()
                         .HasForeignKey("TransactionTypeId")
@@ -1298,19 +1356,31 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Document", b =>
                 {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.HasOne("tesisproject.shared.Entities.Catalogs.DocumentType", "DocumentType")
                         .WithMany()
                         .HasForeignKey("DocumentTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("tesisproject.shared.Entities.Core.Document", "ReverseRelation")
-                        .WithOne("RelatedDocument")
-                        .HasForeignKey("tesisproject.shared.Entities.Core.Document", "RelatedDocumentId");
+                    b.HasOne("tesisproject.shared.Entities.Core.Document", "RelatedDocument")
+                        .WithOne("ReverseRelation")
+                        .HasForeignKey("tesisproject.shared.Entities.Core.Document", "RelatedDocumentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("DocumentType");
 
-                    b.Navigation("ReverseRelation");
+                    b.Navigation("RelatedDocument");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.ExternalResearcher", b =>
@@ -1320,6 +1390,31 @@ namespace tesisproject.backend.Migrations
                         .HasForeignKey("InstitutionId");
 
                     b.Navigation("Institution");
+                });
+
+            modelBuilder.Entity("tesisproject.shared.Entities.Core.ExternalResearcherProject", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("tesisproject.shared.Entities.Core.ExternalResearcher", "ExternalResearcher")
+                        .WithMany("ExternalResearcherProjects")
+                        .HasForeignKey("ExternalResearcherId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("tesisproject.shared.Entities.Core.Project", "Project")
+                        .WithMany("ExternalResearcherProjects")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ExternalResearcher");
+
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Group", b =>
@@ -1343,7 +1438,15 @@ namespace tesisproject.backend.Migrations
 
                     b.HasOne("tesisproject.shared.Entities.Catalogs.MemberRoleType", "MemberRole")
                         .WithMany()
-                        .HasForeignKey("MemberRoleId");
+                        .HasForeignKey("MemberRoleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
 
                     b.Navigation("Group");
 
@@ -1355,7 +1458,7 @@ namespace tesisproject.backend.Migrations
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
                     b.HasOne("tesisproject.shared.Entities.Catalogs.FundingType", "FundingType")
@@ -1476,11 +1579,22 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Researcher", b =>
                 {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.HasOne("tesisproject.shared.Entities.Catalogs.ResearcherType", "ResearcherType")
                         .WithMany()
                         .HasForeignKey("ResearcherTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.Navigation("ResearcherType");
                 });
@@ -1490,6 +1604,12 @@ namespace tesisproject.backend.Migrations
                     b.HasOne("tesisproject.shared.Entities.Core.Document", "Document")
                         .WithMany()
                         .HasForeignKey("DocumentId");
+
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                        .WithMany()
+                        .HasForeignKey("PerformedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
 
                     b.HasOne("tesisproject.shared.Entities.Core.Project", "Project")
                         .WithMany()
@@ -1527,7 +1647,12 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Document", b =>
                 {
-                    b.Navigation("RelatedDocument");
+                    b.Navigation("ReverseRelation");
+                });
+
+            modelBuilder.Entity("tesisproject.shared.Entities.Core.ExternalResearcher", b =>
+                {
+                    b.Navigation("ExternalResearcherProjects");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Group", b =>
@@ -1538,6 +1663,8 @@ namespace tesisproject.backend.Migrations
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Project", b =>
                 {
                     b.Navigation("Budget");
+
+                    b.Navigation("ExternalResearcherProjects");
                 });
 #pragma warning restore 612, 618
         }

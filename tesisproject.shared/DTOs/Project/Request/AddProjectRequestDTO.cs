@@ -28,5 +28,6 @@ namespace tesisproject.shared.DTOs.Project.Request
         public int CreatedByUserId { get; set; }
         public int ProjectStateId { get; set; }
         public int? InitialDocumentId { get; set; }
+        public int FacultyId { get; set; }
     }
 }

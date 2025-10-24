@@ -12,6 +12,8 @@ namespace tesisproject.shared.DTOs.Filters
         public List<KeyValueItemDTO> ProjectStates { get; set; } = [];
         public List<KeyValueItemDTO> ProjectTypes { get; set; } = [];
         public List<ProjectExtensionTypeItemDTO>? ExtensionTypes { get; set; } = [];
+        public List<KeyValueItemDTO> Faculties { get; set; } = [];
+        public List<KeyValueItemDTO> Funding{ get; set; } = [];
     }
 
     public sealed class ProjectExtensionTypeItemDTO

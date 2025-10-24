@@ -6,6 +6,7 @@
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Visit.Request
 @using tesisproject.shared.DTOs.Visit.Response
+@inject NavigationManager Nav
 
 <div class="flex flex-col h-full">
     <!-- Header fijo -->
@@ -19,7 +20,8 @@
                 }
             </div>
 
-          @*   <ActionButton Text="Nueva Visita"
+            @* Si quieres volver a habilitar crear visita, descomenta esto:
+            <ActionButton Text="Nueva Visita"
                           Intent="ButtonIntent.Add"
                           Variant="ButtonVariant.Filled"
                           Size="ButtonSize.Md"
@@ -29,7 +31,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
                 </Icon>
-            </ActionButton> *@
+            </ActionButton>
+            *@
         </div>
     </div>
 
@@ -79,7 +82,7 @@
                                     <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
                                         <span class="flex items-center gap-1.5">
                                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 002 2z" />
                                             </svg>
                                             @v.VisitDate.ToSpanishShortDate()
                                         </span>
@@ -103,16 +106,19 @@
                                     </div>
                                 </div>
 
-                                <!-- Selector de estado -->
+                                <!-- Botón Revisar -->
                                 <div class="flex items-center gap-2 shrink-0">
-                                    <select class="px-3 py-1.5 text-sm font-medium rounded-lg border border-border bg-background text-foreground hover:bg-primary-subtle focus:outline-none focus:ring-2 focus:ring-primary transition-colors cursor-pointer"
-                                            value="@v.VisitStateId"
-                                            @onchange="(e) => OnChangeStateAsync(v, int.Parse(e.Value!.ToString()!))">
-                                        @foreach (var st in _states)
-                                        {
-                                            <option value="@st.Id">@st.Name</option>
-                                        }
-                                    </select>
+                                    <ActionButton Text="Revisar"
+                                                  Intent="ButtonIntent.Info"
+                                                  Variant="ButtonVariant.Outline"
+                                                  Size="ButtonSize.Sm"
+                                                  Execute="@(() => GoToVisit(v.VisitId))">
+                                        <Icon>
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5-5 5M6 7h7" />
+                                            </svg>
+                                        </Icon>
+                                    </ActionButton>
                                 </div>
                             </div>
 
@@ -142,19 +148,21 @@
     [Parameter] public List<VisitListResponseDTO>? Items { get; set; }
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public EventCallback OnAddVisit { get; set; }
-    [Parameter] public EventCallback<int> OnOpenVisit { get; set; }
-    [Parameter] public EventCallback<(int visitId, int newStateId)> OnChangeVisitState { get; set; }
+    [Parameter] public EventCallback<int> OnOpenVisit { get; set; } // opcional, si el padre quiere engancharse
 
-    // ===== Estados disponibles =====
-    private readonly (int Id, string Name)[] _states = new[]
+    // ===== Navegación a la visita =====
+    private void GoToVisit(int visitId)
     {
-        (1, "Scheduled"),
-        (2, "Completed"),
-        (3, "In Progress"),
-        (4, "Cancelled")
-    };
+        // Si el padre quiere escuchar, lo notificamos (no bloquea la navegación)
+        if (OnOpenVisit.HasDelegate)
+        {
+            _ = OnOpenVisit.InvokeAsync(visitId);
+        }
 
-    // ===== Color del indicador lateral según estado =====
+        Nav.NavigateTo($"/visits/{visitId}");
+    }
+
+    // ===== Colores y badge (se conservan) =====
     private string GetStateColorClass(int stateId) => stateId switch
     {
         1 => "bg-secondary",      // Scheduled
@@ -164,7 +172,6 @@
         _ => "bg-muted"
     };
 
-    // ===== Badge de estado =====
     private RenderFragment StateBadge(int id, string name) => builder =>
     {
         var (bgClass, textClass, borderClass, icon) = id switch
@@ -189,21 +196,4 @@
         builder.AddContent(3, name);
         builder.CloseElement();
     };
-    private async Task OnChangeStateAsync(VisitListResponseDTO v, int newStateId)
-    {
-        if (v.VisitStateId == newStateId) return;
-
-        // Optimista solo visual, sin tocar backend
-        var prevId = v.VisitStateId;
-        var prevName = v.VisitStateName;
-
-        v.VisitStateId = newStateId;
-        v.VisitStateName = _states.FirstOrDefault(s => s.Id == newStateId).Name ?? "Unknown";
-        StateHasChanged();
-
-        await OnChangeVisitState.InvokeAsync((v.VisitId, newStateId));
-
-        // Nota: No revertimos aquí. El padre decide si revertir o refrescar.
-    }
-
 }

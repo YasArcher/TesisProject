@@ -27,13 +27,18 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var repo = _sp.GetRequiredService<ICatalogRepository<TCatalog>>();
                 var query = repo.Query(); // AsNoTracking aplicado por el repo
+                // 🔹 Filtro por activos
+                query = query.Where(x => x.IsActive);
 
+                // 🔹 Filtro por término de búsqueda
                 if (!string.IsNullOrWhiteSpace(term))
                     query = query.Where(x => EF.Functions.Like(x.Name, $"%{term}%"));
 
+                // 🔹 Límite de resultados
                 if (take.HasValue && take.Value > 0)
                     query = query.Take(take.Value);
 
+                // 🔹 Proyección a DTO
                 var list = await query
                     .OrderBy(x => x.Name)
                     .Select(x => new KeyValueItemDTO
@@ -59,5 +64,6 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<List<KeyValueItemDTO>>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
+
     }
 }

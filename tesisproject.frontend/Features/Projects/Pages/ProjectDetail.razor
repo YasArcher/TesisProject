@@ -1,20 +1,26 @@
 ﻿@page "/projects/{ProjectId:int}"
+@using tesisproject.frontend.Features.Components
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.Tabs
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.Group.Request
 @using tesisproject.shared.DTOs.Project.Response
 @using tesisproject.frontend.Features.Projects.Components
 @using tesisproject.shared.DTOs.Budgets.Request
 @using tesisproject.shared.DTOs.ProjectExtensions.Response
 @using tesisproject.shared.DTOs.Visit.Request
 @using tesisproject.shared.DTOs.Visit.Response
+@using tesisproject.shared.DTOs.External
 
 @inject IVisitClientService VisitService
 @inject IProjectClientService ProjectService
 @inject IBudgetClientService BudgetService
 @inject IProjectExtensionClientService ProjectExtensionService
+@inject IGroupService GroupService
 @inject NavigationManager Nav
+@inject IToastService Toast
+@inject IExternalUserService ExternalUserService
 
 <div class="flex flex-col h-full">
     <!-- Header -->
@@ -77,11 +83,25 @@
                         <path fill-rule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875Zm6 16.5c.66 0 1.277-.19 1.797-.518l1.048 1.048a.75.75 0 0 0 1.06-1.06l-1.047-1.048A3.375 3.375 0 1 0 11.625 18Z" clip-rule="evenodd" />
                         <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
                     </svg>
-
                 </Icon>
-
                 <ChildContent>
                     <ProjectOverviewTab Item="_project" IsLoading="@_loadingOverview" />
+                </ChildContent>
+            </Tab>
+
+            <Tab Key="members" Title="Miembros">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                        <path fill-rule="evenodd" d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z" clip-rule="evenodd" />
+                        <path d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z" />
+                    </svg>
+                </Icon>
+                <ChildContent>
+                    <ProjectMembersTab Members="_members"
+                                       IsLoading="@_loadingMembers"
+                                       OnInviteMember="HandleInviteMember"
+                                       OnChangeRole="HandleChangeRole"
+                                       OnRemoveMember="HandleRemoveMember" />
                 </ChildContent>
             </Tab>
 
@@ -91,7 +111,6 @@
                         <path fill-rule="evenodd" d="M7.502 6h7.128A3.375 3.375 0 0 1 18 9.375v9.375a3 3 0 0 0 3-3V6.108c0-1.505-1.125-2.811-2.664-2.94a48.972 48.972 0 0 0-.673-.05A3 3 0 0 0 15 1.5h-1.5a3 3 0 0 0-2.663 1.618c-.225.015-.45.032-.673.05C8.662 3.295 7.554 4.542 7.502 6ZM13.5 3A1.5 1.5 0 0 0 12 4.5h4.5A1.5 1.5 0 0 0 15 3h-1.5Z" clip-rule="evenodd" />
                         <path fill-rule="evenodd" d="M3 9.375C3 8.339 3.84 7.5 4.875 7.5h9.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 0 1 3 20.625V9.375ZM6 12a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V12Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75ZM6 15a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V15Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75ZM6 18a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V18Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
                     </svg>
-
                 </Icon>
                 <ChildContent>
                     <ProjectVisitsTab ProjectId="@ProjectId"
@@ -100,7 +119,6 @@
                                       OnAddVisit="HandleAddVisit"
                                       OnOpenVisit="HandleOpenVisit"
                                       OnChangeVisitState="HandleChangeVisitStateAsync" />
-
                 </ChildContent>
             </Tab>
 
@@ -109,7 +127,6 @@
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
                         <path fill-rule="evenodd" d="M3.75 3.375c0-1.036.84-1.875 1.875-1.875H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375Zm10.5 1.875a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25ZM12 10.5a.75.75 0 0 1 .75.75v.028a9.727 9.727 0 0 1 1.687.28.75.75 0 1 1-.374 1.452 8.207 8.207 0 0 0-1.313-.226v1.68l.969.332c.67.23 1.281.85 1.281 1.704 0 .158-.007.314-.02.468-.083.931-.83 1.582-1.669 1.695a9.776 9.776 0 0 1-.561.059v.028a.75.75 0 0 1-1.5 0v-.029a9.724 9.724 0 0 1-1.687-.278.75.75 0 0 1 .374-1.453c.425.11.864.186 1.313.226v-1.68l-.968-.332C9.612 14.974 9 14.354 9 13.5c0-.158.007-.314.02-.468.083-.931.831-1.582 1.67-1.694.185-.025.372-.045.56-.06v-.028a.75.75 0 0 1 .75-.75Zm-1.11 2.324c.119-.016.239-.03.36-.04v1.166l-.482-.165c-.208-.072-.268-.211-.268-.285 0-.113.005-.225.015-.336.013-.146.14-.309.374-.34Zm1.86 4.392V16.05l.482.165c.208.072.268.211.268.285 0 .113-.005.225-.015.336-.012.146-.14.309-.374.34-.12.016-.24.03-.361.04Z" clip-rule="evenodd" />
                     </svg>
-
                 </Icon>
                 <ChildContent>
                     <ProjectFinancialTab Budget="_budget"
@@ -118,7 +135,6 @@
                                          OnAddCertification="HandleAddCertification"
                                          OnExecuteDevengado="HandleExecuteDevengado" />
                 </ChildContent>
-
             </Tab>
 
             <Tab Key="extensions" Title="Prórrogas">
@@ -126,9 +142,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
                         <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
                     </svg>
-
                 </Icon>
-
                 <ChildContent>
                     <ProjectExtensionsTab Items="_extensions"
                                           IsLoading="_loadingExtensions"
@@ -157,6 +171,15 @@
                      ErrorMessage="@_accrualError"
                      OnSubmit="OnSubmitAccrual"
                      OnCancel="OnCancelAccrual" />
+<!-- MODAL: User Picker para agregar miembros al grupo del proyecto -->
+<UserPickerModal ModalId="project-user-picker"
+                 IsOpen="@_showUserPicker"
+                 IsOpenChanged="(bool v) => _showUserPicker = v"
+                 Users="@_memberCandidates"
+                 InitialSelectedUserId="@_preselectedUserId"
+                 OnSubmit="HandleUserPickedAsync"
+                 OnCancel="() => _showUserPicker = false" />
+
 
 @code {
     [Parameter] public int ProjectId { get; set; }
@@ -166,6 +189,11 @@
     private string _activeTab = "overview";
     private bool _loadingOverview;
     private string? _error;
+
+    // ======= Miembros =======
+    private List<ExternalUserDTO>? _members;
+    private bool _loadingMembers;
+    private string? _membersError;
 
     // ======= Visitas =======
     private List<VisitListResponseDTO>? _visits;
@@ -190,11 +218,16 @@
     private bool _loadingExtensions;
     private string? _extensionsError;
 
-
     private bool _accrualModalOpen;
     private bool _savingAccrual;
     private string? _accrualError;
     private ExecuteDevengadoRequestDTO _accrualSeed = new();
+
+    // ====== User Picker (miembros) ======
+    private bool _showUserPicker;
+    private List<ExternalUserDTO> _memberCandidates = new();
+    private int? _preselectedUserId;
+
 
     // ======= Lifecycle =======
     protected override async Task OnInitializedAsync()
@@ -238,6 +271,43 @@
                     _loadingOverview = false;
                 }
                 break;
+
+            case "members":
+                _loadingMembers = true;
+                _membersError = null;
+                try
+                {
+                    // Asegura tener detalle de proyecto y GroupId
+                    await EnsureProjectDetailIfNeeded();
+
+                    if (_project?.ProjectGroupId is null or 0)
+                    {
+                        _members = new();
+                        _membersError = "Este proyecto no tiene un grupo asignado.";
+                    }
+                    else
+                    {
+                        var res = await GroupService.GetMembersByGroupIdAsync(_project.ProjectGroupId);
+                        if (res.Success)
+                            _members = res.Response ?? new();
+                        else
+                        {
+                            _members = new();
+                            _membersError = res.Error ?? "No se pudieron cargar los miembros.";
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _members = new();
+                    _membersError = $"Error de conexión: {ex.Message}";
+                }
+                finally
+                {
+                    _loadingMembers = false;
+                }
+                break;
+
             case "extensions":
                 _loadingExtensions = true;
                 _extensionsError = null;
@@ -262,7 +332,6 @@
                     _loadingExtensions = false;
                 }
                 break;
-
 
             case "visits":
                 _loadingVisits = true;
@@ -299,7 +368,7 @@
                     var b = await BudgetService.GetBudgetAsync(ProjectId);
                     if (b.Success)
                     {
-                        _budget = b.Response; // puede ser null si no hay presupuesto
+                        _budget = b.Response;
                         if (_budget is not null)
                         {
                             var tr = await BudgetService.GetListBudgetTransactionAsync(_budget.BudgetId);
@@ -336,6 +405,79 @@
                 break;
         }
     }
+
+    // ===== Acciones miembros =====
+    private async Task HandleInviteMember()
+    {
+        await EnsureProjectDetailIfNeeded();
+
+        if (_project?.ProjectGroupId is null or 0)
+        {
+            Toast.ShowWarning("Este proyecto no tiene un grupo asignado.");
+            return;
+        }
+
+        // 1) Traer todos los usuarios externos
+        var all = await ExternalUserService.GetListAsync();
+        if (!all.Success)
+        {
+            Toast.ShowError(all.Error ?? "No se pudieron cargar los usuarios.");
+            return;
+        }
+
+        // 2) Filtrar los que YA están en el grupo
+        var existingIds = new HashSet<int>((_members ?? new()).Select(m => m.UserId));
+        _memberCandidates = (all.Response ?? new())
+            .Where(u => !existingIds.Contains(u.UserId))
+            .OrderBy(u => u.FullName)
+            .ToList();
+
+        if (_memberCandidates.Count == 0)
+        {
+            Toast.ShowInfo("No hay usuarios disponibles para agregar.");
+            return;
+        }
+
+        _preselectedUserId = null;
+        _showUserPicker = true;
+        StateHasChanged();
+    }
+
+    private Task HandleChangeRole(int userId)
+    {
+        // Lógica para cambiar rol de un miembro
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleRemoveMember(int userGroupId)
+    {
+        await EnsureProjectDetailIfNeeded();
+
+        if (_project?.ProjectGroupId is null or 0)
+        {
+            Toast.ShowWarning("Este proyecto no tiene un grupo asignado.");
+            return;
+        }
+
+        try
+        {
+            var res = await GroupService.RemoveMemberAsync(_project.ProjectGroupId, userGroupId);
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "No se pudo remover el miembro.");
+                return;
+            }
+
+            Toast.ShowSuccess("Miembro removido.");
+            await EnsureTabDataAsync("members");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al remover miembro: {ex.Message}");
+        }
+    }
+
 
     // ===== Acciones presupuesto =====
     private Task HandleAddCertification()
@@ -467,7 +609,6 @@
 
             if (resp.Success && resp.Response is VisitListResponseDTO updated && _visits is not null)
             {
-                // Sincroniza la lista local con lo que diga el backend
                 var local = _visits.FirstOrDefault(x => x.VisitId == updated.VisitId);
                 if (local is not null)
                 {
@@ -478,7 +619,6 @@
             }
             else
             {
-                // Si falló, recarga la pestaña de visitas (o revierte si prefieres)
                 _visitsError = resp.Error ?? "No se pudo actualizar el estado de la visita.";
                 await EnsureTabDataAsync("visits");
             }
@@ -490,7 +630,6 @@
         }
     }
 
-
     // ===== Util =====
     private async Task ReloadBudgetTabAsync()
     {
@@ -501,29 +640,71 @@
     // ===== Acciones visitas =====
     private Task HandleAddVisit()
     {
-        // Nav.NavigateTo($"/projects/{ProjectId}/visits/new");
         return Task.CompletedTask;
     }
 
     private Task HandleOpenVisit(int visitId)
     {
-        // Nav.NavigateTo($"/visits/{visitId}");
         return Task.CompletedTask;
     }
+
     // ===== Acciones prórrogas =====
     private Task HandleRequestExtension()
     {
-        // Aquí podrías abrir un modal de "nueva prórroga"
-        // o navegar a una ruta de creación:
-        // Nav.NavigateTo($"/projects/{ProjectId}/extensions/new");
         return Task.CompletedTask;
     }
 
     private Task HandleOpenExtension(int projectExtensionId)
     {
-        // Navegar a detalle de la prórroga si existe una página:
-        // Nav.NavigateTo($"/extensions/{projectExtensionId}");
         return Task.CompletedTask;
     }
 
+    // ===== Acciones miembros =====
+    private async Task EnsureProjectDetailIfNeeded()
+    {
+        if (_project is null)
+        {
+            var detail = await ProjectService.GetDetailAsync(ProjectId);
+            if (detail.Success) _project = detail.Response;
+        }
+    }
+
+    private async Task HandleUserPickedAsync(int userId)
+    {
+        await EnsureProjectDetailIfNeeded();
+
+        if (_project?.ProjectGroupId is null or 0)
+        {
+            Toast.ShowWarning("Este proyecto no tiene un grupo asignado.");
+            _showUserPicker = false;
+            return;
+        }
+
+        try
+        {
+            var req = new AddGroupMemberRequestDTO
+            {
+                ExternalUserId = userId,
+                GroupId = _project.ProjectGroupId
+            };
+
+            var res = await GroupService.AddMemberAsync(req);
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "No se pudo agregar el miembro.");
+                return;
+            }
+
+            Toast.ShowSuccess("Miembro agregado.");
+            _showUserPicker = false;
+
+            // refrescar la pestaña de miembros
+            await EnsureTabDataAsync("members");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al agregar miembro: {ex.Message}");
+        }
+    }
 }

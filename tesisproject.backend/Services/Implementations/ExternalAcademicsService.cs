@@ -4,6 +4,7 @@ using System.Text.Json;
 using tesisproject.backend.Options;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.External;
+using tesisproject.shared.DTOs.Filters;
 using tesisproject.shared.Entities.External;
 using tesisproject.shared.Responses;
 
@@ -49,23 +50,23 @@ namespace tesisproject.backend.Services.Implementations
 
                 // 1) Facultades (parent null)
                 var faculties = payload
-                    .Where(x => x.id_facultad_carrera_pertenece is null)
+                    .Where(x => x.ParentId is null)
                     .Select(f => new ExternalFacultyDTO
                     {
-                        FacultyId = f.id_facultad_carrera,
-                        Name      = f.nombre,
-                        Acronym   = f.siglas
+                        FacultyId = f.Id,
+                        Name      = f.Name,
+                        Acronym   = f.Acronym
                     })
                     .ToDictionary(f => f.FacultyId, f => f);
 
                 // 2) Programas (parent != null)
                 var programs = payload
-                    .Where(x => x.id_facultad_carrera_pertenece is not null)
+                    .Where(x => x.ParentId is not null)
                     .Select(p => new ExternalProgramDTO
                     {
-                        ProgramId = p.id_facultad_carrera,
-                        FacultyId = p.id_facultad_carrera_pertenece!.Value,
-                        Name      = p.nombre
+                        ProgramId = p.Id,
+                        FacultyId = p.ParentId!.Value,
+                        Name      = p.Name
                     });
 
                 // 3) Anidar programas
@@ -154,6 +155,67 @@ namespace tesisproject.backend.Services.Implementations
             {
                 _logger.LogError(ex, "Unexpected error retrieving program {ProgramId}", programId);
                 return ServiceResult<ExternalProgramDTO>.Fail("Unexpected error.", ErrorType.Unexpected);
+            }
+        }
+
+        public async Task<ServiceResult<List<ExternalFacultyDTO>>> GetFacultiesAsync(CancellationToken ct = default)
+        {
+            try
+            {
+                var raw = await FetchRawAsync(ct);
+                var faculties = raw
+                    .Where(x => x.ParentId is null) // <-- FACULTAD
+                    .OrderBy(x => x.Name)
+                    .Select(f => new ExternalFacultyDTO
+                    {
+                        FacultyId = f.Id,
+                        Name = f.Name,
+                        Acronym = f.Acronym
+                    })
+                    .ToList();
+
+                return faculties.Count == 0
+                    ? ServiceResult<List<ExternalFacultyDTO>>.Fail("No faculties found.", ErrorType.NotFound)
+                    : ServiceResult<List<ExternalFacultyDTO>>.Ok(faculties, "Faculties retrieved.");
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                _logger.LogWarning(ex, "External endpoint {Endpoint} returned 404", _opts.AcademicsEndpoint);
+                return ServiceResult<List<ExternalFacultyDTO>>.Fail("Faculties not found.", ErrorType.NotFound);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error retrieving faculties");
+                return ServiceResult<List<ExternalFacultyDTO>>.Fail("Unexpected error.", ErrorType.Unexpected);
+            }
+        }
+
+        public async Task<ServiceResult<List<KeyValueItemDTO>>> GetFacultiesKeyValuesAsync(CancellationToken ct = default)
+        {
+            try
+            {
+                var res = await GetFacultiesAsync(ct);
+                if (!res.Success || res.Data is null)
+                    return ServiceResult<List<KeyValueItemDTO>>.Fail("API error.", ErrorType.Unexpected);
+
+                var kv = res.Data
+                    .Select(f => new KeyValueItemDTO
+                    {
+                        Id = f.FacultyId,
+                        Name = f.Name,
+                        Value = f.FacultyId.ToString(),
+                        Label = f.Name
+                    })
+                    .ToList();
+
+                return kv.Count == 0
+                    ? ServiceResult<List<KeyValueItemDTO>>.Fail("No faculties found.", ErrorType.NotFound)
+                    : ServiceResult<List<KeyValueItemDTO>>.Ok(kv, "Faculties key-values retrieved.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Unexpected error retrieving faculties key-values");
+                return ServiceResult<List<KeyValueItemDTO>>.Fail("Unexpected error.", ErrorType.Unexpected);
             }
         }
 

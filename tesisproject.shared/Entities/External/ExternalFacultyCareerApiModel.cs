@@ -1,19 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text.Json.Serialization;
 
 namespace tesisproject.shared.Entities.External
 {
     /// <summary>
     /// Mirrors the external API payload for faculties and careers in a single list.
     /// </summary>
-    public class ExternalFacultyCareerApiModel
+    public sealed class ExternalFacultyCareerApiModel
     {
-        public int id_facultad_carrera { get; set; }
-        public int? id_facultad_carrera_pertenece { get; set; }
-        public string nombre { get; set; } = string.Empty;
-        public string? siglas { get; set; }  // only present for faculties
+        [JsonPropertyName("id_facultad_carrera")]
+        public int Id { get; set; }
+
+        [JsonPropertyName("id_facultad_carrera_pertenece")]
+        public int? ParentId { get; set; }  // null => Faculty, not null => Career/Program
+
+        [JsonPropertyName("nombre")]
+        public string Name { get; set; } = string.Empty;
+
+        [JsonPropertyName("siglas")]
+        public string? Acronym { get; set; }  // only present for faculties
     }
 }

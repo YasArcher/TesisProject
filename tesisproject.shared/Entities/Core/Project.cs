@@ -76,6 +76,8 @@ namespace tesisproject.shared.Entities.Core
         // ================================
         [Range(0, 100)]
         public decimal? ExecutionPercentage { get; set; }        // porcentaje_de_ejecucion
+        [Required]
+        public int FacultyId { get; set; }
 
         // ================================
         //        Navigation Properties
@@ -92,6 +94,6 @@ namespace tesisproject.shared.Entities.Core
         // ================================
         //      Collections / Many-to-Many
         // ================================
-        public ICollection<ExternalResearcher> ExternalResearchers { get; set; } = new List<ExternalResearcher>();
+        public ICollection<ExternalResearcherProject> ExternalResearcherProjects { get; set; } = new List<ExternalResearcherProject>();
     }
 }
