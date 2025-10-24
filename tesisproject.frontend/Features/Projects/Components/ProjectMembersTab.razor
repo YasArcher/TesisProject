@@ -1,0 +1,222 @@
+﻿@using System.Globalization
+@using Microsoft.AspNetCore.Components
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.StatCard
+@using tesisproject.shared.DTOs.External
+
+<div class="p-6 space-y-4">
+    <!-- Header + actions -->
+    <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
+        <h3 class="text-base font-semibold text-foreground">Project members</h3>
+
+        <div class="flex items-center gap-2">
+            <input @bind="searchText"
+                   @bind:event="oninput"
+                   placeholder="Search by name, email, role or document…"
+                   class="w-72 px-3 py-2 rounded-md border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 placeholder:text-muted" />
+
+            <ActionButton Text="Invite member"
+                          Intent="ButtonIntent.Accept"
+                          Variant="ButtonVariant.Filled"
+                          Size="ButtonSize.Sm"
+                          Execute="@(()=> OnInviteMember.InvokeAsync())" />
+        </div>
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="text-sm text-muted">Loading members…</div>
+    }
+    else if (Members is null || Members.Count == 0)
+    {
+        <div class="text-sm text-muted">This project has no members yet.</div>
+    }
+    else
+    {
+        <!-- KPIs -->
+        <div class="grid md:grid-cols-3 gap-3">
+            <StatCard Title="Members"
+                      FormattedValue="@totalMembers.ToString("N0", CultureInfo.InvariantCulture)"
+                      Variant="StatCardVariant.Outlined"
+                      Emphasis="StatCardEmphasis.Normal"
+                      Size="StatCardSize.Md">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="size-6" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7.5 6a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM4.5 18.75A6.75 6.75 0 0 1 18 18.75v.75H4.5v-.75Z" />
+                    </svg>
+                </Icon>
+            </StatCard>
+
+            <StatCard Title="Unique roles"
+                      FormattedValue="@uniqueRolesCount.ToString("N0", CultureInfo.InvariantCulture)"
+                      Variant="StatCardVariant.Outlined"
+                      Emphasis="StatCardEmphasis.Normal"
+                      Size="StatCardSize.Md">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="size-6" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 6.75A2.75 2.75 0 0 1 5.75 4h12.5A2.75 2.75 0 0 1 21 6.75v10.5A2.75 2.75 0 0 1 18.25 20H5.75A2.75 2.75 0 0 1 3 17.25V6.75Z" />
+                        <path d="M7 8h10v2H7zM7 12h7v2H7z" />
+                    </svg>
+                </Icon>
+            </StatCard>
+
+            <StatCard Title="With faculty/career link"
+                      FormattedValue="@withFacultyCareer.ToString("N0", CultureInfo.InvariantCulture)"
+                      Variant="StatCardVariant.Outlined"
+                      Emphasis="StatCardEmphasis.Normal"
+                      Size="StatCardSize.Md">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="size-6" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2 1 7l11 5 9-4.091V17h2V7L12 2z" />
+                        <path d="M3 19h9v-6L3 8v11z" />
+                    </svg>
+                </Icon>
+            </StatCard>
+        </div>
+
+        <!-- Header + count -->
+        <div class="flex justify-between items-center mt-4">
+            <h4 class="text-sm font-medium text-foreground">Members</h4>
+            <div class="text-xs text-muted">
+                <span>Total: @filtered.Count</span>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto rounded-lg border border-border bg-background">
+            <table class="min-w-full text-sm">
+                <thead class="bg-foreground/5 text-left">
+                    <tr class="[&>th]:py-2 [&>th]:px-3 [&>th]:font-semibold [&>th]:text-xs text-foreground">
+                        <th class="w-48">Name</th>
+                        <th class="w-56">Email</th>
+                        <th class="w-40">Role</th>
+                        <th class="w-40">Position</th>
+                        <th class="w-32">Document</th>
+                        <th class="w-32">Faculty/Career</th>
+                        <th class="text-right w-44">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in PagedItems)
+                    {
+                        <tr class="border-t border-border hover:bg-foreground/5 transition-colors">
+                            <td class="py-2 px-3 font-medium text-foreground">@m.FullName</td>
+                            <td class="py-2 px-3 text-muted">@m.Email</td>
+                            <td class="py-2 px-3">
+                                <span class="px-2 py-0.5 rounded-full text-xs border border-border text-foreground bg-foreground/5">
+                                    @m.Role
+                                </span>
+                            </td>
+                            <td class="py-2 px-3 text-foreground">@m.Position</td>
+                            <td class="py-2 px-3 text-foreground">@m.Document</td>
+                            <td class="py-2 px-3 text-foreground">@((m.FacultyCareerId?.ToString()) ?? "-")</td>
+                            <td class="py-2 px-3 text-right">
+                                <div class="inline-flex gap-1">
+                                    <ActionButton Text="Change role"
+                                                  Intent="ButtonIntent.Neutral"
+                                                  Variant="ButtonVariant.Ghost"
+                                                  Size="ButtonSize.Xs"
+                                                  Execute="@(()=> OnChangeRole.InvokeAsync(m.UserId))" />
+                                    <ActionButton Text="Remove"
+                                                  Intent="ButtonIntent.Danger"
+                                                  Variant="ButtonVariant.Outline"
+                                                  Size="ButtonSize.Xs"
+                                                  Execute="@(()=> OnRemoveMember.InvokeAsync(m.UserId))" />
+                                    <ActionButton Text="Remove"
+                                                  Intent="ButtonIntent.Danger"
+                                                  Variant="ButtonVariant.Outline"
+                                                  Size="ButtonSize.Xs"
+                                                  Execute="@(()=> OnRemoveMember.InvokeAsync(m.UserGroupId))" />
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="flex items-center justify-between mt-3 text-sm">
+            <span class="text-muted">
+                Showing @((currentPage - 1) * PageSize + 1)
+                –
+                @(Math.Min(currentPage * PageSize, filtered.Count))
+                of @filtered.Count
+            </span>
+
+            <div class="flex gap-2">
+                <button class="px-3 py-1 rounded border border-border text-foreground bg-background hover:bg-foreground/5 disabled:opacity-50 transition-colors"
+                        disabled="@(!CanPrev)"
+                        @onclick="PrevPage">
+                    Prev
+                </button>
+                <button class="px-3 py-1 rounded bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                        disabled="@(!CanNext)"
+                        @onclick="NextPage">
+                    Next
+                </button>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    // ===== Parameters =====
+    [Parameter] public List<ExternalUserDTO>? Members { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+
+    // Eventos (padre)
+    [Parameter] public EventCallback OnInviteMember { get; set; }
+    [Parameter] public EventCallback<int> OnChangeRole { get; set; }   // UserId
+    [Parameter] public EventCallback<int> OnRemoveMember { get; set; } // UserId
+
+    // Paginación + filtro
+    [Parameter] public int PageSize { get; set; } = 15;
+    private int currentPage = 1;
+    private string searchText = string.Empty;
+
+    // KPIs
+    private int totalMembers => Members?.Count ?? 0;
+
+    private int uniqueRolesCount => Members?
+        .Select(m => (m.Role ?? string.Empty).Trim())
+        .Where(r => !string.IsNullOrWhiteSpace(r))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Count() ?? 0;
+
+    private int withFacultyCareer => Members?.Count(m => m.FacultyCareerId.HasValue) ?? 0;
+
+    // Filtro
+    private List<ExternalUserDTO> filtered => string.IsNullOrWhiteSpace(searchText)
+        ? (Members ?? new())
+        : (Members ?? new())
+            .Where(m =>
+                (!string.IsNullOrWhiteSpace(m.FullName) && m.FullName.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrWhiteSpace(m.Email) && m.Email.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrWhiteSpace(m.Role) && m.Role.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrWhiteSpace(m.Document) && m.Document.Contains(searchText, StringComparison.OrdinalIgnoreCase))
+            )
+            .ToList();
+
+    private IEnumerable<ExternalUserDTO> PagedItems => filtered
+        .Skip((currentPage - 1) * PageSize)
+        .Take(PageSize);
+
+    private bool CanPrev => currentPage > 1;
+    private bool CanNext => currentPage * PageSize < filtered.Count;
+
+    private void PrevPage()
+    {
+        if (CanPrev) currentPage--;
+    }
+    private void NextPage()
+    {
+        if (CanNext) currentPage++;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if ((currentPage - 1) * PageSize >= filtered.Count)
+            currentPage = 1;
+    }
+}

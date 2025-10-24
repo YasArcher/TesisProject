@@ -25,7 +25,7 @@ namespace tesisproject.shared.Entities.Core
         [Required]
         public int UserId { get; set; }               // id_usuario (usuario externo)
 
-        public int? MemberRoleId { get; set; }        // id_rol_integrante (rol del integrante: Líder, Miembro, etc.)
+        public int MemberRoleId { get; set; }        // id_rol_integrante (rol del integrante: Líder, Miembro, etc.)
 
         // ================================
         //              Dates

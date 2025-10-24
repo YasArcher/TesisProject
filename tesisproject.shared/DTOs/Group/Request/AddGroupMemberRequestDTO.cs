@@ -17,7 +17,6 @@ namespace tesisproject.shared.DTOs.Group.Request
         /// </summary>
         public int ExternalUserId { get; set; } = 0;
 
-        [Required, StringLength(60)]
         public int MemberRole { get; set; } = 0;
     }
 }

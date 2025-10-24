@@ -1,4 +1,5 @@
-﻿@using tesisproject.frontend.SharedUI
+﻿@using tesisproject.frontend.Features.Components
+@using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.SearchInput
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.Services.Interfaces
@@ -22,7 +23,7 @@
         <div class="flex-1 min-h-0 overflow-y-auto">
             <Container TItem="GroupResponseDTO"
                        Items="@FilteredGroups"
-                       Title="GRUPOS"
+                       Title="Grupos"
                        ShowItemCount="true"
                        GridClasses="grid grid-cols-1 gap-4"
                        EmptyStateTitle="No hay grupos"

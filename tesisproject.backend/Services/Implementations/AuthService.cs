@@ -34,7 +34,7 @@ namespace tesisproject.backend.Services.Implementations
             var user = new IdentityUser<int>
             {
                 Email = dto.Email,
-                UserName = dto.Email,
+                UserName = dto.Username,
                 EmailConfirmed = false
             };
 

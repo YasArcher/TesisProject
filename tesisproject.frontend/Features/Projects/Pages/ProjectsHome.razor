@@ -120,6 +120,55 @@
                     });
                 }
 
+                // Tipo de Proyecto
+                if (bootstrap.Funding?.Any() == true)
+                {
+                    _filterConfig.Items.Add(new()
+                    {
+                        Key = "type",
+                        Label = "Tipo",
+                        Type = "select",
+                        EntityField = "FundingTypeId",
+                        Placeholder = "Todos los financiamientos",
+                        Options = bootstrap.Funding.Select(type => new OptionItem
+                        {
+                            Value = type.Name ?? string.Empty,
+                            Label = type.Name ?? string.Empty
+                        }).ToList()
+                    });
+                }
+                // Facultad (desde API externa, mapeada en bootstrap.Faculties)
+                if (bootstrap.Faculties?.Any() == true)
+                {
+                    _filterConfig.Items.Add(new()
+                    {
+                        Key = "faculty",
+                        Label = "Facultad",
+                        Type = "select",
+                        EntityField = "PrincipalCoordinatorFacultyId",
+                        Placeholder = "Todas las facultades",
+                        Options = bootstrap.Faculties.Select(f => new OptionItem
+                        {
+                            Value = f.Id.ToString(),               // <-- Value = Id (recomendado)
+                            Label = f.Name
+                        }).ToList()
+                    });
+
+                    // (Opcional) Preparar un segundo filtro para Carrera/Programa en cascada.
+                    // Déjalo vacío por ahora; lo poblas cuando el usuario seleccione una Facultad.
+                    /*
+                    _filterConfig.Items.Add(new()
+                    {
+                        Key = "program",
+                        Label = "Carrera/Programa",
+                        Type = "select",
+                        EntityField = "ProgramId",
+                        Placeholder = "Todas las carreras",
+                        Options = new List<OptionItem>()           // se cargará dinámicamente
+                    });
+                    */
+                }
+
                 // Siempre agregar filtros de fechas y porcentaje (no dependen del bootstrap)
                 _filterConfig.Items.Add(new()
                 {

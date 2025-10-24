@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace tesisproject.backend.Migrations
 {
     /// <inheritdoc />
-    public partial class Add_BD : Migration
+    public partial class cambioDBContext : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -397,8 +397,7 @@ namespace tesisproject.backend.Migrations
                         name: "FK_RefreshTokens_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -441,6 +440,16 @@ namespace tesisproject.backend.Migrations
                 {
                     table.PrimaryKey("PK_Documents", x => x.DocumentId);
                     table.ForeignKey(
+                        name: "FK_Documents_AspNetUsers_CreatedByUserId",
+                        column: x => x.CreatedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Documents_AspNetUsers_UpdatedByUserId",
+                        column: x => x.UpdatedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
                         name: "FK_Documents_DocumentTypes_DocumentTypeId",
                         column: x => x.DocumentTypeId,
                         principalTable: "DocumentTypes",
@@ -450,7 +459,8 @@ namespace tesisproject.backend.Migrations
                         name: "FK_Documents_Documents_RelatedDocumentId",
                         column: x => x.RelatedDocumentId,
                         principalTable: "Documents",
-                        principalColumn: "DocumentId");
+                        principalColumn: "DocumentId",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -514,6 +524,16 @@ namespace tesisproject.backend.Migrations
                 {
                     table.PrimaryKey("PK_Researchers", x => x.Id);
                     table.ForeignKey(
+                        name: "FK_Researchers_AspNetUsers_CreatedByUserId",
+                        column: x => x.CreatedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Researchers_AspNetUsers_UpdatedByUserId",
+                        column: x => x.UpdatedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
                         name: "FK_Researchers_ResearcherTypes_ResearcherTypeId",
                         column: x => x.ResearcherTypeId,
                         principalTable: "ResearcherTypes",
@@ -557,6 +577,11 @@ namespace tesisproject.backend.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_GroupMembers", x => x.GroupMemberId);
+                    table.ForeignKey(
+                        name: "FK_GroupMembers_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_GroupMembers_Groups_GroupId",
                         column: x => x.GroupId,
@@ -602,8 +627,7 @@ namespace tesisproject.backend.Migrations
                         name: "FK_Projects_AspNetUsers_CreatedByUserId",
                         column: x => x.CreatedByUserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Restrict);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Projects_Documents_InitialDocumentId",
                         column: x => x.InitialDocumentId,
@@ -657,13 +681,59 @@ namespace tesisproject.backend.Migrations
                     InitialAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     CertifiedAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     ExecutedAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    ApprovedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                    ApprovedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ProjectId1 = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Budgets", x => x.BudgetId);
                     table.ForeignKey(
+                        name: "FK_Budgets_AspNetUsers_ApprovedByUserId",
+                        column: x => x.ApprovedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
                         name: "FK_Budgets_Projects_ProjectId",
+                        column: x => x.ProjectId,
+                        principalTable: "Projects",
+                        principalColumn: "ProjectId");
+                    table.ForeignKey(
+                        name: "FK_Budgets_Projects_ProjectId1",
+                        column: x => x.ProjectId1,
+                        principalTable: "Projects",
+                        principalColumn: "ProjectId",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ExternalResearcherProjects",
+                columns: table => new
+                {
+                    ExternalResearcherProjectId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ExternalResearcherId = table.Column<int>(type: "int", nullable: false),
+                    ProjectId = table.Column<int>(type: "int", nullable: false),
+                    Role = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedByUserId = table.Column<int>(type: "int", nullable: false),
+                    ExitDate = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ExternalResearcherProjects", x => x.ExternalResearcherProjectId);
+                    table.ForeignKey(
+                        name: "FK_ExternalResearcherProjects_AspNetUsers_CreatedByUserId",
+                        column: x => x.CreatedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ExternalResearcherProjects_ExternalResearchers_ExternalResearcherId",
+                        column: x => x.ExternalResearcherId,
+                        principalTable: "ExternalResearchers",
+                        principalColumn: "ExternalResearcherId",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ExternalResearcherProjects_Projects_ProjectId",
                         column: x => x.ProjectId,
                         principalTable: "Projects",
                         principalColumn: "ProjectId",
@@ -698,30 +768,6 @@ namespace tesisproject.backend.Migrations
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_ProjectExtensions_Projects_ProjectId",
-                        column: x => x.ProjectId,
-                        principalTable: "Projects",
-                        principalColumn: "ProjectId",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
-            migrationBuilder.CreateTable(
-                name: "ProjectExternalResearchers",
-                columns: table => new
-                {
-                    ProjectId = table.Column<int>(type: "int", nullable: false),
-                    ExternalResearcherId = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ProjectExternalResearchers", x => new { x.ProjectId, x.ExternalResearcherId });
-                    table.ForeignKey(
-                        name: "FK_ProjectExternalResearchers_ExternalResearchers_ExternalResearcherId",
-                        column: x => x.ExternalResearcherId,
-                        principalTable: "ExternalResearchers",
-                        principalColumn: "ExternalResearcherId",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_ProjectExternalResearchers_Projects_ProjectId",
                         column: x => x.ProjectId,
                         principalTable: "Projects",
                         principalColumn: "ProjectId",
@@ -802,6 +848,11 @@ namespace tesisproject.backend.Migrations
                 {
                     table.PrimaryKey("PK_Visits", x => x.VisitId);
                     table.ForeignKey(
+                        name: "FK_Visits_AspNetUsers_PerformedByUserId",
+                        column: x => x.PerformedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
                         name: "FK_Visits_Documents_DocumentId",
                         column: x => x.DocumentId,
                         principalTable: "Documents",
@@ -839,6 +890,16 @@ namespace tesisproject.backend.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_BudgetTransactions", x => x.BudgetTransactionId);
+                    table.ForeignKey(
+                        name: "FK_BudgetTransactions_AspNetUsers_CertifiedByUserId",
+                        column: x => x.CertifiedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_BudgetTransactions_AspNetUsers_ExecutedByUserId",
+                        column: x => x.ExecutedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_BudgetTransactions_Budgets_BudgetId",
                         column: x => x.BudgetId,
@@ -893,10 +954,20 @@ namespace tesisproject.backend.Migrations
                 filter: "[NormalizedUserName] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Budgets_ApprovedByUserId",
+                table: "Budgets",
+                column: "ApprovedByUserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Budgets_ProjectId",
                 table: "Budgets",
                 column: "ProjectId",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Budgets_ProjectId1",
+                table: "Budgets",
+                column: "ProjectId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_BudgetTransactions_BudgetId",
@@ -904,9 +975,24 @@ namespace tesisproject.backend.Migrations
                 column: "BudgetId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_BudgetTransactions_CertifiedByUserId",
+                table: "BudgetTransactions",
+                column: "CertifiedByUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_BudgetTransactions_ExecutedByUserId",
+                table: "BudgetTransactions",
+                column: "ExecutedByUserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_BudgetTransactions_TransactionTypeId",
                 table: "BudgetTransactions",
                 column: "TransactionTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Documents_CreatedByUserId",
+                table: "Documents",
+                column: "CreatedByUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Documents_DocumentTypeId",
@@ -919,6 +1005,26 @@ namespace tesisproject.backend.Migrations
                 column: "RelatedDocumentId",
                 unique: true,
                 filter: "[RelatedDocumentId] IS NOT NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Documents_UpdatedByUserId",
+                table: "Documents",
+                column: "UpdatedByUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExternalResearcherProjects_CreatedByUserId",
+                table: "ExternalResearcherProjects",
+                column: "CreatedByUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExternalResearcherProjects_ExternalResearcherId",
+                table: "ExternalResearcherProjects",
+                column: "ExternalResearcherId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ExternalResearcherProjects_ProjectId",
+                table: "ExternalResearcherProjects",
+                column: "ProjectId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ExternalResearchers_InstitutionId",
@@ -934,6 +1040,11 @@ namespace tesisproject.backend.Migrations
                 name: "IX_GroupMembers_MemberRoleId",
                 table: "GroupMembers",
                 column: "MemberRoleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_GroupMembers_UserId",
+                table: "GroupMembers",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Groups_GroupTypeId",
@@ -966,11 +1077,6 @@ namespace tesisproject.backend.Migrations
                 name: "IX_ProjectExtensions_ProjectId",
                 table: "ProjectExtensions",
                 column: "ProjectId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_ProjectExternalResearchers_ExternalResearcherId",
-                table: "ProjectExternalResearchers",
-                column: "ExternalResearcherId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProjectObjectives_ObjectiveTypeId",
@@ -1044,9 +1150,19 @@ namespace tesisproject.backend.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Researchers_CreatedByUserId",
+                table: "Researchers",
+                column: "CreatedByUserId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Researchers_ResearcherTypeId",
                 table: "Researchers",
                 column: "ResearcherTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Researchers_UpdatedByUserId",
+                table: "Researchers",
+                column: "UpdatedByUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ResearchLineTypes_ResearchDomainTypeId",
@@ -1057,6 +1173,11 @@ namespace tesisproject.backend.Migrations
                 name: "IX_Visits_DocumentId",
                 table: "Visits",
                 column: "DocumentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Visits_PerformedByUserId",
+                table: "Visits",
+                column: "PerformedByUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Visits_ProjectId",
@@ -1091,6 +1212,9 @@ namespace tesisproject.backend.Migrations
                 name: "BudgetTransactions");
 
             migrationBuilder.DropTable(
+                name: "ExternalResearcherProjects");
+
+            migrationBuilder.DropTable(
                 name: "GroupMembers");
 
             migrationBuilder.DropTable(
@@ -1098,9 +1222,6 @@ namespace tesisproject.backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "ProjectExtensions");
-
-            migrationBuilder.DropTable(
-                name: "ProjectExternalResearchers");
 
             migrationBuilder.DropTable(
                 name: "ProjectObjectives");
@@ -1127,13 +1248,13 @@ namespace tesisproject.backend.Migrations
                 name: "TransactionTypes");
 
             migrationBuilder.DropTable(
+                name: "ExternalResearchers");
+
+            migrationBuilder.DropTable(
                 name: "MemberRoleTypes");
 
             migrationBuilder.DropTable(
                 name: "ProjectExtensionTypes");
-
-            migrationBuilder.DropTable(
-                name: "ExternalResearchers");
 
             migrationBuilder.DropTable(
                 name: "ObjectiveTypes");
@@ -1152,9 +1273,6 @@ namespace tesisproject.backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "Institutions");
-
-            migrationBuilder.DropTable(
-                name: "AspNetUsers");
 
             migrationBuilder.DropTable(
                 name: "Documents");
@@ -1176,6 +1294,9 @@ namespace tesisproject.backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "Countries");
+
+            migrationBuilder.DropTable(
+                name: "AspNetUsers");
 
             migrationBuilder.DropTable(
                 name: "DocumentTypes");

@@ -12,14 +12,17 @@ namespace tesisproject.backend.Services.Implementations
     {
         private readonly ICatalogQueryService _catalogs;
         private readonly IMemoryCache _cache;
+        private readonly IExternalAcademicsService _extTypes;
 
         public ProjectsFiltersService(
             ICatalogQueryService catalogs,
             ICatalogRepository<ProjectExtensionType> extTypes,
-            IMemoryCache cache)
+            IMemoryCache cache,
+            IExternalAcademicsService externalAcademicsService)
         {
             _catalogs = catalogs;
             _cache = cache;
+            _extTypes = externalAcademicsService;
         }
 
         public async Task<ServiceResult<ProjectsFilterBootstrapDTO>> GetBootstrapAsync(
@@ -56,6 +59,31 @@ namespace tesisproject.backend.Services.Implementations
                             : new List<KeyValueItemDTO>();
                     }
                 ) ?? new List<KeyValueItemDTO>();
+                // dentro de GetBootstrapAsync
+                dto.Faculties = await _cache.GetOrCreateAsync(
+                    "filters:projects:faculties",
+                    async entry =>
+                    {
+                        entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(20);
+                        var res = await _extTypes.GetFacultiesKeyValuesAsync(ct);
+                        return res.Success && res.Data is not null ? res.Data : new List<KeyValueItemDTO>();
+                    }
+                ) ?? new List<KeyValueItemDTO>();
+
+                dto.Funding = await _cache.GetOrCreateAsync(
+                    "filters:projects:funding",
+                    async entry =>
+                    {
+                        entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(20);
+
+                        var res = await _catalogs.GetKeyValuesAsync<FundingType>(ct: ct);
+                        return res.Success && res.Data is not null
+                            ? res.Data
+                            : new List<KeyValueItemDTO>();
+                    }
+                ) ?? new List<KeyValueItemDTO>();
+
+
 
                 // extensionTypes (si lo necesitas, activa este bloque)
                 /*

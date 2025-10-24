@@ -16,6 +16,8 @@ namespace tesisproject.backend.Controllers
         private readonly IGroupService _service;
         public GroupsController(IGroupService service) => _service = service;
 
+        // ================== Groups CRUD / Members ==================
+
         // POST: api/Groups
         [HttpPost]
         public async Task<ActionResult<ApiResponse<GroupResponseDTO>>> Create(
@@ -30,12 +32,13 @@ namespace tesisproject.backend.Controllers
             CancellationToken ct)
             => (await _service.GetByIdAsync(id, ct)).ToActionResult();
 
-        // GET: api/Groups/investigation
+        // GET: api/Groups/type/{type}
         [HttpGet("type/{type:int}")]
         public async Task<ActionResult<ApiResponse<IReadOnlyList<GroupResponseDTO>>>> List(
             int type,
             CancellationToken ct = default)
-            => (await _service.ListAsync(type,ct)).ToActionResult();
+            => (await _service.ListAsync(type, ct)).ToActionResult();
+
         // PUT: api/Groups
         [HttpPut]
         public async Task<ActionResult<ApiResponse<GroupResponseDTO>>> Update(
@@ -65,12 +68,34 @@ namespace tesisproject.backend.Controllers
             CancellationToken ct)
             => (await _service.GetExternalUsersByGroupAsync(groupId, ct)).ToActionResult();
 
-        // GET: api/Groups/by-project/123
+        // GET: api/Groups/by-project/{projectId}
         [HttpGet("by-project/{projectId:int}")]
         public async Task<ActionResult<ApiResponse<IReadOnlyList<GroupResponseDTO>>>> GetByProject(
             int projectId,
             CancellationToken ct)
             => (await _service.GetByProjectAsync(projectId, ct)).ToActionResult();
 
+        // ================== External users (persona-centrado) ==================
+
+        // GET: api/Groups/external-users     (todos desde el directorio)
+        [HttpGet("external-users")]
+        public async Task<ActionResult<ApiResponse<List<ExternalUserDTO>>>> GetAllExternalUsers(
+            CancellationToken ct)
+            => (await _service.GetAllExternalUsersAsync(ct)).ToActionResult();
+
+        // GET: api/Groups/external-users/by-aspnet/{userId}
+        [HttpGet("external-users/by-aspnet/{userId:int}")]
+        public async Task<ActionResult<ApiResponse<ExternalUserDTO>>> GetExternalUserByAspNetId(
+            int userId,
+            CancellationToken ct)
+            => (await _service.GetExternalUserByAspNetIdAsync(userId, ct)).ToActionResult();
+
+        // GET: api/Groups/external-users/by-email
+        // Ej: api/Groups/external-users/by-email?email=usuario@uta.edu.ec
+        [HttpGet("external-users/by-email")]
+        public async Task<ActionResult<ApiResponse<ExternalUserDTO>>> GetExternalUserByEmail(
+            [FromQuery] string email,
+            CancellationToken ct)
+            => (await _service.GetExternalUserByEmailAsync(email, ct)).ToActionResult();
     }
 }

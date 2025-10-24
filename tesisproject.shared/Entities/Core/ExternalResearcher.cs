@@ -40,6 +40,7 @@ namespace tesisproject.shared.Entities.Core
         // ================================
         //   Collections / Many-to-Many
         // ================================
-        public ICollection<Project> Projects { get; set; } = new List<Project>(); // Relación con Project
+        public ICollection<ExternalResearcherProject> ExternalResearcherProjects { get; set; } = new List<ExternalResearcherProject>();
+
     }
 }
