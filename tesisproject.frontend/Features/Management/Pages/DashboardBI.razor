@@ -1,4 +1,5 @@
 ﻿@page "/management/bi"
+@attribute [Authorize]
 @using tesisproject.frontend.SharedUI.Charts
 @using tesisproject.frontend.SharedUI.Kpi
 @inject tesisproject.frontend.Utils.ExportJsInterop Exporter
@@ -6,59 +7,92 @@
 <AppHeroHeader Title="Inteligencia de Negocio" Subtitle="Resumen y Reportes">
     <Actions>
         <div class="btn-group">
-            <button class="btn btn-light" @onclick="() => ExportCsv()">Exportar CSV</button>
-            <button class="btn btn-primary" @onclick="() => Print()">Imprimir / PDF</button>
+            <button class="btn btn-light" @onclick="ExportCsv" title="Exportar a CSV">
+                <i class="export-icon">📥</i> Exportar CSV
+            </button>
+            <button class="btn btn-primary" @onclick="Print" title="Imprimir / Guardar como PDF">
+                <i class="print-icon">🖨️</i> Imprimir / PDF
+            </button>
         </div>
     </Actions>
 </AppHeroHeader>
 
 <div class="container-fluid" id="bi-root">
     <!-- KPIs -->
-    <div class="row g-3 mb-3">
-        <div class="col-12 col-md-3"><KpiCard Title="Artículos" Value="@Vm.TotalArticles.ToString("N0")" Icon="📄" DeltaLabel="@Vm.YoYLabel" DeltaClass="@Vm.YoYClass" /></div>
-        <div class="col-12 col-md-3"><KpiCard Title="Acceso Abierto" Value="@($"{Vm.OpenAccessPct:P0}")" Icon="🔓" /></div>
-        <div class="col-12 col-md-3"><KpiCard Title="SCOPUS" Value="@Vm.ByDb.Scopus.ToString("N0")" Icon="🧭" /></div>
-        <div class="col-12 col-md-3"><KpiCard Title="WoS" Value="@Vm.ByDb.Wos.ToString("N0")" Icon="🧪" /></div>
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-3">
+            <KpiCard Title="Artículos"
+                     Value="@Vm.TotalArticles.ToString("N0")"
+                     Icon="📄"
+                     DeltaLabel="@Vm.YoYLabel"
+                     DeltaClass="@Vm.YoYClass"
+                     CardClass="kpi-card kpi-card-hover" />
+        </div>
+        <div class="col-12 col-md-3">
+            <KpiCard Title="Acceso Abierto"
+                     Value="@($"{Vm.OpenAccessPct:P0}")"
+                     Icon="🔓"
+                     CardClass="kpi-card kpi-card-hover" />
+        </div>
+        <div class="col-12 col-md-3">
+            <KpiCard Title="SCOPUS"
+                     Value="@Vm.ByDb.Scopus.ToString("N0")"
+                     Icon="🧭"
+                     CardClass="kpi-card kpi-card-hover" />
+        </div>
+        <div class="col-12 col-md-3">
+            <KpiCard Title="WoS"
+                     Value="@Vm.ByDb.Wos.ToString("N0")"
+                     Icon="🧪"
+                     CardClass="kpi-card kpi-card-hover" />
+        </div>
     </div>
 
-    <div class="row g-3">
+    <div class="row g-4">
         <!-- Tendencia mensual -->
         <div class="col-12 col-lg-6">
-            <AppGlassCard Title="Producción mensual" Icon="📈">
-                <BarChart Labels="@Vm.MonthLabels" Values="@Vm.MonthCounts" Height="220" />
-                <div class="text-muted small mt-2">Últimos 12 meses</div>
+            <AppGlassCard Title="Producción mensual" Icon="📈" CardClass="chart-card">
+                <BarChart Labels="@Vm.MonthLabels" Values="@Vm.MonthCounts" Height="240" />
+                <div class="chart-footer">
+                    <i class="info-icon">ℹ️</i> Últimos 12 meses
+                </div>
             </AppGlassCard>
         </div>
 
         <!-- Distribución por campo -->
         <div class="col-12 col-lg-6">
-            <AppGlassCard Title="Distribución por Campo Amplio" Icon="🧭">
-                <PieDonut Items="@Vm.ByField" Height="220" />
-                <ul class="small mt-3">
+            <AppGlassCard Title="Distribución por Campo Amplio" Icon="🧭" CardClass="chart-card">
+                <PieDonut Items="@Vm.ByField" Height="240" />
+                <div class="distribution-list">
                     @foreach (var kv in Vm.ByField)
                     {
-                        <li><strong>@kv.Key</strong>: @kv.Value</li>
+                        <div class="distribution-item">
+                            <span class="field-name">@kv.Key</span>
+                            <span class="field-value">@kv.Value</span>
+                        </div>
                     }
-                </ul>
+                </div>
             </AppGlassCard>
         </div>
 
         <!-- Sparklines Top Revistas -->
         <div class="col-12">
-            <AppGlassCard Title="Top Revistas (último año)" Icon="🏆">
+            <AppGlassCard Title="Top Revistas (último año)" Icon="🏆" CardClass="chart-card">
                 <div class="row g-3">
                     @foreach (var j in Vm.TopJournals)
                     {
                         <div class="col-12 col-md-6 col-xl-3">
-                            <div class="p-3 bg-white rounded-2 shadow-sm h-100">
-                                <div class="d-flex justify-content-between">
-                                    <div class="fw-semibold">@j.Name</div>
-                                    <span class="badge text-bg-light">@j.Total</span>
+                            <div class="journal-card">
+                                <div class="journal-header">
+                                    <div class="journal-name" title="@j.Name">@j.Name</div>
+                                    <span class="journal-badge" title="Total en 12 meses">@j.Total</span>
                                 </div>
-                                <div class="mt-2">
-                                    <Sparkline Values="@j.Months" Height="48" />
+                                <div class="sparkline-container">
+                                    <Sparkline Values="@j.Months" Height="56" />
                                 </div>
-                                <div class="small text-muted mt-2">últimos 12 meses</div>
+                                <div class="journal-footer">
+                                    <i class="calendar-icon">📅</i> últimos 12 meses
+                                </div>
                             </div>
                         </div>
                     }
@@ -69,22 +103,27 @@
 </div>
 
 @code {
-    // -------- VM de ejemplo (mock local) --------
     private DashboardVm Vm = DashboardVm.Sample();
 
     private async Task ExportCsv()
     {
-        // CSV simple: puedes cambiar el dataset a lo que necesites
-        var lines = new List<string> { "Mes,Articulos" };
-        for (int i = 0; i < Vm.MonthLabels.Length; i++)
-            lines.Add($"{Vm.MonthLabels[i]},{Vm.MonthCounts[i]}");
-        var csv = string.Join("\n", lines);
-        await Exporter.ExportCsv("bi-resumen.csv", csv);
+        try
+        {
+            var lines = new List<string> { "Mes,Articulos" };
+            for (int i = 0; i < Vm.MonthLabels.Length; i++)
+                lines.Add($"{Vm.MonthLabels[i]},{Vm.MonthCounts[i]}");
+            var csv = string.Join("\n", lines);
+            await Exporter.ExportCsv("bi-resumen.csv", csv);
+        }
+        catch { }
     }
 
-    private async Task Print() => await Exporter.PrintSection("bi-root");
+    private async Task Print()
+    {
+        try { await Exporter.PrintSection("bi-root"); }
+        catch { }
+    }
 
-    // --------- Tipos auxiliares (mock) ----------
     private sealed class DashboardVm
     {
         public int TotalArticles { get; set; }
@@ -94,25 +133,29 @@
         public (int Scopus, int Wos) ByDb { get; set; }
         public string[] MonthLabels { get; set; } = Array.Empty<string>();
         public int[] MonthCounts { get; set; } = Array.Empty<int>();
-        public Dictionary<string,int> ByField { get; set; } = new();
+        public Dictionary<string, int> ByField { get; set; } = new();
         public List<JournalSeries> TopJournals { get; set; } = new();
 
         public static DashboardVm Sample()
         {
-            var labels = Enumerable.Range(0, 12).Select(i => DateTime.Now.AddMonths(-11+i).ToString("MMM")).ToArray();
+            var labels = Enumerable.Range(0, 12)
+                .Select(i => DateTime.Now.AddMonths(-11 + i).ToString("MMM"))
+                .ToArray();
+
             var rnd = new Random();
-            int[] series(int basev) => Enumerable.Range(0, 12).Select(_ => rnd.Next(basev-2, basev+3)).Select(v => Math.Max(0,v)).ToArray();
+            int[] Series(int basev) => Enumerable.Range(0, 12)
+                .Select(_ => Math.Max(0, rnd.Next(basev - 2, basev + 3))).ToArray();
 
             return new DashboardVm
             {
-                TotalArticles   = 248,
-                OpenAccessPct   = 0.62,
-                YoYLabel        = "▲ +14% vs. año anterior",
-                YoYClass        = "text-success",
-                ByDb            = (Scopus: 146, Wos: 102),
-                MonthLabels     = labels,
-                MonthCounts     = series(18),
-                ByField         = new()
+                TotalArticles = 248,
+                OpenAccessPct = 0.62,
+                YoYLabel = "▲ +14% vs. año anterior",
+                YoYClass = "text-success",
+                ByDb = (Scopus: 146, Wos: 102),
+                MonthLabels = labels,
+                MonthCounts = Series(18),
+                ByField = new()
                 {
                     ["Ciencias naturales"] = 58,
                     ["TIC"] = 52,
@@ -123,10 +166,10 @@
                 },
                 TopJournals = new()
                 {
-                    new JournalSeries("Journal A", series(6)),
-                    new JournalSeries("Journal B", series(5)),
-                    new JournalSeries("Journal C", series(4)),
-                    new JournalSeries("Journal D", series(3)),
+                    new JournalSeries("Journal A", Series(6)),
+                    new JournalSeries("Journal B", Series(5)),
+                    new JournalSeries("Journal C", Series(4)),
+                    new JournalSeries("Journal D", Series(3)),
                 }
             };
         }

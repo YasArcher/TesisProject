@@ -1,181 +1,216 @@
 ﻿@page "/articulos/registrar"
+@page "/articulos/registrar/{id:int}"
+@attribute [Authorize]
 
-<AppHeroHeader Title="Artículos Científicos" Subtitle="Registro">
+@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.SharedUI.Card
+@using tesisproject.frontend.SharedUI.Table
+
+<AppHeroHeader Title="Artículos Científicos" Subtitle="@(isEdit ? "Editar" : "Registro")">
     <Actions>
-        <a class="btn btn-light" type="button" @onclick="OnCancel" disabled="@saving">Borrador</a>
-        <button class="btn btn-primary" type="submit" form="article-form" disabled="@saving">
-            @(saving ? "Guardando..." : "Guardar")
+        <button class="btn btn-light border" type="button" @onclick="BackToList" disabled="@saving">Volver</button>
+        <!-- Un guardar arriba por accesibilidad (el primario está en el aside) -->
+        <button class="btn btn-outline-primary d-none d-md-inline-flex" type="submit" form="article-form" disabled="@saving">
+            @(saving ? "Guardando..." : (isEdit ? "Guardar" : "Guardar"))
         </button>
     </Actions>
 </AppHeroHeader>
 
-<AppPillTabs Class="mb-3" Items="@Tabs" />
+<!-- Pestañas locales -->
+<nav class="form-tabs" role="tablist" aria-label="Secciones del formulario">
+    @foreach (var t in TabItems)
+    {
+        <button type="button"
+                class="form-tab @(currentTab == t.Id ? "active" : null)"
+                role="tab"
+                aria-selected="@(currentTab == t.Id)"
+                @onclick="() => SetTab(t.Id)">
+            <span class="tab-icon">@t.Icon</span> @t.Label
+        </button>
+    }
+</nav>
+
 @if (!string.IsNullOrWhiteSpace(serverError))
 {
-    <div class="alert alert-danger">@serverError</div>
+    <div class="alert alert-danger mt-3">@serverError</div>
 }
 @if (!string.IsNullOrWhiteSpace(serverOk))
 {
-    <div class="alert alert-success">@serverOk</div>
+    <div class="alert alert-success mt-3">@serverOk</div>
 }
 
-<EditForm Id="article-form" Model="@Model" OnValidSubmit="@OnSave">
+<EditForm id="article-form" Model="@Model" OnValidSubmit="@OnSave">
     <DataAnnotationsValidator />
-    <ValidationSummary class="alert alert-warning rounded-2 mt-0 mb-3" />
+    <ValidationSummary class="alert alert-warning rounded-2 mt-3 mb-3" />
 
     <div class="row g-4">
-        <!-- ===== Columna principal ===== -->
+        <!-- ===== Columna principal (pestañas) ===== -->
         <div class="col-12 col-lg-8">
 
-            <!-- 0) PERÍODO ACADÉMICO -->
-            <AppGlassCard Title="Período Académico" Icon="📅" Class="mb-3">
-                <div class="row g-3">
-                    <AppFormSelect Label="Período" Id="periodo"
-                                   ColCss="col-12 col-md-6"
-                                   Placeholder="Seleccione…"
-                                   Options="@Catalogs.PeriodoOptions"
-                                   @bind-Value="Model.PeriodoAcademico" />
+            @* ======= TAB: GENERAL (Periodo + Identificación/Revista) ======= *@
+            @if (currentTab == TabId.General)
+            {
+                <AppGlassCard Title="Período Académico" Icon="📅" Class="mb-3">
+                    <div class="row g-3">
+                        <AppFormSelect Label="Período" Id="periodo"
+                                       ColCss="col-12 col-md-6"
+                                       Placeholder="Seleccione…"
+                                       Options="@Catalogs.PeriodoOptions"
+                                       @bind-Value="Model.PeriodoAcademico" />
 
-                    <AppFormInput Label="Año" Id="anio"
-                                  Type="number" Placeholder="2025"
-                                  ColCss="col-12 col-md-6"
-                                  @bind-Value="Model.Anio" />
-                </div>
-            </AppGlassCard>
-
-            <!-- 1) IDENTIFICACIÓN Y REVISTA -->
-            <AppGlassCard Title="Identificación y Revista" Icon="📑" Class="mb-3">
-                <div class="row g-3">
-                    <AppFormInput Label="Código Publicación" Id="codPublicacion"
-                                  Placeholder="DOI o código interno"
-                                  ColCss="col-12 col-md-6"
-                                  @bind-Value="Model.CodigoPublicacion" />
-                    <AppFormInput Label="Código ISSN" Id="issn"
-                                  Placeholder="1234-5678"
-                                  ColCss="col-12 col-md-6"
-                                  @bind-Value="Model.CodigoISSN" />
-
-                    <AppFormTextarea Label="Título Publicación" Id="titulo"
-                                     Rows="3" ColCss="col-12"
-                                     Placeholder="Escribe el título…"
-                                     @bind-Value="Model.Titulo" />
-
-                    <AppFormInput Label="Nombre revista" Id="revista"
-                                  Placeholder="Journal of…"
-                                  ColCss="col-12 col-md-6"
-                                  @bind-Value="Model.NombreRevista" />
-
-                    <AppFormInput Label="Volumen Revista" Id="VolRevista"
-                                  Placeholder="79"
-                                  ColCss="col-12 col-md-3"
-                                  @bind-Value="Model.VolumenRevista" />
-
-                    <AppFormInput Label="Número revista" Id="numRevista"
-                                  Placeholder="42(3)"
-                                  ColCss="col-12 col-md-3"
-                                  @bind-Value="Model.NumeroRevista" />
-
-                    <AppFormInput Label="Número de páginas" Id="numPaginas"
-                                  Placeholder="12"
-                                  ColCss="col-12 col-md-3"
-                                  @bind-Value="Model.NumeroPaginas" />
-
-                    <AppFormInput Label="SJR (SCImago)" Id="sjr"
-                                  Type="number" Placeholder="0.000"
-                                  ColCss="col-12 col-md-3"
-                                  @bind-Value="Model.SJR" />
-                    <AppFormInput Label="Fecha Publicación" Id="fechaPub"
-                                  Type="date"
-                                  ColCss="col-12 col-md-6"
-                                  @bind-Value="Model.FechaPublicacion" />
-                </div>
-            </AppGlassCard>
-
-            <!-- 2) CLASIFICACIÓN / INDEXACIÓN / QUARTIL -->
-            <AppGlassCard Title="Clasificación e Indexación" Icon="🧭" Class="mb-3">
-                <div class="row g-3">
-                    <AppFormSelect Label="Base datos indexado" Id="baseIndex"
-                                   ColCss="col-12 col-md-4"
-                                   Options="@Catalogs.BaseDatosOptions"
-                                   @bind-Value="Model.BaseDatos" />
-                    <AppFormSelect Label="Campo Amplio" Id="campoAmplio"
-                                   ColCss="col-12 col-md-4"
-                                   Options="@Catalogs.CampoAmplioOptions"
-                                   @bind-Value="Model.CampoAmplio" />
-                    <AppFormSelect Label="Campo Específico" Id="campoEspecifico"
-                                   ColCss="col-12 col-md-4"
-                                   Options="@Catalogs.CampoEspecificoOptions"
-                                   @bind-Value="Model.CampoEspecifico" />
-                    <AppFormSelect Label="Campo Detallado" Id="campoDetallado"
-                                   ColCss="col-12"
-                                   Options="@Catalogs.CampoDetalladoOptions"
-                                   @bind-Value="Model.CampoDetallado" />
-                    <AppFormSelect Label="Quartil" Id="quartil"
-                                   ColCss="col-12 col-md-6"
-                                   Options="@Catalogs.QuartilOptions"
-                                   @bind-Value="Model.Quartil" />
-                    <AppFormInput Label="Filiación" Id="filiacion"
-                                  Placeholder="Universidad Nacional de Colombia"
-                                  ColCss="col-12 col-md-6"
-                                  @bind-Value="Model.Filiacion" />
-                </div>
-            </AppGlassCard>
-
-            <!-- 3) ESTADO & ACCESO -->
-            <AppGlassCard Title="Estado & Acceso" Icon="🏷️" Class="mb-3">
-                <div class="row g-3">
-                    <AppFormSelect Label="Estado" Id="estado"
-                                   ColCss="col-12 col-md-6"
-                                   Options="@Catalogs.EstadoOptions"
-                                   @bind-Value="Model.Estado" />
-                    <AppFormSelect Label="Acceso Abierto" Id="openAccess"
-                                   ColCss="col-12 col-md-6"
-                                   Options="@Catalogs.OpenAccessOptions"
-                                   @bind-Value="Model.AccesoAbierto" />
-                </div>
-            </AppGlassCard>
-
-            <!-- 4) ENLACES -->
-            <AppGlassCard Title="Enlaces" Icon="🔗" Class="mb-3">
-                <div class="row g-3">
-                    <div class="col-12">
-                        <AppUrlVisit Label="Link Publicación" Id="linkPub"
-                                     @bind-Value="Model.LinkPublicacion" />
+                        <AppFormInput Label="Año" Id="anio"
+                                      Type="number" Placeholder="2025"
+                                      ColCss="col-12 col-md-6"
+                                      @bind-Value="Model.Anio" />
                     </div>
-                    <div class="col-12">
-                        <AppUrlVisit Label="Link Revista" Id="linkRev"
-                                     @bind-Value="Model.EnlaceRevista" />
+                </AppGlassCard>
+
+                <AppGlassCard Title="Identificación y Revista" Icon="📑" Class="mb-3">
+                    <div class="row g-3">
+                        <AppFormInput Label="Código Publicación" Id="codPublicacion"
+                                      Placeholder="DOI o código interno"
+                                      ColCss="col-12 col-md-6"
+                                      @bind-Value="Model.CodigoPublicacion" />
+                        <AppFormInput Label="Código ISSN" Id="issn"
+                                      Placeholder="1234-5678"
+                                      ColCss="col-12 col-md-6"
+                                      @bind-Value="Model.CodigoISSN" />
+
+                        <AppFormTextarea Label="Título Publicación" Id="titulo"
+                                         Rows="3" ColCss="col-12"
+                                         Placeholder="Escribe el título…"
+                                         @bind-Value="Model.Titulo" />
+
+                        <AppFormInput Label="Nombre revista" Id="revista"
+                                      Placeholder="Journal of…"
+                                      ColCss="col-12 col-md-6"
+                                      @bind-Value="Model.NombreRevista" />
+
+                        <AppFormInput Label="Volumen Revista" Id="VolRevista"
+                                      Placeholder="79"
+                                      ColCss="col-12 col-md-3"
+                                      @bind-Value="Model.VolumenRevista" />
+
+                        <AppFormInput Label="Número revista" Id="numRevista"
+                                      Placeholder="42(3)"
+                                      ColCss="col-12 col-md-3"
+                                      @bind-Value="Model.NumeroRevista" />
+
+                        <AppFormInput Label="Número de páginas" Id="numPaginas"
+                                      Placeholder="12"
+                                      ColCss="col-12 col-md-3"
+                                      @bind-Value="Model.NumeroPaginas" />
+
+                        <AppFormInput Label="SJR (SCImago)" Id="sjr"
+                                      Type="number" Placeholder="0.000"
+                                      ColCss="col-12 col-md-3"
+                                      @bind-Value="Model.SJR" />
+
+                        <AppFormInput Label="Fecha Publicación" Id="fechaPub"
+                                      Type="date"
+                                      ColCss="col-12 col-md-6"
+                                      @bind-Value="Model.FechaPublicacion" />
                     </div>
-                </div>
-            </AppGlassCard>
+                </AppGlassCard>
+            }
 
-            <!-- 5) PARTICIPANTES 1..5 -->
-            <AppGlassCard Title="Participantes" Icon="👥">
-                <AppParticipantRow Index="1"
-                                   @bind-Identificacion="Model.Identificacion1"
-                                   @bind-Nombre="Model.Nombre1"
-                                   @bind-Participacion="Model.Participacion1" />
-                <AppParticipantRow Index="2"
-                                   @bind-Identificacion="Model.Identificacion2"
-                                   @bind-Nombre="Model.Nombre2"
-                                   @bind-Participacion="Model.Participacion2" />
-                <AppParticipantRow Index="3"
-                                   @bind-Identificacion="Model.Identificacion3"
-                                   @bind-Nombre="Model.Nombre3"
-                                   @bind-Participacion="Model.Participacion3" />
-                <AppParticipantRow Index="4"
-                                   @bind-Identificacion="Model.Identificacion4"
-                                   @bind-Nombre="Model.Nombre4"
-                                   @bind-Participacion="Model.Participacion4" />
-                <AppParticipantRow Index="5"
-                                   @bind-Identificacion="Model.Identificacion5"
-                                   @bind-Nombre="Model.Nombre5"
-                                   @bind-Participacion="Model.Participacion5" />
-            </AppGlassCard>
+            @* ======= TAB: CLASIFICACIÓN ======= *@
+            @if (currentTab == TabId.Clasificacion)
+            {
+                <AppGlassCard Title="Clasificación e Indexación" Icon="🧭" Class="mb-3">
+                    <div class="row g-3">
+                        <AppFormSelect Label="Base datos indexado" Id="baseIndex"
+                                       ColCss="col-12 col-md-4"
+                                       Options="@Catalogs.BaseDatosOptions"
+                                       @bind-Value="Model.BaseDatos" />
+                        <AppFormSelect Label="Campo Amplio" Id="campoAmplio"
+                                       ColCss="col-12 col-md-4"
+                                       Options="@Catalogs.CampoAmplioOptions"
+                                       @bind-Value="Model.CampoAmplio" />
+                        <AppFormSelect Label="Campo Específico" Id="campoEspecifico"
+                                       ColCss="col-12 col-md-4"
+                                       Options="@Catalogs.CampoEspecificoOptions"
+                                       @bind-Value="Model.CampoEspecifico" />
+                        <AppFormSelect Label="Campo Detallado" Id="campoDetallado"
+                                       ColCss="col-12"
+                                       Options="@Catalogs.CampoDetalladoOptions"
+                                       @bind-Value="Model.CampoDetallado" />
+                        <AppFormSelect Label="Quartil" Id="quartil"
+                                       ColCss="col-12 col-md-6"
+                                       Options="@Catalogs.QuartilOptions"
+                                       @bind-Value="Model.Quartil" />
+                        <AppFormInput Label="Filiación" Id="filiacion"
+                                      Placeholder="Universidad …"
+                                      ColCss="col-12 col-md-6"
+                                      @bind-Value="Model.Filiacion" />
+                    </div>
+                </AppGlassCard>
+            }
 
+            @* ======= TAB: ESTADO / ACCESO ======= *@
+            @if (currentTab == TabId.EstadoAcceso)
+            {
+                <AppGlassCard Title="Estado & Acceso" Icon="🏷️" Class="mb-3">
+                    <div class="row g-3">
+                        <AppFormSelect Label="Estado" Id="estado"
+                                       ColCss="col-12 col-md-6"
+                                       Options="@Catalogs.EstadoOptions"
+                                       @bind-Value="Model.Estado" />
+                        <AppFormSelect Label="Acceso Abierto" Id="openAccess"
+                                       ColCss="col-12 col-md-6"
+                                       Options="@Catalogs.OpenAccessOptions"
+                                       @bind-Value="Model.AccesoAbierto" />
+                    </div>
+                </AppGlassCard>
+            }
+
+            @* ======= TAB: ENLACES ======= *@
+            @if (currentTab == TabId.Enlaces)
+            {
+                <AppGlassCard Title="Enlaces" Icon="🔗" Class="mb-3">
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <AppUrlVisit Label="Link Publicación" Id="linkPub"
+                                         @bind-Value="Model.LinkPublicacion" />
+                        </div>
+                        <div class="col-12">
+                            <AppUrlVisit Label="Link Revista" Id="linkRev"
+                                         @bind-Value="Model.EnlaceRevista" />
+                        </div>
+                    </div>
+                </AppGlassCard>
+            }
+
+            @* ======= TAB: PARTICIPANTES ======= *@
+            @if (currentTab == TabId.Participantes)
+            {
+                <AppGlassCard Title="Participantes" Icon="👥">
+                    <AppParticipantRow Index="1"
+                                       @bind-Identificacion="Model.Identificacion1"
+                                       @bind-Nombre="Model.Nombre1"
+                                       @bind-Participacion="Model.Participacion1" />
+                    <AppParticipantRow Index="2"
+                                       @bind-Identificacion="Model.Identificacion2"
+                                       @bind-Nombre="Model.Nombre2"
+                                       @bind-Participacion="Model.Participacion2" />
+                    <AppParticipantRow Index="3"
+                                       @bind-Identificacion="Model.Identificacion3"
+                                       @bind-Nombre="Model.Nombre3"
+                                       @bind-Participacion="Model.Participacion3" />
+                    <AppParticipantRow Index="4"
+                                       @bind-Identificacion="Model.Identificacion4"
+                                       @bind-Nombre="Model.Nombre4"
+                                       @bind-Participacion="Model.Participacion4" />
+                    <AppParticipantRow Index="5"
+                                       @bind-Identificacion="Model.Identificacion5"
+                                       @bind-Nombre="Model.Nombre5"
+                                       @bind-Participacion="Model.Participacion5" />
+                </AppGlassCard>
+            }
         </div>
 
-        <!-- ===== Aside (resumen) ===== -->
+        <!-- ===== Aside (Resumen + Acciones pegajosas) ===== -->
         <div class="col-12 col-lg-4">
             <div class="sticky-aside">
                 <AppGlassCard Title="Resumen" Icon="🔎" Class="mb-3">
@@ -206,18 +241,20 @@
                         </a>
                     </div>
                 </AppGlassCard>
-            </div>
-        </div><!-- ACCIONES (dentro del formulario, siempre visibles) -->
-        <div class="col-12">
-            <div class="form-actions-sticky d-flex justify-content-end gap-2" role="toolbar" aria-label="Acciones del formulario">
-                <button type="button" class="btn btn-light border" @onclick="OnCancel" disabled="@saving">
-                    Cancelar
-                </button>
-                <button type="submit" class="btn btn-primary" disabled="@saving">
-                    @(saving ? "Guardando..." : "Guardar")
-                </button>
+
+                <!-- Acciones pegajosas -->
+                <div class="sticky-actions">
+                    <div class="d-grid gap-2">
+                        <button type="submit" form="article-form" class="btn btn-primary" disabled="@saving">
+                            @(saving ? "Guardando..." : (isEdit ? "Guardar cambios" : "Guardar"))
+                        </button>
+                        <button type="button" class="btn btn-light border" @onclick="OnCancel" disabled="@saving">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
-
+        <!-- /Aside -->
     </div>
 </EditForm>

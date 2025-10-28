@@ -1,0 +1,83 @@
+﻿@using ArticleDto = tesisproject.shared.DTOs.Articles.ArticleDto
+@inherits ComponentBase
+
+<div class="rounded-lg border border-slate-200 bg-white shadow-sm hover:shadow-md transition">
+    <!-- Estado + Fecha -->
+    <div class="flex items-center justify-between px-3 pt-2">
+        <span class="@EstadoPillCls(Item?.Estado)">
+            <span class="inline-block h-1.5 w-1.5 rounded-full bg-current"></span>
+            @((Item?.Estado ?? "Sin estado").ToUpperInvariant())
+        </span>
+
+        <span class="text-[11px] text-slate-500">
+            @(Item?.FechaPublicacion?.ToString("yyyy-MM-dd") ?? "—")
+        </span>
+    </div>
+
+    <!-- Revista / ISSN -->
+    <div class="px-3 pt-1 pb-2">
+        <div class="text-[12px] font-semibold text-slate-900 line-clamp-1" title="@Item?.NombreRevista">
+            @(Item?.NombreRevista ?? "Revista no registrada")
+        </div>
+        <div class="text-[11px] text-slate-500">
+            ISSN: @(Item?.CodigoISSN ?? "—")
+        </div>
+    </div>
+
+    <!-- Acciones (misma estructura que antes, pero más compacto) -->
+    <div class="px-3 pb-3">
+        <div class="flex flex-wrap items-center gap-1.5">
+            <button type="button"
+                    class="btn-mini"
+                    title="Editar"
+                    @onclick="() => OnEdit.InvokeAsync(Item!.Id)">
+                ✏️ Editar
+            </button>
+
+            <button type="button"
+                    class="btn-mini disabled:opacity-50"
+                    title="Ver publicación"
+                    disabled="@string.IsNullOrWhiteSpace(Item?.LinkPublicacion)"
+                    @onclick="() => OnOpenLink.InvokeAsync(Item?.LinkPublicacion)">
+                🔗 Publicación
+            </button>
+
+            <button type="button"
+                    class="btn-mini"
+                    title="Vista completa"
+                    @onclick="() => OnPreview.InvokeAsync(Item!)">
+                👁️ Vista
+            </button>
+
+            <!-- Eliminar (sin funcionalidad extra; lanza callback si lo usas) -->
+            <button type="button"
+                    class="btn-mini text-rose-50 bg-rose-600 hover:bg-rose-500"
+                    title="Eliminar"
+                    @onclick="() => OnDelete.InvokeAsync(Item!.Id)">
+                🗑️ Eliminar
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ArticleDto Item { get; set; } = default!;
+    [Parameter] public EventCallback<int> OnEdit { get; set; }
+    [Parameter] public EventCallback<string?> OnOpenLink { get; set; }
+    [Parameter] public EventCallback<ArticleDto> OnPreview { get; set; }
+    [Parameter] public EventCallback<int> OnDelete { get; set; }   // opcional: si no lo pasas, no hace nada
+
+    private string EstadoPillCls(string? estado)
+    {
+        var e = (estado ?? "").Trim().ToUpperInvariant();
+        var baseCls = "inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-semibold";
+        return e switch
+        {
+            "PUBLICADO" => $"{baseCls} text-emerald-700 bg-emerald-50 border border-emerald-100",
+            "ACEPTADO" => $"{baseCls} text-indigo-700  bg-indigo-50  border border-indigo-100",
+            "EN REVISIÓN" => $"{baseCls} text-amber-700   bg-amber-50   border border-amber-100",
+            "RECHAZADO" => $"{baseCls} text-rose-700    bg-rose-50    border border-rose-100",
+            _ => $"{baseCls} text-slate-700   bg-slate-50   border border-slate-100",
+        };
+    }
+}

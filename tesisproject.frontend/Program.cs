@@ -5,79 +5,64 @@ using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using System.Net.Http.Headers;
 using tesisproject.frontend;
-// 👉 NUEVOS usings para Stores + Mocks
-using tesisproject.frontend.Features.Management.State;       // DataEntryStore, DashboardStore, AIStore
 using tesisproject.frontend.Services.Auth;
-using tesisproject.frontend.Services.Implementations;        // ApiClient, etc.
-using tesisproject.frontend.Services.Implementations.Mocks;  // DataEntryMockService, InsightsMockService, ...
-using tesisproject.frontend.Services.Interfaces;             // IApiClient + interfaces de dominio
+using tesisproject.frontend.Services.Implementations;
+using tesisproject.frontend.Services.Interfaces;
+using tesisproject.frontend.Utils;
 
-// 1) Builder
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
-builder.Services.AddScoped<tesisproject.frontend.Services.Interfaces.IArticlesClient,
-                           tesisproject.frontend.Services.Implementations.ArticlesClient>();
-builder.Services.AddScoped<tesisproject.frontend.Utils.ExportJsInterop>();
 
-// 2) Servicios base
+// Base
 builder.Services.AddOptions();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddBlazoredLocalStorage();
-
-// UI libs
 builder.Services.AddBlazoredToast();
 
-// 3) Cargar appsettings.json (+ Environment)
-// ⚠️ Asegúrate de que wwwroot/appsettings.json exista para evitar excepción aquí.
+// Servicios de dominio
+builder.Services.AddScoped<IArticlesClient, ArticlesClient>();
+builder.Services.AddScoped<ICatalogsService, CatalogsService>();
+builder.Services.AddScoped<ExportJsInterop>();
+
+// appsettings desde wwwroot (opcional)
 var bootHttp = new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
-using (var s = await bootHttp.GetStreamAsync("appsettings.json"))
-    builder.Configuration.AddJsonStream(s);
+try { using var s = await bootHttp.GetStreamAsync("appsettings.json"); builder.Configuration.AddJsonStream(s); } catch { }
+try { using var s2 = await bootHttp.GetStreamAsync($"appsettings.{builder.HostEnvironment.Environment}.json"); builder.Configuration.AddJsonStream(s2); } catch { }
 
-var envFile = $"appsettings.{builder.HostEnvironment.Environment}.json";
-try
-{
-    using var s2 = await bootHttp.GetStreamAsync(envFile);
-    builder.Configuration.AddJsonStream(s2);
-}
-catch { /* optional */ }
+// ===== API Base (BACKEND) =====
+// Si no hay config, se usa http://localhost:5040
+var apiBase = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5040";
 
-// 4) BaseAddress del backend
-var apiBase = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
+// ===== Auth / DI =====
+builder.Services.AddScoped<tesisproject.frontend.Services.Interfaces.ITokenStore,
+                           tesisproject.frontend.Services.Auth.LocalTokenStore>();
 
-// 5) Auth + HttpClient con token
-builder.Services.AddScoped<ITokenStore, LocalTokenStore>();
-builder.Services.AddScoped<AuthMessageHandler>();
+builder.Services.AddScoped<tesisproject.frontend.Services.Interfaces.IAuthClient,
+                           tesisproject.frontend.Services.Auth.AuthClient>();
 
-// Si aún no tienes autenticación y solo quieres que compile/funcione:
+builder.Services.AddTransient<tesisproject.frontend.Services.Auth.AuthMessageHandler>();
+
+// AuthenticationStateProvider (JwtAuthStateProvider como implementación concreta)
+builder.Services.AddScoped<JwtAuthStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
+    sp.GetRequiredService<JwtAuthStateProvider>());
+
+// HttpClient con handler que añade Authorization: Bearer (excepto login/register)
 builder.Services.AddHttpClient("Backend", c =>
 {
-    c.BaseAddress = new Uri(apiBase);
-    c.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+    c.BaseAddress = new Uri(apiBase); // http://localhost:5040
+    c.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
 })
-.AddHttpMessageHandler<AuthMessageHandler>();
+.AddHttpMessageHandler<tesisproject.frontend.Services.Auth.AuthMessageHandler>();
 
-// HttpClient por defecto para tus servicios
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Backend"));
-
-// 6) Wrapper API
+// Servicios de dominio
+builder.Services.AddScoped<IArticlesClient, ArticlesClient>();
+builder.Services.AddScoped<ICatalogsService, CatalogsService>();
+builder.Services.AddScoped<ExportJsInterop>();
 builder.Services.AddScoped<IApiClient, ApiClient>();
-
-// 7) Provider de autenticación
-builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
-
-// 👉 8) STORES (estado por página) — necesarios para tus páginas de Management
-builder.Services.AddScoped<DataEntryStore>();
-builder.Services.AddScoped<DashboardStore>();
-builder.Services.AddScoped<AIStore>();
-
-// 👉 9) SERVICES (mocks ahora; luego los cambias por Http*)
-builder.Services.AddScoped<IDataEntryService, DataEntryMockService>();
-builder.Services.AddScoped<IInsightsService, InsightsMockService>();
-builder.Services.AddScoped<IRecService, RecMockService>();
-builder.Services.AddScoped<IPredictService, PredictMockService>();
-builder.Services.AddScoped<tesisproject.frontend.Services.Interfaces.ICatalogsService,
-                           tesisproject.frontend.Services.Implementations.CatalogsService>();
-
+// Wrapper opcional
+builder.Services.AddScoped<IApiClient, ApiClient>();
 
 await builder.Build().RunAsync();

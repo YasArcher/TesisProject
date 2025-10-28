@@ -1,32 +1,41 @@
 ﻿@namespace tesisproject.frontend.Features.Management.Layout
 @inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
 @using tesisproject.frontend.SharedUI
 
-<div class="container-fluid min-vh-100 p-0">
-  <div class="d-flex min-vh-100">
-    <!-- MENÚ LATERAL -->
-    <aside class="menu-bg text-white p-0" style="width:270px;">
-      <SideBar />
-    </aside>
+<AuthorizeView>
+    <Authorized>
+        <div class="app-shell">
+            <aside class="layout-aside menu-bg text-white">
+                <SideBar />
+            </aside>
 
-    <!-- CONTENIDO -->
-    <div class="flex-grow-1 d-flex flex-column">
-      <!-- ENCABEZADO -->
-      <header class="brand-header text-white shadow-sm">
-        <div class="d-flex align-items-center justify-content-between px-4 py-3">
-          <div class="fw-semibold">SISTEMA INTEGRADO</div>
+            <div class="layout-main">
+                <header class="brand-header text-white shadow-sm">
+                    <div class="d-flex align-items-center justify-content-between px-4 py-3">
+                        <div class="fw-semibold">SISTEMA INTEGRADO</div>
+                    </div>
+                </header>
+
+                <main class="flex-grow-1 p-4">
+                    @Body
+                </main>
+
+                <footer class="app-footer text-center py-2">
+                    <small>© @DateTime.Now.Year — Sistema Integrado</small>
+                </footer>
+            </div>
         </div>
-      </header>
+    </Authorized>
 
-      <!-- CUERPO -->
-      <main class="flex-grow-1 p-4">
+    <Authorizing>
+        <div class="d-flex justify-content-center align-items-center" style="min-height: 60vh;">
+            <div class="text-muted">Cargando…</div>
+        </div>
+    </Authorizing>
+
+    <NotAuthorized>
+        @* Sin sesión: renderiza solo el contenido de la página (ej. Login con AuthLayout) *@
         @Body
-      </main>
-
-      <!-- FOOTER -->
-      <footer class="app-footer text-center py-2">
-        <small>© @DateTime.Now.Year — Sistema Integrado</small>
-      </footer>
-    </div>
-  </div>
-</div>
+    </NotAuthorized>
+</AuthorizeView>

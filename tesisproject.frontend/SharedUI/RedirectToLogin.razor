@@ -1,11 +1,10 @@
-﻿@inject NavigationManager Nav
-
+﻿@namespace tesisproject.frontend.SharedUI
 @code {
+    [Inject] NavigationManager Nav { get; set; } = default!;
+
     protected override void OnInitialized()
     {
-        var uri = new Uri(Nav.Uri);
-        var path = uri.PathAndQuery;
-        if (!uri.AbsolutePath.Equals("/login", StringComparison.OrdinalIgnoreCase))
-            Nav.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(path)}", replace: true);
+        var returnUrl = Uri.EscapeDataString(Nav.Uri);
+        Nav.NavigateTo($"/login?returnUrl={returnUrl}", forceLoad: true);
     }
 }

@@ -1,9 +1,8 @@
-﻿namespace tesisproject.frontend.Services.Interfaces
+﻿namespace tesisproject.frontend.Services.Interfaces;
+
+public interface ITokenStore
 {
-    public interface ITokenStore
-    {
-        ValueTask SetAsync(string token);
-        ValueTask<string?> GetAsync();
-        ValueTask ClearAsync();
-    }
+    Task SetAsync(string token);
+    Task<string?> GetAsync();
+    Task ClearAsync();
 }

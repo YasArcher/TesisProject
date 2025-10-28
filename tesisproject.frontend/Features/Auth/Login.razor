@@ -1,0 +1,75 @@
+﻿@page "/login"
+@attribute [AllowAnonymous]
+@layout tesisproject.frontend.Features.Management.Layout.AuthLayout
+
+@using System.ComponentModel.DataAnnotations
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Auth
+@inject NavigationManager Nav
+@inject IAuthClient Auth
+@inject AuthenticationStateProvider AuthStateProvider
+@inject Blazored.Toast.Services.IToastService Toast
+
+<EditForm Model="_model" OnValidSubmit="HandleLogin">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+    <div class="mb-3">
+        <label class="form-label">Correo</label>
+        <InputText @bind-Value="_model.Email" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label class="form-label">Contraseña</label>
+        <InputText @bind-Value="_model.Password" class="form-control" type="password" />
+    </div>
+    <button class="btn btn-primary" disabled="@_busy">
+        @(_busy ? "Ingresando..." : "Ingresar")
+    </button>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(_error))
+{
+    <div class="alert alert-danger mt-3">@_error</div>
+}
+
+@code {
+    private LoginVm _model = new();
+    private bool _busy;
+    private string? _error;
+
+    private async Task HandleLogin()
+    {
+        _error = null; _busy = true;
+        try
+        {
+            var res = await Auth.LoginAsync(new LoguinRequest(_model.Email, _model.Password));
+            if (res is null || string.IsNullOrWhiteSpace(res.AccessToken))
+            {
+                _error = "Credenciales inválidas o backend no disponible.";
+                Toast.ShowError(_error);
+                return;
+            }
+
+            // 👇 2) Notificar al provider que cambió el usuario (lee token del store)
+            if (AuthStateProvider is JwtAuthStateProvider jwt)
+                jwt.NotifyUserChanged();
+
+            // Da tiempo al Router a refrescar
+            await Task.Yield();
+
+            // 👇 3) Navega a tu página principal (con MainLayout y [Authorize])
+            Nav.NavigateTo("/management/bi"); // ajusta tu ruta principal
+        }
+        catch
+        {
+            _error = "No se pudo contactar al servidor (¿http://localhost:5040?).";
+            Toast.ShowError(_error);
+        }
+        finally { _busy = false; }
+    }
+
+    public class LoginVm
+    {
+        [Required, EmailAddress] public string Email { get; set; } = "";
+        [Required, MinLength(6)] public string Password { get; set; } = "";
+    }
+}

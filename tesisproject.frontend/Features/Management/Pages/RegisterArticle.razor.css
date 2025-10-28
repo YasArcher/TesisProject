@@ -1,0 +1,86 @@
+﻿/* Barra de pestañas del formulario */
+.form-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin: .25rem 0 1rem 0;
+}
+
+.form-tab {
+    appearance: none;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    background: var(--bs-body-bg, #fff);
+    color: var(--bs-body-color, #212529);
+    padding: .5rem .75rem;
+    border-radius: .65rem;
+    font-size: .9rem;
+    line-height: 1.1rem;
+    cursor: pointer;
+    transition: background .15s ease, color .15s ease, border-color .15s ease;
+}
+
+    .form-tab:hover {
+        background: rgba(0,0,0,.03);
+    }
+
+    .form-tab.active {
+        background: var(--bs-primary, #6366f1);
+        border-color: var(--bs-primary, #6366f1);
+        color: #fff;
+    }
+
+    .form-tab .tab-icon {
+        margin-right: .35rem;
+    }
+
+/* Aside pegajoso con acciones */
+.sticky-aside {
+    position: sticky;
+    top: 1rem;
+}
+
+.sticky-actions {
+    position: sticky;
+    bottom: 1rem;
+    padding: .75rem;
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: .75rem;
+    background: var(--bs-body-bg, #fff);
+    box-shadow: 0 8px 22px rgba(0,0,0,.06);
+}
+
+/* Chips de resumen */
+.summary-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    border: 1px solid var(--bs-border-color, #e5e7eb);
+    background: var(--bs-body-bg, #fff);
+    color: #475569;
+    padding: .25rem .5rem;
+    font-size: .8rem;
+    border-radius: 999px;
+}
+
+.dot {
+    width: .5rem;
+    height: .5rem;
+    border-radius: 999px;
+    display: inline-block;
+}
+
+.dot-primary {
+    background: #6366f1;
+}
+
+.dot-success {
+    background: #22c55e;
+}
+
+.dot-warning {
+    background: #f59e0b;
+}
+
+.dot-danger {
+    background: #ef4444;
+}

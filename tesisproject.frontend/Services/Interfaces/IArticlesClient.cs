@@ -6,5 +6,9 @@ namespace tesisproject.frontend.Services.Interfaces
     {
         Task<Result<int>> CreateAsync(CreateArticleRequest req);
         Task<Result<IReadOnlyList<ArticleDto>>?> GetAllAsync();
+
+       
+        Task<Result<ArticleDto>> GetByIdAsync(int id);
+        Task<Result> UpdateAsync(UpdateArticleRequest req);
     }
 }

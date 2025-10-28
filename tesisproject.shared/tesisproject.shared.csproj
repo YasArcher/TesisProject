@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Abstractions\Audit\" />
     <Folder Include="Abstractions\Results\" />
     <Folder Include="Entities\Base\" />
     <Folder Include="Entities\Catalogs\" />

@@ -1,0 +1,223 @@
+﻿@using Microsoft.AspNetCore.Components
+@using ArticleShared = tesisproject.shared.DTOs.Articles
+
+@if (Visible && Item is not null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+        <div class="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden">
+
+            <!-- Encabezado -->
+            <div class="flex justify-between items-center bg-[#7A1E19] text-white px-6 py-3">
+                <h3 class="text-lg font-semibold">Vista completa del artículo</h3>
+                <button class="text-white/80 hover:text-white text-xl font-bold" @onclick="Close">×</button>
+            </div>
+
+            <!-- Contenido -->
+            <div class="p-6 space-y-5 max-h-[70vh] overflow-y-auto text-sm text-gray-800">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <div>
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Título</h4>
+                        <p>@(Item?.Titulo ?? "—")</p>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Estado</h4>
+                        <span class="inline-block px-3 py-1 text-xs font-semibold text-white rounded-full @EstadoColor(Item)">
+                            @(Item?.Estado ?? "Sin estado")
+                        </span>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Revista</h4>
+                        <p>@(Item?.NombreRevista ?? "—")</p>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">ISSN</h4>
+                        <p>@(Item?.CodigoISSN ?? "—")</p>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Volumen</h4>
+                        <p>@(Item?.VolumenRevista ?? "—")</p>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Número</h4>
+                        <p>@(Item?.NumeroRevista ?? "—")</p>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Páginas</h4>
+                        <p>@(Item?.NumeroPaginas?.ToString() ?? "—")</p>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">SJR</h4>
+                        <p>@(Item?.SJR?.ToString("0.###") ?? "—")</p>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Fecha de publicación</h4>
+                        <p>@(Item?.FechaPublicacion?.ToString("yyyy-MM-dd") ?? "—")</p>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Base de datos</h4>
+                        <p>@(Item?.BaseDatos ?? "—")</p>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Quartil</h4>
+                        <p>@(Item?.Quartil ?? "—")</p>
+                    </div>
+
+                    <div>
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Acceso abierto</h4>
+                        <p>@(Item?.AccesoAbierto ?? "—")</p>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Campos de conocimiento</h4>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li><b>Amplio:</b> @(Item?.CampoAmplio ?? "—")</li>
+                            <li><b>Específico:</b> @(Item?.CampoEspecifico ?? "—")</li>
+                            <li><b>Detallado:</b> @(Item?.CampoDetallado ?? "—")</li>
+                        </ul>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Proyecto y línea articulada</h4>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li><b>Código Proyecto:</b> @(Item?.CodigoProyectoArticulado ?? "—")</li>
+                            <li><b>Proyecto:</b> @(Item?.ProyectoArticulado ?? "—")</li>
+                            <li><b>Línea:</b> @(Item?.LineaInvestigacionArticulada ?? "—")</li>
+                            <li><b>Grupo:</b> @(Item?.GrupoInvestigacionArticulado ?? "—")</li>
+                        </ul>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Participantes</h4>
+                        @if ((Item?.Participantes?.Any() ?? false))
+                        {
+                            <table class="min-w-full text-sm border border-gray-300 rounded-md">
+                                <thead class="bg-[#7A1E19] text-white text-left">
+                                    <tr>
+                                        <th class="px-3 py-2">#</th>
+                                        <th class="px-3 py-2">Identificación</th>
+                                        <th class="px-3 py-2">Nombre</th>
+                                        <th class="px-3 py-2">Participación</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var p in Item!.Participantes)
+                                    {
+                                        <tr class="odd:bg-white even:bg-gray-50">
+                                            <td class="px-3 py-2">@p.Index</td>
+                                            <td class="px-3 py-2">@p.Identificacion</td>
+                                            <td class="px-3 py-2">@p.Nombre</td>
+                                            <td class="px-3 py-2">@p.Participacion</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <p>—</p>
+                        }
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <h4 class="font-semibold text-[#7A1E19] mb-1">Enlaces</h4>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">
+                                🔗 Publicación:
+                                @if (!string.IsNullOrWhiteSpace(Item?.LinkPublicacion))
+                                {
+                                    <a href="@Item!.LinkPublicacion" target="_blank" class="text-blue-600 hover:underline">
+                                        Abrir
+                                    </a>
+                                }
+                                else
+                                {
+
+                                    <span>—</span>
+                                }
+                            </span>
+
+                            <span class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">
+                                📚 Revista:
+                                @if (!string.IsNullOrWhiteSpace(Item?.EnlaceRevista))
+                                {
+                                    <a href="@Item!.EnlaceRevista" target="_blank" class="text-blue-600 hover:underline">
+                                        Abrir
+                                    </a>
+                                }
+                                else
+                                {
+
+                                    <span>—</span>
+                                }
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Pie -->
+            <div class="flex justify-end gap-3 border-t border-gray-200 px-6 py-3 bg-[#E3E2E1]/50">
+                <button class="px-4 py-2 rounded-md bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-medium"
+                        @onclick="Close">
+                    Cerrar
+                </button>
+
+                <button class="px-4 py-2 rounded-md bg-[#7A1E19] text-white text-sm font-semibold hover:bg-[#8C2A24]"
+                        @onclick="EditArticle">
+                    ✏️ Editar
+                </button>
+
+                @if (!string.IsNullOrWhiteSpace(Item?.LinkPublicacion))
+                {
+                    <button class="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-semibold hover:bg-blue-500"
+                            @onclick="OpenLink">
+                        🔗 Ver publicación
+                    </button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+
+    // Forzamos el DTO del proyecto "shared" para evitar ambigüedad
+    [Parameter] public ArticleShared.ArticleDto? Item { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<int> OnEdit { get; set; }
+    [Parameter] public EventCallback<string?> OnOpenLink { get; set; }
+
+    private async Task EditArticle()
+    {
+        if (Item is not null)
+            await OnEdit.InvokeAsync(Item.Id); // Id es int en el DTO compartido
+    }
+
+    private async Task OpenLink() => await OnOpenLink.InvokeAsync(Item?.LinkPublicacion);
+
+    private async Task Close() => await OnClose.InvokeAsync();
+
+    private string EstadoColor(ArticleShared.ArticleDto? a) =>
+        (a?.Estado ?? "").ToUpperInvariant() switch
+        {
+            "PUBLICADO" => "bg-green-600",
+            "ACEPTADO" => "bg-blue-600",
+            "EN REVISIÓN" => "bg-yellow-600",
+            "RECHAZADO" => "bg-red-600",
+            _ => "bg-gray-500"
+        };
+}

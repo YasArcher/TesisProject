@@ -19,19 +19,49 @@
     --bs-primary: #7A1E19;
     --bs-link-color: #7A1E19;
     --bs-link-hover-color: #671915;
+    --bg-surface: #E3E2E1;
+    --bg-card: #FFFFFF;
+    --ink: #1F2937;
+    --ink-soft: #475569;
+    --brand: #7A1E19;
 }
 
 /* ---------------- Base ---------------- */
 html, body {
     height: 100%;
 }
-
-body {
-    font-family: var(--font-stack);
-    background-color: var(--page-bg);
-    color: #222;
+/* Botón compacto coherente con la paleta (#7A1E19) */
+.btn-mini {
+    --btn-bg: #7A1E19;
+    --btn-bg-hover: #8C2A24;
+    --btn-ink: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .3rem .55rem;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: .45rem;
+    border: 1px solid rgba(0,0,0,.06);
+    background: var(--btn-bg);
+    color: var(--btn-ink);
+    transition: background-color .15s ease, box-shadow .15s ease;
 }
 
+    .btn-mini:hover {
+        background: var(--btn-bg-hover);
+    }
+
+body {
+    background: var(--bg-surface);
+    color: var(--ink);
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+*[class*="bg-"] {
+    backdrop-filter: none !important;
+}
 /* Asegura que la app use todo el alto */
 .container-fluid, .min-vh-100 {
     min-height: 100vh;
@@ -185,7 +215,17 @@ a {
 .card.rounded-2xl {
     border: 0;
 }
+*[class*="bg-"] {
+    backdrop-filter: none !important;
+}
 
+/* Utilidades pequeñas */
+.card-solid {
+    background: var(--bg-card);
+    border: 1px solid rgba(15,23,42,0.06);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    border-radius: 14px;
+}
 /* ---------------- Estados vacíos/errores ---------------- */
 .empty-state {
     padding: 2rem;
@@ -237,6 +277,21 @@ a {
 .badge-soft-dark {
     background: rgba(0,0,0,.12);
     color: #2b2b2b;
+}
+.dot-success {
+    background: #059669
+}
+
+.dot-warning {
+    background: #D97706
+}
+
+.dot-danger {
+    background: #DC2626
+}
+
+.dot-primary {
+    background: #2563EB
 }
 
 /* ===== Aside sticky ===== */
@@ -332,19 +387,19 @@ a {
     }
 
 .dot-success {
-    background: #198754;
+    background: #059669
 }
 
 .dot-warning {
-    background: #a07800;
+    background: #D97706
 }
 
 .dot-danger {
-    background: #dc3545;
+    background: #DC2626
 }
 
 .dot-primary {
-    background: #7A1E19;
+    background: #2563EB
 }
 
 /* ===== Sticky elementos ===== */

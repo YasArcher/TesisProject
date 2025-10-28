@@ -1,32 +1,63 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using tesisproject.shared.Abstractions.Articles;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using tesisproject.shared.Abstractions;
+using tesisproject.shared.Abstractions.Articles;
 using tesisproject.shared.DTOs.Articles;
 
-namespace tesisproject.backend.Controllers
+namespace tesisproject.backend.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize] // Requiere autenticación por defecto (se puede permitir anónimo por acción)
+public class ArticlesController : ControllerBase
 {
+    private readonly IArticlesService _svc;
+    public ArticlesController(IArticlesService svc) => _svc = svc;
 
+    // Listar (si quieres permitir ver sin login, quita este Authorize y usa [AllowAnonymous])
+    [HttpGet]
+    [AllowAnonymous] // ← opcional: si quieres que la lista sea pública
+    public async Task<ActionResult<Result<IReadOnlyList<ArticleDto>>>> GetAll(CancellationToken ct = default)
+        => Ok(await _svc.GetAllAsync(ct));
 
-    [ApiController]
-    [Route("api/[controller]")]
-    public class ArticlesController : ControllerBase
+    [HttpGet("{id:int}")]
+    [Authorize] // o [AllowAnonymous] si quieres público también
+    public async Task<ActionResult<Result<ArticleDto>>> GetById(int id, CancellationToken ct = default)
     {
-        private readonly IArticlesService _svc;
-        public ArticlesController(IArticlesService svc) => _svc = svc;
+        var res = await _svc.GetByIdAsync(id, ct);
+        if (!res.Succeeded || res.Value is null) return NotFound(res);
+        return Ok(res);
+    }
 
-        [HttpGet]
-        public Task<Result<IReadOnlyList<ArticleDto>>> GetAll(CancellationToken ct) => _svc.GetAllAsync(ct);
+    // Crear — requiere rol Admin, Editor o SuperAdmin
+    [HttpPost]
+    [Authorize(Policy = "ArticlesWrite")]
+    public async Task<ActionResult<Result<int>>> Create([FromBody] CreateArticleRequest req, CancellationToken ct = default)
+    {
+        if (!ModelState.IsValid) return BadRequest(Result<int>.Fail("Modelo inválido."));
+        var res = await _svc.CreateAsync(req, ct);
+        if (!res.Succeeded) return BadRequest(res);
+        return CreatedAtAction(nameof(GetById), new { id = res.Value }, res);
+    }
 
-        [HttpGet("{id:int}")]
-        public Task<Result<ArticleDto>> GetById(int id, CancellationToken ct) => _svc.GetByIdAsync(id, ct);
+    // Actualizar — requiere rol Admin, Editor o SuperAdmin
+    [HttpPut]
+    [Authorize(Policy = "ArticlesWrite")]
+    public async Task<ActionResult<Result>> Update([FromBody] UpdateArticleRequest req, CancellationToken ct = default)
+    {
+        if (!ModelState.IsValid) return BadRequest(Result.Fail("Modelo inválido."));
+        var res = await _svc.UpdateAsync(req, ct);
+        if (!res.Succeeded) return BadRequest(res);
+        return Ok(res);
+    }
 
-        [HttpPost]
-        public Task<Result<int>> Create([FromBody] CreateArticleRequest req, CancellationToken ct) => _svc.CreateAsync(req, ct);
-
-        [HttpPut]
-        public Task<Result> Update([FromBody] UpdateArticleRequest req, CancellationToken ct) => _svc.UpdateAsync(req, ct);
-
-        [HttpDelete("{id:int}")]
-        public Task<Result> Delete(int id, CancellationToken ct) => _svc.DeleteAsync(id, ct);
+    // Borrar — requiere rol Admin, Editor o SuperAdmin (si lo deseas solo Admin y SuperAdmin, ajusta la policy)
+    [HttpDelete("{id:int}")]
+    [Authorize(Policy = "ArticlesWrite")]
+    public async Task<ActionResult<Result>> Delete(int id, CancellationToken ct = default)
+    {
+        var res = await _svc.DeleteAsync(id, ct);
+        if (!res.Succeeded) return NotFound(res);
+        return Ok(res);
     }
 }

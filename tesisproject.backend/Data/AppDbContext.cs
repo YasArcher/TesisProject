@@ -1,18 +1,25 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using tesisproject.backend.Data.Entities;
+using tesisproject.backend.Identity;
 
 namespace tesisproject.backend.Data;
 
-public class AppDbContext : DbContext
+public class AppDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, string>
 {
     public AppDbContext(DbContextOptions<AppDbContext> opt) : base(opt) { }
 
+    // Tu dominio existente
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Article> Articles => Set<Article>();
     public DbSet<ArticleParticipant> ArticleParticipants => Set<ArticleParticipant>();
+
+    // Auditoría
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
     protected override void OnModelCreating(ModelBuilder m)
     {
-        base.OnModelCreating(m);
+        base.OnModelCreating(m); // MUY IMPORTANTE para Identity
 
         m.Entity<Article>(e =>
         {
@@ -47,6 +54,14 @@ public class AppDbContext : DbContext
              .OnDelete(DeleteBehavior.Cascade);
 
             e.HasIndex(x => new { x.ArticleId, x.Index }).IsUnique();
+        });
+
+        m.Entity<AuditLog>(e =>
+        {
+            e.Property(x => x.Action).HasMaxLength(120);
+            e.Property(x => x.EntityName).HasMaxLength(120);
+            e.Property(x => x.EntityId).HasMaxLength(120);
+            e.Property(x => x.Detail).HasMaxLength(4000);
         });
     }
 }

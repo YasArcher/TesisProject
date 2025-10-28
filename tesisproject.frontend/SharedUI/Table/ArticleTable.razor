@@ -1,0 +1,81 @@
+﻿@namespace tesisproject.frontend.SharedUI.Table
+@using ArticleDto = tesisproject.shared.DTOs.Articles.ArticleDto
+
+@if (Items?.Any() != true)
+{
+    <div class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800">
+        No hay datos para mostrar.
+    </div>
+}
+else
+{
+    <div class="overflow-hidden rounded-xl border border-slate-200 shadow-md">
+        <table class="min-w-full">
+            <thead class="bg-indigo-50">
+                <tr>
+                    <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-indigo-800">Id</th>
+                    <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-indigo-800">Título</th>
+                    <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-indigo-800">Revista</th>
+                    <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-indigo-800">Período</th>
+                    <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-indigo-800">Estado</th>
+                    <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-indigo-800">Fecha pub.</th>
+                    <th class="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-indigo-800">SJR</th>
+                    <th class="px-4 py-3"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200">
+                @foreach (var a in Items!)
+                {
+                    var id = a?.Id ?? 0;
+                    var titulo = a?.Titulo ?? "—";
+                    var revista = a?.NombreRevista ?? "—";
+                    var periodo = a?.PeriodoAcademico ?? "—";
+                    var estado = a?.Estado ?? "—";
+                    var fpub = a?.FechaPublicacion?.ToString("yyyy-MM-dd") ?? "—";
+                    var sjr = a?.SJR?.ToString("0.###") ?? "—";
+                    var link = a?.LinkPublicacion;
+                    var href = string.IsNullOrWhiteSpace(link) ? "#" : link;
+
+                    <tr class="odd:bg-white even:bg-slate-50 hover:bg-slate-100">
+                        <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-800">@id</td>
+                        <td class="max-w-[360px] truncate px-4 py-3 text-sm text-slate-900" title="@titulo">@titulo</td>
+                        <td class="max-w-[260px] truncate px-4 py-3 text-sm text-slate-800" title="@revista">@revista</td>
+                        <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-800">@periodo</td>
+                        <td class="whitespace-nowrap px-4 py-3 text-sm">
+                            <span class="@BadgeColor(estado)">@estado</span>
+                        </td>
+                        <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-800">@fpub</td>
+                        <td class="whitespace-nowrap px-4 py-3 text-sm text-slate-800">@sjr</td>
+                        <td class="whitespace-nowrap px-4 py-3 text-right">
+                            <div class="inline-flex gap-2">
+                                <button class="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow hover:bg-indigo-500"
+                                        @onclick="() => OnEdit.InvokeAsync(id)">
+                                    Editar
+                                </button>
+                                <a class="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50
+                                                  @(string.IsNullOrWhiteSpace(link) ? "pointer-events-none opacity-50" : "")"
+                                   target="_blank" rel="noopener" href="@href">
+                                    Ver
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter] public IEnumerable<ArticleDto>? Items { get; set; }
+    [Parameter] public EventCallback<int> OnEdit { get; set; }
+
+    private static string BadgeColor(string? estado) => (estado ?? "").ToUpperInvariant() switch
+    {
+        "PUBLICADO" => "inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-700",
+        "ACEPTADO" => "inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-semibold text-indigo-700",
+        "EN REVISIÓN" => "inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700",
+        "RECHAZADO" => "inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-700",
+        _ => "inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700",
+    };
+}

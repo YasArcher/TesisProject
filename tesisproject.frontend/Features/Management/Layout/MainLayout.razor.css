@@ -1,0 +1,36 @@
+﻿/* ===== Layout con GRID ===== */
+.app-shell {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: max-content 1fr;
+}
+
+.layout-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+
+}
+
+/* ===== Header / Footer ===== */
+.brand-header {
+    background: #6e6e6e; /* ← color solicitado para el header */
+    color: #ffffff; /* contraste */
+}
+
+    .brand-header .fw-semibold,
+    .brand-header * {
+        background: #7A1E19;
+        color: #ffffff;
+    }
+
+.app-footer {
+    background: #7A1E19; /* combina con sidebar */
+    color: rgba(255,255,255,.9);
+}
+
+@media (max-width: 992px) {
+    .layout-main main {
+        padding: 1rem !important;
+    }
+}

@@ -1,0 +1,18 @@
+﻿@namespace tesisproject.frontend.Features.Management.Layout
+@inherits LayoutComponentBase
+
+<header class="brand-header text-white shadow-sm">
+    <div class="d-flex align-items-center justify-content-between px-4 py-3">
+        <div class="fw-semibold">SISTEMA INTEGRADO</div>
+    </div>
+</header>
+
+<main class="d-flex justify-content-center align-items-start" style="min-height: calc(100vh - 120px);">
+    <div class="w-100" style="max-width: 480px; padding: 2rem;">
+        @Body
+    </div>
+</main>
+
+<footer class="app-footer text-center py-2">
+    <small>© @DateTime.Now.Year — Sistema Integrado</small>
+</footer>

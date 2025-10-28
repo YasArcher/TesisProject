@@ -5,6 +5,8 @@
 @using System.Threading
 @using System.Threading.Tasks
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components.Routing
@@ -15,8 +17,11 @@
 @using tesisproject.frontend
 @using tesisproject.frontend.Models
 @using tesisproject.frontend.Services.Interfaces
-@using tesisproject.frontend.Features.Management.State
+@using tesisproject.frontend.Services.Auth
+@using tesisproject.shared.DTOs.Auth
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.Features.Projects.Components
 @using tesisproject.frontend.Features.Projects.Pages
 @using tesisproject.shared.DTOs.Project
+@using tesisproject.frontend.SharedUI.Card
+@using tesisproject.frontend.SharedUI.Table

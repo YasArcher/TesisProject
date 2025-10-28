@@ -1,63 +1,144 @@
-/* ===== Sidebar Moderno ===== */
-.sidebar {
-    width: 270px;
-    transition: width .2s ease;
+/* === Sidebar 100% gris === */
+
+/* Contenedor y fondo */
+.sidebar.menu-bg {
+    background: #6e6e6e !important;
+    background-image: none !important;
+    color: #fff;
 }
 
-    .sidebar .brand-mark {
-        width: 40px;
-        height: 40px;
-        border-radius: 999px;
-        background: rgba(255,255,255,.18);
-        color: #fff;
-        font-weight: 700;
+/* Ancho/colapso */
+.sidebar {
+    width: 270px;
+    transition: width .28s ease;
+    overflow: hidden;
+    font-size: .92rem;
+    line-height: 1.25;
+}
+
+    .sidebar.is-collapsed {
+        width: 72px;
     }
 
-    .sidebar .brand-text .fw-semibold {
-        letter-spacing: .2px;
+    /* Branding superior del sidebar */
+    .sidebar .sidebar-brand {
+        background: #646464 !important; /* gris un poco más oscuro */
+        border-bottom: 1px solid rgba(0,0,0,.22) !important;
     }
 
+    /* Títulos de sección */
     .sidebar .sidebar-section {
-        letter-spacing: .6px;
+        color: rgba(255,255,255,.8);
+        letter-spacing: .06em;
+        font-size: .72rem;
     }
 
+    /* Links */
     .sidebar .nav-link {
+        display: flex;
+        align-items: center;
+        gap: .65rem;
+        color: rgba(255,255,255,.88);
+        font-size: .875rem;
         border-radius: .5rem;
-        transition: background-color .15s ease, color .15s ease;
+        padding: .5rem .75rem;
+        transition: background-color .18s ease,color .18s ease,transform .18s ease;
     }
 
         .sidebar .nav-link .icon {
-            display: inline-flex;
-            width: 1.5rem;
-            justify-content: center;
-            filter: drop-shadow(0 0 0 transparent);
+            width: 1.25rem;
+            text-align: center;
+            flex: 0 0 auto;
         }
 
-        .sidebar .nav-link .label {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .sidebar .nav-link:hover,
-        .sidebar .nav-link.active {
-            background: rgba(255,255,255,.20) !important;
+        .sidebar .nav-link:hover {
+            background: #5f5f5f !important;
             color: #fff !important;
         }
 
-    /* Estado colapsado */
-    .sidebar.is-collapsed {
-        width: 84px;
+        .sidebar .nav-link.active {
+            background: #4f4f4f !important;
+            color: #fff !important;
+            font-weight: 600;
+            position: relative;
+        }
+
+            .sidebar .nav-link.active::before {
+                content: "";
+                position: absolute;
+                left: -8px;
+                top: 8px;
+                bottom: 8px;
+                width: 4px;
+                border-radius: 4px;
+                background: #fff;
+                opacity: .85;
+            }
+
+    /* Botón de colapso */
+    .sidebar .sidebar-brand .btn {
+        color: rgba(255,255,255,.88);
+        transition: transform .25s ease, opacity .2s ease;
     }
 
-        .sidebar.is-collapsed .brand-text,
-        .sidebar.is-collapsed .sidebar-section,
-        .sidebar.is-collapsed .nav-link .label {
-            display: none !important;
+        .sidebar .sidebar-brand .btn:hover {
+            opacity: .9;
+            transform: scale(1.05);
         }
 
-        .sidebar.is-collapsed .nav-link {
-            justify-content: center;
-            padding-left: .75rem;
-            padding-right: .75rem;
+    /* Al colapsar ocultar textos */
+    .sidebar.is-collapsed .label,
+    .sidebar.is-collapsed .sidebar-section,
+    .sidebar.is-collapsed .brand-text {
+        display: none !important;
+    }
+
+    /* Acordeón */
+    .sidebar .accordion-group {
+        margin-bottom: .25rem;
+    }
+
+    .sidebar .accordion-btn {
+        background: transparent;
+        border: none;
+        width: 100%;
+        text-align: left;
+        border-radius: .5rem;
+        color: rgba(255,255,255,.88);
+        padding: .5rem .75rem;
+        transition: background-color .18s ease, color .18s ease;
+    }
+
+        .sidebar .accordion-btn:hover {
+            background: #5f5f5f !important;
+            color: #fff !important;
         }
+
+        .sidebar .accordion-btn .caret {
+            margin-left: auto;
+            display: inline-block;
+            transform: rotate(-90deg);
+            transition: transform .22s ease;
+        }
+
+    .sidebar .accordion-group.open .accordion-btn .caret {
+        transform: rotate(0deg);
+    }
+
+    .sidebar .accordion-panel {
+        overflow: hidden;
+        max-height: 0;
+        opacity: 0;
+        transition: max-height .32s cubic-bezier(.2,.6,.2,1), opacity .28s ease;
+    }
+
+    .sidebar .accordion-group.open .accordion-panel {
+        max-height: 520px;
+        opacity: 1;
+    }
+
+    .sidebar.is-collapsed .accordion-panel {
+        max-height: 0 !important;
+        opacity: 0 !important;
+        pointer-events: none;
+    }

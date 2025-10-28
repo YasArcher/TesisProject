@@ -2,7 +2,7 @@
 
 namespace tesisproject.frontend.Models.Articles;
 
-public sealed class ArticleFormModel
+public sealed class ArticleViewModel
 {
     // Período
     [Required(ErrorMessage = "El período es obligatorio")]

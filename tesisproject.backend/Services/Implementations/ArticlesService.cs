@@ -46,7 +46,6 @@ namespace tesisproject.backend.Services.Implementations
 
             _map.Map(req, e);
 
-            // reemplazar participantes
             e.Participantes.Clear();
             foreach (var p in req.Participantes ?? new())
                 e.Participantes.Add(_map.Map<ArticleParticipant>(p));
