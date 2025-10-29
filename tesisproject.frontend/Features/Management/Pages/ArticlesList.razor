@@ -14,9 +14,9 @@
 
 <div class="mx-auto max-w-[1400px] px-4">
     <!-- Header + acciones -->
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-            <h2 class="text-xl font-bold text-slate-900">Artículos registrados</h2>
+            <h2 class="text-2xl font-extrabold tracking-tight text-slate-900">Artículos registrados</h2>
             <p class="text-sm text-slate-600">Consulta y gestiona los artículos guardados.</p>
         </div>
 
@@ -24,24 +24,24 @@
             <!-- Buscador -->
             <div class="relative">
                 <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">🔎</span>
-                <input class="w-72 rounded-lg border border-slate-300 bg-white py-2 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#7A1E19] focus:ring-2 focus:ring-[#7A1E19]/20"
+                <input class="w-80 rounded-xl border border-slate-300 bg-white/95 py-2.5 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#7A1E19] focus:ring-2 focus:ring-[#7A1E19]/20 shadow-sm"
                        placeholder="Buscar por título, revista, ISSN…"
                        @bind-value="SearchText"
                        @bind-value:event="oninput" />
             </div>
 
             <!-- Toggle Cards / Tabla -->
-            <div class="inline-flex rounded-lg border border-slate-300 bg-white p-1">
+            <div class="inline-flex overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
                 <button class="@ViewBtnCls(ViewMode.Cards)" @onclick="@(() => SetView(ViewMode.Cards))">Cards</button>
                 <button class="@ViewBtnCls(ViewMode.Table)" @onclick="@(() => SetView(ViewMode.Table))">Tabla</button>
             </div>
 
-            <button class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            <button class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 shadow-sm"
                     @onclick="Reload" disabled="@loading">
                 Refrescar
             </button>
 
-            <button class="rounded-lg bg-[#7A1E19] px-3 py-2 text-sm font-semibold text-white shadow hover:bg-[#8C2A24]"
+            <button class="rounded-xl bg-[#7A1E19] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#8C2A24]"
                     @onclick="New">
                 Nuevo
             </button>
@@ -51,26 +51,26 @@
     <!-- Mensajes -->
     @if (!string.IsNullOrWhiteSpace(error))
     {
-        <div class="mb-4 rounded-lg border border-rose-300 bg-rose-50 px-4 py-3 text-rose-700">
+        <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-rose-700 shadow-sm">
             @error
         </div>
     }
     else if (loading)
     {
-        <div class="mb-4 rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-700">
+        <div class="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm">
             Cargando…
         </div>
     }
     else
     {
         <!-- Toolbar de paginado -->
-        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/80 px-3 py-2 shadow-sm">
             <div class="text-sm text-slate-700">
-                Mostrando @PageStart–@PageEnd de @filtered.Count registros
+                Mostrando <span class="font-semibold">@PageStart–@PageEnd</span> de <span class="font-semibold">@filtered.Count</span> registros
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-3">
                 <label class="text-sm text-slate-700">Por página</label>
-                <select class="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm"
+                <select class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm shadow-sm"
                         @bind="PageSize">
                     @foreach (var s in pageSizeOptions)
                     {
@@ -78,15 +78,15 @@
                     }
                 </select>
 
-                <div class="inline-flex overflow-hidden rounded-lg border border-slate-300">
-                    <button class="px-3 py-1 text-sm hover:bg-slate-50 disabled:opacity-50"
+                <div class="inline-flex overflow-hidden rounded-lg border border-slate-300 shadow-sm">
+                    <button class="px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
                             disabled="@(Page <= 1)" @onclick="PrevPage">
                         «
                     </button>
-                    <div class="px-3 py-1 text-sm text-slate-700">
-                        Página @Page de @TotalPages
+                    <div class="px-3 py-1.5 text-sm text-slate-700">
+                        Página <strong>@Page</strong> de <strong>@TotalPages</strong>
                     </div>
-                    <button class="px-3 py-1 text-sm hover:bg-slate-50 disabled:opacity-50"
+                    <button class="px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50"
                             disabled="@(Page >= TotalPages)" @onclick="NextPage">
                         »
                     </button>
@@ -96,17 +96,17 @@
 
         @if (view == ViewMode.Cards)
         {
-            <!-- Tablero Kanban con scroll horizontal -->
+            <!-- Tablero Kanban con scroll horizontal + scroll-snap -->
             <div class="relative">
                 <div class="overflow-x-auto pb-3">
-                    <div class="flex gap-6 min-w-[1000px]">
+                    <div class="flex min-w-[1000px] snap-x snap-mandatory gap-6">
                         @foreach (var col in Columns)
                         {
                             var itemsCol = PagedItems.Where(a => EstadoKey(a.Estado) == col.Key).ToList();
 
-                            <!-- Columna (ancha, scroll horizontal en pantallas pequeñas) -->
-                            <section class="flex-none w-[380px]">
-                                <header class="mb-3 flex items-center justify-between">
+                            <!-- Columna -->
+                            <section class="snap-start flex-none w-[380px]">
+                                <header class="mb-3 flex items-center justify-between rounded-xl bg-gradient-to-r from-[#7A1E19]/10 to-transparent px-3 py-2.5">
                                     <h3 class="text-sm font-bold text-slate-900">@col.Title</h3>
                                     <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">@itemsCol.Count</span>
                                 </header>
@@ -114,7 +114,7 @@
                                 <div class="grid grid-cols-1 gap-4">
                                     @if (itemsCol.Count == 0)
                                     {
-                                        <div class="rounded-lg border border-dashed border-slate-300 bg-white/70 p-4 text-center text-xs text-slate-500">
+                                        <div class="rounded-xl border border-dashed border-slate-300 bg-white/90 p-4 text-center text-xs text-slate-500 shadow-sm">
                                             Sin elementos
                                         </div>
                                     }
@@ -123,10 +123,8 @@
                                         @foreach (var a in itemsCol)
                                         {
                                             <ArticleCard Item="a"
-                                                         OnEdit="@( (int id) => Edit(id) )"
-                                                         OnOpenLink="@( (string? url) => OpenExternal(url) )"
-                                                         OnPreview="@( (ArticleDto it) => OpenPreview(it) )"
-                                                         OnDelete="@( (int id) => PendingDelete(id) )" />
+                                                         OnPreview="@(item => OpenPreview(item))"
+                                                         OnDelete="@(id => PendingDelete(id))" />
                                         }
                                     }
                                 </div>
@@ -143,13 +141,13 @@
         }
 
         <!-- Paginador inferior -->
-        <div class="mt-5 flex items-center justify-center gap-2">
-            <button class="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 disabled:opacity-50"
+        <div class="mt-6 flex items-center justify-center gap-2">
+            <button class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50 shadow-sm"
                     disabled="@(Page <= 1)" @onclick="PrevPage">
                 Anterior
             </button>
             <span class="text-sm text-slate-700">Página @Page de @TotalPages</span>
-            <button class="rounded-md border border-slate-300 px-3 py-1 text-sm hover:bg-slate-50 disabled:opacity-50"
+            <button class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-50 shadow-sm"
                     disabled="@(Page >= TotalPages)" @onclick="NextPage">
                 Siguiente
             </button>
@@ -162,7 +160,8 @@
                      Item="@selected"
                      OnClose="ClosePreview"
                      OnEdit="@( (int id) => Edit(id) )"
-                     OnOpenLink="@( (string? url) => OpenExternal(url) )" />
+                     OnOpenLink="@( (string? url) => OpenExternal(url) )"
+                     OnDelete="@( (int id) => PendingDelete(id) )" />
 
 @code {
     protected IReadOnlyList<AppPillTabs.PillTab> Pills => new List<AppPillTabs.PillTab>
@@ -320,12 +319,11 @@
 
     private async Task PendingDelete(int id)
     {
-        // Por ahora sólo mostramos aviso. (Sin funcionalidad real aún)
         await JS.InvokeVoidAsync("alert", $"Eliminar #{id} — funcionalidad pendiente.");
     }
 
     private string ViewBtnCls(ViewMode m)
-        => $"rounded-md px-3 py-1.5 text-sm font-medium transition " +
+        => $"px-3 py-1.5 text-sm font-medium transition " +
            (view == m
                 ? "bg-[#7A1E19] text-white"
                 : "text-slate-700 hover:bg-slate-50");

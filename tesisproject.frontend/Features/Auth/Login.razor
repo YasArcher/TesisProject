@@ -10,26 +10,86 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject Blazored.Toast.Services.IToastService Toast
 
-<EditForm Model="_model" OnValidSubmit="HandleLogin">
-    <DataAnnotationsValidator />
-    <ValidationSummary />
-    <div class="mb-3">
-        <label class="form-label">Correo</label>
-        <InputText @bind-Value="_model.Email" class="form-control" />
-    </div>
-    <div class="mb-3">
-        <label class="form-label">Contraseña</label>
-        <InputText @bind-Value="_model.Password" class="form-control" type="password" />
-    </div>
-    <button class="btn btn-primary" disabled="@_busy">
-        @(_busy ? "Ingresando..." : "Ingresar")
-    </button>
-</EditForm>
+<div class="mx-auto max-w-md px-4 py-8">
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+        <!-- Encabezado -->
+        <div class="bg-gradient-to-br from-[#7A1E19] to-[#8C2A24] px-6 py-6 text-white">
+            <h1 class="text-xl font-bold leading-tight">Bienvenido 👋</h1>
+            <p class="mt-1 text-white/90 text-sm">Ingresa con tus credenciales institucionales</p>
+        </div>
 
-@if (!string.IsNullOrEmpty(_error))
-{
-    <div class="alert alert-danger mt-3">@_error</div>
-}
+        <!-- Form -->
+        <div class="px-6 pb-6 pt-5">
+            <EditForm Model="_model" OnValidSubmit="HandleLogin">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="mb-3 text-sm text-rose-700" />
+
+                <!-- Correo -->
+                <div class="mb-4">
+                    <label class="mb-1.5 block text-sm font-medium text-slate-700">Correo</label>
+                    <div class="relative">
+                        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">✉️</span>
+                        <InputText
+                            @bind-Value="_model.Email"
+                            class="form-control w-full rounded-xl border border-slate-300 bg-white ps-10 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition
+                                   focus:border-[#7A1E19] focus:ring-2 focus:ring-[#7A1E19]/20" />
+                    </div>
+                </div>
+
+                <!-- Password -->
+                <div class="mb-2">
+                    <label class="mb-1.5 block text-sm font-medium text-slate-700">Contraseña</label>
+                    <div class="relative">
+                        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔒</span>
+                        <InputText
+                            @bind-Value="_model.Password"
+                            type="password"
+                            class="form-control w-full rounded-xl border border-slate-300 bg-white ps-10 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition
+                                   focus:border-[#7A1E19] focus:ring-2 focus:ring-[#7A1E19]/20" />
+                    </div>
+                </div>
+
+                <!-- Ayuda / Recordatorio (solo visual) -->
+                <div class="mb-4 flex items-center justify-between text-xs text-slate-500">
+                    <span>Usa tu correo institucional</span>
+                    <span class="select-none">Mín. 6 caracteres</span>
+                </div>
+
+                <!-- Botón -->
+                <button class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#7A1E19] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition
+               hover:bg-[#8C2A24] disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled="@_busy">
+                    @if (_busy)
+                    {
+                        <span class="inline-flex items-center gap-2">
+                            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                            </svg>
+                            Ingresando…
+                        </span>
+                    }
+                    else
+                    {
+                        <span>Ingresar</span>
+                    }
+                </button>
+            </EditForm>
+
+            @if (!string.IsNullOrEmpty(_error))
+            {
+                <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm">
+                    @_error
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Pie de página pequeño -->
+    <p class="mt-4 text-center text-xs text-slate-500">
+        Seguridad habilitada • Sesión cifrada • © @DateTime.Now.Year
+    </p>
+</div>
 
 @code {
     private LoginVm _model = new();
@@ -49,15 +109,11 @@
                 return;
             }
 
-            // 👇 2) Notificar al provider que cambió el usuario (lee token del store)
             if (AuthStateProvider is JwtAuthStateProvider jwt)
                 jwt.NotifyUserChanged();
 
-            // Da tiempo al Router a refrescar
             await Task.Yield();
-
-            // 👇 3) Navega a tu página principal (con MainLayout y [Authorize])
-            Nav.NavigateTo("/management/bi"); // ajusta tu ruta principal
+            Nav.NavigateTo("/management/bi");
         }
         catch
         {
