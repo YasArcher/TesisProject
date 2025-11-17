@@ -1,31 +1,29 @@
-﻿<div class="w-full">
+﻿@namespace tesisproject.frontend.SharedUI.TextInput
+
+<div class="flex flex-col gap-1">
     @if (!string.IsNullOrWhiteSpace(Label))
     {
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label class="text-xs font-medium text-slate-700">
             @Label
             @if (Required)
             {
-                <span class="text-red-600">*</span>
+                <span class="text-red-500">*</span>
             }
         </label>
     }
 
-    <input class="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 @(HasError ? "ring-2 ring-red-500 border-red-500 focus:ring-red-500 focus:border-red-500" : "")"
+    <input class="rounded-lg border px-3 py-2 text-sm
+                  @(HasError ? "border-red-400 bg-red-50" : "border-slate-300 bg-white")
+                  focus:outline-none focus:ring-2 focus:ring-slate-400/40"
            placeholder="@Placeholder"
-           value="@_value"
-           maxlength="@MaxLength"
-           disabled="@Disabled"
-           aria-invalid="@(HasError ? "true" : "false")"
-           aria-required="@(Required ? "true" : "false")"
-           @oninput="OnInputAsync" />
+           value="@Value"
+           @oninput="OnInputChanged"
+           disabled="@Disabled" />
 
-
-    @if (HasError)
+    @if (!string.IsNullOrWhiteSpace(HelpText) || HasError)
     {
-        <p class="mt-1 text-sm text-red-600">@ErrorMessage</p>
-    }
-    else if (!string.IsNullOrWhiteSpace(HelpText))
-    {
-        <p class="mt-1 text-sm text-gray-500">@HelpText</p>
+        <p class="text-[11px] mt-0.5 @(HasError ? "text-red-600" : "text-slate-400")">
+            @(HasError? ErrorText : HelpText)
+        </p>
     }
 </div>

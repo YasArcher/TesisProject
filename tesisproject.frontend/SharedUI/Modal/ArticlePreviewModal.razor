@@ -1,149 +1,59 @@
-﻿@using ArticleDto = tesisproject.shared.DTOs.Articles.ArticleDto
-@using Microsoft.AspNetCore.Components.Rendering
+﻿@using tesisproject.shared.DTOs.Articles
 
-@if (Visible && Item is not null)
+@if (IsOpen && Model is not null)
 {
-    <div class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40">
-        <div class="w-full max-w-3xl overflow-hidden rounded-xl bg-white shadow-2xl">
-            <!-- Header -->
-            <div class="flex items-start justify-between border-b border-slate-200 px-5 py-3">
-                <div>
-                    <h3 class="text-lg font-semibold text-slate-800">@Item!.Titulo</h3>
-                    <p class="mt-0.5 text-sm text-slate-500">
-                        Publicado: @(Item?.FechaPublicacion?.ToString("yyyy-MM-dd") ?? "—")
-                    </p>
-                </div>
-                <button class="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100"
-                        @onclick="OnClose">
-                    ✖
-                </button>
+    <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold">Previsualización del artículo</h3>
+                <button class="px-3 py-1 rounded-md border" @onclick="Close">Cerrar</button>
             </div>
 
-            <!-- Body -->
-            <div class="max-h-[70vh] overflow-auto px-5 py-4">
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <Field Label="Revista" Value="@(Item?.NombreRevista ?? "—")" />
-                    <Field Label="ISSN" Value="@(Item?.CodigoISSN ?? "—")" />
-                    <Field Label="Volumen" Value="@(Item?.VolumenRevista ?? "—")" />
-                    <Field Label="Número" Value="@(Item?.NumeroRevista ?? "—")" />
-                    <Field Label="Páginas" Value="@(Item?.NumeroPaginas?.ToString() ?? "—")" />
-                    <Field Label="SJR" Value="@(Item?.SJR?.ToString("0.###") ?? "—")" />
-                    <Field Label="Base de datos" Value="@(Item?.BaseDatos ?? "—")" />
-                    <Field Label="Quartil" Value="@(Item?.Quartil ?? "—")" />
-                    <Field Label="Filiación" Value="@(Item?.Filiacion ?? "—")" />
-                    <Field Label="Estado" Value="@(Item?.Estado ?? "—")" />
-                    <Field Label="Acceso" Value="@(Item?.AccesoAbierto ?? "—")" />
-                    <Field Label="Periodo" Value="@(Item?.PeriodoAcademico ?? "—")" />
-                    <Field Label="Año" Value="@(Item?.Anio?.ToString() ?? "—")" />
-                    <Field Label="Proyecto" Value="@(Item?.ProyectoArticulado ?? "—")" />
-                    <Field Label="Cod. Proyecto" Value="@(Item?.CodigoProyectoArticulado ?? "—")" />
-                    <Field Label="Línea" Value="@(Item?.LineaInvestigacionArticulada ?? "—")" />
-                    <Field Label="Grupo" Value="@(Item?.GrupoInvestigacionArticulado ?? "—")" />
-                    <Field Label="Campo Amplio" Value="@(Item?.CampoAmplio ?? "—")" />
-                    <Field Label="Campo Específico" Value="@(Item?.CampoEspecifico ?? "—")" />
-                    <Field Label="Campo Detallado" Value="@(Item?.CampoDetallado ?? "—")" />
+            <div class="space-y-2">
+                <div><strong>Título:</strong> @Model.Title</div>
+                <div><strong>DOI:</strong> @Model.Doi</div>
+                <div><strong>Año:</strong> @Model.Year</div>
+                <div><strong>URL publicación:</strong> @Model.PublicationUrl</div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div><strong>Open Access:</strong> @(Model.IsOpenAccess ? "Sí" : "No")</div>
+                    <div><strong>Resultado de proyecto:</strong> @(Model.IsProjectResult ? "Sí" : "No")</div>
                 </div>
 
-                <div class="mt-5">
-                    <h4 class="mb-2 text-sm font-semibold text-slate-700">Participantes</h4>
-                    @if (Item?.Participantes is { Count: > 0 })
+                <div class="grid grid-cols-2 gap-3">
+                    @if (Model.PublicationStatusId is not null)
                     {
-                        <div class="overflow-hidden rounded-lg border border-slate-200">
-                            <table class="min-w-full border-collapse text-sm">
-                                <thead class="bg-slate-50">
-                                    <tr>
-                                        <th class="px-3 py-2 text-left font-medium text-slate-600">#</th>
-                                        <th class="px-3 py-2 text-left font-medium text-slate-600">Identificación</th>
-                                        <th class="px-3 py-2 text-left font-medium text-slate-600">Nombre</th>
-                                        <th class="px-3 py-2 text-left font-medium text-slate-600">Participación</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var p in Item!.Participantes)
-                                    {
-                                        <tr class="border-t border-slate-200">
-                                            <td class="px-3 py-2">@p.Index</td>
-                                            <td class="px-3 py-2">@((p.Identificacion ?? "—"))</td>
-                                            <td class="px-3 py-2">@((p.Nombre ?? "—"))</td>
-                                            <td class="px-3 py-2">@((p.Participacion ?? "—"))</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
+                        <div><strong>Estado (ID):</strong> @Model.PublicationStatusId</div>
                     }
-                    else
+
+                    @if (Model.ResearchLineId is not null)
                     {
-                        <div class="rounded-md border border-dashed border-slate-200 px-3 py-2 text-sm text-slate-500">
-                            Sin participantes registrados.
-                        </div>
+                        <div><strong>Línea (ID):</strong> @Model.ResearchLineId</div>
                     }
                 </div>
-            </div>
 
-            <!-- Footer con acciones -->
-            <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 px-5 py-3">
-                <div class="flex items-center gap-2">
-                    <button class="btn-mini"
-                            @onclick="() => OnEdit.InvokeAsync(Item!.Id)">
-                        ✏️ Editar
-                    </button>
-
-                    <button class="btn-mini disabled:opacity-50"
-                            disabled="@string.IsNullOrWhiteSpace(Item?.LinkPublicacion)"
-                            @onclick="() => OnOpenLink.InvokeAsync(Item?.LinkPublicacion)">
-                        🔗 Ver publicación
-                    </button>
-
-                    <button class="btn-mini bg-rose-600 hover:bg-rose-500"
-                            @onclick="() => OnDelete.InvokeAsync(Item!.Id)">
-                        🗑️ Eliminar
-                    </button>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><strong>Revista:</strong> @Model.VenueName</div>
+                    <div><strong>ISSN:</strong> @Model.IssnCode</div>
+                    <div><strong>Volumen:</strong> @Model.VolumeNumber</div>
+                    <div><strong>Número:</strong> @Model.IssueNumber</div>
+                    <div><strong>SJR:</strong> @Model.Sjr</div>
+                    <div><strong>Quartile:</strong> @Model.Quartile</div>
                 </div>
 
-                <button class="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
-                        @onclick="OnClose">
-                    Cerrar
-                </button>
+                @if (!string.IsNullOrWhiteSpace(Model.EvidenceUrl))
+                {
+                    <div><strong>Evidencia:</strong> <a href="@Model.EvidenceUrl" target="_blank">@Model.EvidenceUrl</a></div>
+                }
             </div>
         </div>
     </div>
 }
 
 @code {
-    [Parameter] public bool Visible { get; set; }
-    [Parameter] public ArticleDto? Item { get; set; }
-
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public ArticleDetailDto? Model { get; set; }
     [Parameter] public EventCallback OnClose { get; set; }
-    [Parameter] public EventCallback<int> OnEdit { get; set; }
-    [Parameter] public EventCallback<string?> OnOpenLink { get; set; }
-    [Parameter] public EventCallback<int> OnDelete { get; set; }
 
-    // Field helper inline (slot sencillo)
-    [Parameter] public RenderFragment<string>? LabelTemplate { get; set; }
-
-    // Quitar 'sealed' para permitir herencia desde 'Field'
-    public class FieldBase : ComponentBase
-    {
-        [Parameter] public string Label { get; set; } = "";
-        [Parameter] public string Value { get; set; } = "—";
-
-        protected override void BuildRenderTree(RenderTreeBuilder builder)
-        {
-            builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", "rounded-md border border-slate-200 p-3");
-            builder.OpenElement(2, "div");
-            builder.AddAttribute(3, "class", "text-[11px] font-medium text-slate-500");
-            builder.AddContent(4, Label);
-            builder.CloseElement();
-            builder.OpenElement(5, "div");
-            builder.AddAttribute(6, "class", "text-[13px] text-slate-800");
-            builder.AddContent(7, Value);
-            builder.CloseElement();
-            builder.CloseElement();
-        }
-    }
-
-    // Etiqueta 'Field' para uso cómodo en el markup
-    public class Field : FieldBase { }
+    private Task Close() => OnClose.InvokeAsync();
 }

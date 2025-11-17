@@ -22,6 +22,119 @@ namespace tesisproject.backend.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("Article", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AcademicTermId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("BroadFieldId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("DetailedFieldId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Doi")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EventName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Filiacion")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GroupName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("HasInterculturalComponent")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsOpenAccess")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsProjectResult")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("PageCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Proceedings")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ProceedingsName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("ProjectId")
+                        .HasColumnType("int");
+
+                    b.Property<byte?>("PublicationStatusId")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("PublicationUrl")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<DateTime?>("PublishedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("ResearchLineId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SpecificFieldId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("VenueId")
+                        .HasColumnType("int");
+
+                    b.Property<short?>("Year")
+                        .HasColumnType("smallint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcademicTermId");
+
+                    b.HasIndex("BroadFieldId");
+
+                    b.HasIndex("DetailedFieldId");
+
+                    b.HasIndex("Doi")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Articles_Doi_NotBlank")
+                        .HasFilter("[Doi] IS NOT NULL AND [Doi] <> N''");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("PublicationStatusId");
+
+                    b.HasIndex("ResearchLineId");
+
+                    b.HasIndex("SpecificFieldId");
+
+                    b.HasIndex("VenueId");
+
+                    b.HasIndex("Title", "Year", "VenueId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_Articles_TitleYearVenue_NoDoi")
+                        .HasFilter("[Doi] IS NULL");
+
+                    b.ToTable("Articles");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.Property<int>("Id")
@@ -128,112 +241,74 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("tesisproject.backend.Data.Entities.Article", b =>
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.AcademicTerm", b =>
                 {
-                    b.Property<int>("Id")
+                    b.Property<int>("AcademicTermId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("AcademicTermId"));
 
-                    b.Property<string>("AccesoAbierto")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
-
-                    b.Property<int?>("Anio")
-                        .HasColumnType("int");
-
-                    b.Property<string>("BaseDatos")
+                    b.Property<string>("Name")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<string>("CampoAmplio")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                    b.HasKey("AcademicTermId");
 
-                    b.Property<string>("CampoDetallado")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                    b.HasIndex("Name")
+                        .IsUnique();
 
-                    b.Property<string>("CampoEspecifico")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                    b.ToTable("AcademicTerms");
+                });
 
-                    b.Property<string>("CodigoISSN")
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
-                    b.Property<string>("CodigoProyectoArticulado")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("CodigoPublicacion")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("EnlaceRevista")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("Estado")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
-                    b.Property<DateTime?>("FechaPublicacion")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Filiacion")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
-                    b.Property<string>("GrupoInvestigacionArticulado")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LineaInvestigacionArticulada")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("LinkPublicacion")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
-
-                    b.Property<string>("NombreRevista")
-                        .HasMaxLength(300)
-                        .HasColumnType("nvarchar(300)");
-
-                    b.Property<int?>("NumeroPaginas")
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ArticleFile", b =>
+                {
+                    b.Property<int>("ArticleFileId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<string>("NumeroRevista")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ArticleFileId"));
 
-                    b.Property<string>("PeriodoAcademico")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<int>("ArticleId")
+                        .HasColumnType("int");
 
-                    b.Property<string>("ProyectoArticulado")
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
 
-                    b.Property<string>("Quartil")
-                        .HasMaxLength(10)
-                        .HasColumnType("nvarchar(10)");
+                    b.Property<string>("FileUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
-                    b.Property<decimal?>("SJR")
-                        .HasPrecision(6, 3)
-                        .HasColumnType("decimal(6,3)");
+                    b.Property<string>("Sha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
-                    b.Property<string>("Titulo")
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
 
-                    b.Property<string>("VolumenRevista")
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
+                    b.HasKey("ArticleFileId");
 
-                    b.HasKey("Id");
+                    b.HasIndex("ArticleId");
 
-                    b.ToTable("Articles");
+                    b.ToTable("ArticleFiles");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ArticleIndexing", b =>
+                {
+                    b.Property<int>("ArticleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IndexingSourceId")
+                        .HasColumnType("int");
+
+                    b.HasKey("ArticleId", "IndexingSourceId");
+
+                    b.HasIndex("IndexingSourceId");
+
+                    b.ToTable("ArticleIndexings");
                 });
 
             modelBuilder.Entity("tesisproject.backend.Data.Entities.ArticleParticipant", b =>
@@ -255,6 +330,7 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Nombre")
+                        .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
@@ -306,7 +382,88 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("AuditLogs");
                 });
 
-            modelBuilder.Entity("tesisproject.backend.Data.Project", b =>
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.BroadField", b =>
+                {
+                    b.Property<int>("BroadFieldId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("BroadFieldId"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("BroadFieldId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("BroadFields");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.DetailedField", b =>
+                {
+                    b.Property<int>("DetailedFieldId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DetailedFieldId"));
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("SpecificFieldId")
+                        .HasColumnType("int");
+
+                    b.HasKey("DetailedFieldId");
+
+                    b.HasIndex("SpecificFieldId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_DetailedField_Specific_Code")
+                        .HasFilter("[Code] IS NOT NULL AND [Code] <> N''");
+
+                    b.HasIndex("SpecificFieldId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_DetailedField_Specific_Name");
+
+                    b.ToTable("DetailedFields");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.IndexingSource", b =>
+                {
+                    b.Property<int>("IndexingSourceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IndexingSourceId"));
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(true);
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.HasKey("IndexingSourceId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("IndexingSources");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.Project", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -328,6 +485,146 @@ namespace tesisproject.backend.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Projects");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.PublicationStatus", b =>
+                {
+                    b.Property<byte>("PublicationStatusId")
+                        .HasColumnType("tinyint");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("PublicationStatusId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("PublicationStatuses");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ResearchLine", b =>
+                {
+                    b.Property<int>("ResearchLineId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ResearchLineId"));
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("ResearchLineId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("ResearchLines");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.SpecificField", b =>
+                {
+                    b.Property<int>("SpecificFieldId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("SpecificFieldId"));
+
+                    b.Property<int>("BroadFieldId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Code")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("SpecificFieldId");
+
+                    b.HasIndex("BroadFieldId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_SpecificField_Broad_Code")
+                        .HasFilter("[Code] IS NOT NULL AND [Code] <> N''");
+
+                    b.HasIndex("BroadFieldId", "Name")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_SpecificField_Broad_Name");
+
+                    b.ToTable("SpecificFields");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.Venue", b =>
+                {
+                    b.Property<int>("VenueId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VenueId"));
+
+                    b.Property<string>("IssnCode")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("IssueNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<string>("JournalUrl")
+                        .HasMaxLength(400)
+                        .HasColumnType("nvarchar(400)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Journal");
+
+                    b.Property<string>("VolumeNumber")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("VenueId");
+
+                    b.HasIndex("Name", "IssnCode")
+                        .IsUnique()
+                        .HasDatabaseName("UQ_Venue_Name_Issn")
+                        .HasFilter("[IssnCode] IS NOT NULL");
+
+                    b.ToTable("Venues");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.VenueMetric", b =>
+                {
+                    b.Property<int>("VenueId")
+                        .HasColumnType("int");
+
+                    b.Property<short>("Year")
+                        .HasColumnType("smallint");
+
+                    b.Property<string>("Quartile")
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<decimal?>("SJR")
+                        .HasPrecision(6, 3)
+                        .HasColumnType("decimal(6,3)");
+
+                    b.HasKey("VenueId", "Year");
+
+                    b.ToTable("VenueMetrics");
                 });
 
             modelBuilder.Entity("tesisproject.backend.Identity.ApplicationRole", b =>
@@ -425,6 +722,64 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("Article", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.AcademicTerm", "AcademicTerm")
+                        .WithMany("Articles")
+                        .HasForeignKey("AcademicTermId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("tesisproject.backend.Data.Entities.BroadField", "BroadField")
+                        .WithMany()
+                        .HasForeignKey("BroadFieldId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("tesisproject.backend.Data.Entities.DetailedField", "DetailedField")
+                        .WithMany()
+                        .HasForeignKey("DetailedFieldId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("tesisproject.backend.Data.Entities.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId");
+
+                    b.HasOne("tesisproject.backend.Data.Entities.PublicationStatus", "PublicationStatus")
+                        .WithMany("Articles")
+                        .HasForeignKey("PublicationStatusId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("tesisproject.backend.Data.Entities.ResearchLine", "ResearchLine")
+                        .WithMany("Articles")
+                        .HasForeignKey("ResearchLineId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("tesisproject.backend.Data.Entities.SpecificField", "SpecificField")
+                        .WithMany()
+                        .HasForeignKey("SpecificFieldId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("tesisproject.backend.Data.Entities.Venue", "Venue")
+                        .WithMany("Articles")
+                        .HasForeignKey("VenueId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("AcademicTerm");
+
+                    b.Navigation("BroadField");
+
+                    b.Navigation("DetailedField");
+
+                    b.Navigation("Project");
+
+                    b.Navigation("PublicationStatus");
+
+                    b.Navigation("ResearchLine");
+
+                    b.Navigation("SpecificField");
+
+                    b.Navigation("Venue");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("tesisproject.backend.Identity.ApplicationRole", null)
@@ -476,10 +831,10 @@ namespace tesisproject.backend.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("tesisproject.backend.Data.Entities.ArticleParticipant", b =>
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ArticleFile", b =>
                 {
-                    b.HasOne("tesisproject.backend.Data.Entities.Article", "Article")
-                        .WithMany("Participantes")
+                    b.HasOne("Article", "Article")
+                        .WithMany("Files")
                         .HasForeignKey("ArticleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -487,9 +842,113 @@ namespace tesisproject.backend.Migrations
                     b.Navigation("Article");
                 });
 
-            modelBuilder.Entity("tesisproject.backend.Data.Entities.Article", b =>
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ArticleIndexing", b =>
                 {
-                    b.Navigation("Participantes");
+                    b.HasOne("Article", "Article")
+                        .WithMany("Indexings")
+                        .HasForeignKey("ArticleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("tesisproject.backend.Data.Entities.IndexingSource", "IndexingSource")
+                        .WithMany("ArticleIndexings")
+                        .HasForeignKey("IndexingSourceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Article");
+
+                    b.Navigation("IndexingSource");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ArticleParticipant", b =>
+                {
+                    b.HasOne("Article", "Article")
+                        .WithMany("Participants")
+                        .HasForeignKey("ArticleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Article");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.DetailedField", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.SpecificField", "SpecificField")
+                        .WithMany("DetailedFields")
+                        .HasForeignKey("SpecificFieldId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SpecificField");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.SpecificField", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.BroadField", "BroadField")
+                        .WithMany("SpecificFields")
+                        .HasForeignKey("BroadFieldId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("BroadField");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.VenueMetric", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.Venue", "Venue")
+                        .WithMany("Metrics")
+                        .HasForeignKey("VenueId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Venue");
+                });
+
+            modelBuilder.Entity("Article", b =>
+                {
+                    b.Navigation("Files");
+
+                    b.Navigation("Indexings");
+
+                    b.Navigation("Participants");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.AcademicTerm", b =>
+                {
+                    b.Navigation("Articles");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.BroadField", b =>
+                {
+                    b.Navigation("SpecificFields");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.IndexingSource", b =>
+                {
+                    b.Navigation("ArticleIndexings");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.PublicationStatus", b =>
+                {
+                    b.Navigation("Articles");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ResearchLine", b =>
+                {
+                    b.Navigation("Articles");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.SpecificField", b =>
+                {
+                    b.Navigation("DetailedFields");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.Venue", b =>
+                {
+                    b.Navigation("Articles");
+
+                    b.Navigation("Metrics");
                 });
 #pragma warning restore 612, 618
         }

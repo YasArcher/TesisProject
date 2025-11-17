@@ -1,6 +1,8 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using tesisproject.frontend.Services.Interfaces;
 
 namespace tesisproject.frontend.Services.Implementations
@@ -8,59 +10,140 @@ namespace tesisproject.frontend.Services.Implementations
     public class ApiClient : IApiClient
     {
         private readonly HttpClient _http;
-        private static readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web);
 
-        public ApiClient(HttpClient http) => _http = http;
+        private static readonly JsonSerializerOptions _json = new(JsonSerializerDefaults.Web)
+        {
+            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+            WriteIndented = false
+        };
+
+        public ApiClient(HttpClient http)
+        {
+            _http = http ?? throw new ArgumentNullException(nameof(http));
+            // (Opcional) Asegurar Accept JSON:
+            if (!_http.DefaultRequestHeaders.Accept.Any(h => h.MediaType == "application/json"))
+                _http.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+        }
 
         public async Task<T?> GetAsync<T>(string url, CancellationToken ct = default)
         {
-            var res = await _http.GetAsync(url, ct);
-            await EnsureSuccess(res);
-            return await res.Content.ReadFromJsonAsync<T>(_json, ct);
+            using var res = await _http.GetAsync(url, ct);
+            await EnsureSuccess(res, ct);
+            return await ReadJsonOrDefaultAsync<T>(res.Content, ct);
         }
 
         public async Task<TResponse?> PostAsync<TRequest, TResponse>(string url, TRequest body, CancellationToken ct = default)
         {
-            var res = await _http.PostAsJsonAsync(url, body, _json, ct);
-            await EnsureSuccess(res);
-            return await res.Content.ReadFromJsonAsync<TResponse>(_json, ct);
+            using var res = await _http.PostAsJsonAsync(url, body!, _json, ct);
+            await EnsureSuccess(res, ct);
+            return await ReadJsonOrDefaultAsync<TResponse>(res.Content, ct);
         }
 
         public async Task<TResponse?> PutAsync<TRequest, TResponse>(string url, TRequest body, CancellationToken ct = default)
         {
-            var res = await _http.PutAsJsonAsync(url, body, _json, ct);
-            await EnsureSuccess(res);
-            return await res.Content.ReadFromJsonAsync<TResponse>(_json, ct);
+            using var res = await _http.PutAsJsonAsync(url, body!, _json, ct);
+            await EnsureSuccess(res, ct);
+            return await ReadJsonOrDefaultAsync<TResponse>(res.Content, ct);
         }
 
+        // Útil para endpoints que devuelven 204/empty body
         public async Task DeleteAsync(string url, CancellationToken ct = default)
         {
-            var res = await _http.DeleteAsync(url, ct);
-            await EnsureSuccess(res);
+            using var res = await _http.DeleteAsync(url, ct);
+            await EnsureSuccess(res, ct);
         }
 
-        private static async Task EnsureSuccess(HttpResponseMessage res)
+        // ---- Helpers ----
+
+        private static async Task<T?> ReadJsonOrDefaultAsync<T>(HttpContent content, CancellationToken ct)
+        {
+            // Si está vacío o el servidor respondió 204, devolver default(T)
+            if (content is null) return default;
+
+            // No confíes únicamente en ContentLength; puede venir null en "chunked".
+            var payload = await content.ReadAsStringAsync(ct);
+            if (string.IsNullOrWhiteSpace(payload))
+                return default;
+
+            try
+            {
+                return JsonSerializer.Deserialize<T>(payload, _json);
+            }
+            catch
+            {
+                // Si el servidor respondió con texto no-JSON, evita romper el flujo.
+                return default;
+            }
+        }
+
+        private static async Task EnsureSuccess(HttpResponseMessage res, CancellationToken ct = default)
         {
             if (res.IsSuccessStatusCode) return;
 
-            string payload = await res.Content.ReadAsStringAsync();
+            string body = "";
+            try { body = await res.Content.ReadAsStringAsync(ct); } catch { /* ignore */ }
 
-            // Mapear ProblemDetails
-            throw new ApiException(res.StatusCode, payload);
+            // Intenta parsear ProblemDetails / ValidationProblemDetails-like
+            ApiProblem? problem = null;
+            try { problem = JsonSerializer.Deserialize<ApiProblem>(body, _json); } catch { /* ignore */ }
+
+            throw new ApiException(res.StatusCode, body, problem);
         }
     }
 
+    /// <summary>
+    /// Excepción con información útil del error del backend.
+    /// Intenta mapear el contrato de ProblemDetails (title, detail, errors).
+    /// </summary>
     public sealed class ApiException : Exception
     {
         public HttpStatusCode StatusCode { get; }
+        public string? Title { get; }
+        public string? Detail { get; }
+        public IDictionary<string, string[]>? Errors { get; }
+        public string? RawBody { get; }
 
-        public ApiException(HttpStatusCode status, string? body)
-            : base($"API Error {(int)status} - {status}: {Truncate(body)}")
+        public ApiException(HttpStatusCode status, string? body, ApiProblem? problem)
+            : base(BuildMessage(status, problem, body))
         {
             StatusCode = status;
+            Title = problem?.Title;
+            Detail = problem?.Detail;
+            Errors = problem?.Errors;
+            RawBody = Truncate(body);
+        }
+
+        private static string BuildMessage(HttpStatusCode status, ApiProblem? p, string? body)
+        {
+            var sb = new StringBuilder($"API Error {(int)status} - {status}");
+            if (!string.IsNullOrWhiteSpace(p?.Title)) sb.Append($": {p!.Title}");
+            if (!string.IsNullOrWhiteSpace(p?.Detail)) sb.Append($" | {p!.Detail}");
+            if (p?.Errors is { Count: > 0 })
+            {
+                var first = p.Errors.First();
+                sb.Append($" | {first.Key}: {string.Join(", ", first.Value)}");
+            }
+            else if (!string.IsNullOrWhiteSpace(body))
+            {
+                sb.Append($" | Body: {Truncate(body)}");
+            }
+            return sb.ToString();
         }
 
         private static string Truncate(string? s) =>
             string.IsNullOrEmpty(s) ? "" : (s.Length > 800 ? s[..800] + "..." : s);
+    }
+
+    /// <summary>
+    /// Contrato flexible para problem+json (ProblemDetails/ValidationProblemDetails).
+    /// </summary>
+    public sealed class ApiProblem
+    {
+        public string? Type { get; set; }
+        public string? Title { get; set; }
+        public int? Status { get; set; }
+        public string? Detail { get; set; }
+        public string? Instance { get; set; }
+        public Dictionary<string, string[]>? Errors { get; set; }
     }
 }

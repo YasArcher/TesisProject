@@ -50,8 +50,10 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().Cre
 
 // ===== Servicios de dominio (una sola vez) =====
 builder.Services.AddScoped<IArticlesClient, ArticlesClient>();
+builder.Services.AddScoped<IVenuesClient, VenuesClient>();
 builder.Services.AddScoped<ICatalogsService, CatalogsService>();
 builder.Services.AddScoped<ExportJsInterop>();
+builder.Services.AddScoped<ICatalogsService, CatalogsService>();
 builder.Services.AddScoped<IApiClient, ApiClient>();
 
 await builder.Build().RunAsync();

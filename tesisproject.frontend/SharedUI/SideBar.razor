@@ -38,12 +38,12 @@
         </div>
         <ul class="nav flex-column gap-1 mb-3">
             <li class="nav-item">
-                <NavLink href="/management/bi"
+                <NavLink href="/panel/principal"
                          Match="NavLinkMatch.Prefix"
                          class="nav-link d-flex align-items-center gap-2 px-3 py-2 text-white-90"
                          ActiveClass="active">
                     <span class="icon">📊</span>
-                    <span class="label">Panel de control</span>
+                    <span class="label">Panel Principal</span>
                 </NavLink>
             </li>
         </ul>
@@ -67,12 +67,6 @@
                                  Match="NavLinkMatch.Prefix"
                                  class="nav-link px-3 py-2 text-white-85" ActiveClass="active">
                             Registrar Nuevo Artículo
-                        </NavLink>
-                    </li>
-                    <li class="nav-item">
-                        <NavLink href="/management/authors"
-                                 class="nav-link px-3 py-2 text-white-85" ActiveClass="active">
-                            Agregar Autor
                         </NavLink>
                     </li>
                     <li class="nav-item">
@@ -161,8 +155,8 @@
             <div class="accordion-panel">
                 <ul class="nav flex-column ms-4 my-2 gap-1">
                     <li class="nav-item"><NavLink href="/test-api" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Centro de Ayuda</NavLink></li>
-                    <li class="nav-item"><NavLink href="/ayuda/manual" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Manual de Usuario</NavLink></li>
-                    <li class="nav-item"><NavLink href="/configuracion" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Configuración</NavLink></li>
+                    <li class="nav-item"><NavLink href="/help/manual" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Manual de Usuario</NavLink></li>
+                    <li class="nav-item"><NavLink href="/configuration" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Configuración</NavLink></li>
                 </ul>
             </div>
         </div>
@@ -173,7 +167,7 @@
         </div>
         <ul class="nav flex-column gap-1">
             <li class="nav-item">
-                <NavLink href="/perfil"
+                <NavLink href="/perfilview"
                          class="nav-link d-flex align-items-center gap-2 px-3 py-2 text-white-90" ActiveClass="active">
                     <span class="icon">👤</span>
                     <span class="label">Datos de Usuario / Rol</span>

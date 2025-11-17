@@ -1,16 +1,26 @@
 ﻿@namespace tesisproject.frontend.SharedUI
+@using tesisproject.frontend.SharedUI
 
-<span class="@Css">@ChildContent</span>
+<span class="@CssClasses">
+    @Text
+</span>
 
 @code {
-    [Parameter] public string Tipo { get; set; } = "muted"; // primary|success|danger|muted
-    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Text { get; set; } = string.Empty;
+    [Parameter] public BadgeVariant Variant { get; set; } = BadgeVariant.Neutral;
 
-    private string Css => Tipo switch
-    {
-        "primary" => "inline-flex items-center rounded-full px-2.5 py-1 text-xs bg-indigo-600/20 text-indigo-300 border border-indigo-700/40",
-        "success" => "inline-flex items-center rounded-full px-2.5 py-1 text-xs bg-emerald-600/20 text-emerald-300 border border-emerald-700/40",
-        "danger" => "inline-flex items-center rounded-full px-2.5 py-1 text-xs bg-rose-600/20 text-rose-200 border border-rose-700/40",
-        _ => "inline-flex items-center rounded-full px-2.5 py-1 text-xs bg-slate-800 text-slate-300 border border-slate-700"
-    };
+    private string CssClasses =>
+        Variant switch
+        {
+            BadgeVariant.Success =>
+                "inline-flex items-center rounded-full bg-emerald-100 text-emerald-700 px-2 py-0.5 text-xs",
+            BadgeVariant.Danger =>
+                "inline-flex items-center rounded-full bg-red-100 text-red-700 px-2 py-0.5 text-xs",
+            BadgeVariant.Warning =>
+                "inline-flex items-center rounded-full bg-amber-100 text-amber-700 px-2 py-0.5 text-xs",
+            BadgeVariant.NeutralSoft =>
+                "inline-flex items-center rounded-full bg-slate-100 text-slate-700 px-2 py-0.5 text-xs",
+            _ =>
+                "inline-flex items-center rounded-full bg-slate-200 text-slate-700 px-2 py-0.5 text-xs",
+        };
 }

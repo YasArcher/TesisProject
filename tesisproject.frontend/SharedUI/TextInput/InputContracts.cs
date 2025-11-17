@@ -1,8 +1,15 @@
-﻿namespace tesisproject.frontend.SharedUI.TextInput
+﻿using System.Linq.Expressions;
+
+namespace tesisproject.frontend.SharedUI
 {
-    public interface IHasValidationState
+    public enum InputType
     {
-        string? ErrorMessage { get; }
-        bool HasError { get; }
+        Text,
+        Number,
+        Email,
+        Password,
+        Tel,
+        Url,
+        Date
     }
 }

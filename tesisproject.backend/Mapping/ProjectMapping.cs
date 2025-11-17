@@ -1,10 +1,15 @@
-﻿using tesisproject.backend.Data;
-using tesisproject.shared.DTOs.Project;
+﻿// Mapping/ProjectMapping.cs
+using AutoMapper;
 
-namespace tesisproject.backend.Mapping;
-
-public static class ProjectMapping
+namespace tesisproject.backend.Mapping
 {
-    public static ProjectDto ToDto(this Project p)
-        => new(p.Id, p.Code, p.Name, p.CreatedAt);
+    public class ProjectMapping : Profile
+    {
+        public ProjectMapping()
+        {
+            // Perfil intencionalmente vacío para evitar conflictos con DTOs de Project.
+            // Cuando definamos exactamente tus DTOs de Project (nombres/campos),
+            // agregamos aquí los CreateMap<...> correctos.
+        }
+    }
 }

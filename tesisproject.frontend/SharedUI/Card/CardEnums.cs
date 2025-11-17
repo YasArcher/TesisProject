@@ -1,10 +1,9 @@
-﻿namespace tesisproject.frontend.SharedUI.Card
+﻿namespace tesisproject.frontend.SharedUI
 {
-    public enum CardTone
+    public enum CardSize
     {
+        Small,
         Default,
-        Info,
-        Warning,
-        Danger
+        Large
     }
 }

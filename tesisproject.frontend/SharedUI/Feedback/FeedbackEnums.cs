@@ -1,6 +1,31 @@
-﻿namespace tesisproject.frontend.SharedUI.Feedback;
-public enum SkeletonShape
+﻿namespace tesisproject.frontend.SharedUI
 {
-    Rect,
-    Circle
+    public enum SpinnerSize
+    {
+        Small,
+        Medium,
+        Large
+    }
+
+    public enum SpinnerType
+    {
+        Border,
+        Grow
+    }
+
+    public enum SpinnerColor
+    {
+        Primary,
+        Secondary,
+        Success,
+        Danger,
+        Warning,
+        Info
+    }
+    public enum SkeletonShape
+    {
+        Rectangle,
+        Circle,
+        Line
+    }
 }

@@ -1,88 +1,107 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace tesisproject.shared.DTOs.Articles;
-
-
-public class ArticleParticipantDto
+namespace tesisproject.shared.DTOs.Articles
 {
-    public int Index { get; set; }
-    public string? Identificacion { get; set; }
-    public string? Nombre { get; set; }
-    public string? Participacion { get; set; }
-}
+    public class ArticleListItemDto
+    {
+        public int Id { get; set; }
+        public string? Title { get; set; }
+        public string? Doi { get; set; }
+        public short? Year { get; set; }
+        public short? PublicationYear
+        {
+            get => Year;
+            set => Year = value;
+        }
+        public string? VenueName { get; set; }
+        public string? PublicationStatusName { get; set; }
+        public string? ResearchLineName { get; set; }
+        public bool IsProjectResult { get; set; }
+        public bool HasInterculturalComponent { get; set; }
+        public bool IsOpenAccess { get; set; }
+        public DateTime CreatedAt { get; set; }
+        public int? AcademicTermId { get; set; }
+        public string? AcademicTermName { get; set; }
+        public byte? PublicationStatusId { get; set; }
+        public int? ResearchLineId { get; set; }
+        public int? ProjectId { get; set; }
+        public string? ProjectName { get; set; }
+        public int? IndexingSourceId { get; set; }
+        public string? IndexingSourceName { get; set; }
+        public string? Issn { get; set; }
+        public string? Abstract { get; set; }
+        public string? AuthorsSummary { get; set; }
+        public string? FileUrl { get; set; }
+        public List<ArticleParticipantDto>? Participants { get; set; }
+    }
 
-public class ArticleDto
-{
-    public int Id { get; set; }
-    public string? PeriodoAcademico { get; set; }
-    public int? Anio { get; set; }
-    public string? CodigoPublicacion { get; set; }
-    public string? CodigoISSN { get; set; }
-    public string? Titulo { get; set; }
-    public string? NombreRevista { get; set; }
-    public string? VolumenRevista { get; set; }
-    public string? NumeroRevista { get; set; }
-    public int? NumeroPaginas { get; set; }
-    public decimal? SJR { get; set; }
-    public DateTime? FechaPublicacion { get; set; }
-    public string? BaseDatos { get; set; }
-    public string? CampoAmplio { get; set; }
-    public string? CampoEspecifico { get; set; }
-    public string? CampoDetallado { get; set; }
-    public string? Quartil { get; set; }
-    public string? Filiacion { get; set; }
-    public string? Estado { get; set; }
-    public string? AccesoAbierto { get; set; }
-    public string? LinkPublicacion { get; set; }
-    public string? EnlaceRevista { get; set; }
-    public string? CodigoProyectoArticulado { get; set; }
-    public string? ProyectoArticulado { get; set; }
-    public string? LineaInvestigacionArticulada { get; set; }
-    public string? GrupoInvestigacionArticulado { get; set; }
-    public List<ArticleParticipantDto> Participantes { get; set; } = new();
-    public DateTime CreatedAt { get; set; }
-}
 
-public class ArticleParticipantRequest
-{
-    public int Index { get; set; }
-    public string? Identificacion { get; set; }
-    public string? Nombre { get; set; }
-    public string? Participacion { get; set; }
-}
+    public class ArticleDetailDto
+    {
+        public int Id { get; set; }
+        public string? Title { get; set; }
+        public string? Doi { get; set; }
+        public short? Year { get; set; }
+        public DateTime? PublishedAt { get; set; }
+        public int? PageCount { get; set; }
+        public string? PublicationUrl { get; set; }
+        public bool IsProjectResult { get; set; }
+        public bool HasInterculturalComponent { get; set; }
+        public bool IsOpenAccess { get; set; }
 
-public class CreateArticleRequest
-{
-    public string? PeriodoAcademico { get; set; }
-    public int? Anio { get; set; }
-    public string? CodigoPublicacion { get; set; }
-    public string? CodigoISSN { get; set; }
-    public string? Titulo { get; set; }
-    public string? NombreRevista { get; set; }
-    public string? VolumenRevista { get; set; }
-    public string? NumeroRevista { get; set; }
-    public int? NumeroPaginas { get; set; }
-    public decimal? SJR { get; set; }
-    public DateTime? FechaPublicacion { get; set; }
-    public string? BaseDatos { get; set; }
-    public string? CampoAmplio { get; set; }
-    public string? CampoEspecifico { get; set; }
-    public string? CampoDetallado { get; set; }
-    public string? Quartil { get; set; }
-    public string? Filiacion { get; set; }
-    public string? Estado { get; set; }
-    public string? AccesoAbierto { get; set; }
-    public string? LinkPublicacion { get; set; }
-    public string? EnlaceRevista { get; set; }
-    public string? CodigoProyectoArticulado { get; set; }
-    public string? ProyectoArticulado { get; set; }
-    public string? LineaInvestigacionArticulada { get; set; }
-    public string? GrupoInvestigacionArticulado { get; set; }
-    public List<ArticleParticipantRequest> Participantes { get; set; } = new();
-}
+        public string? ProceedingsName { get; set; }
+        public string? Proceedings { get; set; }
+        public string? EventName { get; set; }
+        public string? GroupName { get; set; }
+        public string? Filiacion { get; set; }
 
-public class UpdateArticleRequest : CreateArticleRequest
-{
-    public int Id { get; set; }
+        public int? AcademicTermId { get; set; }
+        public byte? PublicationStatusId { get; set; }
+        public int? ResearchLineId { get; set; }
+        public int? BroadFieldId { get; set; }
+        public int? SpecificFieldId { get; set; }
+        public int? DetailedFieldId { get; set; }
+        public int? ProjectId { get; set; }
+
+        // Proyección Venue (solo lectura en detalle)
+        public string? VenueName { get; set; }
+        public string? IssnCode { get; set; }
+        public string? IssueNumber { get; set; }
+        public string? VolumeNumber { get; set; }
+        public string? JournalUrl { get; set; }
+        public string? EvidenceUrl { get; set; }
+
+        // Métrica proyectada (si la devuelves)
+        public decimal? Sjr { get; set; }
+        public string? Quartile { get; set; }
+
+        public List<ArticleIndexingDto>? Indexings { get; set; }
+        public List<ArticleParticipantDto>? Participants { get; set; }
+    }
+
+
+    public class ArticleParticipantDto
+    {
+        public int Id { get; set; }
+        public int Index { get; set; }
+        public string? Identificacion { get; set; }
+        public string Nombre { get; set; } = default!;
+        public string? Participacion { get; set; }
+    }
+
+    public class ArticleFileDto
+    {
+        public int ArticleFileId { get; set; }
+        public string FileName { get; set; } = default!;
+        public string? FileUrl { get; set; }
+        public string? Sha256 { get; set; }
+        public DateTime UploadedAt { get; set; }
+    }
+
+    public class ArticleIndexingDto
+    {
+        public int IndexingSourceId { get; set; }
+        public string IndexingSourceName { get; set; } = default!;
+    }
 }

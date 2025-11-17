@@ -1,9 +1,8 @@
 ﻿namespace tesisproject.frontend.SharedUI.ConfirmDialog
 {
-    public enum ConfirmIntent
+    public enum ConfirmVariant
     {
         Neutral,
-        Danger,
-        Warning
+        Danger
     }
 }

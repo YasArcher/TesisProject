@@ -1,57 +1,45 @@
-﻿@using ArticleDto = tesisproject.shared.DTOs.Articles.ArticleDto
-@inherits ComponentBase
+﻿@namespace tesisproject.frontend.SharedUI.Card
+@using tesisproject.shared.DTOs.Articles
+@using tesisproject.frontend.SharedUI
 
-<div class="relative rounded-2xl border bg-white/95 shadow-sm ring-1 ring-slate-200 hover:shadow-md hover:ring-slate-300 transition">
-    <!-- Borde de estado -->
-    <div class="@StateBar()"></div>
-
-    <!-- Botón eliminar en esquina -->
-    <button type="button"
-            class="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 shadow-sm"
-            title="Eliminar"
-            @onclick="() => OnDelete.InvokeAsync(Item!.Id)">
-        🗑️
-    </button>
-
-    <!-- Contenido -->
-    <div class="px-3 pt-3 pb-2">
-        <div class="text-[13px] font-semibold text-slate-900 line-clamp-2" title="@Item?.Titulo">
-            @(Item?.Titulo ?? "Título no registrado")
+<div class="rounded-2xl border border-slate-200 bg-white shadow-sm p-4 flex flex-col gap-2">
+    <div class="flex items-start justify-between gap-2">
+        <div>
+            <h3 class="text-sm font-semibold text-slate-900 line-clamp-2">@Article.Title</h3>
+            <p class="text-[11px] text-slate-500 line-clamp-1">@Article.VenueName</p>
         </div>
 
-        <div class="mt-1 text-[11px] text-slate-500">
-            Publicado: @(Item?.FechaPublicacion?.ToString("yyyy-MM-dd") ?? "—")
-        </div>
+        <Badge Text="@Article.PublicationStatusName"
+               Variant="@(Article.PublicationStatusName == "Publicado" ? BadgeVariant.Success : BadgeVariant.Neutral)">
+        </Badge>
     </div>
 
-    <!-- Acción principal -->
-    <div class="px-3 pb-3">
-        <button type="button"
-                class="inline-flex items-center gap-1 rounded-lg bg-[#7A1E19] px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-[#8C2A24] focus:outline-none"
-                title="Ver detalles"
-                @onclick="() => OnPreview.InvokeAsync(Item!)">
-            👁️ Ver
-        </button>
+    @if (!string.IsNullOrWhiteSpace(Article.AuthorsSummary))
+    {
+        <p class="text-xs text-slate-500 line-clamp-2">
+            @Article.AuthorsSummary
+        </p>
+    }
+
+    <div class="flex justify-between items-center mt-2 text-[11px] text-slate-400">
+        @if (!string.IsNullOrWhiteSpace(Article.ResearchLineName))
+        {
+            <span>@Article.ResearchLineName</span>
+        }
+        <span>@(Article.PublicationYear?.ToString() ?? "-")</span>
+    </div>
+
+    <div class="mt-3 flex justify-end">
+        <ActionButton Text="Ver más"
+                      Size="sm"
+                      Variant="ButtonVariant.Outline"
+                      Intent="ButtonIntent.Primary"
+                      Icon="hero-eye"
+                      OnClick="OnViewMore" />
     </div>
 </div>
 
 @code {
-    [Parameter, EditorRequired] public ArticleDto Item { get; set; } = default!;
-    [Parameter] public EventCallback<ArticleDto> OnPreview { get; set; }
-    [Parameter] public EventCallback<int> OnDelete { get; set; }
-
-    private string StateBar()
-    {
-        var e = (Item?.Estado ?? "").Trim().ToUpperInvariant();
-        var color = e switch
-        {
-            "PUBLICADO" => "bg-emerald-500",
-            "ACEPTADO" => "bg-indigo-500",
-            "EN REVISIÓN" => "bg-amber-500",
-            "RECHAZADO" => "bg-rose-500",
-            _ => "bg-slate-300"
-        };
-        // bar lateral
-        return $"absolute left-0 top-0 h-full w-1.5 rounded-s-2xl {color}";
-    }
+    [Parameter] public ArticleListItemDto Article { get; set; } = default!;
+    [Parameter] public EventCallback OnViewMore { get; set; }
 }

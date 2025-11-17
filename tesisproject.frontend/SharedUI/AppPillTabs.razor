@@ -1,48 +1,29 @@
-﻿@using Microsoft.AspNetCore.Components
+﻿@namespace tesisproject.frontend.SharedUI
 
-<ul class="nav nav-pills @Class">
-    @foreach (var tab in Items ?? Enumerable.Empty<AppPillTabs.PillTab>())
+<div class="flex bg-gray-100 rounded-lg p-1">
+    @foreach (var tab in Tabs)
     {
-        var active = tab.Active ? "active" : null;
-        if (!string.IsNullOrWhiteSpace(tab.Href))
-        {
-            <li class="nav-item">
-                <a class="nav-link @active" href="@tab.Href">
-                    @if (!string.IsNullOrWhiteSpace(tab.Icon))
-                    {
-                        <span>@tab.Icon</span>
-                    }
-         @tab.Label
-                </a>
-            </li>
-        }
-        else
-        {
-            <li class="nav-item">
-                <button type="button" class="nav-link @active" @onclick="() => Select(tab)">
-                    @if (!string.IsNullOrWhiteSpace(tab.Icon))
-                    {
-                        <span>@tab.Icon</span>
-                    }
-         @tab.Label
-                </button>
-            </li>
-        }
+        <button @onclick="() => OnTabChanged?.Invoke(tab.Id)"
+                class="@GetTabClass(tab) px-3 py-2 rounded-md text-sm font-medium transition-colors">
+            @if (!string.IsNullOrEmpty(tab.Icon))
+            {
+                <i class="@tab.Icon mr-2"></i>
+            }
+            @tab.Text
+        </button>
     }
-</ul>
+</div>
 
 @code {
-    [Parameter] public IEnumerable<PillTab>? Items { get; set; }
+    [Parameter] public List<TabItem> Tabs { get; set; } = new();
+    [Parameter] public string ActiveTab { get; set; } = string.Empty;
+    [Parameter] public Action<string>? OnTabChanged { get; set; }
     [Parameter] public string? Class { get; set; }
-    [Parameter] public EventCallback<PillTab> OnSelect { get; set; }
 
-    private Task Select(PillTab tab) => OnSelect.HasDelegate ? OnSelect.InvokeAsync(tab) : Task.CompletedTask;
-
-    public class PillTab
+    private string GetTabClass(TabItem tab)
     {
-        public string Label { get; set; } = "";
-        public string? Icon { get; set; }
-        public bool Active { get; set; }
-        public string? Href { get; set; }   // <- NUEVO: permite navegar
+        return tab.Id == ActiveTab
+            ? "bg-white text-[#7A1E19] shadow-sm"
+            : "text-gray-500 hover:text-gray-700";
     }
 }

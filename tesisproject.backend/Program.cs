@@ -8,6 +8,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using tesisproject.backend.Data;
+using tesisproject.backend.Data.Seed;          // ✅ Importante: SeedCatalogs
 using tesisproject.backend.Identity;
 using tesisproject.backend.Mapping;
 using tesisproject.backend.Repositories.Implementations;
@@ -17,37 +18,41 @@ using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Implementations;
 using tesisproject.backend.UnitOfWork.Interfaces;
-using tesisproject.shared.Abstractions.Articles;
 using tesisproject.shared.Abstractions.Auth;
 using tesisproject.shared.Abstractions.Project;
 using tesisproject.shared.DTOs.Project;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ===== PUERTOS FIJOS DEL BACKEND =====
-builder.WebHost.PreferHostingUrls(true)
-               .UseUrls("http://localhost:5040", "https://localhost:7040");
-
 var services = builder.Services;
 var config = builder.Configuration;
 
+// ===== PUERTOS (dev local) =====
+builder.WebHost.PreferHostingUrls(true)
+               .UseUrls("http://localhost:5040", "https://localhost:7040");
+
 // ===== DbContext =====
 var cs = config.GetConnectionString("DefaultConnection")
-          ?? "Server=.;Database=TesisDB;Trusted_Connection=True;TrustServerCertificate=True";
-services.AddDbContext<AppDbContext>(opt => opt.UseSqlServer(cs));
+          ?? "Server=PERSONAL\\DINNOVA;Database=TesisDB;User Id=sa;Password=admin123;TrustServerCertificate=True;MultipleActiveResultSets=True";
+
+services.AddDbContext<AppDbContext>(opt =>
+{
+    opt.UseSqlServer(cs);
+    opt.EnableSensitiveDataLogging(builder.Environment.IsDevelopment());
+});
 
 // ===== AutoMapper =====
 services.AddAutoMapper(typeof(ArticleMapping).Assembly);
 
-// ===== Capa de dominio / repos / UoW =====
+// ===== Repos/UoW/Servicios de dominio =====
 services.AddScoped<IProjectsService, ProjectsService>();
 services.AddScoped<IArticlesRepository, ArticlesRepository>();
 services.AddScoped<IUnitOfWork, UnitOfWork>();
 services.AddScoped<IArticlesService, ArticlesService>();
-
+services.AddScoped<IVenuesService, VenuesService>();
 services.AddHttpContextAccessor();
 
-// ===== CORS (FRONT: 5189 / 7189) =====
+// ===== CORS =====
 const string CorsPolicyName = "wasm";
 services.AddCors(o => o.AddPolicy(CorsPolicyName, p => p
     .WithOrigins("http://localhost:5189", "https://localhost:7189")
@@ -56,7 +61,7 @@ services.AddCors(o => o.AddPolicy(CorsPolicyName, p => p
     .AllowCredentials()
 ));
 
-// ===== Identity (registra cookies por defecto) =====
+// ===== Identity =====
 services
     .AddIdentity<ApplicationUser, ApplicationRole>(opt =>
     {
@@ -71,10 +76,17 @@ services
     .AddEntityFrameworkStores<AppDbContext>()
     .AddDefaultTokenProviders();
 
-// ===== JWT (esquema por defecto) =====
-JwtSecurityTokenHandler.DefaultMapInboundClaims = false; // nombres de claims tal cual
+// ===== JWT =====
+JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
+
 services.Configure<JwtOptions>(config.GetSection("Jwt"));
-var jwt = config.GetSection("Jwt").Get<JwtOptions>()!;
+
+var jwt = config.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions
+{
+    Issuer = "local",
+    Audience = "local",
+    Key = "dev-very-long-key-please-change"
+};
 
 services.AddAuthentication(options =>
 {
@@ -98,7 +110,7 @@ services.AddAuthentication(options =>
     };
 });
 
-// Evitar redirecciones HTML a /Account/Login en requests API → devolver 401/403
+// ===== Evitar redirects HTML en APIs =====
 services.ConfigureApplicationCookie(opt =>
 {
     opt.Events.OnRedirectToLogin = ctx =>
@@ -111,6 +123,7 @@ services.ConfigureApplicationCookie(opt =>
         ctx.Response.Redirect(ctx.RedirectUri);
         return Task.CompletedTask;
     };
+
     opt.Events.OnRedirectToAccessDenied = ctx =>
     {
         if (ctx.Request.Path.StartsWithSegments("/api"))
@@ -124,19 +137,21 @@ services.ConfigureApplicationCookie(opt =>
 });
 
 // ===== Autorización =====
-builder.Services.AddAuthorization(options =>
+services.AddAuthorization(options =>
 {
-    // Todo requiere autenticación salvo [AllowAnonymous]
+    // Todo requiere autenticación por defecto
     options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
 
-    // 👉 Policy para escribir artículos: incluye Admin, Editor y SuperAdmin
     options.AddPolicy("ArticlesWrite", policy =>
         policy.RequireRole("Admin", "Editor", "SuperAdmin"));
+
+    options.AddPolicy("OnlyAdmins", policy =>
+        policy.RequireRole("Admin", "SuperAdmin"));
 });
 
-// ===== Servicios Auth/Audit =====
+// ===== Auth/Audit =====
 services.AddScoped<IAuthService, IdentityAuthService>();
 services.AddScoped<ITokenService, TokenService>();
 services.AddScoped<IAuditLogger, AuditLogger>();
@@ -189,41 +204,86 @@ else
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
-// Redirección HTTPS solo en no-Dev (evita warnings en local)
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
 
-// Orden correcto: CORS → Auth → AuthZ
 app.UseCors(CorsPolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ===== Seed roles y usuario admin =====
+// ===== Migrar BD + Seed =====
 using (var scope = app.Services.CreateScope())
 {
-    var roleMgr = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
-    var userMgr = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    foreach (var role in new[] { "Admin", "Editor", "Viewer" })
-        if (!await roleMgr.RoleExistsAsync(role))
-            await roleMgr.CreateAsync(new ApplicationRole { Name = role });
+    logger.LogWarning("EF connecting to: {cs}", cs);
 
-    var adminEmail = "admin@local.test";
-    var admin = await userMgr.FindByEmailAsync(adminEmail);
-    if (admin is null)
+    try
     {
-        admin = new ApplicationUser { UserName = "admin", Email = adminEmail, EmailConfirmed = true };
-        await userMgr.CreateAsync(admin, "Admin#1234");
-        await userMgr.AddToRoleAsync(admin, "Admin");
+        await db.Database.MigrateAsync();
+
+        var tables = await db.Database
+            .SqlQueryRaw<string>("SELECT t.name FROM sys.tables t ORDER BY t.name")
+            .ToListAsync();
+
+        logger.LogWarning("EF existing tables: {tables}", string.Join(", ", tables));
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error migrating database");
+        throw;
+    }
+
+    // Seed roles + admin
+    try
+    {
+        var roleMgr = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+        var userMgr = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+
+        foreach (var role in new[] { "Admin", "Editor", "Viewer", "SuperAdmin" })
+        {
+            if (!await roleMgr.RoleExistsAsync(role))
+                await roleMgr.CreateAsync(new ApplicationRole { Name = role });
+        }
+
+        var adminEmail = "admin@local.test";
+        var admin = await userMgr.FindByEmailAsync(adminEmail);
+        if (admin is null)
+        {
+            admin = new ApplicationUser
+            {
+                UserName = "admin",
+                Email = adminEmail,
+                EmailConfirmed = true
+            };
+
+            await userMgr.CreateAsync(admin, "Admin#1234");
+            await userMgr.AddToRoleAsync(admin, "Admin");
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Seeding Identity failed");
+    }
+
+    // ✅ Seed de catálogos alineado al modelo + TXT/XLSX
+    try
+    {
+        await SeedCatalogs.InitializeAsync(db);
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning(ex, "Seeding catalogs failed");
     }
 }
 
 // ===== Endpoints =====
 app.MapControllers();
 
-// Minimal API de Projects (ejemplo)
+// Minimal API Projects
 var projects = app.MapGroup("/api/projects");
 projects.MapGet("", (IProjectsService svc, CancellationToken ct) => svc.GetAllAsync(ct)).WithOpenApi();
 projects.MapGet("/{id}", (int id, IProjectsService svc, CancellationToken ct) => svc.GetByIdAsync(id, ct)).WithOpenApi();

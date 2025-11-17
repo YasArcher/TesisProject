@@ -1,63 +1,69 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using tesisproject.shared.Abstractions;
-using tesisproject.shared.Abstractions.Articles;
+using tesisproject.backend.Services.Interfaces;
+using tesisproject.shared.DTOs;
 using tesisproject.shared.DTOs.Articles;
 
-namespace tesisproject.backend.Controllers;
-
-[ApiController]
-[Route("api/[controller]")]
-[Authorize] // Requiere autenticación por defecto (se puede permitir anónimo por acción)
-public class ArticlesController : ControllerBase
+namespace tesisproject.backend.Controllers
 {
-    private readonly IArticlesService _svc;
-    public ArticlesController(IArticlesService svc) => _svc = svc;
-
-    // Listar (si quieres permitir ver sin login, quita este Authorize y usa [AllowAnonymous])
-    [HttpGet]
-    [AllowAnonymous] // ← opcional: si quieres que la lista sea pública
-    public async Task<ActionResult<Result<IReadOnlyList<ArticleDto>>>> GetAll(CancellationToken ct = default)
-        => Ok(await _svc.GetAllAsync(ct));
-
-    [HttpGet("{id:int}")]
-    [Authorize] // o [AllowAnonymous] si quieres público también
-    public async Task<ActionResult<Result<ArticleDto>>> GetById(int id, CancellationToken ct = default)
+    [ApiController]
+    [AllowAnonymous]
+    [Route("api/[controller]")]
+    //[Authorize] // opcional
+    public class ArticlesController : ControllerBase
     {
-        var res = await _svc.GetByIdAsync(id, ct);
-        if (!res.Succeeded || res.Value is null) return NotFound(res);
-        return Ok(res);
-    }
+        private readonly IArticlesService _svc;
 
-    // Crear — requiere rol Admin, Editor o SuperAdmin
-    [HttpPost]
-    [Authorize(Policy = "ArticlesWrite")]
-    public async Task<ActionResult<Result<int>>> Create([FromBody] CreateArticleRequest req, CancellationToken ct = default)
-    {
-        if (!ModelState.IsValid) return BadRequest(Result<int>.Fail("Modelo inválido."));
-        var res = await _svc.CreateAsync(req, ct);
-        if (!res.Succeeded) return BadRequest(res);
-        return CreatedAtAction(nameof(GetById), new { id = res.Value }, res);
-    }
+        public ArticlesController(IArticlesService svc)
+        {
+            _svc = svc;
+        }
 
-    // Actualizar — requiere rol Admin, Editor o SuperAdmin
-    [HttpPut]
-    [Authorize(Policy = "ArticlesWrite")]
-    public async Task<ActionResult<Result>> Update([FromBody] UpdateArticleRequest req, CancellationToken ct = default)
-    {
-        if (!ModelState.IsValid) return BadRequest(Result.Fail("Modelo inválido."));
-        var res = await _svc.UpdateAsync(req, ct);
-        if (!res.Succeeded) return BadRequest(res);
-        return Ok(res);
-    }
+        // GET: api/articles?page=1&pageSize=20&search=...&year=2024
+        [HttpGet]
+        public async Task<ActionResult<PagedResult<ArticleListItemDto>>> GetList([FromQuery] ArticleListQuery query, CancellationToken ct)
+        {
+            var result = await _svc.GetListAsync(query, ct);
+            return Ok(result);
+        }
 
-    // Borrar — requiere rol Admin, Editor o SuperAdmin (si lo deseas solo Admin y SuperAdmin, ajusta la policy)
-    [HttpDelete("{id:int}")]
-    [Authorize(Policy = "ArticlesWrite")]
-    public async Task<ActionResult<Result>> Delete(int id, CancellationToken ct = default)
-    {
-        var res = await _svc.DeleteAsync(id, ct);
-        if (!res.Succeeded) return NotFound(res);
-        return Ok(res);
+        // GET: api/articles/5
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<ArticleDetailDto>> GetById(int id, CancellationToken ct)
+        {
+            var dto = await _svc.GetByIdAsync(id, ct);
+            if (dto == null) return NotFound();
+            return Ok(dto);
+        }
+
+        // POST: api/articles
+        [HttpPost]
+        public async Task<ActionResult<int>> Create([FromBody] CreateArticleRequest req, CancellationToken ct)
+        {
+            // Usa el userId real si ya tienes identidad
+            var userId = User?.Identity?.Name ?? "system";
+            var id = await _svc.CreateAsync(req, userId, ct);
+            return CreatedAtAction(nameof(GetById), new { id }, id);
+        }
+
+        // PUT: api/articles/5
+        [HttpPut("{id:int}")]
+        public async Task<ActionResult> Update(int id, [FromBody] UpdateArticleRequest req, CancellationToken ct)
+        {
+            var userId = User?.Identity?.Name ?? "system";
+            var ok = await _svc.UpdateAsync(id, req, userId, ct);
+            return ok ? NoContent() : NotFound();
+        }
+
+        // DELETE: api/articles/5
+        [HttpDelete("{id:int}")]
+        public async Task<ActionResult> Delete(int id, CancellationToken ct)
+        {
+            var userId = User?.Identity?.Name ?? "system";
+            var ok = await _svc.DeleteAsync(id, userId, ct);
+            return ok ? NoContent() : NotFound();
+        }
     }
 }

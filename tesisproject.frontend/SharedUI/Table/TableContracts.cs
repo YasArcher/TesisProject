@@ -1,11 +1,12 @@
-﻿namespace tesisproject.frontend.SharedUI.Table
-{
-    public enum SortDirection { None, Asc, Desc }
+﻿using Microsoft.AspNetCore.Components;
 
-    public sealed record ColumnDef<TItem>(
-        string Title,
-        Func<TItem, object?> ValueSelector,
-        string? Width = null,
-        bool Sortable = true
-    );
+namespace tesisproject.frontend.SharedUI
+{
+    public class ColumnDefinition<TItem>
+    {
+        public string Title { get; set; } = string.Empty;
+        public string PropertyName { get; set; } = string.Empty;
+        public bool IsSortable { get; set; }
+        public RenderFragment<TItem>? Template { get; set; }
+    }
 }

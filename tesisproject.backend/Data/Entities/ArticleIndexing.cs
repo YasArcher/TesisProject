@@ -1,0 +1,10 @@
+﻿namespace tesisproject.backend.Data.Entities
+{
+    public class ArticleIndexing
+    {
+        public int ArticleId { get; set; }
+        public Article Article { get; set; } = default!;
+        public int IndexingSourceId { get; set; }
+        public IndexingSource IndexingSource { get; set; } = default!;
+    }
+}

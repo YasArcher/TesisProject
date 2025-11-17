@@ -1,260 +1,815 @@
 ﻿@page "/articulos/registrar"
-@page "/articulos/registrar/{id:int}"
-@attribute [Authorize]
+@page "/articulos/editar/{ArticleId:int}"
+@using tesisproject.frontend.Models.Articles
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.Catalogs
+@using tesisproject.frontend.Services.Interfaces
+@inject IArticlesClient ArticlesService
+@inject IVenuesClient VenuesService
+@inject ICatalogsService CatalogService
+@inject NavigationManager NavManager
+@inject IJSRuntime JS
 
-@using Microsoft.AspNetCore.Components.Forms
-@using tesisproject.frontend.SharedUI
-@using tesisproject.frontend.SharedUI.Card
-@using tesisproject.frontend.SharedUI.Table
+<PageTitle>@Title</PageTitle>
 
-<AppHeroHeader Title="Artículos Científicos" Subtitle="@(isEdit ? "Editar" : "Registro")">
-    <Actions>
-        <button class="btn btn-light border" type="button" @onclick="BackToList" disabled="@saving">Volver</button>
-        <!-- Un guardar arriba por accesibilidad (el primario está en el aside) -->
-        <button class="btn btn-outline-primary d-none d-md-inline-flex" type="submit" form="article-form" disabled="@saving">
-            @(saving ? "Guardando..." : (isEdit ? "Guardar" : "Guardar"))
-        </button>
-    </Actions>
-</AppHeroHeader>
-
-<!-- Pestañas locales -->
-<nav class="form-tabs" role="tablist" aria-label="Secciones del formulario">
-    @foreach (var t in TabItems)
-    {
-        <button type="button"
-                class="form-tab @(currentTab == t.Id ? "active" : null)"
-                role="tab"
-                aria-selected="@(currentTab == t.Id)"
-                @onclick="() => SetTab(t.Id)">
-            <span class="tab-icon">@t.Icon</span> @t.Label
-        </button>
-    }
-</nav>
-
-@if (!string.IsNullOrWhiteSpace(serverError))
-{
-    <div class="alert alert-danger mt-3">@serverError</div>
-}
-@if (!string.IsNullOrWhiteSpace(serverOk))
-{
-    <div class="alert alert-success mt-3">@serverOk</div>
-}
-
-<EditForm id="article-form" Model="@Model" OnValidSubmit="@OnSave">
-    <DataAnnotationsValidator />
-    <ValidationSummary class="alert alert-warning rounded-2 mt-3 mb-3" />
-
-    <div class="row g-4">
-        <!-- ===== Columna principal (pestañas) ===== -->
-        <div class="col-12 col-lg-8">
-
-            @* ======= TAB: GENERAL (Periodo + Identificación/Revista) ======= *@
-            @if (currentTab == TabId.General)
-            {
-                <AppGlassCard Title="Período Académico" Icon="📅" Class="mb-3">
-                    <div class="row g-3">
-                        <AppFormSelect Label="Período" Id="periodo"
-                                       ColCss="col-12 col-md-6"
-                                       Placeholder="Seleccione…"
-                                       Options="@Catalogs.PeriodoOptions"
-                                       @bind-Value="Model.PeriodoAcademico" />
-
-                        <AppFormInput Label="Año" Id="anio"
-                                      Type="number" Placeholder="2025"
-                                      ColCss="col-12 col-md-6"
-                                      @bind-Value="Model.Anio" />
-                    </div>
-                </AppGlassCard>
-
-                <AppGlassCard Title="Identificación y Revista" Icon="📑" Class="mb-3">
-                    <div class="row g-3">
-                        <AppFormInput Label="Código Publicación" Id="codPublicacion"
-                                      Placeholder="DOI o código interno"
-                                      ColCss="col-12 col-md-6"
-                                      @bind-Value="Model.CodigoPublicacion" />
-                        <AppFormInput Label="Código ISSN" Id="issn"
-                                      Placeholder="1234-5678"
-                                      ColCss="col-12 col-md-6"
-                                      @bind-Value="Model.CodigoISSN" />
-
-                        <AppFormTextarea Label="Título Publicación" Id="titulo"
-                                         Rows="3" ColCss="col-12"
-                                         Placeholder="Escribe el título…"
-                                         @bind-Value="Model.Titulo" />
-
-                        <AppFormInput Label="Nombre revista" Id="revista"
-                                      Placeholder="Journal of…"
-                                      ColCss="col-12 col-md-6"
-                                      @bind-Value="Model.NombreRevista" />
-
-                        <AppFormInput Label="Volumen Revista" Id="VolRevista"
-                                      Placeholder="79"
-                                      ColCss="col-12 col-md-3"
-                                      @bind-Value="Model.VolumenRevista" />
-
-                        <AppFormInput Label="Número revista" Id="numRevista"
-                                      Placeholder="42(3)"
-                                      ColCss="col-12 col-md-3"
-                                      @bind-Value="Model.NumeroRevista" />
-
-                        <AppFormInput Label="Número de páginas" Id="numPaginas"
-                                      Placeholder="12"
-                                      ColCss="col-12 col-md-3"
-                                      @bind-Value="Model.NumeroPaginas" />
-
-                        <AppFormInput Label="SJR (SCImago)" Id="sjr"
-                                      Type="number" Placeholder="0.000"
-                                      ColCss="col-12 col-md-3"
-                                      @bind-Value="Model.SJR" />
-
-                        <AppFormInput Label="Fecha Publicación" Id="fechaPub"
-                                      Type="date"
-                                      ColCss="col-12 col-md-6"
-                                      @bind-Value="Model.FechaPublicacion" />
-                    </div>
-                </AppGlassCard>
-            }
-
-            @* ======= TAB: CLASIFICACIÓN ======= *@
-            @if (currentTab == TabId.Clasificacion)
-            {
-                <AppGlassCard Title="Clasificación e Indexación" Icon="🧭" Class="mb-3">
-                    <div class="row g-3">
-                        <AppFormSelect Label="Base datos indexado" Id="baseIndex"
-                                       ColCss="col-12 col-md-4"
-                                       Options="@Catalogs.BaseDatosOptions"
-                                       @bind-Value="Model.BaseDatos" />
-                        <AppFormSelect Label="Campo Amplio" Id="campoAmplio"
-                                       ColCss="col-12 col-md-4"
-                                       Options="@Catalogs.CampoAmplioOptions"
-                                       @bind-Value="Model.CampoAmplio" />
-                        <AppFormSelect Label="Campo Específico" Id="campoEspecifico"
-                                       ColCss="col-12 col-md-4"
-                                       Options="@Catalogs.CampoEspecificoOptions"
-                                       @bind-Value="Model.CampoEspecifico" />
-                        <AppFormSelect Label="Campo Detallado" Id="campoDetallado"
-                                       ColCss="col-12"
-                                       Options="@Catalogs.CampoDetalladoOptions"
-                                       @bind-Value="Model.CampoDetallado" />
-                        <AppFormSelect Label="Quartil" Id="quartil"
-                                       ColCss="col-12 col-md-6"
-                                       Options="@Catalogs.QuartilOptions"
-                                       @bind-Value="Model.Quartil" />
-                        <AppFormInput Label="Filiación" Id="filiacion"
-                                      Placeholder="Universidad …"
-                                      ColCss="col-12 col-md-6"
-                                      @bind-Value="Model.Filiacion" />
-                    </div>
-                </AppGlassCard>
-            }
-
-            @* ======= TAB: ESTADO / ACCESO ======= *@
-            @if (currentTab == TabId.EstadoAcceso)
-            {
-                <AppGlassCard Title="Estado & Acceso" Icon="🏷️" Class="mb-3">
-                    <div class="row g-3">
-                        <AppFormSelect Label="Estado" Id="estado"
-                                       ColCss="col-12 col-md-6"
-                                       Options="@Catalogs.EstadoOptions"
-                                       @bind-Value="Model.Estado" />
-                        <AppFormSelect Label="Acceso Abierto" Id="openAccess"
-                                       ColCss="col-12 col-md-6"
-                                       Options="@Catalogs.OpenAccessOptions"
-                                       @bind-Value="Model.AccesoAbierto" />
-                    </div>
-                </AppGlassCard>
-            }
-
-            @* ======= TAB: ENLACES ======= *@
-            @if (currentTab == TabId.Enlaces)
-            {
-                <AppGlassCard Title="Enlaces" Icon="🔗" Class="mb-3">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <AppUrlVisit Label="Link Publicación" Id="linkPub"
-                                         @bind-Value="Model.LinkPublicacion" />
-                        </div>
-                        <div class="col-12">
-                            <AppUrlVisit Label="Link Revista" Id="linkRev"
-                                         @bind-Value="Model.EnlaceRevista" />
-                        </div>
-                    </div>
-                </AppGlassCard>
-            }
-
-            @* ======= TAB: PARTICIPANTES ======= *@
-            @if (currentTab == TabId.Participantes)
-            {
-                <AppGlassCard Title="Participantes" Icon="👥">
-                    <AppParticipantRow Index="1"
-                                       @bind-Identificacion="Model.Identificacion1"
-                                       @bind-Nombre="Model.Nombre1"
-                                       @bind-Participacion="Model.Participacion1" />
-                    <AppParticipantRow Index="2"
-                                       @bind-Identificacion="Model.Identificacion2"
-                                       @bind-Nombre="Model.Nombre2"
-                                       @bind-Participacion="Model.Participacion2" />
-                    <AppParticipantRow Index="3"
-                                       @bind-Identificacion="Model.Identificacion3"
-                                       @bind-Nombre="Model.Nombre3"
-                                       @bind-Participacion="Model.Participacion3" />
-                    <AppParticipantRow Index="4"
-                                       @bind-Identificacion="Model.Identificacion4"
-                                       @bind-Nombre="Model.Nombre4"
-                                       @bind-Participacion="Model.Participacion4" />
-                    <AppParticipantRow Index="5"
-                                       @bind-Identificacion="Model.Identificacion5"
-                                       @bind-Nombre="Model.Nombre5"
-                                       @bind-Participacion="Model.Participacion5" />
-                </AppGlassCard>
-            }
-        </div>
-
-        <!-- ===== Aside (Resumen + Acciones pegajosas) ===== -->
-        <div class="col-12 col-lg-4">
-            <div class="sticky-aside">
-                <AppGlassCard Title="Resumen" Icon="🔎" Class="mb-3">
-                    <div class="mb-2">
-                        <div class="text-muted small mb-1">Título</div>
-                        <div class="fw-semibold">@(!string.IsNullOrWhiteSpace(Model.Titulo) ? Model.Titulo : "—")</div>
-                    </div>
-                    <div class="small text-muted">Período: @(Model.PeriodoAcademico ?? "—")</div>
-                    <div class="small text-muted">ISSN: @(Model.CodigoISSN ?? "—")</div>
-                    <div class="small text-muted mb-2">SJR: @(Model.SJR ?? "—")</div>
-
-                    <div class="d-flex flex-wrap gap-2 mt-2" aria-label="Resumen de metadatos">
-                        <span class="summary-chip"><span class="dot @GetAccessDot()" aria-hidden="true"></span> Acceso: @(Model.AccesoAbierto ?? "—")</span>
-                        <span class="summary-chip"><span class="dot @GetEstadoDot()" aria-hidden="true"></span> Estado: @(Model.Estado ?? "—")</span>
-                        <span class="summary-chip"><span class="dot dot-primary" aria-hidden="true"></span> BD: @(Model.BaseDatos ?? "—")</span>
-                    </div>
-
-                    <div class="mt-3 d-flex gap-2">
-                        <a class="btn btn-sm btn-outline-primary @((string.IsNullOrWhiteSpace(Model.LinkPublicacion) ? "disabled" : null))"
-                           target="_blank" rel="noopener"
-                           href="@(string.IsNullOrWhiteSpace(Model.LinkPublicacion) ? "#" : Model.LinkPublicacion)">
-                            Ver publicación
+<div class="min-h-screen bg-gray-50">
+    <!-- Header Navigation Card -->
+    <div class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="bg-gradient-to-r from-[#7A1E19] to-[#9C4A3C] rounded-b-2xl shadow-lg">
+                <div class="px-6 py-8">
+                    <!-- Breadcrumb -->
+                    <nav class="flex items-center space-x-2 text-white/80 mb-4">
+                        <a href="/" class="hover:text-white transition-colors">
+                            <i class="bi bi-house"></i>
                         </a>
-                        <a class="btn btn-sm btn-outline-secondary @((string.IsNullOrWhiteSpace(Model.EnlaceRevista) ? "disabled" : null))"
-                           target="_blank" rel="noopener"
-                           href="@(string.IsNullOrWhiteSpace(Model.EnlaceRevista) ? "#" : Model.EnlaceRevista)">
-                            Ver revista
-                        </a>
-                    </div>
-                </AppGlassCard>
+                        <span class="text-white/50">/</span>
+                        <a href="/articulos" class="hover:text-white transition-colors">Artículos</a>
+                        <span class="text-white/50">/</span>
+                        <span class="text-white">@(ArticleId > 0 ? "Editar" : "Registrar")</span>
+                    </nav>
 
-                <!-- Acciones pegajosas -->
-                <div class="sticky-actions">
-                    <div class="d-grid gap-2">
-                        <button type="submit" form="article-form" class="btn btn-primary" disabled="@saving">
-                            @(saving ? "Guardando..." : (isEdit ? "Guardar cambios" : "Guardar"))
-                        </button>
-                        <button type="button" class="btn btn-light border" @onclick="OnCancel" disabled="@saving">
-                            Cancelar
-                        </button>
+                    <!-- Title and Description -->
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-4 mb-3">
+                                <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                                    <i class="bi @(ArticleId > 0 ? "bi-pencil-square" : "bi-file-earmark-plus") text-white text-xl"></i>
+                                </div>
+                                <div>
+                                    <h1 class="text-3xl font-bold text-white">@Title</h1>
+                                    <p class="text-white/80 mt-1">
+                                        @(ArticleId > 0 ?
+                                                                                "Modifica los datos del artículo existente" :
+                                                                                "Completa todos los campos para registrar un nuevo artículo científico")
+                                    </p>
+                                </div>
+                                <span class="bg-white/20 text-white px-3 py-1 rounded-full text-sm font-medium backdrop-blur-sm">
+                                    @(ArticleId > 0 ? "Editando" : "Nuevo")
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Quick Actions -->
+                        <div class="flex flex-wrap gap-3 mt-4 lg:mt-0">
+                            <button @onclick="Cancel"
+                                    class="inline-flex items-center px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-all duration-200 backdrop-blur-sm border border-white/30">
+                                <i class="bi bi-arrow-left mr-2"></i>
+                                Volver al listado
+                            </button>
+                            @if (ArticleId > 0)
+                            {
+                                <button onclick="location.reload()"
+                                        class="inline-flex items-center px-4 py-2 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-all duration-200 backdrop-blur-sm border border-white/30">
+                                    <i class="bi bi-arrow-clockwise mr-2"></i>
+                                    Recargar
+                                </button>
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-        <!-- /Aside -->
     </div>
-</EditForm>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <!-- Form Section -->
+            <div class="xl:col-span-2">
+                <!-- Alert Messages -->
+                @if (!string.IsNullOrEmpty(successMessage))
+                {
+                    <div class="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center">
+                        <i class="bi bi-check-circle-fill text-green-500 text-xl mr-3"></i>
+                        <span class="text-green-800 flex-1">@successMessage</span>
+                        <button @onclick="() => successMessage = string.Empty"
+                                class="text-green-600 hover:text-green-800">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    <div class="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center">
+                        <i class="bi bi-exclamation-triangle-fill text-red-500 text-xl mr-3"></i>
+                        <span class="text-red-800 flex-1">@errorMessage</span>
+                        <button @onclick="() => errorMessage = string.Empty"
+                                class="text-red-600 hover:text-red-800">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                }
+
+                <EditForm Model="Article" OnValidSubmit="HandleValidSubmit">
+                    <DataAnnotationsValidator />
+
+                    <div class="space-y-6">
+                        <!-- Información Básica -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200">
+                                <h2 class="text-xl font-semibold text-gray-900 flex items-center">
+                                    <i class="bi bi-info-circle mr-3 text-[#7A1E19]"></i>
+                                    Información Básica del Artículo
+                                </h2>
+                            </div>
+                            <div class="p-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="md:col-span-2">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            Título del Artículo <span class="text-red-500">*</span>
+                                        </label>
+                                        <InputText @bind-Value="Article.Title"
+                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent transition-all duration-200"
+                                                   placeholder="Ingrese el título completo del artículo" />
+                                        <ValidationMessage For="@(() => Article.Title)" />
+                                        <p class="text-sm text-gray-500 mt-2">Título completo tal como aparece en la publicación</p>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">DOI</label>
+                                        <div class="flex">
+                                            <span class="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-300 bg-gray-50 text-gray-500 text-sm">
+                                                doi.org/
+                                            </span>
+                                            <InputText @bind-Value="Article.Doi"
+                                                       class="flex-1 rounded-r-lg border border-gray-300 px-4 py-3 focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent"
+                                                       placeholder="10.1234/abc.2024" />
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Año de Publicación</label>
+                                        <InputNumber @bind-Value="Article.Year"
+                                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent"
+                                                     min="1900" max="@DateTime.Now.Year" />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Fecha Publicación</label>
+                                        <InputDate @bind-Value="Article.PublishedAt"
+                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent" />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Número de Páginas</label>
+                                        <InputNumber @bind-Value="Article.PageCount"
+                                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent"
+                                                     min="1" />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">URL de Publicación</label>
+                                        <InputText @bind-Value="Article.PublicationUrl"
+                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent"
+                                                   placeholder="https://..." />
+                                    </div>
+                                </div>
+
+                                <!-- Características -->
+                                <div class="mt-6 pt-6 border-t border-gray-200">
+                                    <h3 class="text-lg font-medium text-gray-900 mb-4">Características del Artículo</h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <label class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                            <InputCheckbox @bind-Value="Article.IsProjectResult"
+                                                           class="w-4 h-4 text-[#7A1E19] focus:ring-[#7A1E19] border-gray-300 rounded" />
+                                            <span class="text-sm font-medium text-gray-700">Resultado de Proyecto</span>
+                                        </label>
+                                        <label class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                            <InputCheckbox @bind-Value="Article.HasInterculturalComponent"
+                                                           class="w-4 h-4 text-[#7A1E19] focus:ring-[#7A1E19] border-gray-300 rounded" />
+                                            <span class="text-sm font-medium text-gray-700">Componente Intercultural</span>
+                                        </label>
+                                        <label class="flex items-center space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                            <InputCheckbox @bind-Value="Article.IsOpenAccess"
+                                                           class="w-4 h-4 text-[#7A1E19] focus:ring-[#7A1E19] border-gray-300 rounded" />
+                                            <span class="text-sm font-medium text-gray-700">Acceso Abierto</span>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                @if (Article.IsProjectResult)
+                                {
+                                    <div class="mt-6">
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Proyecto Relacionado</label>
+                                        <InputSelect @bind-Value="Article.ProjectId"
+                                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent">
+                                            <option value="">Seleccionar proyecto...</option>
+                                            @foreach (var project in Projects)
+                                            {
+                                                <option value="@project.Id">@project.Name</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Clasificación Académica -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200">
+                                <h2 class="text-xl font-semibold text-gray-900 flex items-center">
+                                    <i class="bi bi-diagram-3 mr-3 text-[#7A1E19]"></i>
+                                    Clasificación Académica
+                                </h2>
+                            </div>
+                            <div class="p-6">
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Período Académico</label>
+                                        <InputSelect @bind-Value="Article.AcademicTermId"
+                                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent">
+                                            <option value="">Seleccionar período...</option>
+                                            @foreach (var term in AcademicTerms)
+                                            {
+                                                <option value="@term.Id">@term.Name</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Estado de Publicación</label>
+                                        <InputSelect @bind-Value="Article.PublicationStatusId"
+                                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent">
+                                            <option value="">Seleccionar estado...</option>
+                                            @foreach (var status in PublicationStatuses)
+                                            {
+                                                <option value="@status.Id">@status.Name</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Línea de Investigación</label>
+                                        <InputSelect @bind-Value="Article.ResearchLineId"
+                                                     class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent">
+                                            <option value="">Seleccionar línea...</option>
+                                            @foreach (var line in ResearchLines)
+                                            {
+                                                <option value="@line.Id">@line.Name</option>
+                                            }
+                                        </InputSelect>
+                                    </div>
+                                </div>
+
+                                <!-- Clasificación OCDE -->
+                                <div class="mt-6 pt-6 border-t border-gray-200">
+                                    <h3 class="text-lg font-medium text-gray-900 mb-4">Clasificación OCDE</h3>
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Campo Amplio</label>
+                                            <InputSelect @bind-Value="Article.BroadFieldId" @onchange="HandleBroadFieldChange"
+                                                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent">
+                                                <option value="">Seleccionar campo amplio...</option>
+                                                @foreach (var field in BroadFields)
+                                                {
+                                                    <option value="@field.Id">@field.Name</option>
+                                                }
+                                            </InputSelect>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Campo Específico</label>
+                                            <InputSelect @bind-Value="Article.SpecificFieldId" @onchange="HandleSpecificFieldChange"
+                                                         disabled="@(Article.BroadFieldId == null)"
+                                                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed">
+                                                <option value="">Seleccionar campo específico...</option>
+                                                @foreach (var field in SpecificFields)
+                                                {
+                                                    <option value="@field.Id">@field.Name</option>
+                                                }
+                                            </InputSelect>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Campo Detallado</label>
+                                            <InputSelect @bind-Value="Article.DetailedFieldId"
+                                                         disabled="@(Article.SpecificFieldId == null)"
+                                                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed">
+                                                <option value="">Seleccionar campo detallado...</option>
+                                                @foreach (var field in DetailedFields)
+                                                {
+                                                    <option value="@field.Id">@field.Name</option>
+                                                }
+                                            </InputSelect>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Información de la Revista -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200">
+                                <h2 class="text-xl font-semibold text-gray-900 flex items-center">
+                                    <i class="bi bi-journal mr-3 text-[#7A1E19]"></i>
+                                    Información de la Revista
+                                </h2>
+                            </div>
+                            <div class="p-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                                            Nombre de la Revista <span class="text-red-500">*</span>
+                                        </label>
+                                        <InputText @bind-Value="Article.VenueName"
+                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent" />
+                                        <ValidationMessage For="@(() => Article.VenueName)" />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Código ISSN</label>
+                                        <InputText @bind-Value="Article.IssnCode"
+                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent"
+                                                   placeholder="0000-0000" />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Volumen</label>
+                                        <InputText @bind-Value="Article.VolumeNumber"
+                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent" />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-2">Número</label>
+                                        <InputText @bind-Value="Article.IssueNumber"
+                                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent" />
+                                    </div>
+                                </div>
+
+                                <!-- Métricas de la Revista -->
+                                <div class="mt-6 pt-6 border-t border-gray-200">
+                                    <h3 class="text-lg font-medium text-gray-900 mb-4">Métricas de la Revista</h3>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Año Métrica</label>
+                                            <InputNumber @bind-Value="Article.MetricYear"
+                                                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent" />
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">SJR</label>
+                                            <InputNumber @bind-Value="Article.SJR"
+                                                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent"
+                                                         step="0.001" />
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">Cuartil</label>
+                                            <InputSelect @bind-Value="Article.Quartile"
+                                                         class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent">
+                                                <option value="">Seleccionar...</option>
+                                                <option value="Q1">Q1</option>
+                                                <option value="Q2">Q2</option>
+                                                <option value="Q3">Q3</option>
+                                                <option value="Q4">Q4</option>
+                                            </InputSelect>
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-2">URL de Evidencia</label>
+                                            <InputText @bind-Value="Article.EvidenceUrl"
+                                                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Fuentes de Indexación -->
+                                <div class="mt-6 pt-6 border-t border-gray-200">
+                                    <h3 class="text-lg font-medium text-gray-900 mb-4">Fuentes de Indexación</h3>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        @foreach (var source in IndexingSources)
+                                        {
+                                            <label class="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                                                <input type="checkbox"
+                                                       value="@source.Id"
+                                                       checked="@(Article.IndexingSourceIds.Contains(source.Id))"
+                                                       @onchange="@((e) => ToggleIndexingSource(source.Id, (bool)e.Value!))"
+                                                       class="w-4 h-4 text-[#7A1E19] focus:ring-[#7A1E19] border-gray-300 rounded" />
+                                                <span class="text-sm text-gray-700">@source.Name</span>
+                                            </label>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Participantes -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200">
+                                <h2 class="text-xl font-semibold text-gray-900 flex items-center">
+                                    <i class="bi bi-people mr-3 text-[#7A1E19]"></i>
+                                    Participantes del Artículo
+                                </h2>
+                            </div>
+                            <div class="p-6">
+                                <div class="space-y-4">
+                                    @for (int i = 0; i < Article.Participants.Count; i++)
+                                    {
+                                        var index = i;
+                                        <div class="border border-gray-200 rounded-lg p-4 hover:border-gray-300 transition-colors @(index >= 3 ? "bg-orange-50 border-orange-200" : "")">
+                                            <div class="flex items-center justify-between mb-4">
+                                                <div class="flex items-center space-x-3">
+                                                    <div class="w-8 h-8 bg-[#7A1E19] text-white rounded-full flex items-center justify-center text-sm font-medium">
+                                                        @(index + 1)
+                                                    </div>
+                                                    <span class="font-medium text-gray-900">Participante @(index + 1)</span>
+                                                    @if (index < 3)
+                                                    {
+                                                        <span class="bg-[#7A1E19] text-white px-2 py-1 rounded-full text-xs font-medium">Requerido</span>
+                                                    }
+                                                </div>
+                                                @if (index >= 3)
+                                                {
+                                                    <button type="button"
+                                                            @onclick="() => RemoveParticipant(index)"
+                                                            class="text-red-600 hover:text-red-800 p-1 rounded transition-colors">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                }
+                                            </div>
+                                            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2">Identificación</label>
+                                                    <InputText @bind-Value="Article.Participants[index].Identificacion"
+                                                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent"
+                                                               placeholder="Cédula o ID" />
+                                                </div>
+                                                <div>
+                                                    <label class="block text-sm font-medium text-gray-700 mb-2 @(index < 3 ? "required" : "")">
+                                                        Nombre Completo @if(index < 3){
+                                                        <span class="text-red-500">*</span>
+                                                    }
+                                                </label>
+                                                <InputText @bind-Value="Article.Participants[index].Nombre"
+                                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent"
+                                                           placeholder="Nombre completo del participante" />
+                                                <ValidationMessage For="@(() => Article.Participants[index].Nombre)" />
+                                            </div>
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-2">Participación</label>
+                                                <InputText @bind-Value="Article.Participants[index].Participacion"
+                                                           class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#7A1E19] focus:border-transparent"
+                                                           placeholder="Rol o participación" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                                                        }
+                                </div>
+                                <button type="button"
+                                        @onclick="AddParticipant"
+                                        class="mt-4 inline-flex items-center px-4 py-2 border border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-gray-400 hover:text-gray-700 transition-colors">
+                                    <i class="bi bi-plus-circle mr-2"></i>
+                                    Agregar Participante
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+                                <button type="button"
+                                        @onclick="Cancel"
+                                        class="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
+                                    <i class="bi bi-arrow-left mr-2"></i>
+                                    Cancelar
+                                </button>
+                                <button type="submit"
+                                        disabled="@isLoading"
+                                        class="px-8 py-3 bg-[#7A1E19] text-white rounded-lg hover:bg-[#671915] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed">
+                                    @if (isLoading)
+                                    {
+                                        <i class="bi bi-arrow-repeat animate-spin mr-2"></i>
+                                                                        }
+                                    else
+                                    {
+                                        <i class="bi bi-check-lg mr-2"></i>
+                                        @(ArticleId > 0 ? "Actualizar Artículo" : "Registrar Artículo")
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </EditForm>
+            </div>
+
+            <!-- Summary Section -->
+            <div class="xl:col-span-1">
+                <div class="sticky top-8 space-y-6">
+                    <!-- Resumen del Artículo -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="bg-gradient-to-r from-[#7A1E19] to-[#9C4A3C] px-6 py-4">
+                            <h3 class="text-lg font-semibold text-white flex items-center">
+                                <i class="bi bi-card-checklist mr-2"></i>
+                                Resumen del Artículo
+                            </h3>
+                        </div>
+                        <div class="p-6">
+                            <div class="space-y-4">
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-sm font-medium text-gray-600">Estado</span>
+                                    <span class="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
+                                        @(ArticleId > 0 ? "En Edición" : "Nuevo Registro")
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-sm font-medium text-gray-600">Participantes</span>
+                                    <span class="text-lg font-semibold text-[#7A1E19]">@Article.Participants.Count</span>
+                                </div>
+                                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                    <span class="text-sm font-medium text-gray-600">Fuentes indexación</span>
+                                    <span class="text-lg font-semibold text-[#7A1E19]">@Article.IndexingSourceIds.Count</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vista Previa -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+                        <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200">
+                            <h3 class="text-lg font-semibold text-gray-900 flex items-center">
+                                <i class="bi bi-eye mr-2"></i>
+                                Vista Previa
+                            </h3>
+                        </div>
+                        <div class="p-6">
+                            @if (string.IsNullOrEmpty(Article.Title))
+                            {
+                                <div class="text-center py-8 text-gray-500">
+                                    <i class="bi bi-file-text text-4xl opacity-25 mb-3"></i>
+                                    <p class="text-sm">Completa el formulario para ver la vista previa</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="space-y-4">
+                                    <div>
+                                        <h4 class="font-semibold text-gray-900 text-lg mb-2 line-clamp-2">@Article.Title</h4>
+                                        @if (!string.IsNullOrEmpty(Article.VenueName))
+                                        {
+                                            <p class="text-sm text-gray-600 flex items-center">
+                                                <i class="bi bi-journal mr-2"></i>@Article.VenueName
+                                            </p>
+                                        }
+                                        @if (Article.Year.HasValue)
+                                        {
+                                            <p class="text-sm text-gray-600 flex items-center">
+                                                <i class="bi bi-calendar mr-2"></i>Año: @Article.Year
+                                            </p>
+                                        }
+                                    </div>
+
+                                    @if (Article.Participants.Any(p => !string.IsNullOrEmpty(p.Nombre)))
+                                    {
+                                        <div>
+                                            <h5 class="text-sm font-medium text-gray-700 mb-2">Autores:</h5>
+                                            <div class="flex flex-wrap gap-1">
+                                                @foreach (var participant in Article.Participants.Take(3).Where(p => !string.IsNullOrEmpty(p.Nombre)))
+                                                {
+                                                    <span class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                                                        @participant.Nombre
+                                                    </span>
+                                                }
+                                                @if (Article.Participants.Count > 3)
+                                                {
+                                                    <span class="inline-flex items-center px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                                                        +@(Article.Participants.Count - 3) más
+                                                    </span>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+
+                                    <div>
+                                        <h5 class="text-sm font-medium text-gray-700 mb-2">Características:</h5>
+                                        <div class="flex flex-wrap gap-1">
+                                            @if (Article.IsProjectResult)
+                                            {
+                                                <span class="inline-flex items-center px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                                    Proyecto
+                                                </span>
+                                            }
+                                            @if (Article.HasInterculturalComponent)
+                                            {
+                                                <span class="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                                                    Intercultural
+                                                </span>
+                                            }
+                                            @if (Article.IsOpenAccess)
+                                            {
+                                                <span class="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                                                    Open Access
+                                                </span>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public int ArticleId { get; set; }
+
+    private ArticleViewModel Article { get; set; } = new();
+    private bool isLoading = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+
+    // Catálogos
+    private List<CatalogItemDto> AcademicTerms { get; set; } = new();
+    private List<CatalogItemDto> PublicationStatuses { get; set; } = new();
+    private List<CatalogItemDto> ResearchLines { get; set; } = new();
+    private List<CatalogItemDto> BroadFields { get; set; } = new();
+    private List<CatalogItemDto> SpecificFields { get; set; } = new();
+    private List<CatalogItemDto> DetailedFields { get; set; } = new();
+    private List<CatalogItemDto> Projects { get; set; } = new();
+    private List<CatalogItemDto> IndexingSources { get; set; } = new();
+
+    private string Title => ArticleId > 0 ? "Editar Artículo" : "Registrar Nuevo Artículo";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCatalogs();
+        if (ArticleId > 0)
+        {
+            await LoadArticle();
+        }
+        else
+        {
+            // Inicializar con 3 participantes por defecto
+            while (Article.Participants.Count < 3)
+            {
+                Article.Participants.Add(new ArticleParticipantVm { Index = Article.Participants.Count + 1 });
+            }
+        }
+    }
+
+    private async Task LoadCatalogs()
+    {
+        try
+        {
+            // Crear tareas individuales
+            var academicTermsTask = CatalogService.GetAcademicTermsAsync();
+            var publicationStatusesTask = CatalogService.GetPublicationStatusesAsync();
+            var researchLinesTask = CatalogService.GetResearchLinesAsync();
+            var broadFieldsTask = CatalogService.GetBroadFieldsAsync();
+            var projectsTask = CatalogService.GetProjectsAsync();
+            var indexingSourcesTask = CatalogService.GetIndexingSourcesAsync();
+
+            // Esperar todas las tareas
+            await Task.WhenAll(
+                academicTermsTask,
+                publicationStatusesTask,
+                researchLinesTask,
+                broadFieldsTask,
+                projectsTask,
+                indexingSourcesTask
+            );
+
+            // Asignar resultados directamente desde las tareas
+            AcademicTerms = await academicTermsTask;
+            PublicationStatuses = await publicationStatusesTask;
+            ResearchLines = await researchLinesTask;
+            BroadFields = await broadFieldsTask;
+            Projects = await projectsTask;
+            IndexingSources = await indexingSourcesTask;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error cargando catálogos: {ex.Message}";
+        }
+    }
+
+    private async Task LoadArticle()
+    {
+        try
+        {
+            isLoading = true;
+            var articleDto = await ArticlesService.GetByIdAsync(ArticleId);
+            if (articleDto != null)
+            {
+                Article = ArticlesMapper.ToViewModel(articleDto);
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error cargando artículo: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            isLoading = true;
+            errorMessage = string.Empty;
+
+            // Validar participantes requeridos
+            var requiredParticipants = Article.Participants.Take(3);
+            if (requiredParticipants.Any(p => string.IsNullOrWhiteSpace(p.Nombre)))
+            {
+                errorMessage = "Los primeros 3 participantes deben tener nombre completo";
+                isLoading = false;
+                return;
+            }
+
+            if (ArticleId > 0)
+            {
+                await ArticlesService.UpdateAsync(ArticleId, Article.ToUpdateRequest());
+                successMessage = "Artículo actualizado correctamente";
+            }
+            else
+            {
+                var newId = await ArticlesService.CreateAsync(Article.ToCreateRequest());
+                Article.Id = newId;
+                successMessage = "Artículo registrado correctamente";
+            }
+
+            // Esperar un momento para mostrar el mensaje de éxito
+            await Task.Delay(2000);
+            NavManager.NavigateTo("/articulos");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error guardando artículo: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleBroadFieldChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int broadFieldId))
+        {
+            Article.BroadFieldId = broadFieldId;
+            Article.SpecificFieldId = null;
+            Article.DetailedFieldId = null;
+            SpecificFields = await CatalogService.GetSpecificFieldsAsync(broadFieldId);
+            DetailedFields = new();
+        }
+        StateHasChanged();
+    }
+
+    private async Task HandleSpecificFieldChange(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int specificFieldId))
+        {
+            Article.SpecificFieldId = specificFieldId;
+            Article.DetailedFieldId = null;
+            DetailedFields = await CatalogService.GetDetailedFieldsAsync(specificFieldId);
+        }
+        StateHasChanged();
+    }
+
+    private void ToggleIndexingSource(int sourceId, bool isChecked)
+    {
+        if (isChecked && !Article.IndexingSourceIds.Contains(sourceId))
+        {
+            Article.IndexingSourceIds.Add(sourceId);
+        }
+        else if (!isChecked && Article.IndexingSourceIds.Contains(sourceId))
+        {
+            Article.IndexingSourceIds.Remove(sourceId);
+        }
+        StateHasChanged();
+    }
+
+    private void AddParticipant()
+    {
+        Article.Participants.Add(new ArticleParticipantVm { Index = Article.Participants.Count + 1 });
+        StateHasChanged();
+    }
+
+    private void RemoveParticipant(int index)
+    {
+        if (Article.Participants.Count > 3)
+        {
+            Article.Participants.RemoveAt(index);
+            // Reindexar
+            for (int i = 0; i < Article.Participants.Count; i++)
+            {
+                Article.Participants[i].Index = i + 1;
+            }
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        NavManager.NavigateTo("/articulos");
+    }
+}

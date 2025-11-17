@@ -1,28 +1,46 @@
 ﻿@namespace tesisproject.frontend.SharedUI
-@inherits ComponentBase
-<div class="card rounded-2xl shadow border-0 @Class">
-    <div class="card-header bg-white rounded-top-2xl d-flex align-items-center justify-content-between">
-        <div>
-            @if (!string.IsNullOrWhiteSpace(Title))
+
+<div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden @Class">
+    @if (!string.IsNullOrEmpty(Header) || HeaderContent != null)
+    {
+        <div class="bg-gradient-to-r from-gray-50 to-white px-6 py-4 border-b border-gray-200">
+            @if (HeaderContent != null)
             {
-                <h4 class="mb-0">@Title</h4>
+                @HeaderContent
             }
-            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            else
             {
-                <small class="text-muted">@Subtitle</small>
+                <h3 class="text-xl font-semibold text-gray-900 flex items-center">
+                    @if (!string.IsNullOrEmpty(Icon))
+                    {
+                        <i class="@Icon mr-3 text-[#7A1E19]"></i>
+                    }
+                    @Header
+                </h3>
             }
         </div>
-        @HeaderRight
-    </div>
-    <div class="card-body">
-        @ChildContent
-    </div>
+    }
+
+    @if (ChildContent != null)
+    {
+        <CardBody>
+            @ChildContent
+        </CardBody>
+    }
+
+    @if (Footer != null)
+    {
+        <CardFooter>
+            @Footer
+        </CardFooter>
+    }
 </div>
 
 @code {
-    [Parameter] public string? Title { get; set; }
-    [Parameter] public string? Subtitle { get; set; }
-    [Parameter] public string? Class { get; set; }
-    [Parameter] public RenderFragment? HeaderRight { get; set; }
+    [Parameter] public string? Header { get; set; }
+    [Parameter] public string? Icon { get; set; }
+    [Parameter] public RenderFragment? HeaderContent { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public RenderFragment? Footer { get; set; }
+    [Parameter] public string? Class { get; set; }
 }

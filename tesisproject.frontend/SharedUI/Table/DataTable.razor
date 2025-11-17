@@ -1,101 +1,143 @@
-﻿@typeparam TItem
+﻿@namespace tesisproject.frontend.SharedUI
+@typeparam TItem
 
-<div class="w-full overflow-x-auto">
-    <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50 sticky top-0 z-10">
+<div class="@TableContainerClass">
+    <table class="@TableClass">
+        <thead class="@HeaderClass">
             <tr>
-                @for (var i = 0; i < Columns.Count; i++)
+                @foreach (var column in Columns)
                 {
-                    var col = Columns[i];
-                    var sortable = col.Sortable;
-                    <th scope="col"
-                        class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider select-none"
-                        style="@(string.IsNullOrWhiteSpace(col.Width) ? null : $"width:{col.Width}")">
-                        <button type="button"
-                                class="inline-flex items-center gap-1 group"
-                                disabled="@(sortable ? null : true)"
-                                @onclick="(() => OnHeaderClick(i))">
-                            <span>@col.Title</span>
-                            @if (sortable)
-                            {
-                                <span class="text-gray-400 group-hover:text-gray-600 text-[10px]">
-                                    @GetSortGlyph(i)
-                                </span>
-                            }
-                        </button>
+                    <th class="@GetHeaderCellClass(column)"
+                        @onclick="@(() => SortByColumn(column))"
+                        style="cursor: @(column.IsSortable ? "pointer" : "default")">
+                        @column.Title
+                        @if (column.IsSortable && SortedColumn == column.PropertyName)
+                        {
+                            <i class="bi @(SortAscending ? "bi-sort-down" : "bi-sort-up") ml-1"></i>
+                        }
                     </th>
                 }
             </tr>
         </thead>
-
-        <tbody class="bg-white divide-y divide-gray-100">
-            @if (ViewItems is null || !ViewItems.Any())
+        <tbody class="@BodyClass">
+            @if (Items?.Any() == true)
             {
-                <tr class="odd:bg-gray-50 hover:bg-gray-50">
-                    <td class="px-4 py-4 text-sm text-gray-500" colspan="@Columns.Count">@EmptyText</td>
-                </tr>
-            }
-            else if (RowTemplate is not null)
-            {
-                @foreach (var item in ViewItems)
+                @foreach (var item in SortedItems)
                 {
-                    <tr class="odd:bg-gray-50 hover:bg-gray-50">
-                        @RowTemplate(item)
-                    </tr>
-                }
-            }
-            else
-            {
-                @foreach (var item in ViewItems)
-                {
-                    <tr class="odd:bg-gray-50 hover:bg-gray-50">
-                        @for (var i = 0; i < Columns.Count; i++)
+                    <tr class="@GetRowClass(item)">
+                        @foreach (var column in Columns)
                         {
-                            <td class="px-4 py-3 text-sm text-gray-700 align-middle">
-                                @Columns[i].ValueSelector(item)
+                            <td class="@GetCellClass(column)">
+                                @if (column.Template != null)
+                                {
+                                    @column.Template(item)
+                                }
+                                else
+                                {
+                                    @GetPropertyValue(item, column.PropertyName)
+                                }
                             </td>
                         }
                     </tr>
                 }
             }
+            else
+            {
+                <tr>
+                    <td colspan="@Columns.Count" class="text-center py-8 text-gray-500">
+                        <i class="bi bi-inbox text-4xl opacity-25 mb-2"></i>
+                        <p>No se encontraron registros</p>
+                    </td>
+                </tr>
+            }
         </tbody>
     </table>
 </div>
 
-@if (ShowPager)
-{
-    <nav class="mt-4 flex items-center justify-between" aria-label="Table pagination">
-        <div class="text-sm text-gray-600">
-            Page <span class="font-medium">@CurrentPage</span> of <span class="font-medium">@TotalPages</span>
-        </div>
-        <div class="inline-flex items-center gap-1">
-            <button class="px-3 py-1.5 border rounded-lg text-sm disabled:opacity-50"
-                    disabled="@(_isFirstPage)"
-                    @onclick="PrevPage">
-                Prev
-            </button>
+@code {
+    [Parameter] public List<TItem>? Items { get; set; }
+    [Parameter] public List<ColumnDefinition<TItem>> Columns { get; set; } = new();
+    [Parameter] public bool IsStriped { get; set; }
+    [Parameter] public bool IsHoverable { get; set; }
+    [Parameter] public bool IsResponsive { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public Func<TItem, string>? RowClassFunc { get; set; }
 
-            @foreach (var p in VisiblePages)
-            {
-                if (p == -1)
-                {
-                    <span class="px-2 text-gray-500">…</span>
-                }
-                else
-                {
-                    <button class="px-3 py-1.5 border rounded-lg text-sm
-                                               @(p == CurrentPage ? "bg-gray-900 text-white border-gray-900" : "bg-white")"
-                            @onclick="(() => ChangePage(p))">
-                        @p
-                    </button>
-                }
-            }
+    private string SortedColumn = string.Empty;
+    private bool SortAscending = true;
 
-            <button class="px-3 py-1.5 border rounded-lg text-sm disabled:opacity-50"
-                    disabled="@(_isLastPage)"
-                    @onclick="NextPage">
-                Next
-            </button>
-        </div>
-    </nav>
+    private IEnumerable<TItem> SortedItems
+    {
+        get
+        {
+            if (Items == null) return Enumerable.Empty<TItem>();
+            if (string.IsNullOrEmpty(SortedColumn)) return Items;
+
+            var property = typeof(TItem).GetProperty(SortedColumn);
+            if (property == null) return Items;
+
+            return SortAscending
+                ? Items.OrderBy(x => property.GetValue(x))
+                : Items.OrderByDescending(x => property.GetValue(x));
+        }
+    }
+
+    private string TableContainerClass => $"{(IsResponsive ? "overflow-x-auto" : "")} {Class}";
+
+    private string TableClass
+    {
+        get
+        {
+            var baseClass = "min-w-full divide-y divide-gray-200";
+            return baseClass;
+        }
+    }
+
+    private string HeaderClass => "bg-gray-50";
+
+    private string BodyClass => "bg-white divide-y divide-gray-200";
+
+    private string GetHeaderCellClass(ColumnDefinition<TItem> column)
+    {
+        var baseClass = "px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider";
+        var sortableClass = column.IsSortable ? "hover:bg-gray-100 transition-colors" : "";
+        return $"{baseClass} {sortableClass}";
+    }
+
+    private string GetRowClass(TItem item)
+    {
+        var baseClass = "";
+        if (IsStriped) baseClass += " even:bg-gray-50";
+        if (IsHoverable) baseClass += " hover:bg-gray-100 transition-colors";
+        if (RowClassFunc != null) baseClass += $" {RowClassFunc(item)}";
+        return baseClass.Trim();
+    }
+
+    private string GetCellClass(ColumnDefinition<TItem> column)
+    {
+        return "px-6 py-4 whitespace-nowrap text-sm text-gray-900";
+    }
+
+    private void SortByColumn(ColumnDefinition<TItem> column)
+    {
+        if (!column.IsSortable) return;
+
+        if (SortedColumn == column.PropertyName)
+        {
+            SortAscending = !SortAscending;
+        }
+        else
+        {
+            SortedColumn = column.PropertyName;
+            SortAscending = true;
+        }
+    }
+
+    private string GetPropertyValue(TItem item, string propertyName)
+    {
+        if (string.IsNullOrEmpty(propertyName)) return string.Empty;
+
+        var property = typeof(TItem).GetProperty(propertyName);
+        return property?.GetValue(item)?.ToString() ?? string.Empty;
+    }
 }

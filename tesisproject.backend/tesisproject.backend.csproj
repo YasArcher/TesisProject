@@ -37,8 +37,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Folder Include="Data\Identity\" />
-	  <Folder Include="Migrations\" />
+	  <Folder Include="Data\Migrations\" />
 	  <Folder Include="ML\Recomender\" />
 	</ItemGroup>
 

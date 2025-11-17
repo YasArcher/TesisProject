@@ -1,13 +1,21 @@
-﻿namespace tesisproject.frontend.Services.Interfaces;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
+using tesisproject.shared.DTOs.Catalogs;
 
-public interface ICatalogsService
+namespace tesisproject.frontend.Services.Interfaces
 {
-    string[] PeriodoOptions { get; }
-    string[] OpenAccessOptions { get; }
-    string[] EstadoOptions { get; }
-    string[] BaseDatosOptions { get; }
-    string[] QuartilOptions { get; }
-    string[] CampoAmplioOptions { get; }
-    string[] CampoEspecificoOptions { get; }
-    string[] CampoDetalladoOptions { get; }
+    public interface ICatalogsService
+    {
+        Task<List<CatalogItemDto>> GetAcademicTermsAsync();
+        Task<List<CatalogItemDto>> GetResearchLinesAsync();
+        Task<List<CatalogItemDto>> GetBroadFieldsAsync();
+        Task<List<CatalogItemDto>> GetSpecificFieldsAsync(int? broadFieldId = null);
+        Task<List<CatalogItemDto>> GetDetailedFieldsAsync(int? specificFieldId = null);
+        Task<List<CatalogItemDto>> GetPublicationStatusesAsync();
+        Task<List<CatalogItemDto>> GetIndexingSourcesAsync();
+        Task<List<CatalogItemDto>> GetProjectsAsync();
+
+        // Revistas / Journals (Venue)
+        Task<List<VenueCatalogItemDto>> GetVenuesAsync();
+    }
 }

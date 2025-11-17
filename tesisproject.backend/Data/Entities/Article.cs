@@ -1,40 +1,40 @@
-﻿namespace tesisproject.backend.Data.Entities;
+﻿using tesisproject.backend.Data.Entities;
 
 public class Article
 {
     public int Id { get; set; }
-    public string? PeriodoAcademico { get; set; }
-    public int? Anio { get; set; }
-
-    public string? CodigoPublicacion { get; set; }
-    public string? CodigoISSN { get; set; }
-    public string? Titulo { get; set; }
-    public string? NombreRevista { get; set; }
-    public string? VolumenRevista { get; set; }
-    public string? NumeroRevista { get; set; }
-    public int? NumeroPaginas { get; set; }
-    public decimal? SJR { get; set; }
-    public DateTime? FechaPublicacion { get; set; }
-
-    public string? BaseDatos { get; set; }
-    public string? CampoAmplio { get; set; }
-    public string? CampoEspecifico { get; set; }
-    public string? CampoDetallado { get; set; }
-    public string? Quartil { get; set; }
+    public string? Title { get; set; }
+    public string? Doi { get; set; }
+    public short? Year { get; set; }
+    public DateTime? PublishedAt { get; set; }
+    public int? PageCount { get; set; }
+    public string? PublicationUrl { get; set; }
+    public bool IsProjectResult { get; set; }
+    public bool HasInterculturalComponent { get; set; }
+    public string? ProceedingsName { get; set; }
+    public string? Proceedings { get; set; }
+    public string? EventName { get; set; }
+    public string? GroupName { get; set; }
     public string? Filiacion { get; set; }
-
-    public string? Estado { get; set; }
-    public string? AccesoAbierto { get; set; }
-
-    public string? LinkPublicacion { get; set; }
-    public string? EnlaceRevista { get; set; }
-
-    public string? CodigoProyectoArticulado { get; set; }
-    public string? ProyectoArticulado { get; set; }
-    public string? LineaInvestigacionArticulada { get; set; }
-    public string? GrupoInvestigacionArticulado { get; set; }
-
+    public int? VenueId { get; set; }
+    public Venue? Venue { get; set; }
+    public int? AcademicTermId { get; set; }
+    public AcademicTerm? AcademicTerm { get; set; }
+    public byte? PublicationStatusId { get; set; }
+    public PublicationStatus? PublicationStatus { get; set; }
+    public int? ResearchLineId { get; set; }
+    public ResearchLine? ResearchLine { get; set; }
+    public int? BroadFieldId { get; set; }
+    public BroadField? BroadField { get; set; }
+    public int? SpecificFieldId { get; set; }
+    public SpecificField? SpecificField { get; set; }
+    public int? DetailedFieldId { get; set; }
+    public DetailedField? DetailedField { get; set; }
+    public int? ProjectId { get; set; }
+    public Project? Project { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    public ICollection<ArticleParticipant> Participantes { get; set; } = new List<ArticleParticipant>();
+    public bool IsOpenAccess { get; set; }
+    public ICollection<ArticleParticipant> Participants { get; set; } = new List<ArticleParticipant>();
+    public ICollection<ArticleIndexing> Indexings { get; set; } = new List<ArticleIndexing>();
+    public ICollection<ArticleFile> Files { get; set; } = new List<ArticleFile>();
 }

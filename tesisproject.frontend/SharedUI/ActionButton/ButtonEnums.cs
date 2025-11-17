@@ -1,27 +1,23 @@
-﻿namespace tesisproject.frontend.SharedUI.ActionButton
+﻿namespace tesisproject.frontend.SharedUI
 {
-    public enum ButtonIntent
+    public enum ButtonType
     {
-        Neutral,
-        Add,
-        Delete,
-        Accept,
-        Warning,
-        Info,
+        Primary,
+        Secondary,
         Success,
-        Danger
-    }
-
-    public enum ButtonVariant
-    {
-        Filled,
-        Outline,
-        Ghost,
-        Soft
+        Danger,
+        Warning,
+        OutlinePrimary,
+        OutlineSecondary,
+        OutlineSuccess,
+        OutlineDanger,
+        OutlineWarning
     }
 
     public enum ButtonSize
     {
-        Xs, Sm, Md, Lg, Xl
+        Small,
+        Medium,
+        Large
     }
 }

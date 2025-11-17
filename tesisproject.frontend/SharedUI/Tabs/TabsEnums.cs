@@ -1,4 +1,9 @@
-﻿namespace tesisproject.frontend.SharedUI.Tabs
+﻿namespace tesisproject.frontend.SharedUI
 {
-    public enum TabVariant { Underline, Pills }
+    public class TabItem
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Text { get; set; } = string.Empty;
+        public string? Icon { get; set; }
+    }
 }

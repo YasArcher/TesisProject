@@ -1,12 +1,16 @@
-﻿using tesisproject.backend.Data.Entities;
+﻿using System.Threading;
+using System.Threading.Tasks;
+using tesisproject.backend.Data.Entities;
+using tesisproject.shared.DTOs;
+using tesisproject.shared.DTOs.Articles;
 
 namespace tesisproject.backend.Repositories.Interfaces
 {
     public interface IArticlesRepository
     {
-        Task<List<Article>> GetAllAsync(CancellationToken ct);
-        Task<Article?> GetByIdAsync(int id, CancellationToken ct);
-        Task AddAsync(Article entity, CancellationToken ct);
-        void Remove(Article entity);
+        Task<PagedResult<ArticleListItemDto>> GetListAsync(ArticleListQuery query, CancellationToken ct);
+        Task<Article?> GetByIdWithDetailsAsync(int id, CancellationToken ct);
+        Task AddAsync(Article article, CancellationToken ct);
+        void Remove(Article article);
     }
 }
