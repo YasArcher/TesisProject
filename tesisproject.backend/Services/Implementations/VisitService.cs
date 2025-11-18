@@ -34,9 +34,7 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     ProjectId = request.ProjectId,
                     VisitStateId = request.VisitStateId,
-                    DocumentId = request.DocumentId,
-                    ScheduledDate = request.VisitDate,
-                    Notes = request.Notes?.Trim()
+                    ScheduledDate = request.ScheduledDate,
                 };
 
                 await _uow.Visits.AddAsync(entity, ct);
@@ -97,7 +95,6 @@ namespace tesisproject.backend.Services.Implementations
                         VisitStateName = v.VisitState.Name,
                         DocumentId = v.DocumentId,
                         VisitDate = v.ScheduledDate,
-                        Notes = v.Notes
                     })
                     .ToListAsync(ct);
 
@@ -152,7 +149,6 @@ namespace tesisproject.backend.Services.Implementations
                 entity.VisitStateId = request.VisitStateId;
                 entity.DocumentId = request.DocumentId;
                 entity.ScheduledDate = request.VisitDate;
-                entity.Notes = request.Notes?.Trim();
 
                 _uow.Visits.Update(entity);
                 await _uow.SaveChangesAsync(ct);
@@ -197,6 +193,24 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
+        // =============== DETAIL ===============
+
+        public async Task<ServiceResult<VisitDetailResponseDTO>> GetVisitDetailAsync(int visitId, CancellationToken ct = default)
+        {
+            try
+            {
+                var visit = await _uow.Visits.GetByIdWithRefsAsync(visitId, ct);
+                if (visit is null)
+                    return ServiceResult<VisitDetailResponseDTO>.Fail("Visit not found.", ErrorType.NotFound);
+
+                var dto = MapToDetailDTO(visit);
+                return ServiceResult<VisitDetailResponseDTO>.Ok(dto, "Visit detail retrieved");
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<VisitDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+            }
+        }
 
         // =============== MAPPING ===============
 
@@ -209,7 +223,17 @@ namespace tesisproject.backend.Services.Implementations
             VisitStateName = v.VisitState?.Name ?? string.Empty,
             DocumentId = v.DocumentId,
             VisitDate = v.ScheduledDate,
-            Notes = v.Notes
         };
+        private static VisitDetailResponseDTO MapToDetailDTO(Visit v) => new()
+        {
+            VisitId = v.VisitId,
+            FundingDocumentId = v.FundingDocumentId,
+            DocumentId = v.DocumentId,
+            ProgressDocumentId = v.ProgressDocumentId,
+            ScheduledDate = v.ScheduledDate,
+            PerformedDate = v.PerformedDate,
+            VisitState = v.VisitState?.Name ?? string.Empty
+        };
+
     }
 }

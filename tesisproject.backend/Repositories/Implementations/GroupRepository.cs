@@ -37,14 +37,11 @@ namespace tesisproject.backend.Repositories.Implementations
             var project = await _ctx.Set<Project>()
                 .AsNoTracking()
                 .Include(p => p.ProjectGroup)
-                .Include(p => p.SenesytGroup)
                 .FirstOrDefaultAsync(p => p.ProjectId == projectId, ct);
 
             if (project is null) return new List<Group>();
 
             var list = new List<Group> { project.ProjectGroup };
-            if (project.SenesytGroupId.HasValue && project.SenesytGroup is not null)
-                list.Add(project.SenesytGroup);
 
             // Si quieres devolver ordenado por nombre:
             return list.OrderBy(g => g.Name).ToList();

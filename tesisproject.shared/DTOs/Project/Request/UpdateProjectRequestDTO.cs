@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using tesisproject.shared.Entities.Catalogs;
 
 namespace tesisproject.shared.DTOs.Project.Request
 {
@@ -15,11 +16,7 @@ namespace tesisproject.shared.DTOs.Project.Request
         [Required, StringLength(120)]
         public string ProjectName { get; set; } = string.Empty;
 
-        [StringLength(500)]
-        public string? ProjectObjective { get; set; }
-
-        [StringLength(200)]
-        public string? ResearchLine { get; set; }
+        public ICollection<int>? ResearchLineTypeIds { get; set; }
 
         [Required]
         public int ProjectTypeId { get; set; }
@@ -31,7 +28,6 @@ namespace tesisproject.shared.DTOs.Project.Request
         public int ProjectGroupId { get; set; }
 
         public int? SenesytGroupId { get; set; }
-
         public int? InitialDocumentId { get; set; }
 
         [DataType(DataType.Date)]
@@ -46,4 +42,5 @@ namespace tesisproject.shared.DTOs.Project.Request
         [Range(0, 100)]
         public decimal? ExecutionPercentage { get; set; }
     }
+
 }

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using tesisproject.shared.Entities.Catalogs;
+using tesisproject.shared.Entities.Core.Products;
 
 namespace tesisproject.shared.Entities.Core
 {
@@ -34,8 +35,6 @@ namespace tesisproject.shared.Entities.Core
         [Required]
         public int ProjectGroupId { get; set; }                  // id_grupo_proyecto (FK -> Group)
 
-        public int? SenesytGroupId { get; set; }                 // id_grupo_senseyt (si aplica, nullable)
-
         public int FundingTypeId { get; set; }                   // id_tipo_financiamiento (catálogo)
 
         public int? InitialDocumentId { get; set; }              // id_documento_inicial (FK -> Document)
@@ -46,13 +45,8 @@ namespace tesisproject.shared.Entities.Core
         [Required, StringLength(120)]
         public string ProjectName { get; set; } = string.Empty;  // nombre_proyecto
 
-        [StringLength(500)]
-        public string? ProjectObjective { get; set; }            // objetivo_proyecto
-
         [StringLength(200)]
         public int ResearchLineTypeId { get; set; }              // linea_investigacion_proyecto
-
-        public string ApprovalResolution { get; set; } = string.Empty; // resolucion_aprobacion
 
         // ================================
         //              Dates
@@ -85,15 +79,18 @@ namespace tesisproject.shared.Entities.Core
         public ProjectType ProjectType { get; set; } = null!;            // Navegación a ProjectType (catálogo)
         public ProjectState ProjectState { get; set; } = null!;          // Navegación a ProjectState (catálogo)
         public Group ProjectGroup { get; set; } = null!;                 // Navegación a Group
-        public Group? SenesytGroup { get; set; }                         // Navegación a Group (si aplica)
         public Document? InitialDocument { get; set; }                   // Navegación a Document (si aplica)
         public Budget? Budget { get; set; }                               // Navegación a Budget (1 a 1)
         public FundingType FundingType { get; set; } = null!;            // Navegación a FundingType (catálogo)
-        public ResearchLineType ResearchLineType { get; set; } = null!;  // Navegación a ResearchLineType (catálogo)
+        public ICollection<ProjectObjective>  ProjectObjectives { get; set; } = null!; // Navegación a ProjectObjective (1 a muchos)
+
 
         // ================================
         //      Collections / Many-to-Many
         // ================================
         public ICollection<ExternalResearcherProject> ExternalResearcherProjects { get; set; } = new List<ExternalResearcherProject>();
+        public ICollection<Visit> Visits { get; set; } = new List<Visit>();
+        public ICollection<Product> Products { get; set; } = new List<Product>();
+        public ICollection<ProjectResearchLine> ProjectResearchLines { get; set; } = new List<ProjectResearchLine>();
     }
 }

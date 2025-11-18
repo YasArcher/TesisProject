@@ -9,8 +9,13 @@ namespace tesisproject.frontend.Services.Auth
     public class CustomAuthStateProvider : AuthenticationStateProvider
     {
         private readonly ITokenStore _tokenStore;
+        private readonly IAuthClientService _authClient;
 
-        public CustomAuthStateProvider(ITokenStore tokenStore) => _tokenStore = tokenStore;
+        public CustomAuthStateProvider(ITokenStore tokenStore, IAuthClientService authClient)
+        {
+            _tokenStore = tokenStore;
+            _authClient = authClient;
+        }
 
         public override async Task<AuthenticationState> GetAuthenticationStateAsync()
         {
@@ -27,6 +32,31 @@ namespace tesisproject.frontend.Services.Auth
                     var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                     if (now >= expUnix)
                     {
+                        // 👉 AQUÍ: intentamos usar el refresh token
+                        var refreshResult = await _authClient.RefreshAsync();
+
+                        if (refreshResult.HttpResponse.IsSuccessStatusCode &&
+                            refreshResult.Response is not null)
+                        {
+                            var newToken = refreshResult.Response.AccessToken;
+
+                            // Guardamos el nuevo access token
+                            await _tokenStore.SetAsync(newToken);
+
+                            // Reconstruimos claims con el token renovado
+                            var newClaims = ParseClaimsFromJwt(newToken);
+                            var newIdentity = new ClaimsIdentity(
+                                newClaims,
+                                authenticationType: "jwt",
+                                nameType: "name",
+                                roleType: "role"
+                            );
+
+                            return new AuthenticationState(
+                                new ClaimsPrincipal(newIdentity));
+                        }
+
+                        // Si el refresh falla, limpiamos y quedamos anónimos
                         await _tokenStore.ClearAsync();
                         return Anonymous();
                     }
@@ -48,6 +78,7 @@ namespace tesisproject.frontend.Services.Auth
             }
         }
 
+        
         public async Task SetTokenAsync(string token)
         {
             await _tokenStore.SetAsync(token);

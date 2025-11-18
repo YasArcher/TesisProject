@@ -19,5 +19,7 @@ namespace tesisproject.backend.Services.Interfaces
         Task<ServiceResult<List<ProjectListResponseDTO>>> GetByTypeAsync(int projectTypeId, CancellationToken ct = default);
 
         Task<ServiceResult<ProjectDetailResponseDTO>> GetProjectDetailAsync(int projectId, CancellationToken ct = default);
+
+        Task<ServiceResult<ProjectDetailResponseDTO>> CreateFullAsync(AddProjectFullRequestDTO request, CancellationToken ct = default);
     }
 }

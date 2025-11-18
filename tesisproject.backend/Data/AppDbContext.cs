@@ -2,10 +2,12 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Linq;
 using System.Linq.Expressions;
 using tesisproject.shared.Entities.Auth;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Entities.Core.Products;
 
 namespace tesisproject.backend.Data
 {
@@ -14,93 +16,124 @@ namespace tesisproject.backend.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        // ===== DbSets Core =====
+        // =========================================================
+        // DbSets - Core
+        // =========================================================
         public DbSet<Budget> Budgets => Set<Budget>();
         public DbSet<BudgetTransaction> BudgetTransactions => Set<BudgetTransaction>();
         public DbSet<Document> Documents => Set<Document>();
-        public DbSet<Group> Groups => Set<Group>();
-        public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
-        public DbSet<Project> Projects => Set<Project>();
-        public DbSet<ProjectExtension> ProjectExtensions => Set<ProjectExtension>();
-        public DbSet<ProjectScope> ProjectScopes => Set<ProjectScope>();
-        public DbSet<Visit> Visits => Set<Visit>();
-        public DbSet<Researcher> Researchers => Set<Researcher>();
-        public DbSet<ProjectObjective> ProjectObjectives => Set<ProjectObjective>();
-        public DbSet<ObjectiveActivitie> ObjectiveActivities => Set<ObjectiveActivitie>();
         public DbSet<ExternalResearcher> ExternalResearchers => Set<ExternalResearcher>();
         public DbSet<ExternalResearcherProject> ExternalResearcherProjects => Set<ExternalResearcherProject>();
+        public DbSet<Group> Groups => Set<Group>();
+        public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
+        public DbSet<ObjectiveActivity> ObjectiveActivities => Set<ObjectiveActivity>();
+        public DbSet<Project> Projects => Set<Project>();
+        public DbSet<ProjectExtension> ProjectExtensions => Set<ProjectExtension>();
+        public DbSet<ProjectObjective> ProjectObjectives => Set<ProjectObjective>();
+        public DbSet<ProjectScope> ProjectScopes => Set<ProjectScope>();
+        public DbSet<Researcher> Researchers => Set<Researcher>();
+        public DbSet<Visit> Visits => Set<Visit>();
+        public DbSet<VisitIssue> VisitIssues => Set<VisitIssue>();
+        public DbSet<UserFacultyScope> UserFacultyScopes => Set<UserFacultyScope>();
+        public DbSet<Product> Products => Set<Product>();
+        public DbSet<ProductAttributeDefinition> ProductAttributeDefinitions => Set<ProductAttributeDefinition>();
+        public DbSet<ProductValue> ProductValues => Set<ProductValue>();
+        public DbSet<ProductAuthor> ProductAuthors => Set<ProductAuthor>();
+        public DbSet<ObjectiveActivityUser> ObjectiveActivityUsers => Set<ObjectiveActivityUser>();
+        public DbSet<Convocation> Convocations => Set<Convocation>();
+        public DbSet<ConvocationRule> ConvocationRules => Set<ConvocationRule>();
+        public DbSet<ProjectResearchLine> ProjectResearchLines => Set<ProjectResearchLine>();
 
-        // ===== DbSets Catalogs =====
+        // =========================================================
+        // DbSets - Catalogs
+        // =========================================================
+        public DbSet<Country> Countries => Set<Country>();
         public DbSet<DocumentType> DocumentTypes => Set<DocumentType>();
+        public DbSet<FundingType> FundingTypes => Set<FundingType>();
         public DbSet<GroupType> GroupTypes => Set<GroupType>();
+        public DbSet<Institution> Institutions => Set<Institution>();
+        public DbSet<MemberRoleType> MemberRoleTypes => Set<MemberRoleType>();
+        public DbSet<ObjectiveType> ObjectiveTypes => Set<ObjectiveType>();
+        public DbSet<ProjectExtensionType> ProjectExtensionTypes => Set<ProjectExtensionType>();
+        public DbSet<ProjectState> ProjectStates => Set<ProjectState>();
         public DbSet<ProjectType> ProjectTypes => Set<ProjectType>();
+        public DbSet<ResearchDomainType> ResearchDomainTypes => Set<ResearchDomainType>();
+        public DbSet<ResearchLineType> ResearchLineTypes => Set<ResearchLineType>();
         public DbSet<ScopeType> ScopeTypes => Set<ScopeType>();
         public DbSet<TransactionType> TransactionTypes => Set<TransactionType>();
         public DbSet<VisitState> VisitStates => Set<VisitState>();
-        public DbSet<FundingType> FundingTypes => Set<FundingType>();
-        public DbSet<ProjectState> ProjectStates => Set<ProjectState>();
-        public DbSet<ProjectExtensionType> ProjectExtensionTypes => Set<ProjectExtensionType>();
-        public DbSet<ResearchLineType> ResearchLineTypes => Set<ResearchLineType>();
-        public DbSet<ObjectiveType> ObjectiveTypes => Set<ObjectiveType>();
-        public DbSet<ResearcherType> ResearcherTypes => Set<ResearcherType>();
-        public DbSet<ResearchDomainType> ResearchDomainTypes => Set<ResearchDomainType>();
-        public DbSet<MemberRoleType> MemberRoleTypes => Set<MemberRoleType>();
-        public DbSet<Country> Countries => Set<Country>();
-        public DbSet<Institution> Institutions => Set<Institution>();
+        public DbSet<ProductType> ProductTypes => Set<ProductType>();
+        public DbSet<IndexingSource> IndexingSources => Set<IndexingSource>();
 
-        // ===== Auth =====
+        // =========================================================
+        // DbSets - Auth
+        // =========================================================
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+        // =========================================================
+        // OnModelCreating
+        // =========================================================
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
 
-            // ========================================
-            // HELPERS PARA MAPEO DE FK A USUARIOS
-            // ========================================
+            // 1) Relaciones de FK hacia usuarios (auditoría/propietario)
+            ConfigureUserForeignKeys(builder);
 
-            /// <summary>
-            /// Convierte una expresión fuertemente tipada a Expression que retorna object?
-            /// Necesario porque HasIndex y HasForeignKey requieren Expression con Func que retorna object?
-            /// </summary>
-            static Expression<Func<TEntity, object?>> ToObjectExpr<TEntity, TProp>(
-                Expression<Func<TEntity, TProp>> expr)
-                where TEntity : class
-            {
-                var param = expr.Parameters[0];
-                var body = Expression.Convert(expr.Body, typeof(object));
-                return Expression.Lambda<Func<TEntity, object?>>(body, param);
-            }
+            // 2) RefreshTokens
+            ConfigureRefreshTokens(builder);
 
-            /// <summary>
-            /// Mapea una FK hacia AspNetUsers (IdentityUser) de forma genérica.
-            /// Crea índice y configura la relación con el comportamiento de eliminación especificado.
-            /// Nota: En sistemas con soft delete, usar NoAction evita problemas de cascada múltiple en SQL Server.
-            /// </summary>
-            static void MapUserFK<TEntity, TProp>(
-                ModelBuilder mb,
-                Expression<Func<TEntity, TProp>> fkExpr,
-                DeleteBehavior delete = DeleteBehavior.NoAction)
-                where TEntity : class
-            {
-                var e = mb.Entity<TEntity>();
-                var objExpr = ToObjectExpr(fkExpr);
+            // 3) Otras configuraciones puntuales
+            ConfigureInstitution(builder);
+            ConfigureDocument(builder);
+            ConfigureProjectBudget(builder);
+            ConfigureVisitIssue(builder);
+            ConfigureProducts(builder);
+            ConfigureConvocations(builder);
+            ConfigureProjectResearchLine(builder);
 
-                // Crear índice en la FK para mejorar rendimiento
-                e.HasIndex(objExpr);
+            // 4) Visit (dos FKs hacia Documents, sin cascada)
+            ConfigureVisit(builder);
 
-                // Configurar relación con AspNetUsers<int>
-                e.HasOne<IdentityUser<int>>()
-                 .WithMany()
-                 .HasForeignKey(objExpr)
-                 .HasPrincipalKey(u => u.Id)
-                 .OnDelete(delete);
-            }
+            // 5) Deshabilitar cascada en TODAS las FKs restantes (garantía global)
+            DisableCascadeDeletesGlobally(builder);
+        }
 
-            // ========================================
-            // MAPEO DE COLUMNAS DE AUDITORÍA Y USUARIOS
-            // ========================================
+        // =========================================================
+        // Helpers (privados) para mapear FKs de usuario
+        // =========================================================
 
+        // Convierte una expresión fuertemente tipada en una expresión a object
+        private static Expression<Func<TEntity, object?>> ToObjectExpr<TEntity, TProp>(
+            Expression<Func<TEntity, TProp>> expr) where TEntity : class
+        {
+            var param = expr.Parameters[0];
+            var body = Expression.Convert(expr.Body, typeof(object));
+            return Expression.Lambda<Func<TEntity, object?>>(body, param);
+        }
+
+        // Aplica índice + FK hacia IdentityUser<int> con DeleteBehavior configurable
+        private static void MapUserFK<TEntity, TProp>(
+            ModelBuilder mb,
+            Expression<Func<TEntity, TProp>> fkExpr,
+            DeleteBehavior delete = DeleteBehavior.NoAction)
+            where TEntity : class
+        {
+            var e = mb.Entity<TEntity>();
+            var objExpr = ToObjectExpr(fkExpr);
+
+            e.HasIndex(objExpr);
+
+            e.HasOne<IdentityUser<int>>()
+             .WithMany()
+             .HasForeignKey(objExpr)
+             .HasPrincipalKey(u => u.Id)
+             .OnDelete(delete);
+        }
+
+        // Agrupa todos los mapeos de FK a usuarios en un solo lugar
+        private static void ConfigureUserForeignKeys(ModelBuilder builder)
+        {
             // Budget → ApprovedByUserId
             MapUserFK<Budget, int>(builder, b => b.ApprovedByUserId);
 
@@ -126,15 +159,31 @@ namespace tesisproject.backend.Data
             MapUserFK<Researcher, int?>(builder, r => r.UpdatedByUserId);
 
             // Visit → PerformedByUserId
-            MapUserFK<Visit, int>(builder, v => v.PerformedByUserId);
+            MapUserFK<Visit, int?>(builder, v => v.PerformedByUserId);
 
-            // ========================================
-            // REFRESH TOKENS
-            // ========================================
+            // VisitIssue → ReportedByUserId
+            MapUserFK<VisitIssue, int?>(builder, vi => vi.ReportedByUserId);
+
+            // UserFacultyScope → IdentityUserId
+            MapUserFK<UserFacultyScope, int>(builder, ufs => ufs.IdentityUserId);
+            // ProductAuthor → UserId
+            MapUserFK<ProductAuthor, int>(builder, pa => pa.UserId);
+        }
+
+        // =========================================================
+        // Configs específicas por entidad
+        // =========================================================
+
+        private static void ConfigureRefreshTokens(ModelBuilder builder)
+        {
             builder.Entity<RefreshToken>(b =>
             {
-                b.Property(x => x.TokenHash).IsRequired().HasMaxLength(128);
-                b.HasIndex(x => x.TokenHash).IsUnique();
+                b.Property(x => x.TokenHash)
+                 .IsRequired()
+                 .HasMaxLength(128);
+
+                b.HasIndex(x => x.TokenHash)
+                 .IsUnique();
 
                 b.HasOne<IdentityUser<int>>()
                  .WithMany()
@@ -142,32 +191,257 @@ namespace tesisproject.backend.Data
                  .HasPrincipalKey(u => u.Id)
                  .OnDelete(DeleteBehavior.NoAction);
             });
+        }
 
-            // ========================================
-            // OTRAS CONFIGURACIONES
-            // ========================================
-
-            // Institution → Índice único (Name, CountryId)
+        private static void ConfigureInstitution(ModelBuilder builder)
+        {
+            // Institution → índice único (Name, CountryId)
             builder.Entity<Institution>()
                    .HasIndex(i => new { i.Name, i.CountryId })
                    .IsUnique();
+        }
 
-            // Document → Relación 1:1 auto-referencial (RelatedDocument)
+        private static void ConfigureDocument(ModelBuilder builder)
+        {
+            // Document → relación 1:1 auto-referencial (RelatedDocument) sin cascada
             builder.Entity<Document>(b =>
             {
                 b.HasOne(d => d.RelatedDocument)
                  .WithOne(d => d!.ReverseRelation)
                  .HasForeignKey<Document>(d => d.RelatedDocumentId)
-                 .OnDelete(DeleteBehavior.Restrict);
+                 .OnDelete(DeleteBehavior.NoAction);
             });
+        }
 
-            // Project ↔ Budget → Relación 1:1 (FK en Budget.ProjectId)
-            // NoAction porque usamos soft delete en toda la BD
+        private static void ConfigureProjectBudget(ModelBuilder builder)
+        {
+            // Project ↔ Budget → 1:1 (FK en Budget.ProjectId) sin cascada
             builder.Entity<Project>()
                    .HasOne(p => p.Budget)
                    .WithOne()
                    .HasForeignKey<Budget>(b => b.ProjectId)
                    .OnDelete(DeleteBehavior.NoAction);
+        }
+
+        protected static void ConfigureProjectResearchLine(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ProjectResearchLine>()
+                .HasKey(prl => new { prl.ProjectId, prl.ResearchLineTypeId });
+
+            modelBuilder.Entity<ProjectResearchLine>()
+                .HasOne(prl => prl.Project)
+                .WithMany(p => p.ProjectResearchLines)
+                .HasForeignKey(prl => prl.ProjectId);
+
+            modelBuilder.Entity<ProjectResearchLine>()
+                .HasOne(prl => prl.ResearchLineType)
+                .WithMany()
+                .HasForeignKey(prl => prl.ResearchLineTypeId);
+        }
+
+        private static void ConfigureVisitIssue(ModelBuilder builder)
+        {
+            builder.Entity<VisitIssue>(b =>
+            {
+                b.HasOne(vi => vi.Visit)
+                 .WithMany(v => v.Issues)
+                 .HasForeignKey(vi => vi.VisitId)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
+
+        }
+
+        private static void ConfigureVisit(ModelBuilder builder)
+        {
+            builder.Entity<Visit>(b =>
+            {
+                // Visit -> Documents (DocumentId = informe de visita) SIN cascada
+                b.HasOne(v => v.Document)
+                 .WithMany()
+                 .HasForeignKey(v => v.DocumentId)
+                 .OnDelete(DeleteBehavior.NoAction)
+                 .HasConstraintName("FK_Visits_Documents_DocumentId");
+
+                // Visit -> Documents (FundingDocumentId = informe económico) SIN cascada
+                b.HasOne(v => v.FundingDocument)
+                 .WithMany()
+                 .HasForeignKey(v => v.FundingDocumentId)
+                 .OnDelete(DeleteBehavior.NoAction)
+                 .HasConstraintName("FK_Visits_Documents_FundingDocumentId");
+
+                // Visit -> Documents (ProgressDocumentId = informe de avance) SIN cascada
+                b.HasOne(v => v.ProgressDocument)
+                 .WithMany()
+                 .HasForeignKey(v => v.ProgressDocumentId)
+                 .OnDelete(DeleteBehavior.NoAction)
+                 .HasConstraintName("FK_Visits_Documents_ProgressDocumentId");
+
+                // Visit -> Project SIN cascada
+                b.HasOne(v => v.Project)
+                 .WithMany(p => p.Visits)
+                 .HasForeignKey(v => v.ProjectId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // Visit -> VisitState SIN cascada
+                b.HasOne(v => v.VisitState)
+                 .WithMany()
+                 .HasForeignKey(v => v.VisitStateId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // Índices útiles
+                b.HasIndex(v => v.DocumentId);
+                b.HasIndex(v => v.FundingDocumentId);
+                b.HasIndex(v => v.ProgressDocumentId);
+                b.HasIndex(v => v.ProjectId);
+                b.HasIndex(v => v.VisitStateId);
+            });
+        }
+
+
+        private static void ConfigureProducts(ModelBuilder builder)
+        {
+            // ============== ProductType (catálogo) ==============
+            builder.Entity<ProductType>(b =>
+            {
+                b.Property(x => x.Name).HasMaxLength(100).IsRequired();
+                b.HasIndex(x => x.Name).IsUnique(); // opcional
+            });
+
+            // ============== Product (ProjectId requerido, VisitId opcional) ==============
+            builder.Entity<Product>(b =>
+            {
+                b.Property(p => p.Title).HasMaxLength(1024).IsRequired();
+                b.Property(p => p.Description).HasMaxLength(4000);
+
+                // FK → ProductType
+                b.HasOne(p => p.ProductType)
+                 .WithMany()
+                 .HasForeignKey(p => p.ProductTypeId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // FK → Project (requerido)
+                b.HasOne(p => p.Project)
+                 .WithMany(pr => pr.Products!) // si no tienes navegación en Project, usa .WithMany()
+                 .HasForeignKey(p => p.ProjectId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // FK → Visit (opcional)
+                b.HasOne(p => p.Visit)
+                 .WithMany() // si quieres navegación, agrega ICollection<Product> en Visit y cámbialo a v => v.Products!
+                 .HasForeignKey(p => p.VisitId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // Índices útiles
+                b.HasIndex(p => p.ProjectId);
+                b.HasIndex(p => p.VisitId);
+                b.HasIndex(p => p.ProductTypeId);
+                b.HasIndex(p => p.IsActive);
+            });
+
+            // ============== ProductAttributeDefinition ==========
+            builder.Entity<ProductAttributeDefinition>(b =>
+            {
+                b.Property(a => a.AttributeName).HasMaxLength(128).IsRequired();
+                b.Property(a => a.DataType).HasMaxLength(32).IsRequired();
+                b.Property(a => a.Unit).HasMaxLength(32);
+
+                b.HasOne(a => a.ProductType)
+                 .WithMany()
+                 .HasForeignKey(a => a.ProductTypeId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // Evita duplicados por (Tipo, Nombre)
+                b.HasIndex(a => new { a.ProductTypeId, a.AttributeName })
+                 .IsUnique();
+            });
+
+            // ============== ProductValue ========================
+            builder.Entity<ProductValue>(b =>
+            {
+                // Un valor por (Producto, AtributoDef)
+                b.HasIndex(v => new { v.ProductId, v.AttributeDefinitionId })
+                 .IsUnique();
+
+                b.HasOne(v => v.Product)
+                 .WithMany(p => p.Values!)
+                 .HasForeignKey(v => v.ProductId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                b.HasOne(v => v.AttributeDefinition)
+                 .WithMany(d => d.ProductValues!)
+                 .HasForeignKey(v => v.AttributeDefinitionId)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
+
+            // ============== ProductAuthor (User como autor ASP) =====
+            builder.Entity<ProductAuthor>(b =>
+            {
+                // Un mismo usuario no puede repetirse en el mismo producto
+                b.HasIndex(x => new { x.ProductId, x.UserId }).IsUnique();
+
+                // Si manejas orden de autor y quieres que no se repita por producto:
+                // b.HasIndex(x => new { x.ProductId, x.AuthorOrder }).IsUnique();
+
+                b.HasOne(x => x.Product)
+                 .WithMany(p => p.Authors!)
+                 .HasForeignKey(x => x.ProductId)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
+        }
+
+        private static void ConfigureConvocations(ModelBuilder builder)
+        {
+            // ================= Convocation =================
+            builder.Entity<Convocation>(b =>
+            {
+                b.Property(x => x.Name).HasMaxLength(200).IsRequired();
+                b.Property(x => x.Code).HasMaxLength(64);
+                b.HasIndex(x => x.IsActive);
+                // Si quieres evitar solapes por nombre+fechas (opcional):
+                // b.HasIndex(x => new { x.Name, x.StartDate, x.EndDate }).IsUnique();
+            });
+
+            // ================= ConvocationRule ==============
+            builder.Entity<ConvocationRule>(b =>
+            {
+                // Longitudes
+                b.Property(x => x.GroupCode).HasMaxLength(64);
+                b.Property(x => x.Notes).HasMaxLength(256);
+
+                // Índices útiles para consultas
+                b.HasIndex(x => x.ConvocationId);
+                b.HasIndex(x => new { x.ConvocationId, x.ProductTypeId });
+                b.HasIndex(x => new { x.ConvocationId, x.GroupCode }); // grupos OR
+                b.HasIndex(x => new { x.MinDurationMonths, x.MaxDurationMonths });
+                b.HasIndex(x => x.IsActive);
+
+                // FK → Convocation (1:N)
+                b.HasOne(x => x.Convocation)
+                 .WithMany(c => c.Rules!)
+                 .HasForeignKey(x => x.ConvocationId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // FK → ProductType (catálogo)
+                b.HasOne<ProductType>()
+                 .WithMany()
+                 .HasForeignKey(x => x.ProductTypeId)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
+        }
+
+
+
+        /// <summary>
+        /// Fuerza DeleteBehavior.NoAction en TODAS las FKs del modelo
+        /// (incluye las no configuradas explícitamente), para garantizar
+        /// que no haya borrados en cascada en ninguna entidad.
+        /// </summary>
+        private static void DisableCascadeDeletesGlobally(ModelBuilder builder)
+        {
+            foreach (var fk in builder.Model.GetEntityTypes().SelectMany(e => e.GetForeignKeys()))
+            {
+                fk.DeleteBehavior = DeleteBehavior.NoAction;
+            }
         }
     }
 }

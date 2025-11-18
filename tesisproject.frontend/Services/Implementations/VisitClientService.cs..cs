@@ -34,6 +34,16 @@ namespace tesisproject.frontend.Services.Implementations
         }
 
         // =========================
+        //          DETAIL
+        // =========================
+
+        public Task<HttpResponseWrapper<VisitDetailResponseDTO?>> GetVisitDetailAsync(int id, CancellationToken ct = default)
+        {
+            // GET: api/visits/{id}/detail
+            return _api.GetAsync<VisitDetailResponseDTO>($"{_baseUrl}/{id}/detail", ct);
+        }
+
+        // =========================
         //          SINGLE
         // =========================
 

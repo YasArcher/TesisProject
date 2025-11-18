@@ -120,15 +120,19 @@
                                 <h4 class="text-sm font-semibold text-muted uppercase tracking-wide">Objetivo</h4>
                             </div>
                             <div class="bg-page-bg border border-border rounded-lg p-4">
-                                @if (!string.IsNullOrEmpty(Item.ProjectObjective))
+                                @if (Item.ProjectObjectives != null && Item.ProjectObjectives.Any(o => o.ObjectiveTypeId == 1))
                                 {
-                                    <p class="text-foreground leading-relaxed">@Item.ProjectObjective</p>
+                                    @foreach (var obj in Item.ProjectObjectives.Where(o => o.ObjectiveTypeId == 1))
+                                    {
+                                        <p class="text-foreground leading-relaxed">@obj.Objective</p>
+                                    }
                                 }
                                 else
                                 {
                                     <p class="text-muted italic">Sin objetivo definido</p>
                                 }
                             </div>
+
                         </div>
 
                         <!-- Línea de investigación -->
@@ -142,11 +146,24 @@
                                 </div>
                                 <h4 class="text-sm font-semibold text-muted uppercase tracking-wide">Línea de Investigación</h4>
                             </div>
-
-                            @if (!string.IsNullOrEmpty(Item.ResearchLine))
+                            @if (Item.ResearchDomains != null && Item.ResearchDomains.Any(d => d.ResearchLines != null && d.ResearchLines.Any()))
                             {
+                                var domainAndLines = Item.ResearchDomains
+                                .Select(domain =>
+                                {
+                                    var lines = domain.ResearchLines?.Select(l => l.ResearchLineTypeName).ToList() ?? new List<string>();
+
+                                    // Si un dominio no tiene líneas, lo omitimos
+                                    if (lines.Count == 0)
+                                        return null;
+
+                                    return $"{domain.ResearchDomainTypeName}: {string.Join(", ", lines)}";
+                                })
+                                .Where(x => x != null)
+                                .ToList();
+
                                 <span class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-full bg-accent/10 text-accent border border-accent/20">
-                                    🔬 @Item.ResearchLine
+                                    🔬 @string.Join(" | ", domainAndLines)
                                 </span>
                             }
                             else

@@ -62,8 +62,11 @@ builder.Services.AddScoped<IBudgetClientService, BudgetClientService>();
 builder.Services.AddScoped<IProjectFiltersClientService, ProjectFiltersClientService>();
 builder.Services.AddScoped<IProjectExtensionClientService, ProjectExtensionClientService>();
 builder.Services.AddScoped<IVisitClientService, VisitClientService>();
+builder.Services.AddScoped<IAuthClientService, AuthClientService>();
 
 // 7) Provider de autenticación
-builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
+builder.Services.AddScoped<CustomAuthStateProvider>();
+builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
+    sp.GetRequiredService<CustomAuthStateProvider>());
 
 await builder.Build().RunAsync();

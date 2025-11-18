@@ -16,18 +16,14 @@ namespace tesisproject.shared.DTOs.Project.Request
         public int ProjectTypeId { get; set; }
         [Required]
         public int ProjectGroupId { get; set; }
-
-        public int? SenesytGroupId { get; set; }
-        [StringLength(500)]
-        public string? ProjectObjective { get; set; }
-        [StringLength(200)]
         public int ResearchLine { get; set; }
+        public DateTime ApprovalDate { get; set; }
         public DateTime? StartDate { get; set; }
-        public DateTime? TentativeEndDate { get; set; }
         public string? ProjectCode { get; set; }
         public int CreatedByUserId { get; set; }
         public int ProjectStateId { get; set; }
-        public int? InitialDocumentId { get; set; }
+        public int DurationInMonths { get; set; }
         public int FacultyId { get; set; }
+        public int FundingTypeId { get; set; }
     }
 }

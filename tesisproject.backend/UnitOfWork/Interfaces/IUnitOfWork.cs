@@ -12,6 +12,18 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
         IBudgetRepository Budgets { get; }
         IVisitRepository Visits { get; }
         IProjectExtensionRepository ProjectExtensions { get; }
+        IVisitIssueRepository VisitIssues { get; }
+        IConvocationRepository Convocations { get; }
+        IProductAttributeDefinitionRepository ProductAttributeDefinitions { get; }
+        IProductValueRepository ProductValues { get; }
+        IProductTypeRepository ProductTypes { get; }
+        IProductAuthorRepository ProductAuthors { get; }
+        IProductRepository Products { get; }
+        IObjectiveTypeRepository ObjectiveTypes { get; }
+        IProjectObjectiveRepository ProjectObjectives { get; }
+        IObjectiveActivityRepository ObjectiveActivities { get; }
+        IObjectiveActivityUserRepository ObjectiveActivityUsers { get; }
+        IDocumentRepository Documents { get; }
 
         // 🔹 Nuevo repositorio agregado:
         IAspNetUserRepository AspNetUsers { get; }

@@ -14,6 +14,19 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public IVisitRepository Visits { get; }
         public IProjectExtensionRepository ProjectExtensions { get; set; }
         public IAspNetUserRepository AspNetUsers { get; set; }
+        public IVisitIssueRepository VisitIssues { get; set; }
+        public IConvocationRepository Convocations { get; set; }
+        public IProductRepository Products { get; set; }
+        public IProductTypeRepository ProductTypes { get; set; }
+        public IProductAttributeDefinitionRepository ProductAttributeDefinitions { get; set; }
+        public IProductValueRepository ProductValues { get; set; }
+        public IProductAuthorRepository ProductAuthors { get; set; }
+        public IObjectiveTypeRepository ObjectiveTypes { get; set; }
+        public IProjectObjectiveRepository ProjectObjectives { get; set; }
+        public IObjectiveActivityRepository ObjectiveActivities { get; set; }
+        public IObjectiveActivityUserRepository ObjectiveActivityUsers { get; set; }
+        public IDocumentRepository Documents { get; }
+
 
         public UnitOfWork(
             AppDbContext ctx,
@@ -23,7 +36,19 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             IBudgetRepository budgets,
             IVisitRepository visitRepository,
             IProjectExtensionRepository projectExtensions,
-            IAspNetUserRepository aspNetUserRepository)
+            IAspNetUserRepository aspNetUserRepository,
+            IVisitIssueRepository visitIssues,
+            IConvocationRepository convocations,
+            IProductRepository products,
+            IProductTypeRepository productTypes,
+            IProductAttributeDefinitionRepository productAttributeDefinitions,
+            IProductValueRepository productValues,
+            IProductAuthorRepository productAuthors,
+            IObjectiveTypeRepository objectiveTypes,
+            IProjectObjectiveRepository projectObjectives,
+            IObjectiveActivityRepository objectiveActivities,
+            IObjectiveActivityUserRepository objectiveActivityUsers,
+            IDocumentRepository documents)
         {
             _ctx = ctx;
             Projects = projectRepository;
@@ -33,6 +58,18 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             Visits = visitRepository;
             ProjectExtensions = projectExtensions;
             AspNetUsers = aspNetUserRepository;
+            VisitIssues = visitIssues;
+            Convocations = convocations;
+            Products = products;
+            ProductTypes = productTypes;
+            ProductAttributeDefinitions = productAttributeDefinitions;
+            ProductValues = productValues;
+            ProductAuthors = productAuthors;
+            ObjectiveTypes = objectiveTypes;
+            ProjectObjectives = projectObjectives;
+            ObjectiveActivities = objectiveActivities;
+            ObjectiveActivityUsers = objectiveActivityUsers;
+            Documents = documents;
         }
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)

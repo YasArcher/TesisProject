@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using tesisproject.backend.Controllers.Extensions;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Auth;
+using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Controllers
 {
@@ -39,82 +41,82 @@ namespace tesisproject.backend.Controllers
             });
         }
 
+        // =============== REGISTER ===============
+
         [HttpPost("register")]
         [AllowAnonymous]
-        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Register([FromBody] RegisterRequest dto, CancellationToken ct)
+        [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<AuthResponse>>> Register(
+            [FromBody] RegisterRequest dto,
+            CancellationToken ct)
         {
-            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+            if (!ModelState.IsValid)
+                return ValidationProblem(ModelState);
 
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-            var (data, status, error, cookie) = await _auth.RegisterAsync(dto, ip, ct);
+            var (result, cookie) = await _auth.RegisterAsync(dto, ip, ct);
 
             if (cookie is not null)
                 SetRefreshCookie(Response, cookie.Value.token, cookie.Value.exp);
 
-            return status switch
-            {
-                StatusCodes.Status200OK => Ok(data),
-                StatusCodes.Status400BadRequest => BadRequest(new { error }),
-                _ => StatusCode(status, new { error })
-            };
+            return result.ToActionResult();
         }
+
+        // =============== LOGIN ===============
 
         [HttpPost("login")]
         [AllowAnonymous]
-        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> Login([FromBody] LoginRequest dto, CancellationToken ct)
+        [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<AuthResponse>>> Login(
+            [FromBody] LoginRequest dto,
+            CancellationToken ct)
         {
-            if (!ModelState.IsValid) return ValidationProblem(ModelState);
+            if (!ModelState.IsValid)
+                return ValidationProblem(ModelState);
 
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
-            var (data, status, error, cookie) = await _auth.LoginAsync(dto, ip, ct);
+            var (result, cookie) = await _auth.LoginAsync(dto, ip, ct);
 
             if (cookie is not null)
                 SetRefreshCookie(Response, cookie.Value.token, cookie.Value.exp);
 
-            return status switch
-            {
-                StatusCodes.Status200OK => Ok(data),
-                StatusCodes.Status401Unauthorized => Unauthorized(new { error }),
-                StatusCodes.Status400BadRequest => BadRequest(new { error }),
-                _ => StatusCode(status, new { error })
-            };
+            return result.ToActionResult();
         }
+
+        // =============== REFRESH ===============
 
         [HttpPost("refresh")]
         [AllowAnonymous]
-        [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        public async Task<IActionResult> Refresh(CancellationToken ct)
+        [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<AuthResponse>>> Refresh(
+            CancellationToken ct)
         {
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var raw = Request.Cookies["rt"];
 
-            var (data, status, error, cookie) = await _auth.RefreshAsync(raw, ip, ct);
+            var (result, cookie) = await _auth.RefreshAsync(raw, ip, ct);
 
             if (cookie is not null)
                 SetRefreshCookie(Response, cookie.Value.token, cookie.Value.exp);
 
-            return status == StatusCodes.Status200OK
-                ? Ok(data)
-                : StatusCode(status, new { error });
+            return result.ToActionResult();
         }
+
+        // =============== LOGOUT ===============
 
         [HttpPost("logout")]
         [Authorize] // opcional
-        [ProducesResponseType(StatusCodes.Status204NoContent)]
-        public async Task<IActionResult> Logout(CancellationToken ct)
+        [ProducesResponseType(typeof(ApiResponse<NoContent>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<ApiResponse<NoContent>>> Logout(
+            CancellationToken ct)
         {
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var raw = Request.Cookies["rt"];
 
-            await _auth.RevokeAsync(raw, ip, ct);
+            var result = await _auth.RevokeAsync(raw, ip, ct);
             ClearRefreshCookie(Response);
 
-            return NoContent();
+            return result.ToActionResult();
         }
     }
 }
