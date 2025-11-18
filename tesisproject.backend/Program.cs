@@ -12,6 +12,7 @@ using tesisproject.backend.Data;
 using tesisproject.backend.Options;
 using tesisproject.backend.Repositories.Implementations;
 using tesisproject.backend.Repositories.Interfaces;
+using tesisproject.backend.Services;
 using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Implementations;
@@ -208,6 +209,19 @@ static class StartupExtensions
         builder.Services.AddScoped<IVisitRepository, VisitRepository>();
         builder.Services.AddScoped<IProjectExtensionRepository, ProjectExtensionRepository>();
         builder.Services.AddScoped<IAspNetUserRepository, AspNetUserRepository>();
+        builder.Services.AddScoped<IVisitIssueRepository, VisitIssueRepository>();
+        builder.Services.AddScoped<IConvocationRepository, ConvocationRepository>();
+        builder.Services.AddScoped<IProductRepository, ProductRepository>();
+        builder.Services.AddScoped<IProductTypeRepository, ProductTypeRepository>();
+        builder.Services.AddScoped<IProductAttributeDefinitionRepository, ProductAttributeDefinitionRepository>();
+        builder.Services.AddScoped<IProductAuthorRepository, ProductAuthorRepository>();
+        builder.Services.AddScoped<IProductValueRepository, ProductValueRepository>();
+        builder.Services.AddScoped<IObjectiveTypeRepository, ObjectiveTypeRepository>();
+        builder.Services.AddScoped<IProjectObjectiveRepository, ProjectObjectiveRepository>();
+        builder.Services.AddScoped<IObjectiveActivityRepository, ObjectiveActivityRepository>();
+        builder.Services.AddScoped<IObjectiveActivityUserRepository, ObjectiveActivityUserRepository>();
+        builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
+
 
         // Open generics (FIX): register generic repositories properly
         builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -225,6 +239,17 @@ static class StartupExtensions
         builder.Services.AddScoped<IBudgetService, BudgetService>();
         builder.Services.AddScoped<IVisitService, VisitService>();
         builder.Services.AddScoped<IProjectExtensionService, ProjectExtensionService>();
+        builder.Services.AddScoped<IVisitIssueService, VisitIssueService>();
+        builder.Services.AddScoped<IConvocationService, ConvocationService>();
+        builder.Services.AddScoped<IProductService, ProductService>();
+        builder.Services.AddScoped<IProductTypeService, ProductTypeService>();
+        builder.Services.AddScoped<IObjectiveTypeService, ObjectiveTypeService>();
+        builder.Services.AddScoped<IProjectObjectiveService, ProjectObjectiveService>();
+        builder.Services.AddScoped<IObjectiveActivityService, ObjectiveActivityService>();
+        builder.Services.AddScoped<IObjectiveActivityUserService, ObjectiveActivityUserService>();
+        builder.Services.AddScoped<IDocumentService, DocumentService>();
+        builder.Services.AddScoped<IDocumentRecognitionService, DocumentRecognitionService>();
+
     }
 
     public static void ConfigureApiDocumentation(this WebApplicationBuilder builder)

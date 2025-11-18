@@ -203,8 +203,6 @@ namespace tesisproject.backend.Services.Implementations
                     {
                         Id = f.FacultyId,
                         Name = f.Name,
-                        Value = f.FacultyId.ToString(),
-                        Label = f.Name
                     })
                     .ToList();
 

@@ -26,6 +26,11 @@ namespace tesisproject.backend.Controllers
         public async Task<ActionResult<ApiResponse<VisitListResponseDTO>>> GetById(int id, CancellationToken ct)
             => (await _service.GetByIdAsync(id, ct)).ToActionResult();
 
+        // GET: api/visits/{id}/detail
+        [HttpGet("{id:int}/detail")]
+        public async Task<ActionResult<ApiResponse<VisitDetailResponseDTO>>> GetDetail(int id, CancellationToken ct)
+            => (await _service.GetVisitDetailAsync(id, ct)).ToActionResult();
+
         // GET: api/visits/by-project/{projectId}
         [HttpGet("by-project/{projectId:int}")]
         public async Task<ActionResult<ApiResponse<IReadOnlyList<VisitListResponseDTO>>>> GetByProject(int projectId, CancellationToken ct)
@@ -40,7 +45,6 @@ namespace tesisproject.backend.Controllers
         [HttpPut("{id:int}")]
         public async Task<ActionResult<ApiResponse<VisitListResponseDTO>>> Update(int id, UpdateVisitRequestDTO body, CancellationToken ct)
         {
-            // aseguramos que el id de la ruta prevalezca sobre el body
             body.VisitId = id;
             return (await _service.UpdateAsync(body, ct)).ToActionResult();
         }

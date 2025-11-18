@@ -13,6 +13,8 @@ namespace tesisproject.frontend.Services.Interfaces
         // LISTS (planos)
         Task<HttpResponseWrapper<List<VisitListResponseDTO>?>> GetListAsync(CancellationToken ct = default);
         Task<HttpResponseWrapper<List<VisitListResponseDTO>?>> GetByProjectAsync(int projectId, CancellationToken ct = default);
+        // LISTS (Detail)
+        Task<HttpResponseWrapper<VisitDetailResponseDTO?>> GetVisitDetailAsync(int id, CancellationToken ct = default);
 
         // SINGLE (plano)
         Task<HttpResponseWrapper<VisitListResponseDTO?>> GetByIdAsync(int id, CancellationToken ct = default);

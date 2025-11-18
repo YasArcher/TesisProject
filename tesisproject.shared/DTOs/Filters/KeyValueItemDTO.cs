@@ -12,9 +12,6 @@ namespace tesisproject.shared.DTOs.Filters
         public int Id { get; set; }
         public string Name { get; set; } = "";
 
-        // Para selects en UI
-        public string Value { get; set; } = "";
-        public string Label { get; set; } = "";
     }
 }
 

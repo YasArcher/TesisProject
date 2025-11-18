@@ -43,5 +43,10 @@ namespace tesisproject.backend.Controllers
         [HttpGet("detail/{projectId:int}")]
         public async Task<ActionResult<ApiResponse<ProjectDetailResponseDTO>>> GetProjectDetail(int projectId, CancellationToken ct)
             => (await _service.GetProjectDetailAsync(projectId, ct)).ToActionResult();
+
+        // POST: api/projects/full
+        [HttpPost("full")]
+        public async Task<ActionResult<ApiResponse<ProjectDetailResponseDTO>>> CreateFull([FromBody] AddProjectFullRequestDTO request, CancellationToken ct)
+            => (await _service.CreateFullAsync(request, ct)).ToActionResult();
     }
 }

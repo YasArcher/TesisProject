@@ -45,8 +45,6 @@ namespace tesisproject.backend.Services.Implementations
                     {
                         Id = x.Id,
                         Name = x.Name,
-                        Value = x.Id.ToString(),
-                        Label = x.Name
                     })
                     .ToListAsync(ct);
 

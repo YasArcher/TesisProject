@@ -38,5 +38,6 @@ namespace tesisproject.shared.Entities.Core
         // ================================
         public Project Project { get; set; } = null!;                 // Navegación a Project
         public ObjectiveType ObjectiveType { get; set; } = null!;     // Navegación a ObjectiveType
+        public ICollection<ObjectiveActivity>? Activities { get; set; } // Navegación a ObjectiveActivitie
     }
 }

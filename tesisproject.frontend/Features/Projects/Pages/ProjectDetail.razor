@@ -12,6 +12,8 @@
 @using tesisproject.shared.DTOs.Visit.Request
 @using tesisproject.shared.DTOs.Visit.Response
 @using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.VisitIssues.Request
+@using tesisproject.shared.DTOs.VisitIssues.Response 
 
 @inject IVisitClientService VisitService
 @inject IProjectClientService ProjectService
@@ -21,6 +23,7 @@
 @inject NavigationManager Nav
 @inject IToastService Toast
 @inject IExternalUserService ExternalUserService
+@inject IVisitIssueClientService VisitIssueService
 
 <div class="flex flex-col h-full">
     <!-- Header -->
@@ -109,16 +112,29 @@
                 <Icon>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
                         <path fill-rule="evenodd" d="M7.502 6h7.128A3.375 3.375 0 0 1 18 9.375v9.375a3 3 0 0 0 3-3V6.108c0-1.505-1.125-2.811-2.664-2.94a48.972 48.972 0 0 0-.673-.05A3 3 0 0 0 15 1.5h-1.5a3 3 0 0 0-2.663 1.618c-.225.015-.45.032-.673.05C8.662 3.295 7.554 4.542 7.502 6ZM13.5 3A1.5 1.5 0 0 0 12 4.5h4.5A1.5 1.5 0 0 0 15 3h-1.5Z" clip-rule="evenodd" />
-                        <path fill-rule="evenodd" d="M3 9.375C3 8.339 3.84 7.5 4.875 7.5h9.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 0 1 3 20.625V9.375ZM6 12a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V12Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75ZM6 15a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V15Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75ZM6 18a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V18Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
+                        <path fill-rule="evenodd" d="M3 9.375C3 8.339 3.84 7.5 4.875 7.5h9.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 0 1 3 20.625V9.375ZM6 12a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V12Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75ZM6 15a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V15Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
                     </svg>
                 </Icon>
                 <ChildContent>
-                    <ProjectVisitsTab ProjectId="@ProjectId"
-                                      Items="_visits"
-                                      IsLoading="@_loadingVisits"
-                                      OnAddVisit="HandleAddVisit"
-                                      OnOpenVisit="HandleOpenVisit"
-                                      OnChangeVisitState="HandleChangeVisitStateAsync" />
+                    @if (_openVisitId is int vid)
+                    {
+                        <VisitDetailPanel ProjectId="@ProjectId"
+                                          VisitId="@vid"
+                                          Value="@_visitDetail"
+                                          IsLoading="@_loadingVisitDetail"
+                                          ErrorMessage="@_visitDetailError"
+                                          OnBack="HandleCloseVisit"
+                                          OnChangeVisitState="HandleChangeVisitStateAsync" />
+                    }
+                    else
+                    {
+                        <ProjectVisitsTab ProjectId="@ProjectId"
+                                          Items="@_visits"
+                                          IsLoading="@_loadingVisits"
+                                          OnAddVisit="HandleAddVisit"
+                                          OnOpenVisit="HandleOpenVisit"
+                                          OnChangeVisitState="HandleChangeVisitStateAsync" />
+                    }
                 </ChildContent>
             </Tab>
 
@@ -171,7 +187,7 @@
                      ErrorMessage="@_accrualError"
                      OnSubmit="OnSubmitAccrual"
                      OnCancel="OnCancelAccrual" />
-<!-- MODAL: User Picker para agregar miembros al grupo del proyecto -->
+<!-- MODAL: User Picker -->
 <UserPickerModal ModalId="project-user-picker"
                  IsOpen="@_showUserPicker"
                  IsOpenChanged="(bool v) => _showUserPicker = v"
@@ -179,6 +195,16 @@
                  InitialSelectedUserId="@_preselectedUserId"
                  OnSubmit="HandleUserPickedAsync"
                  OnCancel="() => _showUserPicker = false" />
+<VisitIssueFormModal Id="visit-issue-modal"
+                     IsOpen="@_issueModalOpen"
+                     IsOpenChanged="v => _issueModalOpen = v"
+                     IsSaving="@_savingIssue"
+                     ErrorMessage="@_issueError"
+                     IssueId="@_editingIssueId"
+                     VisitId="@(_openVisitId ?? 0)"
+                     InitialValues="@_issueInitialValues"
+                     OnSubmit="HandleSubmitIssue"
+                     OnCancel="HandleCancelIssue" />
 
 
 @code {
@@ -195,10 +221,23 @@
     private bool _loadingMembers;
     private string? _membersError;
 
-    // ======= Visitas =======
+    // ======= Visitas (lista) =======
     private List<VisitListResponseDTO>? _visits;
     private bool _loadingVisits;
     private string? _visitsError;
+
+    // ======= Visitas (detalle para swap) =======
+    private int? _openVisitId;                            // << NUEVO
+    private VisitDetailResponseDTO? _visitDetail;         // << NUEVO
+    private bool _loadingVisitDetail;                     // << NUEVO
+    private string? _visitDetailError;                    // << NUEVO
+    private List<VisitIssueResponseDTO>? _visitIssues;
+    private bool _loadingIssues;
+    private bool _issueModalOpen;
+    private bool _savingIssue;
+    private string? _issueError;
+    private int? _editingIssueId;
+    private VisitIssueFormModal.VisitIssueFormModel? _issueInitialValues;
 
     // ======= Presupuesto =======
     private BudgetDTO? _budget;
@@ -227,7 +266,6 @@
     private bool _showUserPicker;
     private List<ExternalUserDTO> _memberCandidates = new();
     private int? _preselectedUserId;
-
 
     // ======= Lifecycle =======
     protected override async Task OnInitializedAsync()
@@ -277,7 +315,6 @@
                 _membersError = null;
                 try
                 {
-                    // Asegura tener detalle de proyecto y GroupId
                     await EnsureProjectDetailIfNeeded();
 
                     if (_project?.ProjectGroupId is null or 0)
@@ -339,8 +376,6 @@
                 try
                 {
                     var res = await VisitService.GetByProjectAsync(ProjectId);
-                    Console.WriteLine("Raw Response:");
-                    Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(res));
                     if (res.Success && res.Success == true)
                         _visits = res.Response?.ToList() ?? new();
                     else
@@ -417,7 +452,6 @@
             return;
         }
 
-        // 1) Traer todos los usuarios externos
         var all = await ExternalUserService.GetListAsync();
         if (!all.Success)
         {
@@ -425,7 +459,6 @@
             return;
         }
 
-        // 2) Filtrar los que YA están en el grupo
         var existingIds = new HashSet<int>((_members ?? new()).Select(m => m.UserId));
         _memberCandidates = (all.Response ?? new())
             .Where(u => !existingIds.Contains(u.UserId))
@@ -443,11 +476,7 @@
         StateHasChanged();
     }
 
-    private Task HandleChangeRole(int userId)
-    {
-        // Lógica para cambiar rol de un miembro
-        return Task.CompletedTask;
-    }
+    private Task HandleChangeRole(int userId) => Task.CompletedTask;
 
     private async Task HandleRemoveMember(int userGroupId)
     {
@@ -477,7 +506,6 @@
             Toast.ShowError($"Error al remover miembro: {ex.Message}");
         }
     }
-
 
     // ===== Acciones presupuesto =====
     private Task HandleAddCertification()
@@ -638,28 +666,237 @@
     }
 
     // ===== Acciones visitas =====
-    private Task HandleAddVisit()
+    private Task HandleAddVisit() => Task.CompletedTask;
+
+    // >>> SWAP: abrir detalle (ya NO navegamos a /visits/{id})
+    private async Task HandleOpenVisit(int visitId)
     {
+        _openVisitId = visitId;
+        _loadingVisitDetail = true;
+        _visitDetailError = null;
+
+        try
+        {
+            // <<<< MODIFICAR: Cargar detalle de la visita Y sus issues
+            var detailTask = VisitService.GetVisitDetailAsync(visitId);
+            var issuesTask = VisitIssueService.ListByVisitAsync(visitId);
+
+            await Task.WhenAll(detailTask, issuesTask);
+
+            var detailRes = await detailTask;
+            var issuesRes = await issuesTask;
+
+            if (detailRes.Success)
+                _visitDetail = detailRes.Response;
+            else
+                _visitDetailError = detailRes.Error ?? "No se pudo cargar el detalle de la visita.";
+
+            if (issuesRes.Success)
+                _visitIssues = issuesRes.Response?.ToList() ?? new();
+            else
+                _visitIssues = new();
+            await Task.Delay(500); // Simular carga
+        }
+        catch (Exception ex)
+        {
+            _visitDetail = null;
+            _visitIssues = new();
+            _visitDetailError = $"Error de conexión: {ex.Message}";
+        }
+        finally
+        {
+            _loadingVisitDetail = false;
+        }
+
+        StateHasChanged();
+    }
+
+    // >>> SWAP: cerrar detalle y volver a la lista
+    private Task HandleCloseVisit()
+    {
+        _openVisitId = null;
+        _visitDetail = null;
+        _visitDetailError = null;
+        _visitIssues = null;
+        // (opcional) refrescar lista si quieres
+         _ = EnsureTabDataAsync("visits");
+        return Task.CompletedTask;
+    }
+    // <<<< AGREGAR: Handlers para VisitIssues
+
+    /// <summary>Abrir modal para agregar nuevo issue</summary>
+    private Task HandleAddIssue()
+    {
+        if (!_openVisitId.HasValue) return Task.CompletedTask;
+
+        _editingIssueId = null;
+        _issueInitialValues = null;
+        _issueError = null;
+        _savingIssue = false;
+        _issueModalOpen = true;
+        StateHasChanged();
         return Task.CompletedTask;
     }
 
-    private Task HandleOpenVisit(int visitId)
+    /// <summary>Abrir modal para editar issue existente</summary>
+    private Task HandleEditIssue((int issueId, VisitIssueResponseDTO issue) data)
     {
+        _editingIssueId = data.issueId;
+        _issueInitialValues = new VisitIssueFormModal.VisitIssueFormModel
+        {
+            Description = data.issue.Description,
+            ActionPlan = null, // El DTO de respuesta no tiene ActionPlan, se rellena al editar
+            Status = data.issue.Status,
+            DueDate = data.issue.DueDate,
+            ResolvedDate = data.issue.ResolvedDate,
+            ReportedByUserId = data.issue.ReportedByUserId
+        };
+        _issueError = null;
+        _savingIssue = false;
+        _issueModalOpen = true;
+        StateHasChanged();
         return Task.CompletedTask;
     }
 
+    /// <summary>Eliminar issue (confirmación ya manejada por ActionButton)</summary>
+    private async Task HandleDeleteIssue(int issueId)
+    {
+        try
+        {
+             var res = await VisitIssueService.DeleteAsync(issueId);
+
+             if (!res.Success)
+             {
+                 Toast.ShowError(res.Error ?? "No se pudo eliminar el problema.");
+                 return;
+             }
+
+             Toast.ShowSuccess("Problema eliminado correctamente.");
+
+             //Refrescar lista de issues
+             if (_openVisitId.HasValue)
+             {
+                 await ReloadVisitIssuesAsync(_openVisitId.Value);
+             }
+            await Task.Delay(500); // Simular eliminación
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al eliminar: {ex.Message}");
+        }
+    }
+
+    /// <summary>Submit del modal (crear o actualizar)</summary>
+    private async Task HandleSubmitIssue(VisitIssueFormModal.VisitIssueFormModel form)
+    {
+        if (!_openVisitId.HasValue) return;
+
+        try
+        {
+            _savingIssue = true;
+            _issueError = null;
+            StateHasChanged();
+
+            if (_editingIssueId.HasValue)
+            {
+                // ACTUALIZAR
+                var updateDto = new VisitIssueUpdateRequestDTO
+                {
+                    Description = form.Description,
+                    ActionPlan = form.ActionPlan,
+                    Status = form.Status,
+                    DueDate = form.DueDate,
+                    ResolvedDate = form.ResolvedDate,
+                    ReportedByUserId = form.ReportedByUserId
+                };
+
+                 var res = await VisitIssueService.UpdateAsync(_editingIssueId.Value, updateDto);
+
+                 if (!res.Success)
+                 {
+                     _issueError = res.Error ?? "No se pudo actualizar el problema.";
+                     return;
+                 }
+
+                Toast.ShowSuccess("Problema actualizado correctamente.");
+            }
+            else
+            {
+                // CREAR
+                var createDto = new VisitIssueCreateRequestDTO
+                {
+                    VisitId = _openVisitId.Value,
+                    Description = form.Description,
+                    Status = form.Status,
+                    DueDate = form.DueDate,
+                    ReportedByUserId = form.ReportedByUserId
+                };
+
+                 var res = await VisitIssueService.CreateAsync(createDto);
+
+                 if (!res.Success)
+                 {
+                     _issueError = res.Error ?? "No se pudo crear el problema.";
+                     return;
+                 }
+
+                Toast.ShowSuccess("Problema registrado correctamente.");
+            }
+
+            // Cerrar modal y refrescar
+            _issueModalOpen = false;
+            await ReloadVisitIssuesAsync(_openVisitId.Value);
+        }
+        catch (Exception ex)
+        {
+            _issueError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _savingIssue = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>Cancelar modal</summary>
+    private Task HandleCancelIssue()
+    {
+        _issueModalOpen = false;
+        _issueError = null;
+        _editingIssueId = null;
+        _issueInitialValues = null;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Refrescar solo la lista de issues</summary>
+    private async Task ReloadVisitIssuesAsync(int visitId)
+    {
+        try
+        {
+            _loadingIssues = true;
+             var res = await VisitIssueService.ListByVisitAsync(visitId);
+
+             if (res.Success)
+                 _visitIssues = res.Response?.ToList() ?? new();
+             else
+                 Toast.ShowWarning("No se pudieron recargar los problemas.");
+            await Task.Delay(500); // Simular carga
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al recargar: {ex.Message}");
+        }
+        finally
+        {
+            _loadingIssues = false;
+            StateHasChanged();
+        }
+    }
     // ===== Acciones prórrogas =====
-    private Task HandleRequestExtension()
-    {
-        return Task.CompletedTask;
-    }
+    private Task HandleRequestExtension() => Task.CompletedTask;
+    private Task HandleOpenExtension(int projectExtensionId) => Task.CompletedTask;
 
-    private Task HandleOpenExtension(int projectExtensionId)
-    {
-        return Task.CompletedTask;
-    }
-
-    // ===== Acciones miembros =====
+    // ===== Util miembros =====
     private async Task EnsureProjectDetailIfNeeded()
     {
         if (_project is null)
@@ -698,7 +935,6 @@
             Toast.ShowSuccess("Miembro agregado.");
             _showUserPicker = false;
 
-            // refrescar la pestaña de miembros
             await EnsureTabDataAsync("members");
             StateHasChanged();
         }

@@ -15,11 +15,8 @@ namespace tesisproject.shared.DTOs.Visit.Request
         [Required]
         public int VisitStateId { get; set; }
 
-        public int? DocumentId { get; set; }
-
-        public DateTime? VisitDate { get; set; }
-
-        [StringLength(500)]
-        public string? Notes { get; set; }
+        // Fecha programada de la visita (no ejecutada aún)
+        [Required]
+        public DateTime ScheduledDate { get; set; }
     }
 }

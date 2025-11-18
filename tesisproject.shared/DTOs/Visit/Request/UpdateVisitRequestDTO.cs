@@ -11,18 +11,11 @@ namespace tesisproject.shared.DTOs.Visit.Request
     {
         [Required]
         public int VisitId { get; set; }
-
         [Required]
         public int ProjectId { get; set; }
-
         [Required]
         public int VisitStateId { get; set; }
-
         public int? DocumentId { get; set; }
-
         public DateTime? VisitDate { get; set; }
-
-        [StringLength(500)]
-        public string? Notes { get; set; }
     }
 }

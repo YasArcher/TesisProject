@@ -18,5 +18,6 @@ namespace tesisproject.shared.Entities.Catalogs
         //      Navigation Properties
         // ================================
         public ResearchDomainType? ResearchDomainType { get; set; } // Navegación a ResearchDomainType
+        public ICollection<ProjectResearchLine> ProjectResearchLines { get; set; } = new List<ProjectResearchLine>();
     }
 }

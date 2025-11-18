@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using tesisproject.shared.DTOs.Budgets.Request;
+using tesisproject.shared.DTOs.ProjectObjective.Response;
 
 namespace tesisproject.shared.DTOs.Project.Response
 {
@@ -13,8 +10,12 @@ namespace tesisproject.shared.DTOs.Project.Response
         public int ProjectId { get; set; }
         public string ProjectCode { get; set; } = string.Empty;
         public string ProjectName { get; set; } = string.Empty;
-        public string ProjectObjective { get; set; } = string.Empty;
-        public string ResearchLine { get; set; } = string.Empty;
+
+        public ICollection<ProjectObjectiveListItemDTO>? ProjectObjectives { get; set; }
+
+        // 🔹 Dominios con sus líneas de investigación (solo las del proyecto)
+        public ICollection<ProjectResearchDomainDTO> ResearchDomains { get; set; }
+            = new List<ProjectResearchDomainDTO>();
 
         public int ProjectTypeId { get; set; }
         public string ProjectTypeName { get; set; } = string.Empty;
@@ -31,11 +32,28 @@ namespace tesisproject.shared.DTOs.Project.Response
         public int ProjectGroupId { get; set; }
         public string ProjectGroupName { get; set; } = string.Empty;
 
-        public int? SenesytGroupId { get; set; }        // null => no asignado
-        public string? SenesytGroupName { get; set; }   // null => no asignado
+        public int? SenesytGroupId { get; set; }
+        public string? SenesytGroupName { get; set; }
 
-        // --- Budget (solo Id para pestaña Presupuesto) ---
+        // --- Budget ---
         public int BudgetId { get; set; }
         public decimal BudgetAmount { get; set; }
+    }
+
+    // 🔸 Dominio de investigación con sus líneas (para este proyecto)
+    public class ProjectResearchDomainDTO
+    {
+        public int ResearchDomainTypeId { get; set; }
+        public string ResearchDomainTypeName { get; set; } = string.Empty;
+
+        public ICollection<ProjectResearchLineDTO> ResearchLines { get; set; }
+            = new List<ProjectResearchLineDTO>();
+    }
+
+    // 🔹 Línea de investigación dentro de un dominio
+    public class ProjectResearchLineDTO
+    {
+        public int ResearchLineTypeId { get; set; }
+        public string ResearchLineTypeName { get; set; } = string.Empty;
     }
 }

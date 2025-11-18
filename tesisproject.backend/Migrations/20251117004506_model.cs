@@ -6,11 +6,25 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace tesisproject.backend.Migrations
 {
     /// <inheritdoc />
-    public partial class cambioDBContext : Migration
+    public partial class model : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "AcademicPeriod",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AcademicPeriod", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "AspNetRoles",
                 columns: table => new
@@ -50,6 +64,21 @@ namespace tesisproject.backend.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_AspNetUsers", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Convocations",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Code = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Convocations", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -111,6 +140,22 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "IndexingSources",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Abbreviation = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ReferenceUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_IndexingSources", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "MemberRoleTypes",
                 columns: table => new
                 {
@@ -126,24 +171,6 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ObjectiveActivities",
-                columns: table => new
-                {
-                    ObjectiveActivitieId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    ObjetiveId = table.Column<int>(type: "int", nullable: false),
-                    ObjectiveNumber = table.Column<int>(type: "int", nullable: false),
-                    ActivityDescription = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    ActivityResult = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    PercentajeValue = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    IsCompleted = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ObjectiveActivities", x => x.ObjectiveActivitieId);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "ObjectiveTypes",
                 columns: table => new
                 {
@@ -155,6 +182,20 @@ namespace tesisproject.backend.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_ObjectiveTypes", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ProductTypes",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProductTypes", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -215,7 +256,7 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ResearcherTypes",
+                name: "ResearcherType",
                 columns: table => new
                 {
                     Id = table.Column<int>(type: "int", nullable: false)
@@ -225,7 +266,7 @@ namespace tesisproject.backend.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_ResearcherTypes", x => x.Id);
+                    table.PrimaryKey("PK_ResearcherType", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -287,8 +328,7 @@ namespace tesisproject.backend.Migrations
                         name: "FK_AspNetRoleClaims_AspNetRoles_RoleId",
                         column: x => x.RoleId,
                         principalTable: "AspNetRoles",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -308,8 +348,7 @@ namespace tesisproject.backend.Migrations
                         name: "FK_AspNetUserClaims_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -328,8 +367,7 @@ namespace tesisproject.backend.Migrations
                         name: "FK_AspNetUserLogins_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -346,14 +384,12 @@ namespace tesisproject.backend.Migrations
                         name: "FK_AspNetUserRoles_AspNetRoles_RoleId",
                         column: x => x.RoleId,
                         principalTable: "AspNetRoles",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_AspNetUserRoles_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -372,8 +408,7 @@ namespace tesisproject.backend.Migrations
                         name: "FK_AspNetUserTokens_AspNetUsers_UserId",
                         column: x => x.UserId,
                         principalTable: "AspNetUsers",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -396,6 +431,26 @@ namespace tesisproject.backend.Migrations
                     table.ForeignKey(
                         name: "FK_RefreshTokens_AspNetUsers_UserId",
                         column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserFacultyScopes",
+                columns: table => new
+                {
+                    UserFacultyScopeId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    IdentityUserId = table.Column<int>(type: "int", nullable: false),
+                    FacultyId = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserFacultyScopes", x => x.UserFacultyScopeId);
+                    table.ForeignKey(
+                        name: "FK_UserFacultyScopes_AspNetUsers_IdentityUserId",
+                        column: x => x.IdentityUserId,
                         principalTable: "AspNetUsers",
                         principalColumn: "Id");
                 });
@@ -453,14 +508,12 @@ namespace tesisproject.backend.Migrations
                         name: "FK_Documents_DocumentTypes_DocumentTypeId",
                         column: x => x.DocumentTypeId,
                         principalTable: "DocumentTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Documents_Documents_RelatedDocumentId",
                         column: x => x.RelatedDocumentId,
                         principalTable: "Documents",
-                        principalColumn: "DocumentId",
-                        onDelete: ReferentialAction.Restrict);
+                        principalColumn: "DocumentId");
                 });
 
             migrationBuilder.CreateTable(
@@ -479,8 +532,63 @@ namespace tesisproject.backend.Migrations
                         name: "FK_Groups_GroupTypes_GroupTypeId",
                         column: x => x.GroupTypeId,
                         principalTable: "GroupTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ConvocationRules",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ConvocationId = table.Column<int>(type: "int", nullable: false),
+                    ProductTypeId = table.Column<int>(type: "int", nullable: false),
+                    MinDurationMonths = table.Column<int>(type: "int", nullable: true),
+                    MaxDurationMonths = table.Column<int>(type: "int", nullable: true),
+                    Quantity = table.Column<int>(type: "int", nullable: false),
+                    Unit = table.Column<int>(type: "int", nullable: false),
+                    MinQuartile = table.Column<int>(type: "int", nullable: false),
+                    GroupCode = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    RequiredInGroup = table.Column<int>(type: "int", nullable: true),
+                    Notes = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ConvocationRules", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ConvocationRules_Convocations_ConvocationId",
+                        column: x => x.ConvocationId,
+                        principalTable: "Convocations",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ConvocationRules_ProductTypes_ProductTypeId",
+                        column: x => x.ProductTypeId,
+                        principalTable: "ProductTypes",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ProductAttributeDefinitions",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ProductTypeId = table.Column<int>(type: "int", nullable: false),
+                    AttributeName = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    DataType = table.Column<int>(type: "int", maxLength: 32, nullable: false),
+                    IsRequired = table.Column<bool>(type: "bit", nullable: false),
+                    DisplayOrder = table.Column<int>(type: "int", nullable: false),
+                    Unit = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProductAttributeDefinitions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ProductAttributeDefinitions_ProductTypes_ProductTypeId",
+                        column: x => x.ProductTypeId,
+                        principalTable: "ProductTypes",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -500,8 +608,7 @@ namespace tesisproject.backend.Migrations
                         name: "FK_ResearchLineTypes_ResearchDomainTypes_ResearchDomainTypeId",
                         column: x => x.ResearchDomainTypeId,
                         principalTable: "ResearchDomainTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -534,11 +641,10 @@ namespace tesisproject.backend.Migrations
                         principalTable: "AspNetUsers",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_Researchers_ResearcherTypes_ResearcherTypeId",
+                        name: "FK_Researchers_ResearcherType_ResearcherTypeId",
                         column: x => x.ResearcherTypeId,
-                        principalTable: "ResearcherTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalTable: "ResearcherType",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -570,7 +676,7 @@ namespace tesisproject.backend.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     GroupId = table.Column<int>(type: "int", nullable: false),
                     UserId = table.Column<int>(type: "int", nullable: false),
-                    MemberRoleId = table.Column<int>(type: "int", nullable: true),
+                    MemberRoleId = table.Column<int>(type: "int", nullable: false),
                     JoinedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     LeftAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
@@ -586,8 +692,7 @@ namespace tesisproject.backend.Migrations
                         name: "FK_GroupMembers_Groups_GroupId",
                         column: x => x.GroupId,
                         principalTable: "Groups",
-                        principalColumn: "GroupId",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "GroupId");
                     table.ForeignKey(
                         name: "FK_GroupMembers_MemberRoleTypes_MemberRoleId",
                         column: x => x.MemberRoleId,
@@ -606,19 +711,17 @@ namespace tesisproject.backend.Migrations
                     ProjectTypeId = table.Column<int>(type: "int", nullable: false),
                     ProjectStateId = table.Column<int>(type: "int", nullable: false),
                     ProjectGroupId = table.Column<int>(type: "int", nullable: false),
-                    SenesytGroupId = table.Column<int>(type: "int", nullable: true),
                     FundingTypeId = table.Column<int>(type: "int", nullable: false),
                     InitialDocumentId = table.Column<int>(type: "int", nullable: true),
                     ProjectName = table.Column<string>(type: "nvarchar(120)", maxLength: 120, nullable: false),
-                    ProjectObjective = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     ResearchLineTypeId = table.Column<int>(type: "int", maxLength: 200, nullable: false),
-                    ApprovalResolution = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ApprovalDate = table.Column<DateTime>(type: "date", nullable: false),
                     StartDate = table.Column<DateTime>(type: "date", nullable: true),
                     DurationInMonths = table.Column<int>(type: "int", nullable: false),
                     TentativeEndDate = table.Column<DateTime>(type: "date", nullable: true),
                     RealEndDate = table.Column<DateTime>(type: "date", nullable: true),
-                    ExecutionPercentage = table.Column<decimal>(type: "decimal(18,2)", nullable: true)
+                    ExecutionPercentage = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    FacultyId = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -637,37 +740,46 @@ namespace tesisproject.backend.Migrations
                         name: "FK_Projects_FundingTypes_FundingTypeId",
                         column: x => x.FundingTypeId,
                         principalTable: "FundingTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Projects_Groups_ProjectGroupId",
                         column: x => x.ProjectGroupId,
-                        principalTable: "Groups",
-                        principalColumn: "GroupId",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Projects_Groups_SenesytGroupId",
-                        column: x => x.SenesytGroupId,
                         principalTable: "Groups",
                         principalColumn: "GroupId");
                     table.ForeignKey(
                         name: "FK_Projects_ProjectStates_ProjectStateId",
                         column: x => x.ProjectStateId,
                         principalTable: "ProjectStates",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Projects_ProjectTypes_ProjectTypeId",
                         column: x => x.ProjectTypeId,
                         principalTable: "ProjectTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ConvocationRuleIndexing",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ConvocationRuleId = table.Column<int>(type: "int", nullable: false),
+                    IndexingSourceId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ConvocationRuleIndexing", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Projects_ResearchLineTypes_ResearchLineTypeId",
-                        column: x => x.ResearchLineTypeId,
-                        principalTable: "ResearchLineTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        name: "FK_ConvocationRuleIndexing_ConvocationRules_ConvocationRuleId",
+                        column: x => x.ConvocationRuleId,
+                        principalTable: "ConvocationRules",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ConvocationRuleIndexing_IndexingSources_IndexingSourceId",
+                        column: x => x.IndexingSourceId,
+                        principalTable: "IndexingSources",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -701,8 +813,7 @@ namespace tesisproject.backend.Migrations
                         name: "FK_Budgets_Projects_ProjectId1",
                         column: x => x.ProjectId1,
                         principalTable: "Projects",
-                        principalColumn: "ProjectId",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "ProjectId");
                 });
 
             migrationBuilder.CreateTable(
@@ -730,14 +841,12 @@ namespace tesisproject.backend.Migrations
                         name: "FK_ExternalResearcherProjects_ExternalResearchers_ExternalResearcherId",
                         column: x => x.ExternalResearcherId,
                         principalTable: "ExternalResearchers",
-                        principalColumn: "ExternalResearcherId",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "ExternalResearcherId");
                     table.ForeignKey(
                         name: "FK_ExternalResearcherProjects_Projects_ProjectId",
                         column: x => x.ProjectId,
                         principalTable: "Projects",
-                        principalColumn: "ProjectId",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "ProjectId");
                 });
 
             migrationBuilder.CreateTable(
@@ -764,14 +873,12 @@ namespace tesisproject.backend.Migrations
                         name: "FK_ProjectExtensions_ProjectExtensionTypes_ProjectExtensionTypeId",
                         column: x => x.ProjectExtensionTypeId,
                         principalTable: "ProjectExtensionTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_ProjectExtensions_Projects_ProjectId",
                         column: x => x.ProjectId,
                         principalTable: "Projects",
-                        principalColumn: "ProjectId",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "ProjectId");
                 });
 
             migrationBuilder.CreateTable(
@@ -792,14 +899,41 @@ namespace tesisproject.backend.Migrations
                         name: "FK_ProjectObjectives_ObjectiveTypes_ObjectiveTypeId",
                         column: x => x.ObjectiveTypeId,
                         principalTable: "ObjectiveTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_ProjectObjectives_Projects_ProjectId",
                         column: x => x.ProjectId,
                         principalTable: "Projects",
-                        principalColumn: "ProjectId",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "ProjectId");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ProjectResearchLines",
+                columns: table => new
+                {
+                    ProjectId = table.Column<int>(type: "int", nullable: false),
+                    ResearchLineTypeId = table.Column<int>(type: "int", nullable: false),
+                    ProjectResearchLineId = table.Column<int>(type: "int", nullable: false),
+                    ResearchLineTypeId1 = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProjectResearchLines", x => new { x.ProjectId, x.ResearchLineTypeId });
+                    table.ForeignKey(
+                        name: "FK_ProjectResearchLines_Projects_ProjectId",
+                        column: x => x.ProjectId,
+                        principalTable: "Projects",
+                        principalColumn: "ProjectId");
+                    table.ForeignKey(
+                        name: "FK_ProjectResearchLines_ResearchLineTypes_ResearchLineTypeId",
+                        column: x => x.ResearchLineTypeId,
+                        principalTable: "ResearchLineTypes",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ProjectResearchLines_ResearchLineTypes_ResearchLineTypeId1",
+                        column: x => x.ResearchLineTypeId1,
+                        principalTable: "ResearchLineTypes",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -819,14 +953,12 @@ namespace tesisproject.backend.Migrations
                         name: "FK_ProjectScopes_Projects_ProjectId",
                         column: x => x.ProjectId,
                         principalTable: "Projects",
-                        principalColumn: "ProjectId",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "ProjectId");
                     table.ForeignKey(
                         name: "FK_ProjectScopes_ScopeTypes_ScopeTypeId",
                         column: x => x.ScopeTypeId,
                         principalTable: "ScopeTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -837,16 +969,23 @@ namespace tesisproject.backend.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ProjectId = table.Column<int>(type: "int", nullable: false),
                     VisitStateId = table.Column<int>(type: "int", nullable: false),
+                    AcademicPeriodId = table.Column<int>(type: "int", nullable: false),
+                    FundingDocumentId = table.Column<int>(type: "int", nullable: true),
                     DocumentId = table.Column<int>(type: "int", nullable: true),
-                    PerformedByUserId = table.Column<int>(type: "int", nullable: false),
+                    ProgressDocumentId = table.Column<int>(type: "int", nullable: true),
+                    PerformedByUserId = table.Column<int>(type: "int", nullable: true),
                     ScheduledDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     PerformedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    Notes = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Visits", x => x.VisitId);
+                    table.ForeignKey(
+                        name: "FK_Visits_AcademicPeriod_AcademicPeriodId",
+                        column: x => x.AcademicPeriodId,
+                        principalTable: "AcademicPeriod",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Visits_AspNetUsers_PerformedByUserId",
                         column: x => x.PerformedByUserId,
@@ -858,17 +997,25 @@ namespace tesisproject.backend.Migrations
                         principalTable: "Documents",
                         principalColumn: "DocumentId");
                     table.ForeignKey(
+                        name: "FK_Visits_Documents_FundingDocumentId",
+                        column: x => x.FundingDocumentId,
+                        principalTable: "Documents",
+                        principalColumn: "DocumentId");
+                    table.ForeignKey(
+                        name: "FK_Visits_Documents_ProgressDocumentId",
+                        column: x => x.ProgressDocumentId,
+                        principalTable: "Documents",
+                        principalColumn: "DocumentId");
+                    table.ForeignKey(
                         name: "FK_Visits_Projects_ProjectId",
                         column: x => x.ProjectId,
                         principalTable: "Projects",
-                        principalColumn: "ProjectId",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "ProjectId");
                     table.ForeignKey(
                         name: "FK_Visits_VisitStates_VisitStateId",
                         column: x => x.VisitStateId,
                         principalTable: "VisitStates",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -904,14 +1051,187 @@ namespace tesisproject.backend.Migrations
                         name: "FK_BudgetTransactions_Budgets_BudgetId",
                         column: x => x.BudgetId,
                         principalTable: "Budgets",
-                        principalColumn: "BudgetId",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "BudgetId");
                     table.ForeignKey(
                         name: "FK_BudgetTransactions_TransactionTypes_TransactionTypeId",
                         column: x => x.TransactionTypeId,
                         principalTable: "TransactionTypes",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ObjectiveActivities",
+                columns: table => new
+                {
+                    ObjectiveActivityId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ObjectiveId = table.Column<int>(type: "int", nullable: false),
+                    ActivityResult = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    ImprovementAction = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    IsCompleted = table.Column<bool>(type: "bit", maxLength: 1000, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ObjectiveActivities", x => x.ObjectiveActivityId);
+                    table.ForeignKey(
+                        name: "FK_ObjectiveActivities_ProjectObjectives_ObjectiveId",
+                        column: x => x.ObjectiveId,
+                        principalTable: "ProjectObjectives",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Products",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ProjectId = table.Column<int>(type: "int", nullable: false),
+                    VisitId = table.Column<int>(type: "int", nullable: true),
+                    Title = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
+                    ProductTypeId = table.Column<int>(type: "int", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    VisitId1 = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Products", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Products_ProductTypes_ProductTypeId",
+                        column: x => x.ProductTypeId,
+                        principalTable: "ProductTypes",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Products_Projects_ProjectId",
+                        column: x => x.ProjectId,
+                        principalTable: "Projects",
+                        principalColumn: "ProjectId");
+                    table.ForeignKey(
+                        name: "FK_Products_Visits_VisitId",
+                        column: x => x.VisitId,
+                        principalTable: "Visits",
+                        principalColumn: "VisitId");
+                    table.ForeignKey(
+                        name: "FK_Products_Visits_VisitId1",
+                        column: x => x.VisitId1,
+                        principalTable: "Visits",
+                        principalColumn: "VisitId");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "VisitIssues",
+                columns: table => new
+                {
+                    VisitIssueId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    VisitId = table.Column<int>(type: "int", nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    DueDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ResolvedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ReportedByUserId = table.Column<int>(type: "int", nullable: true),
+                    CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_VisitIssues", x => x.VisitIssueId);
+                    table.ForeignKey(
+                        name: "FK_VisitIssues_AspNetUsers_ReportedByUserId",
+                        column: x => x.ReportedByUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_VisitIssues_Visits_VisitId",
+                        column: x => x.VisitId,
+                        principalTable: "Visits",
+                        principalColumn: "VisitId");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ObjectiveActivityUsers",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ObjectiveActivityId = table.Column<int>(type: "int", nullable: false),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    VisitId = table.Column<int>(type: "int", nullable: false),
+                    WeeklyHours = table.Column<double>(type: "float", nullable: true),
+                    RoleDescription = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: true),
+                    ReportNotes = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ObjectiveActivityUsers", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ObjectiveActivityUsers_ObjectiveActivities_ObjectiveActivityId",
+                        column: x => x.ObjectiveActivityId,
+                        principalTable: "ObjectiveActivities",
+                        principalColumn: "ObjectiveActivityId");
+                    table.ForeignKey(
+                        name: "FK_ObjectiveActivityUsers_Visits_VisitId",
+                        column: x => x.VisitId,
+                        principalTable: "Visits",
+                        principalColumn: "VisitId");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ProductAuthors",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ProductId = table.Column<int>(type: "int", nullable: false),
+                    UserId = table.Column<int>(type: "int", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProductAuthors", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ProductAuthors_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ProductAuthors_Products_ProductId",
+                        column: x => x.ProductId,
+                        principalTable: "Products",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ProductValues",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ProductId = table.Column<int>(type: "int", nullable: false),
+                    AttributeDefinitionId = table.Column<int>(type: "int", nullable: false),
+                    Value = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProductValues", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ProductValues_ProductAttributeDefinitions_AttributeDefinitionId",
+                        column: x => x.AttributeDefinitionId,
+                        principalTable: "ProductAttributeDefinitions",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_ProductValues_Products_ProductId",
+                        column: x => x.ProductId,
+                        principalTable: "Products",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateIndex(
@@ -990,6 +1310,52 @@ namespace tesisproject.backend.Migrations
                 column: "TransactionTypeId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ConvocationRuleIndexing_ConvocationRuleId_IndexingSourceId",
+                table: "ConvocationRuleIndexing",
+                columns: new[] { "ConvocationRuleId", "IndexingSourceId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConvocationRuleIndexing_IndexingSourceId",
+                table: "ConvocationRuleIndexing",
+                column: "IndexingSourceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConvocationRules_ConvocationId",
+                table: "ConvocationRules",
+                column: "ConvocationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConvocationRules_ConvocationId_GroupCode",
+                table: "ConvocationRules",
+                columns: new[] { "ConvocationId", "GroupCode" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConvocationRules_ConvocationId_ProductTypeId",
+                table: "ConvocationRules",
+                columns: new[] { "ConvocationId", "ProductTypeId" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConvocationRules_IsActive",
+                table: "ConvocationRules",
+                column: "IsActive");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConvocationRules_MinDurationMonths_MaxDurationMonths",
+                table: "ConvocationRules",
+                columns: new[] { "MinDurationMonths", "MaxDurationMonths" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ConvocationRules_ProductTypeId",
+                table: "ConvocationRules",
+                column: "ProductTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Convocations_IsActive",
+                table: "Convocations",
+                column: "IsActive");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Documents_CreatedByUserId",
                 table: "Documents",
                 column: "CreatedByUserId");
@@ -1064,6 +1430,80 @@ namespace tesisproject.backend.Migrations
                 filter: "[CountryId] IS NOT NULL");
 
             migrationBuilder.CreateIndex(
+                name: "IX_ObjectiveActivities_ObjectiveId",
+                table: "ObjectiveActivities",
+                column: "ObjectiveId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ObjectiveActivityUsers_ObjectiveActivityId",
+                table: "ObjectiveActivityUsers",
+                column: "ObjectiveActivityId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ObjectiveActivityUsers_VisitId",
+                table: "ObjectiveActivityUsers",
+                column: "VisitId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProductAttributeDefinitions_ProductTypeId_AttributeName",
+                table: "ProductAttributeDefinitions",
+                columns: new[] { "ProductTypeId", "AttributeName" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProductAuthors_ProductId_UserId",
+                table: "ProductAuthors",
+                columns: new[] { "ProductId", "UserId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProductAuthors_UserId",
+                table: "ProductAuthors",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_IsActive",
+                table: "Products",
+                column: "IsActive");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_ProductTypeId",
+                table: "Products",
+                column: "ProductTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_ProjectId",
+                table: "Products",
+                column: "ProjectId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_VisitId",
+                table: "Products",
+                column: "VisitId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Products_VisitId1",
+                table: "Products",
+                column: "VisitId1");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProductTypes_Name",
+                table: "ProductTypes",
+                column: "Name",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProductValues_AttributeDefinitionId",
+                table: "ProductValues",
+                column: "AttributeDefinitionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProductValues_ProductId_AttributeDefinitionId",
+                table: "ProductValues",
+                columns: new[] { "ProductId", "AttributeDefinitionId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ProjectExtensions_DocumentId",
                 table: "ProjectExtensions",
                 column: "DocumentId");
@@ -1087,6 +1527,16 @@ namespace tesisproject.backend.Migrations
                 name: "IX_ProjectObjectives_ProjectId",
                 table: "ProjectObjectives",
                 column: "ProjectId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProjectResearchLines_ResearchLineTypeId",
+                table: "ProjectResearchLines",
+                column: "ResearchLineTypeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ProjectResearchLines_ResearchLineTypeId1",
+                table: "ProjectResearchLines",
+                column: "ResearchLineTypeId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Projects_CreatedByUserId",
@@ -1117,16 +1567,6 @@ namespace tesisproject.backend.Migrations
                 name: "IX_Projects_ProjectTypeId",
                 table: "Projects",
                 column: "ProjectTypeId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Projects_ResearchLineTypeId",
-                table: "Projects",
-                column: "ResearchLineTypeId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Projects_SenesytGroupId",
-                table: "Projects",
-                column: "SenesytGroupId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_ProjectScopes_ProjectId",
@@ -1170,14 +1610,44 @@ namespace tesisproject.backend.Migrations
                 column: "ResearchDomainTypeId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_UserFacultyScopes_IdentityUserId",
+                table: "UserFacultyScopes",
+                column: "IdentityUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VisitIssues_ReportedByUserId",
+                table: "VisitIssues",
+                column: "ReportedByUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VisitIssues_VisitId",
+                table: "VisitIssues",
+                column: "VisitId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Visits_AcademicPeriodId",
+                table: "Visits",
+                column: "AcademicPeriodId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Visits_DocumentId",
                 table: "Visits",
                 column: "DocumentId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Visits_FundingDocumentId",
+                table: "Visits",
+                column: "FundingDocumentId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Visits_PerformedByUserId",
                 table: "Visits",
                 column: "PerformedByUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Visits_ProgressDocumentId",
+                table: "Visits",
+                column: "ProgressDocumentId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Visits_ProjectId",
@@ -1212,19 +1682,28 @@ namespace tesisproject.backend.Migrations
                 name: "BudgetTransactions");
 
             migrationBuilder.DropTable(
+                name: "ConvocationRuleIndexing");
+
+            migrationBuilder.DropTable(
                 name: "ExternalResearcherProjects");
 
             migrationBuilder.DropTable(
                 name: "GroupMembers");
 
             migrationBuilder.DropTable(
-                name: "ObjectiveActivities");
+                name: "ObjectiveActivityUsers");
+
+            migrationBuilder.DropTable(
+                name: "ProductAuthors");
+
+            migrationBuilder.DropTable(
+                name: "ProductValues");
 
             migrationBuilder.DropTable(
                 name: "ProjectExtensions");
 
             migrationBuilder.DropTable(
-                name: "ProjectObjectives");
+                name: "ProjectResearchLines");
 
             migrationBuilder.DropTable(
                 name: "ProjectScopes");
@@ -1236,7 +1715,10 @@ namespace tesisproject.backend.Migrations
                 name: "Researchers");
 
             migrationBuilder.DropTable(
-                name: "Visits");
+                name: "UserFacultyScopes");
+
+            migrationBuilder.DropTable(
+                name: "VisitIssues");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
@@ -1248,31 +1730,70 @@ namespace tesisproject.backend.Migrations
                 name: "TransactionTypes");
 
             migrationBuilder.DropTable(
+                name: "ConvocationRules");
+
+            migrationBuilder.DropTable(
+                name: "IndexingSources");
+
+            migrationBuilder.DropTable(
                 name: "ExternalResearchers");
 
             migrationBuilder.DropTable(
                 name: "MemberRoleTypes");
 
             migrationBuilder.DropTable(
+                name: "ObjectiveActivities");
+
+            migrationBuilder.DropTable(
+                name: "ProductAttributeDefinitions");
+
+            migrationBuilder.DropTable(
+                name: "Products");
+
+            migrationBuilder.DropTable(
                 name: "ProjectExtensionTypes");
 
             migrationBuilder.DropTable(
-                name: "ObjectiveTypes");
+                name: "ResearchLineTypes");
 
             migrationBuilder.DropTable(
                 name: "ScopeTypes");
 
             migrationBuilder.DropTable(
-                name: "ResearcherTypes");
+                name: "ResearcherType");
 
             migrationBuilder.DropTable(
-                name: "VisitStates");
+                name: "Convocations");
+
+            migrationBuilder.DropTable(
+                name: "Institutions");
+
+            migrationBuilder.DropTable(
+                name: "ProjectObjectives");
+
+            migrationBuilder.DropTable(
+                name: "ProductTypes");
+
+            migrationBuilder.DropTable(
+                name: "Visits");
+
+            migrationBuilder.DropTable(
+                name: "ResearchDomainTypes");
+
+            migrationBuilder.DropTable(
+                name: "Countries");
+
+            migrationBuilder.DropTable(
+                name: "ObjectiveTypes");
+
+            migrationBuilder.DropTable(
+                name: "AcademicPeriod");
 
             migrationBuilder.DropTable(
                 name: "Projects");
 
             migrationBuilder.DropTable(
-                name: "Institutions");
+                name: "VisitStates");
 
             migrationBuilder.DropTable(
                 name: "Documents");
@@ -1290,12 +1811,6 @@ namespace tesisproject.backend.Migrations
                 name: "ProjectTypes");
 
             migrationBuilder.DropTable(
-                name: "ResearchLineTypes");
-
-            migrationBuilder.DropTable(
-                name: "Countries");
-
-            migrationBuilder.DropTable(
                 name: "AspNetUsers");
 
             migrationBuilder.DropTable(
@@ -1303,9 +1818,6 @@ namespace tesisproject.backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "GroupTypes");
-
-            migrationBuilder.DropTable(
-                name: "ResearchDomainTypes");
         }
     }
 }
