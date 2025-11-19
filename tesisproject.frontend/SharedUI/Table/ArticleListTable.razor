@@ -1,0 +1,89 @@
+﻿@using tesisproject.shared.DTOs.Articles
+@namespace tesisproject.frontend.SharedUI.Table
+<div class="rounded-3xl border border-[#d4d4d4] bg-white shadow-sm overflow-hidden">
+    <table class="min-w-full text-sm">
+        <thead class="bg-[#1a2b2b]/5 text-xs uppercase text-[#1a2b2b]/80">
+            <tr>
+                <th class="px-4 py-3 text-left">Título</th>
+                <th class="px-4 py-3 text-left">Revista / Evento</th>
+                <th class="px-4 py-3 text-left">Línea</th>
+                <th class="px-4 py-3 text-left">Estado</th>
+                <th class="px-4 py-3 text-left">Año</th>
+                <th class="px-4 py-3 text-right">Acciones</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+            @if (Items is null || !Items.Any())
+            {
+                <tr>
+                    <td colspan="6" class="px-4 py-6 text-center text-sm text-slate-500">
+                        No hay artículos para mostrar.
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var item in Items)
+                {
+                    <tr class="hover:bg-[#f8f2f1]">
+                        <td class="px-4 py-3 align-top">
+                            <div class="font-medium text-[#332222] line-clamp-2">
+                                @item.Title
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(item.Doi))
+                            {
+                                <div class="mt-0.5 text-[11px] text-slate-500 line-clamp-1">
+                                    DOI: @item.Doi
+                                </div>
+                            }
+                        </td>
+
+                        <td class="px-4 py-3 align-top text-slate-700">
+                            <div class="text-sm line-clamp-1">@item.VenueName</div>
+                        </td>
+
+                        <td class="px-4 py-3 align-top text-slate-700">
+                            <span class="text-xs line-clamp-1">@item.ResearchLineName</span>
+                        </td>
+
+                        <td class="px-4 py-3 align-top">
+                            <span class="inline-flex items-center rounded-full bg-[#1a2b2b]/5 px-2 py-0.5 text-[11px] text-[#1a2b2b]">
+                                @item.PublicationStatusName
+                            </span>
+                        </td>
+
+                        <td class="px-4 py-3 align-top text-slate-700">
+                            @item.Year
+                        </td>
+
+                        <td class="px-4 py-3 align-top text-right">
+                            <div class="inline-flex gap-1.5">
+                                <button class="rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-50"
+                                        @onclick="@(() => OnViewMore.InvokeAsync(item))">
+                                    Ver más
+                                </button>
+
+                                <button class="rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-50"
+                                        @onclick="@(() => OnEdit.InvokeAsync(item.Id))">
+                                    Editar
+                                </button>
+
+                                <button class="rounded-lg border border-[#800909]/40 bg-[#800909]/5 px-2 py-1 text-[11px] text-[#800909] hover:bg-[#800909]/10"
+                                        @onclick="@(() => OnDelete.InvokeAsync(item.Id))">
+                                    Eliminar
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    [Parameter] public IEnumerable<ArticleListItemDto> Items { get; set; } = Enumerable.Empty<ArticleListItemDto>();
+    [Parameter] public EventCallback<ArticleListItemDto> OnViewMore { get; set; }
+    [Parameter] public EventCallback<int> OnEdit { get; set; }
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+}

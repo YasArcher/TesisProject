@@ -1,0 +1,28 @@
+﻿<div class="@($"rounded-2xl p-5 shadow-sm border {ContainerClass}")">
+    <div class="flex items-start justify-between">
+        <!-- Título -->
+        <div class="flex-1">
+            <p class="@($"text-[11px] uppercase tracking-wide font-semibold {TitleClass}")">@Title</p>
+            <p class="@($"text-3xl font-extrabold mt-1 {ValueClass}")">@Value</p>
+            <p class="@($"text-[11px] mt-1 {DescriptionClass}")">@Description</p>
+        </div>
+
+        <!-- Icono -->
+        <div class="@($"flex items-center justify-center w-12 h-12 rounded-xl {IconContainerClass}")">
+            <i class="@IconCss"></i>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "";
+    [Parameter] public string Value { get; set; } = "";
+    [Parameter] public string Description { get; set; } = "";
+    [Parameter] public string IconCss { get; set; } = "";
+
+    [Parameter] public string ContainerClass { get; set; } = "";
+    [Parameter] public string TitleClass { get; set; } = "";
+    [Parameter] public string ValueClass { get; set; } = "";
+    [Parameter] public string DescriptionClass { get; set; } = "";
+    [Parameter] public string IconContainerClass { get; set; } = "";
+}

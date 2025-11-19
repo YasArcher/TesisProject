@@ -1,0 +1,61 @@
+﻿@using tesisproject.frontend.SharedUI.Articles
+
+<div class="mb-3 rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 shadow-sm">
+    <div class="flex flex-wrap gap-2">
+        <button type="button"
+                class="@TabButtonClasses(ArticleFormTab.General)"
+                @onclick="() => ChangeTab(ArticleFormTab.General)">
+            <i class="bi bi-info-circle text-[11px] mr-1"></i>
+            Datos generales
+        </button>
+
+        <button type="button"
+                class="@TabButtonClasses(ArticleFormTab.Academic)"
+                @onclick="() => ChangeTab(ArticleFormTab.Academic)">
+            <i class="bi bi-diagram-3 text-[11px] mr-1"></i>
+            Clasificación académica
+        </button>
+
+        <button type="button"
+                class="@TabButtonClasses(ArticleFormTab.Journal)"
+                @onclick="() => ChangeTab(ArticleFormTab.Journal)">
+            <i class="bi bi-journal text-[11px] mr-1"></i>
+            Revista e indexación
+        </button>
+
+        <button type="button"
+                class="@TabButtonClasses(ArticleFormTab.Participants)"
+                @onclick="() => ChangeTab(ArticleFormTab.Participants)">
+            <i class="bi bi-people text-[11px] mr-1"></i>
+            Participantes
+        </button>
+    </div>
+
+    <p class="mt-2 text-[11px] text-slate-500">
+        Puedes completar la información de cada pestaña en el orden que prefieras;
+        al final se registrará todo el formulario cuando guardes el artículo.
+    </p>
+</div>
+
+@code {
+    [Parameter] public ArticleFormTab ActiveTab { get; set; }
+    [Parameter] public EventCallback<ArticleFormTab> ActiveTabChanged { get; set; }
+
+    private string TabButtonClasses(ArticleFormTab tab)
+    {
+        var isActive = ActiveTab == tab;
+        return "inline-flex items-center px-3 py-1.5 rounded-xl text-xs md:text-sm font-medium transition " +
+               (isActive
+                    ? "bg-[#800909] text-white shadow-md"
+                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50");
+    }
+
+    private async Task ChangeTab(ArticleFormTab tab)
+    {
+        if (ActiveTab != tab)
+        {
+            ActiveTab = tab;
+            await ActiveTabChanged.InvokeAsync(tab);
+        }
+    }
+}

@@ -1,0 +1,132 @@
+﻿@using tesisproject.frontend.Models.Articles
+@using tesisproject.shared.DTOs.Catalogs
+
+<section class="rounded-3xl border border-slate-200/80 bg-white/95 shadow-sm">
+    <header class="flex items-center gap-3 border-b border-slate-200/70 bg-gradient-to-r from-[#f9fafb] via-[#f2f2f2] to-white px-5 py-3">
+        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#4d1a1a]/10 text-[#4d1a1a]">
+            <i class="bi bi-info-circle"></i>
+        </div>
+        <div>
+            <h2 class="text-sm md:text-base font-semibold text-slate-900">
+                Información básica del artículo
+            </h2>
+            <p class="text-xs text-slate-500">
+                Datos generales tal como constan en la publicación.
+            </p>
+        </div>
+    </header>
+
+    <div class="space-y-6 px-5 py-5">
+        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+            <div class="md:col-span-2">
+                <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                    Título del artículo <span class="text-rose-500">*</span>
+                </label>
+                <InputText @bind-Value="Article.Title"
+                           class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                           placeholder="Ingrese el título completo del artículo" />
+                <ValidationMessage For="@(() => Article.Title)" class="validation-message" />
+                <p class="mt-1 text-[11px] text-slate-500">
+                    Escriba el título exactamente como se encuentra en la revista o conferencia.
+                </p>
+            </div>
+
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                    DOI
+                </label>
+                <div class="flex overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
+                    <span class="inline-flex items-center bg-slate-50 px-3 text-xs text-slate-500 border-r border-slate-200">
+                        doi.org/
+                    </span>
+                    <InputText @bind-Value="Article.Doi"
+                               class="flex-1 border-0 px-3 py-2.5 text-sm outline-none focus:ring-0"
+                               placeholder="10.1234/abc.2024" />
+                </div>
+            </div>
+
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                    Año de publicación
+                </label>
+                <InputNumber @bind-Value="Article.Year"
+                             class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                             min="1900" max="@DateTime.Now.Year" />
+            </div>
+
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                    Fecha de publicación
+                </label>
+                <InputDate @bind-Value="Article.PublishedAt"
+                           class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20" />
+            </div>
+
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                    Número de páginas
+                </label>
+                <InputNumber @bind-Value="Article.PageCount"
+                             class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                             min="1" />
+            </div>
+
+            <div>
+                <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                    URL de publicación
+                </label>
+                <InputText @bind-Value="Article.PublicationUrl"
+                           class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                           placeholder="https://..." />
+            </div>
+        </div>
+
+        <!-- Características -->
+        <div class="border-t border-slate-200 pt-5">
+            <h3 class="mb-3 text-sm font-semibold text-slate-900">
+                Características del artículo
+            </h3>
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-sm text-slate-800 transition hover:bg-slate-100">
+                    <InputCheckbox @bind-Value="Article.IsProjectResult"
+                                   class="h-4 w-4 rounded border-slate-300 text-[#800909] focus:ring-[#800909]" />
+                    <span>Resultado de proyecto</span>
+                </label>
+
+                <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-sm text-slate-800 transition hover:bg-slate-100">
+                    <InputCheckbox @bind-Value="Article.HasInterculturalComponent"
+                                   class="h-4 w-4 rounded border-slate-300 text-[#800909] focus:ring-[#800909]" />
+                    <span>Componente intercultural</span>
+                </label>
+
+                <label class="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2.5 text-sm text-slate-800 transition hover:bg-slate-100">
+                    <InputCheckbox @bind-Value="Article.IsOpenAccess"
+                                   class="h-4 w-4 rounded border-slate-300 text-[#800909] focus:ring-[#800909]" />
+                    <span>Acceso abierto</span>
+                </label>
+            </div>
+
+            @if (Article.IsProjectResult)
+            {
+                <div class="mt-5">
+                    <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                        Proyecto relacionado
+                    </label>
+                    <InputSelect @bind-Value="Article.ProjectId"
+                                 class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
+                        <option value="">Seleccionar proyecto…</option>
+                        @foreach (var project in Projects)
+                        {
+                            <option value="@project.Id">@project.Name</option>
+                        }
+                    </InputSelect>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+@code {
+    [Parameter] public ArticleViewModel Article { get; set; } = default!;
+    [Parameter] public List<CatalogItemDto> Projects { get; set; } = new();
+}

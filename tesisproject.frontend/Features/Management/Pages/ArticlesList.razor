@@ -5,421 +5,201 @@
 @using tesisproject.shared.DTOs.Articles
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.SharedUI.Board
+@using tesisproject.frontend.SharedUI.Modal
 @using tesisproject.frontend.SharedUI.ConfirmDialog
+@using tesisproject.frontend.SharedUI.Table
+@using tesisproject.frontend.SharedUI.Filters
+@using tesisproject.frontend.SharedUI.Toolbar
 
 @inject IArticlesClient ArticlesClient
 @inject NavigationManager Nav
 
-<div class="mx-auto max-w-[1400px] px-4 py-6 space-y-6">
-    <!-- Header + acciones -->
-    <div class="flex flex-wrap items-center justify-between gap-4">
-        <div>
-            <h1 class="text-2xl font-extrabold tracking-tight text-slate-900">
-                Artículos registrados
-            </h1>
-            <p class="text-sm text-slate-600">
-                Consulta, filtra y administra los artículos guardados en la DIDE.
-            </p>
-        </div>
+<div class="min-h-[calc(100vh-80px)] bg-[#f2f2f2]">
+    <div class="mx-auto max-w-[1400px] px-4 pb-10 pt-4">
 
-        <div class="flex flex-wrap items-center gap-2">
-            <!-- Buscador -->
-            <div class="relative">
-                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                    🔎
-                </span>
-                <input class="w-72 rounded-xl border border-slate-300 bg-white/95 py-2.5 pl-9 pr-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-[#7A1E19] focus:ring-2 focus:ring-[#7A1E19]/20 shadow-sm"
-                       placeholder="Buscar por título, revista, DOI…"
-                       @bind="SearchText"
-                       @bind:event="oninput" />
+        <!-- BLOQUE SUPERIOR: TÍTULO + KPIs + BARRA ESTADO -->
+        <div class="mb-5 rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-[#f7f7f7] to-[#e9f0f0] px-5 py-4 shadow-lg shadow-slate-300/50 border-t-4 border-t-[#800909] space-y-4">
+
+            <!-- TÍTULO / DESCRIPCIÓN -->
+            <div class="flex flex-col gap-1 pb-1 border-b border-slate-200/70">
+                <h1 class="text-xl md:text-2xl font-extrabold tracking-tight text-[#1a2b2b]">
+                    Artículos registrados
+                </h1>
+                <p class="text-xs md:text-sm text-slate-600">
+                    Consulta, filtra y administra los artículos almacenados en la DIDE.
+                </p>
             </div>
 
-            <!-- Toggle Cards / Tabla -->
-            <div class="inline-flex overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
-                <button class="@ViewButtonClasses(ViewMode.Cards)"
-                        @onclick="@(() => SetView(ViewMode.Cards))">
-                    Cards
-                </button>
-                <button class="@ViewButtonClasses(ViewMode.Table)"
-                        @onclick="@(() => SetView(ViewMode.Table))">
-                    Tabla
-                </button>
-            </div>
+            <!-- KPIs SUPERIORES -->
+            @if (!_isLoading && _allArticles.Any())
+            {
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+                    <!-- Total filtrados -->
+                    <div class="rounded-2xl bg-white/95 border border-slate-200 px-4 py-3 shadow-sm flex flex-col gap-1">
+                        <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                            Total filtrados
+                        </span>
+                        <span class="text-xl font-extrabold text-[#332222]">
+                            @_filteredArticles.Count
+                        </span>
+                        <span class="text-[11px] text-slate-500">
+                            De @_allArticles.Count artículos registrados
+                        </span>
+                    </div>
 
-            <!-- Refrescar -->
-            <button class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 shadow-sm disabled:opacity-60"
-                    @onclick="ReloadAsync"
-                    disabled="@_isLoading">
-                Refrescar
-            </button>
+                    <!-- Publicados -->
+                    <div class="rounded-2xl bg-gradient-to-br from-[#4d1a1a]/12 via-[#4d1a1a]/5 to-white border border-[#4d1a1a]/30 px-4 py-3 shadow-sm flex flex-col gap-1">
+                        <span class="text-[11px] font-semibold uppercase tracking-wide text-[#4d1a1a]">
+                            Publicados
+                        </span>
+                        <span class="text-xl font-extrabold text-[#4d1a1a]">
+                            @_allArticles.Count(a => GetStatusKey(a) == "PUBLICADO")
+                        </span>
+                        <span class="text-[11px] text-[#4d1a1a]/80">
+                            Estado final publicado
+                        </span>
+                    </div>
 
-            <!-- Nuevo -->
-            <button class="rounded-xl bg-[#7A1E19] px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-[#8C2A24]"
-                    @onclick="GoToNew">
-                Nuevo
-            </button>
-        </div>
-    </div>
+                    <!-- Aceptados -->
+                    <div class="rounded-2xl bg-gradient-to-br from-[#1a2b2b]/12 via-[#1a2b2b]/5 to-white border border-[#1a2b2b]/30 px-4 py-3 shadow-sm flex flex-col gap-1">
+                        <span class="text-[11px] font-semibold uppercase tracking-wide text-[#1a2b2b]">
+                            Aceptados
+                        </span>
+                        <span class="text-xl font-extrabold text-[#1a2b2b]">
+                            @_allArticles.Count(a => GetStatusKey(a) == "ACEPTADO")
+                        </span>
+                        <span class="text-[11px] text-[#1a2b2b]/80">
+                            En fase previa a publicación
+                        </span>
+                    </div>
 
-    <!-- Filtro por estado -->
-    <div class="rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm flex flex-wrap items-center gap-3">
-        <span class="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-            Estado:
-        </span>
-        <button class="@StatusChipClasses(null)"
-                @onclick="@(() => ToggleStatusFilter(null))">
-            Todos
-        </button>
-
-        @foreach (var status in StatusOptions)
-        {
-            <button class="@StatusChipClasses(status)"
-                    @onclick="@(() => ToggleStatusFilter(status))">
-                @status
-            </button>
-        }
-    </div>
-
-    <!-- Mensajes de estado -->
-    @if (!string.IsNullOrWhiteSpace(_errorMessage))
-    {
-        <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm">
-            @_errorMessage
-        </div>
-    }
-    else if (_isLoading)
-    {
-        <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">
-            Cargando artículos…
-        </div>
-    }
-    else if (!_filteredArticles.Any())
-    {
-        <div class="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
-            <p class="text-sm font-medium text-slate-700">
-                No se encontraron artículos con los criterios seleccionados.
-            </p>
-            <p class="mt-1 text-xs text-slate-500">
-                Prueba cambiando el texto de búsqueda o limpiando los filtros.
-            </p>
-        </div>
-    }
-    else
-    {
-        <!-- Toolbar de paginado -->
-        <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/90 px-4 py-2.5 shadow-sm">
-            <div class="text-sm text-slate-700">
-                Mostrando
-                <span class="font-semibold">@PageStart</span>–<span class="font-semibold">@PageEnd</span>
-                de
-                <span class="font-semibold">@_filteredArticles.Count</span>
-                artículos
-            </div>
-
-            <div class="flex items-center gap-3">
-                <label class="text-xs text-slate-600">Por página</label>
-                <select class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs shadow-sm"
-                        @bind="_pageSize"
-                        @bind:after="PageSizeChanged">
-                    @foreach (var s in _pageSizeOptions)
-                    {
-                        <option value="@s">@s</option>
-                    }
-                </select>
-
-                <div class="inline-flex overflow-hidden rounded-full border border-slate-300 bg-white shadow-sm">
-                    <button class="px-3 py-1.5 text-xs hover:bg-slate-50 disabled:opacity-40"
-                            disabled="@(_page <= 1)"
-                            @onclick="PrevPage">
-                        «
-                    </button>
-                    <span class="px-3 py-1.5 text-xs text-slate-700">
-                        Página <strong>@_page</strong> de <strong>@TotalPages</strong>
-                    </span>
-                    <button class="px-3 py-1.5 text-xs hover:bg-slate-50 disabled:opacity-40"
-                            disabled="@(_page >= TotalPages)"
-                            @onclick="NextPage">
-                        »
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        @if (_view == ViewMode.Cards)
-        {
-            <!-- Vista Cards / tablero tipo Kanban -->
-            <div class="relative">
-                <div class="overflow-x-auto pb-3">
-                    <div class="flex min-w-[900px] gap-6">
-                        @foreach (var col in _columns)
-                        {
-                            var colItems = PagedItems
-                            .Where(a => GetStatusKey(a) == col.Key)
-                            .ToList();
-
-                            <section class="w-[340px] flex-none">
-                                <header class="mb-3 flex items-center justify-between rounded-xl bg-gradient-to-r from-[#7A1E19]/10 to-transparent px-3 py-2.5">
-                                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                                        @col.Title
-                                    </h3>
-                                    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700">
-                                        @colItems.Count
-                                    </span>
-                                </header>
-
-                                <div class="grid grid-cols-1 gap-3">
-                                    @if (colItems.Count == 0)
-                                    {
-                                        <div class="rounded-xl border border-dashed border-slate-300 bg-white/90 p-4 text-center text-xs text-slate-500 shadow-sm">
-                                            Sin elementos
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        @foreach (var item in colItems)
-                                        {
-                                            <div class="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white/95 p-4 text-sm shadow-sm hover:border-slate-300 hover:shadow-md transition">
-                                                <div class="flex items-start justify-between gap-2">
-                                                    <h4 class="text-sm font-semibold text-slate-900 line-clamp-2">
-                                                        @item.Title
-                                                    </h4>
-                                                    <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">
-                                                        @item.Year
-                                                    </span>
-                                                </div>
-                                                <p class="text-xs text-slate-600 line-clamp-2">
-                                                    @item.VenueName
-                                                </p>
-
-                                                <div class="mt-1 flex flex-wrap gap-1.5">
-                                                    @if (item.IsProjectResult)
-                                                    {
-                                                        <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] text-emerald-700">
-                                                            Proyecto
-                                                        </span>
-                                                    }
-                                                    @if (item.IsOpenAccess)
-                                                    {
-                                                        <span class="rounded-full bg-sky-50 px-2 py-0.5 text-[11px] text-sky-700">
-                                                            Open Access
-                                                        </span>
-                                                    }
-                                                    @if (item.HasInterculturalComponent)
-                                                    {
-                                                        <span class="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">
-                                                            Intercultural
-                                                        </span>
-                                                    }
-                                                </div>
-
-                                                <div class="mt-3 flex items-center justify-between">
-                                                    <span class="text-[11px] text-slate-400">
-                                                        Creado @item.CreatedAt.ToString("dd/MM/yyyy")
-                                                    </span>
-                                                    <button class="rounded-lg bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-slate-800"
-                                                            @onclick="() => OpenDetails(item)">
-                                                        Ver más
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        }
-                                    }
-                                </div>
-                            </section>
-                        }
+                    <!-- Sin estado -->
+                    <div class="rounded-2xl bg-gradient-to-br from-[#332222]/10 via-[#332222]/5 to-white border border-[#332222]/25 px-4 py-3 shadow-sm flex flex-col gap-1">
+                        <span class="text-[11px] font-semibold uppercase tracking-wide text-[#332222]">
+                            Sin estado
+                        </span>
+                        <span class="text-xl font-extrabold text-[#332222]">
+                            @_allArticles.Count(a => GetStatusKey(a) == "SIN ESTADO")
+                        </span>
+                        <span class="text-[11px] text-[#332222]/80">
+                            Pendientes de clasificación
+                        </span>
                     </div>
                 </div>
+            }
+
+            <!-- BARRA DE ESTADO (PUBLICADO / ACEPTADO / SIN ESTADO) -->
+            <div class="pt-1">
+                <ArticleStatusFilterBar StatusOptions="StatusOptions"
+                                        @bind-SelectedStatus="StatusFilter" />
+            </div>
+        </div>
+
+        <!-- MENSAJES DE ESTADO -->
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm">
+                @_errorMessage
+            </div>
+        }
+        else if (_isLoading)
+        {
+            <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">
+                Cargando artículos…
+            </div>
+        }
+        else if (!_filteredArticles.Any())
+        {
+            <div class="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
+                <p class="text-sm font-medium text-slate-700">
+                    No se encontraron artículos con los criterios seleccionados.
+                </p>
+                <p class="mt-1 text-xs text-slate-500">
+                    Prueba cambiando el texto de búsqueda o limpiando los filtros.
+                </p>
             </div>
         }
         else
         {
-            <!-- Vista tabla -->
-            <div class="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-slate-50 text-xs uppercase text-slate-500">
-                        <tr>
-                            <th class="px-4 py-3 text-left">Título</th>
-                            <th class="px-4 py-3 text-left">Revista / Evento</th>
-                            <th class="px-4 py-3 text-left">Línea</th>
-                            <th class="px-4 py-3 text-left">Estado</th>
-                            <th class="px-4 py-3 text-left">Año</th>
-                            <th class="px-4 py-3 text-right">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        @foreach (var item in PagedItems)
-                        {
-                            <tr class="hover:bg-slate-50/70">
-                                <td class="px-4 py-3 align-top">
-                                    <div class="font-medium text-slate-900 line-clamp-2">
-                                        @item.Title
-                                    </div>
-                                    @if (!string.IsNullOrWhiteSpace(item.Doi))
-                                    {
-                                        <div class="mt-0.5 text-[11px] text-slate-500 line-clamp-1">
-                                            DOI: @item.Doi
-                                        </div>
-                                    }
-                                </td>
-                                <td class="px-4 py-3 align-top text-slate-700">
-                                    <div class="text-sm line-clamp-1">@item.VenueName</div>
-                                </td>
-                                <td class="px-4 py-3 align-top text-slate-700">
-                                    <span class="text-xs line-clamp-1">@item.ResearchLineName</span>
-                                </td>
-                                <td class="px-4 py-3 align-top">
-                                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-700">
-                                        @item.PublicationStatusName
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3 align-top text-slate-700">
-                                    @item.Year
-                                </td>
-                                <td class="px-4 py-3 align-top text-right">
-                                    <div class="inline-flex gap-1.5">
-                                        <button class="rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-50"
-                                                @onclick="() => OpenDetails(item)">
-                                            Ver más
-                                        </button>
-                                        <button class="rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-50"
-                                                @onclick="() => GoToEdit(item.Id)">
-                                            Editar
-                                        </button>
-                                        <button class="rounded-lg border border-rose-300 bg-rose-50 px-2 py-1 text-[11px] text-rose-700 hover:bg-rose-100"
-                                                @onclick="() => AskDelete(item)">
-                                            Eliminar
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+            <!-- TOOLBAR DE BÚSQUEDA + VISTA + ACCIONES (justo encima del tablero/tabla) -->
+            <div class="mb-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm">
+                <ArticleListToolbar Title=""
+                                    Subtitle=""
+                                    @bind-SearchText="SearchText"
+                                    @bind-IsCardsView="IsCardsView"
+                                    OnReload="ReloadAsync"
+                                    OnNew="GoToNew"
+                                    IsBusy="_isLoading"
+                                    SearchPlaceholder="Buscar por título, revista, DOI…" />
             </div>
-        }
 
-        <!-- Paginador inferior -->
-        <div class="mt-6 flex items-center justify-center gap-2">
-            <button class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-40 shadow-sm"
-                    disabled="@(_page <= 1)"
-                    @onclick="PrevPage">
-                Anterior
-            </button>
-            <span class="text-sm text-slate-700">
-                Página @_page de @TotalPages
-            </span>
-            <button class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm hover:bg-slate-50 disabled:opacity-40 shadow-sm"
-                    disabled="@(_page >= TotalPages)"
-                    @onclick="NextPage">
-                Siguiente
-            </button>
-        </div>
-    }
+            <!-- TOOLBAR DE PAGINADO SUPERIOR -->
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/90 px-4 py-2.5 shadow-sm">
+                <div class="text-sm text-slate-700">
+                    Mostrando
+                    <span class="font-semibold">@PageStart</span>–<span class="font-semibold">@PageEnd</span>
+                    de
+                    <span class="font-semibold">@_filteredArticles.Count</span>
+                    artículos
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <label class="text-xs text-slate-600">Por página</label>
+                    <select class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs shadow-sm"
+                            @bind="_pageSize"
+                            @bind:after="PageSizeChanged">
+                        @foreach (var s in _pageSizeOptions)
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </select>
+
+                    <AppPager Class="ml-2"
+                              Page="@_page"
+                              TotalPages="@TotalPages"
+                              OnPrev="PrevPage"
+                              OnNext="NextPage" />
+                </div>
+            </div>
+
+            <!-- CONTENIDO PRINCIPAL: KANBAN O TABLA -->
+            <div class="mt-4 rounded-3xl bg-gradient-to-b from-[#f2f2f2] via-[#e6f0f0] to-[#f2f2f2] border border-[#d4d4d4] px-4 py-4 shadow-sm">
+                @if (_view == ViewMode.Cards)
+                {
+                    <ArticleKanbanBoard Items="PagedItems"
+                                        OnViewMore="OpenDetails" />
+                }
+                else
+                {
+                    <ArticleListTable Items="PagedItems"
+                                      OnViewMore="OpenDetails"
+                                      OnEdit="GoToEdit"
+                                      OnDelete="AskDeleteById" />
+                }
+            </div>
+
+            <!-- PAGINADOR INFERIOR -->
+            <AppPager Class="mt-4"
+                      Page="@_page"
+                      TotalPages="@TotalPages"
+                      OnPrev="PrevPage"
+                      OnNext="NextPage" />
+        }
+    </div>
 </div>
 
-<!-- Modal Detalle (Ver más) -->
-@if (_selectedArticle is not null && _isDetailsOpen)
-{
-    <div class="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40">
-        <div class="max-w-3xl w-full mx-4 rounded-2xl bg-white shadow-2xl border border-slate-200 max-h-[80vh] flex flex-col">
-            <!-- Header -->
-            <div class="px-6 py-4 border-b border-slate-100 flex items-start justify-between gap-3">
-                <div>
-                    <h2 class="text-base font-semibold text-slate-900">
-                        @_selectedArticle.Title
-                    </h2>
-                    <p class="text-xs text-slate-500 mt-1">
-                        @_selectedArticle.VenueName
-                    </p>
-                </div>
-                <button class="text-slate-400 hover:text-slate-600"
-                        @onclick="CloseDetails">
-                    <span class="sr-only">Cerrar</span>
-                    ✕
-                </button>
-            </div>
+<!-- MODAL DETALLES -->
+<ArticleDetailsModal Visible="@_isDetailsOpen"
+                     Summary="@_selectedArticle"
+                     Detail="@_selectedDetail"
+                     IsLoading="@_isDetailLoading"
+                     OnClose="CloseDetails"
+                     OnOpenDocument="OpenDocumentAsync"
+                     OnEdit="@(() => { if (_selectedArticle is not null) GoToEdit(_selectedArticle.Id); })"
+                     OnDelete="@(() => { if (_selectedArticle is not null) AskDelete(_selectedArticle); })" />
 
-            <!-- Body -->
-            <div class="px-6 py-4 space-y-3 overflow-y-auto text-sm">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div>
-                        <div class="text-[11px] font-semibold text-slate-500 uppercase">Revista / Evento</div>
-                        <div class="text-sm text-slate-800">@_selectedArticle.VenueName</div>
-                    </div>
-
-                    <div>
-                        <div class="text-[11px] font-semibold text-slate-500 uppercase">Línea de investigación</div>
-                        <div class="text-sm text-slate-800">@_selectedArticle.ResearchLineName</div>
-                    </div>
-
-                    <div>
-                        <div class="text-[11px] font-semibold text-slate-500 uppercase">Estado</div>
-                        <div class="text-sm text-slate-800">@_selectedArticle.PublicationStatusName</div>
-                    </div>
-
-                    <div>
-                        <div class="text-[11px] font-semibold text-slate-500 uppercase">Año</div>
-                        <div class="text-sm text-slate-800">@_selectedArticle.Year</div>
-                    </div>
-
-                    @if (!string.IsNullOrWhiteSpace(_selectedArticle.Doi))
-                    {
-                        <div class="md:col-span-2">
-                            <div class="text-[11px] font-semibold text-slate-500 uppercase">DOI</div>
-                            <div class="text-sm text-slate-800 break-all">@_selectedArticle.Doi</div>
-                        </div>
-                    }
-                </div>
-
-                <div class="pt-2 border-t border-slate-100 flex flex-wrap gap-2">
-                    @if (_selectedArticle.IsProjectResult)
-                    {
-                        <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-700">
-                            Resultado de proyecto
-                        </span>
-                    }
-                    @if (_selectedArticle.IsOpenAccess)
-                    {
-                        <span class="rounded-full bg-sky-50 px-3 py-1 text-xs text-sky-700">
-                            Open Access
-                        </span>
-                    }
-                    @if (_selectedArticle.HasInterculturalComponent)
-                    {
-                        <span class="rounded-full bg-amber-50 px-3 py-1 text-xs text-amber-700">
-                            Componente intercultural
-                        </span>
-                    }
-                </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="px-6 py-3 border-t border-slate-100 flex justify-between items-center">
-                <div class="text-[11px] text-slate-400">
-                    Id: @_selectedArticle.Id
-                </div>
-                <div class="flex gap-2">
-                    <button class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
-                            @onclick="OpenDocumentAsync">
-                        Ver documento
-                    </button>
-
-                    <button class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
-                            @onclick="() => GoToEdit(_selectedArticle.Id)">
-                        Editar
-                    </button>
-
-                    <button class="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-700"
-                            @onclick="() => AskDelete(_selectedArticle)">
-                        Eliminar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
-
-<!-- Diálogo Confirmación Eliminación -->
+<!-- DIÁLOGO CONFIRMACIÓN ELIMINACIÓN -->
 <ConfirmDialog @ref="_confirmDelete"
                Title="Eliminar artículo"
                ConfirmText="Eliminar"
@@ -437,25 +217,17 @@
         Table
     }
 
-    private record KanbanColumn(string Key, string Title);
-
-    private readonly KanbanColumn[] _columns = new[]
-    {
-        new KanbanColumn("Publicado", "Publicado"),
-        new KanbanColumn("Aceptado", "Aceptado"),
-        new KanbanColumn("En revisión", "En revisión"),
-        new KanbanColumn("Rechazado", "Rechazado"),
-        new KanbanColumn("Sin estado", "Sin estado")
-    };
-
     private List<ArticleListItemDto> _allArticles = new();
     private List<ArticleListItemDto> _filteredArticles = new();
 
     private bool _isLoading = true;
     private string? _errorMessage;
 
-    // Filtros
+    // Filtros internos
     private string? _searchText;
+    private string? _statusFilter;
+
+    // Bindings para toolbar y barra de estado
     private string? SearchText
     {
         get => _searchText;
@@ -466,15 +238,28 @@
         }
     }
 
-    private string? _statusFilter; // clave normalizada (PublicationStatusName o "Sin estado")
+    private string? StatusFilter
+    {
+        get => _statusFilter;
+        set
+        {
+            _statusFilter = value;
+            ApplyFilters();
+        }
+    }
 
     // Vista actual
     private ViewMode _view = ViewMode.Cards;
+    private bool IsCardsView
+    {
+        get => _view == ViewMode.Cards;
+        set => _view = value ? ViewMode.Cards : ViewMode.Table;
+    }
 
     // Paginación
     private int _page = 1;
-    private int _pageSize = 12;
-    private readonly int[] _pageSizeOptions = new[] { 6, 12, 24, 48 };
+    private int _pageSize = 3;
+    private readonly int[] _pageSizeOptions = new[] { 3, 6, 9, 12, 15 };
 
     private int TotalPages => Math.Max(1, (int)Math.Ceiling((double)_filteredArticles.Count / _pageSize));
     private int PageStart => _filteredArticles.Count == 0 ? 0 : ((_page - 1) * _pageSize) + 1;
@@ -487,7 +272,9 @@
 
     // Modal detalle
     private ArticleListItemDto? _selectedArticle;
+    private ArticleDetailDto? _selectedDetail;
     private bool _isDetailsOpen;
+    private bool _isDetailLoading;
 
     // Eliminar
     private ArticleListItemDto? _articleToDelete;
@@ -524,22 +311,22 @@
     {
         IEnumerable<ArticleListItemDto> query = _allArticles;
 
-        if (!string.IsNullOrWhiteSpace(_searchText))
+        if (!string.IsNullOrWhiteSpace(SearchText))
         {
-            var q = _searchText.Trim().ToLowerInvariant();
+            var q = SearchText.Trim().ToLowerInvariant();
             query = query.Where(a =>
                 (!string.IsNullOrWhiteSpace(a.Title) && a.Title.ToLower().Contains(q)) ||
                 (!string.IsNullOrWhiteSpace(a.VenueName) && a.VenueName.ToLower().Contains(q)) ||
                 (!string.IsNullOrWhiteSpace(a.Doi) && a.Doi.ToLower().Contains(q)));
         }
 
-        if (!string.IsNullOrWhiteSpace(_statusFilter))
+        if (!string.IsNullOrWhiteSpace(StatusFilter))
         {
-            query = query.Where(a => GetStatusKey(a) == _statusFilter);
+            query = query.Where(a => GetStatusKey(a) == StatusFilter);
         }
 
         _filteredArticles = query
-            .OrderByDescending(a => a.PublicationStatusName)
+            .OrderByDescending(a => GetStatusKey(a))
             .ThenByDescending(a => a.Year)
             .ThenBy(a => a.Title)
             .ToList();
@@ -557,42 +344,15 @@
 
     private string GetStatusKey(ArticleListItemDto a)
     {
-        var s = a.PublicationStatusName;
-        if (string.IsNullOrWhiteSpace(s))
-            return "Sin estado";
-
-        return s.Trim();
+        var s = a.PublicationStatusName ?? string.Empty;
+        s = s.Trim().ToUpperInvariant();
+        return s switch
+        {
+            "PUBLICADO" => "PUBLICADO",
+            "ACEPTADO" => "ACEPTADO",
+            _ => "SIN ESTADO"
+        };
     }
-
-    private void ToggleStatusFilter(string? status)
-    {
-        if (_statusFilter == status)
-            _statusFilter = null;
-        else
-            _statusFilter = status;
-
-        ApplyFilters();
-    }
-
-    private string StatusChipClasses(string? status)
-    {
-        var isActive = _statusFilter == status || (_statusFilter is null && status is null);
-        return "px-3 py-1.5 rounded-full text-xs font-medium border transition " +
-               (isActive
-                   ? "bg-[#7A1E19] text-white border-[#7A1E19]"
-                   : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50");
-    }
-
-    private string ViewButtonClasses(ViewMode m)
-    {
-        var isActive = _view == m;
-        return "px-3 py-1.5 text-sm font-medium transition " +
-               (isActive
-                    ? "bg-[#7A1E19] text-white"
-                    : "text-slate-700 hover:bg-slate-50");
-    }
-
-    private void SetView(ViewMode mode) => _view = mode;
 
     private void PrevPage()
     {
@@ -611,43 +371,55 @@
         _page = 1;
     }
 
-    private async Task ReloadAsync()
-    {
-        await LoadAsync();
-    }
+    private async Task ReloadAsync() => await LoadAsync();
+
+    private void GoToNew() => Nav.NavigateTo("/articulos/registrar");
 
     private void OpenDetails(ArticleListItemDto item)
     {
         _selectedArticle = item;
         _isDetailsOpen = true;
+        _ = LoadDetailAsync(item.Id);
+    }
+
+    private async Task LoadDetailAsync(int id)
+    {
+        _isDetailLoading = true;
+        _selectedDetail = null;
+
+        try
+        {
+            _selectedDetail = await ArticlesClient.GetByIdAsync(id);
+        }
+        finally
+        {
+            _isDetailLoading = false;
+            StateHasChanged();
+        }
     }
 
     private void CloseDetails()
     {
         _isDetailsOpen = false;
         _selectedArticle = null;
+        _selectedDetail = null;
     }
 
     private void GoToEdit(int id)
     {
-        // Ajusta la ruta a tu formulario de edición real
-        Nav.NavigateTo($"/management/articles/edit/{id}");
-    }
-
-    private void GoToNew()
-    {
-        // Ajusta la ruta a tu formulario de creación real
-        Nav.NavigateTo("/management/articles/register");
+        Nav.NavigateTo($"/articulos/registrar{id}");
     }
 
     private async Task OpenDocumentAsync()
     {
-        if (_selectedArticle is null)
-            return;
+        if (_selectedDetail is null && _selectedArticle is not null)
+        {
+            await LoadDetailAsync(_selectedArticle.Id);
+        }
 
-        // Cargamos el detalle para buscar una URL de evidencia / publicación
-        var detail = await ArticlesClient.GetByIdAsync(_selectedArticle.Id);
-        var url = detail?.EvidenceUrl ?? detail?.PublicationUrl ?? detail?.JournalUrl;
+        var url = _selectedDetail?.EvidenceUrl
+                  ?? _selectedDetail?.PublicationUrl
+                  ?? _selectedDetail?.JournalUrl;
 
         if (!string.IsNullOrWhiteSpace(url))
         {
@@ -659,6 +431,17 @@
     {
         _articleToDelete = item;
         _confirmDelete?.Show();
+    }
+
+    private void AskDeleteById(int id)
+    {
+        var item = _filteredArticles.FirstOrDefault(a => a.Id == id)
+                   ?? _allArticles.FirstOrDefault(a => a.Id == id);
+
+        if (item is not null)
+        {
+            AskDelete(item);
+        }
     }
 
     private async Task ConfirmDeleteAsync()

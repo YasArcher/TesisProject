@@ -1,0 +1,59 @@
+﻿@namespace tesisproject.frontend.SharedUI.Filters
+
+<div class="rounded-2xl border border-slate-200 bg-white/90 px-4 py-3 shadow-sm flex flex-wrap items-center gap-3">
+    <span class="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+        Estado:
+    </span>
+
+    <!-- Chip 'Todos' -->
+    <button class="@ChipClasses(null)"
+            @onclick="@(() => ToggleStatus(null))">
+        Todos
+    </button>
+
+    @foreach (var status in StatusOptions)
+    {
+        <button class="@ChipClasses(status)"
+                @onclick="@(() => ToggleStatus(status))">
+            @status
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter] public IEnumerable<string> StatusOptions { get; set; } = Enumerable.Empty<string>();
+
+    [Parameter] public string? SelectedStatus { get; set; }
+    [Parameter] public EventCallback<string?> SelectedStatusChanged { get; set; }
+
+    private async Task ToggleStatus(string? status)
+    {
+        string? newValue;
+
+        if (SelectedStatus == status)
+        {
+            newValue = null;
+        }
+        else
+        {
+            newValue = status;
+        }
+
+        SelectedStatus = newValue;
+
+        if (SelectedStatusChanged.HasDelegate)
+        {
+            await SelectedStatusChanged.InvokeAsync(newValue);
+        }
+    }
+
+    private string ChipClasses(string? status)
+    {
+        var isActive = SelectedStatus == status || (SelectedStatus is null && status is null);
+
+        return "px-3 py-1.5 rounded-full text-xs font-medium border transition " +
+               (isActive
+                    ? "bg-[#4d1a1a] text-white border-[#4d1a1a]"
+                    : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50");
+    }
+}

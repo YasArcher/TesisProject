@@ -1,0 +1,88 @@
+﻿@using tesisproject.shared.DTOs.Articles
+@namespace tesisproject.frontend.SharedUI.Board
+
+<div class="flex flex-col gap-4">
+    <div class="text-xs font-semibold text-[#332222] uppercase tracking-wide">
+        Tablero por estado de publicación
+    </div>
+
+    <div class="overflow-x-auto pb-3">
+        <div class="flex min-w-[900px] gap-5">
+            @foreach (var column in Columns)
+            {
+                var itemsCol = Items
+                .Where(a => GetStatusKey(a) == column.Key)
+                .ToList();
+
+                <section class="w-[320px] flex-shrink-0">
+                    <!-- Header columna -->
+                    <header class="@ColumnHeaderClasses(column.Key)">
+                        <div class="flex items-center justify-between gap-2">
+                            <h3 class="text-xs font-bold uppercase tracking-wide">@column.Title</h3>
+                            <span class="rounded-full bg-white/80 px-2 py-0.5 text-[11px] font-semibold text-slate-800">
+                                @itemsCol.Count
+                            </span>
+                        </div>
+                    </header>
+
+                    <!-- Contenido columna -->
+                    <div class="mt-2 space-y-3">
+                        @if (itemsCol.Count == 0)
+                        {
+                            <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-4 text-center text-[11px] text-slate-500">
+                                Sin artículos en este estado
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var item in itemsCol)
+                            {
+                                <ArticleCard Item="item"
+                                             OnViewMore="OnViewMore" />
+                            }
+                        }
+                    </div>
+                </section>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private record KanbanColumn(string Key, string Title);
+
+    private readonly KanbanColumn[] Columns = new[]
+    {
+        new KanbanColumn("PUBLICADO", "Publicado"),
+        new KanbanColumn("ACEPTADO",  "Aceptado"),
+        new KanbanColumn("SIN ESTADO","Sin estado")
+    };
+
+    [Parameter] public IEnumerable<ArticleListItemDto> Items { get; set; } = Enumerable.Empty<ArticleListItemDto>();
+    [Parameter] public EventCallback<ArticleListItemDto> OnViewMore { get; set; }
+
+    private static string GetStatusKey(ArticleListItemDto a)
+    {
+        var s = a.PublicationStatusName ?? string.Empty;
+        s = s.Trim().ToUpperInvariant();
+
+        return s switch
+        {
+            "PUBLICADO" => "PUBLICADO",
+            "ACEPTADO" => "ACEPTADO",
+            _ => "SIN ESTADO"
+        };
+    }
+
+    private string ColumnHeaderClasses(string key)
+    {
+        var baseCls = "rounded-xl px-3 py-2.5 text-xs text-slate-900 shadow-sm border ";
+
+        return key switch
+        {
+            "PUBLICADO" => baseCls + "bg-gradient-to-r from-[#4d1a1a]/25 via-[#4d1a1a]/10 to-transparent border-[#4d1a1a]/60",
+            "ACEPTADO" => baseCls + "bg-gradient-to-r from-[#1a2b2b]/25 via-[#1a2b2b]/10 to-transparent border-[#1a2b2b]/60",
+            _ => baseCls + "bg-gradient-to-r from-[#332222]/20 via-[#332222]/8 to-transparent border-[#332222]/50"
+        };
+    }
+}
