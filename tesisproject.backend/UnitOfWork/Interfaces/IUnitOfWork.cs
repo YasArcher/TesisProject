@@ -24,6 +24,9 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
         IObjectiveActivityRepository ObjectiveActivities { get; }
         IObjectiveActivityUserRepository ObjectiveActivityUsers { get; }
         IDocumentRepository Documents { get; }
+        IMemberRoleTypeRepository MemberRoleTypeRepository { get; }
+        IProjectTypeRepository ProjectTypeRepository { get; }
+        IDocumentTypeRepository DocumentTypes { get; }
 
         // 🔹 Nuevo repositorio agregado:
         IAspNetUserRepository AspNetUsers { get; }

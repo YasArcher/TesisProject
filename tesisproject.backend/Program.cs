@@ -221,6 +221,10 @@ static class StartupExtensions
         builder.Services.AddScoped<IObjectiveActivityRepository, ObjectiveActivityRepository>();
         builder.Services.AddScoped<IObjectiveActivityUserRepository, ObjectiveActivityUserRepository>();
         builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
+        builder.Services.AddScoped<IMemberRoleTypeRepository, MemberRoleTypeRepository>();
+        builder.Services.AddScoped<IProjectTypeRepository, ProjectTypeRepository>();
+        builder.Services.AddScoped<IDocumentTypeRepository, DocumentTypeRepository>();
+
 
 
         // Open generics (FIX): register generic repositories properly
@@ -249,6 +253,10 @@ static class StartupExtensions
         builder.Services.AddScoped<IObjectiveActivityUserService, ObjectiveActivityUserService>();
         builder.Services.AddScoped<IDocumentService, DocumentService>();
         builder.Services.AddScoped<IDocumentRecognitionService, DocumentRecognitionService>();
+        builder.Services.AddScoped<IMemberRoleTypeService, MemberRoleTypeService>();
+        builder.Services.AddScoped<IProjectTypeService, ProjectTypeService>();
+        builder.Services.AddScoped<IDocumentTypeService, DocumentTypeService>();
+
 
     }
 

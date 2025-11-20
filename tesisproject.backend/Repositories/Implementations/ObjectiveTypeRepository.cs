@@ -9,8 +9,7 @@ namespace tesisproject.backend.Repositories.Implementations
     /// Repository implementation for ObjectiveType catalog.
     /// Delegates common behaviors to CatalogRepository<ObjectiveType>.
     /// </summary>
-    public class ObjectiveTypeRepository
-        : CatalogRepository<ObjectiveType>, IObjectiveTypeRepository
+    public class ObjectiveTypeRepository : CatalogRepository<ObjectiveType>, IObjectiveTypeRepository
     {
         public ObjectiveTypeRepository(AppDbContext ctx) : base(ctx) { }
     }

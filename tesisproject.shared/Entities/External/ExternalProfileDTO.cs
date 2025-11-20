@@ -30,5 +30,8 @@ namespace tesisproject.shared.Entities.External
 
         [JsonPropertyName("id_facultad_carrera")]
         public int? FacultyCareerId { get; set; }
+
+        [JsonPropertyName("ASP_ID")]
+        public int? ASP_ID { get; set; }
     }
 }

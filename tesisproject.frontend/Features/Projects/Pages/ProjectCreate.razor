@@ -1,0 +1,724 @@
+﻿@page "/projects/create"
+
+@using tesisproject.shared.DTOs.Algorithms.Response
+@using tesisproject.shared.DTOs.Budgets.Request
+@using tesisproject.shared.DTOs.Document.Response
+@using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.Filters
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Services.Interfaces
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Net.Http
+@using System.Net.Http.Headers
+@using tesisproject.shared.DTOs.Group.Request
+@using tesisproject.shared.DTOs.ObjectiveActivity.Request
+@using tesisproject.shared.DTOs.Project.Request
+@using tesisproject.shared.DTOs.ProjectObjective.Request
+@implements IDisposable
+
+@inject IDocumentRecognitionClientService DocumentRecognitionClient
+@inject NavigationManager Nav
+@inject IDocumentTypeClientService DocumentTypeClient
+@inject IProjectTypeClientService ProjectTypeClient
+@inject IMemberRoleTypeClientService MemberRoleTypeClient
+@inject IExternalAcademicsClientService ExternalAcademicsClient
+@inject IObjectiveTypeClientService ObjectiveTypeClient
+@inject IDocumentClientService DocumentClient
+@inject IProjectClientService ProjectClient
+
+<div class="w-full h-full flex flex-col gap-4 p-4">
+    <!-- Header (fijo arriba) -->
+    <header class="flex flex-col gap-1">
+        <h2 class="text-2xl font-semibold">Create Project</h2>
+        <p class="text-sm text-muted">
+            Guided process to create a new project using the initial document and the DIDE project form.
+        </p>
+    </header>
+
+    <!-- Progress bar (también fija) -->
+    <section class="flex flex-col gap-2">
+        <div class="flex justify-between items-center text-xs text-muted">
+            <span>Step @CurrentStep of 3</span>
+            <span>@Progress% completed</span>
+        </div>
+
+        <div class="bg-border rounded-full h-2 overflow-hidden">
+            <div class="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
+                 style="width:@($"{Progress}%")"></div>
+        </div>
+
+        <div class="flex justify-between text-xs mt-1">
+            <span class="@(CurrentStep >= 1 ? "font-semibold text-foreground" : "text-muted")">
+                1. Initial document
+            </span>
+            <span class="@(CurrentStep >= 2 ? "font-semibold text-foreground" : "text-muted")">
+                2. DIDE project form
+            </span>
+            <span class="@(CurrentStep >= 3 ? "font-semibold text-foreground" : "text-muted")">
+                3. Summary & confirmation
+            </span>
+        </div>
+    </section>
+
+    <!-- Cuerpo: contenido scrollable + footer fijo abajo -->
+    <div class="flex-1 min-h-0 flex flex-col gap-4">
+        <!-- Solo esto tiene scroll -->
+        <section class="flex-1 min-h-0 overflow-y-auto pr-1">
+            <hr class="border-border mb-4" />
+
+            <div class="w-full h-full">
+                <!-- Step 1 -->
+                <div class="@(CurrentStep == 1 ? "block" : "hidden")">
+                    <ProjectCreateStep1InitialDocument ResolutionModel="@ResolutionData"
+                                                       IsBusy="@IsStep1Busy"
+                                                       DocumentTypeOptions="@_documentTypeOptions"
+                                                       OnFileSelected="@HandleInitialFileSelected"
+                                                       OnNext="@GoNextFromStep1"
+                                                       OnCancel="@HandleCancelFromStep1" />
+
+                    <!-- Botón de cargar para Step 1 -->
+                    <div class="mt-4 flex justify-end">
+                        <ActionButton Text="Cargar datos del documento"
+                                      Execute="LoadResolutionAsync"
+                                      Intent="ButtonIntent.Accept"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Sm"
+                                      Disabled="@(!CanLoadResolution)" />
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="@(CurrentStep == 2 ? "block" : "hidden")">
+                    <ProjectCreateStep2DideForm DideModel="@DideData"
+                                                IsBusy="@IsStep2Busy"
+                                                ResearchTypeOptions="@_researchTypeOptions"
+                                                MemberRoleTypeOptions="@_memberRoleTypeOptions"
+                                                ObjectiveTypeOptions="@_objectiveTypeOptions"
+                                                Faculties="@_faculties"
+                                                OnFileSelected="@HandleDideFileSelected"
+                                                OnPrevious="@GoPrevious"
+                                                OnNext="@GoNextFromStep2" />
+
+
+
+                    <!-- Botón de cargar para Step 2 -->
+                    <div class="mt-4 flex justify-end">
+                        <ActionButton Text="Cargar datos del formulario DIDE"
+                                      Execute="LoadDideAsync"
+                                      Intent="ButtonIntent.Accept"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Sm"
+                                      Disabled="@(!CanLoadDide)" />
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="@(CurrentStep == 3 ? "block" : "hidden")">
+                    <ProjectCreateStep3Summary ResolutionModel="@ResolutionData"
+                                               DideModel="@DideData"
+                                               IsSaving="@IsSaving"
+                                               DocumentTypeOptions="@_documentTypeOptions"
+                                               ResearchTypeOptions="@_researchTypeOptions"
+                                               MemberRoleTypeOptions="@_memberRoleTypeOptions"
+                                               ObjectiveTypeOptions="@_objectiveTypeOptions"
+                                               Faculties="@_faculties"
+                                               ScheduledDate="@_scheduledDate"
+                                               ScheduledDateChanged="date => _scheduledDate = date"
+                                               OnPrevious="@GoPrevious"
+                                               OnSave="@HandleSaveAsync" />
+
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer navegación general (fijo, sin scroll) -->
+        <footer class="shrink-0 flex justify-between pt-2 border-t border-border">
+            <!-- Lado izquierdo: Cancel + Back -->
+            <div class="flex gap-2">
+                <ActionButton Text="Cancel"
+                              Execute="HandleCancel"
+                              Intent="ButtonIntent.Neutral"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Sm"
+                              Disabled="@IsSaving" />
+
+                <ActionButton Text="Back"
+                              Execute="GoPrevious"
+                              Intent="ButtonIntent.Neutral"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Sm"
+                              Disabled="@(CurrentStep == 1)" />
+            </div>
+
+            <!-- Lado derecho: Next / Create -->
+            @if (CurrentStep < 3)
+            {
+                <ActionButton Text="Next"
+                              Execute="@(CurrentStep == 1 ? GoNextFromStep1 : GoNextFromStep2)"
+                              Intent="ButtonIntent.Accept"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Sm"
+                              Disabled="@( !CanGoNext )" />
+            }
+            else
+            {
+                <ActionButton Text="Create project"
+                              Execute="HandleSaveAsync"
+                              Intent="ButtonIntent.Accept"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Md"
+                              Disabled="@IsSaving" />
+            }
+        </footer>
+    </div>
+</div>
+
+@code {
+    // ==========================
+    // Wizard state
+    // ==========================
+
+    private int CurrentStep { get; set; } = 1;
+    private CancellationTokenSource? _dideCts;
+    private CancellationTokenSource? _resolutionCts;
+    private DateTime? _scheduledDate;
+
+    private int _currentUserId = 1;
+    private int _defaultStateId = 1;      // p.ej. "Registrado"
+    private int _selectedProjectTypeId = 1; // de momento fijo
+    private int _fundingTypeId = 1;       // p.ej. "Interno"
+
+    // Catálogos para selects
+    private List<KeyValueItemDTO> _documentTypeOptions = new();
+    private List<KeyValueItemDTO> _researchTypeOptions = new();
+    private List<KeyValueItemDTO> _memberRoleTypeOptions = new();
+    private List<KeyValueItemDTO> _objectiveTypeOptions = new();
+    private List<ExternalFacultyDTO> _faculties = new();
+
+    private DocumentResponseDTO? _projectDocument;
+
+    // Si luego necesitas ProjectType como tal, puedes agregar:
+    // private List<KeyValueItemDTO> _projectTypeOptions = new();
+
+    private const long MaxDideFileSizeBytes = 10L * 1024 * 1024;       // 10 MB
+    private const long MaxResolutionFileSizeBytes = 10L * 1024 * 1024; // 10 MB
+
+    private int Progress => CurrentStep switch
+    {
+        1 => 33,
+        2 => 66,
+        3 => 100,
+        _ => 0
+    };
+
+    // DTOs del reconocimiento
+    private ResolutionInfo ResolutionData { get; set; } = new();
+    private DideProjectFormInfo DideData { get; set; } = new();
+
+    // Flags de UI
+    private bool IsStep1Busy { get; set; }
+    private bool IsStep2Busy { get; set; }
+    private bool IsSaving { get; set; }
+
+    // Archivos seleccionados (no se llaman al servicio hasta presionar "Cargar")
+    private IBrowserFile? _selectedResolutionFile;
+    private IBrowserFile? _selectedDideFile;
+
+    // ==========================
+    // Validaciones
+    // ==========================
+
+    private bool IsStep1Valid =>
+        // Obligatorio: tipo de documento seleccionado
+        ResolutionData.documentTypeId > 0 &&
+
+        // Obligatorio: código de resolución
+        !string.IsNullOrWhiteSpace(ResolutionData.ResolutionCode) &&
+
+        // Obligatorio: fechas válidas
+        ResolutionData.ResolutionHeaderDate is not null &&
+        ResolutionData.MeetingDate is not null;
+
+    private bool CanGoNext => CurrentStep switch
+    {
+        1 => IsStep1Valid && !IsStep1Busy,
+        2 => !IsStep2Busy, // en el paso 2 no exigimos nada extra por ahora
+        _ => false
+    };
+
+    // Botones de cargar habilitados solo si hay archivo y no está ocupado
+    private bool CanLoadResolution => _selectedResolutionFile is not null && !IsStep1Busy;
+    private bool CanLoadDide => _selectedDideFile is not null && !IsStep2Busy;
+
+    // ==========================
+    // Ciclo de vida
+    // ==========================
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCatalogsAsync();
+    }
+
+    private async Task LoadCatalogsAsync()
+    {
+        // DocumentType
+        var docTypeResult = await DocumentTypeClient.GetKeyValuesAsync(
+            term: null,
+            take: null,
+            ct: CancellationToken.None);
+
+        if (docTypeResult.Success && docTypeResult.Response is not null)
+        {
+            _documentTypeOptions = docTypeResult.Response;
+        }
+
+        // ResearchTypeOptions desde ProjectType
+        var researchTypeResult = await ProjectTypeClient.GetKeyValuesAsync(
+            term: null,
+            take: null,
+            ct: CancellationToken.None);
+
+        if (researchTypeResult.Success && researchTypeResult.Response is not null)
+        {
+            _researchTypeOptions = researchTypeResult.Response;
+        }
+
+        // MemberRoleType
+        var memberRoleTypeResult = await MemberRoleTypeClient.GetKeyValuesAsync(
+            term: null,
+            take: null,
+            ct: CancellationToken.None);
+
+        if (memberRoleTypeResult.Success && memberRoleTypeResult.Response is not null)
+        {
+            _memberRoleTypeOptions = memberRoleTypeResult.Response;
+        }
+
+        // Faculties + programs (carreras)
+        var facultiesResult = await ExternalAcademicsClient.GetFacultiesWithProgramsAsync(
+            CancellationToken.None);
+
+        if (facultiesResult.Success && facultiesResult.Response is not null)
+        {
+            _faculties = facultiesResult.Response;
+        }
+        var objectiveTypeResult = await ObjectiveTypeClient.GetKeyValuesAsync(null, null, CancellationToken.None);
+        if (objectiveTypeResult.Success && objectiveTypeResult.Response is not null)
+        {
+            _objectiveTypeOptions = objectiveTypeResult.Response;
+        }
+    }
+
+
+    // ==========================
+    // Navegación
+    // ==========================
+
+    private void GoPrevious()
+    {
+        if (CurrentStep > 1)
+        {
+            CurrentStep--;
+        }
+    }
+
+    private void GoNextFromStep1()
+    {
+        // Solo debería llamarse si CanGoNext es true
+        CurrentStep = 2;
+    }
+
+    private void GoNextFromStep2()
+    {
+        CurrentStep = 3;
+    }
+
+    private void HandleCancel()
+    {
+        // Aquí decides qué hacer al cancelar el wizard:
+        // - Limpiar estado
+        // - Navegar al listado de proyectos, por ejemplo:
+        Nav.NavigateTo("/projects/home");
+    }
+
+    // ==========================
+    // Step 1: selección de archivo
+    // ==========================
+
+    private Task HandleInitialFileSelected(IBrowserFile file)
+    {
+        _selectedResolutionFile = file;
+        // Opcional: limpiar datos previos de reconocimiento
+        // ResolutionData = new();
+        return Task.CompletedTask;
+    }
+
+    // Botón "Cargar datos del documento"
+    private async Task LoadResolutionAsync()
+    {
+        if (_selectedResolutionFile is null || IsStep1Busy)
+            return;
+
+        _resolutionCts?.Cancel();
+        _resolutionCts?.Dispose();
+        _resolutionCts = new CancellationTokenSource();
+        var ct = _resolutionCts.Token;
+
+        IsStep1Busy = true;
+        StateHasChanged();
+
+        try
+        {
+            using var stream = _selectedResolutionFile.OpenReadStream(MaxResolutionFileSizeBytes, ct);
+            using var content = new MultipartFormDataContent();
+
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(_selectedResolutionFile.ContentType);
+
+            content.Add(fileContent, "file", _selectedResolutionFile.Name);
+
+            var response = await DocumentRecognitionClient.AnalyzeResolutionAsync(content, ct);
+
+            if (ct.IsCancellationRequested)
+                return;
+
+            if (response.Success && response.Response is not null)
+            {
+                ResolutionData = response.Response;
+            }
+            else
+            {
+                Console.WriteLine($"Error analyzing resolution: {response.Error}");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            // TODO: manejar excepción (toast/log)
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            if (!ct.IsCancellationRequested)
+            {
+                IsStep1Busy = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private Task HandleCancelFromStep1()
+    {
+        HandleCancel();
+        return Task.CompletedTask;
+    }
+
+    // ==========================
+    // Step 2: selección de archivo DIDE
+    // ==========================
+
+    private Task HandleDideFileSelected(IBrowserFile file)
+    {
+        _selectedDideFile = file;
+        // Opcional: limpiar datos previos
+        // DideData = new();
+        return Task.CompletedTask;
+    }
+
+    // Botón "Cargar datos del formulario DIDE"
+    private async Task LoadDideAsync()
+    {
+        if (_selectedDideFile is null || IsStep2Busy)
+            return;
+
+        _dideCts?.Cancel();
+        _dideCts?.Dispose();
+        _dideCts = new CancellationTokenSource();
+        var ct = _dideCts.Token;
+
+        IsStep2Busy = true;
+        StateHasChanged();
+
+        try
+        {
+            using var stream = _selectedDideFile.OpenReadStream(MaxDideFileSizeBytes, ct);
+            using var content = new MultipartFormDataContent();
+
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(_selectedDideFile.ContentType);
+
+            content.Add(fileContent, "file", _selectedDideFile.Name);
+
+            var response = await DocumentRecognitionClient.AnalyzeDideProjectAsync(content, ct);
+
+            if (ct.IsCancellationRequested)
+                return;
+
+            if (response.Response is not null)
+            {
+                DideData = response.Response;
+            }
+            else
+            {
+                // TODO: manejar error (toast, etc.)
+                Console.WriteLine($"Error analyzing DIDE form: {response.Error}");
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            // TODO: manejar excepción
+            Console.WriteLine(ex);
+        }
+        finally
+        {
+            if (!ct.IsCancellationRequested)
+            {
+                IsStep2Busy = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    // ==========================
+    // Guardado final (Step 3)
+    // ==========================
+
+    private async Task HandleSaveAsync()
+    {
+        if (IsSaving)
+            return;
+
+        IsSaving = true;
+
+        try
+        {
+            // ==========================
+            // 0) Validar datos mínimos
+            // ==========================
+
+            if (string.IsNullOrWhiteSpace(DideData.ProjectName))
+            {
+                Console.WriteLine("Project name is required (Step 2).");
+                return;
+            }
+
+            var facultyId = ResolveCoordinatorFacultyId();
+            if (facultyId <= 0)
+            {
+                Console.WriteLine("Faculty is required. Check coordinator faculty in Step 2.");
+                return;
+            }
+
+            if (!_scheduledDate.HasValue)
+            {
+                Console.WriteLine("Scheduled date for the first visit is required.");
+                return;
+            }
+
+            // ==========================
+            // 1) Asegurar que el documento está subido
+            // ==========================
+
+            if (_projectDocument is null)
+            {
+                if (_selectedResolutionFile is null)
+                {
+                    Console.WriteLine("You must upload the initial resolution PDF before creating the project.");
+                    return;
+                }
+
+                using var uploadContent = new MultipartFormDataContent();
+                using var uploadStream = _selectedResolutionFile.OpenReadStream(MaxResolutionFileSizeBytes);
+                var uploadFileContent = new StreamContent(uploadStream);
+                uploadFileContent.Headers.ContentType = new MediaTypeHeaderValue(_selectedResolutionFile.ContentType);
+
+                uploadContent.Add(uploadFileContent, "file", _selectedResolutionFile.Name);
+
+                var uploadResponse = await DocumentClient.UploadAsync(uploadContent, CancellationToken.None);
+
+                if (!uploadResponse.Success || uploadResponse.Response is null)
+                {
+                    Console.WriteLine($"Error uploading document: {uploadResponse.Error}");
+                    return;
+                }
+
+                _projectDocument = uploadResponse.Response;
+            }
+
+            var documentDto = _projectDocument;
+
+            // ==========================
+            // 2) Mapear Project
+            // ==========================
+
+            var projectDto = new AddProjectRequestDTO
+            {
+                ProjectName = DideData.ProjectName,
+                ProjectTypeId = _selectedProjectTypeId,
+                ProjectGroupId = 0, // el servicio crea el grupo interno
+                ResearchLine = 0,   // TODO: mapear a un catálogo si lo usas
+
+                ApprovalDate = ResolutionData.ResolutionHeaderDate
+                               ?? documentDto.ResolutionDate
+                               ?? DateTime.Today,
+
+                StartDate = ResolutionData.ExecutionStartDate,
+                ProjectCode = ResolutionData.ResolutionCode ?? documentDto.ResolutionCode,
+
+                CreatedByUserId = _currentUserId,
+                ProjectStateId = _defaultStateId,
+
+                DurationInMonths = ResolutionData.Duration > 0
+                    ? ResolutionData.Duration
+                    : 12,
+
+                FacultyId = facultyId,
+                FundingTypeId = _fundingTypeId
+            };
+
+            // ==========================
+            // 3) GroupMembers (por ahora vacío)
+            // ==========================
+
+            var groupMembers = new List<AddGroupMemberRequestDTO>();
+
+            // Aquí luego podrás mapear Researchers -> ExternalUserId si tienes ese vínculo
+            //foreach (var r in DideData.Researchers)
+            //{
+            //    var externalId = ResolveExternalUserIdFromEmail(r.email);
+            //    if (externalId <= 0) continue;
+            //
+            //    groupMembers.Add(new AddGroupMemberRequestDTO
+            //    {
+            //        GroupId = 0,
+            //        ExternalUserId = externalId,
+            //        MemberRole = r.Role
+            //    });
+            //}
+
+            // ==========================
+            // 4) Presupuesto (opcional)
+            // ==========================
+
+            CreateBudgetRequestDTO? budgetDto = null;
+
+            if (ResolutionData.Budget > 0)
+            {
+                budgetDto = new CreateBudgetRequestDTO
+                {
+                    ProjectId = 0, // lo rellena el backend con el project creado
+                    ApprovedByUserId = _currentUserId,
+                    InitialAmount = ResolutionData.Budget,
+                    CertifiedAmount = 0,
+                    ExecutedAmount = 0,
+                    ApprovedAt = ResolutionData.ResolutionHeaderDate
+                };
+            }
+
+            // ==========================
+            // 5) Objetivos + actividades
+            // ==========================
+
+            var objectivesDto = new List<ProjectObjectiveWithActivitiesRequestDTO>();
+
+            if (DideData.Objectives is not null)
+            {
+                foreach (var obj in DideData.Objectives)
+                {
+                    var objectiveDto = new ProjectObjectiveWithActivitiesRequestDTO
+                    {
+                        ObjectiveTypeId = obj.ObjectiveType,     // ya viene del selector del Step 2
+                        Objective = obj.ObjectiveText,
+                        Result = "Result not provided in DIDE form", // placeholder por ahora
+                        Activities = MapActivities(obj)
+                    };
+
+                    objectivesDto.Add(objectiveDto);
+                }
+            }
+
+            // ==========================
+            // 6) Request completo
+            // ==========================
+
+            var request = new AddProjectFullRequestDTO
+            {
+                Project = projectDto,
+                ProjectDocumentData = documentDto,
+                GroupMembers = groupMembers,
+                Budget = budgetDto,
+                Objectives = objectivesDto,
+                ScheduledDate = _scheduledDate.Value
+            };
+
+            // ==========================
+            // 7) Llamar al backend
+            // ==========================
+
+            var response = await ProjectClient.CreateFullAsync(request, CancellationToken.None);
+
+            if (!response.Success || response.Response is null)
+            {
+                Console.WriteLine($"Error creating project: {response.Error}");
+                // aquí iría tu Toast de error
+                return;
+            }
+
+            // OK -> navegar al detalle o listado
+            Nav.NavigateTo($"/projects/{response.Response.ProjectId}");
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+
+    // Ejemplo de cómo elegir la facultad del coordinador
+    private int ResolveCoordinatorFacultyId()
+    {
+        if (DideData.Researchers is null || DideData.Researchers.Count == 0)
+            return 0;
+
+        // TODO: si tienes un RoleId para "Coordinador", úsalo aquí.
+        // Por ahora tomamos la facultad del primer investigador con FacultyCareerId > 0.
+        var withFaculty = DideData.Researchers.FirstOrDefault(r => r.FacultyCareerId > 0);
+        return withFaculty?.FacultyCareerId ?? 0;
+    }
+
+    private List<AddObjectiveActivityRequestDTO> MapActivities(DideObjectiveInfo obj)
+    {
+        var result = new List<AddObjectiveActivityRequestDTO>();
+
+        if (obj.Activities is null)
+            return result;
+
+        foreach (var act in obj.Activities)
+        {
+            // TODO: ajusta según la definición real de AddObjectiveActivityRequestDTO
+            result.Add(new AddObjectiveActivityRequestDTO
+            {
+                // Activity = act.ActivityText,
+                // Result = "Pending", ...
+            });
+        }
+
+        return result;
+    }
+
+
+    public void Dispose()
+    {
+        _resolutionCts?.Cancel();
+        _resolutionCts?.Dispose();
+
+        _dideCts?.Cancel();
+        _dideCts?.Dispose();
+    }
+}

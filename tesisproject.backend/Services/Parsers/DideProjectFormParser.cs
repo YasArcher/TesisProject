@@ -72,6 +72,47 @@ namespace tesisproject.backend.Services.Parsers
             return string.Join("\n", collected);
         }
 
+        public static string ExtractSectionByMarkers(
+    string rawText,
+    string startMarker,
+    string? nextSectionMarker)
+        {
+            if (string.IsNullOrWhiteSpace(rawText))
+                return string.Empty;
+
+            // Normalizamos saltos pero SIN dividir en líneas todavía
+            var text = rawText
+                .Replace("\r\n", "\n")
+                .Replace("\r", "\n");
+
+            // Buscar inicio del marcador
+            var startPos = text.IndexOf(startMarker, StringComparison.OrdinalIgnoreCase);
+            if (startPos < 0)
+                return string.Empty;
+
+            // Avanzar hasta el final del marcador (el contenido empieza después del título)
+            startPos += startMarker.Length;
+
+            int endPos;
+
+            if (string.IsNullOrWhiteSpace(nextSectionMarker))
+            {
+                endPos = text.Length;
+            }
+            else
+            {
+                endPos = text.IndexOf(nextSectionMarker, startPos, StringComparison.OrdinalIgnoreCase);
+                if (endPos < 0)
+                    endPos = text.Length;
+            }
+
+            var section = text.Substring(startPos, endPos - startPos);
+
+            // Limpieza básica
+            return section.Trim();
+        }
+
+
         /// <summary>
         /// Removes parenthetical content from a string.
         /// Useful for cases like:
@@ -130,7 +171,7 @@ namespace tesisproject.backend.Services.Parsers
 
                 result.Add(new ResearcherInfo
                 {
-                    Role = role,
+                    RoleName = role,
                     email = emailRaw
                 });
             }
@@ -138,12 +179,51 @@ namespace tesisproject.backend.Services.Parsers
             return result;
         }
 
-        public static string OnlyDigits(string input)
+        public static int OnlyDigits(string input)
         {
             if (string.IsNullOrWhiteSpace(input))
-                return string.Empty;
+                return 0;
 
-            return new string(input.Where(char.IsDigit).ToArray());
+            var digits = new string(input.Where(char.IsDigit).ToArray());
+
+            return int.TryParse(digits, out int number) ? number : 0;
+        }
+
+        public static int ParseLatinNumber(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return 0;
+
+            // 1) Remover símbolos no numéricos
+            var cleaned = new string(input.Where(c => char.IsDigit(c) || c == '.' || c == ',').ToArray());
+
+            // 2) Caso formato LATAM: miles="." decimales=","
+            if (cleaned.Contains(","))
+            {
+                var lastComma = cleaned.LastIndexOf(',');
+
+                // Parte antes de la coma
+                var intPart = cleaned.Substring(0, lastComma)
+                                     .Replace(".", "")  // quitar puntos de miles
+                                     .Replace(",", ""); // quitar comas internas si las hubiera
+
+                // Convertir
+                return int.TryParse(intPart, out int number) ? number : 0;
+            }
+
+            // 3) Caso formato USA: miles="," decimales="."
+            if (cleaned.Contains("."))
+            {
+                var lastDot = cleaned.LastIndexOf('.');
+
+                var intPart = cleaned.Substring(0, lastDot)
+                                     .Replace(",", ""); // quitar comas de miles
+
+                return int.TryParse(intPart, out int number) ? number : 0;
+            }
+
+            // 4) Si no hay separadores, se convierte directo
+            return int.TryParse(cleaned, out int n) ? n : 0;
         }
 
         public static string DetectResearchType(string rawText)
@@ -318,7 +398,7 @@ namespace tesisproject.backend.Services.Parsers
 
                 var dto = new DideObjectiveInfo
                 {
-                    ObjectiveType = "Específico",
+                    ObjectiveType = 2,
                     objetiveNumber = number,
                     ObjectiveText = objectiveText,
                     Activities = new List<DideObjectiveActivityInfo>()

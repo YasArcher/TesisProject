@@ -1,0 +1,386 @@
+﻿@using tesisproject.shared.DTOs.Algorithms.Response
+@using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.Filters
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Utils  // ToSpanishShortDate
+
+<div class="w-full flex flex-col gap-6">
+    <!-- Descripción -->
+    <section class="flex flex-col gap-2">
+        <h3 class="text-lg font-semibold">Step 3: Summary & confirmation</h3>
+        <p class="text-sm text-muted">
+            Review the consolidated information before creating the project. If something is not correct,
+            you can go back to previous steps to adjust the data.
+        </p>
+    </section>
+
+    <!-- Resumen principal -->
+    <section class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <!-- Columna 1: Datos de resolución -->
+        <div class="xl:col-span-1 border border-border rounded-md p-4 flex flex-col gap-3">
+            <h4 class="text-sm font-semibold mb-1">Resolution data</h4>
+
+            <div class="text-sm space-y-1">
+                <div>
+                    <span class="font-medium text-muted">Resolution code:</span>
+                    <p class="text-foreground">@DisplayOrDash(ResolutionModel.ResolutionCode)</p>
+                </div>
+
+                <div>
+                    <span class="font-medium text-muted">Document type:</span>
+                    <p class="text-foreground">
+                        @DisplayOrDash(GetDocumentTypeName(ResolutionModel.documentTypeId))
+                        @if (ResolutionModel.documentTypeId > 0)
+                        {
+                            <span class="text-[11px] text-muted ml-1">(Id: @ResolutionModel.documentTypeId)</span>
+                        }
+                    </p>
+                </div>
+
+                <div>
+                    <span class="font-medium text-muted">Header date:</span>
+                    <p class="text-foreground">@DisplayOrDash(ResolutionModel.ResolutionHeaderDate)</p>
+                </div>
+                <div>
+                    <span class="font-medium text-muted">Meeting date:</span>
+                    <p class="text-foreground">@DisplayOrDash(ResolutionModel.MeetingDate)</p>
+                </div>
+                <div>
+                    <span class="font-medium text-muted">Execution start date:</span>
+                    <p class="text-foreground">@DisplayOrDash(ResolutionModel.ExecutionStartDate)</p>
+                </div>
+                <div>
+                    <span class="font-medium text-muted">Duration (months):</span>
+                    <p class="text-foreground">@DisplayOrDash(ResolutionModel.Duration)</p>
+                </div>
+                <div>
+                    <span class="font-medium text-muted">Budget (USD):</span>
+                    <p class="text-foreground">@DisplayOrDash(ResolutionModel.Budget)</p>
+                </div>
+                <div>
+                    <span class="font-medium text-muted">Main decision verb:</span>
+                    <p class="text-foreground">@DisplayOrDash(ResolutionModel.MainDecisionVerb)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna 2: Datos generales del proyecto (DIDE) -->
+        <div class="xl:col-span-2 border border-border rounded-md p-4 flex flex-col gap-3">
+            <h4 class="text-sm font-semibold mb-1">DIDE project data</h4>
+
+            <div class="text-sm space-y-2">
+                <div>
+                    <span class="font-medium text-muted">Project name:</span>
+                    <p class="text-foreground">@DisplayOrDash(DideModel.ProjectName)</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div>
+                        <span class="font-medium text-muted">Research type:</span>
+                        <p class="text-foreground">
+                            @DisplayOrDash(GetResearchTypeName(DideModel.ResearchTypeId))
+                            @if (DideModel.ResearchTypeId.HasValue && DideModel.ResearchTypeId.Value > 0)
+                            {
+                                <span class="text-[11px] text-muted ml-1">(Id: @DideModel.ResearchTypeId.Value)</span>
+                            }
+                        </p>
+                    </div>
+
+                    <div>
+                        <span class="font-medium text-muted">Research lines:</span>
+                        @if (DideModel.ResearchLines?.Any() == true)
+                        {
+                            <ul class="list-disc list-inside text-foreground">
+                                @foreach (var line in DideModel.ResearchLines)
+                                {
+                                    <li>@(string.IsNullOrWhiteSpace(line) ? "-" : line)</li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            <p class="text-foreground">-</p>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Investigadores -->
+            <div class="mt-4">
+                <h5 class="text-sm font-semibold mb-2">Researchers</h5>
+
+                @if (DideModel.Researchers?.Any() == true)
+                {
+                    <div class="space-y-2 text-sm max-h-52 overflow-auto pr-2">
+                        @foreach (var r in DideModel.Researchers)
+                        {
+                            <div class="border border-border rounded-md px-3 py-2 space-y-1">
+                                <p>
+                                    <span class="font-medium text-muted">Role:</span>
+                                    <span class="ml-1">
+                                        @DisplayOrDash(GetMemberRoleName(r.Role, r.RoleName))
+                                        @if (r.Role > 0)
+                                        {
+                                            <span class="text-[11px] text-muted ml-1">(Id: @r.Role)</span>
+                                        }
+                                    </span>
+                                </p>
+
+                                <p>
+                                    <span class="font-medium text-muted">Full name:</span>
+                                    <span class="ml-1">@DisplayOrDash(r.FullName)</span>
+                                </p>
+
+                                <p>
+                                    <span class="font-medium text-muted">Email:</span>
+                                    <span class="ml-1">@DisplayOrDash(r.email)</span>
+                                </p>
+
+                                <p>
+                                    <span class="font-medium text-muted">Faculty:</span>
+                                    <span class="ml-1">
+                                        @DisplayOrDash(GetFacultyDisplayName(r.FacultyCareerId))
+                                        @if (r.FacultyCareerId > 0)
+                                        {
+                                            <span class="text-[11px] text-muted ml-1">(Id: @r.FacultyCareerId)</span>
+                                        }
+                                    </span>
+                                </p>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-xs text-muted">
+                        No researchers were detected for this project.
+                    </p>
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- Objetivos y actividades -->
+    <section class="mt-4 border border-border rounded-md p-4">
+        <div class="flex items-center justify-between mb-3">
+            <h4 class="text-sm font-semibold">Objectives & activities</h4>
+            <span class="text-xs text-muted">
+                @((DideModel.Objectives?.Count ?? 0)) objectives detected
+            </span>
+        </div>
+
+        @if (DideModel.Objectives?.Any() == true)
+        {
+            <div class="space-y-3 max-h-80 overflow-auto pr-2 text-sm">
+                @for (int i = 0; i < DideModel.Objectives.Count; i++)
+                {
+                    var obj = DideModel.Objectives[i];
+                    <div class="border border-border rounded-md p-3 space-y-2">
+                        <div class="flex flex-wrap gap-4 text-xs">
+                            <span>
+                                <span class="font-medium text-muted">Type:</span>
+                                <span class="ml-1">
+                                    @DisplayOrDash(GetObjectiveTypeName(obj.ObjectiveType))
+                                    @if (obj.ObjectiveType > 0)
+                                    {
+                                        <span class="text-[11px] text-muted ml-1">(Id: @obj.ObjectiveType)</span>
+                                    }
+                                </span>
+                            </span>
+                            <span>
+                                <span class="font-medium text-muted">Number:</span>
+                                <span class="ml-1">@DisplayOrDash(obj.objetiveNumber)</span>
+                            </span>
+                            <span>
+                                <span class="font-medium text-muted">Activities:</span>
+                                <span class="ml-1">@((obj.Activities?.Count ?? 0))</span>
+                            </span>
+                        </div>
+
+                        <div>
+                            <span class="font-medium text-muted text-xs">Objective text:</span>
+                            <p class="mt-1 text-foreground whitespace-pre-line">
+                                @DisplayOrDash(obj.ObjectiveText)
+                            </p>
+                        </div>
+
+                        @if (obj.Activities?.Any() == true)
+                        {
+                            <details class="mt-1">
+                                <summary class="cursor-pointer text-xs text-muted hover:text-foreground">
+                                    Show activities
+                                </summary>
+                                <ul class="mt-1 list-disc list-inside text-xs text-foreground space-y-1">
+                                    @foreach (var act in obj.Activities)
+                                    {
+                                        <li>@DisplayOrDash(act.ActivityText)</li>
+                                    }
+                                </ul>
+                            </details>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="text-xs text-muted">
+                No objectives were detected or associated to this project.
+            </p>
+        }
+    </section>
+
+    <!-- Fecha programada de primera visita -->
+    <section class="mt-4 border border-border rounded-md p-4">
+        <h4 class="text-sm font-semibold mb-2">First visit scheduling</h4>
+        <p class="text-xs text-muted mb-2">
+            Choose the scheduled date for the first project visit.
+        </p>
+
+        <div class="flex items-center gap-3">
+            <label class="text-xs font-medium text-foreground">Scheduled date</label>
+            <input type="date"
+                   class="border border-border rounded px-2 py-1 text-sm bg-background"
+                   value="@GetScheduledDateInputValue()"
+                   @onchange="HandleScheduledDateChanged"
+                   disabled="@IsSaving" />
+        </div>
+    </section>
+
+    <!-- Footer acciones -->
+    <section class="flex justify-between pt-2 border-t border-border">
+        <ActionButton Text="Back"
+                      Execute="OnPrevious"
+                      Intent="ButtonIntent.Neutral"
+                      Variant="ButtonVariant.Outline"
+                      Size="ButtonSize.Sm"
+                      Disabled="@IsSaving" />
+
+        <ActionButton Text="Create project"
+                      Execute="OnSave"
+                      Intent="ButtonIntent.Accept"
+                      Variant="ButtonVariant.Filled"
+                      Size="ButtonSize.Md"
+                      Disabled="@IsSaving" />
+    </section>
+</div>
+
+@code {
+    [Parameter] public ResolutionInfo ResolutionModel { get; set; } = new();
+    [Parameter] public DideProjectFormInfo DideModel { get; set; } = new();
+    [Parameter] public bool IsSaving { get; set; }
+
+    // catálogos
+    [Parameter] public IReadOnlyList<KeyValueItemDTO> DocumentTypeOptions { get; set; } = Array.Empty<KeyValueItemDTO>();
+    [Parameter] public IReadOnlyList<KeyValueItemDTO> ResearchTypeOptions { get; set; } = Array.Empty<KeyValueItemDTO>();
+    [Parameter] public IReadOnlyList<KeyValueItemDTO> MemberRoleTypeOptions { get; set; } = Array.Empty<KeyValueItemDTO>();
+    [Parameter] public IReadOnlyList<KeyValueItemDTO> ObjectiveTypeOptions { get; set; } = Array.Empty<KeyValueItemDTO>();
+    [Parameter] public IReadOnlyList<ExternalFacultyDTO> Faculties { get; set; } = Array.Empty<ExternalFacultyDTO>();
+
+    // Scheduled date (bindeada con el padre)
+    [Parameter] public DateTime? ScheduledDate { get; set; }
+    [Parameter] public EventCallback<DateTime?> ScheduledDateChanged { get; set; }
+
+    [Parameter] public EventCallback OnPrevious { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+
+    // ==========================
+    // Helpers de display
+    // ==========================
+
+    private static string DisplayOrDash(string? value)
+        => string.IsNullOrWhiteSpace(value) ? "-" : value;
+
+    private static string DisplayOrDash(DateTime? value)
+    {
+        if (!value.HasValue) return "-";
+
+        var text = value.ToSpanishShortDate();
+        return string.IsNullOrWhiteSpace(text) ? "-" : text;
+    }
+
+    private static string DisplayOrDash(int value)
+        => value == 0 ? "-" : value.ToString();
+
+    private static string DisplayOrDash(int? value)
+        => !value.HasValue || value.Value == 0 ? "-" : value.Value.ToString();
+
+    // ==========================
+    // Lookup helpers (catálogos)
+    // ==========================
+
+    private string GetDocumentTypeName(int id)
+        => GetCatalogNameById(DocumentTypeOptions, id);
+
+    private string GetResearchTypeName(int? id)
+        => id.HasValue ? GetCatalogNameById(ResearchTypeOptions, id.Value) : string.Empty;
+
+    private string GetMemberRoleName(int id, string? fallbackDetectedName)
+    {
+        var fromCatalog = GetCatalogNameById(MemberRoleTypeOptions, id);
+        if (!string.IsNullOrWhiteSpace(fromCatalog))
+            return fromCatalog;
+
+        if (!string.IsNullOrWhiteSpace(fallbackDetectedName))
+            return fallbackDetectedName;
+
+        return string.Empty;
+    }
+
+    private string GetObjectiveTypeName(int id)
+        => GetCatalogNameById(ObjectiveTypeOptions, id);
+
+    private string GetFacultyDisplayName(int id)
+    {
+        if (id <= 0 || Faculties is null || !Faculties.Any())
+            return string.Empty;
+
+        var faculty = Faculties.FirstOrDefault(f => f.FacultyId == id);
+        if (faculty is null)
+            return string.Empty;
+
+        if (!string.IsNullOrWhiteSpace(faculty.Acronym))
+            return $"{faculty.Acronym} - {faculty.Name}";
+
+        return faculty.Name ?? string.Empty;
+    }
+
+    private static string GetCatalogNameById(IReadOnlyList<KeyValueItemDTO> list, int id)
+    {
+        if (id <= 0 || list is null || list.Count == 0)
+            return string.Empty;
+
+        var item = list.FirstOrDefault(x => x.Id == id);
+        return item?.Name ?? string.Empty;
+    }
+
+    // ==========================
+    // Scheduled date helpers
+    // ==========================
+
+    private string GetScheduledDateInputValue()
+    {
+        // input type="date" requiere yyyy-MM-dd o string.Empty
+        return ScheduledDate.HasValue
+            ? ScheduledDate.Value.ToString("yyyy-MM-dd")
+            : string.Empty;
+    }
+
+    private async Task HandleScheduledDateChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (DateTime.TryParse(value, out var parsed))
+        {
+            ScheduledDate = parsed.Date;
+        }
+        else
+        {
+            ScheduledDate = null;
+        }
+
+        if (ScheduledDateChanged.HasDelegate)
+        {
+            await ScheduledDateChanged.InvokeAsync(ScheduledDate);
+        }
+    }
+}

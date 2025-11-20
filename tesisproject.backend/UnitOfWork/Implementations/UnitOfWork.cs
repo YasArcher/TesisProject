@@ -26,7 +26,10 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public IObjectiveActivityRepository ObjectiveActivities { get; set; }
         public IObjectiveActivityUserRepository ObjectiveActivityUsers { get; set; }
         public IDocumentRepository Documents { get; }
+        public IMemberRoleTypeRepository MemberRoleTypeRepository { get; }
+        public IProjectTypeRepository ProjectTypeRepository { get; set; }
 
+        public IDocumentTypeRepository DocumentTypes { get; set; }
 
         public UnitOfWork(
             AppDbContext ctx,
@@ -48,7 +51,10 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             IProjectObjectiveRepository projectObjectives,
             IObjectiveActivityRepository objectiveActivities,
             IObjectiveActivityUserRepository objectiveActivityUsers,
-            IDocumentRepository documents)
+            IDocumentRepository documents,
+            IMemberRoleTypeRepository memberRoleTypeRepository,
+            IProjectTypeRepository projectTypeRepository,
+            IDocumentTypeRepository documentTypes)
         {
             _ctx = ctx;
             Projects = projectRepository;
@@ -70,6 +76,9 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             ObjectiveActivities = objectiveActivities;
             ObjectiveActivityUsers = objectiveActivityUsers;
             Documents = documents;
+            MemberRoleTypeRepository = memberRoleTypeRepository;
+            ProjectTypeRepository = projectTypeRepository;
+            DocumentTypes = documentTypes;
         }
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)

@@ -1,0 +1,458 @@
+﻿@using tesisproject.shared.DTOs.Algorithms.Response
+@using tesisproject.frontend.SharedUI.ActionButton
+
+<div class="w-full grid grid-cols-2 gap-6" style="height: 425px;">
+    <!-- LEFT COLUMN: General + Specific objectives list -->
+    <section class="h-full flex flex-col gap-4 border-2 border-border rounded-2xl bg-background p-5 shadow-sm min-h-0">
+        <!-- General objective - FIXED HEIGHT -->
+        <div class="flex flex-col gap-2 flex-shrink-0" style="height: 160px;">
+            <div class="flex items-center gap-2 pb-2 border-b-2 border-primary/20">
+                <div class="w-1 h-6 bg-primary rounded-full"></div>
+                <h3 class="text-base font-bold text-foreground tracking-tight">
+                    General Objective
+                </h3>
+            </div>
+
+            @if (GeneralObjective is not null)
+            {
+                <textarea class="w-full h-[40px] rounded-xl border-2 border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 resize-none"
+                          @bind="GeneralObjective.ObjectiveText"
+                          @bind:event="oninput"
+                          placeholder="Write the general objective here..."></textarea>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-xs font-semibold text-muted uppercase tracking-wide">
+                        Expected Result
+                    </label>
+                    <textarea class="w-full h-[50px] rounded-xl border-2 border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all duration-200 resize-none"
+                              @bind="GeneralObjective.ObjetiveResult"
+                              @bind:event="oninput"
+                              placeholder="Describe the expected result or main product..."></textarea>
+                </div>
+            }
+            else
+            {
+                <div class="bg-accent/10 border border-accent/30 rounded-xl p-3">
+                    <p class="text-sm text-muted text-center">
+                        No general objective found. A general objective with type 1 is expected.
+                    </p>
+                </div>
+            }
+        </div>
+
+        <!-- Specific objectives list with CONTROLLED HEIGHT -->
+        <div class="flex flex-col gap-2 flex-1" style="min-height: 0;">
+            <div class="flex items-center justify-between pb-2 border-b-2 border-secondary/20 flex-shrink-0">
+                <div class="flex items-center gap-2">
+                    <div class="w-1 h-5 bg-secondary rounded-full"></div>
+                    <h4 class="text-sm font-bold text-foreground tracking-tight">
+                        Specific Objectives
+                    </h4>
+                </div>
+
+                <ActionButton Text="Add Objective"
+                              Intent="ButtonIntent.Add"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Sm"
+                              Execute="AddSpecificObjective">
+                    <Icon>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </Icon>
+                </ActionButton>
+            </div>
+
+            <!-- SCROLL AREA for objectives -->
+            <div class="flex-1 overflow-y-auto pr-2 space-y-2" style="min-height: 0;">
+                @if (SpecificObjectives.Any())
+                {
+                    @foreach (var objective in SpecificObjectives)
+                    {
+                        var isSelected = ReferenceEquals(objective, _selectedObjective);
+
+                        <button type="button"
+                                class="@GetObjectiveItemClass(isSelected)"
+                                @onclick="@(() => SelectObjective(objective))">
+                            <div class="flex flex-col items-start gap-2 w-full">
+                                <span class="text-sm font-medium text-foreground text-left line-clamp-2">
+                                    @Shorten(objective.ObjectiveText, 80)
+                                </span>
+                                <div class="flex items-center gap-3 w-full">
+                                    <span class="text-xs text-muted flex items-center gap-1">
+                                        <span class="font-semibold">@objective.Activities.Count</span> activities
+                                    </span>
+                                    <span class="text-xs px-3 py-1 rounded-full bg-primary/10 text-primary font-bold border border-primary/30">
+                                        @objective.ObjetivePercentage%
+                                    </span>
+                                </div>
+                            </div>
+                        </button>
+                    }
+                }
+                else
+                {
+                    <div class="bg-muted/10 border border-border rounded-xl p-4 text-center">
+                        <p class="text-sm text-muted">
+                            No specific objectives yet. Add one using the button above.
+                        </p>
+                    </div>
+                }
+            </div>
+
+            <!-- Summary - FIXED AT BOTTOM -->
+            <div class="pt-2 border-t-2 border-border/60 bg-background rounded-lg p-2 flex-shrink-0">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-foreground uppercase tracking-wide">Total Percentage:</span>
+                    <span class="text-lg font-bold @(TotalSpecificPercentage > 100 ? "text-error" : "text-secondary")">
+                        @TotalSpecificPercentage%
+                    </span>
+                </div>
+
+                @if (TotalSpecificPercentage > 100)
+                {
+                    <div class="mt-1 bg-error/10 border border-error/30 rounded-lg p-2">
+                        <p class="text-xs text-error font-medium">
+                            ⚠ Total percentage must not exceed 100%
+                        </p>
+                    </div>
+                }
+                else if (TotalSpecificPercentage == 100)
+                {
+                    <div class="mt-1 bg-secondary/10 border border-secondary/30 rounded-lg p-2">
+                        <p class="text-xs text-secondary font-medium">
+                            ✓ Perfect! All objectives allocated
+                        </p>
+                    </div>
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- RIGHT COLUMN: Selected specific objective + activities -->
+    <section class="h-full flex flex-col gap-4 border-2 border-border rounded-2xl bg-background p-5 shadow-sm min-h-0">
+        @if (_selectedObjective is null)
+        {
+            <div class="h-full flex flex-col items-center justify-center gap-4 text-center p-8">
+                <div class="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center">
+                    <svg class="w-10 h-10 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="text-base font-bold text-foreground mb-2">No Objective Selected</h4>
+                    <p class="text-sm text-muted max-w-xs">
+                        Select a specific objective from the left panel to edit its details and manage activities.
+                    </p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <!-- Selected objective COLLAPSED/EXPANDED view - FIXED HEIGHT -->
+            <div class="flex flex-col gap-2 flex-shrink-0" style="@(_isObjectiveExpanded ? "height: 225px;" : "height: 100px;")">
+                <div class="flex items-center justify-between pb-2 border-b-2 border-secondary/20">
+                    <div class="flex items-center gap-2 flex-1 min-w-0">
+                        <div class="w-1 h-6 bg-secondary rounded-full flex-shrink-0"></div>
+                        <h3 class="text-base font-bold text-foreground tracking-tight truncate">
+                            Selected Objective
+                        </h3>
+                    </div>
+
+                    <button type="button"
+                            class="ml-2 p-2 rounded-lg border border-border hover:bg-muted/10 transition-all flex-shrink-0"
+                            @onclick="ToggleObjectiveExpanded">
+                        @if (_isObjectiveExpanded)
+                        {
+                            <svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                            </svg>
+                        }
+                        else
+                        {
+                            <svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        }
+                    </button>
+                </div>
+
+                <!-- Show preview ONLY when collapsed -->
+                @if (!_isObjectiveExpanded)
+                {
+                    <div class="text-sm text-foreground font-medium line-clamp-2 px-2">
+                        @(_selectedObjective.ObjectiveText ?? "(Empty objective)")
+                    </div>
+                }
+
+
+                <!-- EXPANDED details (collapsible) -->
+                @if (_isObjectiveExpanded)
+                {
+                    <div class="flex flex-col gap-2 overflow-y-auto pr-2 animate-fadeIn" style="min-height: 0;">
+                        <textarea class="w-full h-[85px] rounded-xl border-2 border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all duration-200 resize-none"
+                                  @bind="_selectedObjective.ObjectiveText"
+                                  @bind:event="oninput"
+                                  placeholder="Write the specific objective here..."></textarea>
+
+                        <!-- Percentage + expected result -->
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-semibold text-muted uppercase tracking-wide">
+                                    Percentage
+                                </label>
+                                <input type="number"
+                                       min="0"
+                                       max="100"
+                                       class="border-2 border-border rounded-xl px-3 py-2 text-base font-bold bg-background text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
+                                       @bind="_selectedObjective.ObjetivePercentage"
+                                       @bind:event="oninput" />
+                            </div>
+
+                            <div class="col-span-2 flex flex-col gap-1">
+                                <label class="text-xs font-semibold text-muted uppercase tracking-wide">
+                                    Expected Result
+                                </label>
+                                <textarea class="w-full h-[60px] rounded-xl border-2 border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all duration-200 resize-none"
+                                          @bind="_selectedObjective.ObjetiveResult"
+                                          @bind:event="oninput"
+                                          placeholder="Describe the expected product/result..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Activities section -->
+            <div class="flex flex-col gap-2 flex-1" style="min-height: 0;">
+                <div class="flex items-center justify-between pb-2 border-b-2 border-accent/20 flex-shrink-0">
+                    <div class="flex items-center gap-2">
+                        <div class="w-1 h-5 bg-accent rounded-full"></div>
+                        <h4 class="text-sm font-bold text-foreground tracking-tight">
+                            Activities
+                        </h4>
+                    </div>
+
+                    <ActionButton Text="Add Activity"
+                                  Intent="ButtonIntent.Add"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm"
+                                  Execute="AddActivity">
+                        <Icon>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                        </Icon>
+                    </ActionButton>
+                </div>
+
+                <!-- Header row -->
+                <div class="grid grid-cols-[3fr_2fr_auto] gap-3 text-xs font-bold text-muted uppercase tracking-wide pb-1 flex-shrink-0">
+                    <span>Activity</span>
+                    <span>Expected Result</span>
+                    <span class="text-right">Actions</span>
+                </div>
+
+                <!-- SCROLL AREA for activities -->
+                <div class="flex-1 overflow-y-auto pr-2 space-y-2" style="min-height: 0;">
+                    @if (_selectedObjective.Activities.Any())
+                    {
+                        @foreach (var activity in _selectedObjective.Activities)
+                        {
+                            <div class="grid grid-cols-[3fr_2fr_auto] gap-3 items-start p-2 bg-background border-2 border-border rounded-xl hover:border-accent/50 transition-all duration-200" @key="activity">
+                                <!-- Activity text -->
+                                <textarea class="w-full h-[60px] rounded-lg border border-border bg-background px-2 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 resize-none"
+                                          @bind="activity.ActivityText"
+                                          @bind:event="oninput"
+                                          placeholder="Activity description..."></textarea>
+
+                                <!-- Activity result -->
+                                <textarea class="w-full h-[60px] rounded-lg border border-border bg-background px-2 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 resize-none"
+                                          @bind="activity.ActivityResult"
+                                          @bind:event="oninput"
+                                          placeholder="Expected result..."></textarea>
+
+                                <!-- Actions -->
+                                <div class="flex justify-end items-start pt-1">
+                                    <ActionButton Text="Delete"
+                                                  Intent="ButtonIntent.Delete"
+                                                  Variant="ButtonVariant.Outline"
+                                                  Size="ButtonSize.Xs"
+                                                  ConfirmBeforeExecute="true"
+                                                  ConfirmMessage="Are you sure you want to delete this activity?"
+                                                  ConfirmTitle="Delete Activity"
+                                                  Execute="@(() => RemoveActivity(activity))">
+                                        <Icon>
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </Icon>
+                                    </ActionButton>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <div class="bg-muted/10 border border-border rounded-xl p-6 text-center">
+                            <p class="text-sm text-muted">
+                                No activities yet. Add one using the button above.
+                            </p>
+                        </div>
+                    }
+                </div>
+
+                <!-- Footer - FIXED AT BOTTOM -->
+                <div class="pt-2 border-t-2 border-border/60 bg-background rounded-lg p-2 flex-shrink-0">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-muted uppercase tracking-wide">Total Activities:</span>
+                        <span class="text-lg font-bold text-accent">@_selectedObjective.Activities.Count</span>
+                    </div>
+                </div>
+            </div>
+        }
+    </section>
+</div>
+
+<style>
+    @@keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-fadeIn {
+        animation: fadeIn 0.2s ease-out;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public List<DideObjectiveInfo> Objectives { get; set; } = new();
+
+    // General objective = ObjectiveType == 1
+    private DideObjectiveInfo? GeneralObjective =>
+        Objectives.FirstOrDefault(o => o.ObjectiveType == 1);
+
+    // Specifics = anything else (para ahora te interesan los de tipo 2)
+    private IEnumerable<DideObjectiveInfo> SpecificObjectives =>
+        Objectives.Where(o => o.ObjectiveType != 1);
+
+    private DideObjectiveInfo? _selectedObjective;
+    private bool _isObjectiveExpanded = false;
+
+    private int TotalSpecificPercentage =>
+        SpecificObjectives.Sum(o => o.ObjetivePercentage);
+
+    protected override void OnParametersSet()
+    {
+        if (Objectives is null)
+        {
+            Objectives = new List<DideObjectiveInfo>();
+        }
+
+        foreach (var obj in Objectives)
+        {
+            obj.Activities ??= new List<DideObjectiveActivityInfo>();
+        }
+
+        // 1) Garantizar que exista objetivo general (type 1)
+        if (GeneralObjective is null)
+        {
+            var newGeneral = new DideObjectiveInfo
+            {
+                ObjectiveType = 1,
+                ObjectiveText = string.Empty,
+                ObjetivePercentage = 0,
+                ObjetiveResult = string.Empty,
+                Activities = new List<DideObjectiveActivityInfo>()
+            };
+
+            Objectives.Insert(0, newGeneral);
+        }
+
+        // 2) Seleccionar siempre algún objetivo específico si existe
+        if (_selectedObjective is null || !SpecificObjectives.Contains(_selectedObjective))
+        {
+            _selectedObjective = SpecificObjectives.FirstOrDefault();
+        }
+    }
+
+    private void SelectObjective(DideObjectiveInfo objective)
+    {
+        _selectedObjective = objective;
+        _isObjectiveExpanded = false; // Collapse when selecting new objective
+    }
+
+    private void ToggleObjectiveExpanded()
+    {
+        _isObjectiveExpanded = !_isObjectiveExpanded;
+    }
+
+    private void AddSpecificObjective()
+    {
+        var newObjective = new DideObjectiveInfo
+        {
+            ObjectiveText = string.Empty,
+            ObjectiveType = 2,          // específico
+            ObjetivePercentage = 0,
+            ObjetiveResult = string.Empty,
+            Activities = new List<DideObjectiveActivityInfo>()
+        };
+
+        Objectives.Add(newObjective);
+        _selectedObjective = newObjective;
+        _isObjectiveExpanded = true; // Expand when creating new objective
+    }
+
+    private void AddActivity()
+    {
+        if (_selectedObjective is null)
+            return;
+
+        _selectedObjective.Activities.Add(new DideObjectiveActivityInfo
+        {
+            ActivityText = string.Empty,
+            ActivityResult = string.Empty // siempre inicia en "0% lógico" sin campo numérico
+        });
+    }
+
+    private void RemoveActivity(DideObjectiveActivityInfo activity)
+    {
+        if (_selectedObjective is null)
+            return;
+
+        _selectedObjective.Activities.Remove(activity);
+    }
+
+    private static string Shorten(string? text, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "(Empty objective)";
+
+        if (text.Length <= maxLength)
+            return text;
+
+        return text[..maxLength] + "…";
+    }
+
+    private string GetObjectiveItemClass(bool isSelected)
+    {
+        var baseClass =
+            "w-full text-left rounded-xl border-2 px-4 py-3 transition-all duration-200 " +
+            "flex items-start justify-between gap-2 shadow-sm";
+
+        if (isSelected)
+        {
+            return baseClass + " border-secondary bg-secondary/10 ring-2 ring-secondary/30";
+        }
+
+        return baseClass + " border-border bg-background hover:bg-background/60 hover:border-secondary/50 hover:shadow-md";
+    }
+}
