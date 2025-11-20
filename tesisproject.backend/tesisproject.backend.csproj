@@ -38,6 +38,7 @@
 
 	<ItemGroup>
 	  <Folder Include="Data\Migrations\" />
+	  <Folder Include="Migrations\DwDb\" />
 	  <Folder Include="ML\Recomender\" />
 	</ItemGroup>
 

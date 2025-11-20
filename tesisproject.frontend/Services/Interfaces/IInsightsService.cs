@@ -1,12 +1,22 @@
-﻿using tesisproject.frontend.Models;
+﻿using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using tesisproject.shared.DTOs.Reports;
+
 namespace tesisproject.frontend.Services.Interfaces
 {
     public interface IInsightsService
     {
-        Task<DashboardKpis> GetKpisAsync(Filters filters, CancellationToken ct = default);
-        Task<IReadOnlyList<CountByYear>> GetCountByYearAsync(Filters filters, CancellationToken ct = default);
-        Task<IReadOnlyList<TopItem>> GetTopAuthorsAsync(Filters filters, int topN = 10, CancellationToken ct = default);
-        Task<IReadOnlyList<TopItem>> GetTopVenuesAsync(Filters filters, int topN = 10, CancellationToken ct = default);
-        Task<(int Open, int Closed)> GetOpenAccessStatsAsync(Filters filters, CancellationToken ct = default);
+        Task<List<ArticlesByYearDto>> GetArticlesByYearAsync(
+            CancellationToken cancellationToken = default);
+
+        Task<List<ArticlesByFieldDto>> GetArticlesByFieldAsync(
+            CancellationToken cancellationToken = default);
+
+        Task<List<ArticlesByResearchLineDto>> GetArticlesByResearchLineAsync(
+            CancellationToken cancellationToken = default);
+
+        Task<ArticlesKpiSummaryDto?> GetArticlesKpiSummaryAsync(
+            CancellationToken cancellationToken = default);
     }
 }

@@ -31,7 +31,7 @@ var apiBase = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5040";
 builder.Services.AddScoped<ITokenStore, LocalTokenStore>();
 builder.Services.AddScoped<IAuthClient, AuthClient>();
 builder.Services.AddTransient<AuthMessageHandler>();
-
+builder.Services.AddScoped<IInsightsService, InsightsService>();
 // AuthenticationStateProvider
 builder.Services.AddScoped<JwtAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp =>

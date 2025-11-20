@@ -1,1231 +1,312 @@
 ﻿@page "/management/statisticalreports"
-@attribute [Authorize]
-
-@using System.Linq
-@using System.Globalization
-@using tesisproject.shared.DTOs.Articles
 @using tesisproject.frontend.Services.Interfaces
-@using tesisproject.frontend.SharedUI.Filters
+@using tesisproject.shared.DTOs.Reports
+@inject IInsightsService Insights
 
-@inject IArticlesClient ArticlesClient
+<PageTitle>Reportes estadísticos</PageTitle>
 
-<PageTitle>Reportes estadísticos DIDE</PageTitle>
+<div class="flex flex-col gap-4 h-full">
 
-<div class="min-h-[calc(100vh-80px)] bg-[#f2f2f2]">
-    <div class="mx-auto max-w-[1400px] px-4 pb-10 pt-4">
+    <!-- Título + descripción -->
+    <div class="flex flex-col gap-1">
+        <h1 class="text-2xl font-semibold text-slate-800">
+            Reportes estadísticos de artículos
+        </h1>
+        <p class="text-sm text-slate-500">
+            Visualiza indicadores clave, distribución por año, área de conocimiento y líneas de investigación.
+        </p>
+    </div>
 
-        <!-- HEADER PRINCIPAL -->
-        <section class="mb-4 rounded-3xl border border-slate-200/80 bg-white/95 px-6 py-4 shadow-lg shadow-slate-300/50 border-t-4 border-t-[#800909]">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h1 class="text-xl font-bold tracking-tight text-[#332222]">
-                        Reportes y análisis estadístico de publicaciones
-                    </h1>
-                    <p class="mt-1 max-w-2xl text-xs text-slate-600">
-                        Panel de reportería sobre los artículos científicos registrados en la DIDE.
-                        Aplica filtros, explora KPIs y visualizaciones interactivas para apoyar la toma de decisiones.
-                    </p>
-                </div>
+    <!-- Sección de filtros (horizontal) -->
+    <div class="bg-white/90 shadow-sm rounded-xl border border-slate-200 px-4 py-3 flex flex-wrap items-end gap-4">
+        <div class="flex flex-col">
+            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Año mínimo
+            </label>
+            <input type="number"
+                   class="mt-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/60 focus:border-[#7A1E19]"
+                   @bind="_filterMinYear"
+                   @bind:event="oninput" />
+        </div>
 
-                <div class="flex flex-wrap items-center gap-2 text-[11px]">
-                    <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-slate-600">
-                        <span class="h-2 w-2 rounded-full bg-[#348e91]"></span>
-                        Filtros dinámicos
-                    </span>
-                    <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-slate-600">
-                        <span class="h-2 w-2 rounded-full bg-[#4d1a1a]"></span>
-                        Gráficas multi-dimensión
-                    </span>
-                </div>
-            </div>
-        </section>
+        <div class="flex flex-col">
+            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                Año máximo
+            </label>
+            <input type="number"
+                   class="mt-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/60 focus:border-[#7A1E19]"
+                   @bind="_filterMaxYear"
+                   @bind:event="oninput" />
+        </div>
 
-        <!-- =========================
-             1. FILTROS HORIZONTALES
-             ========================= -->
-        <section class="mb-5 rounded-3xl border border-slate-200/80 bg-gradient-to-r from-[#f2f2f2] via-[#e6f0f0] to-[#f2f2f2] px-4 py-4 shadow-md shadow-slate-300/40">
-            <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h2 class="text-xs font-semibold tracking-wide text-[#332222]">
-                        Filtros de análisis
-                    </h2>
-                    <p class="mt-1 max-w-xl text-[11px] text-slate-500">
-                        Ajusta los filtros para recalcular KPIs y visualizaciones sobre las publicaciones.
-                    </p>
-                </div>
-                <div class="text-[11px] text-slate-600">
-                    <p>
-                        <span class="font-semibold">@_filteredArticles.Count</span> artículos filtrados
-                        de <span class="font-semibold">@_allArticles.Count</span>.
-                    </p>
-                    <p>
-                        Años:
-                        @if (FromYear.HasValue || ToYear.HasValue)
-                        {
-                            <span class="font-semibold">
-                                @(FromYear?.ToString() ?? "mín") – @(ToYear?.ToString() ?? "máx")
-                            </span>
-                        }
-                        else
-                        {
-                            <span class="font-semibold">todos</span>
-                        }
-                    </p>
-                </div>
-            </div>
+        <button class="ml-auto inline-flex items-center gap-2 rounded-lg bg-[#7A1E19] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#681813] disabled:opacity-60"
+                @onclick="ApplyFilters"
+                disabled="_isLoading">
+            <span class="material-icons text-sm">filter_alt</span>
+            Aplicar filtros
+        </button>
+    </div>
 
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
-                <!-- Búsqueda -->
-                <div class="md:col-span-2 space-y-1">
-                    <label class="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                        Búsqueda rápida
-                    </label>
-                    <div class="relative">
-                        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs">🔎</span>
-                        <input class="w-full rounded-xl border border-slate-300 bg-white px-8 py-2 text-xs outline-none shadow-sm transition focus:border-[#4d1a1a] focus:ring-2 focus:ring-[#4d1a1a]/20"
-                               placeholder="Título, revista, DOI, período…"
-                               @bind="SearchText"
-                               @bind:event="oninput" />
-                    </div>
-                </div>
+    <!-- Sección de KPIs -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <!-- Total artículos -->
+        <div class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1">
+            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total de artículos</span>
+            <span class="text-2xl font-bold text-slate-800">
+                @_kpis?.TotalArticles ?? 0
+            </span>
+            <span class="text-xs text-slate-400">
+                Registrados en el sistema
+            </span>
+        </div>
 
-                <!-- Rango de años -->
-                <div class="space-y-1">
-                    <label class="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                        Rango de años
-                    </label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <div>
-                            <span class="block text-[11px] text-slate-500 mb-1">Desde</span>
-                            <select class="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] shadow-sm"
-                                    @bind="FromYear">
-                                <option value="">Todos</option>
-                                @foreach (var y in YearRange)
-                                {
-                                    <option value="@y">@y</option>
-                                }
-                            </select>
-                        </div>
-                        <div>
-                            <span class="block text-[11px] text-slate-500 mb-1">Hasta</span>
-                            <select class="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] shadow-sm"
-                                    @bind="ToYear">
-                                <option value="">Todos</option>
-                                @foreach (var y in YearRange)
-                                {
-                                    <option value="@y">@y</option>
-                                }
-                            </select>
-                        </div>
-                    </div>
-                </div>
+        <!-- Publicados este año -->
+        <div class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1">
+            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Publicados este año</span>
+            <span class="text-2xl font-bold text-slate-800">
+                @_kpis?.PublishedThisYear ?? 0
+            </span>
+            <span class="text-xs text-slate-400">
+                Según la fecha de publicación
+            </span>
+        </div>
 
-                <!-- Open Access -->
-                <div class="space-y-1">
-                    <label class="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
-                        Open Access / Proyecto
-                    </label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <select class="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] shadow-sm"
-                                @bind="OpenAccessFilter">
-                            <option value="all">OA: Todos</option>
-                            <option value="only">Solo OA</option>
-                            <option value="closed">Solo cerrado</option>
-                        </select>
+        <!-- Q1 + Q2 -->
+        <div class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1">
+            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Artículos Q1 + Q2</span>
+            <span class="text-2xl font-bold text-slate-800">
+                @_kpis?.Q1Q2Count ?? 0
+            </span>
+            <span class="text-xs text-slate-400">
+                Según métricas del venue
+            </span>
+        </div>
 
-                        <select class="w-full rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] shadow-sm"
-                                @bind="ProjectFilter">
-                            <option value="all">Proyecto: Todos</option>
-                            <option value="with">Con proyecto</option>
-                            <option value="without">Sin proyecto</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
+        <!-- Open Access / Indexados -->
+        <div class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1">
+            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Open Access / Scopus</span>
+            <span class="text-sm font-semibold text-slate-800">
+                OA: @_kpis?.OpenAccessCount ?? 0
+            </span>
+            <span class="text-xs text-slate-500">
+                Indexados en Scopus: @_kpis?.IndexedInScopusCount ?? 0
+            </span>
+        </div>
+    </div>
 
-            <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <!-- Filtro por estado (usa tu componente existente) -->
-                <div class="w-full md:w-auto">
-                    <ArticleStatusFilterBar StatusOptions="StatusOptions"
-                                            @bind-SelectedStatus="StatusFilter" />
-                </div>
+    <!-- Contenido principal: "gráficas" / tablas -->
+    <div class="flex-1 flex flex-col gap-4 overflow-y-auto pb-4">
 
-                <button type="button"
-                        class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                        @onclick="ClearFilters">
-                    Limpiar filtros
-                </button>
-            </div>
-        </section>
-
-        <!-- MENSAJES DE ESTADO -->
-        @if (!string.IsNullOrWhiteSpace(_error))
+        @if (_isLoading)
         {
-            <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm">
-                @_error
+            <div class="flex items-center justify-center py-16 text-slate-500 text-sm">
+                Cargando datos de reportería...
             </div>
         }
-        else if (_loading)
+        else if (!string.IsNullOrWhiteSpace(_errorMessage))
         {
-            <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">
-                Cargando datos estadísticos…
-            </div>
-        }
-        else if (!_filteredArticles.Any())
-        {
-            <div class="rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
-                <p class="text-sm font-medium text-slate-700">
-                    No se encontraron artículos con los filtros seleccionados.
-                </p>
-                <p class="mt-1 text-xs text-slate-500">
-                    Prueba ampliando el rango de años o cambiando los criterios de búsqueda.
-                </p>
+            <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                @_errorMessage
             </div>
         }
         else
         {
-            <!-- =========================
-                 2. TARJETAS KPI
-                 ========================= -->
-            <section class="mb-5 rounded-3xl border border-slate-200/80 bg-white/95 px-4 py-4 shadow-md shadow-slate-300/50">
-                <div class="mb-3 flex items-center justify-between gap-2">
+            <!-- Artículos por año -->
+            <section class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-4">
+                <div class="flex items-center justify-between mb-3">
                     <div>
-                        <h2 class="text-xs font-semibold tracking-wide text-[#332222]">
-                            Indicadores generales (filtros actuales)
-                        </h2>
-                        <p class="mt-1 max-w-xl text-[11px] text-slate-500">
-                            KPIs clave para tener una vista global del comportamiento de las publicaciones
-                            en el contexto actual de filtros.
-                        </p>
-                    </div>
-                    <span class="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-600">
-                        @TotalArticles artículos · @TotalVenues revistas · @TotalResearchLines líneas
-                    </span>
-                </div>
-
-                <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <!-- Total artículos -->
-                    <div class="rounded-2xl border border-slate-200 bg-gradient-to-br from-[#f2f2f2] via-white to-[#f2f2f2] px-4 py-3 shadow-sm">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                            Total artículos
-                        </p>
-                        <p class="mt-1 text-2xl font-extrabold text-[#332222]">
-                            @TotalArticles
-                        </p>
-                        <p class="mt-1 text-[11px] text-slate-500">
-                            Sobre @_allArticles.Count registros globales.
-                        </p>
-                    </div>
-
-                    <!-- Open Access -->
-                    <div class="rounded-2xl border border-[#1a2b2b]/30 bg-gradient-to-br from-[#1a2b2b]/12 via-white to-[#1a2b2b]/5 px-4 py-3 shadow-sm">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-[#1a2b2b]">
-                            Open Access
-                        </p>
-                        <p class="mt-1 text-2xl font-extrabold text-[#1c5052]">
-                            @OpenAccessCount
-                            <span class="ml-1 text-xs font-semibold text-[#1c5052]/80">
-                                (@OpenAccessPercentage.ToString("0.0")%)
-                            </span>
-                        </p>
-                        <p class="mt-1 text-[11px] text-[#1a2b2b]/80">
-                            Frente a @TotalArticles artículos filtrados.
-                        </p>
-                    </div>
-
-                    <!-- Con proyecto -->
-                    <div class="rounded-2xl border border-[#4d1a1a]/30 bg-gradient-to-br from-[#4d1a1a]/10 via-white to-[#4d1a1a]/5 px-4 py-3 shadow-sm">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-[#4d1a1a]">
-                            Con proyecto asociado
-                        </p>
-                        <p class="mt-1 text-2xl font-extrabold text-[#4d1a1a]">
-                            @ProjectResultCount
-                        </p>
-                        <p class="mt-1 text-[11px] text-[#4d1a1a]/80">
-                            Artículos marcados como resultado de proyecto.
-                        </p>
-                    </div>
-
-                    <!-- Publicaciones año actual -->
-                    <div class="rounded-2xl border border-[#332222]/25 bg-gradient-to-br from-[#332222]/10 via-white to-[#332222]/5 px-4 py-3 shadow-sm">
-                        <p class="text-[11px] font-semibold uppercase tracking-wide text-[#332222]">
-                            @DateTime.Now.Year
-                        </p>
-                        <p class="mt-1 text-2xl font-extrabold text-[#332222]">
-                            @CurrentYearPublications
-                        </p>
-                        <p class="mt-1 text-[11px] text-[#332222]/80">
-                            Publicaciones registradas en el año en curso (según filtros).
+                        <h2 class="text-base font-semibold text-slate-800">Distribución por año</h2>
+                        <p class="text-xs text-slate-500">
+                            Artículos creados en el sistema por año (según filtros aplicados).
                         </p>
                     </div>
                 </div>
-            </section>
 
-            <!-- =========================
-                 3. GRÁFICAS PRINCIPALES (FULL WIDTH)
-                 ========================= -->
-            <section class="mb-5 rounded-3xl border border-slate-200/80 bg-white/95 px-4 py-4 shadow-md shadow-slate-300/40">
-                <header class="mb-3">
-                    <h2 class="text-xs font-semibold tracking-wide text-[#332222]">
-                        Visualizaciones principales
-                    </h2>
-                    <p class="mt-1 max-w-xl text-[11px] text-slate-500">
-                        Conjunto base de dashboards: barras, tendencias, pastel y mapa de calor
-                        para entender la distribución y evolución de las publicaciones.
-                    </p>
-                </header>
-
-                <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                    <!-- BARRAS: Publicaciones por año -->
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-                        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
-                            Publicaciones por año (barras)
-                        </p>
-                        @if (!MetricByYear.Any())
-                        {
-                            <p class="mt-4 text-[11px] text-slate-500">
-                                No hay datos de año para los filtros actuales.
-                            </p>
-                        }
-                        else
-                        {
-                            <div class="flex h-48 items-end gap-2">
-                                @foreach (var p in MetricByYear)
-                                {
-                                    var height = 24 + (int)Math.Round((double)p.Count / Math.Max(1, MaxYearCount) * 90);
-                                    <div class="flex flex-1 flex-col items-center gap-1">
-                                        <div class="w-7 rounded-t-xl bg-[#348e91]"
-                                             style="@($"height:{height}px")">
-                                        </div>
-                                        <span class="text-[10px] text-slate-600">@p.Label</span>
-                                        <span class="text-[10px] text-slate-500">@p.Count</span>
-                                    </div>
-                                }
-                            </div>
-                            <p class="mt-2 text-[10px] text-slate-500">
-                                Evolución anual del volumen de publicaciones registradas.
-                            </p>
-                        }
-                    </div>
-
-                    <!-- PASTEL: Open Access vs cerrado -->
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-                        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
-                            Open Access vs cerrado (pastel)
-                        </p>
-                        @if (TotalArticles == 0)
-                        {
-                            <p class="mt-4 text-[11px] text-slate-500">
-                                No hay datos disponibles para mostrar el gráfico.
-                            </p>
-                        }
-                        else
-                        {
-                            <div class="flex items-center gap-4">
-                                <div class="flex flex-col items-center justify-center">
-                                    <div class="h-28 w-28 rounded-full border border-slate-200 shadow-inner"
-                                         style="@GetOpenAccessPieStyle()">
-                                    </div>
-                                </div>
-                                <div class="space-y-2 text-[11px] text-slate-600">
-                                    <div class="flex items-center gap-2">
-                                        <span class="h-2 w-2 rounded-full bg-[#348e91]"></span>
-                                        <span class="font-semibold">Open Access</span>
-                                        <span class="ml-auto text-[11px] text-slate-800">
-                                            @OpenAccessCount (@OpenAccessPercentage.ToString("0.0")%)
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <span class="h-2 w-2 rounded-full bg-slate-300"></span>
-                                        <span class="font-semibold">Cerrado</span>
-                                        <span class="ml-auto text-[11px] text-slate-800">
-                                            @(TotalArticles - OpenAccessCount) (@(100 - OpenAccessPercentage).ToString("0.0")%)
-                                        </span>
-                                    </div>
-                                    <p class="mt-2 text-[10px] text-slate-500">
-                                        Distribución de acceso abierto frente a acceso restringido.
-                                    </p>
-                                </div>
-                            </div>
-                        }
-                    </div>
-
-                    <!-- LÍNEA DE TENDENCIA -->
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-                        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
-                            Tendencia de publicaciones (línea)
-                        </p>
-                        @if (!MetricByYear.Any())
-                        {
-                            <p class="mt-4 text-[11px] text-slate-500">
-                                No hay datos suficientes para mostrar la tendencia.
-                            </p>
-                        }
-                        else
-                        {
-                            <div class="h-40 rounded-xl bg-white px-3 py-3 shadow-inner border border-slate-200">
-                                <svg viewBox="0 0 100 40" preserveAspectRatio="none" class="h-full w-full">
-                                    <defs>
-                                        <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stop-color="#348e91" stop-opacity="0.35" />
-                                            <stop offset="100%" stop-color="#348e91" stop-opacity="0" />
-                                        </linearGradient>
-                                    </defs>
-
-                                    <!-- Área -->
-                                    <polyline fill="url(#trendFill)"
-                                              stroke="none"
-                                              points="@BuildTrendAreaPoints(MetricByYear, 100, 40)" />
-                                    <!-- Línea -->
-                                    <polyline fill="none"
-                                              stroke="#348e91"
-                                              stroke-width="1.5"
-                                              points="@BuildTrendLinePoints(MetricByYear, 100, 40)" />
-                                </svg>
-                            </div>
-                            <p class="mt-2 text-[10px] text-slate-500">
-                                Curva de tendencia del número de publicaciones por año (no suavizada).
-                            </p>
-                        }
-                    </div>
-
-                    <!-- MAPA DE CALOR: Año vs Estado -->
-                    <div class="rounded-2xl border border-slate-200 bg-slate-50/70 px-3 py-3">
-                        <p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
-                            Mapa de calor: Año vs estado
-                        </p>
-                        @if (!HeatYears.Any() || !HeatStatuses.Any())
-                        {
-                            <p class="mt-4 text-[11px] text-slate-500">
-                                No hay datos suficientes para construir el mapa de calor.
-                            </p>
-                        }
-                        else
-                        {
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full text-[10px]">
-                                    <thead>
-                                        <tr>
-                                            <th class="px-2 py-1 text-left text-slate-500">Estado \ Año</th>
-                                            @foreach (var y in HeatYears)
-                                            {
-                                                <th class="px-2 py-1 text-center text-slate-500">@y</th>
-                                            }
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var status in HeatStatuses)
-                                        {
-                                            <tr>
-                                                <td class="px-2 py-1 text-[10px] text-slate-600">@status</td>
-                                                @foreach (var y in HeatYears)
-                                                {
-                                                    var value = GetHeatCount(y, status);
-                                                    var style = GetHeatCellStyle(value);
-                                                    <td class="px-2 py-1 text-center align-middle">
-                                                        <div class="mx-auto flex h-6 w-6 items-center justify-center rounded"
-                                                             style="@style">
-                                                            <span class="text-[9px] text-slate-800">
-                                                                @(value == 0 ? "" : value.ToString())
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                }
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                            <p class="mt-2 text-[10px] text-slate-500">
-                                Intensidad de color proporcional al número de artículos por año y estado de publicación.
-                            </p>
-                        }
-                    </div>
-                </div>
-            </section>
-
-            <!-- =========================
-                 4. PANEL DINÁMICO CONFIGURABLE (FULL WIDTH)
-                 ========================= -->
-            <section class="mb-5 rounded-3xl border border-slate-200/80 bg-white/95 px-5 py-4 shadow-lg shadow-slate-300/40">
-                <header class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200/70 pb-3">
-                    <div>
-                        <h2 class="text-xs font-semibold tracking-wide text-slate-900">
-                            Panel dinámico de análisis
-                        </h2>
-                        <p class="mt-1 max-w-xl text-[11px] text-slate-500">
-                            Configura estos tres espacios como “widgets” dinámicos: selecciona qué métrica y qué tipo de
-                            visualización mostrar para profundizar en los datos según la reunión o contexto.
-                        </p>
-                    </div>
-
-                    <div class="flex flex-wrap gap-2 text-[11px] text-slate-500">
-                        <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1">
-                            <span class="h-2 w-2 rounded-full bg-[#348e91]"></span> Barras
-                        </span>
-                        <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1">
-                            <span class="h-2 w-2 rounded-full bg-[#1c5052]"></span> Barras horizontales
-                        </span>
-                        <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1">
-                            <span class="h-2 w-2 rounded-full bg-[#4d1a1a]"></span> Tarjetas KPI
-                        </span>
-                    </div>
-                </header>
-
-                <div class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
-                    @for (var i = 0; i < _slots.Length; i++)
-                    {
-                        var slot = _slots[i];
-                        var data = GetMetricData(slot.Metric);
-                        var maxCount = data.Any() ? data.Max(d => d.Count) : 0;
-
-                        <article class="rounded-2xl border border-slate-200/70 bg-slate-50/70 px-3 py-3 shadow-sm">
-                            <!-- Encabezado del slot -->
-                            <div class="mb-2 flex items-start justify-between gap-2">
-                                <div>
-                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-700">
-                                        @slot.Title
-                                    </p>
-                                    <p class="mt-0.5 text-[11px] text-slate-500">
-                                        Ajusta la métrica y visualización para este espacio.
-                                    </p>
-                                </div>
-
-                                <div class="flex flex-col items-end gap-1">
-                                    <!-- Selector de métrica -->
-                                    <select class="rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] shadow-sm"
-                                            @bind="_slots[i].Metric">
-                                        <option value="@ChartMetric.ByYear">Por año</option>
-                                        <option value="@ChartMetric.ByStatus">Por estado</option>
-                                        <option value="@ChartMetric.ByResearchLine">Por línea de investigación</option>
-                                        <option value="@ChartMetric.ByIndexingSource">Por fuente de indexación</option>
-                                        <option value="@ChartMetric.ByAcademicTerm">Por período académico</option>
-                                        <option value="@ChartMetric.ByOpenAccess">Open Access vs cerrado</option>
-                                        <option value="@ChartMetric.ByProjectResult">Con proyecto vs sin proyecto</option>
-                                    </select>
-
-                                    <!-- Selector de tipo de gráfica -->
-                                    <select class="rounded-lg border border-slate-300 bg-white px-2 py-1 text-[11px] shadow-sm"
-                                            @bind="_slots[i].Type">
-                                        <option value="@ChartType.Bar">Barras</option>
-                                        <option value="@ChartType.HorizontalBar">Barras horizontales</option>
-                                        <option value="@ChartType.Cards">Tarjetas KPI</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            @if (!data.Any())
-                            {
-                                <p class="mt-4 text-[11px] text-slate-500">
-                                    Sin datos para los filtros actuales en esta métrica.
-                                </p>
-                            }
-                            else if (slot.Type == ChartType.Bar)
-                            {
-                                <!-- Barras verticales -->
-                                <div class="mt-2 flex h-40 items-end gap-3">
-                                    @foreach (var d in data.Take(10))
-                                    {
-                                        var barHeight = 24 + (int)Math.Round((double)d.Count / Math.Max(1, maxCount) * 80);
-
-                                        <div class="flex flex-1 flex-col items-center gap-1">
-                                            <div class="w-7 rounded-t-xl bg-[#348e91]"
-                                                 style="@($"height:{barHeight}px")">
-                                            </div>
-                                            <span class="max-w-[64px] truncate text-[10px] text-slate-600" title="@d.Label">
-                                                @d.Label
-                                            </span>
-                                            <span class="text-[10px] text-slate-500">@d.Count</span>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                            else if (slot.Type == ChartType.HorizontalBar)
-                            {
-                                <!-- Barras horizontales -->
-                                <div class="mt-2 space-y-2">
-                                    @foreach (var d in data.Take(10))
-                                    {
-                                        var width = 20 + (int)Math.Round((double)d.Count / Math.Max(1, maxCount) * 70);
-
-                                        <div class="flex items-center gap-2">
-                                            <span class="w-24 truncate text-[10px] text-slate-600" title="@d.Label">
-                                                @d.Label
-                                            </span>
-                                            <div class="flex-1 h-2.5 rounded-full bg-slate-200 overflow-hidden">
-                                                <div class="h-full rounded-full bg-[#1c5052]"
-                                                     style="@($"width:{width}%")">
-                                                </div>
-                                            </div>
-                                            <span class="w-8 text-right text-[10px] text-slate-500">
-                                                @d.Count
-                                            </span>
-                                        </div>
-                                    }
-                                </div>
-                            }
-                            else if (slot.Type == ChartType.Cards)
-                            {
-                                <!-- Tarjetas KPI -->
-                                <div class="mt-3 grid grid-cols-2 gap-2">
-                                    @foreach (var d in data.Take(4))
-                                    {
-                                        <div class="rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-[0_1px_4px_rgba(15,23,42,0.12)]">
-                                            <p class="truncate text-[10px] text-slate-600" title="@d.Label">
-                                                @d.Label
-                                            </p>
-                                            <p class="text-lg font-semibold text-[#4d1a1a]">
-                                                @d.Count
-                                            </p>
-                                        </div>
-                                    }
-                                </div>
-
-                                @if (data.Count > 4)
-                                {
-                                    <p class="mt-2 text-[10px] text-slate-500">
-                                        +@(data.Count - 4) categorías adicionales no mostradas.
-                                    </p>
-                                }
-                            }
-                        </article>
-                    }
-                </div>
-
-                <p class="mt-4 text-[11px] text-slate-500">
-                    Tip: usa un slot para la evolución temporal, otro para estados y otro para líneas de investigación
-                    o fuentes de indexación según la reunión en curso.
-                </p>
-            </section>
-
-            <!-- =========================
-                 5. TABLA + EXPORTACIÓN
-                 ========================= -->
-            <section class="rounded-3xl border border-slate-200/80 bg-white/95 px-4 py-4 shadow-md shadow-slate-300/40">
-                <header class="mb-3 flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h2 class="text-xs font-semibold tracking-wide text-[#332222]">
-                            Vista previa de registros
-                        </h2>
-                        <p class="mt-1 text-[11px] text-slate-500">
-                            Subconjunto de artículos según filtros actuales.
-                            Utiliza las exportaciones para trabajar los datos en Excel u otras herramientas BI.
-                        </p>
-                    </div>
-
-                    <div class="flex flex-wrap items-center gap-2">
-                        <button type="button"
-                                class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                                @onclick="ExportCsv">
-                            Exportar CSV
-                        </button>
-                        <button type="button"
-                                class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                                @onclick="ExportXlsx">
-                            Exportar Excel
-                        </button>
-                        <button type="button"
-                                class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                                @onclick="ExportPdf">
-                            Exportar PDF
-                        </button>
-                    </div>
-                </header>
-
-                <div class="overflow-x-auto rounded-2xl border border-slate-200">
-                    <table class="min-w-full text-left text-xs">
-                        <thead class="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-600">
-                            <tr>
-                                <th class="px-3 py-2">Año</th>
-                                <th class="px-3 py-2">Título</th>
-                                <th class="px-3 py-2">Revista</th>
-                                <th class="px-3 py-2">Estado</th>
-                                <th class="px-3 py-2">Línea</th>
-                                <th class="px-3 py-2">Open Access</th>
-                                <th class="px-3 py-2">Proyecto</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100 bg-white">
-                            @foreach (var a in _filteredArticles.Take(50))
-                            {
-                                <tr class="hover:bg-slate-50/80">
-                                    <td class="px-3 py-2 text-[11px] text-slate-700">
-                                        @a.Year
-                                    </td>
-                                    <td class="max-w-[260px] px-3 py-2 text-[11px] text-slate-800">
-                                        <span class="line-clamp-2">@a.Title</span>
-                                    </td>
-                                    <td class="max-w-[200px] px-3 py-2 text-[11px] text-slate-700">
-                                        <span class="line-clamp-2">@a.VenueName</span>
-                                    </td>
-                                    <td class="px-3 py-2 text-[11px] text-slate-700">
-                                        @a.PublicationStatusName
-                                    </td>
-                                    <td class="max-w-[180px] px-3 py-2 text-[11px] text-slate-700">
-                                        <span class="line-clamp-2">@a.ResearchLineName</span>
-                                    </td>
-                                    <td class="px-3 py-2 text-[11px]">
-                                        @if (a.IsOpenAccess)
-                                        {
-                                            <span class="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                                                OA
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                                                Cerrado
-                                            </span>
-                                        }
-                                    </td>
-                                    <td class="px-3 py-2 text-[11px]">
-                                        @if (a.IsProjectResult)
-                                        {
-                                            <span class="rounded-full bg-[#4d1a1a]/10 px-2 py-0.5 text-[10px] font-semibold text-[#4d1a1a]">
-                                                Sí
-                                            </span>
-                                        }
-                                        else
-                                        {
-                                            <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                                                No
-                                            </span>
-                                        }
-                                    </td>
+                @if (_filteredByYear.Count == 0)
+                {
+                    <p class="text-xs text-slate-400">No hay datos para el rango de años seleccionado.</p>
+                }
+                else
+                {
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="border-b border-slate-200">
+                                <tr class="text-left text-xs font-semibold text-slate-500 uppercase">
+                                    <th class="py-2 pr-4">Año</th>
+                                    <th class="py-2 pr-4 text-right">Número de artículos</th>
                                 </tr>
-                            }
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in _filteredByYear)
+                                {
+                                    <tr class="border-b border-slate-100 last:border-b-0">
+                                        <td class="py-1.5 pr-4 text-slate-700">@item.Year</td>
+                                        <td class="py-1.5 pr-4 text-right font-semibold text-slate-800">@item.Count</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+
+            <!-- Artículos por área de conocimiento -->
+            <section class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h2 class="text-base font-semibold text-slate-800">Distribución por área de conocimiento</h2>
+                        <p class="text-xs text-slate-500">
+                            Conteo de artículos por área amplia, específica y detallada.
+                        </p>
+                    </div>
                 </div>
 
-                <p class="mt-3 text-[11px] text-slate-500">
-                    Mostrando hasta 50 registros en la vista previa.
-                    La exportación considera todos los artículos filtrados.
-                </p>
+                @if (_byField.Count == 0)
+                {
+                    <p class="text-xs text-slate-400">No hay datos de áreas de conocimiento disponibles.</p>
+                }
+                else
+                {
+                    <div class="overflow-x-auto max-h-80">
+                        <table class="min-w-full text-sm">
+                            <thead class="border-b border-slate-200 sticky top-0 bg-white">
+                                <tr class="text-left text-xs font-semibold text-slate-500 uppercase">
+                                    <th class="py-2 pr-4">Área amplia</th>
+                                    <th class="py-2 pr-4">Área específica</th>
+                                    <th class="py-2 pr-4">Área detallada</th>
+                                    <th class="py-2 pr-4 text-right">Artículos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in _byField)
+                                {
+                                    <tr class="border-b border-slate-100 last:border-b-0">
+                                        <td class="py-1.5 pr-4 text-slate-700">@item.BroadFieldName</td>
+                                        <td class="py-1.5 pr-4 text-slate-700">@item.SpecificFieldName</td>
+                                        <td class="py-1.5 pr-4 text-slate-700">@item.DetailedFieldName</td>
+                                        <td class="py-1.5 pr-4 text-right font-semibold text-slate-800">@item.Count</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+
+            <!-- Artículos por línea de investigación -->
+            <section class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h2 class="text-base font-semibold text-slate-800">Distribución por línea de investigación</h2>
+                        <p class="text-xs text-slate-500">
+                            Conteo de artículos asociados a cada línea de investigación de la DIDE.
+                        </p>
+                    </div>
+                </div>
+
+                @if (_byResearchLine.Count == 0)
+                {
+                    <p class="text-xs text-slate-400">No hay datos de líneas de investigación disponibles.</p>
+                }
+                else
+                {
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="border-b border-slate-200">
+                                <tr class="text-left text-xs font-semibold text-slate-500 uppercase">
+                                    <th class="py-2 pr-4">Línea de investigación</th>
+                                    <th class="py-2 pr-4 text-right">Artículos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in _byResearchLine)
+                                {
+                                    <tr class="border-b border-slate-100 last:border-b-0">
+                                        <td class="py-1.5 pr-4 text-slate-700">@item.ResearchLineName</td>
+                                        <td class="py-1.5 pr-4 text-right font-semibold text-slate-800">@item.Count</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
             </section>
         }
     </div>
 </div>
 
 @code {
-    // ============================
-    // Datos base
-    // ============================
+    private bool _isLoading = true;
+    private string? _errorMessage;
 
-    private List<ArticleListItemDto> _allArticles = new();
-    private List<ArticleListItemDto> _filteredArticles = new();
+    private ArticlesKpiSummaryDto? _kpis;
+    private List<ArticlesByYearDto> _allByYear = new();
+    private List<ArticlesByYearDto> _filteredByYear = new();
+    private List<ArticlesByFieldDto> _byField = new();
+    private List<ArticlesByResearchLineDto> _byResearchLine = new();
 
-    private bool _loading = true;
-    private string? _error;
-
-    // ============================
     // Filtros
-    // ============================
-
-    private string? _searchText;
-    private string? SearchText
-    {
-        get => _searchText;
-        set
-        {
-            _searchText = value;
-            ApplyFilters();
-        }
-    }
-
-    private string? _statusFilter;
-    private string? StatusFilter
-    {
-        get => _statusFilter;
-        set
-        {
-            _statusFilter = value;
-            ApplyFilters();
-        }
-    }
-
-    private int? _fromYear;
-    private int? _toYear;
-
-    private int? FromYear
-    {
-        get => _fromYear;
-        set
-        {
-            _fromYear = value;
-            ApplyFilters();
-        }
-    }
-
-    private int? ToYear
-    {
-        get => _toYear;
-        set
-        {
-            _toYear = value;
-            ApplyFilters();
-        }
-    }
-
-    private string _openAccessFilter = "all"; // all | only | closed
-    private string OpenAccessFilter
-    {
-        get => _openAccessFilter;
-        set
-        {
-            _openAccessFilter = value;
-            ApplyFilters();
-        }
-    }
-
-    private string _projectFilter = "all"; // all | with | without
-    private string ProjectFilter
-    {
-        get => _projectFilter;
-        set
-        {
-            _projectFilter = value;
-            ApplyFilters();
-        }
-    }
-
-    private IEnumerable<int> YearRange
-    {
-        get
-        {
-            var years = _allArticles
-                .Where(a => a.Year.HasValue)
-                .Select(a => (int)a.Year!.Value)
-                .Distinct()
-                .OrderBy(y => y)
-                .ToList();
-
-            return years;
-        }
-    }
-
-    private IEnumerable<string> StatusOptions =>
-        _allArticles
-            .Select(a => GetStatusKey(a))
-            .Distinct()
-            .Where(s => !string.IsNullOrWhiteSpace(s))
-            .OrderBy(s => s);
-
-    // ============================
-    // KPIs calculados
-    // ============================
-
-    private int TotalArticles => _filteredArticles.Count;
-
-    private int TotalVenues =>
-        _filteredArticles
-            .Where(a => !string.IsNullOrWhiteSpace(a.VenueName))
-            .Select(a => a.VenueName!)
-            .Distinct()
-            .Count();
-
-    private int TotalResearchLines =>
-        _filteredArticles
-            .Where(a => !string.IsNullOrWhiteSpace(a.ResearchLineName))
-            .Select(a => a.ResearchLineName!)
-            .Distinct()
-            .Count();
-
-    private int OpenAccessCount =>
-        _filteredArticles.Count(a => a.IsOpenAccess);
-
-    private decimal OpenAccessPercentage =>
-        TotalArticles == 0 ? 0 : (decimal)OpenAccessCount / TotalArticles * 100m;
-
-    private int ProjectResultCount =>
-        _filteredArticles.Count(a => a.IsProjectResult);
-
-    private int CurrentYearPublications =>
-        _filteredArticles.Count(a => a.Year == (short?)DateTime.Now.Year);
-
-    // ============================
-    // Métricas
-    // ============================
-
-    private List<MetricPoint> MetricByYear => GetMetricData(ChartMetric.ByYear);
-    private List<MetricPoint> MetricByStatus => GetMetricData(ChartMetric.ByStatus);
-    private List<MetricPoint> MetricByResearchLine => GetMetricData(ChartMetric.ByResearchLine);
-
-    private int MaxYearCount => MetricByYear.Any() ? MetricByYear.Max(x => x.Count) : 0;
-    private int MaxResearchLineCount => MetricByResearchLine.Any() ? MetricByResearchLine.Max(x => x.Count) : 0;
-
-    // ============================
-    // Heatmap (Año vs Estado)
-    // ============================
-
-    private List<int> HeatYears =>
-        _filteredArticles
-            .Where(a => a.Year.HasValue)
-            .Select(a => (int)a.Year!.Value)
-            .Distinct()
-            .OrderBy(y => y)
-            .Take(8)
-            .ToList();
-
-    private List<string> HeatStatuses =>
-        _filteredArticles
-            .Select(GetStatusKey)
-            .Where(s => !string.IsNullOrWhiteSpace(s))
-            .Distinct()
-            .OrderBy(s => s)
-            .ToList();
-
-    private int HeatMax =>
-        _filteredArticles
-            .Where(a => a.Year.HasValue)
-            .GroupBy(a => new { Year = (int)a.Year!.Value, Status = GetStatusKey(a) })
-            .Where(g => !string.IsNullOrWhiteSpace(g.Key.Status))
-            .Select(g => g.Count())
-            .DefaultIfEmpty(0)
-            .Max();
-
-    private int GetHeatCount(int year, string status) =>
-        _filteredArticles.Count(a =>
-            a.Year.HasValue &&
-            a.Year!.Value == (short)year &&
-            GetStatusKey(a) == status);
-
-    private string GetHeatCellStyle(int value)
-    {
-        if (HeatMax == 0 || value <= 0)
-        {
-            return "background:#e5e7eb;";
-        }
-
-        var ratio = (double)value / HeatMax; // 0..1
-        var opacity = 0.15 + (ratio * 0.65); // 0.15 .. 0.8
-        var opacityStr = opacity.ToString("0.00", CultureInfo.InvariantCulture);
-
-        // Base #800909
-        return $"background:rgba(128,9,9,{opacityStr});";
-    }
-
-    // ============================
-    // Ciclo de vida
-    // ============================
+    private int? _filterMinYear;
+    private int? _filterMaxYear;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadAsync();
-    }
-
-    private async Task LoadAsync()
-    {
-        _loading = true;
-        _error = null;
+        _isLoading = true;
+        _errorMessage = null;
 
         try
         {
-            _allArticles = await ArticlesClient.GetAllAsync() ?? new List<ArticleListItemDto>();
+            // Llamamos a todos los endpoints de reportería
+            _kpis = await Insights.GetArticlesKpiSummaryAsync();
+            _allByYear = await Insights.GetArticlesByYearAsync();
+            _byField = await Insights.GetArticlesByFieldAsync();
+            _byResearchLine = await Insights.GetArticlesByResearchLineAsync();
 
-            // Inicializar rango de años por defecto
-            var years = _allArticles
-                .Where(a => a.Year.HasValue)
-                .Select(a => a.Year!.Value)
-                .Distinct()
-                .OrderBy(y => y)
-                .ToList();
-
-            if (years.Any())
+            // Valores iniciales para filtros de año (mínimo y máximo detectados)
+            if (_allByYear.Count > 0)
             {
-                _fromYear = years.Min();
-                _toYear = years.Max();
+                var min = _allByYear.Min(x => x.Year);
+                var max = _allByYear.Max(x => x.Year);
+                _filterMinYear = min;
+                _filterMaxYear = max;
             }
 
             ApplyFilters();
         }
         catch (Exception ex)
         {
-            _error = ex.Message;
+            _errorMessage = "Ocurrió un error al cargar los datos de reportería. " +
+                            "Por favor, verifica la conexión con el servidor o ejecuta primero el ETL.";
+            Console.Error.WriteLine(ex);
         }
         finally
         {
-            _loading = false;
-            StateHasChanged();
+            _isLoading = false;
         }
     }
 
     private void ApplyFilters()
     {
-        IEnumerable<ArticleListItemDto> query = _allArticles;
-
-        // Búsqueda de texto
-        if (!string.IsNullOrWhiteSpace(_searchText))
+        if (_allByYear.Count == 0)
         {
-            var q = _searchText.Trim().ToLowerInvariant();
-            query = query.Where(a =>
-                (!string.IsNullOrWhiteSpace(a.Title) && a.Title!.ToLower().Contains(q)) ||
-                (!string.IsNullOrWhiteSpace(a.VenueName) && a.VenueName!.ToLower().Contains(q)) ||
-                (!string.IsNullOrWhiteSpace(a.Doi) && a.Doi!.ToLower().Contains(q)) ||
-                (!string.IsNullOrWhiteSpace(a.AcademicTermName) && a.AcademicTermName!.ToLower().Contains(q)) ||
-                (!string.IsNullOrWhiteSpace(a.ResearchLineName) && a.ResearchLineName!.ToLower().Contains(q)));
+            _filteredByYear = new List<ArticlesByYearDto>();
+            return;
         }
 
-        // Filtro por estado
-        if (!string.IsNullOrWhiteSpace(_statusFilter))
+        var minYear = _filterMinYear ?? _allByYear.Min(x => x.Year);
+        var maxYear = _filterMaxYear ?? _allByYear.Max(x => x.Year);
+
+        if (minYear > maxYear)
         {
-            query = query.Where(a => GetStatusKey(a) == _statusFilter);
+            // Si el usuario invierte los rangos, los normalizamos
+            var tmp = minYear;
+            minYear = maxYear;
+            maxYear = tmp;
         }
 
-        // Rango de años
-        if (_fromYear.HasValue)
-        {
-            query = query.Where(a => a.Year.HasValue && a.Year!.Value >= _fromYear.Value);
-        }
-
-        if (_toYear.HasValue)
-        {
-            query = query.Where(a => a.Year.HasValue && a.Year!.Value <= _toYear.Value);
-        }
-
-        // Open Access
-        if (_openAccessFilter == "only")
-        {
-            query = query.Where(a => a.IsOpenAccess);
-        }
-        else if (_openAccessFilter == "closed")
-        {
-            query = query.Where(a => !a.IsOpenAccess);
-        }
-
-        // Resultado de proyecto
-        if (_projectFilter == "with")
-        {
-            query = query.Where(a => a.IsProjectResult);
-        }
-        else if (_projectFilter == "without")
-        {
-            query = query.Where(a => !a.IsProjectResult);
-        }
-
-        _filteredArticles = query
-            .OrderByDescending(a => a.Year)
-            .ThenByDescending(a => a.CreatedAt)
-            .ThenBy(a => a.Title)
+        _filteredByYear = _allByYear
+            .Where(x => x.Year >= minYear && x.Year <= maxYear)
+            .OrderBy(x => x.Year)
             .ToList();
-
-        StateHasChanged();
     }
-
-    private void ClearFilters()
-    {
-        _searchText = null;
-        _statusFilter = null;
-        _openAccessFilter = "all";
-        _projectFilter = "all";
-
-        var years = _allArticles
-            .Where(a => a.Year.HasValue)
-            .Select(a => a.Year!.Value)
-            .Distinct()
-            .OrderBy(y => y)
-            .ToList();
-
-        if (years.Any())
-        {
-            _fromYear = years.Min();
-            _toYear = years.Max();
-        }
-        else
-        {
-            _fromYear = null;
-            _toYear = null;
-        }
-
-        ApplyFilters();
-    }
-
-    private string GetStatusKey(ArticleListItemDto a)
-    {
-        var s = a.PublicationStatusName ?? string.Empty;
-        s = s.Trim().ToUpperInvariant();
-        return s switch
-        {
-            "PUBLICADO" => "PUBLICADO",
-            "ACEPTADO" => "ACEPTADO",
-            _ => "SIN ESTADO"
-        };
-    }
-
-    // ============================
-    // Panel dinámico de gráficos
-    // ============================
-
-    private sealed class DashboardSlotState
-    {
-        public string Title { get; set; } = string.Empty;
-        public ChartMetric Metric { get; set; }
-        public ChartType Type { get; set; }
-    }
-
-    private enum ChartMetric
-    {
-        ByYear,
-        ByStatus,
-        ByResearchLine,
-        ByIndexingSource,
-        ByAcademicTerm,
-        ByOpenAccess,
-        ByProjectResult
-    }
-
-    private enum ChartType
-    {
-        Bar,
-        HorizontalBar,
-        Cards
-    }
-
-    private readonly DashboardSlotState[] _slots =
-    {
-        new() { Title = "Vista 1", Metric = ChartMetric.ByYear,         Type = ChartType.Bar },
-        new() { Title = "Vista 2", Metric = ChartMetric.ByStatus,       Type = ChartType.HorizontalBar },
-        new() { Title = "Vista 3", Metric = ChartMetric.ByResearchLine, Type = ChartType.Cards }
-    };
-
-    private record MetricPoint(string Label, int Count);
-
-    private List<MetricPoint> GetMetricData(ChartMetric metric)
-    {
-        switch (metric)
-        {
-            case ChartMetric.ByYear:
-                return _filteredArticles
-                    .Where(a => a.Year.HasValue)
-                    .GroupBy(a => a.Year!.Value)
-                    .OrderBy(g => g.Key)
-                    .Select(g => new MetricPoint(g.Key.ToString(), g.Count()))
-                    .ToList();
-
-            case ChartMetric.ByStatus:
-                return _filteredArticles
-                    .GroupBy(a => GetStatusKey(a))
-                    .Where(g => !string.IsNullOrWhiteSpace(g.Key))
-                    .OrderByDescending(g => g.Count())
-                    .Select(g => new MetricPoint(g.Key, g.Count()))
-                    .ToList();
-
-            case ChartMetric.ByResearchLine:
-                return _filteredArticles
-                    .Where(a => !string.IsNullOrWhiteSpace(a.ResearchLineName))
-                    .GroupBy(a => a.ResearchLineName!)
-                    .OrderByDescending(g => g.Count())
-                    .Select(g => new MetricPoint(g.Key, g.Count()))
-                    .ToList();
-
-            case ChartMetric.ByIndexingSource:
-                return _filteredArticles
-                    .Where(a => !string.IsNullOrWhiteSpace(a.IndexingSourceName))
-                    .GroupBy(a => a.IndexingSourceName!)
-                    .OrderByDescending(g => g.Count())
-                    .Select(g => new MetricPoint(g.Key, g.Count()))
-                    .ToList();
-
-            case ChartMetric.ByAcademicTerm:
-                return _filteredArticles
-                    .Where(a => !string.IsNullOrWhiteSpace(a.AcademicTermName))
-                    .GroupBy(a => a.AcademicTermName!)
-                    .OrderBy(g => g.Key)
-                    .Select(g => new MetricPoint(g.Key, g.Count()))
-                    .ToList();
-
-            case ChartMetric.ByOpenAccess:
-                var open = _filteredArticles.Count(a => a.IsOpenAccess);
-                var closed = _filteredArticles.Count(a => !a.IsOpenAccess);
-                return new List<MetricPoint>
-                {
-                    new("Open Access", open),
-                    new("Cerrado", closed)
-                };
-
-            case ChartMetric.ByProjectResult:
-                var withProject = _filteredArticles.Count(a => a.IsProjectResult);
-                var withoutProject = _filteredArticles.Count(a => !a.IsProjectResult);
-                return new List<MetricPoint>
-                {
-                    new("Con proyecto", withProject),
-                    new("Sin proyecto", withoutProject)
-                };
-
-            default:
-                return new List<MetricPoint>();
-        }
-    }
-
-    // ============================
-    // Helpers de visualización
-    // ============================
-
-    private string BuildTrendLinePoints(List<MetricPoint> points, int width, int height)
-    {
-        if (!points.Any())
-            return string.Empty;
-
-        var max = points.Max(p => p.Count);
-        if (max == 0) max = 1;
-
-        var stepX = points.Count == 1 ? width : width / (points.Count - 1);
-        var idx = 0;
-        var list = new List<string>();
-
-        foreach (var p in points)
-        {
-            var x = idx * stepX;
-            var norm = (double)p.Count / max; // 0-1
-            var y = height - (norm * (height - 4)); // margen superior
-            list.Add($"{x.ToString(CultureInfo.InvariantCulture)},{y.ToString(CultureInfo.InvariantCulture)}");
-            idx++;
-        }
-
-        return string.Join(" ", list);
-    }
-
-    private string BuildTrendAreaPoints(List<MetricPoint> points, int width, int height)
-    {
-        var line = BuildTrendLinePoints(points, width, height);
-        if (string.IsNullOrWhiteSpace(line))
-            return string.Empty;
-
-        var tokens = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (tokens.Length == 0) return string.Empty;
-
-        var first = tokens.First();
-        var last = tokens.Last();
-
-        // Cerrar el área hacia la base del gráfico
-        return $"{first} {line} {last.Split(',')[0]}, {height} 0,{height}";
-    }
-
-    private string GetOpenAccessPieStyle()
-    {
-        if (TotalArticles == 0)
-        {
-            return "background:#e5e7eb;";
-        }
-
-        var perc = (double)OpenAccessCount / TotalArticles * 100.0;
-        var pStr = perc.ToString("0.##", CultureInfo.InvariantCulture);
-
-        // Donut simple con conic-gradient
-        return $"background:conic-gradient(#348e91 0 {pStr}%, #e5e7eb {pStr}% 100%);";
-    }
-
-    // ============================
-    // Exportación
-    // ============================
-
-    private async Task Export(string format)
-    {
-        // Punto de extensión: aquí conectas con backend / JS para generar archivos reales.
-        await Task.CompletedTask;
-    }
-
-    private Task ExportCsv() => Export("csv");
-    private Task ExportXlsx() => Export("xlsx");
-    private Task ExportPdf() => Export("pdf");
 }

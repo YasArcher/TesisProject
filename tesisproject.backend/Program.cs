@@ -7,8 +7,10 @@ using Microsoft.OpenApi.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using tesisproject.backend.BI.ETL;
 using tesisproject.backend.Data;
 using tesisproject.backend.Data.Seed;          // ✅ Importante: SeedCatalogs
+using tesisproject.backend.DataWarehouse;
 using tesisproject.backend.Identity;
 using tesisproject.backend.Mapping;
 using tesisproject.backend.Repositories.Implementations;
@@ -35,6 +37,10 @@ builder.WebHost.PreferHostingUrls(true)
 var cs = config.GetConnectionString("DefaultConnection")
           ?? "Server=PERSONAL\\DINNOVA;Database=TesisDB;User Id=sa;Password=admin123;TrustServerCertificate=True;MultipleActiveResultSets=True";
 
+builder.Services.AddDbContext<DwDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DwConnection")));
+
+builder.Services.AddScoped<IEtlOrchestrator, EtlOrchestrator>();
 services.AddDbContext<AppDbContext>(opt =>
 {
     opt.UseSqlServer(cs);
