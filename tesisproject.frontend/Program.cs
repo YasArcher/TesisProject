@@ -57,12 +57,21 @@ builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().Cre
 builder.Services.AddScoped<IApiClient, ApiClient>();
 builder.Services.AddScoped<IProjectClientService, ProjectClientService>();
 builder.Services.AddScoped<IGroupService, GroupService>();
-builder.Services.AddScoped<IExternalUserService, ExternalUserClientService>();
 builder.Services.AddScoped<IBudgetClientService, BudgetClientService>();
 builder.Services.AddScoped<IProjectFiltersClientService, ProjectFiltersClientService>();
 builder.Services.AddScoped<IProjectExtensionClientService, ProjectExtensionClientService>();
 builder.Services.AddScoped<IVisitClientService, VisitClientService>();
 builder.Services.AddScoped<IAuthClientService, AuthClientService>();
+builder.Services.AddScoped<IDocumentRecognitionClientService, DocumentRecognitionClientService>();
+builder.Services.AddScoped<IProjectTypeClientService, ProjectTypeClientService>();
+builder.Services.AddScoped<IMemberRoleTypeClientService, MemberRoleTypeClientService>();
+builder.Services.AddScoped<IDocumentTypeClientService, DocumentTypeClientService>();
+builder.Services.AddScoped<IObjectiveTypeClientService, ObjectiveTypeClientService>();
+builder.Services.AddScoped<IDocumentClientService, DocumentClientService>();
+
+// External
+builder.Services.AddScoped<IExternalAcademicsClientService, ExternalAcademicsClientService>();
+builder.Services.AddScoped<IExternalUserService, ExternalUserClientService>();
 
 // 7) Provider de autenticación
 builder.Services.AddScoped<CustomAuthStateProvider>();

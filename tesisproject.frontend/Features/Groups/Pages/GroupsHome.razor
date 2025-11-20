@@ -129,7 +129,7 @@
         isLoading = true; StateHasChanged();
         try
         {
-            var resp = await GroupService.GetListAsync(1);
+            var resp = await GroupService.GetListAsync(2);
             groups = resp.Response ?? new();
         }
         finally

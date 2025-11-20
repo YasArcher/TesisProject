@@ -6,18 +6,22 @@ namespace tesisproject.shared.DTOs.Algorithms.Response
     public class ResolutionInfo
     {
         public string? ResolutionCode { get; set; }
-        public string? ResolutionHeaderDate { get; set; }
-        public string? MeetingDate { get; set; }
-        public string? Duration { get; set; }
-        public string? Budget { get; set; }
-        public string? ExecutionStartDate { get; set; }
+        public int documentTypeId { get; set; }
+        public DateTime? ResolutionHeaderDate { get; set; }
+        public DateTime? MeetingDate { get; set; }
+        public int Duration { get; set; } = 0;
+        public int Budget { get; set; } = 0;
+        public DateTime? ExecutionStartDate { get; set; }
         public string? MainDecisionVerb { get; set; }
     }
 
     public class ResearcherInfo
     {
-        public string Role { get; set; } = string.Empty;
+        public int Role { get; set; } = 0;
+        public string? RoleName { get; set; } = string.Empty;
         public string email { get; set; } = string.Empty;
+        public string FullName { get; set; } = string.Empty;
+        public int FacultyCareerId { get; set; }
     }
 
     // ============================================
@@ -35,6 +39,8 @@ namespace tesisproject.shared.DTOs.Algorithms.Response
         /// (columna "Actividad").
         /// </summary>
         public string ActivityText { get; set; } = string.Empty;
+        public string ActivityResult { get; set; } = string.Empty;
+        public int ActivityPercentage { get; set; } = 0;
     }
 
     /// <summary>
@@ -48,7 +54,7 @@ namespace tesisproject.shared.DTOs.Algorithms.Response
         /// Ejemplo típico: "General", "Específico".
         /// Luego se mapeará a ObjectiveTypeId en la capa de servicio.
         /// </summary>
-        public string ObjectiveType { get; set; } = string.Empty;
+        public int ObjectiveType { get; set; } = 0;
         public int? objetiveNumber { get; set; }
 
         /// <summary>
@@ -56,6 +62,9 @@ namespace tesisproject.shared.DTOs.Algorithms.Response
         /// Se mapea a ProjectObjective.Objetive.
         /// </summary>
         public string ObjectiveText { get; set; } = string.Empty;
+
+        public int ObjetivePercentage { get; set; } = 0;
+        public string ObjetiveResult { get; set; } = string.Empty;
 
         /// <summary>
         /// Actividades asociadas a este objetivo,
@@ -90,7 +99,7 @@ namespace tesisproject.shared.DTOs.Algorithms.Response
         /// Tipo de investigación (Aplicada, Experimental, etc.)
         /// tal como aparece en el documento.
         /// </summary>
-        public string ResearchType { get; set; } = string.Empty;
+        public int? ResearchTypeId { get; set; } = 0;
 
         /// <summary>
         /// Investigadores normalizados (Coordinador Principal,

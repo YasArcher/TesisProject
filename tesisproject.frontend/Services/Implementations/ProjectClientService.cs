@@ -1,4 +1,5 @@
 ﻿using tesisproject.frontend.Services.Interfaces;
+using tesisproject.shared.DTOs.Project.Request;
 using tesisproject.shared.DTOs.Project.Response;
 
 namespace tesisproject.frontend.Services.Implementations;
@@ -21,6 +22,16 @@ public class ProjectClientService : IProjectClientService
     public Task<HttpResponseWrapper<ProjectDetailResponseDTO?>> GetDetailAsync(int projectId, CancellationToken ct = default)
     {
         return _api.GetAsync<ProjectDetailResponseDTO>($"api/projects/detail/{projectId}", ct);
+    }
+    public Task<HttpResponseWrapper<ProjectDetailResponseDTO?>> CreateFullAsync(
+    AddProjectFullRequestDTO request,
+    CancellationToken ct = default)
+    {
+        return _api.PostAsync<AddProjectFullRequestDTO, ProjectDetailResponseDTO>(
+            "api/projects/full",
+            request,
+            ct
+        );
     }
 
 }

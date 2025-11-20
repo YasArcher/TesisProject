@@ -227,7 +227,7 @@ namespace tesisproject.backend.Services.Parsers
         }
 
         // 8) Duración del proyecto
-        public static string? ExtractDuration(string text)
+        public static int ExtractDuration(string text)
         {
             var lines = text.Split('\n');
 
@@ -238,18 +238,19 @@ namespace tesisproject.backend.Services.Parsers
                 {
                     var fromSameLine = ExtractAfterColon(line);
                     if (!string.IsNullOrEmpty(fromSameLine))
-                        return fromSameLine;
+                        return DideProjectFormParser.OnlyDigits(fromSameLine);
 
                     if (i + 1 < lines.Length)
-                        return lines[i + 1].Trim();
+
+                        return DideProjectFormParser.OnlyDigits(lines[i + 1].Trim());
                 }
             }
 
-            return null;
+            return 0;
         }
 
         // 9) Presupuesto / Financiamiento solicitado
-        public static string? ExtractBudget(string text)
+        public static int ExtractBudget(string text)
         {
             var lines = text.Split('\n');
 
@@ -260,14 +261,14 @@ namespace tesisproject.backend.Services.Parsers
                 {
                     var fromSameLine = ExtractAfterColon(line);
                     if (!string.IsNullOrEmpty(fromSameLine))
-                        return fromSameLine;
+                        return DideProjectFormParser.ParseLatinNumber(fromSameLine);
 
                     if (i + 1 < lines.Length)
-                        return lines[i + 1].Trim();
+                        
+                    return DideProjectFormParser.ParseLatinNumber(lines[i + 1].Trim());
                 }
             }
-
-            return null;
+            return 0;
         }
 
         // 10) Fecha de inicio de ejecución
@@ -275,13 +276,52 @@ namespace tesisproject.backend.Services.Parsers
         {
             var lines = text.Split('\n');
 
-            var candidate = lines.FirstOrDefault(l =>
-                l.Contains("inicio de ejecución", StringComparison.OrdinalIgnoreCase) &&
-                l.Contains("proyecto", StringComparison.OrdinalIgnoreCase));
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
 
-            if (candidate is null) return null;
+                // BUSCAR la línea que contiene la frase clave
+                if (line.Contains("inicio de ejecución", StringComparison.OrdinalIgnoreCase) &&
+                    line.Contains("proyecto", StringComparison.OrdinalIgnoreCase))
+                {
+                    var sb = new System.Text.StringBuilder(line.Trim());
 
-            return ExtractFirstDate(candidate);
+                    // COMBINAR líneas hasta capturar el año (4 dígitos)
+                    for (int j = i + 1; j < lines.Length; j++)
+                    {
+                        var next = lines[j].Trim();
+                        if (string.IsNullOrWhiteSpace(next))
+                            continue;
+
+                        sb.Append(' ').Append(next);
+
+                        // Limpiar final para evaluar si termina en año
+                        var cleanEnd = next.TrimEnd('.', ',', ';', ':', ' ');
+
+                        if (System.Text.RegularExpressions.Regex.IsMatch(cleanEnd, @"\d{4}$"))
+                            break;
+                    }
+
+                    var combined = sb.ToString();
+
+                    // Normalizar "del 2021" -> "de 2021" (clave!)
+                    combined = System.Text.RegularExpressions.Regex.Replace(
+                        combined,
+                        @"\bdel\s+(\d{4})\b",
+                        "de $1",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                    // Extraer fecha tipo "01 de octubre de 2021"
+                    var match = System.Text.RegularExpressions.Regex.Match(
+                        combined,
+                        @"\b\d{1,2}\s+de\s+\p{L}+\s+de\s+\d{4}\b",
+                        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                    return match.Success ? match.Value : null;
+                }
+            }
+
+            return null;
         }
 
         // 11) Verbo principal después de RESUELVE

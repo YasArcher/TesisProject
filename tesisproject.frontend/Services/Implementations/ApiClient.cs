@@ -1,6 +1,7 @@
-﻿using System.Text;
+﻿using System.Net.Http;
+using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
-using System.Net.Http;
 using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.Responses;
 
@@ -150,6 +151,24 @@ namespace tesisproject.frontend.Services.Implementations
 
             return new HttpResponseWrapper<T?>(false, default,
                 apiResponse.Message ?? $"HTTP {(int)resp.StatusCode}", resp);
+        }
+
+        public async Task<HttpResponseWrapper<TResponse?>> PostMultipartAsync<TResponse>(string url, MultipartFormDataContent content, CancellationToken ct = default)
+        {
+            try
+            {
+                using var resp = await _http.PostAsync(url, content, ct);
+                return await ParseResponseAsync<TResponse>(resp, ct);
+            }
+            catch (Exception ex)
+            {
+                return new HttpResponseWrapper<TResponse?>(
+                    success: false,
+                    response: default,
+                    error: ex.Message,
+                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)
+                );
+            }
         }
     }
 }
