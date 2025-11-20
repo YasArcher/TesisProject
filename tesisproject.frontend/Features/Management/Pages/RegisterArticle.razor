@@ -154,11 +154,7 @@
                                                         AcademicTerms="AcademicTerms"
                                                         PublicationStatuses="PublicationStatuses"
                                                         ResearchLines="ResearchLines"
-                                                        BroadFields="BroadFields"
-                                                        SpecificFields="SpecificFields"
-                                                        DetailedFields="DetailedFields"
-                                                        OnBroadFieldChange="HandleBroadFieldChange"
-                                                        OnSpecificFieldChange="HandleSpecificFieldChange" />
+                                                        BroadFields="BroadFields" />
                         }
 
                         @if (_activeTab == ArticleFormTab.Journal)
@@ -380,8 +376,6 @@
     private List<CatalogItemDto> PublicationStatuses { get; set; } = new();
     private List<CatalogItemDto> ResearchLines { get; set; } = new();
     private List<CatalogItemDto> BroadFields { get; set; } = new();
-    private List<CatalogItemDto> SpecificFields { get; set; } = new();
-    private List<CatalogItemDto> DetailedFields { get; set; } = new();
     private List<CatalogItemDto> Projects { get; set; } = new();
     private List<CatalogItemDto> IndexingSources { get; set; } = new();
 
@@ -498,30 +492,6 @@
         {
             isLoading = false;
         }
-    }
-
-    private async Task HandleBroadFieldChange(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out int broadFieldId))
-        {
-            Article.BroadFieldId = broadFieldId;
-            Article.SpecificFieldId = null;
-            Article.DetailedFieldId = null;
-            SpecificFields = await CatalogService.GetSpecificFieldsAsync(broadFieldId);
-            DetailedFields = new();
-        }
-        StateHasChanged();
-    }
-
-    private async Task HandleSpecificFieldChange(ChangeEventArgs e)
-    {
-        if (int.TryParse(e.Value?.ToString(), out int specificFieldId))
-        {
-            Article.SpecificFieldId = specificFieldId;
-            Article.DetailedFieldId = null;
-            DetailedFields = await CatalogService.GetDetailedFieldsAsync(specificFieldId);
-        }
-        StateHasChanged();
     }
 
     private void AddParticipant()
