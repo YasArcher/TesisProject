@@ -12,6 +12,8 @@
             {
                 var itemsCol = Items
                 .Where(a => GetStatusKey(a) == column.Key)
+                .OrderByDescending(a => a.Year)
+                .ThenBy(a => a.Title)
                 .ToList();
 
                 <section class="w-[320px] flex-shrink-0">
@@ -25,8 +27,9 @@
                         </div>
                     </header>
 
-                    <!-- Contenido columna -->
-                    <div class="mt-2 space-y-3">
+                    <!-- Contenido columna (scroll vertical) -->
+                    <div class="mt-2 space-y-3 overflow-y-auto pr-1"
+                         style="max-height: 65vh;">
                         @if (itemsCol.Count == 0)
                         {
                             <div class="rounded-xl border border-dashed border-slate-300 bg-slate-50/80 p-4 text-center text-[11px] text-slate-500">
@@ -63,15 +66,29 @@
 
     private static string GetStatusKey(ArticleListItemDto a)
     {
-        var s = a.PublicationStatusName ?? string.Empty;
-        s = s.Trim().ToUpperInvariant();
+        var raw = (a.PublicationStatusName ?? string.Empty).Trim();
 
-        return s switch
+        if (string.IsNullOrWhiteSpace(raw))
+            return "SIN ESTADO";
+
+        var s = raw.ToUpperInvariant();
+
+        // Cualquier variante que contenga "PUBLICAD" o "PUBLISHED"
+        if (s == "PUBLICADO" || s == "PUBLICADA" ||
+            s.Contains("PUBLICAD") || s.Contains("PUBLISHED"))
         {
-            "PUBLICADO" => "PUBLICADO",
-            "ACEPTADO" => "ACEPTADO",
-            _ => "SIN ESTADO"
-        };
+            return "PUBLICADO";
+        }
+
+        // Cualquier variante que contenga "ACEPT" / "ACCEPT"
+        if (s == "ACEPTADO" || s == "ACEPTADA" ||
+            s.Contains("ACEPT") || s.Contains("ACCEPT"))
+        {
+            return "ACEPTADO";
+        }
+
+        // Todo lo demás se considera sin estado definido
+        return "SIN ESTADO";
     }
 
     private string ColumnHeaderClasses(string key)

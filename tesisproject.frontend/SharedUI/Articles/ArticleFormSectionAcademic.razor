@@ -1,5 +1,6 @@
 ﻿@using tesisproject.frontend.Models.Articles
 @using tesisproject.shared.DTOs.Catalogs
+@using tesisproject.frontend.Services.Interfaces
 @inject ICatalogsService CatalogService
 
 <section class="rounded-3xl border border-slate-200/80 bg-white/95 shadow-sm">
@@ -18,16 +19,14 @@
     </header>
 
     <div class="space-y-6 px-5 py-5">
-
-        <!-- FILA 1: PERIODOS, ESTADOS, LÍNEAS -->
+        <!-- Fila 1: período, estado, línea -->
         <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
-
             <!-- Período académico -->
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-slate-800">
                     Período académico
                 </label>
-                <InputSelect @bind-Value="Article.AcademicTermId"
+                <InputSelect TValue="int?" @bind-Value="Article.AcademicTermId"
                              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
                     <option value="">Seleccionar período…</option>
                     @foreach (var term in AcademicTerms)
@@ -37,12 +36,12 @@
                 </InputSelect>
             </div>
 
-            <!-- Estado de publicación -->
+            <!-- Estado de publicación (byte?) -->
             <div>
                 <label class="mb-1.5 block text-sm font-medium text-slate-800">
                     Estado de publicación
                 </label>
-                <InputSelect @bind-Value="Article.PublicationStatusId"
+                <InputSelect TValue="byte?" @bind-Value="Article.PublicationStatusId"
                              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
                     <option value="">Seleccionar estado…</option>
                     @foreach (var status in PublicationStatuses)
@@ -57,7 +56,7 @@
                 <label class="mb-1.5 block text-sm font-medium text-slate-800">
                     Línea de investigación
                 </label>
-                <InputSelect @bind-Value="Article.ResearchLineId"
+                <InputSelect TValue="int?" @bind-Value="Article.ResearchLineId"
                              class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
                     <option value="">Seleccionar línea…</option>
                     @foreach (var line in ResearchLines)
@@ -66,23 +65,20 @@
                     }
                 </InputSelect>
             </div>
-
         </div>
 
-        <!-- CLASIFICACIÓN OCDE -->
+        <!-- Clasificación OCDE -->
         <div class="border-t border-slate-200 pt-5">
             <h3 class="mb-3 text-sm font-semibold text-slate-900">
                 Clasificación OCDE
             </h3>
-
             <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
-
                 <!-- CAMPO AMPLIO -->
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-slate-800">
                         Campo amplio
                     </label>
-                    <InputSelect @bind-Value="Article.BroadFieldId"
+                    <InputSelect TValue="int?" @bind-Value="Article.BroadFieldId"
                                  @onchange="BroadFieldChanged"
                                  class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
                         <option value="">Seleccionar campo amplio…</option>
@@ -98,10 +94,10 @@
                     <label class="mb-1.5 block text-sm font-medium text-slate-800">
                         Campo específico
                     </label>
-                    <InputSelect @bind-Value="Article.SpecificFieldId"
+                    <InputSelect TValue="int?" @bind-Value="Article.SpecificFieldId"
                                  @onchange="SpecificFieldChanged"
                                  disabled="@(Article.BroadFieldId == null)"
-                                 class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition disabled:bg-slate-100 disabled:cursor-not-allowed focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
+                                 class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition disabled:cursor-not-allowed disabled:bg-slate-50 focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
                         <option value="">Seleccionar campo específico…</option>
                         @foreach (var field in SpecificFields)
                         {
@@ -115,9 +111,9 @@
                     <label class="mb-1.5 block text-sm font-medium text-slate-800">
                         Campo detallado
                     </label>
-                    <InputSelect @bind-Value="Article.DetailedFieldId"
+                    <InputSelect TValue="int?" @bind-Value="Article.DetailedFieldId"
                                  disabled="@(Article.SpecificFieldId == null)"
-                                 class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition disabled:bg-slate-100 disabled:cursor-not-allowed focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
+                                 class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition disabled:cursor-not-allowed disabled:bg-slate-50 focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
                         <option value="">Seleccionar campo detallado…</option>
                         @foreach (var field in DetailedFields)
                         {
@@ -125,18 +121,16 @@
                         }
                     </InputSelect>
                 </div>
+            </div>
 
+            <!-- Debug -->
+            <div class="mt-3 text-[11px] text-slate-500">
+                [DEBUG HIJO] BroadFieldId=@(Article.BroadFieldId?.ToString() ?? "null")
+                | SpecificFields=@SpecificFields.Count
+                | SpecificFieldId=@(Article.SpecificFieldId?.ToString() ?? "null")
+                | DetailedFields=@DetailedFields.Count
             </div>
         </div>
-
-        <!-- DEBUG opcional -->
-        <div class="text-[10px] text-slate-500 mt-3">
-            BroadFieldId=@Article.BroadFieldId |
-            SpecificFields=@SpecificFields.Count |
-            SpecificFieldId=@Article.SpecificFieldId |
-            DetailedFields=@DetailedFields.Count
-        </div>
-
     </div>
 </section>
 
@@ -148,46 +142,66 @@
     [Parameter] public List<CatalogItemDto> ResearchLines { get; set; } = new();
     [Parameter] public List<CatalogItemDto> BroadFields { get; set; } = new();
 
-    // 🔹 ESTOS SE MANEJAN COMPLETAMENTE AQUÍ
-    private List<CatalogItemDto> SpecificFields { get; set; } = new();
-    private List<CatalogItemDto> DetailedFields { get; set; } = new();
+    // 🔹 Estas listas ahora las maneja EL HIJO
+    [Parameter] public List<CatalogItemDto> SpecificFields { get; set; } = new();
+    [Parameter] public List<CatalogItemDto> DetailedFields { get; set; } = new();
 
-
-    // 🚀 EVENTO CAMPO AMPLIO
-    private async Task BroadFieldChanged(ChangeEventArgs e)
+    // Carga inicial cuando se edita un artículo ya existente
+    protected override async Task OnParametersSetAsync()
     {
-        if (!int.TryParse(e.Value?.ToString(), out int id))
+        // Si viene un artículo existente con BroadFieldId y aún no hay SpecificFields cargados
+        if (Article.BroadFieldId.HasValue && SpecificFields.Count == 0)
         {
-            Article.BroadFieldId = null;
-            SpecificFields = new();
-            DetailedFields = new();
-            return;
+            SpecificFields = await CatalogService.GetSpecificFieldsAsync(Article.BroadFieldId.Value);
         }
 
-        Article.BroadFieldId = id;
-        Article.SpecificFieldId = null;
-        Article.DetailedFieldId = null;
+        // Si viene un artículo existente con SpecificFieldId y aún no hay DetailedFields cargados
+        if (Article.SpecificFieldId.HasValue && DetailedFields.Count == 0)
+        {
+            DetailedFields = await CatalogService.GetDetailedFieldsAsync(Article.SpecificFieldId.Value);
+        }
+    }
 
-        SpecificFields = await CatalogService.GetSpecificFieldsAsync(id);
-        DetailedFields = new();
+    private async Task BroadFieldChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int broadFieldId))
+        {
+            Article.BroadFieldId = broadFieldId;
+            Article.SpecificFieldId = null;
+            Article.DetailedFieldId = null;
+
+            // 🔹 Llamar al backend directamente desde el hijo
+            SpecificFields = await CatalogService.GetSpecificFieldsAsync(broadFieldId);
+            DetailedFields = new();
+        }
+        else
+        {
+            Article.BroadFieldId = null;
+            Article.SpecificFieldId = null;
+            Article.DetailedFieldId = null;
+            SpecificFields = new();
+            DetailedFields = new();
+        }
 
         StateHasChanged();
     }
 
-    // 🚀 EVENTO CAMPO ESPECÍFICO
     private async Task SpecificFieldChanged(ChangeEventArgs e)
     {
-        if (!int.TryParse(e.Value?.ToString(), out int id))
+        if (int.TryParse(e.Value?.ToString(), out int specificFieldId))
+        {
+            Article.SpecificFieldId = specificFieldId;
+            Article.DetailedFieldId = null;
+
+            // 🔹 Llamar al backend para campos detallados
+            DetailedFields = await CatalogService.GetDetailedFieldsAsync(specificFieldId);
+        }
+        else
         {
             Article.SpecificFieldId = null;
+            Article.DetailedFieldId = null;
             DetailedFields = new();
-            return;
         }
-
-        Article.SpecificFieldId = id;
-        Article.DetailedFieldId = null;
-
-        DetailedFields = await CatalogService.GetDetailedFieldsAsync(id);
 
         StateHasChanged();
     }

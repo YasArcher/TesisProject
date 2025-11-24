@@ -14,9 +14,12 @@ namespace tesisproject.backend.Mapping
                 Title = a.Title,
                 Doi = a.Doi,
                 Year = a.Year,
-                // PublicationUrl se quita porque no existe en tu ArticleListItemDto
-                // Evitamos warning de nulabilidad en VenueName:
-                VenueName = a.Venue?.Name ?? string.Empty
+                Issn = a.Venue?.IssnCode,
+                VenueName = a.Venue?.Name ?? string.Empty,
+                PublicationStatusId = a.PublicationStatusId,
+                PublicationStatusName = a.PublicationStatus != null
+            ? a.PublicationStatus.Name
+            : null
             };
         }
 

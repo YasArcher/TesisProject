@@ -12,11 +12,10 @@
                 <SideBar @ref="sidebarComponent" />
             </aside>
 
-            <!-- Contenido principal con scroll independiente -->
+            <!-- Contenido principal -->
             <div class="layout-main @mainContentClass" @onclick="CloseMobileMenu">
                 <header class="brand-header text-white shadow-sm">
                     <div class="d-flex align-items-center justify-content-between px-4 py-3">
-                        <!-- Botón menú móvil -->
                         <button class="btn btn-sm btn-outline-light d-lg-none mobile-menu-btn"
                                 @onclick="ToggleMobileMenu">
                             <span>☰</span>
@@ -24,7 +23,6 @@
 
                         <div class="fw-semibold">SISTEMA INTEGRADO</div>
 
-                        <!-- Espacio balance para móviles -->
                         <div class="d-lg-none" style="width: 40px;"></div>
                     </div>
                 </header>
@@ -58,24 +56,17 @@
     private ElementReference sidebarElement;
     private SideBar? sidebarComponent;
     private Timer? sidebarCheckTimer;
-    private DotNetObjectReference<MainLayout>? objRef;
 
-    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override Task OnAfterRenderAsync(bool firstRender)
     {
-        if (firstRender)
-        {
-            await InitializeSidebarObserver();
-            StartSidebarCheckTimer();
-        }
+        // ❗ Se removió toda referencia a JS porque no existía la función JS
+        return Task.CompletedTask;
     }
 
     private void ToggleMobileMenu()
     {
         mobileMenuOpen = !mobileMenuOpen;
         UpdateSidebarClasses();
-        StateHasChanged();
     }
 
     private void CloseMobileMenu()
@@ -84,7 +75,6 @@
         {
             mobileMenuOpen = false;
             UpdateSidebarClasses();
-            StateHasChanged();
         }
     }
 
@@ -97,62 +87,13 @@
         }
         else
         {
-            // Verificar estado del sidebar
-            CheckSidebarState();
-        }
-    }
-
-    private async Task InitializeSidebarObserver()
-    {
-        objRef = DotNetObjectReference.Create(this);
-        await JSRuntime.InvokeVoidAsync("registerSidebarLayoutListener", objRef);
-    }
-
-    [JSInvokable]
-    public void OnSidebarLayoutStateChanged(bool collapsed)
-    {
-        if (collapsed)
-        {
-            sidebarClass = "sidebar-collapsed";
-            mainContentClass = "sidebar-collapsed";
-        }
-        else
-        {
             sidebarClass = "sidebar-expanded";
             mainContentClass = "sidebar-expanded";
-        }
-        StateHasChanged();
-    }
-
-    private void StartSidebarCheckTimer()
-    {
-        sidebarCheckTimer = new Timer(_ =>
-        {
-            InvokeAsync(CheckSidebarState);
-        }, null, 1000, 1000);
-    }
-
-    private void CheckSidebarState()
-    {
-        try
-        {
-        }
-        catch
-        {
         }
     }
 
     public void Dispose()
     {
         sidebarCheckTimer?.Dispose();
-        objRef?.Dispose();
-
-        try
-        {
-            _ = JSRuntime.InvokeVoidAsync("unregisterSidebarLayoutListener");
-        }
-        catch
-        {
-        }
     }
 }

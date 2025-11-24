@@ -8,63 +8,132 @@
         </div>
         <div>
             <h2 class="text-sm md:text-base font-semibold text-slate-900">
-                Información de la revista e indexación
+                Información de la revista / evento e indexación
             </h2>
             <p class="text-xs text-slate-500">
-                Datos de la revista o actas, métricas e indexadores asociados.
+                Datos de la revista o actas (proceedings), métricas e indexadores asociados.
             </p>
         </div>
     </header>
 
     <div class="space-y-6 px-5 py-5">
-        <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-slate-800">
-                    Nombre de la revista <span class="text-rose-500">*</span>
-                </label>
-                <InputText @bind-Value="Article.VenueName"
-                           class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20" />
-                <ValidationMessage For="@(() => Article.VenueName)" class="validation-message" />
-            </div>
 
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-slate-800">
-                    Código ISSN
-                </label>
-                <InputText @bind-Value="Article.IssnCode"
-                           class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
-                           placeholder="0000-0000" />
-            </div>
+        <!-- REVISTA / ACTAS -->
+        <div>
+            <h3 class="mb-3 text-sm font-semibold text-slate-900">
+                Revista o actas (proceedings)
+            </h3>
 
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-slate-800">
-                    Volumen
-                </label>
-                <InputText @bind-Value="Article.VolumeNumber"
-                           class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20" />
-            </div>
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                        Nombre de la revista / actas
+                    </label>
+                    <InputText @bind-Value="Article.VenueName"
+                               class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                               placeholder="Ej. Revista X, Actas del Congreso Y" />
+                    <ValidationMessage For="@(() => Article.VenueName)" class="validation-message" />
+                </div>
 
-            <div>
-                <label class="mb-1.5 block text-sm font-medium text-slate-800">
-                    Número
-                </label>
-                <InputText @bind-Value="Article.IssueNumber"
-                           class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20" />
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                        URL de la revista
+                    </label>
+                    <InputText @bind-Value="Article.JournalUrl"
+                               class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                               placeholder="https://revista-o-evento.com/articulo" />
+                </div>
+
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                        Código ISSN
+                    </label>
+                    <InputText @bind-Value="Article.IssnCode"
+                               class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                               placeholder="0000-0000" />
+                </div>
+
+                <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                            Volumen
+                        </label>
+                        <InputText @bind-Value="Article.VolumeNumber"
+                                   class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                                   placeholder="Ej. 12" />
+                    </div>
+
+                    <div>
+                        <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                            Número / Issue
+                        </label>
+                        <InputText @bind-Value="Article.IssueNumber"
+                                   class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                                   placeholder="Ej. 3" />
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Métricas -->
+        <!-- CAMPOS DE EVENTO / PROCEEDINGS / GRUPO / FILIACIÓN -->
         <div class="border-t border-slate-200 pt-5">
             <h3 class="mb-3 text-sm font-semibold text-slate-900">
-                Métricas de la revista
+                Información del evento y grupo de investigación
             </h3>
-            <div class="grid grid-cols-2 gap-5 md:grid-cols-4">
+
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-slate-800">
-                        Año métrica
+                        Proceedings / actas
+                    </label>
+                    <InputText @bind-Value="Article.Proceedings"
+                               class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                               placeholder="Ej. Proceedings of the XYZ Conference" />
+                </div>
+
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                        Nombre del evento
+                    </label>
+                    <InputText @bind-Value="Article.EventName"
+                               class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                               placeholder="Ej. Congreso Internacional de..." />
+                </div>
+
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                        Grupo de investigación / artículo
+                    </label>
+                    <InputText @bind-Value="Article.GroupName"
+                               class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                               placeholder="Ej. Grupo de Investigación en..." />
+                </div>
+
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                        Filiación institucional
+                    </label>
+                    <InputText @bind-Value="Article.Filiacion"
+                               class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                               placeholder="Ej. Universidad Técnica de Ambato, DIDE" />
+                </div>
+            </div>
+        </div>
+
+        <!-- MÉTRICAS (SJR / QUARTIL) -->
+        <div class="border-t border-slate-200 pt-5">
+            <h3 class="mb-3 text-sm font-semibold text-slate-900">
+                Métricas de calidad (SJR / Quartil)
+            </h3>
+
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
+                <div>
+                    <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                        Año de la métrica
                     </label>
                     <InputNumber @bind-Value="Article.MetricYear"
-                                 class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20" />
+                                 class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                                 placeholder="Ej. 2024" />
                 </div>
 
                 <div>
@@ -73,51 +142,49 @@
                     </label>
                     <InputNumber @bind-Value="Article.SJR"
                                  class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
-                                 step="0.001" />
+                                 step="0.001"
+                                 placeholder="Ej. 0.750" />
                 </div>
 
                 <div>
                     <label class="mb-1.5 block text-sm font-medium text-slate-800">
-                        Cuartil
+                        Quartil (Q1, Q2, Q3, Q4)
                     </label>
-                    <InputSelect @bind-Value="Article.Quartile"
-                                 class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
-                        <option value="">Seleccionar…</option>
-                        <option value="Q1">Q1</option>
-                        <option value="Q2">Q2</option>
-                        <option value="Q3">Q3</option>
-                        <option value="Q4">Q4</option>
-                    </InputSelect>
-                </div>
-
-                <div>
-                    <label class="mb-1.5 block text-sm font-medium text-slate-800">
-                        URL de evidencia
-                    </label>
-                    <InputText @bind-Value="Article.EvidenceUrl"
-                               class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20" />
+                    <InputText @bind-Value="Article.Quartile"
+                               class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20"
+                               placeholder="Ej. Q1" />
                 </div>
             </div>
         </div>
 
-        <!-- Fuentes de indexación -->
+        <!-- FUENTES DE INDEXACIÓN -->
         <div class="border-t border-slate-200 pt-5">
             <h3 class="mb-3 text-sm font-semibold text-slate-900">
                 Fuentes de indexación
             </h3>
-            <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-                @foreach (var source in IndexingSources)
-                {
-                    <label class="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs md:text-sm text-slate-800 transition hover:bg-slate-100">
-                        <input type="checkbox"
-                               value="@source.Id"
-                               checked="@(Article.IndexingSourceIds.Contains(source.Id))"
-                               @onchange="@((e) => ToggleIndexingSource(source.Id, (bool)e.Value!))"
-                               class="h-4 w-4 rounded border-slate-300 text-[#800909] focus:ring-[#800909]" />
-                        <span>@source.Name</span>
-                    </label>
-                }
-            </div>
+
+            @if (IndexingSources is null || IndexingSources.Count == 0)
+            {
+                <p class="text-xs text-slate-500">
+                    No se encontraron fuentes de indexación configuradas.
+                </p>
+            }
+            else
+            {
+                <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    @foreach (var source in IndexingSources)
+                    {
+                        var isChecked = Article.IndexingSourceIds.Contains(source.Id);
+                        <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                            <input type="checkbox"
+                                   class="h-4 w-4 rounded border-slate-300 text-[#800909] focus:ring-[#800909]"
+                                   checked="@isChecked"
+                                   @onchange="e => ToggleIndexingSource(source.Id, ((ChangeEventArgs)e).Value is bool b && b)" />
+                            <span>@source.Name</span>
+                        </label>
+                    }
+                </div>
+            }
         </div>
     </div>
 </section>

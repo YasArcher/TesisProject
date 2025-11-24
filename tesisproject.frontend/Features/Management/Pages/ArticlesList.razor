@@ -91,12 +91,12 @@
 
             <!-- BARRA DE ESTADO (PUBLICADO / ACEPTADO / SIN ESTADO) -->
             <div class="pt-1">
-                <ArticleStatusFilterBar StatusOptions="StatusOptions"
+                <ArticleStatusFilterBar StatusOptions="@StatusOptions"
                                         @bind-SelectedStatus="StatusFilter" />
             </div>
         </div>
 
-        <!-- MENSAJES DE ESTADO -->
+        <!-- MENSAJES DE ESTADO / CONTENIDO -->
         @if (!string.IsNullOrWhiteSpace(_errorMessage))
         {
             <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm">
@@ -109,8 +109,9 @@
                 Cargando artículos…
             </div>
         }
-        else if (!_filteredArticles.Any())
+        else if (!_filteredArticles.Any() && _view == ViewMode.Table)
         {
+            <!-- Solo en vista TABLA ocultamos la tabla y mostramos el mensaje -->
             <div class="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center shadow-sm">
                 <p class="text-sm font-medium text-slate-700">
                     No se encontraron artículos con los criterios seleccionados.
@@ -130,61 +131,85 @@
                                     @bind-IsCardsView="IsCardsView"
                                     OnReload="ReloadAsync"
                                     OnNew="GoToNew"
-                                    IsBusy="_isLoading"
+                                    IsBusy="@_isLoading"
                                     SearchPlaceholder="Buscar por título, revista, DOI…" />
+            </div>
+            <div class="mb-3 flex justify-end">
+                <button type="button"
+                        class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                        @onclick="@(() => Nav.NavigateTo("/management/exportinformation"))">
+                    <i class="bi bi-diagram-3"></i>
+                    <span>Módulo BI (Exportar / Importar)</span>
+                </button>
             </div>
 
             <!-- TOOLBAR DE PAGINADO SUPERIOR -->
             <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/90 px-4 py-2.5 shadow-sm">
-                <div class="text-sm text-slate-700">
-                    Mostrando
-                    <span class="font-semibold">@PageStart</span>–<span class="font-semibold">@PageEnd</span>
-                    de
-                    <span class="font-semibold">@_filteredArticles.Count</span>
-                    artículos
-                </div>
+                @if (_view == ViewMode.Table)
+                {
+                    <div class="text-sm text-slate-700">
+                        Mostrando
+                        <span class="font-semibold">@PageStart</span>–<span class="font-semibold">@PageEnd</span>
+                        de
+                        <span class="font-semibold">@_filteredArticles.Count</span>
+                        artículos
+                    </div>
 
-                <div class="flex items-center gap-3">
-                    <label class="text-xs text-slate-600">Por página</label>
-                    <select class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs shadow-sm"
-                            @bind="_pageSize"
-                            @bind:after="PageSizeChanged">
-                        @foreach (var s in _pageSizeOptions)
-                        {
-                            <option value="@s">@s</option>
-                        }
-                    </select>
+                    <div class="flex items-center gap-3">
+                        <label class="text-xs text-slate-600">Por página</label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs shadow-sm"
+                                @bind="_pageSize"
+                                @bind:after="PageSizeChanged">
+                            @foreach (var s in _pageSizeOptions)
+                            {
+                                <option value="@s">@s</option>
+                            }
+                        </select>
 
-                    <AppPager Class="ml-2"
-                              Page="@_page"
-                              TotalPages="@TotalPages"
-                              OnPrev="PrevPage"
-                              OnNext="NextPage" />
-                </div>
+                        <AppPager Class="ml-2"
+                                  Page="@_page"
+                                  TotalPages="@TotalPages"
+                                  OnPrev="PrevPage"
+                                  OnNext="NextPage" />
+                    </div>
+                }
+                else
+                {
+                    <div class="text-sm text-slate-700">
+                        Mostrando
+                        <span class="font-semibold">@_filteredArticles.Count</span>
+                        artículos en vista tablero 
+                    </div>
+                }
             </div>
 
             <!-- CONTENIDO PRINCIPAL: KANBAN O TABLA -->
             <div class="mt-4 rounded-3xl bg-gradient-to-b from-[#f2f2f2] via-[#e6f0f0] to-[#f2f2f2] border border-[#d4d4d4] px-4 py-4 shadow-sm">
                 @if (_view == ViewMode.Cards)
                 {
-                    <ArticleKanbanBoard Items="PagedItems"
+                    <!-- Kanban ve TODOS los artículos filtrados, incluso si la lista está vacía -->
+                    <ArticleKanbanBoard Items="@_filteredArticles"
                                         OnViewMore="OpenDetails" />
                 }
                 else
                 {
-                    <ArticleListTable Items="PagedItems"
+                    <!-- La tabla sí usa paginación -->
+                    <ArticleListTable Items="@PagedItems"
                                       OnViewMore="OpenDetails"
                                       OnEdit="GoToEdit"
                                       OnDelete="AskDeleteById" />
                 }
             </div>
 
-            <!-- PAGINADOR INFERIOR -->
-            <AppPager Class="mt-4"
-                      Page="@_page"
-                      TotalPages="@TotalPages"
-                      OnPrev="PrevPage"
-                      OnNext="NextPage" />
+            <!-- PAGINADOR INFERIOR (solo en vista tabla) -->
+            @if (_view == ViewMode.Table)
+            {
+                <AppPager Class="mt-4"
+                          Page="@_page"
+                          TotalPages="@TotalPages"
+                          OnPrev="PrevPage"
+                          OnNext="NextPage" />
+            }
         }
     </div>
 </div>
@@ -256,7 +281,7 @@
         set => _view = value ? ViewMode.Cards : ViewMode.Table;
     }
 
-    // Paginación
+    // Paginación (solo para tabla)
     private int _page = 1;
     private int _pageSize = 3;
     private readonly int[] _pageSizeOptions = new[] { 3, 6, 9, 12, 15 };
@@ -342,16 +367,32 @@
             .Where(s => !string.IsNullOrWhiteSpace(s))
             .OrderBy(s => s);
 
+    // 🔹 Mapeo robusto del estado a clave lógica
     private string GetStatusKey(ArticleListItemDto a)
     {
-        var s = a.PublicationStatusName ?? string.Empty;
-        s = s.Trim().ToUpperInvariant();
-        return s switch
+        var raw = (a.PublicationStatusName ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(raw))
+            return "SIN ESTADO";
+
+        var s = raw.ToUpperInvariant();
+
+        // Cualquier variante que contenga "PUBLICAD" o "PUBLISHED"
+        if (s == "PUBLICADO" || s == "PUBLICADA" ||
+            s.Contains("PUBLICAD") || s.Contains("PUBLISHED"))
         {
-            "PUBLICADO" => "PUBLICADO",
-            "ACEPTADO" => "ACEPTADO",
-            _ => "SIN ESTADO"
-        };
+            return "PUBLICADO";
+        }
+
+        // Cualquier variante que contenga "ACEPT" / "ACCEPT"
+        if (s == "ACEPTADO" || s == "ACEPTADA" ||
+            s.Contains("ACEPT") || s.Contains("ACCEPT"))
+        {
+            return "ACEPTADO";
+        }
+
+        // Todo lo demás se considera sin estado definido
+        return "SIN ESTADO";
     }
 
     private void PrevPage()
@@ -407,7 +448,8 @@
 
     private void GoToEdit(int id)
     {
-        Nav.NavigateTo($"/articulos/registrar{id}");
+        // 🔹 Ruta correcta para editar
+        Nav.NavigateTo($"/articulos/editar/{id}");
     }
 
     private async Task OpenDocumentAsync()

@@ -15,7 +15,6 @@ namespace tesisproject.frontend.Services.Interfaces
         Task<List<CatalogItemDto>> GetIndexingSourcesAsync();
         Task<List<CatalogItemDto>> GetProjectsAsync();
 
-        // Revistas / Journals (Venue)
         Task<List<VenueCatalogItemDto>> GetVenuesAsync();
     }
 }

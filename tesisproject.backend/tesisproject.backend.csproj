@@ -30,6 +30,8 @@
 		<PackageReference Include="xunit.runner.visualstudio" Version="3.0.2" />
 		<PackageReference Include="AutoMapper" Version="12.0.1" />
 		<PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+		<PackageReference Include="ClosedXML" Version="0.103.0" />
+		<PackageReference Include="QuestPDF" Version="2024.3.0" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -39,7 +41,6 @@
 	<ItemGroup>
 	  <Folder Include="Data\Migrations\" />
 	  <Folder Include="Migrations\DwDb\" />
-	  <Folder Include="ML\Recomender\" />
 	</ItemGroup>
 
 </Project>

@@ -50,7 +50,7 @@
         <!-- Botón Refrescar -->
         <button type="button"
                 class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs md:text-sm font-medium text-slate-700 transition hover:bg-slate-50 shadow-sm disabled:opacity-60"
-                disabled="IsBusy"
+                disabled="@IsBusy"
                 @onclick="OnReload">
             Refrescar
         </button>
@@ -58,9 +58,9 @@
         <!-- Botón Nuevo -->
         <button type="button"
                 class="rounded-xl bg-[#800909] px-4 py-2 text-xs md:text-sm font-semibold text-white shadow-sm hover:bg-[#661111] disabled:opacity-60"
-                disabled="IsBusy"
+                disabled="@IsBusy"
                 @onclick="OnNew">
-            Nuevo
+            Nuevo Registro
         </button>
     </div>
 </div>
@@ -113,4 +113,3 @@
                     : "bg-transparent text-slate-700 hover:bg-slate-50");
     }
 }
-s

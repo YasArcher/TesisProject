@@ -1,7 +1,14 @@
-﻿using System.Threading;
-using System.Threading.Tasks;
+﻿using ClosedXML.Excel;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs;
 using tesisproject.shared.DTOs.Articles;
@@ -38,6 +45,28 @@ namespace tesisproject.backend.Controllers
             return Ok(dto);
         }
 
+        // GET: api/Articles/export-bi
+        [HttpGet("export-bi")]
+        public async Task<IActionResult> ExportBi(CancellationToken ct)
+        {
+            var bytes = await _svc.ExportBiCsvAsync(ct);
+
+            var fileName = $"articulos_bi_{DateTime.UtcNow:yyyyMMdd_HHmmss}.csv";
+
+            return File(bytes, "text/csv", fileName);
+        }
+        // GET: api/Articles/export-bi-excel
+        [HttpGet("export-bi-excel")]
+        public async Task<IActionResult> ExportBiExcel(CancellationToken ct)
+        {
+            var bytes = await _svc.ExportBiExcelAsync(ct);
+            var fileName = $"articulos_bi_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
+
+            const string contentType =
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+
+            return File(bytes, contentType, fileName);
+        }
         // POST: api/articles
         [HttpPost]
         public async Task<ActionResult<int>> Create([FromBody] CreateArticleRequest req, CancellationToken ct)
@@ -46,6 +75,83 @@ namespace tesisproject.backend.Controllers
             var userId = User?.Identity?.Name ?? "system";
             var id = await _svc.CreateAsync(req, userId, ct);
             return CreatedAtAction(nameof(GetById), new { id }, id);
+        }
+        // POST: api/articles/import-bi
+        [HttpPost("import-bi")]
+        public async Task<ActionResult<ArticleImportResultDto>> ImportBi(
+            IFormFile file,
+            CancellationToken ct)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("Debe seleccionar un archivo CSV o Excel.");
+
+            // Detectar extensión
+            var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+            Stream streamForImport;
+
+            // Leemos el archivo una sola vez
+            await using var uploadedStream = file.OpenReadStream();
+
+            if (ext == ".xlsx" || ext == ".xls")
+            {
+                // ✅ Convertimos el Excel a un CSV en memoria con separador ';'
+                using var workbook = new XLWorkbook(uploadedStream);
+                var ws = workbook.Worksheets.First();
+
+                var sb = new StringBuilder();
+
+                // Determinar el rango usado
+                var firstRow = ws.FirstRowUsed().RowNumber();
+                var lastRow = ws.LastRowUsed().RowNumber();
+                var lastCol = ws.Row(firstRow).LastCellUsed().Address.ColumnNumber;
+
+                string Escape(string? s)
+                {
+                    s ??= string.Empty;
+                    if (s.Contains(';') || s.Contains('"') || s.Contains('\n') || s.Contains('\r'))
+                    {
+                        s = s.Replace("\"", "\"\"");
+                        return $"\"{s}\"";
+                    }
+                    return s;
+                }
+
+                for (int r = firstRow; r <= lastRow; r++)
+                {
+                    var values = new List<string>();
+
+                    for (int c = 1; c <= lastCol; c++)
+                    {
+                        var cell = ws.Cell(r, c);
+                        var value = cell.GetValue<string>();
+                        values.Add(Escape(value));
+                    }
+
+                    sb.AppendLine(string.Join(";", values));
+                }
+
+                var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+                streamForImport = new MemoryStream(bytes);
+            }
+            else if (ext == ".csv")
+            {
+                // ✅ CSV: copiamos a un MemoryStream (seekable) para el service
+                var ms = new MemoryStream();
+                await uploadedStream.CopyToAsync(ms, ct);
+                ms.Position = 0;
+                streamForImport = ms;
+            }
+            else
+            {
+                return BadRequest("Formato no soportado. Use archivos .csv o .xlsx.");
+            }
+
+            var userId = User?.Identity?.Name ?? "system";
+
+            var result = await _svc.ImportBiAsync(streamForImport, userId, ct);
+
+            return Ok(result);
         }
 
         // PUT: api/articles/5

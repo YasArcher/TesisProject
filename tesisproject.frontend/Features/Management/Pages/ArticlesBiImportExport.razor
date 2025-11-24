@@ -1,0 +1,298 @@
+﻿@page "/management/exportinformation"
+
+@using System.Net.Http.Headers
+@using System.Net.Http.Json
+@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.shared.DTOs.Articles
+
+@inject HttpClient Http
+@inject NavigationManager Nav
+@inject Blazored.Toast.Services.IToastService Toast
+<PageTitle>Exportar / Importar artículos (BI)</PageTitle>
+
+<div class="min-h-[calc(100vh-80px)] bg-[#f2f2f2]">
+    <div class="mx-auto max-w-[900px] px-4 pb-10 pt-6">
+
+        <!-- Encabezado -->
+        <div class="mb-6 rounded-3xl border border-slate-200/80 bg-gradient-to-r from-[#1a2b2b] via-[#4d1a1a] to-[#800909] px-6 py-5 shadow-lg shadow-slate-400/60">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-xl md:text-2xl font-extrabold tracking-tight text-white">
+                        Exportar / Importar artículos (BI)
+                    </h1>
+                    <p class="mt-1 text-xs md:text-sm text-white/80 max-w-2xl">
+                        Exporta una plantilla para BI (CSV o Excel), edítala en tu hoja de cálculo y vuelve a importarla.
+                        El sistema se encarga de mapear nombres a IDs internos del modelo OLTP.
+                    </p>
+                </div>
+
+                <div class="flex flex-wrap gap-2">
+                    <span class="inline-flex items-center gap-2 rounded-full bg-black/20 px-3 py-1 text-[11px] font-medium text-white/90 backdrop-blur-sm">
+                        <i class="bi bi-database-gear text-xs"></i>
+                        <span>Modelo OLTP ➜ Plantilla BI</span>
+                    </span>
+                    <span class="inline-flex items-center gap-2 rounded-full bg-black/20 px-3 py-1 text-[11px] font-medium text-white/90 backdrop-blur-sm">
+                        <i class="bi bi-arrow-left-right text-xs"></i>
+                        <span>Exportar / Importar con validaciones</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Contenido principal -->
+        <div class="space-y-5">
+
+            <!-- Panel EXPORT -->
+            <section class="rounded-3xl border border-slate-200/80 bg-white/95 p-5 shadow-sm">
+                <header class="mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
+                        <i class="bi bi-file-earmark-arrow-down"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm md:text-base font-semibold text-slate-900">
+                            Exportar datos desnormalizados (BI)
+                        </h2>
+                        <p class="text-xs text-slate-500">
+                            Genera una plantilla con toda la información lista para usar en Power BI, Excel u otras
+                            herramientas de analítica. Incluye nombres de catálogos y metadatos calculados (SJR, cuartil, etc.).
+                        </p>
+                    </div>
+                </header>
+
+                <div class="space-y-3 text-xs text-slate-600">
+                    <p>
+                        Puedes descargar la plantilla en:
+                    </p>
+                    <ul class="list-disc list-inside space-y-1">
+                        <li><strong>CSV BI</strong>: ideal para integraciones técnicas y ETL.</li>
+                        <li><strong>Excel BI (.xlsx)</strong>: pensado para el trabajo diario del usuario en hojas de cálculo.</li>
+                    </ul>
+
+                    <div class="flex flex-wrap gap-2 mt-2">
+                        <button type="button"
+                                class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs md:text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700"
+                                @onclick="ExportCsvBi">
+                            <i class="bi bi-file-earmark-arrow-down"></i>
+                            Descargar CSV BI
+                        </button>
+
+                        <button type="button"
+                                class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-xs md:text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                                @onclick="ExportExcelBi">
+                            <i class="bi bi-file-earmark-excel"></i>
+                            Descargar Excel BI
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Panel IMPORT -->
+            <section class="rounded-3xl border border-slate-200/80 bg-white/95 p-5 shadow-sm">
+                <header class="mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
+                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#800909]/10 text-[#800909]">
+                        <i class="bi bi-file-earmark-arrow-up"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm md:text-base font-semibold text-slate-900">
+                            Importar cambios desde plantilla BI
+                        </h2>
+                        <p class="text-xs text-slate-500">
+                            Sube un archivo basado en la plantilla exportada (CSV o Excel). El sistema validará nombres de catálogos
+                            y aplicará altas/actualizaciones según el Id de artículo.
+                        </p>
+                    </div>
+                </header>
+
+                <div class="space-y-4">
+                    <!-- Selector de archivo -->
+                    <div class="flex flex-col gap-2">
+                        <label class="text-xs font-medium text-slate-700">
+                            Seleccionar archivo CSV o Excel
+                        </label>
+                        <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <InputFile OnChange="OnFileSelected"
+                                       accept=".csv,.xlsx,.xls"
+                                       class="block w-full text-xs text-slate-700 file:mr-3 file:rounded-xl file:border-0 file:bg-[#800909] file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white file:shadow-sm hover:file:bg-[#661111]" />
+                            @if (_selectedFile is not null)
+                            {
+                                <span class="text-[11px] text-slate-600">
+                                    Archivo seleccionado: <strong>@_selectedFile.Name</strong>
+                                </span>
+                            }
+                        </div>
+                        <p class="text-[11px] text-slate-500">
+                            Recomendado: descargar primero la plantilla desde esta página, editarla en Excel y subirla nuevamente.
+                            Se aceptan archivos <code>.xlsx</code>, <code>.xls</code> o <code>.csv</code> (UTF-8, separador <code>;</code>).
+                        </p>
+                    </div>
+
+                    <!-- Botón importar -->
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button type="button"
+                                class="inline-flex items-center gap-2 rounded-xl bg-[#800909] px-4 py-2 text-xs md:text-sm font-semibold text-white shadow-sm transition hover:bg-[#661111] disabled:cursor-not-allowed disabled:opacity-60"
+                                @onclick="ImportCsvBi"
+                                disabled="@(_selectedFile is null || _isImporting)">
+                            @if (_isImporting)
+                            {
+                                <i class="bi bi-arrow-repeat animate-spin"></i>
+                                <span>Importando…</span>
+                            }
+                            else
+                            {
+                                <i class="bi bi-upload"></i>
+                                <span>Importar archivo</span>
+                            }
+                        </button>
+
+                        @if (_selectedFile is null)
+                        {
+                            <span class="text-[11px] text-amber-700">
+                                Primero selecciona un archivo (CSV o Excel) para importar.
+                            </span>
+                        }
+                    </div>
+
+                    <!-- Mensaje de resultado -->
+                    @if (!string.IsNullOrWhiteSpace(_importMessage))
+                    {
+                        <div class="mt-2 rounded-2xl border px-4 py-3 text-xs shadow-sm @( _importHasError ? "border-rose-200 bg-rose-50 text-rose-800" : "border-emerald-200 bg-emerald-50 text-emerald-800")">
+                            <div class="flex items-start gap-2">
+                                <i class="bi @( _importHasError ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill") mt-0.5 text-sm"></i>
+                                <div class="flex-1">
+                                    <p>@_importMessage</p>
+
+                                    @if (_importResult is not null && _importResult.Errors > 0 && _importResult.ErrorMessages?.Count > 0)
+                                    {
+                                        <details class="mt-2">
+                                            <summary class="cursor-pointer text-[11px] font-semibold underline">
+                                                Ver detalles de errores (@_importResult.Errors)
+                                            </summary>
+                                            <ul class="mt-1 list-disc list-inside space-y-0.5 text-[11px]">
+                                                @foreach (var err in _importResult.ErrorMessages.Take(50))
+                                                {
+                                                    <li>@err</li>
+                                                }
+                                                @if (_importResult.ErrorMessages.Count > 50)
+                                                {
+                                                    <li>… y @_importResult.ErrorMessages.Count - 50 errores más.</li>
+                                                }
+                                            </ul>
+                                        </details>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+
+@code {
+    private IBrowserFile? _selectedFile;
+    private bool _isImporting = false;
+    private string? _importMessage;
+    private bool _importHasError;
+    private ArticleImportResultDto? _importResult;
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+        _importMessage = null;
+        _importHasError = false;
+        _importResult = null;
+    }
+
+    private void ExportCsvBi()
+    {
+        var baseUri = Http.BaseAddress;
+        string url;
+
+        if (baseUri is null)
+        {
+            url = "api/Articles/export-bi";
+        }
+        else
+        {
+            url = new Uri(baseUri, "api/Articles/export-bi").ToString();
+        }
+
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private void ExportExcelBi()
+    {
+        var baseUri = Http.BaseAddress;
+        string url;
+
+        if (baseUri is null)
+        {
+            url = "api/Articles/export-bi-excel";
+        }
+        else
+        {
+            url = new Uri(baseUri, "api/Articles/export-bi-excel").ToString();
+        }
+
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+    private async Task ImportCsvBi()
+    {
+        if (_selectedFile is null)
+            return;
+
+        _isImporting = true;
+        _importMessage = null;
+        _importHasError = false;
+        _importResult = null;
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+            var fileContent = new StreamContent(_selectedFile.OpenReadStream(long.MaxValue));
+            // Tipo genérico para que el backend decida por extensión
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            content.Add(fileContent, "file", _selectedFile.Name);
+
+            var response = await Http.PostAsync("api/Articles/import-bi", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _importHasError = true;
+                _importMessage = $"Error al importar: {(int)response.StatusCode} {response.ReasonPhrase}";
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<ArticleImportResultDto>();
+            _importResult = result;
+
+            if (result is null)
+            {
+                _importHasError = true;
+                _importMessage = "No se pudo interpretar la respuesta del servidor.";
+                return;
+            }
+
+            _importHasError = result.Errors > 0;
+
+            _importMessage =
+                $"Importación completada. " +
+                $"Filas leídas: {result.TotalRows}. " +
+                $"Procesadas: {result.Processed}. " +
+                $"Creadas: {result.Created}. " +
+                $"Actualizadas: {result.Updated}. " +
+                $"Errores: {result.Errors}.";
+        }
+        catch (Exception ex)
+        {
+            _importHasError = true;
+            _importMessage = $"Error al subir e importar el archivo: {ex.Message}";
+        }
+        finally
+        {
+            _isImporting = false;
+        }
+    }
+}

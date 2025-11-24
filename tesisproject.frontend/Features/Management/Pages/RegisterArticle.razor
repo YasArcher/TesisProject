@@ -1,10 +1,14 @@
 ﻿@page "/articulos/registrar"
 @page "/articulos/editar/{ArticleId:int}"
+
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
 @using tesisproject.frontend.Models.Articles
 @using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Catalogs
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI.Articles
+
 @inject IArticlesClient ArticlesService
 @inject IVenuesClient VenuesService
 @inject ICatalogsService CatalogService
@@ -48,8 +52,8 @@
                             </h1>
                             <p class="mt-1 text-xs md:text-sm text-white/80 max-w-xl">
                                 @(ArticleId > 0
-                                                                ? "Modifica los datos del artículo existente y actualiza su información académica."
-                                                                : "Completa los datos clave del artículo científico en las distintas pestañas del formulario.")
+                                    ? "Modifica los datos del artículo existente y actualiza su información académica."
+                                    : "Completa los datos clave del artículo científico en las distintas pestañas del formulario.")
                             </p>
                         </div>
                     </div>
@@ -134,8 +138,13 @@
                     </div>
                 }
 
-                <EditForm Model="Article" OnValidSubmit="HandleValidSubmit">
+                <EditForm Model="Article"
+                          OnValidSubmit="HandleValidSubmit"
+                          OnInvalidSubmit="HandleInvalidSubmit">
                     <DataAnnotationsValidator />
+
+                    <!-- Resumen de validación global -->
+                    <ValidationSummary class="mb-3 text-xs text-rose-700" />
 
                     <!-- PESTAÑAS DEL FORMULARIO -->
                     <ArticleFormTabs ActiveTab="_activeTab"
@@ -150,11 +159,140 @@
 
                         @if (_activeTab == ArticleFormTab.Academic)
                         {
-                            <ArticleFormSectionAcademic Article="Article"
-                                                        AcademicTerms="AcademicTerms"
-                                                        PublicationStatuses="PublicationStatuses"
-                                                        ResearchLines="ResearchLines"
-                                                        BroadFields="BroadFields" />
+                            <!-- SECCIÓN ACADÉMICA DIRECTA -->
+                            <section class="rounded-3xl border border-slate-200/80 bg-white/95 shadow-sm">
+                                <header class="flex items-center gap-3 border-b border-slate-200/70 bg-gradient-to-r from-[#f9fafb] via-[#eef2f7] to-white px-5 py-3">
+                                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1a2b2b]/10 text-[#1a2b2b]">
+                                        <i class="bi bi-diagram-3"></i>
+                                    </div>
+                                    <div>
+                                        <h2 class="text-sm md:text-base font-semibold text-slate-900">
+                                            Clasificación académica
+                                        </h2>
+                                        <p class="text-xs text-slate-500">
+                                            Período académico, estado y líneas de investigación asociadas.
+                                        </p>
+                                    </div>
+                                </header>
+
+                                <div class="space-y-6 px-5 py-5">
+                                    <!-- Fila 1: período, estado, línea -->
+                                    <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
+                                        <!-- Período académico -->
+                                        <div>
+                                            <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                                                Período académico
+                                            </label>
+                                            <InputSelect TValue="int?" @bind-Value="Article.AcademicTermId"
+                                                         class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
+                                                <option value="">Seleccionar período…</option>
+                                                @foreach (var term in AcademicTerms)
+                                                {
+                                                    <option value="@term.Id">@term.Name</option>
+                                                }
+                                            </InputSelect>
+                                        </div>
+
+                                        <!-- Estado de publicación (byte?) -->
+                                        <div>
+                                            <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                                                Estado de publicación
+                                            </label>
+                                            <InputSelect TValue="byte?" @bind-Value="Article.PublicationStatusId"
+                                                         class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
+                                                <option value="">Seleccionar estado…</option>
+                                                @foreach (var status in PublicationStatuses)
+                                                {
+                                                    <option value="@status.Id">@status.Name</option>
+                                                }
+                                            </InputSelect>
+                                        </div>
+
+                                        <!-- Línea de investigación -->
+                                        <div>
+                                            <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                                                Línea de investigación
+                                            </label>
+                                            <InputSelect TValue="int?" @bind-Value="Article.ResearchLineId"
+                                                         class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
+                                                <option value="">Seleccionar línea…</option>
+                                                @foreach (var line in ResearchLines)
+                                                {
+                                                    <option value="@line.Id">@line.Name</option>
+                                                }
+                                            </InputSelect>
+                                        </div>
+                                    </div>
+
+                                    <!-- Clasificación OCDE -->
+                                    <div class="border-t border-slate-200 pt-5">
+                                        <h3 class="mb-3 text-sm font-semibold text-slate-900">
+                                            Clasificación OCDE
+                                        </h3>
+                                        <div class="grid grid-cols-1 gap-5 md:grid-cols-3">
+                                            <!-- CAMPO AMPLIO -->
+                                            <div>
+                                                <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                                                    Campo amplio
+                                                </label>
+                                                <InputSelect TValue="int?"
+                                                             @bind-Value="Article.BroadFieldId"
+                                                             @bind-Value:after="OnBroadFieldChanged"
+                                                             class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
+                                                    <option value="">Seleccionar campo amplio…</option>
+                                                    @foreach (var field in BroadFields)
+                                                    {
+                                                        <option value="@field.Id">@field.Name</option>
+                                                    }
+                                                </InputSelect>
+                                            </div>
+
+                                            <!-- CAMPO ESPECÍFICO -->
+                                            <div>
+                                                <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                                                    Campo específico
+                                                </label>
+                                                <InputSelect TValue="int?"
+                                                             @bind-Value="Article.SpecificFieldId"
+                                                             @bind-Value:after="OnSpecificFieldChanged"
+                                                             disabled="@(Article.BroadFieldId == null)"
+                                                             class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition disabled:cursor-not-allowed disabled:bg-slate-50 focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
+                                                    <option value="">Seleccionar campo específico…</option>
+                                                    @foreach (var field in SpecificFields)
+                                                    {
+                                                        <option value="@field.Id">@field.Name</option>
+                                                    }
+                                                </InputSelect>
+                                            </div>
+
+                                            <!-- CAMPO DETALLADO -->
+                                            <div>
+                                                <label class="mb-1.5 block text-sm font-medium text-slate-800">
+                                                    Campo detallado
+                                                </label>
+                                                <InputSelect TValue="int?"
+                                                             @bind-Value="Article.DetailedFieldId"
+                                                             disabled="@(Article.SpecificFieldId == null)"
+                                                             class="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm shadow-sm outline-none transition disabled:cursor-not-allowed disabled:bg-slate-50 focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20">
+                                                    <option value="">Seleccionar campo detallado…</option>
+                                                    @foreach (var field in DetailedFields)
+                                                    {
+                                                        <option value="@field.Id">@field.Name</option>
+                                                    }
+                                                </InputSelect>
+                                            </div>
+                                        </div>
+
+                                        <!-- Debug rápido -->
+                                        <div class="mt-3 text-[11px] text-slate-500">
+                                            [DEBUG PADRE] BroadFieldId=@(Article.BroadFieldId?.ToString() ?? "null")
+                                            | SpecificFields=@SpecificFields.Count
+                                            | SpecificFieldId=@(Article.SpecificFieldId?.ToString() ?? "null")
+                                            | DetailedFields=@DetailedFields.Count
+                                        </div>
+                                    </div>
+                                </div>
+                            </section>
                         }
 
                         @if (_activeTab == ArticleFormTab.Journal)
@@ -376,9 +514,10 @@
     private List<CatalogItemDto> PublicationStatuses { get; set; } = new();
     private List<CatalogItemDto> ResearchLines { get; set; } = new();
     private List<CatalogItemDto> BroadFields { get; set; } = new();
+    private List<CatalogItemDto> SpecificFields { get; set; } = new();
+    private List<CatalogItemDto> DetailedFields { get; set; } = new();
     private List<CatalogItemDto> Projects { get; set; } = new();
     private List<CatalogItemDto> IndexingSources { get; set; } = new();
-
     private string Title => ArticleId > 0 ? "Editar artículo" : "Registrar nuevo artículo";
 
     protected override async Task OnInitializedAsync()
@@ -440,6 +579,26 @@
             if (articleDto != null)
             {
                 Article = ArticlesMapper.ToViewModel(articleDto);
+
+                // Cargar campos específicos según el campo amplio ya guardado
+                if (Article.BroadFieldId.HasValue)
+                {
+                    SpecificFields = await CatalogService.GetSpecificFieldsAsync(Article.BroadFieldId.Value);
+                }
+                else
+                {
+                    SpecificFields = new();
+                }
+
+                // Cargar campos detallados según el campo específico ya guardado
+                if (Article.SpecificFieldId.HasValue)
+                {
+                    DetailedFields = await CatalogService.GetDetailedFieldsAsync(Article.SpecificFieldId.Value);
+                }
+                else
+                {
+                    DetailedFields = new();
+                }
             }
         }
         catch (Exception ex)
@@ -458,6 +617,7 @@
         {
             isLoading = true;
             errorMessage = string.Empty;
+            successMessage = string.Empty;
 
             // Validar participantes requeridos
             var requiredParticipants = Article.Participants.Take(3);
@@ -471,6 +631,7 @@
 
             if (ArticleId > 0)
             {
+                // 🔹 Aquí se hace el UPDATE
                 await ArticlesService.UpdateAsync(ArticleId, Article.ToUpdateRequest());
                 successMessage = "Artículo actualizado correctamente.";
             }
@@ -492,6 +653,65 @@
         {
             isLoading = false;
         }
+    }
+
+    private void HandleInvalidSubmit(EditContext editContext)
+    {
+        isLoading = false;
+
+        // Mensaje general arriba del formulario
+        errorMessage = "Hay errores de validación en el formulario. Revisa los campos resaltados.";
+
+        // (Opcional) Log rápido en consola para ver qué está fallando
+        Console.WriteLine("[HandleInvalidSubmit] Errores de validación:");
+        foreach (var msg in editContext.GetValidationMessages())
+        {
+            Console.WriteLine($" - {msg}");
+        }
+    }
+
+    // 🔹 Se llama automáticamente DESPUÉS de cambiar Article.BroadFieldId
+    private async Task OnBroadFieldChanged()
+    {
+        Console.WriteLine($"[BIND AFTER] OnBroadFieldChanged => BroadFieldId={Article.BroadFieldId}");
+
+        var broadFieldId = Article.BroadFieldId;
+
+        Article.SpecificFieldId = null;
+        Article.DetailedFieldId = null;
+
+        if (broadFieldId.HasValue)
+        {
+            SpecificFields = await CatalogService.GetSpecificFieldsAsync(broadFieldId.Value);
+        }
+        else
+        {
+            SpecificFields = new();
+        }
+
+        DetailedFields = new();
+        StateHasChanged();
+    }
+
+    // 🔹 Se llama automáticamente DESPUÉS de cambiar Article.SpecificFieldId
+    private async Task OnSpecificFieldChanged()
+    {
+        Console.WriteLine($"[BIND AFTER] OnSpecificFieldChanged => SpecificFieldId={Article.SpecificFieldId}");
+
+        var specificFieldId = Article.SpecificFieldId;
+
+        Article.DetailedFieldId = null;
+
+        if (specificFieldId.HasValue)
+        {
+            DetailedFields = await CatalogService.GetDetailedFieldsAsync(specificFieldId.Value);
+        }
+        else
+        {
+            DetailedFields = new();
+        }
+
+        StateHasChanged();
     }
 
     private void AddParticipant()

@@ -78,8 +78,8 @@ namespace tesisproject.backend.BI.ETL
         private async Task LoadDimDateAsync(CancellationToken ct)
         {
             var dates = new List<DimDate>();
-            var start = new DateTime(2015, 1, 1);
-            var end = new DateTime(2035, 12, 31);
+            var start = new DateTime(2000, 1, 1);
+            var end = new DateTime(2050, 12, 31);
 
             for (var date = start; date <= end; date = date.AddDays(1))
             {
@@ -103,6 +103,7 @@ namespace tesisproject.backend.BI.ETL
             await _dw.DimDates.AddRangeAsync(dates, ct);
             await _dw.SaveChangesAsync(ct);
         }
+
 
         private async Task LoadDimAcademicTermsAsync(CancellationToken ct)
         {
@@ -361,6 +362,12 @@ namespace tesisproject.backend.BI.ETL
                 .ToListAsync(ct);
 
             var venueLookup = await BuildVenueKeyLookupAsync(ct);
+            var validDateKeys = await _dw.DimDates
+                .AsNoTracking()
+                .Select(d => d.DateKey)
+                .ToListAsync(ct);
+
+            var validDateKeySet = new HashSet<int>(validDateKeys);
 
             var facts = new List<FactVenueMetricYear>();
 
@@ -370,10 +377,19 @@ namespace tesisproject.backend.BI.ETL
                     continue;
 
                 int? yearDateKey = null;
+
                 try
                 {
                     var date = new DateTime(vm.Year, 1, 1);
-                    yearDateKey = date.Year * 10000 + date.Month * 100 + date.Day;
+                    var candidateKey = date.Year * 10000 + date.Month * 100 + date.Day;
+                    if (validDateKeySet.Contains(candidateKey))
+                    {
+                        yearDateKey = candidateKey;
+                    }
+                    else
+                    {
+                        yearDateKey = null; 
+                    }
                 }
                 catch
                 {
@@ -393,6 +409,7 @@ namespace tesisproject.backend.BI.ETL
             await _dw.FactVenueMetricYears.AddRangeAsync(facts, ct);
             await _dw.SaveChangesAsync(ct);
         }
+
 
         private async Task LoadFactArticlePublicationsAsync(CancellationToken ct)
         {
@@ -570,17 +587,30 @@ namespace tesisproject.backend.BI.ETL
 
             var facts = new List<FactArticleAuthor>();
 
+            // 🔧 Para evitar duplicados en (ArticleKey, AuthorKey)
+            var seenPairs = new HashSet<(int ArticleKey, int AuthorKey)>();
+
             foreach (var grp in grouped)
             {
                 if (!articleKeyLookup.TryGetValue(grp.Key, out var articleKey))
                     continue;
 
-                var totalAuthors = grp.Count();
+                // Total autores distintos (por nombre + identificación + participación)
+                var totalAuthors = grp
+                    .Select(p => (p.Nombre, p.Identificacion, p.Participacion))
+                    .Distinct()
+                    .Count();
 
                 foreach (var p in grp)
                 {
-                    var key = (p.Nombre, p.Identificacion, p.Participacion);
-                    if (!authorKeyLookup.TryGetValue(key, out var authorKey))
+                    var authorIdentity = (p.Nombre, p.Identificacion, p.Participacion);
+                    if (!authorKeyLookup.TryGetValue(authorIdentity, out var authorKey))
+                        continue;
+
+                    var pair = (ArticleKey: articleKey, AuthorKey: authorKey);
+
+                    // 👇 Si ya insertamos esta combinación, la saltamos
+                    if (!seenPairs.Add(pair))
                         continue;
 
                     facts.Add(new FactArticleAuthor
@@ -596,6 +626,7 @@ namespace tesisproject.backend.BI.ETL
             await _dw.FactArticleAuthors.AddRangeAsync(facts, ct);
             await _dw.SaveChangesAsync(ct);
         }
+
 
         #endregion
     }
