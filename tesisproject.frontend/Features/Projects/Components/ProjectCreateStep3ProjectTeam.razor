@@ -1,0 +1,393 @@
+﻿@using Microsoft.AspNetCore.Components
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.shared.DTOs.Algorithms.Response
+@using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
+@using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.Filters
+
+<div class="w-full flex flex-col gap-5">
+    <!-- Header con icono -->
+    <section class="flex items-start gap-3 pb-4 border-b border-border">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-primary shrink-0">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+        </div>
+        <div class="flex-1">
+            <h3 class="text-base font-semibold text-foreground">Step 3: Project team</h3>
+            <p class="text-sm text-muted mt-0.5">
+                Review and complete the list of researchers. Roles, emails and faculties
+                will be used to create the internal project group.
+            </p>
+        </div>
+    </section>
+
+    <!-- Contador y botón agregar -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <span class="text-sm font-medium text-foreground">Researchers</span>
+            @if (DideModel.Researchers?.Any() == true)
+            {
+                <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-secondary text-white">
+                    @DideModel.Researchers.Count
+                </span>
+            }
+        </div>
+        <ActionButton Text="Add researcher"
+                      Size="ButtonSize.Sm"
+                      Intent="ButtonIntent.Accept"
+                      Variant="ButtonVariant.Filled"
+                      Execute="OnAddResearcher" />
+    </div>
+
+    <!-- Lista de investigadores -->
+    <section class="flex flex-col gap-3">
+        @if (DideModel.Researchers?.Any() == true)
+        {
+            @for (int i = 0; i < DideModel.Researchers.Count; i++)
+            {
+                var index = i;
+                var researcher = DideModel.Researchers[index];
+                var hasConflict = HasRoleConflict(index);
+
+                <div class="group relative rounded-lg border transition-all duration-200
+                                            @(hasConflict
+                                                                          ? "border-error bg-error/5"
+                                                                          : "border-border bg-background hover:border-primary/50")">
+
+                    <!-- Número de investigador -->
+                    <div class="absolute -left-px -top-px w-7 h-7 rounded-tl-lg rounded-br-lg
+                                                flex items-center justify-center text-xs font-semibold
+                                                @(hasConflict ? "bg-error text-white" : "bg-primary text-white")">
+                        @(index + 1)
+                    </div>
+
+                    <div class="p-4 pt-3 pl-10">
+                        <!-- Nombre y botón eliminar -->
+                        <div class="flex items-start justify-between gap-3 mb-3">
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-foreground truncate">
+                                    @(string.IsNullOrWhiteSpace(researcher.FullName)
+                                                                ? "Sin nombre"
+                                                                : researcher.FullName)
+                                </p>
+                                @if (!string.IsNullOrWhiteSpace(researcher.email))
+                                {
+                                    <p class="text-xs text-muted truncate mt-0.5">
+                                        @researcher.email
+                                    </p>
+                                }
+                            </div>
+                            <button type="button"
+                                    class="p-1.5 rounded-md text-muted hover:text-error hover:bg-error/10
+                                                           transition-colors opacity-0 group-hover:opacity-100"
+                                    disabled="@IsBusy"
+                                    @onclick="() => HandleRemoveResearcher(index)">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        </div>
+
+                        <!-- Campos en grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <!-- Role selector -->
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-medium text-foreground">Role</label>
+                                <select class="w-full h-9 px-3 text-sm rounded-md border transition-colors
+                                                               bg-background text-foreground
+                                                               focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
+                                                               @(hasConflict ? "border-error" : "border-border")"
+                                        disabled="@IsBusy"
+                                        value="@researcher.Role"
+                                        @onchange="e => HandleResearcherRoleChanged(index, e)">
+                                    <option value="0">Select role...</option>
+                                    @foreach (var item in GetAvailableRolesFor(index))
+                                    {
+                                        <option value="@item.Id">@item.Name</option>
+                                    }
+                                </select>
+                                @if (!string.IsNullOrWhiteSpace(researcher.RoleName))
+                                {
+                                    <span class="text-[11px] text-muted flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        Detected: @researcher.RoleName
+                                    </span>
+                                }
+                                @if (hasConflict)
+                                {
+                                    <span class="text-[11px] text-error font-medium flex items-center gap-1">
+                                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd"
+                                                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                                  clip-rule="evenodd" />
+                                        </svg>
+                                        Role already assigned
+                                    </span>
+                                }
+                            </div>
+
+                            <!-- Full name (read-only) -->
+                            <TextInput Label="Full name"
+                                       Value="@researcher.FullName"
+                                       Disabled="true" />
+
+                            <!-- Email (read-only) -->
+                            <TextInput Label="Email"
+                                       Value="@researcher.email"
+                                       Disabled="true" />
+
+                            <!-- Faculty & Program (read-only) -->
+                            <div class="flex flex-col gap-1">
+                                <label class="text-xs font-medium text-foreground">Faculty & Program</label>
+
+                                @{
+                                    var facultyProgram = ResolveFacultyAndProgram(researcher.FacultyCareerId);
+                                }
+
+                                <p class="text-xs text-foreground">
+                                    <span class="font-semibold">Faculty:</span>
+                                    @facultyProgram.FacultyLabel
+                                </p>
+                                <p class="text-xs text-muted mt-0.5">
+                                    <span class="font-semibold text-foreground">Program:</span>
+                                    @facultyProgram.ProgramLabel
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <!-- Estado vacío -->
+            <div class="flex flex-col items-center justify-center py-8 px-4
+                                rounded-lg border-2 border-dashed border-border bg-background">
+                <div class="w-12 h-12 rounded-full bg-muted/20 flex items-center justify-center mb-3">
+                    <svg class="w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </div>
+                <p class="text-sm font-medium text-foreground mb-1">No researchers yet</p>
+                <p class="text-xs text-muted text-center max-w-xs">
+                    Researchers will appear here after processing the DIDE PDF,
+                    or you can add them manually.
+                </p>
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    [Parameter] public DideProjectFormInfo DideModel { get; set; } = new();
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public IReadOnlyList<ExternalFacultyDTO> Faculties { get; set; } = Array.Empty<ExternalFacultyDTO>();
+    [Parameter] public IReadOnlyList<MemberRoleTypeListItemDTO> MemberRoleTypeOptions { get; set; } = Array.Empty<MemberRoleTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<int> SingleInstanceRoleIds { get; set; } = Array.Empty<int>();
+    [Parameter] public EventCallback OnAddResearcherRequested { get; set; }
+    [Parameter] public EventCallback OnResearchersChanged { get; set; }
+
+    private Task OnAddResearcher() => OnAddResearcherRequested.InvokeAsync();
+
+    protected override void OnParametersSet()
+    {
+        DideModel.Researchers ??= new List<ResearcherInfo>();
+        // Ya no normalizamos para no perder el ProgramId real
+        // NormalizeFacultyIdsFromLegacyPrograms();
+        //ValidateAndFixRoleConflicts();
+    }
+
+    private void ValidateAndFixRoleConflicts()
+    {
+        if (DideModel.Researchers is null || !DideModel.Researchers.Any())
+            return;
+
+        var assignedSingleRoles = new Dictionary<int, int>();
+
+        for (int i = 0; i < DideModel.Researchers.Count; i++)
+        {
+            var roleId = DideModel.Researchers[i].Role;
+            if (roleId <= 0 || !SingleInstanceRoleIds.Contains(roleId))
+                continue;
+
+            if (assignedSingleRoles.ContainsKey(roleId))
+            {
+                DideModel.Researchers[i].Role = 0;
+            }
+            else
+            {
+                assignedSingleRoles[roleId] = i;
+            }
+        }
+    }
+
+    private IEnumerable<MemberRoleTypeListItemDTO> GetAvailableRolesFor(int index)
+    {
+        return MemberRoleTypeOptions ?? Enumerable.Empty<MemberRoleTypeListItemDTO>();
+    }
+
+    private (string FacultyLabel, string ProgramLabel) ResolveFacultyAndProgram(int facultyCareerId)
+    {
+        if (facultyCareerId <= 0 || Faculties is null || !Faculties.Any())
+            return ("Not assigned", "Not assigned");
+
+        // 1) Buscar por programId (caso normal: FacultyCareerId = programId)
+        foreach (var faculty in Faculties)
+        {
+            if (faculty.Programs is null)
+                continue;
+
+            var program = faculty.Programs.FirstOrDefault(p => p.ProgramId == facultyCareerId);
+            if (program is not null)
+            {
+                var facultyText = string.IsNullOrWhiteSpace(faculty.Acronym)
+                    ? faculty.Name
+                    : $"{faculty.Acronym} - {faculty.Name}";
+
+                return (facultyText, program.Name);
+            }
+        }
+
+        // 2) Si no se encontró programa, intentar interpretar como FacultyId
+        var fac = Faculties.FirstOrDefault(f => f.FacultyId == facultyCareerId);
+        if (fac is not null)
+        {
+            var facultyText = string.IsNullOrWhiteSpace(fac.Acronym)
+                ? fac.Name
+                : $"{fac.Acronym} - {fac.Name}";
+
+            return (facultyText, "Not assigned");
+        }
+
+        // 3) Nada coincide
+        return ("Unknown faculty", "Unknown program");
+    }
+
+    private HashSet<int> GetUsedSingleInstanceRoles(int excludeIndex)
+    {
+        var used = new HashSet<int>();
+        if (DideModel.Researchers is null) return used;
+
+        for (int i = 0; i < DideModel.Researchers.Count; i++)
+        {
+            if (i == excludeIndex) continue;
+            var roleId = DideModel.Researchers[i].Role;
+            if (SingleInstanceRoleIds.Contains(roleId))
+                used.Add(roleId);
+        }
+        return used;
+    }
+
+    private bool HasRoleConflict(int index)
+    {
+        if (DideModel.Researchers is null || index < 0 || index >= DideModel.Researchers.Count)
+            return false;
+
+        var currentRoleId = DideModel.Researchers[index].Role;
+
+        if (currentRoleId <= 0 || !SingleInstanceRoleIds.Contains(currentRoleId))
+            return false;
+
+        for (int i = 0; i < DideModel.Researchers.Count; i++)
+        {
+            if (i == index)
+                continue;
+
+            if (DideModel.Researchers[i].Role == currentRoleId)
+                return true;
+        }
+
+        return false;
+    }
+
+    private async void HandleResearcherRoleChanged(int index, ChangeEventArgs e)
+    {
+        if (DideModel.Researchers is null || index < 0 || index >= DideModel.Researchers.Count)
+            return;
+
+        if (!int.TryParse(e.Value?.ToString(), out var newRoleId))
+        {
+            DideModel.Researchers[index].Role = 0;
+        }
+        else
+        {
+            DideModel.Researchers[index].Role = newRoleId;
+        }
+
+        // 🔥 Notificar al padre que cambió algo en roles
+        if (OnResearchersChanged.HasDelegate)
+            await OnResearchersChanged.InvokeAsync();
+    }
+
+    private void NormalizeFacultyIdsFromLegacyPrograms()
+    {
+        if (DideModel.Researchers is null || Faculties is null || !Faculties.Any())
+            return;
+
+        for (int i = 0; i < DideModel.Researchers.Count; i++)
+        {
+            var researcher = DideModel.Researchers[i];
+            var facultyId = ResolveFacultyId(researcher.FacultyCareerId);
+            researcher.FacultyCareerId = facultyId ?? 0;
+            DideModel.Researchers[i] = researcher;
+        }
+    }
+
+    private int? ResolveFacultyId(int rawId)
+    {
+        if (rawId <= 0 || Faculties is null || !Faculties.Any())
+            return null;
+
+        var faculty = Faculties.FirstOrDefault(f => f.FacultyId == rawId);
+        if (faculty is not null) return faculty.FacultyId;
+
+        foreach (var f in Faculties)
+        {
+            if (f.Programs is null) continue;
+            if (f.Programs.Any(p => p.ProgramId == rawId))
+                return f.FacultyId;
+        }
+        return null;
+    }
+
+    private string GetSelectedFacultyValue(int index)
+    {
+        if (DideModel.Researchers is null || index < 0 || index >= DideModel.Researchers.Count)
+            return string.Empty;
+
+        var id = DideModel.Researchers[index].FacultyCareerId;
+        return id > 0 ? id.ToString() : string.Empty;
+    }
+
+    private void HandleFacultyChanged(int index, ChangeEventArgs e)
+    {
+        if (DideModel.Researchers is null || index < 0 || index >= DideModel.Researchers.Count)
+            return;
+
+        var value = e.Value?.ToString();
+        if (int.TryParse(value, out var facultyId) && facultyId > 0)
+            DideModel.Researchers[index].FacultyCareerId = facultyId;
+        else
+            DideModel.Researchers[index].FacultyCareerId = 0;
+    }
+
+    private async void HandleRemoveResearcher(int index)
+    {
+        if (DideModel.Researchers is null || index < 0 || index >= DideModel.Researchers.Count)
+            return;
+
+        DideModel.Researchers.RemoveAt(index);
+
+        // 🔥 Notificar al padre
+        if (OnResearchersChanged.HasDelegate)
+            await OnResearchersChanged.InvokeAsync();
+    }
+}

@@ -1,0 +1,480 @@
+﻿@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
+
+<div class="space-y-6 bg-background border-2 border-border rounded-3xl p-6 shadow-lg">
+    <!-- Header con gradiente sutil -->
+    <div class="flex items-center justify-between gap-3 pb-4 border-b-2 border-border">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-foreground">
+                    @Title
+                </h3>
+                <p class="text-xs text-muted mt-0.5">
+                    Build your research classification tree
+                </p>
+            </div>
+        </div>
+        <span class="px-3 py-1.5 text-xs font-medium bg-secondary/10 text-secondary rounded-full border border-secondary/20">
+            Multi-level selector
+        </span>
+    </div>
+
+    <!-- Selectores dinámicos con diseño mejorado -->
+    <div class="grid grid-cols-1 md:grid-cols-@_orderedTypes.Count gap-5">
+        @foreach (var type in _orderedTypes)
+        {
+            <div class="flex flex-col gap-2 bg-page-bg/30 rounded-2xl p-4 border border-border/50 transition-all hover:border-primary/30 hover:shadow-md">
+                <div class="flex items-center gap-2 mb-1">
+                    <div class="w-2 h-2 rounded-full bg-primary"></div>
+                    <label class="text-sm font-semibold text-foreground">
+                        @type.Name
+                    </label>
+                </div>
+
+                <select class="w-full rounded-xl border-2 border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary hover:border-primary/40 cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.5rem_center] bg-no-repeat pr-10"
+                        value="@GetSelectedValueForType(type.Id)"
+                        @onchange="(e) => OnLevelChanged(type.Id, e)">
+                    <option value="" class="text-muted">-- Select @type.Name --</option>
+                    @foreach (var item in GetItemsForType(type.Id))
+                    {
+                        <option value="@item.Id" class="text-foreground">
+                            @item.Name
+                        </option>
+                    }
+                </select>
+
+                <button type="button"
+                        class="mt-2 inline-flex items-center justify-center gap-2 rounded-xl border-2 border-primary bg-primary px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-primary/90 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 disabled:bg-muted disabled:border-muted disabled:text-white/60 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
+                        disabled="@(!_activeSelections.ContainsKey(type.Id) || !_activeSelections[type.Id].HasValue)"
+                        @onclick="() => AddSelectedItem(type.Id)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add @type.Name
+                </button>
+            </div>
+        }
+    </div>
+
+    <!-- Árbol incremental con diseño mejorado -->
+    <div class="border-2 border-border rounded-2xl p-5 bg-gradient-to-br from-page-bg/40 to-background shadow-inner">
+        <div class="flex items-center gap-2 mb-4 pb-3 border-b border-border/50">
+            <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            <h4 class="text-sm font-bold text-foreground">Selected Categories Tree</h4>
+            @if (_selectedRoots.Count > 0)
+            {
+                <span class="ml-auto px-2.5 py-1 text-xs font-semibold bg-primary text-white rounded-full">
+                    @_selectedRoots.Count item@(_selectedRoots.Count != 1 ? "s" : "")
+                </span>
+            }
+        </div>
+
+        @if (_selectedRoots.Count == 0)
+        {
+            <div class="flex flex-col items-center justify-center py-12 text-center">
+                <div class="w-16 h-16 rounded-2xl bg-muted/10 flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-muted/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <p class="text-sm font-medium text-muted/70 mb-1">
+                    No categories selected yet
+                </p>
+                <p class="text-xs text-muted/50">
+                    Use the selectors above to build your research tree
+                </p>
+            </div>
+        }
+        else
+        {
+            <div class="space-y-2">
+                @foreach (var root in _selectedRoots)
+                {
+                    @RenderNode(root, 0)
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    // ============================
+    // Parámetros
+    // ============================
+
+    [Parameter]
+    public IReadOnlyList<ResearchCategoryTreeItemDTO> Categories { get; set; }
+        = Array.Empty<ResearchCategoryTreeItemDTO>();
+
+    [Parameter]
+    public IReadOnlyList<ResearchCategoryTypeListItemDTO> CategoryTypes { get; set; }
+        = Array.Empty<ResearchCategoryTypeListItemDTO>();
+
+    [Parameter]
+    public EventCallback<List<ResearchCategoryTreeItemDTO>> OnSelectionChanged { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = "Research Categories";
+
+    [Parameter]
+    public int? ResearchCategoryGroupId { get; set; }
+
+
+    // ============================
+    // Estado interno
+    // ============================
+
+    private List<ResearchCategoryTypeListItemDTO> _orderedTypes = new();
+    private readonly Dictionary<int, ResearchCategoryTreeItemDTO> _allItems = new();
+    private readonly Dictionary<int, List<ResearchCategoryTreeItemDTO>> _itemsByType = new();
+    private readonly Dictionary<int, int?> _activeSelections = new();
+    private readonly List<ResearchCategoryTreeItemDTO> _selectedRoots = new();
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+        BuildIndexes();
+        _orderedTypes = CategoryTypes
+            .Where(t => _itemsByType.ContainsKey(t.Id))
+            .Where(t => !ResearchCategoryGroupId.HasValue || t.ResearchCategoryGroupId == ResearchCategoryGroupId.Value)
+            .OrderBy(t => t.Id)
+            .ToList();
+
+        foreach (var t in _orderedTypes)
+        {
+            if (!_activeSelections.ContainsKey(t.Id))
+                _activeSelections[t.Id] = null;
+        }
+    }
+
+    private void BuildIndexes()
+    {
+        _allItems.Clear();
+        _itemsByType.Clear();
+        foreach (var root in Categories)
+        {
+            BuildIndexesRecursive(root);
+        }
+    }
+
+    private void BuildIndexesRecursive(ResearchCategoryTreeItemDTO node)
+    {
+        if (!_allItems.ContainsKey(node.Id))
+            _allItems[node.Id] = node;
+
+        if (!_itemsByType.TryGetValue(node.ResearchCategoryTypeId, out var list))
+        {
+            list = new List<ResearchCategoryTreeItemDTO>();
+            _itemsByType[node.ResearchCategoryTypeId] = list;
+        }
+
+        if (!list.Any(c => c.Id == node.Id))
+            list.Add(node);
+
+        foreach (var child in node.Children)
+        {
+            BuildIndexesRecursive(child);
+        }
+    }
+
+    private string GetSelectedValueForType(int typeId)
+    {
+        if (_activeSelections.TryGetValue(typeId, out var id) && id.HasValue)
+            return id.Value.ToString();
+        return string.Empty;
+    }
+
+    private IEnumerable<ResearchCategoryTreeItemDTO> GetAncestors(ResearchCategoryTreeItemDTO item)
+    {
+        var current = item;
+        while (current.ParentCategoryId.HasValue)
+        {
+            if (!_allItems.TryGetValue(current.ParentCategoryId.Value, out var parent))
+                yield break;
+            yield return parent;
+            current = parent;
+        }
+    }
+
+    private HashSet<int> GetAncestorIds(ResearchCategoryTreeItemDTO item)
+        => GetAncestors(item).Select(a => a.Id).ToHashSet();
+
+    private IEnumerable<ResearchCategoryTreeItemDTO> GetItemsForType(int typeId)
+    {
+        if (!_itemsByType.TryGetValue(typeId, out var items))
+            return Enumerable.Empty<ResearchCategoryTreeItemDTO>();
+
+        var index = _orderedTypes.FindIndex(t => t.Id == typeId);
+        if (index <= 0)
+            return items;
+
+        var requiredAncestorIds = new HashSet<int>();
+        for (int i = 0; i < index; i++)
+        {
+            var parentType = _orderedTypes[i];
+            if (_activeSelections.TryGetValue(parentType.Id, out var selectedId) && selectedId.HasValue)
+            {
+                requiredAncestorIds.Add(selectedId.Value);
+            }
+        }
+
+        if (requiredAncestorIds.Count == 0)
+            return items;
+
+        return items.Where(item =>
+        {
+            var ancestors = GetAncestorIds(item);
+            return requiredAncestorIds.All(id => ancestors.Contains(id));
+        });
+    }
+
+    private void OnLevelChanged(int typeId, ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+
+        if (!int.TryParse(value, out var selectedId))
+        {
+            _activeSelections[typeId] = null;
+            ClearDeeperSelections(typeId);
+            StateHasChanged();
+            return;
+        }
+
+        _activeSelections[typeId] = selectedId;
+
+        if (_allItems.TryGetValue(selectedId, out var item))
+        {
+            SetAncestorsActive(item);
+        }
+
+        ClearDeeperSelections(typeId);
+        StateHasChanged();
+    }
+
+    private void SetAncestorsActive(ResearchCategoryTreeItemDTO item)
+    {
+        foreach (var ancestor in GetAncestors(item))
+        {
+            _activeSelections[ancestor.ResearchCategoryTypeId] = ancestor.Id;
+        }
+    }
+
+    private void ClearDeeperSelections(int typeId)
+    {
+        var index = _orderedTypes.FindIndex(t => t.Id == typeId);
+        if (index < 0) return;
+
+        for (int i = index + 1; i < _orderedTypes.Count; i++)
+        {
+            var deeperType = _orderedTypes[i];
+            _activeSelections[deeperType.Id] = null;
+        }
+    }
+
+    private async Task AddSelectedItem(int typeId)
+    {
+        if (!_activeSelections.TryGetValue(typeId, out var selectedId) || !selectedId.HasValue)
+            return;
+
+        if (!_allItems.TryGetValue(selectedId.Value, out var item))
+            return;
+
+        InsertIntoSelectedTree(item);
+        await RaiseSelectionChangedAsync();
+    }
+
+    private void InsertIntoSelectedTree(ResearchCategoryTreeItemDTO item)
+    {
+        if (!item.ParentCategoryId.HasValue)
+        {
+            var existingRoot = _selectedRoots.FirstOrDefault(r => r.Id == item.Id);
+            if (existingRoot == null)
+            {
+                _selectedRoots.Add(CloneWithoutChildren(item));
+            }
+            return;
+        }
+
+        if (!_allItems.TryGetValue(item.ParentCategoryId.Value, out var parent))
+            return;
+
+        InsertIntoSelectedTree(parent);
+
+        var parentSelected = FindNodeById(_selectedRoots, parent.Id);
+        if (parentSelected == null)
+            return;
+
+        if (!parentSelected.Children.Any(c => c.Id == item.Id))
+        {
+            parentSelected.Children.Add(CloneWithoutChildren(item));
+        }
+    }
+
+    private ResearchCategoryTreeItemDTO? FindNodeById(List<ResearchCategoryTreeItemDTO> roots, int id)
+    {
+        foreach (var node in roots)
+        {
+            if (node.Id == id)
+                return node;
+
+            var found = FindNodeById(node.Children, id);
+            if (found != null)
+                return found;
+        }
+        return null;
+    }
+
+    private ResearchCategoryTreeItemDTO CloneWithoutChildren(ResearchCategoryTreeItemDTO src)
+    {
+        return new ResearchCategoryTreeItemDTO
+        {
+            Id = src.Id,
+            Name = src.Name,
+            IsActive = src.IsActive,
+            ResearchCategoryTypeId = src.ResearchCategoryTypeId,
+            ResearchCategoryTypeName = src.ResearchCategoryTypeName,
+            ParentCategoryId = src.ParentCategoryId,
+            Children = new List<ResearchCategoryTreeItemDTO>()
+        };
+    }
+
+    private async Task RemoveNode(int id)
+    {
+        if (RemoveNodeRecursive(_selectedRoots, id))
+        {
+            await RaiseSelectionChangedAsync();
+        }
+    }
+
+    private bool RemoveNodeRecursive(List<ResearchCategoryTreeItemDTO> list, int id)
+    {
+        for (int i = 0; i < list.Count; i++)
+        {
+            var node = list[i];
+            if (node.Id == id)
+            {
+                list.RemoveAt(i);
+                return true;
+            }
+
+            if (RemoveNodeRecursive(node.Children, id))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private async Task RaiseSelectionChangedAsync()
+    {
+        if (!OnSelectionChanged.HasDelegate)
+            return;
+
+        var result = _selectedRoots.Select(CloneDeep).ToList();
+        await OnSelectionChanged.InvokeAsync(result);
+    }
+
+    private ResearchCategoryTreeItemDTO CloneDeep(ResearchCategoryTreeItemDTO src)
+    {
+        return new ResearchCategoryTreeItemDTO
+        {
+            Id = src.Id,
+            Name = src.Name,
+            IsActive = src.IsActive,
+            ResearchCategoryTypeId = src.ResearchCategoryTypeId,
+            ResearchCategoryTypeName = src.ResearchCategoryTypeName,
+            ParentCategoryId = src.ParentCategoryId,
+            Children = src.Children.Select(CloneDeep).ToList()
+        };
+    }
+
+    private RenderFragment RenderNode(ResearchCategoryTreeItemDTO node, int depth) => builder =>
+    {
+        var seq = 0;
+        var marginLeft = depth * 20;
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "group transition-all duration-200");
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "flex items-center justify-between rounded-xl border-2 border-border bg-background px-4 py-3 mb-2 transition-all hover:border-primary/40 hover:shadow-md hover:-translate-y-0.5");
+        builder.AddAttribute(seq++, "style", $"margin-left:{marginLeft}px;");
+
+        // Indicador de nivel
+        if (depth > 0)
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "w-1 h-6 bg-primary/30 rounded-full mr-3");
+            builder.CloseElement();
+        }
+
+        // Nombre con icono
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "flex items-center gap-2 flex-1");
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "w-7 h-7 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0");
+        builder.OpenElement(seq++, "svg");
+        builder.AddAttribute(seq++, "class", "w-4 h-4 text-secondary");
+        builder.AddAttribute(seq++, "fill", "none");
+        builder.AddAttribute(seq++, "stroke", "currentColor");
+        builder.AddAttribute(seq++, "viewBox", "0 0 24 24");
+        builder.OpenElement(seq++, "path");
+        builder.AddAttribute(seq++, "stroke-linecap", "round");
+        builder.AddAttribute(seq++, "stroke-linejoin", "round");
+        builder.AddAttribute(seq++, "stroke-width", "2");
+        builder.AddAttribute(seq++, "d", "M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z");
+        builder.CloseElement();
+        builder.CloseElement();
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "text-sm font-semibold text-foreground");
+        builder.AddContent(seq++, node.Name);
+        builder.CloseElement();
+        builder.CloseElement();
+
+        // Botón eliminar mejorado
+        builder.OpenElement(seq++, "button");
+        builder.AddAttribute(seq++, "type", "button");
+        builder.AddAttribute(seq++, "class", "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-error bg-error/10 rounded-lg border border-error/20 transition-all hover:bg-error hover:text-white hover:shadow-md opacity-0 group-hover:opacity-100");
+        builder.AddAttribute(seq++, "onclick", EventCallback.Factory.Create(this, () => RemoveNode(node.Id)));
+        builder.OpenElement(seq++, "svg");
+        builder.AddAttribute(seq++, "class", "w-3.5 h-3.5");
+        builder.AddAttribute(seq++, "fill", "none");
+        builder.AddAttribute(seq++, "stroke", "currentColor");
+        builder.AddAttribute(seq++, "viewBox", "0 0 24 24");
+        builder.OpenElement(seq++, "path");
+        builder.AddAttribute(seq++, "stroke-linecap", "round");
+        builder.AddAttribute(seq++, "stroke-linejoin", "round");
+        builder.AddAttribute(seq++, "stroke-width", "2");
+        builder.AddAttribute(seq++, "d", "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16");
+        builder.CloseElement();
+        builder.CloseElement();
+        builder.AddContent(seq++, "Remove");
+        builder.CloseElement();
+
+        builder.CloseElement();
+
+        // Hijos
+        if (node.Children.Any())
+        {
+            builder.OpenElement(seq++, "div");
+            builder.AddAttribute(seq++, "class", "mt-1");
+            foreach (var child in node.Children)
+            {
+                builder.AddContent(seq++, RenderNode(child, depth + 1));
+            }
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    };
+}

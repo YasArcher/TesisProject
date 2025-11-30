@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using tesisproject.shared.Entities.Catalogs;
 
 namespace tesisproject.shared.Entities.Core
 {
@@ -22,28 +20,32 @@ namespace tesisproject.shared.Entities.Core
 
         [Required]
         public int ApprovedByUserId { get; set; } // id_usuario_aprobador (FK -> UserSystem)
+        [Required]
+        public int FundingTypeId { get; set; } // id_tipo_financiamiento (catálogo)
 
         // ================================
         //          Financial Data
         // ================================
         [Range(0, double.MaxValue)]
-        public decimal InitialAmount { get; set; } // monto inicial
+        public decimal InitialAmount { get; set; }
 
         [Range(0, double.MaxValue)]
-        public decimal CertifiedAmount { get; set; } // monto certificado
+        public decimal CertifiedAmount { get; set; }
 
         [Range(0, double.MaxValue)]
-        public decimal ExecutedAmount { get; set; } // monto ejecutado
+        public decimal ExecutedAmount { get; set; }
 
         // ================================
         //              Dates
         // ================================
-        public DateTime? ApprovedAt { get; set; } // fecha aprobación
+        public DateTime? ApprovedAt { get; set; }
 
         // ================================
         //        Navigation Properties
         // ================================
-        public Project Project { get; set; } = null!; // Navegación a Project
+        public Project Project { get; set; } = null!;
+
+        public FundingType FundingType { get; set; } = null!;
 
         public ICollection<BudgetTransaction> Transactions { get; set; } = new List<BudgetTransaction>();
     }

@@ -31,7 +31,6 @@ namespace tesisproject.backend.Data
         public DbSet<ProjectExtension> ProjectExtensions => Set<ProjectExtension>();
         public DbSet<ProjectObjective> ProjectObjectives => Set<ProjectObjective>();
         public DbSet<ProjectScope> ProjectScopes => Set<ProjectScope>();
-        public DbSet<Researcher> Researchers => Set<Researcher>();
         public DbSet<Visit> Visits => Set<Visit>();
         public DbSet<VisitIssue> VisitIssues => Set<VisitIssue>();
         public DbSet<UserFacultyScope> UserFacultyScopes => Set<UserFacultyScope>();
@@ -42,7 +41,7 @@ namespace tesisproject.backend.Data
         public DbSet<ObjectiveActivityUser> ObjectiveActivityUsers => Set<ObjectiveActivityUser>();
         public DbSet<Convocation> Convocations => Set<Convocation>();
         public DbSet<ConvocationRule> ConvocationRules => Set<ConvocationRule>();
-        public DbSet<ProjectResearchLine> ProjectResearchLines => Set<ProjectResearchLine>();
+        public DbSet<ProjectResearchCategory> ProjectResearchCategories => Set<ProjectResearchCategory>();
 
         // =========================================================
         // DbSets - Catalogs
@@ -57,13 +56,15 @@ namespace tesisproject.backend.Data
         public DbSet<ProjectExtensionType> ProjectExtensionTypes => Set<ProjectExtensionType>();
         public DbSet<ProjectState> ProjectStates => Set<ProjectState>();
         public DbSet<ProjectType> ProjectTypes => Set<ProjectType>();
-        public DbSet<ResearchDomainType> ResearchDomainTypes => Set<ResearchDomainType>();
-        public DbSet<ResearchLineType> ResearchLineTypes => Set<ResearchLineType>();
+        public DbSet<ResearchCategory> ResearchCategories => Set<ResearchCategory>();
+        public DbSet<ResearchCategoryType> ResearchCategoryTypes => Set<ResearchCategoryType>();
         public DbSet<ScopeType> ScopeTypes => Set<ScopeType>();
         public DbSet<TransactionType> TransactionTypes => Set<TransactionType>();
         public DbSet<VisitState> VisitStates => Set<VisitState>();
         public DbSet<ProductType> ProductTypes => Set<ProductType>();
         public DbSet<IndexingSource> IndexingSources => Set<IndexingSource>();
+        public DbSet<ResearchCategoryGroup> ResearchCategoryGroups => Set<ResearchCategoryGroup>();
+
 
         // =========================================================
         // DbSets - Auth
@@ -90,7 +91,8 @@ namespace tesisproject.backend.Data
             ConfigureVisitIssue(builder);
             ConfigureProducts(builder);
             ConfigureConvocations(builder);
-            ConfigureProjectResearchLine(builder);
+            ConfigureProjectResearchCategory(builder);
+            ConfigureResearchCategories(builder);
 
             // 4) Visit (dos FKs hacia Documents, sin cascada)
             ConfigureVisit(builder);
@@ -154,10 +156,6 @@ namespace tesisproject.backend.Data
             // Project → CreatedByUserId
             MapUserFK<Project, int>(builder, p => p.CreatedByUserId);
 
-            // Researcher → CreatedByUserId y UpdatedByUserId
-            MapUserFK<Researcher, int>(builder, r => r.CreatedByUserId);
-            MapUserFK<Researcher, int?>(builder, r => r.UpdatedByUserId);
-
             // Visit → PerformedByUserId
             MapUserFK<Visit, int?>(builder, v => v.PerformedByUserId);
 
@@ -193,6 +191,62 @@ namespace tesisproject.backend.Data
             });
         }
 
+        private static void ConfigureResearchCategories(ModelBuilder builder)
+        {
+            // ResearchCategoryGroup 1:N ResearchCategoryType
+            builder.Entity<ResearchCategoryGroup>(b =>
+            {
+                b.HasMany(g => g.Types)
+                 .WithOne(t => t.ResearchCategoryGroup)
+                 .HasForeignKey(t => t.ResearchCategoryGroupId)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
+
+            // ResearchCategoryType 1:N ResearchCategory
+            builder.Entity<ResearchCategoryType>(b =>
+            {
+                b.HasMany(t => t.ResearchCategories)
+                 .WithOne(rc => rc.ResearchCategoryType)
+                 .HasForeignKey(rc => rc.ResearchCategoryTypeId)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
+
+            // ResearchCategory self-reference (Padre/Hijos)
+            builder.Entity<ResearchCategory>(b =>
+            {
+                b.HasOne(rc => rc.ParentCategory)
+                 .WithMany(rc => rc.SubCategories)
+                 .HasForeignKey(rc => rc.ParentCategoryId)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
+        }
+
+        protected static void ConfigureProjectResearchCategory(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ProjectResearchCategory>(b =>
+            {
+                // ✅ Clave primaria simple
+                b.HasKey(prc => prc.ProjectResearchCategoryId);
+
+                // ✅ (Opcional pero MUY recomendable) 
+                // Para evitar duplicados Project + Category
+                b.HasIndex(prc => new { prc.ProjectId, prc.ResearchCategoryId })
+                 .IsUnique();
+
+                // FK → Project
+                b.HasOne(prc => prc.Project)
+                 .WithMany(p => p.ProjectResearchCategories)
+                 .HasForeignKey(prc => prc.ProjectId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // FK → ResearchCategory
+                b.HasOne(prc => prc.ResearchCategory)
+                 .WithMany(rc => rc.ProjectResearchCategories)
+                 .HasForeignKey(prc => prc.ResearchCategoryId)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
+        }
+
         private static void ConfigureInstitution(ModelBuilder builder)
         {
             // Institution → índice único (Name, CountryId)
@@ -215,29 +269,23 @@ namespace tesisproject.backend.Data
 
         private static void ConfigureProjectBudget(ModelBuilder builder)
         {
-            // Project ↔ Budget → 1:1 (FK en Budget.ProjectId) sin cascada
+            // Project ↔ Budget → 1:N (un proyecto con muchos presupuestos)
             builder.Entity<Project>()
-                   .HasOne(p => p.Budget)
-                   .WithOne()
-                   .HasForeignKey<Budget>(b => b.ProjectId)
+                   .HasMany(p => p.Budgets)
+                   .WithOne(b => b.Project)
+                   .HasForeignKey(b => b.ProjectId)
                    .OnDelete(DeleteBehavior.NoAction);
+
+            // Budget → FundingType (cada presupuesto tiene un tipo de financiamiento)
+            builder.Entity<Budget>(b =>
+            {
+                b.HasOne(bu => bu.FundingType)
+                 .WithMany()
+                 .HasForeignKey(bu => bu.FundingTypeId)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
         }
 
-        protected static void ConfigureProjectResearchLine(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<ProjectResearchLine>()
-                .HasKey(prl => new { prl.ProjectId, prl.ResearchLineTypeId });
-
-            modelBuilder.Entity<ProjectResearchLine>()
-                .HasOne(prl => prl.Project)
-                .WithMany(p => p.ProjectResearchLines)
-                .HasForeignKey(prl => prl.ProjectId);
-
-            modelBuilder.Entity<ProjectResearchLine>()
-                .HasOne(prl => prl.ResearchLineType)
-                .WithMany()
-                .HasForeignKey(prl => prl.ResearchLineTypeId);
-        }
 
         private static void ConfigureVisitIssue(ModelBuilder builder)
         {

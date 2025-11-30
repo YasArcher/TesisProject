@@ -129,14 +129,11 @@ namespace tesisproject.backend.Services
             // ===========================
             var rawTextImproved = extractor.ExtractTextFromPdfImproved(pdfStream);
             var rawText = ResolutionParser.NormalizeText(rawTextImproved);
-            _logger.LogInformation("Normalized Raw Text: {RawText}", rawText);
 
             var tituloBlockRaw = DideProjectFormParser.ExtractSectionFromRawText(
                 rawText,
                 "I. TÍTULO DEL PROYECTO",
                 "II. INFORMACIÓN GENERAL");
-
-            _logger.LogInformation("Normalized Raw Text: {tituloBlockRaw}", tituloBlockRaw);
 
             var membersSectionRaw = DideProjectFormParser.ExtractSectionFromRawText(
                 rawText,
@@ -162,7 +159,6 @@ namespace tesisproject.backend.Services
                 "IV. ÁREA TEMÁTICA DE INVESTIGACIÓN",
                 "V. TIEMPO DE DURACIÓN");
 
-            _logger.LogInformation("Dominio Cortado: {domain_investionLine}", domain_investionLine);
             var researchLines = DideProjectFormParser.ExtractResearchLines(domain_investionLine);
 
             var actividadesSectionRaw = DideProjectFormParser.ExtractSectionFromRawText(
@@ -288,12 +284,6 @@ namespace tesisproject.backend.Services
 
             if (bestId.HasValue && bestScore >= similarityThreshold)
             {
-                _logger.LogInformation(
-                    "Matched investigationType '{Detected}' -> '{Official}' (Id={Id}, score={Score:F2}%)",
-                    investigationType,
-                    bestName,
-                    bestId,
-                    bestScore);
 
                 return bestId;
             }
@@ -365,12 +355,6 @@ namespace tesisproject.backend.Services
                 {
                     r.Role = bestRoleId.Value;       // ID interno del tipo de rol
                     r.RoleName = bestRoleName;       // opcional: sobrescribir con el nombre “oficial”
-                    _logger.LogInformation(
-                        "Matched RoleName '{Detected}' -> '{Official}' (Id={Id}, score={Score:F2}%)",
-                        r.RoleName,
-                        bestRoleName,
-                        bestRoleId,
-                        bestScore);
                 }
                 else
                 {

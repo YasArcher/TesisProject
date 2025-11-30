@@ -379,15 +379,9 @@ namespace tesisproject.backend.Services.Parsers
 
                 // 2) Separar el objetivo de las actividades
                 int cutIndex = FindActivitiesHeaderIndex(chunk);
-
-                Console.WriteLine($"=== DEBUG Objetivo {number} ===");
-                Console.WriteLine($"cutIndex: {cutIndex}");
-
                 string objectivePart = cutIndex >= 0
                     ? chunk.Substring(0, cutIndex).Trim()
                     : chunk;
-
-                Console.WriteLine($"objectivePart (primeros 300 chars): {objectivePart.Substring(0, Math.Min(300, objectivePart.Length))}");
 
                 // 3) Extraer descripción del objetivo sin el prefijo "Objetivo específico N"
                 string objectiveText = ExtractObjectiveDescription(objectivePart);

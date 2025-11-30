@@ -1,6 +1,7 @@
 ﻿using tesisproject.backend.Data;
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.Entities.Catalogs;
 
 namespace tesisproject.backend.UnitOfWork.Implementations
 {
@@ -21,15 +22,19 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public IProductAttributeDefinitionRepository ProductAttributeDefinitions { get; set; }
         public IProductValueRepository ProductValues { get; set; }
         public IProductAuthorRepository ProductAuthors { get; set; }
-        public IObjectiveTypeRepository ObjectiveTypes { get; set; }
+        public ICatalogRepository<ObjectiveType> ObjectiveTypes { get; set; }
         public IProjectObjectiveRepository ProjectObjectives { get; set; }
         public IObjectiveActivityRepository ObjectiveActivities { get; set; }
         public IObjectiveActivityUserRepository ObjectiveActivityUsers { get; set; }
         public IDocumentRepository Documents { get; }
-        public IMemberRoleTypeRepository MemberRoleTypeRepository { get; }
-        public IProjectTypeRepository ProjectTypeRepository { get; set; }
-
-        public IDocumentTypeRepository DocumentTypes { get; set; }
+        public ICatalogRepository<MemberRoleType> MemberRoleTypeRepository { get; }
+        public ICatalogRepository<ProjectType> ProjectTypeRepository { get; set; }
+        public ICatalogRepository<DocumentType> DocumentTypes { get; set; }
+        public IProjectResearchCategoryRepository ProjectResearchCategories { get; }
+        public IResearchCategoryRepository ResearchCategories { get; }
+        public ICatalogRepository<ResearchCategoryType> ResearchCategoryTypes { get; }
+        public ICatalogRepository<FundingType> FundingTypes { get; }
+        public ICatalogRepository<ResearchCategoryGroup> ResearchCategoryGroups { get; set; }
 
         public UnitOfWork(
             AppDbContext ctx,
@@ -47,14 +52,19 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             IProductAttributeDefinitionRepository productAttributeDefinitions,
             IProductValueRepository productValues,
             IProductAuthorRepository productAuthors,
-            IObjectiveTypeRepository objectiveTypes,
+            ICatalogRepository<ObjectiveType> objectiveTypes,
             IProjectObjectiveRepository projectObjectives,
             IObjectiveActivityRepository objectiveActivities,
             IObjectiveActivityUserRepository objectiveActivityUsers,
             IDocumentRepository documents,
-            IMemberRoleTypeRepository memberRoleTypeRepository,
-            IProjectTypeRepository projectTypeRepository,
-            IDocumentTypeRepository documentTypes)
+            ICatalogRepository<MemberRoleType> memberRoleTypeRepository,
+            ICatalogRepository<ProjectType> projectTypeRepository,
+            ICatalogRepository<DocumentType> documentTypes,
+            IProjectResearchCategoryRepository projectResearchCategories,
+            IResearchCategoryRepository researchCategories,
+            ICatalogRepository<ResearchCategoryType> researchCategoryTypes,
+            ICatalogRepository<FundingType> fundingTypes,
+            ICatalogRepository<ResearchCategoryGroup> researchCategoryGroups)
         {
             _ctx = ctx;
             Projects = projectRepository;
@@ -79,6 +89,11 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             MemberRoleTypeRepository = memberRoleTypeRepository;
             ProjectTypeRepository = projectTypeRepository;
             DocumentTypes = documentTypes;
+            ProjectResearchCategories = projectResearchCategories;
+            ResearchCategories = researchCategories;
+            ResearchCategoryTypes = researchCategoryTypes;
+            FundingTypes = fundingTypes;
+            ResearchCategoryGroups = researchCategoryGroups;
         }
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)

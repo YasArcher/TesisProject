@@ -1,19 +1,34 @@
 ﻿@page "/projects/create"
 
+@using tesisproject.frontend.Features.Components
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Algorithms.Response
 @using tesisproject.shared.DTOs.Budgets.Request
+@using tesisproject.shared.DTOs.Catalog.DocumentType.Response
+@using tesisproject.shared.DTOs.Catalog.ObjectiveType.Response
+@using tesisproject.shared.DTOs.Catalog.ProjectType.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
+@using tesisproject.shared.DTOs.Catalog.FundingType.Response
+@using tesisproject.shared.DTOs.Document.Request
 @using tesisproject.shared.DTOs.Document.Response
 @using tesisproject.shared.DTOs.External
 @using tesisproject.shared.DTOs.Filters
-@using tesisproject.frontend.SharedUI.ActionButton
-@using tesisproject.frontend.Services.Interfaces
-@using Microsoft.AspNetCore.Components.Forms
-@using System.Net.Http
-@using System.Net.Http.Headers
 @using tesisproject.shared.DTOs.Group.Request
 @using tesisproject.shared.DTOs.ObjectiveActivity.Request
 @using tesisproject.shared.DTOs.Project.Request
 @using tesisproject.shared.DTOs.ProjectObjective.Request
+@using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategoryGroup.Response
+
+
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Services.Interfaces
+
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Net.Http
+@using System.Net.Http.Headers
+
 @implements IDisposable
 
 @inject IDocumentRecognitionClientService DocumentRecognitionClient
@@ -25,152 +40,212 @@
 @inject IObjectiveTypeClientService ObjectiveTypeClient
 @inject IDocumentClientService DocumentClient
 @inject IProjectClientService ProjectClient
+@inject IResearchCategoryClientService ResearchCategoryClient
+@inject IResearchCategoryTypeClientService ResearchCategoryTypeClient
+@inject IFundingTypeClientService FundingTypeClient
+@inject IExternalUserService ExternalUserService
+@inject IResearchCategoryGroupClientService ResearchCategoryGroupClient
 
-<div class="w-full h-full flex flex-col gap-4 p-4">
-    <!-- Header (fijo arriba) -->
-    <header class="flex flex-col gap-1">
-        <h2 class="text-2xl font-semibold">Create Project</h2>
-        <p class="text-sm text-muted">
-            Guided process to create a new project using the initial document and the DIDE project form.
-        </p>
+<div class="w-full h-full flex flex-col bg-page-bg">
+    <!-- Header Principal -->
+    <header class="px-6 py-3 border-b bg-background border-border">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-primary">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-bold text-foreground">Crear Nuevo Proyecto</h1>
+                    <p class="text-sm text-muted">
+                        Proceso guiado para crear un proyecto utilizando el documento inicial y el formulario DIDE.
+                    </p>
+                </div>
+            </div>
+        </div>
     </header>
 
-    <!-- Progress bar (también fija) -->
-    <section class="flex flex-col gap-2">
-        <div class="flex justify-between items-center text-xs text-muted">
-            <span>Step @CurrentStep of 3</span>
-            <span>@Progress% completed</span>
-        </div>
+    <!-- Contenedor Principal -->
+    <div class="flex-1 overflow-hidden">
+        <div class="max-w-7xl mx-auto h-full flex flex-col px-6 py-3 gap-3">
 
-        <div class="bg-border rounded-full h-2 overflow-hidden">
-            <div class="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
-                 style="width:@($"{Progress}%")"></div>
-        </div>
-
-        <div class="flex justify-between text-xs mt-1">
-            <span class="@(CurrentStep >= 1 ? "font-semibold text-foreground" : "text-muted")">
-                1. Initial document
-            </span>
-            <span class="@(CurrentStep >= 2 ? "font-semibold text-foreground" : "text-muted")">
-                2. DIDE project form
-            </span>
-            <span class="@(CurrentStep >= 3 ? "font-semibold text-foreground" : "text-muted")">
-                3. Summary & confirmation
-            </span>
-        </div>
-    </section>
-
-    <!-- Cuerpo: contenido scrollable + footer fijo abajo -->
-    <div class="flex-1 min-h-0 flex flex-col gap-4">
-        <!-- Solo esto tiene scroll -->
-        <section class="flex-1 min-h-0 overflow-y-auto pr-1">
-            <hr class="border-border mb-4" />
-
-            <div class="w-full h-full">
-                <!-- Step 1 -->
-                <div class="@(CurrentStep == 1 ? "block" : "hidden")">
-                    <ProjectCreateStep1InitialDocument ResolutionModel="@ResolutionData"
-                                                       IsBusy="@IsStep1Busy"
-                                                       DocumentTypeOptions="@_documentTypeOptions"
-                                                       OnFileSelected="@HandleInitialFileSelected"
-                                                       OnNext="@GoNextFromStep1"
-                                                       OnCancel="@HandleCancelFromStep1" />
-
-                    <!-- Botón de cargar para Step 1 -->
-                    <div class="mt-4 flex justify-end">
-                        <ActionButton Text="Cargar datos del documento"
-                                      Execute="LoadResolutionAsync"
-                                      Intent="ButtonIntent.Accept"
-                                      Variant="ButtonVariant.Outline"
-                                      Size="ButtonSize.Sm"
-                                      Disabled="@(!CanLoadResolution)" />
+            <!-- Barra de Progreso Mejorada -->
+            <section class="rounded-xl p-4 shadow-sm bg-background border border-border">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-semibold text-foreground">
+                            Paso @CurrentStep de 6
+                        </span>
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-primary text-white">
+                            @Progress% completado
+                        </span>
                     </div>
                 </div>
 
-                <!-- Step 2 -->
-                <div class="@(CurrentStep == 2 ? "block" : "hidden")">
-                    <ProjectCreateStep2DideForm DideModel="@DideData"
-                                                IsBusy="@IsStep2Busy"
-                                                ResearchTypeOptions="@_researchTypeOptions"
-                                                MemberRoleTypeOptions="@_memberRoleTypeOptions"
-                                                ObjectiveTypeOptions="@_objectiveTypeOptions"
-                                                Faculties="@_faculties"
-                                                OnFileSelected="@HandleDideFileSelected"
-                                                OnPrevious="@GoPrevious"
-                                                OnNext="@GoNextFromStep2" />
+                <!-- Barra de progreso -->
+                <div class="rounded-full h-2.5 mb-3 overflow-hidden bg-border">
+                    <div class="h-2.5 rounded-full transition-all duration-500 ease-out bg-primary"
+                         style="width:@($"{Progress}%")"></div>
+                </div>
+
+                <!-- Steps visuales -->
+                <div class="flex justify-between items-start gap-2">
+                    @foreach (var step in GetSteps())
+                    {
+                        <div class="flex flex-col items-center flex-1 min-w-0">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mb-2 transition-all duration-300 @GetStepCircleClass(step.Number)">
+                                @if (CurrentStep > step.Number)
+                                {
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                }
+                                else
+                                {
+                                    @step.Number
+                                }
+                            </div>
+                            <span class="text-xs text-center leading-tight transition-all duration-300 @GetStepTextClass(step.Number)">
+                                @step.Label
+                            </span>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <!-- Contenido del Step (scrollable) -->
+            <section class="flex-1 min-h-0 rounded-xl shadow-sm overflow-hidden bg-background border border-border">
+                <div class="h-full overflow-y-auto p-6">
+                    <!-- STEP 1: Carga de documentos -->
+                    <div class="@(CurrentStep == 1 ? "block" : "hidden")">
+                        <ProjectCreateStep1Documents IsBusy="@IsStep1Busy"
+                                                     OnResolutionFileSelected="@HandleInitialFileSelected"
+                                                     OnDideFileSelected="@HandleDideFileSelected" />
+                    </div>
+
+                    <!-- STEP 2: Resolución + presupuesto -->
+                    <div class="@(CurrentStep == 2 ? "block" : "hidden")">
+                        <ProjectCreateStep2ResolutionBudget ResolutionModel="@ResolutionData"
+                                                            DideModel="@DideData"
+                                                            IsBusy="@IsStep2Busy"
+                                                            ResearchTypeOptions="@_researchTypeOptions"
+                                                            FundingTypeOptions="@_fundingTypeOptions"
+                                                            Budgets="@_budgets"
+                                                            BudgetsChanged="@OnBudgetsChanged" />
+                    </div>
+
+
+                    <!-- STEP 3: Proyecto + miembros -->
+                    <div class="@(CurrentStep == 3 ? "block" : "hidden")">
+                        <!-- STEP 3: Proyecto + miembros -->
+                        <div class="@(CurrentStep == 3 ? "block" : "hidden")">
+                            <ProjectCreateStep3ProjectTeam DideModel="@DideData"
+                                                           IsBusy="false"
+                                                           MemberRoleTypeOptions="@_memberRoleTypeOptions"
+                                                           Faculties="@_faculties"
+                                                           SingleInstanceRoleIds="@_singleInstanceRoleIds"
+                                                           OnAddResearcherRequested="HandleOpenResearcherPicker"
+                                                           OnResearchersChanged="@HandleResearchersChanged" />
 
 
 
-                    <!-- Botón de cargar para Step 2 -->
-                    <div class="mt-4 flex justify-end">
-                        <ActionButton Text="Cargar datos del formulario DIDE"
-                                      Execute="LoadDideAsync"
-                                      Intent="ButtonIntent.Accept"
-                                      Variant="ButtonVariant.Outline"
-                                      Size="ButtonSize.Sm"
-                                      Disabled="@(!CanLoadDide)" />
+                        </div>
+
+                    </div>
+                    <UserPickerModal ModalId="wizard-user-picker"
+                 IsOpen="@_showUserPicker"
+                 IsOpenChanged="v => _showUserPicker = v"
+                 Users="@_researcherCandidates"
+                 InitialSelectedUserId="@_preselectedUserId"
+                 OnSubmit="HandleResearcherPickedAsync"
+                 OnCancel="() => _showUserPicker = false" />
+
+
+                    <!-- STEP 4: Categorías de investigación -->
+                    <div class="@(CurrentStep == 4 ? "block" : "hidden")">
+                        <ProjectCreateStep4ResearchCategories DideModel="@DideData"
+                                                              IsBusy="false"
+                                                              ResearchCategoryTree="@_researchCategoryTree"
+                                                              ResearchCategoryTypes="@_researchCategoryTypes"
+                                                              ResearchCategoryGroups="@_researchCategoryGroups"
+                                                              OnResearchCategoriesChanged="@HandleResearchCategoriesChanged" />
+                    </div>
+
+                    <!-- STEP 5: Objetivos y actividades -->
+                    <div class="@(CurrentStep == 5 ? "block" : "hidden")">
+                        <ProjectCreateStep5Objectives DideModel="@DideData"
+                                                      ObjectiveTypeOptions="@_objectiveTypeOptions"
+                                                      IsBusy="false" />
+                    </div>
+
+                    <!-- STEP 6: Resumen final -->
+                    <div class="@(CurrentStep == 6 ? "block" : "hidden")">
+                        <ProjectCreateStep6Summary ResolutionModel="@ResolutionData"
+                                                   DideModel="@DideData"
+                                                   IsSaving="@IsSaving"
+                                                   DocumentTypeOptions="@_documentTypeOptions"
+                                                   ResearchTypeOptions="@_researchTypeOptions"
+                                                   MemberRoleTypeOptions="@_memberRoleTypeOptions"
+                                                   ObjectiveTypeOptions="@_objectiveTypeOptions"
+                                                   Faculties="@_faculties"
+                                                   FundingTypeOptions="@_fundingTypeOptions"
+                                                   Budgets="@_budgets"
+                                                   SelectedResearchCategories="@_selectedResearchCategories"
+                                                   ScheduledDate="@_scheduledDate"
+                                                   ScheduledDateChanged="date => _scheduledDate = date"
+                                                   OnPrevious="@GoPrevious"
+                                                   OnSave="@HandleSaveAsync"
+                                                   CoordinatorRoleId="@_coordinatorRoleId" />
                     </div>
                 </div>
+            </section>
 
-                <!-- Step 3 -->
-                <div class="@(CurrentStep == 3 ? "block" : "hidden")">
-                    <ProjectCreateStep3Summary ResolutionModel="@ResolutionData"
-                                               DideModel="@DideData"
-                                               IsSaving="@IsSaving"
-                                               DocumentTypeOptions="@_documentTypeOptions"
-                                               ResearchTypeOptions="@_researchTypeOptions"
-                                               MemberRoleTypeOptions="@_memberRoleTypeOptions"
-                                               ObjectiveTypeOptions="@_objectiveTypeOptions"
-                                               Faculties="@_faculties"
-                                               ScheduledDate="@_scheduledDate"
-                                               ScheduledDateChanged="date => _scheduledDate = date"
-                                               OnPrevious="@GoPrevious"
-                                               OnSave="@HandleSaveAsync" />
+            <!-- Footer de Navegación -->
+            <footer class="rounded-xl p-3 shadow-sm flex justify-between items-center gap-4 bg-background border border-border">
+                <!-- Botones izquierda -->
+                <div class="flex gap-3">
+                    <ActionButton Text="Cancelar"
+                                  Execute="HandleCancel"
+                                  Intent="ButtonIntent.Neutral"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm"
+                                  Disabled="@IsSaving" />
 
-
+                    <ActionButton Text="Atrás"
+                                  Execute="GoPrevious"
+                                  Intent="ButtonIntent.Neutral"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm"
+                                  Disabled="@(CurrentStep == 1 || IsSaving)" />
                 </div>
-            </div>
-        </section>
 
-        <!-- Footer navegación general (fijo, sin scroll) -->
-        <footer class="shrink-0 flex justify-between pt-2 border-t border-border">
-            <!-- Lado izquierdo: Cancel + Back -->
-            <div class="flex gap-2">
-                <ActionButton Text="Cancel"
-                              Execute="HandleCancel"
-                              Intent="ButtonIntent.Neutral"
-                              Variant="ButtonVariant.Outline"
-                              Size="ButtonSize.Sm"
-                              Disabled="@IsSaving" />
+                <!-- Indicador central (opcional) -->
+                <div class="hidden md:block text-sm font-medium text-muted">
+                    @GetCurrentStepLabel()
+                </div>
 
-                <ActionButton Text="Back"
-                              Execute="GoPrevious"
-                              Intent="ButtonIntent.Neutral"
-                              Variant="ButtonVariant.Outline"
-                              Size="ButtonSize.Sm"
-                              Disabled="@(CurrentStep == 1)" />
-            </div>
-
-            <!-- Lado derecho: Next / Create -->
-            @if (CurrentStep < 3)
-            {
-                <ActionButton Text="Next"
-                              Execute="@(CurrentStep == 1 ? GoNextFromStep1 : GoNextFromStep2)"
-                              Intent="ButtonIntent.Accept"
-                              Variant="ButtonVariant.Filled"
-                              Size="ButtonSize.Sm"
-                              Disabled="@( !CanGoNext )" />
-            }
-            else
-            {
-                <ActionButton Text="Create project"
-                              Execute="HandleSaveAsync"
-                              Intent="ButtonIntent.Accept"
-                              Variant="ButtonVariant.Filled"
-                              Size="ButtonSize.Md"
-                              Disabled="@IsSaving" />
-            }
-        </footer>
+                <!-- Botones derecha -->
+                @if (CurrentStep < 6)
+                {
+                    <ActionButton Text="Siguiente"
+                                  Execute="GoNext"
+                                  Intent="ButtonIntent.Accept"
+                                  Variant="ButtonVariant.Filled"
+                                  Size="ButtonSize.Sm"
+                                  Disabled="@(!CanGoNext)" />
+                }
+                else
+                {
+                    <ActionButton Text="Crear Proyecto"
+                                  Execute="HandleSaveAsync"
+                                  Intent="ButtonIntent.Accept"
+                                  Variant="ButtonVariant.Filled"
+                                  Size="ButtonSize.Md"
+                                  Disabled="@IsSaving" />
+                }
+            </footer>
+        </div>
     </div>
 </div>
 
@@ -185,71 +260,132 @@
     private DateTime? _scheduledDate;
 
     private int _currentUserId = 1;
-    private int _defaultStateId = 1;      // p.ej. "Registrado"
-    private int _selectedProjectTypeId = 1; // de momento fijo
-    private int _fundingTypeId = 1;       // p.ej. "Interno"
+    private int _defaultStateId = 1;
+    private int _selectedProjectTypeId = 1;
+    private int _fundingTypeId = 0;
 
     // Catálogos para selects
-    private List<KeyValueItemDTO> _documentTypeOptions = new();
-    private List<KeyValueItemDTO> _researchTypeOptions = new();
-    private List<KeyValueItemDTO> _memberRoleTypeOptions = new();
-    private List<KeyValueItemDTO> _objectiveTypeOptions = new();
+    private List<DocumentTypeListItemDTO> _documentTypeOptions = new();
+    private List<ProjectTypeListItemDTO> _researchTypeOptions = new();
+    private List<MemberRoleTypeListItemDTO> _memberRoleTypeOptions = new();
+    private List<ObjectiveTypeListItemDTO> _objectiveTypeOptions = new();
+
+    private List<int> _singleInstanceRoleIds = new();
+
     private List<ExternalFacultyDTO> _faculties = new();
+    private List<FundingTypeListItemDTO> _fundingTypeOptions = new();
+    private List<CreateBudgetRequestDTO> _budgets = new();
+    private int? _coordinatorRoleId;
+
+
+    private bool _showUserPicker;
+    private List<ExternalUserDTO> _researcherCandidates = new();
+    private int? _preselectedUserId;
+    private byte[]? _resolutionFileBytes;
+
+
 
     private DocumentResponseDTO? _projectDocument;
 
-    // Si luego necesitas ProjectType como tal, puedes agregar:
-    // private List<KeyValueItemDTO> _projectTypeOptions = new();
+    private const long MaxDideFileSizeBytes = 10L * 1024 * 1024;
+    private const long MaxResolutionFileSizeBytes = 10L * 1024 * 1024;
 
-    private const long MaxDideFileSizeBytes = 10L * 1024 * 1024;       // 10 MB
-    private const long MaxResolutionFileSizeBytes = 10L * 1024 * 1024; // 10 MB
+    private IReadOnlyList<ResearchCategoryTreeItemDTO> _researchCategoryTree
+        = Array.Empty<ResearchCategoryTreeItemDTO>();
 
-    private int Progress => CurrentStep switch
-    {
-        1 => 33,
-        2 => 66,
-        3 => 100,
-        _ => 0
-    };
+    private IReadOnlyList<ResearchCategoryTypeListItemDTO> _researchCategoryTypes
+        = Array.Empty<ResearchCategoryTypeListItemDTO>();
 
-    // DTOs del reconocimiento
+    private List<ResearchCategoryTreeItemDTO> _selectedResearchCategories = new();
+    private List<ResearchCategoryGroupListItemDTO> _researchCategoryGroups = new();
+
+
+    private int Progress => (int)Math.Round(CurrentStep * 100.0 / 6.0);
+
     private ResolutionInfo ResolutionData { get; set; } = new();
     private DideProjectFormInfo DideData { get; set; } = new();
 
-    // Flags de UI
     private bool IsStep1Busy { get; set; }
     private bool IsStep2Busy { get; set; }
     private bool IsSaving { get; set; }
 
-    // Archivos seleccionados (no se llaman al servicio hasta presionar "Cargar")
     private IBrowserFile? _selectedResolutionFile;
     private IBrowserFile? _selectedDideFile;
 
     // ==========================
-    // Validaciones
+    // UI Helper Methods
+    // ==========================
+
+    private record StepInfo(int Number, string Label);
+
+    private List<StepInfo> GetSteps() => new()
+    {
+        new(1, "Carga de documentos"),
+        new(2, "Resolución y presupuesto"),
+        new(3, "Proyecto y equipo"),
+        new(4, "Categorías de investigación"),
+        new(5, "Objetivos y actividades"),
+        new(6, "Resumen y confirmación")
+    };
+
+
+
+    private string GetStepCircleClass(int stepNumber)
+    {
+        if (CurrentStep > stepNumber)
+        {
+            return "bg-secondary text-white";
+        }
+        else if (CurrentStep == stepNumber)
+        {
+            return "bg-primary text-white ring-4 ring-primary-subtle";
+        }
+        else
+        {
+            return "bg-border text-muted";
+        }
+    }
+
+    private string GetStepTextClass(int stepNumber)
+    {
+        if (CurrentStep >= stepNumber)
+        {
+            return "text-foreground font-semibold";
+        }
+        else
+        {
+            return "text-muted font-normal";
+        }
+    }
+
+    private string GetCurrentStepLabel()
+    {
+        var steps = GetSteps();
+        return steps.FirstOrDefault(s => s.Number == CurrentStep)?.Label ?? "";
+    }
+
+    // ==========================
+    // Validaciones para Next
     // ==========================
 
     private bool IsStep1Valid =>
-        // Obligatorio: tipo de documento seleccionado
-        ResolutionData.documentTypeId > 0 &&
+        _selectedResolutionFile is not null;
 
-        // Obligatorio: código de resolución
-        !string.IsNullOrWhiteSpace(ResolutionData.ResolutionCode) &&
-
-        // Obligatorio: fechas válidas
-        ResolutionData.ResolutionHeaderDate is not null &&
-        ResolutionData.MeetingDate is not null;
+    private bool IsStep2Valid =>
+        !string.IsNullOrWhiteSpace(DideData.ProjectName)
+        && DideData.ResearchTypeId.HasValue
+        && DideData.ResearchTypeId.Value > 0
+        && _budgets.Any(b => b.FundingTypeId > 0 && b.InitialAmount > 0);
 
     private bool CanGoNext => CurrentStep switch
     {
         1 => IsStep1Valid && !IsStep1Busy,
-        2 => !IsStep2Busy, // en el paso 2 no exigimos nada extra por ahora
+        2 => IsStep2Valid && !IsStep2Busy,
+        3 => IsStep3Valid,
+        4 => true,
+        5 => true,
         _ => false
     };
-
-    // Botones de cargar habilitados solo si hay archivo y no está ocupado
-    private bool CanLoadResolution => _selectedResolutionFile is not null && !IsStep1Busy;
-    private bool CanLoadDide => _selectedDideFile is not null && !IsStep2Busy;
 
     // ==========================
     // Ciclo de vida
@@ -262,103 +398,195 @@
 
     private async Task LoadCatalogsAsync()
     {
-        // DocumentType
-        var docTypeResult = await DocumentTypeClient.GetKeyValuesAsync(
-            term: null,
-            take: null,
-            ct: CancellationToken.None);
+        var docTypeResult = await DocumentTypeClient.GetListAsync(
+            onlyActives: true,
+            ct: CancellationToken.None
+        );
 
         if (docTypeResult.Success && docTypeResult.Response is not null)
-        {
             _documentTypeOptions = docTypeResult.Response;
-        }
 
-        // ResearchTypeOptions desde ProjectType
-        var researchTypeResult = await ProjectTypeClient.GetKeyValuesAsync(
-            term: null,
-            take: null,
+        var researchTypeResult = await ProjectTypeClient.GetListAsync(
+            onlyActives: true,
             ct: CancellationToken.None);
 
         if (researchTypeResult.Success && researchTypeResult.Response is not null)
-        {
             _researchTypeOptions = researchTypeResult.Response;
-        }
 
-        // MemberRoleType
-        var memberRoleTypeResult = await MemberRoleTypeClient.GetKeyValuesAsync(
-            term: null,
-            take: null,
-            ct: CancellationToken.None);
+
+
+        var memberRoleTypeResult = await MemberRoleTypeClient.GetListAsync(
+            onlyActives: true,
+            ct: CancellationToken.None
+        );
 
         if (memberRoleTypeResult.Success && memberRoleTypeResult.Response is not null)
         {
-            _memberRoleTypeOptions = memberRoleTypeResult.Response;
+            _memberRoleTypeOptions = memberRoleTypeResult.Response
+                .Where(x => x.Flag == 1)
+                .ToList();
+
+            _singleInstanceRoleIds = _memberRoleTypeOptions
+                .Where(x =>
+                    x.Name.Contains("coordinador", StringComparison.OrdinalIgnoreCase) ||
+                    x.Name.Contains("subrogante", StringComparison.OrdinalIgnoreCase))
+                .Select(x => x.Id)
+                .ToList();
+
+            var coordinator = _memberRoleTypeOptions
+                .FirstOrDefault(x =>
+                    x.Name.Contains("coordinador", StringComparison.OrdinalIgnoreCase) &&
+                    x.Name.Contains("principal", StringComparison.OrdinalIgnoreCase));
+
+            _coordinatorRoleId = coordinator?.Id;
         }
 
-        // Faculties + programs (carreras)
+
         var facultiesResult = await ExternalAcademicsClient.GetFacultiesWithProgramsAsync(
             CancellationToken.None);
-
         if (facultiesResult.Success && facultiesResult.Response is not null)
-        {
             _faculties = facultiesResult.Response;
-        }
-        var objectiveTypeResult = await ObjectiveTypeClient.GetKeyValuesAsync(null, null, CancellationToken.None);
-        if (objectiveTypeResult.Success && objectiveTypeResult.Response is not null)
-        {
-            _objectiveTypeOptions = objectiveTypeResult.Response;
-        }
-    }
 
+        var objectiveTypeResult = await ObjectiveTypeClient.GetListAsync(
+            onlyActives: true,
+            ct: CancellationToken.None);
+
+        if (objectiveTypeResult.Success && objectiveTypeResult.Response is not null)
+            _objectiveTypeOptions = objectiveTypeResult.Response;
+
+
+        var categoryTreeResult = await ResearchCategoryClient.GetTreeAsync(
+            onlyActives: true, ct: CancellationToken.None);
+        if (categoryTreeResult.Success && categoryTreeResult.Response is not null)
+            _researchCategoryTree = categoryTreeResult.Response;
+
+        var categoryTypeResult = await ResearchCategoryTypeClient.ListAsync(
+            onlyActives: true, ct: CancellationToken.None);
+        if (categoryTypeResult.Success && categoryTypeResult.Response is not null)
+            _researchCategoryTypes = categoryTypeResult.Response;
+
+        var categoryGroupResult = await ResearchCategoryGroupClient.GetListAsync(
+    onlyActives: true,
+    ct: CancellationToken.None);
+
+        if (categoryGroupResult.Success && categoryGroupResult.Response is not null)
+            _researchCategoryGroups = categoryGroupResult.Response;
+
+
+        var fundingResult = await FundingTypeClient.GetListAsync(
+            onlyActives: true, ct: CancellationToken.None);
+        if (fundingResult.Success && fundingResult.Response is not null)
+            _fundingTypeOptions = fundingResult.Response;
+    }
 
     // ==========================
     // Navegación
     // ==========================
 
+    private async Task GoNext()
+    {
+        if (!CanGoNext)
+            return;
+
+        if (CurrentStep == 1)
+        {
+            await LoadResolutionAndDideAsync();
+        }
+
+        if (CurrentStep < 6)
+            CurrentStep++;
+    }
+
     private void GoPrevious()
     {
         if (CurrentStep > 1)
-        {
             CurrentStep--;
-        }
-    }
-
-    private void GoNextFromStep1()
-    {
-        // Solo debería llamarse si CanGoNext es true
-        CurrentStep = 2;
-    }
-
-    private void GoNextFromStep2()
-    {
-        CurrentStep = 3;
     }
 
     private void HandleCancel()
     {
-        // Aquí decides qué hacer al cancelar el wizard:
-        // - Limpiar estado
-        // - Navegar al listado de proyectos, por ejemplo:
         Nav.NavigateTo("/projects/home");
     }
 
-    // ==========================
-    // Step 1: selección de archivo
-    // ==========================
-
-    private Task HandleInitialFileSelected(IBrowserFile file)
+    private async Task HandleOpenResearcherPicker()
     {
-        _selectedResolutionFile = file;
-        // Opcional: limpiar datos previos de reconocimiento
-        // ResolutionData = new();
+        // Obtener usuarios externos
+        var result = await ExternalUserService.GetListAsync();
+
+        if (!result.Success || result.Response is null)
+            return;
+
+        // Evitar duplicados (por correo o cédula)
+        var existingEmails = DideData.Researchers.Select(r => r.email).ToHashSet();
+
+        _researcherCandidates = result.Response
+            .Where(u =>
+                !existingEmails.Contains(u.Email))
+            .OrderBy(u => u.FullName)
+            .ToList();
+
+        _preselectedUserId = null;
+        _showUserPicker = true;
+    }
+
+    private Task HandleResearcherPickedAsync(int userId)
+    {
+        var user = _researcherCandidates.First(x => x.UserId == userId);
+
+        var researcher = new ResearcherInfo
+        {
+            // IMPORTANTE: guardar el id del usuario externo
+            FullName = user.FullName,
+            email = user.Email,
+            FacultyCareerId = user.FacultyCareerId ?? 0,
+            Role = 0,                            // luego el usuario elige el rol en Step 3
+            RoleName = user.Role,
+
+        };
+
+
+        DideData.Researchers.Add(researcher);
+
+        _showUserPicker = false;
         return Task.CompletedTask;
     }
 
-    // Botón "Cargar datos del documento"
+
+
+    // ==========================
+    // Step 1: selección de archivos
+    // ==========================
+
+    private async Task HandleInitialFileSelected(IBrowserFile file)
+    {
+        using var ms = new MemoryStream();
+        await file.OpenReadStream().CopyToAsync(ms);
+        _resolutionFileBytes = ms.ToArray();
+        _selectedResolutionFile = file;
+    }
+
+    private Task HandleDideFileSelected(IBrowserFile file)
+    {
+        _selectedDideFile = file;
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadResolutionAndDideAsync()
+    {
+        if (_selectedResolutionFile is not null)
+            await LoadResolutionAsync();
+
+        if (_selectedDideFile is not null)
+            await LoadDideAsync();
+    }
+
     private async Task LoadResolutionAsync()
     {
         if (_selectedResolutionFile is null || IsStep1Busy)
             return;
+
+        if (_resolutionFileBytes is null)
+            return; // seguridad extra
 
         _resolutionCts?.Cancel();
         _resolutionCts?.Dispose();
@@ -370,10 +598,9 @@
 
         try
         {
-            using var stream = _selectedResolutionFile.OpenReadStream(MaxResolutionFileSizeBytes, ct);
             using var content = new MultipartFormDataContent();
 
-            var fileContent = new StreamContent(stream);
+            var fileContent = new ByteArrayContent(_resolutionFileBytes);
             fileContent.Headers.ContentType = new MediaTypeHeaderValue(_selectedResolutionFile.ContentType);
 
             content.Add(fileContent, "file", _selectedResolutionFile.Name);
@@ -397,7 +624,6 @@
         }
         catch (Exception ex)
         {
-            // TODO: manejar excepción (toast/log)
             Console.WriteLine(ex);
         }
         finally
@@ -410,25 +636,23 @@
         }
     }
 
-    private Task HandleCancelFromStep1()
+    private bool HasSingleInstanceRoleConflicts()
     {
-        HandleCancel();
-        return Task.CompletedTask;
+        if (DideData.Researchers is null || DideData.Researchers.Count == 0)
+            return false;
+
+        // Roles que no se pueden repetir (coordinador principal, subrogante, etc.)
+        var conflicts = DideData.Researchers
+            .Where(r => r.Role > 0 && _singleInstanceRoleIds.Contains(r.Role))
+            .GroupBy(r => r.Role)
+            .Any(g => g.Count() > 1);
+
+        return conflicts;
     }
 
-    // ==========================
-    // Step 2: selección de archivo DIDE
-    // ==========================
+    private bool IsStep3Valid =>
+        !HasSingleInstanceRoleConflicts();
 
-    private Task HandleDideFileSelected(IBrowserFile file)
-    {
-        _selectedDideFile = file;
-        // Opcional: limpiar datos previos
-        // DideData = new();
-        return Task.CompletedTask;
-    }
-
-    // Botón "Cargar datos del formulario DIDE"
     private async Task LoadDideAsync()
     {
         if (_selectedDideFile is null || IsStep2Busy)
@@ -463,7 +687,6 @@
             }
             else
             {
-                // TODO: manejar error (toast, etc.)
                 Console.WriteLine($"Error analyzing DIDE form: {response.Error}");
             }
         }
@@ -472,7 +695,6 @@
         }
         catch (Exception ex)
         {
-            // TODO: manejar excepción
             Console.WriteLine(ex);
         }
         finally
@@ -486,7 +708,38 @@
     }
 
     // ==========================
-    // Guardado final (Step 3)
+    // Categorías de investigación (Step 4)
+    // ==========================
+
+    private Task HandleResearchCategoriesChanged(List<ResearchCategoryTreeItemDTO> selection)
+    {
+        _selectedResearchCategories = selection ?? new();
+        return Task.CompletedTask;
+    }
+
+    private List<int> ExtractSelectedResearchCategoryIds()
+    {
+        var result = new List<int>();
+
+        void Traverse(ResearchCategoryTreeItemDTO node)
+        {
+            result.Add(node.Id);
+            foreach (var child in node.Children)
+            {
+                Traverse(child);
+            }
+        }
+
+        foreach (var root in _selectedResearchCategories)
+        {
+            Traverse(root);
+        }
+
+        return result.Distinct().ToList();
+    }
+
+    // ==========================
+    // Guardado final (Step 6)
     // ==========================
 
     private async Task HandleSaveAsync()
@@ -494,148 +747,161 @@
         if (IsSaving)
             return;
 
+        Console.WriteLine("=== [HandleSaveAsync] Inicio ===");
         IsSaving = true;
 
         try
         {
-            // ==========================
-            // 0) Validar datos mínimos
-            // ==========================
+            Console.WriteLine($"→ Validando campos iniciales...");
 
             if (string.IsNullOrWhiteSpace(DideData.ProjectName))
             {
-                Console.WriteLine("Project name is required (Step 2).");
+                Console.WriteLine("❌ ProjectName faltante");
+                return;
+            }
+
+            if (DideData.ResearchTypeId is null || DideData.ResearchTypeId.Value <= 0)
+            {
+                Console.WriteLine("❌ ResearchTypeId faltante");
+                return;
+            }
+
+            if (_budgets is null || !_budgets.Any(b => b.FundingTypeId > 0 && b.InitialAmount > 0))
+            {
+                Console.WriteLine("❌ Budgets no válidos");
                 return;
             }
 
             var facultyId = ResolveCoordinatorFacultyId();
+            Console.WriteLine($"→ FacultyId resuelto: {facultyId}");
+
             if (facultyId <= 0)
             {
-                Console.WriteLine("Faculty is required. Check coordinator faculty in Step 2.");
+                Console.WriteLine("❌ Faculty ID inválido");
                 return;
             }
 
             if (!_scheduledDate.HasValue)
             {
-                Console.WriteLine("Scheduled date for the first visit is required.");
+                Console.WriteLine("❌ No hay fecha programada para visita");
                 return;
             }
 
-            // ==========================
-            // 1) Asegurar que el documento está subido
-            // ==========================
+            // ===============================
+            // UPLOAD DOCUMENTO
+            // ===============================
 
             if (_projectDocument is null)
             {
+                Console.WriteLine("→ Documento no existe aún, preparando upload...");
+
                 if (_selectedResolutionFile is null)
                 {
-                    Console.WriteLine("You must upload the initial resolution PDF before creating the project.");
+                    Console.WriteLine("❌ No seleccionaste archivo PDF de resolución");
                     return;
                 }
 
-                using var uploadContent = new MultipartFormDataContent();
-                using var uploadStream = _selectedResolutionFile.OpenReadStream(MaxResolutionFileSizeBytes);
-                var uploadFileContent = new StreamContent(uploadStream);
-                uploadFileContent.Headers.ContentType = new MediaTypeHeaderValue(_selectedResolutionFile.ContentType);
+                Console.WriteLine($"→ Subiendo PDF: {_selectedResolutionFile.Name} (tipo: {_selectedResolutionFile.ContentType})");
 
-                uploadContent.Add(uploadFileContent, "file", _selectedResolutionFile.Name);
+                var dto = new UploadDocumentClientDTO
+                {
+                    DocumentTypeId = 1,
+                    RelatedDocumentId = null,
+                    ResolutionCode = ResolutionData.ResolutionCode,
+                    ResolutionDate = ResolutionData.ResolutionHeaderDate,
+                    CreatedByUserId = _currentUserId
+                };
+                var content = MultipartBuilder.Build(
+                    dto,
+                    _resolutionFileBytes!,
+                    _selectedResolutionFile!.Name,
+                    _selectedResolutionFile.ContentType
+                );
 
-                var uploadResponse = await DocumentClient.UploadAsync(uploadContent, CancellationToken.None);
+
+
+                Console.WriteLine("→ Subiendo documento...");
+                var uploadResponse = await DocumentClient.UploadAsync(content);
+
+
+                Console.WriteLine($"← Respuesta Upload: Success={uploadResponse.Success}, Error={uploadResponse.Error}");
 
                 if (!uploadResponse.Success || uploadResponse.Response is null)
                 {
-                    Console.WriteLine($"Error uploading document: {uploadResponse.Error}");
+                    Console.WriteLine("❌ Error subiendo documento");
                     return;
                 }
 
                 _projectDocument = uploadResponse.Response;
+                Console.WriteLine($"✓ Documento subido. DocumentId: {_projectDocument.DocumentId}");
             }
 
             var documentDto = _projectDocument;
 
-            // ==========================
-            // 2) Mapear Project
-            // ==========================
+            // ===============================
+            // CREAR DTO PRINCIPAL DEL PROYECTO
+            // ===============================
+
+            Console.WriteLine("→ Preparando Project DTO...");
+            // 1) Obtener acrónimo de la facultad
+            var faculty = _faculties.FirstOrDefault(f => f.FacultyId == facultyId);
+            var facultyAcronym = faculty?.Acronym ?? string.Empty;
 
             var projectDto = new AddProjectRequestDTO
             {
                 ProjectName = DideData.ProjectName,
                 ProjectTypeId = _selectedProjectTypeId,
-                ProjectGroupId = 0, // el servicio crea el grupo interno
-                ResearchLine = 0,   // TODO: mapear a un catálogo si lo usas
-
+                ProjectGroupId = 0,
+                ResearchCategoryIds = ExtractSelectedResearchCategoryIds(),
                 ApprovalDate = ResolutionData.ResolutionHeaderDate
                                ?? documentDto.ResolutionDate
                                ?? DateTime.Today,
-
                 StartDate = ResolutionData.ExecutionStartDate,
-                ProjectCode = ResolutionData.ResolutionCode ?? documentDto.ResolutionCode,
-
+                ProjectCode = facultyAcronym,
                 CreatedByUserId = _currentUserId,
-                ProjectStateId = _defaultStateId,
-
-                DurationInMonths = ResolutionData.Duration > 0
-                    ? ResolutionData.Duration
-                    : 12,
-
-                FacultyId = facultyId,
-                FundingTypeId = _fundingTypeId
+                ProjectStateId = 3,
+                DurationInMonths = ResolutionData.Duration > 0 ? ResolutionData.Duration : 12,
+                FacultyId = facultyId
             };
 
-            // ==========================
-            // 3) GroupMembers (por ahora vacío)
-            // ==========================
+            Console.WriteLine($"→ ProjectDto listo: Name={projectDto.ProjectName}, Code={projectDto.ProjectCode}, Type={projectDto.ProjectTypeId}, FacultyId={projectDto.FacultyId}");
 
-            var groupMembers = new List<AddGroupMemberRequestDTO>();
+            // ===============================
+            // BUDGETS
+            // ===============================
 
-            // Aquí luego podrás mapear Researchers -> ExternalUserId si tienes ese vínculo
-            //foreach (var r in DideData.Researchers)
-            //{
-            //    var externalId = ResolveExternalUserIdFromEmail(r.email);
-            //    if (externalId <= 0) continue;
-            //
-            //    groupMembers.Add(new AddGroupMemberRequestDTO
-            //    {
-            //        GroupId = 0,
-            //        ExternalUserId = externalId,
-            //        MemberRole = r.Role
-            //    });
-            //}
-
-            // ==========================
-            // 4) Presupuesto (opcional)
-            // ==========================
-
-            CreateBudgetRequestDTO? budgetDto = null;
-
-            if (ResolutionData.Budget > 0)
+            var budgetsDto = new List<CreateBudgetRequestDTO>();
+            if (_budgets != null)
             {
-                budgetDto = new CreateBudgetRequestDTO
+                foreach (var b in _budgets.Where(x => x.FundingTypeId > 0 && x.InitialAmount > 0))
                 {
-                    ProjectId = 0, // lo rellena el backend con el project creado
-                    ApprovedByUserId = _currentUserId,
-                    InitialAmount = ResolutionData.Budget,
-                    CertifiedAmount = 0,
-                    ExecutedAmount = 0,
-                    ApprovedAt = ResolutionData.ResolutionHeaderDate
-                };
+                    budgetsDto.Add(new CreateBudgetRequestDTO
+                    {
+                        ProjectId = 0,
+                        ApprovedByUserId = _currentUserId,
+                        InitialAmount = b.InitialAmount,
+                        FundingTypeId = b.FundingTypeId
+                    });
+                }
             }
 
-            // ==========================
-            // 5) Objetivos + actividades
-            // ==========================
+            Console.WriteLine($"→ Budgets listos. Count={budgetsDto.Count}");
+
+            // ===============================
+            // OBJECTIVES
+            // ===============================
 
             var objectivesDto = new List<ProjectObjectiveWithActivitiesRequestDTO>();
 
-            if (DideData.Objectives is not null)
+            if (DideData.Objectives != null)
             {
                 foreach (var obj in DideData.Objectives)
                 {
                     var objectiveDto = new ProjectObjectiveWithActivitiesRequestDTO
                     {
-                        ObjectiveTypeId = obj.ObjectiveType,     // ya viene del selector del Step 2
+                        ObjectiveTypeId = obj.ObjectiveType,
                         Objective = obj.ObjectiveText,
-                        Result = "Result not provided in DIDE form", // placeholder por ahora
+                        Result = "Result not provided in DIDE form",
                         Activities = MapActivities(obj)
                     };
 
@@ -643,54 +909,125 @@
                 }
             }
 
-            // ==========================
-            // 6) Request completo
-            // ==========================
+            Console.WriteLine($"→ Objectives listos. Count={objectivesDto.Count}");
+
+            // ===============================
+            // GROUP MEMBERS (miembros del proyecto)
+            // ===============================
+
+            var groupMembersDto = new List<AddGroupMemberRequestDTO>();
+
+            if (DideData.Researchers != null)
+            {
+                // foreach (var r in DideData.Researchers)
+                // {
+                //     Validar que tengamos id de usuario y rol
+                //     if (r.ExternalUserId > 0 && r.Role > 0)
+                //     {
+                //         groupMembersDto.Add(new AddGroupMemberRequestDTO
+                //         {
+                //             ExternalUserId = r.ExternalUserId, 👈 se usará como UserId en el back
+                //             MemberRole = r.Role                👈 Id de MemberRoleType
+                //         });
+                //     }
+                // }
+            }
+
+
+            // ===============================
+            // REQUEST COMPLETO
+            // ===============================
+
 
             var request = new AddProjectFullRequestDTO
             {
                 Project = projectDto,
                 ProjectDocumentData = documentDto,
-                GroupMembers = groupMembers,
-                Budget = budgetDto,
+                GroupMembers = groupMembersDto,
+                Budgets = budgetsDto,
                 Objectives = objectivesDto,
                 ScheduledDate = _scheduledDate.Value
             };
 
-            // ==========================
-            // 7) Llamar al backend
-            // ==========================
 
+            Console.WriteLine("→ Llamando a ProjectClient.CreateFullAsync() ...");
             var response = await ProjectClient.CreateFullAsync(request, CancellationToken.None);
+
+            Console.WriteLine($"← Respuesta CreateFull: Success={response.Success}, Error={response.Error}");
 
             if (!response.Success || response.Response is null)
             {
-                Console.WriteLine($"Error creating project: {response.Error}");
-                // aquí iría tu Toast de error
+                Console.WriteLine($"❌ Error creando proyecto: {response.Error}");
                 return;
             }
 
-            // OK -> navegar al detalle o listado
+            Console.WriteLine($"✓ Proyecto creado. ProjectId={response.Response.ProjectId}");
             Nav.NavigateTo($"/projects/{response.Response.ProjectId}");
         }
         finally
         {
+            Console.WriteLine("=== [HandleSaveAsync] FIN ===");
             IsSaving = false;
         }
     }
 
 
-    // Ejemplo de cómo elegir la facultad del coordinador
+    private Task OnBudgetsChanged(List<CreateBudgetRequestDTO> newBudgets)
+    {
+        _budgets = newBudgets ?? new();
+        _fundingTypeId = _budgets
+            .FirstOrDefault(b => b.FundingTypeId > 0)?.FundingTypeId ?? 0;
+
+        return Task.CompletedTask;
+    }
+
+
     private int ResolveCoordinatorFacultyId()
     {
         if (DideData.Researchers is null || DideData.Researchers.Count == 0)
             return 0;
 
-        // TODO: si tienes un RoleId para "Coordinador", úsalo aquí.
-        // Por ahora tomamos la facultad del primer investigador con FacultyCareerId > 0.
+        if (_faculties is null || _faculties.Count == 0)
+            return 0;
+
+        // 1) Intentar con el coordinador principal
+        if (_coordinatorRoleId.HasValue)
+        {
+            var coord = DideData.Researchers
+                .FirstOrDefault(r => r.Role == _coordinatorRoleId.Value && r.FacultyCareerId > 0);
+
+            if (coord is not null)
+                return MapProgramToFaculty(coord.FacultyCareerId);
+        }
+
+        // 2) Fallback: cualquier investigador con FacultyCareerId > 0
         var withFaculty = DideData.Researchers.FirstOrDefault(r => r.FacultyCareerId > 0);
-        return withFaculty?.FacultyCareerId ?? 0;
+        if (withFaculty is not null)
+            return MapProgramToFaculty(withFaculty.FacultyCareerId);
+
+        return 0;
     }
+
+    private int MapProgramToFaculty(int facultyCareerId)
+    {
+        if (facultyCareerId <= 0 || _faculties is null || _faculties.Count == 0)
+            return 0;
+
+        // Buscar el programa dentro de las facultades
+        foreach (var fac in _faculties)
+        {
+            if (fac.Programs is null)
+                continue;
+
+            if (fac.Programs.Any(p => p.ProgramId == facultyCareerId))
+                return fac.FacultyId;
+        }
+
+        // Fallback: por si el id ya fuera FacultyId
+        var facById = _faculties.FirstOrDefault(f => f.FacultyId == facultyCareerId);
+        return facById?.FacultyId ?? 0;
+    }
+
 
     private List<AddObjectiveActivityRequestDTO> MapActivities(DideObjectiveInfo obj)
     {
@@ -701,17 +1038,25 @@
 
         foreach (var act in obj.Activities)
         {
-            // TODO: ajusta según la definición real de AddObjectiveActivityRequestDTO
             result.Add(new AddObjectiveActivityRequestDTO
             {
                 // Activity = act.ActivityText,
-                // Result = "Pending", ...
             });
         }
 
         return result;
     }
 
+    private void HandleResearchersChanged()
+    {
+        // No hace falta cambiar nada más, solo forzar re-render del padre
+        StateHasChanged();
+    }
+
+
+    // ==========================
+    // Dispose
+    // ==========================
 
     public void Dispose()
     {

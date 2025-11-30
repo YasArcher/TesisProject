@@ -43,9 +43,14 @@ namespace tesisproject.backend.Services.Implementations
                         TentativeEndDate = p.TentativeEndDate,
                         ExecutionPercentage = p.ExecutionPercentage,
                         PrincipalCoordinatorFacultyId = p.FacultyId,
-                        FundingTypeId = p.FundingTypeId
+
+                        FundingTypeId = p.Budgets
+                            .Select(b => b.FundingTypeId)
+                            .Distinct()
+                            .ToList()
                     })
                     .ToListAsync(ct);
+
 
                 if (data.Count == 0)
                     return ServiceResult<List<ProjectListResponseDTO>>.Fail("No projects found.", ErrorType.NotFound);
@@ -233,57 +238,73 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 var dto = await _uow.Projects
-                    .Query()
-                    .Where(p => p.ProjectId == projectId)
-                    .Select(p => new ProjectDetailResponseDTO
-                    {
-                        // --- General ---
-                        ProjectId = p.ProjectId,
-                        ProjectCode = p.ProjectCode ?? string.Empty,
-                        ProjectName = p.ProjectName ?? string.Empty,
-                        ProjectObjectives = MapToDTO(p.ProjectObjectives),
+                   .Query()
+                   .Include(p => p.ProjectResearchCategories)
+                       .ThenInclude(prc => prc.ResearchCategory)
+                           .ThenInclude(rc => rc.ParentCategory)   // para subir a dominio
+                   .Include(p => p.ProjectResearchCategories)
+                       .ThenInclude(prc => prc.ResearchCategory)
+                           .ThenInclude(rc => rc.SubCategories)    // para obtener las líneas de ese dominio
+                   .Where(p => p.ProjectId == projectId)
+                   .Select(p => new ProjectDetailResponseDTO
+                   {
+                       ProjectId = p.ProjectId,
+                       ProjectCode = p.ProjectCode ?? string.Empty,
+                       ProjectName = p.ProjectName ?? string.Empty,
+                       ProjectObjectives = MapToDTO(p.ProjectObjectives),
 
-                        // 🔁 Ahora dominios con sus líneas (solo las del proyecto)
-                        ResearchDomains = p.ProjectResearchLines
-                            .GroupBy(prl => new
-                            {
-                                prl.ResearchLineType.ResearchDomainTypeId,
-                                DomainName = prl.ResearchLineType.ResearchDomainType.Name
-                            })
-                            .Select(g => new ProjectResearchDomainDTO
-                            {
-                                ResearchDomainTypeId = g.Key.ResearchDomainTypeId,
-                                ResearchDomainTypeName = g.Key.DomainName,
-                                ResearchLines = g
-                                    .Select(prl => new ProjectResearchLineDTO
-                                    {
-                                        ResearchLineTypeId = prl.ResearchLineTypeId,
-                                        ResearchLineTypeName = prl.ResearchLineType.Name
-                                    })
-                                    .ToList()
-                            })
-                            .ToList(),
+                       ResearchDomains = p.ProjectResearchCategories
+                           .Select(prc => prc.ResearchCategory)
+                           .Where(rc => rc.ParentCategoryId != null)    // tomamos las líneas
+                           .Select(rc => rc.ParentCategory)             // subimos al dominio
+                           .Where(domain => domain != null)
+                           .Distinct()                                  // dominios únicos
+                           .Select(domain => new ProjectResearchDomainDTO
+                           {
+                               ResearchDomainTypeId = domain!.Id,
+                               ResearchDomainTypeName = domain.Name,
+                               ResearchLines = domain.SubCategories
+                                   .Where(line => p.ProjectResearchCategories
+                                       .Any(prc => prc.ResearchCategoryId == line.Id))
+                                   .Select(line => new ProjectResearchLineDTO
+                                   {
+                                       ResearchLineTypeId = line.Id,
+                                       ResearchLineTypeName = line.Name
+                                   })
+                                   .ToList()
+                           })
+                           .ToList(),
 
-                        ProjectTypeId = p.ProjectTypeId,
-                        ProjectTypeName = p.ProjectType.Name ?? string.Empty,
+                       ProjectTypeId = p.ProjectTypeId,
+                       ProjectTypeName = p.ProjectType.Name ?? string.Empty,
 
-                        ProjectStateId = p.ProjectStateId,
-                        ProjectStateName = p.ProjectState.Name ?? string.Empty,
+                       ProjectStateId = p.ProjectStateId,
+                       ProjectStateName = p.ProjectState.Name ?? string.Empty,
 
-                        StartDate = p.StartDate,
-                        TentativeEndDate = p.TentativeEndDate,
-                        RealEndDate = p.RealEndDate,
-                        ExecutionPercentage = p.ExecutionPercentage ?? 0,
+                       StartDate = p.StartDate,
+                       TentativeEndDate = p.TentativeEndDate,
+                       RealEndDate = p.RealEndDate,
+                       ExecutionPercentage = p.ExecutionPercentage ?? 0,
 
-                        // --- Groups ---
-                        ProjectGroupId = p.ProjectGroupId,
-                        ProjectGroupName = p.ProjectGroup.Name ?? string.Empty,
+                       ProjectGroupId = p.ProjectGroupId,
+                       ProjectGroupName = p.ProjectGroup.Name ?? string.Empty,
 
-                        // --- Budget ---
-                        BudgetId = p.Budget != null ? p.Budget.BudgetId : 0,
-                        BudgetAmount = p.Budget != null ? p.Budget.InitialAmount : 0,
-                    })
-                    .FirstOrDefaultAsync(ct);
+                       // 🔹 Todos los presupuestos del proyecto
+                       Budgets = p.Budgets
+                           .OrderBy(b => b.BudgetId)
+                           .Select(b => new ProjectBudgetDetailDTO
+                           {
+                               BudgetId = b.BudgetId,
+                               InitialAmount = b.InitialAmount,
+                               CertifiedAmount = b.CertifiedAmount,
+                               ExecutedAmount = b.ExecutedAmount,
+                               ApprovedAt = b.ApprovedAt,
+                               FundingTypeId = b.FundingTypeId,
+                               FundingTypeName = b.FundingType.Name
+                           })
+                           .ToList()
+                   })
+                   .FirstOrDefaultAsync(ct);
 
                 return dto is null
                     ? ServiceResult<ProjectDetailResponseDTO>.Fail("Project not found.", ErrorType.NotFound)
@@ -296,106 +317,166 @@ namespace tesisproject.backend.Services.Implementations
         }
 
 
+
         public async Task<ServiceResult<ProjectDetailResponseDTO>> CreateFullAsync(
             AddProjectFullRequestDTO request,
             CancellationToken ct = default)
         {
+            // Helper local para log interno
+            void PhaseLog(string phase, string message)
+                => Console.WriteLine($"[DEBUG] [{phase}] {message}");
+
             try
             {
                 if (request.Project is null)
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        "Project payload is required.",
-                        ErrorType.Validation);
+                {
+                    PhaseLog("Fase 0 - Request", "Project payload is null");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid project data.");
+                }
 
                 var p = request.Project;
                 var d = request.ProjectDocumentData;
 
                 // ============================================
-                // 1) Validación básica mínima
+                // 1) Validación mínima
                 // ============================================
 
                 if (p.ProjectTypeId <= 0)
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        "ProjectTypeId is required.",
-                        ErrorType.Validation);
+                {
+                    PhaseLog("Fase 1 - Validación", "ProjectTypeId <= 0");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid ProjectTypeId.");
+                }
 
                 if (p.ProjectStateId <= 0)
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        "ProjectStateId is required.",
-                        ErrorType.Validation);
+                {
+                    PhaseLog("Fase 1 - Validación", "ProjectStateId <= 0");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid ProjectStateId.");
+                }
 
                 if (p.CreatedByUserId <= 0)
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        "CreatedByUserId is required.",
-                        ErrorType.Validation);
+                {
+                    PhaseLog("Fase 1 - Validación", "CreatedByUserId <= 0");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid CreatedByUserId.");
+                }
 
                 if (p.FacultyId <= 0)
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        "FacultyId is required.",
-                        ErrorType.Validation);
+                {
+                    PhaseLog("Fase 1 - Validación", "FacultyId <= 0");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid FacultyId.");
+                }
+
+                if (request.ScheduledDate == default)
+                {
+                    PhaseLog("Fase 1 - Validación", "ScheduledDate is default");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid scheduled date.");
+                }
+                // ============================================
+                // 1.5) Generar ProjectNumber + ProjectCode real
+                // ============================================
+                PhaseLog("Fase 1.5 - Código", "Generando código de proyecto...");
+
+                // El front manda aquí solo el prefijo de facultad, por ej. "PFCHE"
+                var facultyCode = (p.ProjectCode ?? string.Empty).Trim();
+
+                if (string.IsNullOrWhiteSpace(facultyCode))
+                {
+                    PhaseLog("Fase 1.5 - Código", "facultyCode vacío");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Faculty project code (prefix) is required.");
+                }
+
+                // Buscar último número usado para esa facultad
+                var lastNumber = await _uow.Projects
+                    .Query(asNoTracking: true)
+                    .Where(x => x.FacultyId == p.FacultyId &&
+                                x.ProjectCode.StartsWith(facultyCode))  // PFCHE...
+                    .OrderByDescending(x => x.ProjectNumber)
+                    .Select(x => (int?)x.ProjectNumber)
+                    .FirstOrDefaultAsync(ct) ?? 0;
+
+                var nextNumber = lastNumber + 1;
+
+                // Construir código final: PFCHE17-A
+                var generatedCode = $"{facultyCode}{nextNumber}-A";
+
+                PhaseLog("Fase 1.5 - Código",
+                    $"facultyCode={facultyCode}, last={lastNumber}, next={nextNumber}, final={generatedCode}");
+
+                // Por seguridad con [StringLength(20)]
+                if (generatedCode.Length > 20)
+                {
+                    PhaseLog("Fase 1.5 - Código", $"generatedCode demasiado largo: {generatedCode.Length}");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Generated project code is too long.");
+                }
+
 
                 // ============================================
-                // 2) Crear el Group del proyecto (siempre)
-                //    - GroupTypeId = 1 (Integrantes de Proyecto)
-                //    - Name = ProjectCode
+                // 2) Crear Group
                 // ============================================
+
+                PhaseLog("Fase 2 - Group", "Creando grupo...");
 
                 var groupEntity = new Group
                 {
-                    GroupTypeId = 1, // Integrantes de Proyecto
-                    Name = p.ProjectCode ?? string.Empty
+                    GroupTypeId = 1,
+                    Name = generatedCode
                 };
 
                 await _uow.Groups.AddAsync(groupEntity, ct);
 
                 // ============================================
-                // 3) Validación de nombre duplicado (global)
+                // 3) Validar nombre duplicado
                 // ============================================
 
-                var projectName = p.ProjectName ?? string.Empty;
+                PhaseLog("Fase 3 - Validación nombre", "Revisando duplicados...");
 
                 var duplicate = await _uow.Projects
                     .Query(asNoTracking: true)
-                    .AnyAsync(x => x.ProjectName == projectName, ct);
+                    .AnyAsync(x => x.ProjectName == p.ProjectName, ct);
 
                 if (duplicate)
                 {
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        "A project with the same name already exists.",
-                        ErrorType.Conflict);
+                    PhaseLog("Fase 3 - Validación nombre", "Duplicado detectado");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail("A project with the same name already exists.");
                 }
 
                 // ============================================
-                // 4) Crear entidad Project
+                // 4) Crear Project
                 // ============================================
+                PhaseLog("Fase 4 - Project",
+    $"Creando entidad proyecto con: generatedCode={generatedCode}, nextNumber={nextNumber}");
+
+
+                PhaseLog("Fase 4 - Project", "Creando entidad proyecto...");
 
                 var projectEntity = new Project
                 {
-                    ProjectCode = p.ProjectCode ?? string.Empty,
+                    ProjectCode = generatedCode,
                     CreatedByUserId = p.CreatedByUserId,
                     ProjectTypeId = p.ProjectTypeId,
+                    ProjectNumber = nextNumber,
                     ProjectStateId = p.ProjectStateId,
                     ProjectName = p.ProjectName ?? string.Empty,
-                    ResearchLineTypeId = p.ResearchLine,
                     ApprovalDate = p.ApprovalDate,
                     StartDate = p.StartDate,
                     DurationInMonths = p.DurationInMonths,
                     TentativeEndDate = p.StartDate?.AddMonths(p.DurationInMonths),
                     RealEndDate = null,
-                    ExecutionPercentage = 0, // nuevo proyecto siempre arranca en 0
+                    ExecutionPercentage = 0,
                     FacultyId = p.FacultyId,
-                    FundingTypeId = p.FundingTypeId,
-                    InitialDocumentId = d?.DocumentId // por si viene null
+                    InitialDocumentId = d?.DocumentId
                 };
 
                 projectEntity.ProjectGroup = groupEntity;
 
+                await _uow.Projects.AddAsync(projectEntity, ct);
+
                 // ============================================
-                // 5) Asignar miembros al Group
+                // 5) Miembros del grupo
                 // ============================================
 
-                if (request.GroupMembers is not null &&
-                    request.GroupMembers.Count > 0)
+                PhaseLog("Fase 5 - Miembros", "Insertando miembros...");
+
+                if (request.GroupMembers is not null && request.GroupMembers.Count > 0)
                 {
                     var groupMembers = request.GroupMembers
                         .Select(m => new GroupMember
@@ -410,34 +491,59 @@ namespace tesisproject.backend.Services.Implementations
                     await _uow.GroupMembers.AddRangeAsync(groupMembers, ct);
                 }
 
-                await _uow.Projects.AddAsync(projectEntity, ct);
-
                 // ============================================
-                // 6) Crear Budget (opcional)
+                // 6) Categorías
                 // ============================================
 
-                if (request.Budget is not null)
+                PhaseLog("Fase 6 - Categorías", "Insertando categorías...");
+
+                if (p.ResearchCategoryIds is not null && p.ResearchCategoryIds.Count > 0)
                 {
-                    var b = request.Budget;
+                    var distinctIds = p.ResearchCategoryIds.Distinct().ToList();
 
-                    var budgetEntity = new Budget
-                    {
-                        Project = projectEntity,
-                        ApprovedByUserId = b.ApprovedByUserId,
-                        InitialAmount = b.InitialAmount,
-                        CertifiedAmount = b.CertifiedAmount,
-                        ExecutedAmount = b.ExecutedAmount,
-                        ApprovedAt = b.ApprovedAt
-                    };
+                    var categoryLinks = distinctIds
+                        .Select(catId => new ProjectResearchCategory
+                        {
+                            Project = projectEntity,
+                            ResearchCategoryId = catId
+                        })
+                        .ToList();
 
-                    await _uow.Budgets.AddAsync(budgetEntity, ct);
+                    await _uow.ProjectResearchCategories.AddRangeAsync(categoryLinks, ct);
                 }
 
                 // ============================================
-                // 7) Crear Objectives y Activities
+                // 7) Presupuestos
                 // ============================================
 
-                if (request.Objectives is not null && request.Objectives.Count > 0)
+                PhaseLog("Fase 7 - Presupuesto", "Insertando budgets...");
+
+                if (request.Budgets is not null)
+                {
+                    var budgetEntities = request.Budgets
+                        .Where(b => b.FundingTypeId > 0 && b.InitialAmount > 0)
+                        .Select(b => new Budget
+                        {
+                            Project = projectEntity,
+                            ApprovedByUserId = b.ApprovedByUserId,
+                            InitialAmount = b.InitialAmount,
+                            CertifiedAmount = 0,
+                            ExecutedAmount = 0,
+                            ApprovedAt = null,
+                            FundingTypeId = b.FundingTypeId
+                        })
+                        .ToList();
+
+                    await _uow.Budgets.AddRangeAsync(budgetEntities, ct);
+                }
+
+                // ============================================
+                // 8) Objetivos y Actividades
+                // ============================================
+
+                PhaseLog("Fase 8 - Objetivos", "Insertando objetivos...");
+
+                if (request.Objectives is not null)
                 {
                     foreach (var objDto in request.Objectives)
                     {
@@ -451,28 +557,30 @@ namespace tesisproject.backend.Services.Implementations
 
                         await _uow.ProjectObjectives.AddAsync(objectiveEntity, ct);
 
-                        if (objDto.Activities is null || objDto.Activities.Count == 0)
-                            continue;
-
-                        foreach (var actDto in objDto.Activities)
+                        if (objDto.Activities is not null)
                         {
-                            var activityEntity = new ObjectiveActivity
+                            foreach (var actDto in objDto.Activities)
                             {
-                                Objective = objectiveEntity,
-                                ActivityResult = actDto.ActivityResult ?? string.Empty,
-                                ImprovementAction = actDto.ImprovementAction ?? string.Empty,
-                                IsCompleted = actDto.IsCompleted,
-                                CreatedAt = DateTime.UtcNow
-                            };
+                                var activityEntity = new ObjectiveActivity
+                                {
+                                    Objective = objectiveEntity,
+                                    ActivityResult = actDto.ActivityResult ?? string.Empty,
+                                    ImprovementAction = actDto.ImprovementAction ?? string.Empty,
+                                    IsCompleted = actDto.IsCompleted,
+                                    CreatedAt = DateTime.UtcNow
+                                };
 
-                            await _uow.ObjectiveActivities.AddAsync(activityEntity, ct);
+                                await _uow.ObjectiveActivities.AddAsync(activityEntity, ct);
+                            }
                         }
                     }
                 }
 
                 // ============================================
-                // 8) Generar Visits automáticamente (semestrales)
+                // 9) Visitas
                 // ============================================
+
+                PhaseLog("Fase 9 - Visitas", "Generando visitas...");
 
                 var latest = await _periods
                     .Query(asNoTracking: true)
@@ -483,66 +591,49 @@ namespace tesisproject.backend.Services.Implementations
                     projectEntity.StartDate is not null &&
                     projectEntity.DurationInMonths > 0)
                 {
-                    var academicPeriodId = latest.Id;
-                    var visitStateId = 1; // Siempre "Programada"
-
                     var totalVisits = projectEntity.DurationInMonths / 6;
 
-                    var visits = new List<Visit>();
-
-                    for (int i = 0; i < totalVisits; i++)
-                    {
-                        var visit = new Visit
+                    var visits = Enumerable.Range(0, totalVisits)
+                        .Select(_ => new Visit
                         {
                             Project = projectEntity,
-                            VisitStateId = visitStateId,
-                            AcademicPeriodId = academicPeriodId,
-                            // Si quieres que todas arranquen sin fecha programada:
-                            // ScheduledDate = null,
+                            VisitStateId = 1,
+                            AcademicPeriodId = latest.Id,
                             ScheduledDate = request.ScheduledDate,
                             PerformedDate = null,
                             CreatedAt = DateTime.UtcNow
-                        };
-
-                        visits.Add(visit);
-                    }
+                        })
+                        .ToList();
 
                     await _uow.Visits.AddRangeAsync(visits, ct);
                 }
 
                 // ============================================
-                // 9) Guardar todo
+                // 10) Guardar
                 // ============================================
+
+                PhaseLog("Fase 10 - Save", "Guardando UoW...");
 
                 await _uow.SaveChangesAsync(ct);
 
                 // ============================================
-                // 10) Volver a leer el detalle y devolver DTO
+                // 11) Obtener detalle final
                 // ============================================
 
-                var detailResult = await GetProjectDetailAsync(projectEntity.ProjectId, ct);
-                if (!detailResult.Success)
-                    return detailResult;
+                PhaseLog("Fase 11 - Detalle", "Consultando detalle...");
 
-                return ServiceResult<ProjectDetailResponseDTO>.Ok(
-                    detailResult.Data!,
-                    "Project with related data created");
-            }
-            catch (DbUpdateException dbex)
-            {
-                return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                    dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                var detail = await GetProjectDetailAsync(projectEntity.ProjectId, ct);
+                if (!detail.Success)
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Error retrieving project detail.");
+
+                return ServiceResult<ProjectDetailResponseDTO>.Ok(detail.Data!);
             }
             catch (Exception ex)
             {
-                return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                Console.WriteLine($"[DEBUG] EXCEPCIÓN → {ex}");
+                return ServiceResult<ProjectDetailResponseDTO>.Fail("Unexpected server error.");
             }
         }
-
-
 
         private static Project MapToEntity(AddProjectRequestDTO dto) => new()
         {
@@ -552,14 +643,13 @@ namespace tesisproject.backend.Services.Implementations
             ProjectStateId = dto.ProjectStateId,
             ProjectGroupId = dto.ProjectGroupId,
             ProjectName = dto.ProjectName,
-            ResearchLineTypeId = dto.ResearchLine,
             StartDate = dto.StartDate,
             TentativeEndDate = dto.StartDate?.AddMonths(dto.DurationInMonths),
             ExecutionPercentage = 0,
             DurationInMonths = dto.DurationInMonths,
-            FacultyId = dto.FacultyId,
-            FundingTypeId = dto.FundingTypeId
+            FacultyId = dto.FacultyId
         };
+
 
         private static ICollection<ProjectObjectiveListItemDTO> MapToDTO(
             ICollection<ProjectObjective> entities)
@@ -578,6 +668,68 @@ namespace tesisproject.backend.Services.Implementations
                 .ToList();
         }
 
+        public async Task<ServiceResult<NoContent>> UpdateResearchCategoriesAsync(
+            int projectId,
+            List<int> researchCategoryIds,
+            CancellationToken ct = default)
+        {
+            try
+            {
+                var project = await _uow.Projects
+                    .Query()
+                    .Include(p => p.ProjectResearchCategories)
+                    .FirstOrDefaultAsync(p => p.ProjectId == projectId, ct);
+
+                if (project is null)
+                {
+                    return ServiceResult<NoContent>.Fail(
+                        "Project not found.",
+                        ErrorType.NotFound);
+                }
+
+                var newIds = (researchCategoryIds ?? new List<int>())
+                    .Distinct()
+                    .ToList();
+
+                var currentLinks = project.ProjectResearchCategories.ToList();
+                var currentIds = currentLinks
+                    .Select(x => x.ResearchCategoryId)
+                    .ToList();
+
+                var toRemoveIds = currentIds.Except(newIds).ToList();
+                var toAddIds = newIds.Except(currentIds).ToList();
+
+                // Quitar relaciones sobrantes
+                var linksToRemove = currentLinks
+                    .Where(x => toRemoveIds.Contains(x.ResearchCategoryId))
+                    .ToList();
+
+                if (linksToRemove.Count > 0)
+                {
+                    _uow.ProjectResearchCategories.RemoveRange(linksToRemove);
+                }
+
+                // Agregar las nuevas
+                foreach (var catId in toAddIds)
+                {
+                    project.ProjectResearchCategories.Add(new ProjectResearchCategory
+                    {
+                        ProjectId = project.ProjectId,
+                        ResearchCategoryId = catId
+                    });
+                }
+
+                await _uow.SaveChangesAsync(ct);
+
+                return ServiceResult<NoContent>.Ok(new NoContent(), "Project research categories updated.");
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<NoContent>.Fail(
+                    ex.Message,
+                    ErrorType.Unexpected);
+            }
+        }
 
         private static void ApplyUpdate(Project target, UpdateProjectRequestDTO dto)
         {
@@ -590,41 +742,6 @@ namespace tesisproject.backend.Services.Implementations
             target.TentativeEndDate = dto.TentativeEndDate;
             target.RealEndDate = dto.RealEndDate;
             target.ExecutionPercentage = dto.ExecutionPercentage;
-
-            // ==============================
-            //   Sincronizar líneas de investigación
-            // ==============================
-            if (dto.ResearchLineTypeIds != null)
-            {
-                var dtoIds = dto.ResearchLineTypeIds
-                    .Distinct()
-                    .ToList();
-
-                var currentIds = target.ProjectResearchLines
-                    .Select(prl => prl.ResearchLineTypeId)
-                    .ToList();
-
-                // IDs que hay que agregar
-                var toAdd = dtoIds.Except(currentIds).ToList();
-                // IDs que hay que quitar
-                var toRemove = currentIds.Except(dtoIds).ToList();
-
-                // Quitar las relaciones que ya no están en el DTO
-                target.ProjectResearchLines = target.ProjectResearchLines
-                    .Where(prl => !toRemove.Contains(prl.ResearchLineTypeId))
-                    .ToList();
-
-                // Agregar nuevas relaciones
-                foreach (var id in toAdd)
-                {
-                    target.ProjectResearchLines.Add(new ProjectResearchLine
-                    {
-                        ProjectId = target.ProjectId,
-                        ResearchLineTypeId = id
-                    });
-                }
-            }
         }
-
     }
 }

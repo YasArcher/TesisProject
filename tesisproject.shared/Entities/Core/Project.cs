@@ -2,9 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Entities.Core.Products;
 
@@ -15,75 +12,66 @@ namespace tesisproject.shared.Entities.Core
         // ================================
         //            Keys / Codes
         // ================================
-        public int ProjectId { get; set; }        // id_proyecto (string en tu diagrama)
+        public int ProjectId { get; set; } 
 
         [StringLength(20)]
-        public string ProjectCode { get; set; } = string.Empty; // código_proyecto (código único generado)
+        public string ProjectCode { get; set; } = string.Empty; // código_proyecto
 
         // ================================
         //            Foreign Keys
         // ================================
         [Required]
-        public int CreatedByUserId { get; set; }                 // id_creado_por (usuario externo)
-
+        public int CreatedByUserId { get; set; }
         [Required]
-        public int ProjectTypeId { get; set; }                   // id_tipo_proyecto (catálogo)
-
+        public int ProjectTypeId { get; set; }
         [Required]
-        public int ProjectStateId { get; set; }                  // id_tipo_estado_proyecto (catálogo)
-
+        public int ProjectStateId { get; set; }
         [Required]
-        public int ProjectGroupId { get; set; }                  // id_grupo_proyecto (FK -> Group)
-
-        public int FundingTypeId { get; set; }                   // id_tipo_financiamiento (catálogo)
-
-        public int? InitialDocumentId { get; set; }              // id_documento_inicial (FK -> Document)
+        public int ProjectGroupId { get; set; }
+        public int? InitialDocumentId { get; set; }
 
         // ================================
         //          Core Information
         // ================================
-        [Required, StringLength(120)]
-        public string ProjectName { get; set; } = string.Empty;  // nombre_proyecto
-
-        [StringLength(200)]
-        public int ResearchLineTypeId { get; set; }              // linea_investigacion_proyecto
+        public string ProjectName { get; set; } = string.Empty;
+        [Required]
+        public int ProjectNumber { get; set; } = 0;
 
         // ================================
         //              Dates
         // ================================
         [Column(TypeName = "date")]
-        public DateTime ApprovalDate { get; set; }               // fecha_aprobacion
+        public DateTime ApprovalDate { get; set; }
 
         [Column(TypeName = "date")]
-        public DateTime? StartDate { get; set; }                 // fecha_inicio
+        public DateTime? StartDate { get; set; }
 
-        public int DurationInMonths { get; set; }                // duracion_meses
-
-        [Column(TypeName = "date")]
-        public DateTime? TentativeEndDate { get; set; }          // fecha_fin_tentativa
+        public int DurationInMonths { get; set; }
 
         [Column(TypeName = "date")]
-        public DateTime? RealEndDate { get; set; }               // fecha_fin_real
+        public DateTime? TentativeEndDate { get; set; }
+
+        [Column(TypeName = "date")]
+        public DateTime? RealEndDate { get; set; }
 
         // ================================
         //             Metrics
         // ================================
         [Range(0, 100)]
-        public decimal? ExecutionPercentage { get; set; }        // porcentaje_de_ejecucion
+        public decimal? ExecutionPercentage { get; set; }
+
         [Required]
         public int FacultyId { get; set; }
 
         // ================================
         //        Navigation Properties
         // ================================
-        public ProjectType ProjectType { get; set; } = null!;            // Navegación a ProjectType (catálogo)
-        public ProjectState ProjectState { get; set; } = null!;          // Navegación a ProjectState (catálogo)
-        public Group ProjectGroup { get; set; } = null!;                 // Navegación a Group
-        public Document? InitialDocument { get; set; }                   // Navegación a Document (si aplica)
-        public Budget? Budget { get; set; }                               // Navegación a Budget (1 a 1)
-        public FundingType FundingType { get; set; } = null!;            // Navegación a FundingType (catálogo)
-        public ICollection<ProjectObjective>  ProjectObjectives { get; set; } = null!; // Navegación a ProjectObjective (1 a muchos)
-
+        public ProjectType ProjectType { get; set; } = null!;
+        public ProjectState ProjectState { get; set; } = null!;
+        public Group ProjectGroup { get; set; } = null!;
+        public Document? InitialDocument { get; set; }
+        public ICollection<Budget> Budgets { get; set; } = new List<Budget>();
+        public ICollection<ProjectObjective> ProjectObjectives { get; set; } = null!;
 
         // ================================
         //      Collections / Many-to-Many
@@ -91,6 +79,6 @@ namespace tesisproject.shared.Entities.Core
         public ICollection<ExternalResearcherProject> ExternalResearcherProjects { get; set; } = new List<ExternalResearcherProject>();
         public ICollection<Visit> Visits { get; set; } = new List<Visit>();
         public ICollection<Product> Products { get; set; } = new List<Product>();
-        public ICollection<ProjectResearchLine> ProjectResearchLines { get; set; } = new List<ProjectResearchLine>();
+        public ICollection<ProjectResearchCategory> ProjectResearchCategories { get; set; } = new List<ProjectResearchCategory>();
     }
 }

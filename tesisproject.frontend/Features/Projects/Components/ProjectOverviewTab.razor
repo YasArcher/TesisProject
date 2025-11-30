@@ -242,29 +242,48 @@
                             </svg>
 
                         </div>
-                        <h3 class="text-lg font-semibold text-foreground">Presupuesto</h3>
+                        <h3 class="text-lg font-semibold text-foreground">Presupuestos</h3>
                     </div>
-
-                    @if (Item.BudgetId > 0)
+                    @if (Item.Budgets is not null && Item.Budgets.Any())
                     {
                         <div class="space-y-4">
-                            <div class="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                                <div class="text-xs font-semibold text-primary mb-2 uppercase tracking-wide">ID Presupuesto</div>
-                                <div class="text-2xl font-bold text-primary">#@Item.BudgetId</div>
-                            </div>
-
-                            <div class="bg-page-bg border border-border rounded-lg p-4">
-                                <div class="text-xs font-semibold text-muted mb-2 uppercase tracking-wide">Monto Inicial</div>
-                                <div class="text-3xl font-bold text-foreground">
-                                    @Item.BudgetAmount.ToString("C", new System.Globalization.CultureInfo("es-EC"))
+                            @foreach (var budget in Item.Budgets)
+                            {
+                                <div class="bg-primary/5 border border-primary/20 rounded-lg p-4">
+                                    <div class="text-xs font-semibold text-primary mb-2 uppercase tracking-wide">
+                                        ID Presupuesto
+                                    </div>
+                                    <div class="text-2xl font-bold text-primary">
+                                        #@budget.BudgetId
+                                    </div>
                                 </div>
-                            </div>
+
+                                <div class="bg-page-bg border border-border rounded-lg p-4">
+                                    <div class="text-xs font-semibold text-muted mb-2 uppercase tracking-wide">
+                                        Monto Inicial
+                                    </div>
+                                    <div class="text-3xl font-bold text-foreground">
+                                        @budget.InitialAmount.ToString("C", new System.Globalization.CultureInfo("es-EC"))
+                                    </div>
+                                </div>
+
+                                @* Si quieres mostrar el tipo de financiamiento *@
+                                <div class="bg-page-bg border border-border rounded-lg p-4">
+                                    <div class="text-xs font-semibold text-muted mb-1 uppercase tracking-wide">
+                                        Tipo de financiamiento
+                                    </div>
+                                    <div class="text-sm text-foreground">
+                                        @budget.FundingTypeName (@budget.FundingTypeId)
+                                    </div>
+                                </div>
+                            }
 
                             <div class="bg-primary/5 border border-primary/20 rounded-lg p-4">
                                 <div class="flex items-start gap-3">
                                     <span class="text-primary text-lg flex-shrink-0">💡</span>
                                     <div class="text-sm text-primary">
-                                        <strong>Información completa:</strong> Para ver detalles del presupuesto (certificado, ejecutado, transacciones), accede a la pestaña "Presupuesto"
+                                        <strong>Información completa:</strong> Para ver detalles del presupuesto
+                                        (certificado, ejecutado, transacciones), accede a la pestaña "Presupuesto".
                                     </div>
                                 </div>
                             </div>
@@ -280,6 +299,7 @@
                             <div class="text-sm text-muted/75">Este proyecto aún no tiene un presupuesto configurado</div>
                         </div>
                     }
+
                 </div>
             </div>
         </div>

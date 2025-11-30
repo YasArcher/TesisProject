@@ -101,7 +101,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var all = await GetFacultiesWithProgramsAsync(ct);
                 if (!all.Success || all.Data is null || all.Data.Count == 0)
-                    return ServiceResult<ExternalFacultyDTO>.Fail("API Error");
+                    return ServiceResult<ExternalFacultyDTO>.Fail("API Error",ErrorType.NotFound);
 
                 var fac = all.Data.FirstOrDefault(f => f.FacultyId == facultyId);
                 if (fac is null)
@@ -122,7 +122,8 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var facRes = await GetFacultyByIdAsync(facultyId, ct);
                 if (!facRes.Success || facRes.Data is null)
-                    return ServiceResult<List<ExternalProgramDTO>>.Fail("API error");
+                    // ANTES: Fail("API error");
+                    return ServiceResult<List<ExternalProgramDTO>>.Fail("API error", ErrorType.Unexpected);
 
                 var list = facRes.Data.Programs.OrderBy(p => p.Name).ToList();
                 if (list.Count == 0)
@@ -143,7 +144,8 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var all = await GetFacultiesWithProgramsAsync(ct);
                 if (!all.Success || all.Data is null || all.Data.Count == 0)
-                    return ServiceResult<ExternalProgramDTO>.Fail("API error");
+                    // ANTES: Fail("API error");
+                    return ServiceResult<ExternalProgramDTO>.Fail("API error", ErrorType.Unexpected);
 
                 var program = all.Data.SelectMany(f => f.Programs).FirstOrDefault(p => p.ProgramId == programId);
                 if (program is null)

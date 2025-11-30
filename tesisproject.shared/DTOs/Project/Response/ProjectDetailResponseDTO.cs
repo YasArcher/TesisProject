@@ -36,8 +36,8 @@ namespace tesisproject.shared.DTOs.Project.Response
         public string? SenesytGroupName { get; set; }
 
         // --- Budget ---
-        public int BudgetId { get; set; }
-        public decimal BudgetAmount { get; set; }
+        public ICollection<ProjectBudgetDetailDTO> Budgets { get; set; } = new List<ProjectBudgetDetailDTO>();
+
     }
 
     // 🔸 Dominio de investigación con sus líneas (para este proyecto)
@@ -48,6 +48,18 @@ namespace tesisproject.shared.DTOs.Project.Response
 
         public ICollection<ProjectResearchLineDTO> ResearchLines { get; set; }
             = new List<ProjectResearchLineDTO>();
+    }
+
+    public class ProjectBudgetDetailDTO
+    {
+        public int BudgetId { get; set; }
+        public decimal InitialAmount { get; set; }
+        public decimal CertifiedAmount { get; set; }
+        public decimal ExecutedAmount { get; set; }
+        public DateTime? ApprovedAt { get; set; }
+
+        public int FundingTypeId { get; set; }
+        public string FundingTypeName { get; set; } = string.Empty;
     }
 
     // 🔹 Línea de investigación dentro de un dominio

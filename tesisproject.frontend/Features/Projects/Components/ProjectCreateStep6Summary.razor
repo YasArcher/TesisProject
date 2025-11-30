@@ -1,0 +1,547 @@
+﻿@using Microsoft.AspNetCore.Components
+@using tesisproject.shared.DTOs.Algorithms.Response
+@using tesisproject.shared.DTOs.Catalog.DocumentType.Response
+@using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
+@using tesisproject.shared.DTOs.Catalog.ObjectiveType.Response
+@using tesisproject.shared.DTOs.Catalog.ProjectType.Response
+@using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.Filters
+@using tesisproject.shared.DTOs.Catalog.FundingType.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.Budgets.Request
+
+<div class="w-full flex flex-col gap-5">
+    <!-- Header -->
+    <section class="flex items-start gap-3 pb-4 border-b border-border">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-primary shrink-0">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </div>
+        <div class="flex-1">
+            <h3 class="text-base font-semibold text-foreground">Step 6: Summary & confirmation</h3>
+            <p class="text-sm text-muted mt-0.5">
+                Review the consolidated information before creating the project. Go back to previous steps if adjustments are needed.
+            </p>
+        </div>
+    </section>
+
+    <!-- Grid principal -->
+    <section class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        <!-- Columna 1: Resolución y financiamiento -->
+        <div class="xl:col-span-1 rounded-lg border border-border bg-background overflow-hidden">
+            <div class="px-4 py-2.5 border-b border-border bg-primary/5">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h4 class="text-sm font-semibold text-foreground">Resolution & funding</h4>
+                </div>
+            </div>
+            <div class="p-4 space-y-2.5 text-sm">
+                <!-- Resolution code -->
+                <div>
+                    <span class="text-xs font-medium text-muted block">Resolution code</span>
+                    <span class="text-foreground">@DisplayOrDash(ResolutionModel.ResolutionCode)</span>
+                </div>
+
+                <!-- Document type -->
+                <div>
+                    <span class="text-xs font-medium text-muted block">Document type</span>
+                    <span class="text-foreground">
+                        @DisplayOrDash(GetDocumentTypeName(ResolutionModel.documentTypeId))
+                    </span>
+                    @if (ResolutionModel.documentTypeId > 0)
+                    {
+                        <span class="text-[10px] text-muted ml-1">
+                            (Id: @ResolutionModel.documentTypeId)
+                        </span>
+                    }
+                </div>
+
+                <!-- Header date -->
+                <div>
+                    <span class="text-xs font-medium text-muted block">Header date</span>
+                    <span class="text-foreground">@DisplayOrDash(ResolutionModel.ResolutionHeaderDate)</span>
+                </div>
+
+                <!-- Meeting date -->
+                <div>
+                    <span class="text-xs font-medium text-muted block">Meeting date</span>
+                    <span class="text-foreground">@DisplayOrDash(ResolutionModel.MeetingDate)</span>
+                </div>
+
+                <!-- Execution start -->
+                <div>
+                    <span class="text-xs font-medium text-muted block">Execution start</span>
+                    <span class="text-foreground">@DisplayOrDash(ResolutionModel.ExecutionStartDate)</span>
+                </div>
+
+                <!-- Duration -->
+                <div>
+                    <span class="text-xs font-medium text-muted block">Duration</span>
+                    <span class="text-foreground">
+                        @(ResolutionModel.Duration > 0 ? $"{ResolutionModel.Duration} months" : "-")
+                    </span>
+                </div>
+
+                <!-- Budgets -->
+                <div class="pt-2 mt-2 border-t border-border space-y-1.5">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-medium text-muted">Total budget (USD)</span>
+                        <span class="text-base font-bold text-secondary">
+                            @FormatCurrency(GetTotalBudget())
+                        </span>
+                    </div>
+
+                    @if (Budgets?.Any(b => b.InitialAmount > 0 && b.FundingTypeId > 0) == true)
+                    {
+                        <div class="space-y-1">
+                            @foreach (var b in Budgets.Where(b => b.InitialAmount > 0 && b.FundingTypeId > 0))
+                            {
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-muted">
+                                        @DisplayOrDash(GetFundingTypeName(b.FundingTypeId))
+                                    </span>
+                                    <span class="font-medium text-foreground">
+                                        @FormatCurrency(b.InitialAmount)
+                                    </span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-[11px] text-muted italic">No budgets registered</p>
+                    }
+                </div>
+                <!-- Decision verb -->
+                <div>
+                    <span class="text-xs font-medium text-muted block">Decision verb</span>
+                    <span class="text-foreground">@DisplayOrDash(ResolutionModel.MainDecisionVerb)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna 2-3: Proyecto y DIDE -->
+        <div class="xl:col-span-2 rounded-lg border border-border bg-background overflow-hidden">
+            <div class="px-4 py-2.5 border-b border-border bg-secondary/5">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    <h4 class="text-sm font-semibold text-foreground">Project & DIDE data</h4>
+                </div>
+            </div>
+            <div class="p-4 space-y-4 text-sm">
+                <!-- Nombre del proyecto -->
+                <div>
+                    <span class="text-xs font-medium text-muted block mb-1">Project name</span>
+                    <p class="text-foreground font-medium">@DisplayOrDash(DideModel.ProjectName)</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+                    <div>
+                        <span class="text-xs font-medium text-muted block">Research type</span>
+                        <span class="text-foreground">
+                            @DisplayOrDash(GetResearchTypeName(DideModel.ResearchTypeId))
+                        </span>
+                        @if (DideModel.ResearchTypeId > 0)
+                        {
+                            <span class="text-[10px] text-muted ml-1">
+                                (Id: @DideModel.ResearchTypeId)
+                            </span>
+                        }
+                    </div>
+
+                    <!-- 🔹 Nueva sección: Facultad del proyecto -->
+                    <div>
+                        <span class="text-xs font-medium text-muted block">Project faculty (coordinator)</span>
+                        <span class="text-foreground">
+                            @DisplayOrDash(GetProjectFacultyDisplayName())
+                        </span>
+                    </div>
+
+                    <!-- Research lines raw -->
+                    <div>
+                        <span class="text-xs font-medium text-muted block mb-1">Research lines (raw)</span>
+                        @if (DideModel.ResearchLines?.Any() == true)
+                        {
+                            <div class="flex flex-wrap gap-1">
+                                @foreach (var line in DideModel.ResearchLines)
+                                {
+                                    <span class="px-2 py-0.5 text-xs rounded bg-accent/10 text-foreground border border-accent/20">
+                                        @(string.IsNullOrWhiteSpace(line) ? "-" : line)
+                                    </span>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="text-muted">-</span>
+                        }
+                    </div>
+                </div>
+
+                <!-- Categorías de investigación -->
+                <div class="pt-3 border-t border-border">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-foreground">Research categories</span>
+                        @if (SelectedResearchCategories?.Any() == true)
+                        {
+                            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-secondary text-white">
+                                @FlattenCategories(SelectedResearchCategories).Count() selected
+                            </span>
+                        }
+                    </div>
+                    @if (SelectedResearchCategories?.Any() == true)
+                    {
+                        <div class="space-y-1 max-h-28 overflow-auto">
+                            @foreach (var cat in FlattenCategories(SelectedResearchCategories))
+                            {
+                                <div class="flex items-center gap-2 text-xs">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-secondary shrink-0"></span>
+                                    @if (!string.IsNullOrWhiteSpace(cat.ResearchCategoryTypeName))
+                                    {
+                                        <span class="text-muted">@cat.ResearchCategoryTypeName:</span>
+                                    }
+                                    <span class="text-foreground">@DisplayOrDash(cat.Name)</span>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-xs text-muted italic">No categories selected</p>
+                    }
+                </div>
+
+                <!-- Investigadores -->
+                <div class="pt-3 border-t border-border">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-semibold text-foreground">Researchers</span>
+                        @if (DideModel.Researchers?.Any() == true)
+                        {
+                            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-primary text-white">
+                                @DideModel.Researchers.Count members
+                            </span>
+                        }
+                    </div>
+                    @if (DideModel.Researchers?.Any() == true)
+                    {
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-36 overflow-auto">
+                            @foreach (var r in DideModel.Researchers)
+                            {
+                                <div class="flex items-start gap-2 p-2 rounded-md border border-border bg-background">
+                                    <div class="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                        <svg class="w-3.5 h-3.5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <p class="text-xs font-medium text-foreground truncate">
+                                            @DisplayOrDash(r.FullName)
+                                        </p>
+                                        <p class="text-[10px] text-muted truncate">
+                                            @DisplayOrDash(GetMemberRoleName(r.Role, r.RoleName))
+                                        </p>
+                                        <p class="text-[10px] text-muted truncate">
+                                            @DisplayOrDash(r.email)
+                                        </p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p class="text-xs text-muted italic">No researchers detected</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Objetivos y actividades -->
+    <section class="rounded-lg border border-border bg-background overflow-hidden">
+        <div class="px-4 py-2.5 border-b border-border bg-accent/5 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                <h4 class="text-sm font-semibold text-foreground">Objectives & activities</h4>
+            </div>
+            <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-accent/20 text-foreground">
+                @((DideModel.Objectives?.Count ?? 0)) objectives
+            </span>
+        </div>
+        <div class="p-4">
+            @if (DideModel.Objectives?.Any() == true)
+            {
+                <div class="space-y-2 max-h-60 overflow-auto">
+                    @for (int i = 0; i < DideModel.Objectives.Count; i++)
+                    {
+                        var obj = DideModel.Objectives[i];
+                        <div class="group rounded-md border border-border p-3 hover:border-accent/50 transition-colors">
+                            <div class="flex items-start gap-3">
+                                <div class="w-6 h-6 rounded bg-accent/10 flex items-center justify-center shrink-0 text-xs font-bold text-accent">
+                                    @(i + 1)
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex flex-wrap items-center gap-2 mb-1.5">
+                                        <span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary/10 text-primary">
+                                            @DisplayOrDash(GetObjectiveTypeName(obj.ObjectiveType))
+                                        </span>
+                                        @if (obj.Activities?.Any() == true)
+                                        {
+                                            <span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-secondary/10 text-secondary">
+                                                @obj.Activities.Count activities
+                                            </span>
+                                        }
+                                    </div>
+                                    <p class="text-xs text-foreground line-clamp-2">
+                                        @DisplayOrDash(obj.ObjectiveText)
+                                    </p>
+                                    @if (obj.Activities?.Any() == true)
+                                    {
+                                        <details class="mt-2">
+                                            <summary class="cursor-pointer text-[10px] text-muted hover:text-primary transition-colors">
+                                                View activities →
+                                            </summary>
+                                            <ul class="mt-1.5 space-y-1 pl-3 border-l-2 border-secondary/30">
+                                                @foreach (var act in obj.Activities)
+                                                {
+                                                    <li class="text-[10px] text-foreground">@DisplayOrDash(act.ActivityText)</li>
+                                                }
+                                            </ul>
+                                        </details>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="flex flex-col items-center justify-center py-6 text-center">
+                    <div class="w-10 h-10 rounded-full bg-muted/20 flex items-center justify-center mb-2">
+                        <svg class="w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                    </div>
+                    <p class="text-xs text-muted">No objectives detected</p>
+                </div>
+            }
+        </div>
+    </section>
+
+    <!-- Fecha de primera visita -->
+    <section class="rounded-lg border border-primary/30 bg-primary/5 p-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+            </div>
+            <div class="flex-1">
+                <label class="text-xs font-semibold text-foreground block mb-1">
+                    First visit scheduling <span class="text-error">*</span>
+                </label>
+                <p class="text-[10px] text-muted mb-2">Choose the scheduled date for the first project visit</p>
+                <input type="date"
+                       class="h-9 px-3 text-sm rounded-md border border-border bg-background text-foreground
+                              focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                       value="@GetScheduledDateInputValue()"
+                       @onchange="HandleScheduledDateChanged"
+                       disabled="@IsSaving" />
+            </div>
+        </div>
+    </section>
+</div>
+
+@code {
+    [Parameter] public ResolutionInfo ResolutionModel { get; set; } = new();
+    [Parameter] public DideProjectFormInfo DideModel { get; set; } = new();
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public int? CoordinatorRoleId { get; set; }
+
+
+    [Parameter] public IReadOnlyList<DocumentTypeListItemDTO> DocumentTypeOptions { get; set; } = Array.Empty<DocumentTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<ProjectTypeListItemDTO> ResearchTypeOptions { get; set; } = Array.Empty<ProjectTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<MemberRoleTypeListItemDTO> MemberRoleTypeOptions { get; set; } = Array.Empty<MemberRoleTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<ObjectiveTypeListItemDTO> ObjectiveTypeOptions { get; set; } = Array.Empty<ObjectiveTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<ExternalFacultyDTO> Faculties { get; set; } = Array.Empty<ExternalFacultyDTO>();
+
+
+    [Parameter] public IReadOnlyList<FundingTypeListItemDTO> FundingTypeOptions { get; set; } = Array.Empty<FundingTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<CreateBudgetRequestDTO> Budgets { get; set; } = Array.Empty<CreateBudgetRequestDTO>();
+
+
+    [Parameter] public IReadOnlyList<ResearchCategoryTreeItemDTO> SelectedResearchCategories { get; set; } = Array.Empty<ResearchCategoryTreeItemDTO>();
+
+    [Parameter] public DateTime? ScheduledDate { get; set; }
+    [Parameter] public EventCallback<DateTime?> ScheduledDateChanged { get; set; }
+
+    [Parameter] public EventCallback OnPrevious { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+
+    private static string DisplayOrDash(string? value) => string.IsNullOrWhiteSpace(value) ? "-" : value;
+
+    private static string DisplayOrDash(DateTime? value)
+    {
+        if (!value.HasValue) return "-";
+        var text = value.ToSpanishShortDate();
+        return string.IsNullOrWhiteSpace(text) ? "-" : text;
+    }
+    private decimal GetTotalBudget()
+    {
+        if (Budgets is null || Budgets.Count == 0)
+            return 0m;
+
+        return Budgets
+            .Where(b => b.InitialAmount > 0 && b.FundingTypeId > 0)
+            .Sum(b => b.InitialAmount);
+    }
+
+    private static string FormatCurrency(decimal amount)
+    {
+        return amount > 0 ? $"${amount:N2}" : "-";
+    }
+
+
+    private static string DisplayOrDash(int value) => value == 0 ? "-" : value.ToString();
+    private static string DisplayOrDash(int? value) => !value.HasValue || value.Value == 0 ? "-" : value.Value.ToString();
+
+    private string GetDocumentTypeName(int id)
+    {
+        if (id <= 0 || DocumentTypeOptions is null) return string.Empty;
+        return DocumentTypeOptions.FirstOrDefault(x => x.Id == id)?.Name ?? string.Empty;
+    }
+
+    private string GetResearchTypeName(int? id)
+    {
+        if (!id.HasValue || id.Value <= 0 || ResearchTypeOptions is null) return string.Empty;
+        return ResearchTypeOptions.FirstOrDefault(x => x.Id == id.Value)?.Name ?? string.Empty;
+    }
+
+    private string GetMemberRoleName(int id, string? fallback)
+    {
+        if (id > 0 && MemberRoleTypeOptions is not null)
+        {
+            var item = MemberRoleTypeOptions.FirstOrDefault(x => x.Id == id);
+            if (!string.IsNullOrWhiteSpace(item?.Name)) return item!.Name;
+        }
+        return !string.IsNullOrWhiteSpace(fallback) ? fallback : string.Empty;
+    }
+
+    private string GetObjectiveTypeName(int id)
+    {
+        if (id <= 0 || ObjectiveTypeOptions is null) return string.Empty;
+        return ObjectiveTypeOptions.FirstOrDefault(x => x.Id == id)?.Name ?? string.Empty;
+    }
+
+    private string GetFundingTypeName(int id)
+    {
+        if (id <= 0 || FundingTypeOptions is null) return string.Empty;
+        return FundingTypeOptions.FirstOrDefault(x => x.Id == id)?.Name ?? string.Empty;
+    }
+
+    private string GetFacultyDisplayName(int id)
+    {
+        if (id <= 0 || Faculties is null) return string.Empty;
+        var f = Faculties.FirstOrDefault(x => x.FacultyId == id);
+        if (f is null) return string.Empty;
+        return !string.IsNullOrWhiteSpace(f.Acronym) ? $"{f.Acronym} - {f.Name}" : f.Name ?? string.Empty;
+    }
+
+    private IEnumerable<ResearchCategoryTreeItemDTO> FlattenCategories(IEnumerable<ResearchCategoryTreeItemDTO> roots)
+    {
+        foreach (var node in roots)
+        {
+            yield return node;
+            if (node.Children is { Count: > 0 })
+                foreach (var child in FlattenCategories(node.Children))
+                    yield return child;
+        }
+    }
+
+    private string GetScheduledDateInputValue() => ScheduledDate.HasValue ? ScheduledDate.Value.ToString("yyyy-MM-dd") : string.Empty;
+
+    private async Task HandleScheduledDateChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        ScheduledDate = DateTime.TryParse(value, out var parsed) ? parsed.Date : null;
+        if (ScheduledDateChanged.HasDelegate)
+            await ScheduledDateChanged.InvokeAsync(ScheduledDate);
+    }
+    private (string FacultyLabel, string ProgramLabel) ResolveFacultyAndProgram(int facultyCareerId)
+    {
+        if (facultyCareerId <= 0 || Faculties is null || Faculties.Count == 0)
+            return ("Not assigned", "Not assigned");
+
+        // Buscar por programId (caso normal: FacultyCareerId = programId)
+        foreach (var faculty in Faculties)
+        {
+            if (faculty.Programs is null)
+                continue;
+
+            var program = faculty.Programs.FirstOrDefault(p => p.ProgramId == facultyCareerId);
+            if (program is not null)
+            {
+                var facultyText = string.IsNullOrWhiteSpace(faculty.Acronym)
+                    ? faculty.Name
+                    : $"{faculty.Acronym} - {faculty.Name}";
+
+                return (facultyText, program.Name);
+            }
+        }
+
+        // Si no se encontró programa, intentar interpretar el id como FacultyId
+        var fac = Faculties.FirstOrDefault(f => f.FacultyId == facultyCareerId);
+        if (fac is not null)
+        {
+            var facultyText = string.IsNullOrWhiteSpace(fac.Acronym)
+                ? fac.Name
+                : $"{fac.Acronym} - {fac.Name}";
+
+            return (facultyText, "Not assigned");
+        }
+
+        return ("Unknown faculty", "Unknown program");
+    }
+
+    private string GetProjectFacultyDisplayName()
+    {
+        if (DideModel?.Researchers == null || DideModel.Researchers.Count == 0)
+            return string.Empty;
+
+        if (Faculties is null || Faculties.Count == 0)
+            return string.Empty;
+
+        // Necesitamos saber quién es el Coordinador principal
+        if (!CoordinatorRoleId.HasValue || CoordinatorRoleId.Value <= 0)
+            return string.Empty;
+
+        var coordinator = DideModel.Researchers
+            .FirstOrDefault(r => r.Role == CoordinatorRoleId.Value);
+
+        if (coordinator is null || coordinator.FacultyCareerId <= 0)
+            return string.Empty;
+
+        var facultyProgram = ResolveFacultyAndProgram(coordinator.FacultyCareerId);
+        return facultyProgram.FacultyLabel;
+    }
+
+
+}
