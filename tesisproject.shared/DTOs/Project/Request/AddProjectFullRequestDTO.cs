@@ -27,7 +27,7 @@ namespace tesisproject.shared.DTOs.Project.Request
         // ===================================
         //   2) Presupuesto asociado al proyecto
         // ===================================
-        public CreateBudgetRequestDTO? Budget { get; set; }
+        public List<CreateBudgetRequestDTO> Budgets { get; set; } = new();
 
         // ===================================
         //   3) Objetivos y sus actividades

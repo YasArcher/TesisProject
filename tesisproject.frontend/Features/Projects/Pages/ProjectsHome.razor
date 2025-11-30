@@ -11,11 +11,26 @@
 @inject NavigationManager Nav
 
 <div class="space-y-6 p-4">
-    <!-- Filter Bar - Now as floating dropdown -->
-    <FilterBar Config="@_filterConfig"
-               OnApply="@HandleApplyFilters"
-               OnClear="@HandleClearFilters"
-               OnSearchInstant="@HandleSearchInstant" />
+    <!-- Filtros + Botón Crear -->
+    <section class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div class="flex-1">
+            <!-- Filter Bar - Now as floating dropdown -->
+            <FilterBar Config="@_filterConfig"
+                       OnApply="@HandleApplyFilters"
+                       OnClear="@HandleClearFilters"
+                       OnSearchInstant="@HandleSearchInstant" />
+        </div>
+
+        <div class="shrink-0">
+            <ActionButton Text="Crear Nuevo Proyecto"
+                          Execute="CreateNewProject"
+                          Intent="ButtonIntent.Accept"
+                          Variant="ButtonVariant.Filled"
+                          Size="ButtonSize.Sm"
+                          Disabled="@isLoading"
+                          Class="px-4 py-2 rounded-md" />
+        </div>
+    </section>
 
     <!-- Projects Container - Simple layout, with scroll enabled -->
     <Container TItem="ProjectListResponseDTO"
@@ -46,6 +61,7 @@
         </ChildContent>
     </Container>
 </div>
+
 
 @code {
     // Data

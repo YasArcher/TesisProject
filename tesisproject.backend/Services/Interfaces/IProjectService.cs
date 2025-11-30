@@ -21,5 +21,6 @@ namespace tesisproject.backend.Services.Interfaces
         Task<ServiceResult<ProjectDetailResponseDTO>> GetProjectDetailAsync(int projectId, CancellationToken ct = default);
 
         Task<ServiceResult<ProjectDetailResponseDTO>> CreateFullAsync(AddProjectFullRequestDTO request, CancellationToken ct = default);
+        Task<ServiceResult<NoContent>> UpdateResearchCategoriesAsync(int projectId, List<int> researchCategoryIds, CancellationToken ct = default);
     }
 }

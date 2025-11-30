@@ -8,7 +8,7 @@ namespace tesisproject.backend.Repositories.Implementations
 {
     public class ProductTypeRepository : GenericRepository<ProductType>, IProductTypeRepository
     {
-        private readonly AppDbContext _ctx;
+        private new readonly AppDbContext _ctx;
         public ProductTypeRepository(AppDbContext ctx) : base(ctx) => _ctx = ctx;
 
         public async Task<ProductType?> GetByIdWithDefinitionsAsync(int id, CancellationToken ct = default)

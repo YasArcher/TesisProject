@@ -1,0 +1,231 @@
+﻿@using Microsoft.AspNetCore.Components
+@using tesisproject.shared.DTOs.Algorithms.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategoryGroup.Response
+
+<div class="w-full flex flex-col gap-5">
+    <!-- Header con icono -->
+    <section class="flex items-start gap-3 pb-4 border-b border-border">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-primary shrink-0">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+        </div>
+        <div class="flex-1">
+            <h3 class="text-base font-semibold text-foreground">Step 4: Research domains & lines</h3>
+            <p class="text-sm text-muted mt-0.5">
+                Select the research domains, lines and sublines that best match the project.
+                You can add multiple items per level; the selector will grow as a tree.
+            </p>
+        </div>
+    </section>
+
+    <!-- Selector de categorías -->
+    <section class="flex flex-col gap-3">
+        <div class="flex items-center gap-2">
+            <div class="w-6 h-6 rounded-md flex items-center justify-center bg-secondary/10">
+                <svg class="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+            </div>
+            <h5 class="text-sm font-semibold text-foreground">Research categories</h5>
+        </div>
+
+        <div class="rounded-lg border border-border bg-background p-4">
+            <p class="text-xs text-muted mb-3 flex items-start gap-2">
+                <svg class="w-4 h-4 text-primary shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>
+                    Use the filters to choose a domain, then its research lines and sublines.
+                    Selected items will appear below as an incremental tree.
+                </span>
+            </p>
+
+            <!-- AQUÍ: render dinámico por grupo -->
+            <div class="space-y-4">
+                @if (ResearchCategoryGroups is not null && ResearchCategoryGroups.Any())
+                {
+                    @foreach (var group in ResearchCategoryGroups)
+                    {
+                        <div class="border border-border rounded-2xl p-3 bg-background/60">
+                            <ResearchCategoryMultiLevelSelector Title="@group.Name"
+                                                                ResearchCategoryGroupId="@group.Id"
+                                                                Categories="@ResearchCategoryTree"
+                                                                CategoryTypes="@ResearchCategoryTypes"
+                                                                OnSelectionChanged="(selection) => HandleGroupSelectionChanged(group.Id, selection)" />
+                        </div>
+                    }
+                }
+                else
+                {
+                    <!-- fallback: comportamiento anterior (un único selector) -->
+                    <ResearchCategoryMultiLevelSelector Categories="@ResearchCategoryTree"
+                                                        CategoryTypes="@ResearchCategoryTypes"
+                                                        OnSelectionChanged="HandleGlobalSelectionChanged" />
+                }
+            </div>
+        </div>
+    </section>
+
+    <!-- Preview de líneas detectadas del PDF -->
+    @if (DideModel.ResearchLines?.Any() == true)
+    {
+        <section class="rounded-lg border border-dashed border-accent/50 bg-accent/5 p-4">
+            <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center bg-accent/20 shrink-0">
+                    <svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                        <span>Detected from DIDE form</span>
+                        <span class="px-1.5 py-0.5 text-[10px] font-medium rounded bg-accent/20 text-accent">
+                            @DideModel.ResearchLines.Count items
+                        </span>
+                    </p>
+                    <div class="flex flex-wrap gap-2">
+                        @foreach (var line in DideModel.ResearchLines)
+                        {
+                            <span class="inline-flex items-center gap-1 px-2 py-1 text-xs rounded-md
+                                                 bg-background border border-border text-foreground">
+                                <svg class="w-3 h-3 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
+                                @line
+                            </span>
+                        }
+                    </div>
+                    <p class="text-[10px] text-muted mt-2 italic">
+                        Use these as reference when selecting categories above.
+                    </p>
+                </div>
+            </div>
+        </section>
+    }
+
+    <!-- Estado vacío si no hay categorías seleccionadas aún -->
+    @if (_selectedResearchCategories.Count == 0 && (DideModel.ResearchLines is null || !DideModel.ResearchLines.Any()))
+    {
+        <section class="flex flex-col items-center justify-center py-6 px-4
+                                rounded-lg border border-dashed border-border bg-background/50">
+            <div class="w-10 h-10 rounded-full bg-muted/20 flex items-center justify-center mb-2">
+                <svg class="w-5 h-5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+            </div>
+            <p class="text-sm font-medium text-foreground mb-0.5">No categories selected</p>
+            <p class="text-xs text-muted text-center max-w-xs">
+                Start by selecting a research domain from the selector above.
+            </p>
+        </section>
+    }
+
+    <!-- Resumen de selección (cuando hay categorías) -->
+    @if (_selectedResearchCategories.Count > 0)
+    {
+        <section class="rounded-lg border border-secondary/30 bg-secondary/5 p-3">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="text-xs font-medium text-foreground">Selection summary</span>
+                </div>
+                <span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-secondary text-white">
+                    @GetTotalCategoriesCount() categories
+                </span>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter] public DideProjectFormInfo DideModel { get; set; } = new();
+    [Parameter] public bool IsBusy { get; set; }
+
+    [Parameter]
+    public IReadOnlyList<ResearchCategoryTreeItemDTO> ResearchCategoryTree { get; set; }
+        = Array.Empty<ResearchCategoryTreeItemDTO>();
+
+    [Parameter]
+    public IReadOnlyList<ResearchCategoryTypeListItemDTO> ResearchCategoryTypes { get; set; }
+        = Array.Empty<ResearchCategoryTypeListItemDTO>();
+
+    // 🔴 NUEVO: grupos por los que se va a dividir el selector dinámico
+    [Parameter]
+    public IReadOnlyList<ResearchCategoryGroupListItemDTO> ResearchCategoryGroups { get; set; }
+        = Array.Empty<ResearchCategoryGroupListItemDTO>();
+
+    [Parameter]
+    public EventCallback<List<ResearchCategoryTreeItemDTO>> OnResearchCategoriesChanged { get; set; }
+
+    // selección global combinada
+    private List<ResearchCategoryTreeItemDTO> _selectedResearchCategories { get; set; } = new();
+
+    // selección interna por grupo (groupId -> árbol seleccionado)
+    private readonly Dictionary<int, List<ResearchCategoryTreeItemDTO>> _selectionByGroup = new();
+
+    protected override void OnParametersSet()
+    {
+        DideModel.ResearchLines ??= new List<string>();
+    }
+
+    // fallback para el caso sin grupos (comportamiento anterior)
+    private async Task HandleGlobalSelectionChanged(List<ResearchCategoryTreeItemDTO> selection)
+    {
+        _selectedResearchCategories = selection ?? new();
+        if (OnResearchCategoriesChanged.HasDelegate)
+        {
+            await OnResearchCategoriesChanged.InvokeAsync(_selectedResearchCategories);
+        }
+    }
+
+    // cuando cambia la selección en un grupo específico
+    private async Task HandleGroupSelectionChanged(int groupId, List<ResearchCategoryTreeItemDTO> selection)
+    {
+        _selectionByGroup[groupId] = selection ?? new();
+        RebuildGlobalSelection();
+
+        if (OnResearchCategoriesChanged.HasDelegate)
+        {
+            await OnResearchCategoriesChanged.InvokeAsync(_selectedResearchCategories);
+        }
+    }
+
+    private void RebuildGlobalSelection()
+    {
+        // combinación simple de todos los árboles por grupo
+        _selectedResearchCategories = _selectionByGroup
+            .Values
+            .SelectMany(list => list)
+            .ToList();
+        // si quieres evitar duplicados por Id, se podría afinar aquí,
+        // pero asumiendo que los grupos separan bien los tipos, no se solapan.
+    }
+
+    private int GetTotalCategoriesCount()
+    {
+        int count = 0;
+        void CountRecursive(ResearchCategoryTreeItemDTO node)
+        {
+            count++;
+            foreach (var child in node.Children)
+                CountRecursive(child);
+        }
+
+        foreach (var root in _selectedResearchCategories)
+            CountRecursive(root);
+
+        return count;
+    }
+}

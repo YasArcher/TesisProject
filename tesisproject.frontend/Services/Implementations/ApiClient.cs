@@ -28,8 +28,11 @@ namespace tesisproject.frontend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new HttpResponseWrapper<T?>(false, default, ex.Message,
-                    new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
+                return new HttpResponseWrapper<T?>(
+                    success: false,
+                    response: default,
+                    error: ex.Message,
+                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
             }
         }
 
@@ -51,8 +54,11 @@ namespace tesisproject.frontend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new HttpResponseWrapper<TResponse?>(false, default, ex.Message,
-                    new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
+                return new HttpResponseWrapper<TResponse?>(
+                    success: false,
+                    response: default,
+                    error: ex.Message,
+                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
             }
         }
 
@@ -74,8 +80,11 @@ namespace tesisproject.frontend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new HttpResponseWrapper<TResponse?>(false, default, ex.Message,
-                    new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
+                return new HttpResponseWrapper<TResponse?>(
+                    success: false,
+                    response: default,
+                    error: ex.Message,
+                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
             }
         }
 
@@ -102,8 +111,11 @@ namespace tesisproject.frontend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new HttpResponseWrapper<TResponse?>(false, default, ex.Message,
-                    new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
+                return new HttpResponseWrapper<TResponse?>(
+                    success: false,
+                    response: default,
+                    error: ex.Message,
+                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
             }
         }
 
@@ -119,8 +131,11 @@ namespace tesisproject.frontend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return new HttpResponseWrapper<NoContent?>(false, default, ex.Message,
-                    new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
+                return new HttpResponseWrapper<NoContent?>(
+                    success: false,
+                    response: default,
+                    error: ex.Message,
+                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
             }
         }
 
@@ -131,29 +146,84 @@ namespace tesisproject.frontend.Services.Implementations
         {
             var raw = await resp.Content.ReadAsStringAsync(ct);
 
-            ApiResponse<T>? apiResponse;
+            ApiResponse<T>? apiResponse = null;
+
+            // 1) Intentar deserializar como ApiResponse<T>
             try
             {
                 apiResponse = JsonSerializer.Deserialize<ApiResponse<T>>(raw, _jsonOptions);
             }
             catch
             {
-                return new HttpResponseWrapper<T?>(false, default, $"Invalid server response: {raw}", resp);
+                // 2) Si falla, intentar deserializar como ApiResponse<object>
+                try
+                {
+                    var generic = JsonSerializer.Deserialize<ApiResponse<object>>(raw, _jsonOptions);
+
+                    if (generic is not null)
+                    {
+                        // Si el servidor indica éxito y el HTTP también, marcamos Success=true,
+                        // aunque no tengamos Data tipado (T) en este camino fallback.
+                        if (resp.IsSuccessStatusCode && generic.Success)
+                        {
+                            return new HttpResponseWrapper<T?>(
+                                success: true,
+                                response: default,
+                                error: generic.Message,
+                                httpResponse: resp);
+                        }
+
+                        return new HttpResponseWrapper<T?>(
+                            success: false,
+                            response: default,
+                            error: generic.Message ?? $"HTTP {(int)resp.StatusCode}",
+                            httpResponse: resp);
+                    }
+                }
+                catch
+                {
+                    // 3) Si tampoco encaja ApiResponse<object>, devolvemos el raw
+                    return new HttpResponseWrapper<T?>(
+                        success: false,
+                        response: default,
+                        error: $"Invalid server response: {raw}",
+                        httpResponse: resp);
+                }
             }
 
+            // Si no se pudo deserializar ni siquiera a ApiResponse<T>
             if (apiResponse is null)
-                return new HttpResponseWrapper<T?>(false, default, "Empty server response.", resp);
+            {
+                return new HttpResponseWrapper<T?>(
+                    success: false,
+                    response: default,
+                    error: "Empty server response.",
+                    httpResponse: resp);
+            }
 
+            // Caso éxito normal: HTTP 2xx y Success = true
             if (resp.IsSuccessStatusCode && apiResponse.Success)
             {
-                return new HttpResponseWrapper<T?>(true, apiResponse.Data, apiResponse.Message, resp);
+                return new HttpResponseWrapper<T?>(
+                    success: true,
+                    response: apiResponse.Data,
+                    error: apiResponse.Message,
+                    httpResponse: resp);
             }
 
-            return new HttpResponseWrapper<T?>(false, default,
-                apiResponse.Message ?? $"HTTP {(int)resp.StatusCode}", resp);
+            // Caso error: devolvemos siempre el mensaje del servidor si existe
+            return new HttpResponseWrapper<T?>(
+                success: false,
+                response: default,
+                error: apiResponse.Message ?? $"HTTP {(int)resp.StatusCode}",
+                httpResponse: resp);
         }
 
-        public async Task<HttpResponseWrapper<TResponse?>> PostMultipartAsync<TResponse>(string url, MultipartFormDataContent content, CancellationToken ct = default)
+        // ==================== POST MULTIPART ====================
+        public async Task<HttpResponseWrapper<TResponse?>> PostMultipartAsync<TResponse>(
+            string url,
+            MultipartFormDataContent content,
+            CancellationToken ct = default)
         {
             try
             {
@@ -166,8 +236,7 @@ namespace tesisproject.frontend.Services.Implementations
                     success: false,
                     response: default,
                     error: ex.Message,
-                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError)
-                );
+                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
             }
         }
     }

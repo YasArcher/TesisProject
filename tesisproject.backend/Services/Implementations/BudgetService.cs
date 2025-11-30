@@ -84,46 +84,67 @@ namespace tesisproject.backend.Services.Implementations
 
         // =============== WRITES ===============
 
-        public async Task<ServiceResult<BudgetDTO>> CreateAsync(CreateBudgetRequestDTO request, CancellationToken ct = default)
+        public async Task<ServiceResult<BudgetDTO>> CreateAsync(
+            CreateBudgetRequestDTO request,
+            CancellationToken ct = default)
         {
             try
             {
-                // Reglas de negocio básicas
-                if (request.CertifiedAmount > request.InitialAmount)
-                    return ServiceResult<BudgetDTO>.Fail("Certified amount cannot exceed initial amount.", ErrorType.Validation);
+                // ============================================
+                // 1) Validar que el proyecto exista
+                // ============================================
+                var projectExists = await _uow.Projects
+                    .Query(asNoTracking: true)
+                    .AnyAsync(p => p.ProjectId == request.ProjectId, ct);
 
-                if (request.ExecutedAmount > request.CertifiedAmount)
-                    return ServiceResult<BudgetDTO>.Fail("Executed amount cannot exceed certified amount.", ErrorType.Validation);
+                if (!projectExists)
+                {
+                    return ServiceResult<BudgetDTO>.Fail(
+                        "Project does not exist.",
+                        ErrorType.NotFound);
+                }
 
-                // (Opcional) Un presupuesto por proyecto
-                var exists = await _uow.Budgets.ExistsForProjectAsync(request.ProjectId, ct);
-                if (exists)
-                    return ServiceResult<BudgetDTO>.Fail("A budget already exists for this project.", ErrorType.Conflict);
-
+                // ============================================
+                // 2) Crear Budget
+                // ============================================
                 var entity = new Budget
                 {
                     ProjectId = request.ProjectId,
                     ApprovedByUserId = request.ApprovedByUserId,
                     InitialAmount = request.InitialAmount,
-                    CertifiedAmount = request.CertifiedAmount,
-                    ExecutedAmount = request.ExecutedAmount,
-                    ApprovedAt = request.ApprovedAt
+
+                    // Nuevos valores iniciales estándar
+                    CertifiedAmount = 0,
+                    ExecutedAmount = 0,
+                    ApprovedAt = null,
+
+                    FundingTypeId = request.FundingTypeId
                 };
 
                 await _uow.Budgets.AddAsync(entity, ct);
                 await _uow.SaveChangesAsync(ct);
 
-                return ServiceResult<BudgetDTO>.Ok(MapToDTO(entity), "Budget created");
+                // ============================================
+                // 3) Respuesta
+                // ============================================
+                return ServiceResult<BudgetDTO>.Ok(
+                    MapToDTO(entity),
+                    "Budget created");
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<BudgetDTO>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return ServiceResult<BudgetDTO>.Fail(
+                    dbex.InnerException?.Message ?? dbex.Message,
+                    ErrorType.Conflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<BudgetDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<BudgetDTO>.Fail(
+                    ex.Message,
+                    ErrorType.Unexpected);
             }
         }
+
 
         public async Task<ServiceResult<BudgetDTO>> UpdateAsync(int budgetId, UpdateBudgetRequestDTO request, CancellationToken ct = default)
         {

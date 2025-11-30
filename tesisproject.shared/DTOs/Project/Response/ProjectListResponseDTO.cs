@@ -22,6 +22,6 @@
         /// </summary>
         public int PrincipalCoordinatorFacultyId { get; set; }
 
-        public int FundingTypeId { get; set; }
+        public IReadOnlyList<int> FundingTypeId { get; set; } = Array.Empty<int>();
     }
 }

@@ -1,0 +1,399 @@
+﻿@using Microsoft.AspNetCore.Components
+@using tesisproject.shared.DTOs.Algorithms.Response
+@using tesisproject.shared.DTOs.Budgets.Request
+@using tesisproject.shared.DTOs.Catalog.FundingType.Response
+@using tesisproject.shared.DTOs.Catalog.ProjectType.Response
+@using tesisproject.shared.DTOs.Filters
+@using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.frontend.SharedUI.DateInput
+@using tesisproject.frontend.SharedUI.SelectInput
+
+<div class="w-full flex flex-col gap-4">
+    <!-- Layout principal: datos de resolución + proyecto + presupuesto -->
+    <section class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+        <!-- Columna: datos de resolución + proyecto -->
+        <div class="lg:col-span-2 flex flex-col gap-4">
+            <!-- Tarjeta: Datos de resolución y proyecto -->
+            <div class="rounded-lg border border-border bg-background p-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <svg class="w-4 h-4 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h4 class="text-sm font-semibold text-foreground">Datos de resolución y proyecto</h4>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <!-- Resolution code -->
+                    <TextInput Label="Código de resolución"
+                               Value="@ResolutionModel.ResolutionCode"
+                               ValueChanged="val => ResolutionModel.ResolutionCode = val"
+                               Placeholder="Ej. UTA-CONIN-2021-XXXX-R"
+                               Disabled="@IsBusy" />
+
+                    <!-- Project name -->
+                    <TextInput Label="Nombre del proyecto"
+                               Value="@DideModel.ProjectName"
+                               ValueChanged="val => DideModel.ProjectName = val ?? string.Empty"
+                               Placeholder="Título del proyecto según formulario DIDE"
+                               Disabled="@IsBusy"
+                               Required="true" />
+
+                    <!-- Research type -->
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-medium text-foreground">Tipo de investigación</label>
+                        <SelectInput TItem="ProjectTypeListItemDTO"
+                                     Items="ResearchTypeOptions"
+                                     Value="_selectedResearchType"
+                                     ValueChanged="OnResearchTypeChanged"
+                                     GetText="rt => rt.Name"
+                                     GetKey="rt => rt.Id.ToString()"
+                                     Placeholder="Seleccionar tipo de investigación..."
+                                     Disabled="@IsBusy"
+                                     AllowClear="true"
+                                     Size="SelectSize.Md" />
+
+
+                        <span class="text-[11px] text-muted">
+                            Ej. Aplicada, Experimental, etc.
+                        </span>
+                    </div>
+
+                    <!-- Duration (months) -->
+                    <TextInput Label="Duración (meses)"
+                               Value="@ResolutionModel.Duration.ToString()"
+                               ValueChanged="val => ResolutionModel.Duration = ParseIntOrDefault(val)"
+                               Placeholder="Ej. 18"
+                               Disabled="@IsBusy" />
+                </div>
+            </div>
+
+            <!-- Tarjeta: Fechas -->
+            <div class="rounded-lg border border-border bg-background p-4">
+                <div class="flex items-center gap-2 mb-3">
+                    <svg class="w-4 h-4 flex-shrink-0 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <h4 class="text-sm font-semibold text-foreground">Fechas del proyecto</h4>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <!-- Resolution header date -->
+                    <DateInput Label="Fecha de resolución"
+                               Value="@_headerDate"
+                               ValueChanged="OnHeaderDateChanged"
+                               Disabled="@IsBusy" />
+
+                    <!-- Meeting date -->
+                    <DateInput Label="Fecha de reunión"
+                               Value="@_meetingDate"
+                               ValueChanged="OnMeetingDateChanged"
+                               Disabled="@IsBusy" />
+
+                    <!-- Execution start date -->
+                    <DateInput Label="Inicio de ejecución"
+                               Value="@_executionStartDate"
+                               ValueChanged="OnExecutionStartDateChanged"
+                               Disabled="@IsBusy" />
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna: presupuesto + tipo de financiamiento -->
+        <div class="lg:col-span-1">
+            <div class="rounded-lg border border-border bg-background p-4 h-full">
+                <div class="flex items-center gap-2 mb-3">
+                    <svg class="w-4 h-4 flex-shrink-0 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h4 class="text-sm font-semibold text-foreground">Presupuesto y financiamiento</h4>
+                </div>
+
+                <div class="flex flex-col gap-3">
+                    <!-- Lista de presupuestos -->
+                    @if (Budgets is not null && Budgets.Count > 0)
+                    {
+                        @for (var i = 0; i < Budgets.Count; i++)
+                        {
+                            var rowIndex = i;
+                            var row = Budgets[rowIndex];
+
+                            <div class="rounded-lg border border-border bg-background p-3 flex flex-col gap-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-xs font-semibold text-muted">
+                                        Presupuesto @(@rowIndex + 1)
+                                    </span>
+
+                                    <button type="button"
+                                            class="text-[11px] text-error hover:underline"
+                                            @onclick="@(() => RemoveBudgetRow(rowIndex))"
+                                            disabled="@IsBusy">
+                                        Quitar
+                                    </button>
+                                </div>
+
+                                <!-- Monto -->
+                                <TextInput Label="Monto (USD)"
+                                           Value="@row.InitialAmount.ToString()"
+                                           ValueChanged="val => OnBudgetAmountChanged(rowIndex, val)"
+                                           Placeholder="Ej. 8500"
+                                           Disabled="@IsBusy" />
+
+                                <!-- Tipo de financiamiento -->
+                                <div class="flex flex-col gap-1">
+                                    <label class="text-xs font-medium text-foreground">Tipo de financiamiento</label>
+
+                                    <SelectInput TItem="FundingTypeListItemDTO"
+                                                 Items="FundingTypeOptions"
+                                                 Value="@GetSelectedFundingType(row)"
+                                                 ValueChanged="item => OnBudgetFundingTypeChanged(rowIndex, item)"
+                                                 GetText="ft => ft.Name"
+                                                 GetKey="ft => ft.Id.ToString()"
+                                                 Placeholder="Seleccionar tipo de financiamiento..."
+                                                 Disabled="@IsBusy"
+                                                 AllowClear="false"
+                                                 Size="SelectSize.Md" />
+
+                                    <span class="text-[11px] text-muted">
+                                        Seleccione la fuente o modalidad de financiamiento.
+                                    </span>
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-xs text-muted">
+                            No hay presupuestos agregados aún.
+                        </p>
+                    }
+
+                    <!-- Botón para agregar presupuesto -->
+                    <div class="flex justify-end">
+                        <button type="button"
+                                class="px-3 py-1.5 rounded-md border border-border text-xs bg-primary text-white hover:bg-primary-hover disabled:bg-muted"
+                                @onclick="AddBudgetRow"
+                                disabled="@IsBusy">
+                            Agregar presupuesto
+                        </button>
+                    </div>
+
+                    <!-- Info adicional -->
+                    <div class="mt-2 p-3 rounded-lg bg-primary-subtle border border-primary-light">
+                        <div class="flex items-start gap-2">
+                            <svg class="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <p class="text-xs leading-relaxed text-foreground">
+                                Esta información proviene del documento inicial y será almacenada como la aprobación formal.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+</div>
+
+@code {
+    // ==========================
+    // Parámetros
+    // ==========================
+
+    /// <summary>
+    /// Datos extraídos (y editables) de la resolución inicial.
+    /// </summary>
+    [Parameter] public ResolutionInfo ResolutionModel { get; set; } = new();
+
+    /// <summary>
+    /// Datos del formulario DIDE (para nombre y tipo de investigación).
+    /// </summary>
+    [Parameter] public DideProjectFormInfo DideModel { get; set; } = new();
+
+    /// <summary>
+    /// Deshabilita la edición cuando el paso está ocupado.
+    /// </summary>
+    [Parameter] public bool IsBusy { get; set; }
+
+    /// <summary>
+    /// Catálogo de tipos de financiamiento.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<FundingTypeListItemDTO> FundingTypeOptions { get; set; }
+        = Array.Empty<FundingTypeListItemDTO>();
+
+    /// <summary>
+    /// Id del tipo de financiamiento seleccionado en el wizard.
+    /// </summary>
+    [Parameter] public List<CreateBudgetRequestDTO> Budgets { get; set; } = new();
+
+    /// <summary>
+    /// Notifica al padre cuando cambia el tipo de financiamiento.
+    /// </summary>
+    [Parameter] public EventCallback<List<CreateBudgetRequestDTO>> BudgetsChanged { get; set; }
+
+    /// <summary>
+    /// Catálogo de tipos de investigación (ProjectType → KeyValueItemDTO).
+    /// </summary>
+    [Parameter] public IReadOnlyList<ProjectTypeListItemDTO> ResearchTypeOptions { get; set; } = Array.Empty<ProjectTypeListItemDTO>();
+
+    // ==========================
+    // Estado interno
+    // ==========================
+
+    private DateOnly? _headerDate;
+    private DateOnly? _meetingDate;
+    private DateOnly? _executionStartDate;
+
+    private FundingTypeListItemDTO? _selectedFundingType;
+    private ProjectTypeListItemDTO? _selectedResearchType;
+
+
+    protected override void OnParametersSet()
+    {
+        // Mapear DateTime? -> DateOnly? para el DateInput
+        _headerDate = ResolutionModel.ResolutionHeaderDate.HasValue
+            ? DateOnly.FromDateTime(ResolutionModel.ResolutionHeaderDate.Value)
+            : null;
+
+        _meetingDate = ResolutionModel.MeetingDate.HasValue
+            ? DateOnly.FromDateTime(ResolutionModel.MeetingDate.Value)
+            : null;
+
+        _executionStartDate = ResolutionModel.ExecutionStartDate.HasValue
+            ? DateOnly.FromDateTime(ResolutionModel.ExecutionStartDate.Value)
+            : null;
+
+        // Mapear ResearchTypeId (en DideModel) -> item seleccionado
+        if (ResearchTypeOptions is not null &&
+            ResearchTypeOptions.Count > 0 &&
+            DideModel.ResearchTypeId.HasValue &&
+            DideModel.ResearchTypeId.Value > 0)
+        {
+            _selectedResearchType = ResearchTypeOptions
+                .FirstOrDefault(rt => rt.Id == DideModel.ResearchTypeId.Value);
+        }
+        else
+        {
+            _selectedResearchType = null;
+        }
+    }
+
+    // ==========================
+    // Handlers DateInput
+    // ==========================
+
+    private Task OnHeaderDateChanged(DateOnly? value)
+    {
+        _headerDate = value;
+        ResolutionModel.ResolutionHeaderDate = value?.ToDateTime(TimeOnly.MinValue);
+        return Task.CompletedTask;
+    }
+
+    private Task OnMeetingDateChanged(DateOnly? value)
+    {
+        _meetingDate = value;
+        ResolutionModel.MeetingDate = value?.ToDateTime(TimeOnly.MinValue);
+        return Task.CompletedTask;
+    }
+
+    private Task OnExecutionStartDateChanged(DateOnly? value)
+    {
+        _executionStartDate = value;
+        ResolutionModel.ExecutionStartDate = value?.ToDateTime(TimeOnly.MinValue);
+        return Task.CompletedTask;
+    }
+
+
+    // ==========================
+    // Handler ResearchType (SelectInput)
+    // ==========================
+
+    private Task OnResearchTypeChanged(ProjectTypeListItemDTO? item)
+    {
+        _selectedResearchType = item;
+        DideModel.ResearchTypeId = item?.Id;
+        return Task.CompletedTask;
+    }
+
+
+    // ==========================
+    // Helpers numéricos
+    // ==========================
+
+    private static int ParseIntOrDefault(string? input, int defaultValue = 0)
+    {
+        if (int.TryParse(input, out var value))
+            return value;
+
+        return defaultValue;
+    }
+    private async Task AddBudgetRow()
+    {
+        Budgets ??= new List<CreateBudgetRequestDTO>();
+        Budgets.Add(new CreateBudgetRequestDTO
+        {
+            ProjectId = 0,              // El padre los llenará luego
+            ApprovedByUserId = 0,       // El padre los llenará luego
+            InitialAmount = 0m,
+            FundingTypeId = 0           // 0 = no seleccionado aún
+        });
+
+        await RaiseBudgetsChangedAsync();
+    }
+
+
+    private async Task RemoveBudgetRow(int index)
+    {
+        if (Budgets is null) return;
+        if (index < 0 || index >= Budgets.Count) return;
+
+        Budgets.RemoveAt(index);
+        await RaiseBudgetsChangedAsync();
+    }
+
+    private async Task OnBudgetAmountChanged(int index, string? value)
+    {
+        if (Budgets is null) return;
+        if (index < 0 || index >= Budgets.Count) return;
+
+        if (decimal.TryParse(value, out var parsed))
+            Budgets[index].InitialAmount = parsed;
+        else
+            Budgets[index].InitialAmount = 0m;
+
+        await RaiseBudgetsChangedAsync();
+    }
+
+
+    private async Task OnBudgetFundingTypeChanged(int index, FundingTypeListItemDTO? item)
+    {
+        if (Budgets is null) return;
+        if (index < 0 || index >= Budgets.Count) return;
+
+        Budgets[index].FundingTypeId = item?.Id ?? 0;
+
+        await RaiseBudgetsChangedAsync();
+    }
+
+
+    private FundingTypeListItemDTO? GetSelectedFundingType(CreateBudgetRequestDTO row)
+    {
+        if (FundingTypeOptions is null || FundingTypeOptions.Count == 0)
+            return null;
+
+        if (row.FundingTypeId <= 0)
+            return null;
+
+        return FundingTypeOptions.FirstOrDefault(f => f.Id == row.FundingTypeId);
+    }
+
+
+    private async Task RaiseBudgetsChangedAsync()
+    {
+        if (BudgetsChanged.HasDelegate)
+            await BudgetsChanged.InvokeAsync(Budgets);
+    }
+
+}

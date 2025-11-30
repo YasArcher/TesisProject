@@ -31,7 +31,7 @@ namespace tesisproject.backend.Repositories.Implementations
 
             return await q.AsNoTracking()
                           .OrderBy(e => e.Name)
-                          .ToListAsync(ct);
+                          .ToListAsync();
         }
 
         public async Task<Dictionary<int, T>> GetByIdsAsync(

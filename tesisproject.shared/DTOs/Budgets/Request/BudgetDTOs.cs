@@ -40,15 +40,10 @@ namespace tesisproject.shared.DTOs.Budgets.Request
         [Range(0, double.MaxValue)]
         public decimal InitialAmount { get; set; }
 
-        // Opcionalmente puedes permitir setear valores iniciales 0
-        [Range(0, double.MaxValue)]
-        public decimal CertifiedAmount { get; set; }
-
-        [Range(0, double.MaxValue)]
-        public decimal ExecutedAmount { get; set; }
-
-        public DateTime? ApprovedAt { get; set; }
+        [Required]
+        public int FundingTypeId { get; set; }
     }
+
 
     public class UpdateBudgetRequestDTO
     {

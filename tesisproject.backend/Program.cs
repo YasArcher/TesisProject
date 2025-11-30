@@ -201,7 +201,9 @@ static class StartupExtensions
         // UoW
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        // Concrete repositories
+        // =========================
+        // Repositorios concretos de dominio (no catálogos genéricos)
+        // =========================
         builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
         builder.Services.AddScoped<IGroupRepository, GroupRepository>();
         builder.Services.AddScoped<IGroupMemberRepository, GroupMemberRepository>();
@@ -216,22 +218,27 @@ static class StartupExtensions
         builder.Services.AddScoped<IProductAttributeDefinitionRepository, ProductAttributeDefinitionRepository>();
         builder.Services.AddScoped<IProductAuthorRepository, ProductAuthorRepository>();
         builder.Services.AddScoped<IProductValueRepository, ProductValueRepository>();
-        builder.Services.AddScoped<IObjectiveTypeRepository, ObjectiveTypeRepository>();
         builder.Services.AddScoped<IProjectObjectiveRepository, ProjectObjectiveRepository>();
         builder.Services.AddScoped<IObjectiveActivityRepository, ObjectiveActivityRepository>();
         builder.Services.AddScoped<IObjectiveActivityUserRepository, ObjectiveActivityUserRepository>();
         builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
-        builder.Services.AddScoped<IMemberRoleTypeRepository, MemberRoleTypeRepository>();
-        builder.Services.AddScoped<IProjectTypeRepository, ProjectTypeRepository>();
-        builder.Services.AddScoped<IDocumentTypeRepository, DocumentTypeRepository>();
+        builder.Services.AddScoped<IProjectResearchCategoryRepository, ProjectResearchCategoryRepository>();
+        builder.Services.AddScoped<IResearchCategoryRepository, ResearchCategoryRepository>();
 
+        // ?? OJO: ya NO registramos repositorios de catálogo específicos como:
+        // IObjectiveTypeRepository, IMemberRoleTypeRepository,
+        // IProjectTypeRepository, IDocumentTypeRepository, IResearchCategoryTypeRepository, etc.
+        // Porque ahora usas ICatalogRepository<T> en el UnitOfWork.
 
-
-        // Open generics (FIX): register generic repositories properly
+        // =========================
+        // Repositorios genéricos
+        // =========================
         builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
         builder.Services.AddScoped(typeof(ICatalogRepository<>), typeof(CatalogRepository<>));
 
-        // Application services
+        // =========================
+        // Servicios de aplicación
+        // =========================
         builder.Services.AddMemoryCache();
         builder.Services.AddScoped<ICatalogQueryService, CatalogQueryService>();
         builder.Services.AddScoped<IProjectsFiltersService, ProjectsFiltersService>();
@@ -256,9 +263,13 @@ static class StartupExtensions
         builder.Services.AddScoped<IMemberRoleTypeService, MemberRoleTypeService>();
         builder.Services.AddScoped<IProjectTypeService, ProjectTypeService>();
         builder.Services.AddScoped<IDocumentTypeService, DocumentTypeService>();
-
-
+        builder.Services.AddScoped<IProjectResearchCategoryService, ProjectResearchCategoryService>();
+        builder.Services.AddScoped<IResearchCategoryService, ResearchCategoryService>();
+        builder.Services.AddScoped<IResearchCategoryTypeService, ResearchCategoryTypeService>();
+        builder.Services.AddScoped<IFundingTypeService, FundingTypeService>();
+        builder.Services.AddScoped<IResearchCategoryGroupService, ResearchCategoryGroupService>();
     }
+
 
     public static void ConfigureApiDocumentation(this WebApplicationBuilder builder)
     {

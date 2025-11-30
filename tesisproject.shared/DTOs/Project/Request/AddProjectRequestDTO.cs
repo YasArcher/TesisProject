@@ -9,14 +9,14 @@ namespace tesisproject.shared.DTOs.Project.Request
 {
     public sealed class AddProjectRequestDTO
     {
-        [Required, StringLength(120)]
+        [Required]
         public string ProjectName { get; set; } = string.Empty;
 
         [Required]
         public int ProjectTypeId { get; set; }
         [Required]
         public int ProjectGroupId { get; set; }
-        public int ResearchLine { get; set; }
+        public List<int> ResearchCategoryIds { get; set; } = new();
         public DateTime ApprovalDate { get; set; }
         public DateTime? StartDate { get; set; }
         public string? ProjectCode { get; set; }
@@ -24,6 +24,5 @@ namespace tesisproject.shared.DTOs.Project.Request
         public int ProjectStateId { get; set; }
         public int DurationInMonths { get; set; }
         public int FacultyId { get; set; }
-        public int FundingTypeId { get; set; }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using tesisproject.backend.Data;
 using tesisproject.backend.Repositories.Interfaces;
+using tesisproject.shared.Entities.Catalogs;
 
 namespace tesisproject.backend.UnitOfWork.Interfaces
 {
@@ -19,14 +20,19 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
         IProductTypeRepository ProductTypes { get; }
         IProductAuthorRepository ProductAuthors { get; }
         IProductRepository Products { get; }
-        IObjectiveTypeRepository ObjectiveTypes { get; }
+        ICatalogRepository<ObjectiveType> ObjectiveTypes { get; }
         IProjectObjectiveRepository ProjectObjectives { get; }
         IObjectiveActivityRepository ObjectiveActivities { get; }
         IObjectiveActivityUserRepository ObjectiveActivityUsers { get; }
         IDocumentRepository Documents { get; }
-        IMemberRoleTypeRepository MemberRoleTypeRepository { get; }
-        IProjectTypeRepository ProjectTypeRepository { get; }
-        IDocumentTypeRepository DocumentTypes { get; }
+        ICatalogRepository<MemberRoleType> MemberRoleTypeRepository { get; }
+        ICatalogRepository<ProjectType> ProjectTypeRepository { get; }
+        ICatalogRepository<DocumentType> DocumentTypes { get; }
+        IProjectResearchCategoryRepository ProjectResearchCategories { get; }
+        IResearchCategoryRepository ResearchCategories { get; }
+        ICatalogRepository<ResearchCategoryType> ResearchCategoryTypes { get; }
+        ICatalogRepository<FundingType> FundingTypes { get; }
+        ICatalogRepository<ResearchCategoryGroup> ResearchCategoryGroups { get; }
 
         // 🔹 Nuevo repositorio agregado:
         IAspNetUserRepository AspNetUsers { get; }

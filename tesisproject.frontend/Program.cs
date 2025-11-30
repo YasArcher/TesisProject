@@ -68,6 +68,11 @@ builder.Services.AddScoped<IMemberRoleTypeClientService, MemberRoleTypeClientSer
 builder.Services.AddScoped<IDocumentTypeClientService, DocumentTypeClientService>();
 builder.Services.AddScoped<IObjectiveTypeClientService, ObjectiveTypeClientService>();
 builder.Services.AddScoped<IDocumentClientService, DocumentClientService>();
+builder.Services.AddScoped<IResearchCategoryClientService, ResearchCategoryClientService>();
+builder.Services.AddScoped<IResearchCategoryTypeClientService, ResearchCategoryTypeClientService>();
+builder.Services.AddScoped<IFundingTypeClientService, FundingTypeClientService>();
+builder.Services.AddScoped<IResearchCategoryGroupClientService, ResearchCategoryGroupClientService>();
+builder.Services.AddScoped<IVisitIssueClientService, VisitIssueClientService>();
 
 // External
 builder.Services.AddScoped<IExternalAcademicsClientService, ExternalAcademicsClientService>();

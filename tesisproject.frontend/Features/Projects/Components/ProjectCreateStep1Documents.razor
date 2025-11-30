@@ -1,0 +1,132 @@
+﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.frontend.SharedUI.FileUpload
+
+<div class="w-full flex flex-col gap-4">
+
+    <!-- Grid de documentos -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        <!-- Documento 1: Resolución -->
+        <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-2 mb-1">
+                <svg class="w-4 h-4 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h4 class="text-sm font-semibold text-foreground">
+                    Resolución inicial
+                </h4>
+                <span class="px-2 py-0.5 rounded text-xs font-medium ml-auto bg-accent text-white">
+                    Requerido
+                </span>
+            </div>
+
+            <FileUpload ContainerClass="w-full"
+                        UploadText="Haga clic o arrastre el archivo"
+                        AcceptedTypes=".pdf,application/pdf"
+                        MaxFileSizeMB="10"
+                        AllowRemove="true"
+                        IsDisabled="@IsBusy"
+                        ShowProgress="false"
+                        OnFileSelected="HandleResolutionFileSelected" />
+
+            <div class="flex items-start gap-1.5 mt-1">
+                <svg class="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p class="text-xs leading-tight text-muted">
+                    Formato: PDF | Tamaño máximo: 10 MB
+                </p>
+            </div>
+        </div>
+
+        <!-- Documento 2: DIDE -->
+        <div class="flex flex-col gap-2">
+            <div class="flex items-center gap-2 mb-1">
+                <svg class="w-4 h-4 flex-shrink-0 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h4 class="text-sm font-semibold text-foreground">
+                    Formulario DIDE
+                </h4>
+                <span class="px-2 py-0.5 rounded text-xs font-medium ml-auto bg-accent text-white">
+                    Requerido
+                </span>
+            </div>
+
+            <FileUpload ContainerClass="w-full"
+                        UploadText="Haga clic o arrastre el archivo"
+                        AcceptedTypes=".pdf,application/pdf"
+                        MaxFileSizeMB="10"
+                        AllowRemove="true"
+                        IsDisabled="@IsBusy"
+                        ShowProgress="false"
+                        OnFileSelected="HandleDideFileSelected" />
+
+            <div class="flex items-start gap-1.5 mt-1">
+                <svg class="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p class="text-xs leading-tight text-muted">
+                    Formato: PDF | Tamaño máximo: 10 MB
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nota informativa adicional -->
+    <div class="flex items-start gap-2 p-3 rounded-lg bg-primary-subtle border border-primary-light">
+        <svg class="w-4 h-4 mt-0.5 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p class="text-xs leading-relaxed text-foreground">
+            <strong>Nota:</strong> Ambos documentos son necesarios para continuar. Asegúrese de que los archivos estén completos y sean legibles antes de avanzar al siguiente paso.
+        </p>
+    </div>
+</div>
+
+@code {
+    /// <summary>
+    /// Deshabilita los uploads cuando el paso está ocupado.
+    /// </summary>
+    [Parameter] public bool IsBusy { get; set; }
+
+    /// <summary>
+    /// Archivo de resolución seleccionado (se envía al padre).
+    /// </summary>
+    [Parameter] public EventCallback<IBrowserFile> OnResolutionFileSelected { get; set; }
+
+    /// <summary>
+    /// Archivo DIDE seleccionado (se envía al padre).
+    /// </summary>
+    [Parameter] public EventCallback<IBrowserFile> OnDideFileSelected { get; set; }
+
+    /// <summary>
+    /// Notifica al padre si ya hay (al menos) un archivo de resolución cargado.
+    /// true = ya subió resolución, false = (si decides dispararlo al limpiar).
+    /// </summary>
+    [Parameter] public EventCallback<bool> OnResolutionFileStatusChanged { get; set; }
+
+    private async Task HandleResolutionFileSelected(IBrowserFile file)
+    {
+        // 1) Notificar el archivo al padre
+        if (OnResolutionFileSelected.HasDelegate)
+        {
+            await OnResolutionFileSelected.InvokeAsync(file);
+        }
+
+        // 2) Notificar que ya hay resolución cargada (para habilitar Next)
+        if (OnResolutionFileStatusChanged.HasDelegate)
+        {
+            await OnResolutionFileStatusChanged.InvokeAsync(file is not null);
+        }
+    }
+
+    private async Task HandleDideFileSelected(IBrowserFile file)
+    {
+        if (OnDideFileSelected.HasDelegate)
+        {
+            await OnDideFileSelected.InvokeAsync(file);
+        }
+    }
+}
