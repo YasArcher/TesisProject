@@ -1,5 +1,4 @@
-﻿@* Features/Projects/Components/ProjectAccrualModal.razor *@
-@using Microsoft.AspNetCore.Components
+﻿@using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Forms
 @using tesisproject.shared.DTOs.Budgets.Request
 @using tesisproject.frontend.SharedUI.Modal
@@ -92,9 +91,7 @@
                 ? new ExecuteDevengadoRequestDTO
                 {
                     BudgetTransactionId = Value.BudgetTransactionId,
-                    ExecutedByUserId = Value.ExecutedByUserId,
                     CURNumber = Value.CURNumber,
-                    ExecutedAt = Value.ExecutedAt
                 }
                 : new ExecuteDevengadoRequestDTO();
 

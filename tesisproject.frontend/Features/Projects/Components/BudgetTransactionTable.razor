@@ -2,6 +2,7 @@
 @using Microsoft.AspNetCore.Components
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.Table
+@using tesisproject.shared.DTOs.Budgets
 @using tesisproject.shared.DTOs.Budgets.Request
 @using tesisproject.shared.Enums
 @using tesisproject.frontend.Utils
@@ -26,53 +27,108 @@
     // ===== Columnas (ordenan por valor crudo) =====
     private IReadOnlyList<ColumnDef<BudgetTransactionDTO>> _columns = new[]
     {
-        new ColumnDef<BudgetTransactionDTO>("#",           t => t.BudgetTransactionId,                Width: "80px",  Sortable: true),
-        new ColumnDef<BudgetTransactionDTO>("Certificada", t => (object?) t.CertifiedAt,              Width: "150px", Sortable: true),
-        new ColumnDef<BudgetTransactionDTO>("Devengada",   t => (object?) t.ExecutedAt,               Width: "150px", Sortable: true),
-        new ColumnDef<BudgetTransactionDTO>("Monto",       t => t.Amount,                             Width: "120px", Sortable: true),
-        new ColumnDef<BudgetTransactionDTO>("Partida",     t => t.BudgetItem ?? "",                                  Sortable: true),
-        new ColumnDef<BudgetTransactionDTO>("CUR",         t => !string.IsNullOrWhiteSpace(t.CURNumber) ? t.CURNumber : "-", Width: "120px", Sortable: true),
-        new ColumnDef<BudgetTransactionDTO>("Estado",      t => "",                                   Width: "120px", Sortable: false),
-        new ColumnDef<BudgetTransactionDTO>("Acción",      t => "",                                   Width: "100px", Sortable: false)
+        // Número (ordenamos por Id, mostramos ordinal en la fila)
+        new ColumnDef<BudgetTransactionDTO>("N°",        t => t.BudgetTransactionId,                                   Width: "60px",  Sortable: true),
+
+        // Fecha dinámica: devengada si existe, caso contrario certificada
+        new ColumnDef<BudgetTransactionDTO>("Fecha",     t => (object?)(t.ExecutedAt ?? t.CertifiedAt),               Width: "150px", Sortable: true),
+
+        // CUR: vacío si no hay
+        new ColumnDef<BudgetTransactionDTO>("CUR",       t => string.IsNullOrWhiteSpace(t.CURNumber) ? "" : t.CURNumber!, Width: "120px", Sortable: true),
+
+        // Descripción dinámica
+        new ColumnDef<BudgetTransactionDTO>("Descripción",
+            t => !string.IsNullOrWhiteSpace(t.ExecutionDescription)
+                    ? t.ExecutionDescription!
+                    : t.CertificationDescription ?? "",
+            Width: "240px",
+            Sortable: true),
+
+        // Valor dinámico (devengado o certificado)
+        new ColumnDef<BudgetTransactionDTO>("Valor",
+            t => t.ExecutedAt.HasValue ? t.ExecutedAmount : t.CertifiedAmount,
+            Width: "120px",
+            Sortable: true),
+
+        // Partida presupuestaria (vacío si no hay)
+        new ColumnDef<BudgetTransactionDTO>("Partida presupuestaria",
+            t => t.BudgetItem ?? "",
+            Width: "200px",
+            Sortable: true),
+
+        // Nombre de la transacción
+        new ColumnDef<BudgetTransactionDTO>("Nombre",
+            t => t.Name ?? "",
+            Width: "200px",
+            Sortable: true),
+
+        // Estado (texto de ordenación)
+        new ColumnDef<BudgetTransactionDTO>("Estado",
+            t => t.TransactionTypeId,
+            Width: "120px",
+            Sortable: true),
+
+        // Acción (no sortable)
+        new ColumnDef<BudgetTransactionDTO>("Acción",
+            t => "",
+            Width: "100px",
+            Sortable: false)
     };
 
     // ===== Row Template (formateo visual con helpers) =====
     private RenderFragment<BudgetTransactionDTO> TransactionRowTemplate => transaction => @<text>
-    <td class="px-4 py-3 text-sm text-foreground align-middle">
-        @transaction.BudgetTransactionId
+        <!-- N° (ordinal) -->
+        <td class="px-4 py-3 text-sm text-foreground align-middle">
+            @(Transactions is null ? "" : (Transactions.IndexOf(transaction) + 1).ToString())
+        </td>
+
+        <!-- Fecha dinámica -->
+        <td class="px-4 py-3 text-sm text-foreground align-middle">
+            @DateCell(transaction.ExecutedAt ?? transaction.CertifiedAt)
+        </td>
+
+        <!-- CUR -->
+        <td class="px-4 py-3 text-sm text-foreground align-middle">
+            @(string.IsNullOrWhiteSpace(transaction.CURNumber) ? "" : transaction.CURNumber)
+        </td>
+
+        <!-- Descripción dinámica -->
+        <td class="px-4 py-3 text-sm text-foreground align-middle">
+            @(
+                !string.IsNullOrWhiteSpace(transaction.ExecutionDescription)
+                ? transaction.ExecutionDescription
+                : transaction.CertificationDescription
+                )
     </td>
 
-    <td class="px-4 py-3 text-sm text-foreground align-middle">
-        @DateCell(transaction.CertifiedAt)
-    </td>
-
-    <td class="px-4 py-3 text-sm text-foreground align-middle">
-        @DateCell(transaction.ExecutedAt)
-    </td>
-
+    <!-- Valor dinámico -->
     <td class="px-4 py-3 text-sm text-foreground align-middle text-right">
-        @FormatMoney(transaction.Amount)
+        @FormatMoney(transaction.ExecutedAt.HasValue ? transaction.ExecutedAmount : transaction.CertifiedAmount)
     </td>
 
+    <!-- Partida presupuestaria -->
     <td class="px-4 py-3 text-sm text-foreground align-middle">
-        @transaction.BudgetItem
+        @(string.IsNullOrWhiteSpace(transaction.BudgetItem) ? "" : transaction.BudgetItem)
     </td>
 
+    <!-- Nombre -->
     <td class="px-4 py-3 text-sm text-foreground align-middle">
-        @(!string.IsNullOrWhiteSpace(transaction.CURNumber) ? transaction.CURNumber : "-")
+        @transaction.Name
     </td>
 
+    <!-- Estado -->
     <td class="px-4 py-3 text-sm text-foreground align-middle">
         @if (IsExecuted(transaction.ExecutedAt))
                 {
-        <span class="px-2 py-1 rounded text-xs bg-green-100 text-green-700">Ejecutado</span>
+        <span class="px-2 py-1 rounded text-xs bg-green-100 text-green-700">Devengada</span>
                 }
                 else
                 {
-        <span class="px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800">Certificado</span>
+        <span class="px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800">Certificada</span>
                 }
     </td>
 
+    <!-- Acción -->
     <td class="px-4 py-3 text-sm text-foreground align-middle text-right">
         <ActionButton Text="Devengar"
                       Intent="ButtonIntent.Accept"
@@ -87,7 +143,7 @@
     private static RenderFragment DateCell(DateTime? dt) => builder =>
     {
         var text = dt.ToSpanishShortDate(); // "-", o dd/MM/yyyy
-        var title = $"{dt.ToSpanishDate()} • {dt.ToRelativeTime()}"; // "Sin fecha" o "01 de enero de 2025 • Hace 3 días"
+        var title = $"{dt.ToSpanishDate()} • {dt.ToRelativeTime()}";
 
         builder.OpenElement(0, "span");
         builder.AddAttribute(1, "title", title);

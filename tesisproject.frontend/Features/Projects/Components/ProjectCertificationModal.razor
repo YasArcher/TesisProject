@@ -50,13 +50,14 @@
             <!-- Partida presupuestaria (*) -->
             <div class="mt-4">
                 <TextInput Label="Partida presupuestaria"
-                           Placeholder="Ej.: 510201 Servicios profesionales"
+                           Placeholder="Ej.: 510201 "
                            Value="@_model.BudgetItem"
                            ValueChanged="(v => _model.BudgetItem = v ?? string.Empty)"
                            For="@(() => _model.BudgetItem)"
                            Required="true"
                            MaxLength="120"
-                           Disabled="@IsSaving" />
+                           Disabled="@IsSaving"
+                           InputType="number" />
                 <ValidationMessage For="@(() => _model.BudgetItem)" />
             </div>
 

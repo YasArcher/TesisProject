@@ -533,7 +533,7 @@
 
     private void HandleCancel()
     {
-        //Nav.NavigateTo("/projects/home");
+        Nav.NavigateTo("/projects/home");
     }
 
     // ==========================
@@ -766,13 +766,27 @@
 
     private List<int> ExtractSelectedResearchCategoryIds()
     {
-        if (_selectedResearchCategories is null || _selectedResearchCategories.Count == 0)
-            return new List<int>();
+        var result = new List<int>();
 
-        return _selectedResearchCategories
-            .Select(x => x.Id)
-            .Distinct()
-            .ToList();
+        if (_selectedResearchCategories is null || _selectedResearchCategories.Count == 0)
+            return result;
+
+        void CollectLeafIds(ResearchCategoryTreeItemDTO node)
+        {
+            if (node.Children == null || node.Children.Count == 0)
+            {
+                result.Add(node.Id);
+                return;
+            }
+
+            foreach (var child in node.Children)
+                CollectLeafIds(child);
+        }
+
+        foreach (var root in _selectedResearchCategories)
+            CollectLeafIds(root);
+
+        return result.Distinct().ToList();
     }
 
     // ==========================
@@ -1017,7 +1031,7 @@
             //Console.WriteLine($"✓ Proyecto creado. ProjectId={response.Response.ProjectId}");
             Toast.ShowSuccess("Proyecto creado correctamente.");
 
-            //Nav.NavigateTo($"/projects/{response.Response.ProjectId}");
+            Nav.NavigateTo($"/projects/{response.Response.ProjectId}");
         }
         finally
         {

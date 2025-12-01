@@ -5,6 +5,8 @@
 @using tesisproject.frontend.SharedUI.Tabs
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategoryGroup.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
 @using tesisproject.shared.DTOs.Group.Request
 @using tesisproject.shared.DTOs.Project.Response
 @using tesisproject.frontend.Features.Projects.Components
@@ -15,6 +17,7 @@
 @using tesisproject.shared.DTOs.External
 @using tesisproject.shared.DTOs.VisitIssues.Request
 @using tesisproject.shared.DTOs.VisitIssues.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
 
 @inject IVisitClientService VisitService
 @inject IProjectClientService ProjectService
@@ -27,6 +30,9 @@
 @inject IExternalUserService ExternalUserService
 @inject IVisitIssueClientService VisitIssueService
 @inject IMemberRoleTypeClientService MemberRoleTypeService
+@inject IResearchCategoryClientService ResearchCategoryService
+@inject IResearchCategoryTypeClientService ResearchCategoryTypeService
+@inject IResearchCategoryGroupClientService ResearchCategoryGroupService
 
 <div class="flex flex-col h-full">
     <!-- Header -->
@@ -91,7 +97,11 @@
                     </svg>
                 </Icon>
                 <ChildContent>
-                    <ProjectOverviewTab Item="_project" IsLoading="@_loadingOverview" />
+                    <ProjectOverviewTab Item="_project"
+                                        IsLoading="@_loadingOverview"
+                                        ResearchCategoryTree="_researchCategoryTree"
+                                        ResearchCategoryTypes="_researchCategoryTypes"
+                                        ResearchCategoryGroups="_researchCategoryGroups" />
                 </ChildContent>
             </Tab>
 
@@ -215,6 +225,10 @@
 
 
 @code {
+    // ======= Categorías de investigación (árbol) =======
+    private IReadOnlyList<ResearchCategoryTreeItemDTO> _researchCategoryTree = Array.Empty<ResearchCategoryTreeItemDTO>();
+    private bool _loadingResearchCategories;
+    private string? _researchCategoriesError;
     [Parameter] public int ProjectId { get; set; }
 
     // ======= Estado general =======
@@ -282,11 +296,24 @@
     // ======= Roles de miembro para el picker de proyecto =======
     private IEnumerable<MemberRoleTypeDetailDTO>? _memberRoles;
     private int? _selectedRoleIdForProject;
+    // ======= Tipos de Categoría de Investigación =======
+    private IReadOnlyList<ResearchCategoryTypeListItemDTO> _researchCategoryTypes = Array.Empty<ResearchCategoryTypeListItemDTO>();
+    private string? _researchCategoryTypesError;
+    private bool _loadingResearchCategoryTypes;
+
+    // ======= Agrupaciones de Categorías de Investigación =======
+    private IReadOnlyList<ResearchCategoryGroupListItemDTO> _researchCategoryGroups
+        = Array.Empty<ResearchCategoryGroupListItemDTO>();
+    private bool _loadingResearchCategoryGroups;
+    private string? _researchCategoryGroupsError;
 
     // ======= Lifecycle =======
     protected override async Task OnInitializedAsync()
     {
         await EnsureFacultiesAsync();
+        await EnsureResearchCategoryGroupsAsync();
+        await EnsureResearchCategoryTypesAsync();
+        await EnsureResearchCategoryTreeAsync();
         await EnsureTabDataAsync(_activeTab);
     }
 
@@ -296,6 +323,73 @@
         await EnsureTabDataAsync(newKey);
         StateHasChanged();
     }
+
+    private async Task EnsureResearchCategoryTreeAsync()
+    {
+        if (_researchCategoryTree is { Count: > 0 })
+            return;
+
+        try
+        {
+            _loadingResearchCategories = true;
+            _researchCategoriesError = null;
+
+            var res = await ResearchCategoryService.GetTreeAsync();
+            
+            if (res.Success && res.Response is not null)
+                _researchCategoryTree = res.Response;
+            else
+            {
+                _researchCategoryTree = Array.Empty<ResearchCategoryTreeItemDTO>();
+                _researchCategoriesError = res.Error ?? "No se pudo cargar el árbol de categorías.";
+            }
+
+        }
+        catch (Exception ex)
+        {
+            _researchCategoryTree = Array.Empty<ResearchCategoryTreeItemDTO>();
+            _researchCategoriesError = $"Error al cargar categorías: {ex.Message}";
+        }
+        finally
+        {
+            _loadingResearchCategories = false;
+        }
+    }
+    private async Task EnsureResearchCategoryGroupsAsync()
+    {
+        if (_researchCategoryGroups is { Count: > 0 })
+            return;
+
+        try
+        {
+            _loadingResearchCategoryGroups = true;
+            _researchCategoryGroupsError = null;
+
+            var res = await ResearchCategoryGroupService.GetListAsync(onlyActives: true);
+
+            if (res.Success && res.Response is not null)
+            {
+                _researchCategoryGroups = res.Response;
+            }
+            else
+            {
+                _researchCategoryGroups = Array.Empty<ResearchCategoryGroupListItemDTO>();
+                _researchCategoryGroupsError = res.Error
+                    ?? "No se pudieron cargar las agrupaciones de categorías.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _researchCategoryGroups = Array.Empty<ResearchCategoryGroupListItemDTO>();
+            _researchCategoryGroupsError = $"Error al cargar agrupaciones: {ex.Message}";
+        }
+        finally
+        {
+            _loadingResearchCategoryGroups = false;
+        }
+    }
+
+
 
     private async Task EnsureFacultiesAsync()
     {
@@ -1091,4 +1185,37 @@
             return false;
         return _members.Any(m => m.MemberRoleId == roleId);
     }
+    private async Task EnsureResearchCategoryTypesAsync()
+    {
+        if (_researchCategoryTypes is { Count: > 0 })
+            return;
+
+        try
+        {
+            _loadingResearchCategoryTypes = true;
+            _researchCategoryTypesError = null;
+
+            var res = await ResearchCategoryTypeService.ListAsync(onlyActives: true);
+
+            if (res.Success && res.Response is not null)
+            {
+                _researchCategoryTypes = res.Response;
+            }
+            else
+            {
+                _researchCategoryTypes = Array.Empty<ResearchCategoryTypeListItemDTO>();
+                _researchCategoryTypesError = res.Error ?? "No se pudieron cargar los tipos de categoría.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _researchCategoryTypes = Array.Empty<ResearchCategoryTypeListItemDTO>();
+            _researchCategoryTypesError = $"Error al cargar tipos de categoría: {ex.Message}";
+        }
+        finally
+        {
+            _loadingResearchCategoryTypes = false;
+        }
+    }
+
 }
