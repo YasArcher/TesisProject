@@ -70,6 +70,7 @@ namespace tesisproject.backend.Data
         // DbSets - Auth
         // =========================================================
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+        public DbSet<AppUser> AppUsers => Set<AppUser>();
 
         // =========================================================
         // OnModelCreating
@@ -83,6 +84,7 @@ namespace tesisproject.backend.Data
 
             // 2) RefreshTokens
             ConfigureRefreshTokens(builder);
+            ConfigureAppUser(builder);
 
             // 3) Otras configuraciones puntuales
             ConfigureInstitution(builder);
@@ -115,6 +117,24 @@ namespace tesisproject.backend.Data
         }
 
         // Aplica índice + FK hacia IdentityUser<int> con DeleteBehavior configurable
+        //private static void MapUserFK<TEntity, TProp>(
+        //    ModelBuilder mb,
+        //    Expression<Func<TEntity, TProp>> fkExpr,
+        //    DeleteBehavior delete = DeleteBehavior.NoAction)
+        //    where TEntity : class
+        //{
+        //    var e = mb.Entity<TEntity>();
+        //    var objExpr = ToObjectExpr(fkExpr);
+
+        //    e.HasIndex(objExpr);
+
+        //    e.HasOne<IdentityUser<int>>()
+        //     .WithMany()
+        //     .HasForeignKey(objExpr)
+        //     .HasPrincipalKey(u => u.Id)
+        //     .OnDelete(delete);
+        //}
+        // Aplica índice + FK hacia AppUser (ID_USER) con DeleteBehavior configurable
         private static void MapUserFK<TEntity, TProp>(
             ModelBuilder mb,
             Expression<Func<TEntity, TProp>> fkExpr,
@@ -124,14 +144,40 @@ namespace tesisproject.backend.Data
             var e = mb.Entity<TEntity>();
             var objExpr = ToObjectExpr(fkExpr);
 
+            // Índice sobre la columna de auditoría (ApprovedByUserId, CreatedByUserId, etc.)
             e.HasIndex(objExpr);
 
-            e.HasOne<IdentityUser<int>>()
+            // Ahora la FK apunta a AppUser.IdUser (no a IdentityUser<int>)
+            e.HasOne<AppUser>()
              .WithMany()
-             .HasForeignKey(objExpr)
-             .HasPrincipalKey(u => u.Id)
+             .HasForeignKey(objExpr)         // columna en la entidad (p.ej. ApprovedByUserId)
+             .HasPrincipalKey(u => u.IdUser) // PK en AppUser
              .OnDelete(delete);
         }
+
+
+        private static void ConfigureAppUser(ModelBuilder builder)
+        {
+            builder.Entity<AppUser>(b =>
+            {
+                // PK interno estable que usarán las tablas de negocio
+                b.HasKey(u => u.IdUser);
+
+                // Índices para resolver rápido por IdLocal / IdAsp
+                b.HasIndex(u => u.IdLocal);
+                b.HasIndex(u => u.IdAsp);
+
+                // Mientras usas Identity local, puedes tener esta FK opcional:
+                b.HasOne<IdentityUser<int>>()
+                 .WithMany()
+                 .HasForeignKey(u => u.IdLocal)
+                 .HasPrincipalKey(i => i.Id)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // (Con IdAsp NO hacemos FK porque viene del ASP externo)
+            });
+        }
+
 
         // Agrupa todos los mapeos de FK a usuarios en un solo lugar
         private static void ConfigureUserForeignKeys(ModelBuilder builder)

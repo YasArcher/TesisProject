@@ -22,9 +22,9 @@ namespace tesisproject.shared.Entities.Core
 
         [StringLength(1000, ErrorMessage = "El resultado no puede exceder 1000 caracteres")]
         public string ActivityResult { get; set; } = string.Empty;
-    
-        [StringLength(1000, ErrorMessage = "La Acción de mejora no puede exceder 1000 caracteres")]
-        public string ImprovementAction { get; set; } = string.Empty;
+
+        [StringLength(1000, ErrorMessage = "La acción no puede exceder 1000 caracteres")]
+        public string ActionText { get; set; } = string.Empty;
 
         [StringLength(1000, ErrorMessage = "El monitoreo no puede exceder 1000 caracteres")]
 

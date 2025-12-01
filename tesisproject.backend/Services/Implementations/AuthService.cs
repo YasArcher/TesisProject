@@ -13,71 +13,52 @@ namespace tesisproject.backend.Services.Implementations
         private readonly ITokenService _tokenService;
         private readonly IRefreshTokenService _refreshTokens;
 
+        // 👇 NUEVO: servicio que contiene la lógica de registro / APP_USER
+        private readonly IAppUserService _appUserRegistration;
+
         public AuthService(
             UserManager<IdentityUser<int>> userManager,
             SignInManager<IdentityUser<int>> signInManager,
             ITokenService tokenService,
-            IRefreshTokenService refreshTokens)
+            IRefreshTokenService refreshTokens,
+            IAppUserService appUserRegistration)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _tokenService = tokenService;
             _refreshTokens = refreshTokens;
+            _appUserRegistration = appUserRegistration;
         }
 
         // =============== REGISTER ===============
 
         public async Task<(ServiceResult<AuthResponse> Result,
-                           (string token, DateTime exp)? RefreshCookie)>
-            RegisterAsync(RegisterRequest dto, string? ip, CancellationToken ct)
+                          (string token, DateTime exp)? RefreshCookie)>
+           RegisterAsync(RegisterRequest dto, string? ip, CancellationToken ct)
         {
             try
             {
-                var existing = await _userManager.FindByEmailAsync(dto.Email);
-                if (existing is not null)
-                {
-                    return (
-                        ServiceResult<AuthResponse>.Fail("email_already_exists", ErrorType.Validation),
-                        null
-                    );
-                }
+                // Toda la lógica de:
+                // - IdentityUser (ASP local)
+                // - AppUser (tabla puente)
+                // vive en IAppUserRegistrationService
+                var appUserId = await _appUserRegistration.EnsureAppUserAsync(dto, ct);
 
-                var user = new IdentityUser<int>
-                {
-                    Email = dto.Email,
-                    UserName = dto.Username,
-                    EmailConfirmed = false
-                };
+                // Si quisieras, aquí podrías loguear ese IdUser:
+                // _logger.LogInformation("User registered with AppUserId {Id}", appUserId);
 
-                var create = await _userManager.CreateAsync(user, dto.Password);
-                if (!create.Succeeded)
-                {
-                    var msg = string.Join("; ", create.Errors.Select(e => $"{e.Code}:{e.Description}"));
-                    return (
-                        ServiceResult<AuthResponse>.Fail(msg, ErrorType.Validation),
-                        null
-                    );
-                }
-
-                var roles = await _userManager.GetRolesAsync(user);
-
-                var (access, accessExp) = _tokenService.CreateAccessToken(user.Id, user.Email!, roles);
-                var (refresh, refreshExp) = _tokenService.CreateRefreshToken();
-
-                await _refreshTokens.CreateAsync(user.Id, refresh, refreshExp, ip, ct);
-                await _refreshTokens.SaveChangesAsync(ct);
-
+                // No generamos tokens ni refresh: NO login automático
                 var resp = new AuthResponse
                 {
-                    TokenType = "Bearer",
-                    AccessToken = access,
-                    AccessTokenExpiresAtUtc = accessExp,
-                    RefreshTokenExpiresAtUtc = refreshExp
+                    TokenType = "None",
+                    AccessToken = string.Empty,
+                    AccessTokenExpiresAtUtc = DateTime.UtcNow,
+                    RefreshTokenExpiresAtUtc = DateTime.UtcNow
                 };
 
                 return (
-                    ServiceResult<AuthResponse>.Ok(resp, "User registered"),
-                    (refresh, refreshExp)
+                    ServiceResult<AuthResponse>.Ok(resp, $"User registered (AppUserId={appUserId}, no login performed)"),
+                    null
                 );
             }
             catch (DbUpdateException dbex)

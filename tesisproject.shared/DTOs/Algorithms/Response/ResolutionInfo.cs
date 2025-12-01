@@ -17,12 +17,16 @@ namespace tesisproject.shared.DTOs.Algorithms.Response
 
     public class ResearcherInfo
     {
-        public int Role { get; set; } = 0;
-        public string? RoleName { get; set; } = string.Empty;
-        public string email { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
+        public string email { get; set; } = string.Empty;
+        public string Document { get; set; } = string.Empty; // cédula
+        public int? AspNetUserId { get; set; }             // ASP_ID
+
         public int FacultyCareerId { get; set; }
+        public int Role { get; set; }                     // MemberRoleTypeId
+        public string RoleName { get; set; } = string.Empty;
     }
+
 
     // ============================================
     //   DIDE FORM - OBJECTIVES & ACTIVITIES

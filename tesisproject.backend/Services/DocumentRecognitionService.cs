@@ -228,9 +228,12 @@ namespace tesisproject.backend.Services
                 // id_facultad_carrera del directorio
                 if (profile.FacultyCareerId.HasValue)
                     r.FacultyCareerId = profile.FacultyCareerId.Value;
-
-                // Si quisieras también cédula / id externo:
-                // -> hay que agregar propiedades a ResearcherInfo (Document, ExternalId, etc.)
+                //cedula
+                if (profile.Document != null)
+                    r.Document = profile.Document;
+                //ASP externo
+                if (profile.ASP_ID != null)
+                    r.AspNetUserId = profile.ASP_ID;
             }
         }
 

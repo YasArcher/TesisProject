@@ -1,11 +1,10 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
-using tesisproject.backend.Repositories.Interfaces;
+using tesisproject.shared.DTOs.Auth;
 using tesisproject.shared.DTOs.External;
 using tesisproject.shared.DTOs.Group.Request;
 using tesisproject.shared.DTOs.Group.Response;
-using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Entities.External;
 using tesisproject.shared.Responses;
@@ -15,23 +14,20 @@ namespace tesisproject.backend.Services.Implementations
     public class GroupService : IGroupService
     {
         private readonly IUnitOfWork _uow;
-        private readonly IAspNetUserRepository _aspUsers;
-        private readonly ICatalogRepository<MemberRoleType> _roles;
         private readonly IExternalDirectoryClient _directory;
         private readonly ILogger<GroupService> _logger;
+        private readonly IAppUserService _appUsers;
 
         public GroupService(
             IUnitOfWork uow,
-            IAspNetUserRepository aspUsers,
-            ICatalogRepository<MemberRoleType> roles,
             IExternalDirectoryClient directory,
-            ILogger<GroupService> logger)
+            ILogger<GroupService> logger,
+            IAppUserService appUsers)
         {
             _uow = uow;
-            _aspUsers = aspUsers;
-            _roles = roles;
             _directory = directory;
             _logger = logger;
+            _appUsers = appUsers;
         }
 
         // ================= READS =================
@@ -129,8 +125,8 @@ namespace tesisproject.backend.Services.Implementations
                 if (userIds.Count == 0)
                     return ServiceResult<List<ExternalUserDTO>>.Fail("No associated ASP.NET users found.", ErrorType.Validation);
 
-                // 2) Emails institucionales (desde repo de ASP)
-                var emailByUserId = await _aspUsers.GetEmailsByUserIdsAsync(userIds, ct);
+                // 2) Emails institucionales (desde repo de ASP via UoW)
+                var emailByUserId = await _uow.AspNetUsers.GetEmailsByUserIdsAsync(userIds, ct);
                 var allEmails = emailByUserId.Values
                     .Where(e => !string.IsNullOrWhiteSpace(e))
                     .Select(e => e!.Trim().ToLowerInvariant())
@@ -148,7 +144,7 @@ namespace tesisproject.backend.Services.Implementations
                         .Distinct()
                         .ToList();
 
-                    var rolesById = await _roles.GetByIdsAsync(
+                    var rolesById = await _uow.MemberRoleTypeRepository.GetByIdsAsync(
                         roleIds,
                         include: null,
                         ct: ct
@@ -184,7 +180,8 @@ namespace tesisproject.backend.Services.Implementations
                     result.Add(ToExternalUserDTO(profile,
                         role: member.MemberRole?.Name,
                         groupId: member.GroupId,
-                        memberId: member.GroupMemberId));
+                        memberId: member.GroupMemberId,
+                        memberRoleId: member.MemberRoleId));
                 }
 
                 if (result.Count == 0)
@@ -203,7 +200,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             try
             {
-                var local = await _aspUsers.GetEmailByUserIdAsync(userId, ct);
+                var local = await _uow.AspNetUsers.GetEmailByUserIdAsync(userId, ct);
                 if (local is null)
                     return ServiceResult<ExternalUserDTO>.Fail("ASP.NET user not found.", ErrorType.NotFound);
 
@@ -216,7 +213,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (profile is null)
                     return ServiceResult<ExternalUserDTO>.Fail("External user not found for the given email.", ErrorType.NotFound);
 
-                var dto = ToExternalUserDTO(profile, role: null, groupId: 0, memberId: 0);
+                var dto = ToExternalUserDTO(profile, role: null, groupId: 0, memberId: 0, memberRoleId: 0);
                 dto.UserId = local.Value.Id;
 
                 return ServiceResult<ExternalUserDTO>.Ok(dto, "External user resolved by ASP.NET user id");
@@ -241,7 +238,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (profile is null)
                     return ServiceResult<ExternalUserDTO>.Fail("External user not found.", ErrorType.NotFound);
 
-                var dto = ToExternalUserDTO(profile, role: null, groupId: 0, memberId: 0);
+                var dto = ToExternalUserDTO(profile, role: null, groupId: 0, memberId: 0, memberRoleId: 0);
                 return ServiceResult<ExternalUserDTO>.Ok(dto, "External user retrieved by email");
             }
             catch (Exception ex)
@@ -255,39 +252,31 @@ namespace tesisproject.backend.Services.Implementations
         {
             try
             {
-                var documents = (await _aspUsers.GetAllUsernamesAsync(ct))
-                    .Select(u => u?.Trim())
-                    .Where(u => !string.IsNullOrWhiteSpace(u))
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                // 1) Llamar al directorio externo para traer TODOS los perfiles
+                var dirRes = await _directory.GetAllAsync(ct);
+
+                if (!dirRes.Success || dirRes.Data is null || dirRes.Data.Count == 0)
+                    return ServiceResult<List<ExternalUserDTO>>.Fail(
+                        "No external users found.",
+                        ErrorType.NotFound
+                    );
+
+                // 2) Mapear a tu DTO de dominio
+                var list = dirRes.Data
+                    .Select(p => ToExternalUserDTO(
+                        p,
+                        role: null,     // sin contexto de grupo aquí
+                        groupId: 0,
+                        memberId: 0,
+                        memberRoleId: 0
+                    ))
                     .ToList();
 
-                if (documents.Count == 0)
-                    return ServiceResult<List<ExternalUserDTO>>.Fail("No ASP.NET users with valid UserName found.", ErrorType.NotFound);
-
-                // Batch para no saturar el directorio externo
-                const int BATCH = 500;
-                var aggregated = new List<ExternalProfileDTO>(documents.Count);
-                for (int i = 0; i < documents.Count; i += BATCH)
-                {
-                    var slice = documents.Skip(i).Take(BATCH);
-
-                    var dirRes = await _directory.GetByDocumentsAsync(slice, ct);
-                    if (dirRes.Success && dirRes.Data is { Count: > 0 })
-                        aggregated.AddRange(dirRes.Data);
-                }
-
-                if (aggregated.Count == 0)
-                    return ServiceResult<List<ExternalUserDTO>>.Fail("No external users found for provided documents.", ErrorType.NotFound);
-
-                var list = aggregated
-                    .Select(p => ToExternalUserDTO(p, role: null, groupId: 0, memberId: 0))
-                    .ToList();
-
-                return ServiceResult<List<ExternalUserDTO>>.Ok(list, "External users retrieved from documents");
+                return ServiceResult<List<ExternalUserDTO>>.Ok(list, "External users retrieved");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Unexpected error retrieving all external users by documents");
+                _logger.LogError(ex, "Unexpected error retrieving all external users");
                 return ServiceResult<List<ExternalUserDTO>>.Fail("Unexpected error.", ErrorType.Unexpected);
             }
         }
@@ -330,37 +319,65 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-        public async Task<ServiceResult<GroupMemberResponseDTO>> AddMemberAsync(AddGroupMemberRequestDTO request, CancellationToken ct = default)
+        public async Task<ServiceResult<GroupMemberResponseDTO>> AddMemberAsync(
+            AddGroupMemberRequestDTO request,
+            CancellationToken ct = default)
         {
             try
             {
+                // 1) Validar grupo
                 var group = await _uow.Groups.GetByIdAsync(request.GroupId, includeMembers: false, ct);
                 if (group is null)
                     return ServiceResult<GroupMemberResponseDTO>.Fail("Group not found.", ErrorType.NotFound);
 
-                var local = await _aspUsers.GetEmailByUserIdAsync(request.ExternalUserId, ct);
-                if (local is null)
-                    return ServiceResult<GroupMemberResponseDTO>.Fail("ASP.NET user not found.", ErrorType.Validation);
-
-                var email = (local.Value.Email ?? string.Empty).Trim().ToLowerInvariant();
-                if (string.IsNullOrWhiteSpace(email))
-                    return ServiceResult<GroupMemberResponseDTO>.Fail("User has no institutional email.", ErrorType.Validation);
-
-                var dirRes = await _directory.GetByEmailsAsync(new[] { email }, ct);
-                if (dirRes.Data is null || dirRes.Data.Count == 0)
-                    return ServiceResult<GroupMemberResponseDTO>.Fail("External user not found in directory.", ErrorType.Validation);
-
-                var duplicated = await _uow.GroupMembers.ExistsAsync(request.GroupId, request.ExternalUserId, ct);
-                if (duplicated)
-                    return ServiceResult<GroupMemberResponseDTO>.Fail("This user is already a member of the group.", ErrorType.Conflict);
-
                 if (request.MemberRole == 0)
                     return ServiceResult<GroupMemberResponseDTO>.Fail("Member role is required.", ErrorType.Validation);
 
+                var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+                if (string.IsNullOrWhiteSpace(email))
+                    return ServiceResult<GroupMemberResponseDTO>.Fail("Institutional email is required.", ErrorType.Validation);
+
+                var document = (request.Document ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(document))
+                    return ServiceResult<GroupMemberResponseDTO>.Fail("Document is required.", ErrorType.Validation);
+
+                // 2) Construir RegisterRequest directo desde el DTO
+                var registerDto = new RegisterRequest
+                {
+                    Email = email,
+                    Username = document,
+                    Password = "Temporal#123",
+                    AspUserId = request.AspUserId
+                };
+
+                // 3) Asegurar AppUser (Identity + AppUser)
+                var ensureResult = await _appUsers.EnsureAppUserAsync(registerDto, ct);
+                if (!ensureResult.Success)
+                {
+                    return ServiceResult<GroupMemberResponseDTO>.Fail(
+                        ensureResult.Message ?? "Failed to ensure app user.",
+                        ensureResult.Error);
+                }
+
+                var appUserId = ensureResult.Data; // IdUser (PK de APP_USER)
+
+                // 4) Resolver IdLocal (IdentityUser.Id) para GroupMember.UserId
+                var appUser = await _uow.AppUsers.GetByIdAsync(new object[] { appUserId }, ct);
+                if (appUser is null || appUser.IdLocal is null)
+                    return ServiceResult<GroupMemberResponseDTO>.Fail("Unable to resolve ASP.NET user from app user.", ErrorType.Unexpected);
+
+                var aspNetUserId = appUser.IdLocal.Value;
+
+                // 5) Validar duplicado
+                var duplicated = await _uow.GroupMembers.ExistsAsync(request.GroupId, aspNetUserId, ct);
+                if (duplicated)
+                    return ServiceResult<GroupMemberResponseDTO>.Fail("This user is already a member of the group.", ErrorType.Conflict);
+
+                // 6) Crear GroupMember
                 var member = new GroupMember
                 {
                     GroupId = request.GroupId,
-                    UserId = request.ExternalUserId,
+                    UserId = aspNetUserId,
                     MemberRoleId = request.MemberRole,
                     JoinedAt = DateTime.UtcNow
                 };
@@ -368,10 +385,11 @@ namespace tesisproject.backend.Services.Implementations
                 await _uow.GroupMembers.AddAsync(member, ct);
                 await _uow.SaveChangesAsync(ct);
 
+                // 7) Resolver nombre del rol (igual que antes)
                 string roleName = string.Empty;
                 if (member.MemberRoleId != 0)
                 {
-                    var rolesById = await _roles.GetByIdsAsync(
+                    var rolesById = await _uow.MemberRoleTypeRepository.GetByIdsAsync(
                         new[] { (int)member.MemberRoleId },
                         include: null,
                         ct: ct
@@ -392,7 +410,9 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<GroupMemberResponseDTO>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return ServiceResult<GroupMemberResponseDTO>.Fail(
+                    dbex.InnerException?.Message ?? dbex.Message,
+                    ErrorType.Conflict);
             }
             catch (Exception ex)
             {
@@ -466,7 +486,8 @@ namespace tesisproject.backend.Services.Implementations
             ExternalProfileDTO p,
             string? role,
             int groupId,
-            int memberId)
+            int memberId,
+            int memberRoleId)
         {
             return new ExternalUserDTO
             {
@@ -479,8 +500,11 @@ namespace tesisproject.backend.Services.Implementations
                 Email = p.Email,
                 Position = p.Position,
                 FacultyCareerId = p.FacultyCareerId,
-                Role = role
+                Role = role,
+                AspNetUserId = p.ASP_ID,
+                MemberRoleId = memberRoleId,
             };
         }
+
     }
 }

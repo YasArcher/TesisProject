@@ -224,6 +224,8 @@ static class StartupExtensions
         builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
         builder.Services.AddScoped<IProjectResearchCategoryRepository, ProjectResearchCategoryRepository>();
         builder.Services.AddScoped<IResearchCategoryRepository, ResearchCategoryRepository>();
+        builder.Services.AddScoped<IAppUserRepository, AppUserRepository>();
+
 
         // ?? OJO: ya NO registramos repositorios de catálogo específicos como:
         // IObjectiveTypeRepository, IMemberRoleTypeRepository,
@@ -268,6 +270,7 @@ static class StartupExtensions
         builder.Services.AddScoped<IResearchCategoryTypeService, ResearchCategoryTypeService>();
         builder.Services.AddScoped<IFundingTypeService, FundingTypeService>();
         builder.Services.AddScoped<IResearchCategoryGroupService, ResearchCategoryGroupService>();
+        builder.Services.AddScoped<IAppUserService, AppUserService>();
     }
 
 

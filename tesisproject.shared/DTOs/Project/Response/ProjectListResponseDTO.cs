@@ -22,6 +22,8 @@
         /// </summary>
         public int PrincipalCoordinatorFacultyId { get; set; }
 
+        public IReadOnlyList<int> ResearchCategoryIds { get; set; } = Array.Empty<int>();
+
         public IReadOnlyList<int> FundingTypeId { get; set; } = Array.Empty<int>();
     }
 }

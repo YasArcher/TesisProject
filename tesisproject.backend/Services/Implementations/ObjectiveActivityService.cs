@@ -35,7 +35,7 @@ namespace tesisproject.backend.Services.Implementations
                     ObjectiveActivityId = a.ObjectiveActivityId,
                     ObjectiveId = a.ObjectiveId,
                     ActivityResult = a.ActivityResult ?? string.Empty,
-                    ImprovementAction = a.ImprovementAction ?? string.Empty,
+                    ActionText = a.ActionText ?? string.Empty,
                     IsCompleted = a.IsCompleted,
                     CreatedAt = a.CreatedAt,
                     ResponsibleUsersCount = a.ResponsibleUsers?.Count ?? 0
@@ -88,7 +88,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 ObjectiveId = (int)request.ObjectiveId,
                 ActivityResult = (request.ActivityResult ?? string.Empty).Trim(),
-                ImprovementAction = (request.ImprovementAction ?? string.Empty).Trim(),
+                ActionText = (request.ActionText ?? string.Empty).Trim(),
                 IsCompleted = request.IsCompleted,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = null
@@ -133,7 +133,7 @@ namespace tesisproject.backend.Services.Implementations
 
             entity.ObjectiveId = request.ObjectiveId;
             entity.ActivityResult = (request.ActivityResult ?? string.Empty).Trim();
-            entity.ImprovementAction = (request.ImprovementAction ?? string.Empty).Trim();
+            entity.ActionText = (request.ActionText ?? string.Empty).Trim();
             entity.IsCompleted = request.IsCompleted;
             entity.UpdatedAt = DateTime.UtcNow;
 
@@ -197,7 +197,7 @@ namespace tesisproject.backend.Services.Implementations
                 ObjectiveActivityId = entity.ObjectiveActivityId,
                 ObjectiveId = entity.ObjectiveId,
                 ActivityResult = entity.ActivityResult ?? string.Empty,
-                ImprovementAction = entity.ImprovementAction ?? string.Empty,
+                ImprovementAction = entity.ActionText ?? string.Empty,
                 IsCompleted = entity.IsCompleted,
                 CreatedAt = entity.CreatedAt,
                 UpdatedAt = entity.UpdatedAt

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace tesisproject.backend.Migrations
 {
     /// <inheritdoc />
-    public partial class model : Migration
+    public partial class AddAppUserBridge : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -256,20 +256,6 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ResearcherType",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ResearcherType", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "ScopeTypes",
                 columns: table => new
                 {
@@ -328,6 +314,25 @@ namespace tesisproject.backend.Migrations
                         name: "FK_AspNetRoleClaims_AspNetRoles_RoleId",
                         column: x => x.RoleId,
                         principalTable: "AspNetRoles",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "AppUsers",
+                columns: table => new
+                {
+                    IdUser = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    IdLocal = table.Column<int>(type: "int", nullable: true),
+                    IdAsp = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AppUsers", x => x.IdUser);
+                    table.ForeignKey(
+                        name: "FK_AppUsers_AspNetUsers_IdLocal",
+                        column: x => x.IdLocal,
+                        principalTable: "AspNetUsers",
                         principalColumn: "Id");
                 });
 
@@ -436,26 +441,6 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "UserFacultyScopes",
-                columns: table => new
-                {
-                    UserFacultyScopeId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    IdentityUserId = table.Column<int>(type: "int", nullable: false),
-                    FacultyId = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_UserFacultyScopes", x => x.UserFacultyScopeId);
-                    table.ForeignKey(
-                        name: "FK_UserFacultyScopes_AspNetUsers_IdentityUserId",
-                        column: x => x.IdentityUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "Institutions",
                 columns: table => new
                 {
@@ -473,47 +458,6 @@ namespace tesisproject.backend.Migrations
                         column: x => x.CountryId,
                         principalTable: "Countries",
                         principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Documents",
-                columns: table => new
-                {
-                    DocumentId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    RelatedDocumentId = table.Column<int>(type: "int", nullable: true),
-                    DocumentTypeId = table.Column<int>(type: "int", nullable: false),
-                    DocumentPath = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: false),
-                    ResolutionCode = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
-                    ResolutionDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    CreatedByUserId = table.Column<int>(type: "int", nullable: false),
-                    UpdatedByUserId = table.Column<int>(type: "int", nullable: true),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Documents", x => x.DocumentId);
-                    table.ForeignKey(
-                        name: "FK_Documents_AspNetUsers_CreatedByUserId",
-                        column: x => x.CreatedByUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_Documents_AspNetUsers_UpdatedByUserId",
-                        column: x => x.UpdatedByUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_Documents_DocumentTypes_DocumentTypeId",
-                        column: x => x.DocumentTypeId,
-                        principalTable: "DocumentTypes",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_Documents_Documents_RelatedDocumentId",
-                        column: x => x.RelatedDocumentId,
-                        principalTable: "Documents",
-                        principalColumn: "DocumentId");
                 });
 
             migrationBuilder.CreateTable(
@@ -598,6 +542,7 @@ namespace tesisproject.backend.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ResearchCategoryGroupId = table.Column<int>(type: "int", nullable: false),
+                    IsFilterEnabled = table.Column<bool>(type: "bit", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: false),
                     IsActive = table.Column<bool>(type: "bit", nullable: false)
                 },
@@ -612,39 +557,64 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Researchers",
+                name: "Documents",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "int", nullable: false)
+                    DocumentId = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
-                    ActiveDirectoryId = table.Column<int>(type: "int", nullable: false),
-                    ReginaCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    ResearcherTypeId = table.Column<int>(type: "int", nullable: false),
-                    Level = table.Column<int>(type: "int", nullable: false),
-                    IsActive = table.Column<bool>(type: "bit", nullable: false),
-                    CreatedByUserId = table.Column<int>(type: "int", nullable: false),
+                    RelatedDocumentId = table.Column<int>(type: "int", nullable: true),
+                    DocumentTypeId = table.Column<int>(type: "int", nullable: false),
+                    DocumentPath = table.Column<string>(type: "nvarchar(300)", maxLength: 300, nullable: false),
+                    ResolutionCode = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    ResolutionDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    CreatedByUserId = table.Column<int>(type: "int", nullable: false),
                     UpdatedByUserId = table.Column<int>(type: "int", nullable: true),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Researchers", x => x.Id);
+                    table.PrimaryKey("PK_Documents", x => x.DocumentId);
                     table.ForeignKey(
-                        name: "FK_Researchers_AspNetUsers_CreatedByUserId",
+                        name: "FK_Documents_AppUsers_CreatedByUserId",
                         column: x => x.CreatedByUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalTable: "AppUsers",
+                        principalColumn: "IdUser");
                     table.ForeignKey(
-                        name: "FK_Researchers_AspNetUsers_UpdatedByUserId",
+                        name: "FK_Documents_AppUsers_UpdatedByUserId",
                         column: x => x.UpdatedByUserId,
-                        principalTable: "AspNetUsers",
+                        principalTable: "AppUsers",
+                        principalColumn: "IdUser");
+                    table.ForeignKey(
+                        name: "FK_Documents_DocumentTypes_DocumentTypeId",
+                        column: x => x.DocumentTypeId,
+                        principalTable: "DocumentTypes",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_Researchers_ResearcherType_ResearcherTypeId",
-                        column: x => x.ResearcherTypeId,
-                        principalTable: "ResearcherType",
-                        principalColumn: "Id");
+                        name: "FK_Documents_Documents_RelatedDocumentId",
+                        column: x => x.RelatedDocumentId,
+                        principalTable: "Documents",
+                        principalColumn: "DocumentId");
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserFacultyScopes",
+                columns: table => new
+                {
+                    UserFacultyScopeId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    IdentityUserId = table.Column<int>(type: "int", nullable: false),
+                    FacultyId = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    IsActive = table.Column<bool>(type: "bit", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserFacultyScopes", x => x.UserFacultyScopeId);
+                    table.ForeignKey(
+                        name: "FK_UserFacultyScopes_AppUsers_IdentityUserId",
+                        column: x => x.IdentityUserId,
+                        principalTable: "AppUsers",
+                        principalColumn: "IdUser");
                 });
 
             migrationBuilder.CreateTable(
@@ -684,10 +654,10 @@ namespace tesisproject.backend.Migrations
                 {
                     table.PrimaryKey("PK_GroupMembers", x => x.GroupMemberId);
                     table.ForeignKey(
-                        name: "FK_GroupMembers_AspNetUsers_UserId",
+                        name: "FK_GroupMembers_AppUsers_UserId",
                         column: x => x.UserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalTable: "AppUsers",
+                        principalColumn: "IdUser");
                     table.ForeignKey(
                         name: "FK_GroupMembers_Groups_GroupId",
                         column: x => x.GroupId,
@@ -697,57 +667,6 @@ namespace tesisproject.backend.Migrations
                         name: "FK_GroupMembers_MemberRoleTypes_MemberRoleId",
                         column: x => x.MemberRoleId,
                         principalTable: "MemberRoleTypes",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
-                name: "Projects",
-                columns: table => new
-                {
-                    ProjectId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    ProjectCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
-                    CreatedByUserId = table.Column<int>(type: "int", nullable: false),
-                    ProjectTypeId = table.Column<int>(type: "int", nullable: false),
-                    ProjectStateId = table.Column<int>(type: "int", nullable: false),
-                    ProjectGroupId = table.Column<int>(type: "int", nullable: false),
-                    InitialDocumentId = table.Column<int>(type: "int", nullable: true),
-                    ProjectName = table.Column<string>(type: "nvarchar(120)", maxLength: 120, nullable: false),
-                    ApprovalDate = table.Column<DateTime>(type: "date", nullable: false),
-                    StartDate = table.Column<DateTime>(type: "date", nullable: true),
-                    DurationInMonths = table.Column<int>(type: "int", nullable: false),
-                    TentativeEndDate = table.Column<DateTime>(type: "date", nullable: true),
-                    RealEndDate = table.Column<DateTime>(type: "date", nullable: true),
-                    ExecutionPercentage = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
-                    FacultyId = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Projects", x => x.ProjectId);
-                    table.ForeignKey(
-                        name: "FK_Projects_AspNetUsers_CreatedByUserId",
-                        column: x => x.CreatedByUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_Projects_Documents_InitialDocumentId",
-                        column: x => x.InitialDocumentId,
-                        principalTable: "Documents",
-                        principalColumn: "DocumentId");
-                    table.ForeignKey(
-                        name: "FK_Projects_Groups_ProjectGroupId",
-                        column: x => x.ProjectGroupId,
-                        principalTable: "Groups",
-                        principalColumn: "GroupId");
-                    table.ForeignKey(
-                        name: "FK_Projects_ProjectStates_ProjectStateId",
-                        column: x => x.ProjectStateId,
-                        principalTable: "ProjectStates",
-                        principalColumn: "Id");
-                    table.ForeignKey(
-                        name: "FK_Projects_ProjectTypes_ProjectTypeId",
-                        column: x => x.ProjectTypeId,
-                        principalTable: "ProjectTypes",
                         principalColumn: "Id");
                 });
 
@@ -802,6 +721,58 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Projects",
+                columns: table => new
+                {
+                    ProjectId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ProjectCode = table.Column<string>(type: "nvarchar(20)", maxLength: 20, nullable: false),
+                    CreatedByUserId = table.Column<int>(type: "int", nullable: false),
+                    ProjectTypeId = table.Column<int>(type: "int", nullable: false),
+                    ProjectStateId = table.Column<int>(type: "int", nullable: false),
+                    ProjectGroupId = table.Column<int>(type: "int", nullable: false),
+                    InitialDocumentId = table.Column<int>(type: "int", nullable: true),
+                    ProjectName = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    ProjectNumber = table.Column<int>(type: "int", nullable: false),
+                    ApprovalDate = table.Column<DateTime>(type: "date", nullable: false),
+                    StartDate = table.Column<DateTime>(type: "date", nullable: true),
+                    DurationInMonths = table.Column<int>(type: "int", nullable: false),
+                    TentativeEndDate = table.Column<DateTime>(type: "date", nullable: true),
+                    RealEndDate = table.Column<DateTime>(type: "date", nullable: true),
+                    ExecutionPercentage = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    FacultyId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Projects", x => x.ProjectId);
+                    table.ForeignKey(
+                        name: "FK_Projects_AppUsers_CreatedByUserId",
+                        column: x => x.CreatedByUserId,
+                        principalTable: "AppUsers",
+                        principalColumn: "IdUser");
+                    table.ForeignKey(
+                        name: "FK_Projects_Documents_InitialDocumentId",
+                        column: x => x.InitialDocumentId,
+                        principalTable: "Documents",
+                        principalColumn: "DocumentId");
+                    table.ForeignKey(
+                        name: "FK_Projects_Groups_ProjectGroupId",
+                        column: x => x.ProjectGroupId,
+                        principalTable: "Groups",
+                        principalColumn: "GroupId");
+                    table.ForeignKey(
+                        name: "FK_Projects_ProjectStates_ProjectStateId",
+                        column: x => x.ProjectStateId,
+                        principalTable: "ProjectStates",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Projects_ProjectTypes_ProjectTypeId",
+                        column: x => x.ProjectTypeId,
+                        principalTable: "ProjectTypes",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Budgets",
                 columns: table => new
                 {
@@ -819,10 +790,10 @@ namespace tesisproject.backend.Migrations
                 {
                     table.PrimaryKey("PK_Budgets", x => x.BudgetId);
                     table.ForeignKey(
-                        name: "FK_Budgets_AspNetUsers_ApprovedByUserId",
+                        name: "FK_Budgets_AppUsers_ApprovedByUserId",
                         column: x => x.ApprovedByUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalTable: "AppUsers",
+                        principalColumn: "IdUser");
                     table.ForeignKey(
                         name: "FK_Budgets_FundingTypes_FundingTypeId",
                         column: x => x.FundingTypeId,
@@ -852,10 +823,10 @@ namespace tesisproject.backend.Migrations
                 {
                     table.PrimaryKey("PK_ExternalResearcherProjects", x => x.ExternalResearcherProjectId);
                     table.ForeignKey(
-                        name: "FK_ExternalResearcherProjects_AspNetUsers_CreatedByUserId",
+                        name: "FK_ExternalResearcherProjects_AppUsers_CreatedByUserId",
                         column: x => x.CreatedByUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalTable: "AppUsers",
+                        principalColumn: "IdUser");
                     table.ForeignKey(
                         name: "FK_ExternalResearcherProjects_ExternalResearchers_ExternalResearcherId",
                         column: x => x.ExternalResearcherId,
@@ -927,6 +898,30 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ProjectResearchCategories",
+                columns: table => new
+                {
+                    ProjectResearchCategoryId = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ProjectId = table.Column<int>(type: "int", nullable: false),
+                    ResearchCategoryId = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ProjectResearchCategories", x => x.ProjectResearchCategoryId);
+                    table.ForeignKey(
+                        name: "FK_ProjectResearchCategories_Projects_ProjectId",
+                        column: x => x.ProjectId,
+                        principalTable: "Projects",
+                        principalColumn: "ProjectId");
+                    table.ForeignKey(
+                        name: "FK_ProjectResearchCategories_ResearchCategories_ResearchCategoryId",
+                        column: x => x.ResearchCategoryId,
+                        principalTable: "ResearchCategories",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ProjectScopes",
                 columns: table => new
                 {
@@ -977,10 +972,10 @@ namespace tesisproject.backend.Migrations
                         principalTable: "AcademicPeriod",
                         principalColumn: "Id");
                     table.ForeignKey(
-                        name: "FK_Visits_AspNetUsers_PerformedByUserId",
+                        name: "FK_Visits_AppUsers_PerformedByUserId",
                         column: x => x.PerformedByUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalTable: "AppUsers",
+                        principalColumn: "IdUser");
                     table.ForeignKey(
                         name: "FK_Visits_Documents_DocumentId",
                         column: x => x.DocumentId,
@@ -1009,30 +1004,6 @@ namespace tesisproject.backend.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "ProjectResearchCategories",
-                columns: table => new
-                {
-                    ProjectResearchCategoryId = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    ProjectId = table.Column<int>(type: "int", nullable: false),
-                    ResearchCategoryId = table.Column<int>(type: "int", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ProjectResearchCategories", x => x.ProjectResearchCategoryId);
-                    table.ForeignKey(
-                        name: "FK_ProjectResearchCategories_Projects_ProjectId",
-                        column: x => x.ProjectId,
-                        principalTable: "Projects",
-                        principalColumn: "ProjectId");
-                    table.ForeignKey(
-                        name: "FK_ProjectResearchCategories_ResearchCategories_ResearchCategoryId",
-                        column: x => x.ResearchCategoryId,
-                        principalTable: "ResearchCategories",
-                        principalColumn: "Id");
-                });
-
-            migrationBuilder.CreateTable(
                 name: "BudgetTransactions",
                 columns: table => new
                 {
@@ -1052,15 +1023,15 @@ namespace tesisproject.backend.Migrations
                 {
                     table.PrimaryKey("PK_BudgetTransactions", x => x.BudgetTransactionId);
                     table.ForeignKey(
-                        name: "FK_BudgetTransactions_AspNetUsers_CertifiedByUserId",
+                        name: "FK_BudgetTransactions_AppUsers_CertifiedByUserId",
                         column: x => x.CertifiedByUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalTable: "AppUsers",
+                        principalColumn: "IdUser");
                     table.ForeignKey(
-                        name: "FK_BudgetTransactions_AspNetUsers_ExecutedByUserId",
+                        name: "FK_BudgetTransactions_AppUsers_ExecutedByUserId",
                         column: x => x.ExecutedByUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalTable: "AppUsers",
+                        principalColumn: "IdUser");
                     table.ForeignKey(
                         name: "FK_BudgetTransactions_Budgets_BudgetId",
                         column: x => x.BudgetId,
@@ -1081,7 +1052,7 @@ namespace tesisproject.backend.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     ObjectiveId = table.Column<int>(type: "int", nullable: false),
                     ActivityResult = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
-                    ImprovementAction = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    ActionText = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
                     IsCompleted = table.Column<bool>(type: "bit", maxLength: 1000, nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: true)
@@ -1156,10 +1127,10 @@ namespace tesisproject.backend.Migrations
                 {
                     table.PrimaryKey("PK_VisitIssues", x => x.VisitIssueId);
                     table.ForeignKey(
-                        name: "FK_VisitIssues_AspNetUsers_ReportedByUserId",
+                        name: "FK_VisitIssues_AppUsers_ReportedByUserId",
                         column: x => x.ReportedByUserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalTable: "AppUsers",
+                        principalColumn: "IdUser");
                     table.ForeignKey(
                         name: "FK_VisitIssues_Visits_VisitId",
                         column: x => x.VisitId,
@@ -1210,10 +1181,10 @@ namespace tesisproject.backend.Migrations
                 {
                     table.PrimaryKey("PK_ProductAuthors", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_ProductAuthors_AspNetUsers_UserId",
+                        name: "FK_ProductAuthors_AppUsers_UserId",
                         column: x => x.UserId,
-                        principalTable: "AspNetUsers",
-                        principalColumn: "Id");
+                        principalTable: "AppUsers",
+                        principalColumn: "IdUser");
                     table.ForeignKey(
                         name: "FK_ProductAuthors_Products_ProductId",
                         column: x => x.ProductId,
@@ -1247,6 +1218,16 @@ namespace tesisproject.backend.Migrations
                         principalTable: "Products",
                         principalColumn: "Id");
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AppUsers_IdAsp",
+                table: "AppUsers",
+                column: "IdAsp");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AppUsers_IdLocal",
+                table: "AppUsers",
+                column: "IdLocal");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -1614,21 +1595,6 @@ namespace tesisproject.backend.Migrations
                 column: "ResearchCategoryGroupId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Researchers_CreatedByUserId",
-                table: "Researchers",
-                column: "CreatedByUserId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Researchers_ResearcherTypeId",
-                table: "Researchers",
-                column: "ResearcherTypeId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Researchers_UpdatedByUserId",
-                table: "Researchers",
-                column: "UpdatedByUserId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_UserFacultyScopes_IdentityUserId",
                 table: "UserFacultyScopes",
                 column: "IdentityUserId");
@@ -1731,9 +1697,6 @@ namespace tesisproject.backend.Migrations
                 name: "RefreshTokens");
 
             migrationBuilder.DropTable(
-                name: "Researchers");
-
-            migrationBuilder.DropTable(
                 name: "UserFacultyScopes");
 
             migrationBuilder.DropTable(
@@ -1777,9 +1740,6 @@ namespace tesisproject.backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "ScopeTypes");
-
-            migrationBuilder.DropTable(
-                name: "ResearcherType");
 
             migrationBuilder.DropTable(
                 name: "FundingTypes");
@@ -1833,13 +1793,16 @@ namespace tesisproject.backend.Migrations
                 name: "ProjectTypes");
 
             migrationBuilder.DropTable(
-                name: "AspNetUsers");
+                name: "AppUsers");
 
             migrationBuilder.DropTable(
                 name: "DocumentTypes");
 
             migrationBuilder.DropTable(
                 name: "GroupTypes");
+
+            migrationBuilder.DropTable(
+                name: "AspNetUsers");
         }
     }
 }
