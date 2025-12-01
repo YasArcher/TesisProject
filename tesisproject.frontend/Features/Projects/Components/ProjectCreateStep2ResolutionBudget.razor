@@ -64,7 +64,8 @@
                                Value="@ResolutionModel.Duration.ToString()"
                                ValueChanged="val => ResolutionModel.Duration = ParseIntOrDefault(val)"
                                Placeholder="Ej. 18"
-                               Disabled="@IsBusy" />
+                               Disabled="@IsBusy" 
+                               InputType="number" />
                 </div>
             </div>
 
@@ -137,7 +138,8 @@
                                            Value="@row.InitialAmount.ToString()"
                                            ValueChanged="val => OnBudgetAmountChanged(rowIndex, val)"
                                            Placeholder="Ej. 8500"
-                                           Disabled="@IsBusy" />
+                                           Disabled="@IsBusy"
+                                           InputType="number" />
 
                                 <!-- Tipo de financiamiento -->
                                 <div class="flex flex-col gap-1">

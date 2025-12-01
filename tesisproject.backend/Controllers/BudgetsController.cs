@@ -3,6 +3,7 @@ using tesisproject.backend.Controllers.Extensions;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Budgets.Request;
 using tesisproject.shared.Responses;
+using tesisproject.backend.Utils;
 
 namespace tesisproject.backend.Controllers
 {
@@ -58,23 +59,36 @@ namespace tesisproject.backend.Controllers
 
         [HttpPost("{budgetId:int}/certifications")]
         public async Task<ActionResult<ApiResponse<BudgetTransactionDTO>>> AddCertification(
-    int budgetId,
-    [FromBody] AddCertificationRequestDTO request,
-    CancellationToken ct)
+            int budgetId,
+            [FromBody] AddCertificationRequestDTO request,
+            CancellationToken ct)
         {
-            if (request.BudgetId == 0) request.BudgetId = budgetId;
-            return (await _service.AddCertificationAsync(request, ct)).ToActionResult();
+            if (request.BudgetId == 0)
+                request.BudgetId = budgetId;
+
+            var userId = User.GetUserId();
+            if (userId is null)
+                return Unauthorized(ApiResponse<BudgetTransactionDTO>.Fail("User not authenticated."));
+
+            return (await _service.AddCertificationAsync(request, userId.Value, ct))
+                .ToActionResult();
         }
 
-        // POST: api/Budgets/transactions/{transactionId}/devengar
         [HttpPost("transactions/{transactionId:int}/devengar")]
         public async Task<ActionResult<ApiResponse<BudgetTransactionDTO>>> ExecuteDevengado(
             int transactionId,
             [FromBody] ExecuteDevengadoRequestDTO request,
             CancellationToken ct)
         {
-            if (request.BudgetTransactionId == 0) request.BudgetTransactionId = transactionId;
-            return (await _service.ExecuteDevengadoAsync(request, ct)).ToActionResult();
+            if (request.BudgetTransactionId == 0)
+                request.BudgetTransactionId = transactionId;
+
+            var userId = User.GetUserId();
+            if (userId is null)
+                return Unauthorized(ApiResponse<BudgetTransactionDTO>.Fail("User not authenticated."));
+
+            return (await _service.ExecuteDevengadoAsync(request, userId.Value, ct))
+                .ToActionResult();
         }
 
         // GET: api/Budgets/{budgetId}/transactions

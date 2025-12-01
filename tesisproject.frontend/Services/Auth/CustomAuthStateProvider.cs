@@ -137,7 +137,6 @@ namespace tesisproject.frontend.Services.Auth
             }
             catch
             {
-                // token inválido → lista vacía
                 return new List<Claim>();
             }
         }

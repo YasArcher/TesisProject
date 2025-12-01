@@ -14,44 +14,69 @@ namespace tesisproject.shared.Entities.Core
         // ================================
         //              Keys
         // ================================
-        public int BudgetTransactionId { get; set; } // id_transaccion_presupuestaria
+        public int BudgetTransactionId { get; set; }
 
         // ================================
         //          Foreign Keys
         // ================================
         [Required]
-        public int BudgetId { get; set; } // id_presupuesto (FK -> Budget)
+        public int BudgetId { get; set; }
 
         [Required]
-        public int TransactionTypeId { get; set; } // id_tipo_transaccion (FK -> TransactionType catálogo)
+        public int TransactionTypeId { get; set; }
 
         [Required]
-        public int CertifiedByUserId { get; set; } // id_usuario_certificador (FK -> UserSystem)
+        public int CertifiedByUserId { get; set; }
 
-        public int? ExecutedByUserId { get; set; } // id_usuario_ejecutor (FK -> UserSystem)
+        public int? ExecutedByUserId { get; set; }
 
         // ================================
-        //           Transaction Data
+        //           Amounts
         // ================================
+        /// <summary>
+        /// Certified amount for this budget item.
+        /// </summary>
         [Range(0, double.MaxValue)]
-        public decimal Amount { get; set; } // monto
+        public decimal CertifiedAmount { get; set; }
 
+        /// <summary>
+        /// Executed amount (devengado). Must be <= CertifiedAmount.
+        /// Null or 0 when not executed yet.
+        /// </summary>
+        [Range(0, double.MaxValue)]
+        public decimal? ExecutedAmount { get; set; }
+
+        // ================================
+        //           Dates
+        // ================================
+        [Required]
+        public string Name { get; set; } = string.Empty;
         [Required, Column(TypeName = "date")]
-        public DateTime CertifiedAt { get; set; } = DateTime.UtcNow; // fecha certificación
+        public DateTime CertifiedAt { get; set; } = DateTime.UtcNow;
 
         [Column(TypeName = "date")]
-        public DateTime? ExecutedAt { get; set; } // fecha ejecución
+        public DateTime? ExecutedAt { get; set; }
 
+        // ================================
+        //        Extra Info
+        // ================================
         [StringLength(200)]
-        public string BudgetItem { get; set; } = string.Empty; // partida presupuestaria
+        public string BudgetItem { get; set; } = string.Empty;
 
         [StringLength(100)]
-        public string? CURNumber { get; set; } // número CUR (opcional)
+        public string? CURNumber { get; set; }
+
+        // NUEVOS CAMPOS:
+        [StringLength(1000)]
+        public string CertificationDescription { get; set; } = string.Empty;
+
+        [StringLength(1000)]
+        public string? ExecutionDescription { get; set; }
 
         // ================================
         //        Navigation Properties
         // ================================
-        public Budget Budget { get; set; } = null!; // Navegación a Budget
-        public TransactionType TransactionType { get; set; } = null!; // Navegación a TransactionType
+        public Budget Budget { get; set; } = null!;
+        public TransactionType TransactionType { get; set; } = null!;
     }
 }

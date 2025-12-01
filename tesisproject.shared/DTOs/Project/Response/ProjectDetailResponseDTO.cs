@@ -13,9 +13,9 @@ namespace tesisproject.shared.DTOs.Project.Response
 
         public ICollection<ProjectObjectiveListItemDTO>? ProjectObjectives { get; set; }
 
-        // 🔹 Dominios con sus líneas de investigación (solo las del proyecto)
-        public ICollection<ProjectResearchDomainDTO> ResearchDomains { get; set; }
-            = new List<ProjectResearchDomainDTO>();
+        // 🔹 IDs de categorías de investigación asociadas al proyecto
+        //     (son exactamente los ResearchCategoryId de ProjectResearchCategory)
+        public ICollection<int> ResearchCategoryIds { get; set; } = new List<int>();
 
         public int ProjectTypeId { get; set; }
         public string ProjectTypeName { get; set; } = string.Empty;
@@ -32,22 +32,8 @@ namespace tesisproject.shared.DTOs.Project.Response
         public int ProjectGroupId { get; set; }
         public string ProjectGroupName { get; set; } = string.Empty;
 
-        public int? SenesytGroupId { get; set; }
-        public string? SenesytGroupName { get; set; }
-
         // --- Budget ---
         public ICollection<ProjectBudgetDetailDTO> Budgets { get; set; } = new List<ProjectBudgetDetailDTO>();
-
-    }
-
-    // 🔸 Dominio de investigación con sus líneas (para este proyecto)
-    public class ProjectResearchDomainDTO
-    {
-        public int ResearchDomainTypeId { get; set; }
-        public string ResearchDomainTypeName { get; set; } = string.Empty;
-
-        public ICollection<ProjectResearchLineDTO> ResearchLines { get; set; }
-            = new List<ProjectResearchLineDTO>();
     }
 
     public class ProjectBudgetDetailDTO
@@ -60,12 +46,5 @@ namespace tesisproject.shared.DTOs.Project.Response
 
         public int FundingTypeId { get; set; }
         public string FundingTypeName { get; set; } = string.Empty;
-    }
-
-    // 🔹 Línea de investigación dentro de un dominio
-    public class ProjectResearchLineDTO
-    {
-        public int ResearchLineTypeId { get; set; }
-        public string ResearchLineTypeName { get; set; } = string.Empty;
     }
 }

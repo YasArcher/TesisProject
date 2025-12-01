@@ -90,7 +90,18 @@ namespace tesisproject.backend.Services.Implementations
                         StartDate = p.StartDate,
                         TentativeEndDate = p.TentativeEndDate,
                         ExecutionPercentage = p.ExecutionPercentage,
-                        PrincipalCoordinatorFacultyId = p.FacultyId
+                        PrincipalCoordinatorFacultyId = p.FacultyId,
+
+                        // 🔹 MAPEO AGREGADO
+                        FundingTypeId = p.Budgets
+                            .Select(b => b.FundingTypeId)
+                            .Distinct()
+                            .ToList(),
+
+                        ResearchCategoryIds = p.ProjectResearchCategories
+                            .Select(prc => prc.ResearchCategoryId)
+                            .Distinct()
+                            .ToList()
                     })
                     .FirstOrDefaultAsync(ct);
 
@@ -103,6 +114,7 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<ProjectListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
+
 
         public async Task<ServiceResult<List<ProjectListResponseDTO>>> GetByTypeAsync(int projectTypeId, CancellationToken ct = default)
         {
@@ -241,47 +253,29 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         public async Task<ServiceResult<ProjectDetailResponseDTO>> GetProjectDetailAsync(
-            int projectId,
-            CancellationToken ct = default)
+           int projectId,
+           CancellationToken ct = default)
         {
             try
             {
                 var dto = await _uow.Projects
                    .Query()
                    .Include(p => p.ProjectResearchCategories)
-                       .ThenInclude(prc => prc.ResearchCategory)
-                           .ThenInclude(rc => rc.ParentCategory)   // para subir a dominio
-                   .Include(p => p.ProjectResearchCategories)
-                       .ThenInclude(prc => prc.ResearchCategory)
-                           .ThenInclude(rc => rc.SubCategories)    // para obtener las líneas de ese dominio
+                   // si ya no necesitas navegar a ResearchCategory / Parent / SubCategories,
+                   // estos Include/ThenInclude se podrían limpiar más adelante
                    .Where(p => p.ProjectId == projectId)
                    .Select(p => new ProjectDetailResponseDTO
                    {
                        ProjectId = p.ProjectId,
                        ProjectCode = p.ProjectCode ?? string.Empty,
                        ProjectName = p.ProjectName ?? string.Empty,
+
                        ProjectObjectives = MapToDTO(p.ProjectObjectives),
 
-                       ResearchDomains = p.ProjectResearchCategories
-                           .Select(prc => prc.ResearchCategory)
-                           .Where(rc => rc.ParentCategoryId != null)    // tomamos las líneas
-                           .Select(rc => rc.ParentCategory)             // subimos al dominio
-                           .Where(domain => domain != null)
-                           .Distinct()                                  // dominios únicos
-                           .Select(domain => new ProjectResearchDomainDTO
-                           {
-                               ResearchDomainTypeId = domain!.Id,
-                               ResearchDomainTypeName = domain.Name,
-                               ResearchLines = domain.SubCategories
-                                   .Where(line => p.ProjectResearchCategories
-                                       .Any(prc => prc.ResearchCategoryId == line.Id))
-                                   .Select(line => new ProjectResearchLineDTO
-                                   {
-                                       ResearchLineTypeId = line.Id,
-                                       ResearchLineTypeName = line.Name
-                                   })
-                                   .ToList()
-                           })
+                       // ✅ NUEVO: IDs de categorías tal cual en ProjectResearchCategory
+                       ResearchCategoryIds = p.ProjectResearchCategories
+                           .Select(prc => prc.ResearchCategoryId)
+                           .Distinct()
                            .ToList(),
 
                        ProjectTypeId = p.ProjectTypeId,
@@ -298,7 +292,6 @@ namespace tesisproject.backend.Services.Implementations
                        ProjectGroupId = p.ProjectGroupId,
                        ProjectGroupName = p.ProjectGroup.Name ?? string.Empty,
 
-                       // 🔹 Todos los presupuestos del proyecto
                        Budgets = p.Budgets
                            .OrderBy(b => b.BudgetId)
                            .Select(b => new ProjectBudgetDetailDTO
@@ -324,8 +317,6 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<ProjectDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
-
-
 
         public async Task<ServiceResult<ProjectDetailResponseDTO>> CreateFullAsync(
             AddProjectFullRequestDTO request,
