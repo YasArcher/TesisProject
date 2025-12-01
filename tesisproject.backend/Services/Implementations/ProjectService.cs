@@ -2,6 +2,7 @@
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.DTOs.Auth;
 using tesisproject.shared.DTOs.Project.Request;
 using tesisproject.shared.DTOs.Project.Response;
 using tesisproject.shared.DTOs.ProjectObjective.Response;
@@ -15,11 +16,13 @@ namespace tesisproject.backend.Services.Implementations
     {
         private readonly IUnitOfWork _uow;
         private readonly ICatalogRepository<AcademicPeriod> _periods;
+        private readonly IAppUserService _appUsers;
 
-        public ProjectService(IUnitOfWork uow, ICatalogRepository<AcademicPeriod> periods)
+        public ProjectService(IUnitOfWork uow, ICatalogRepository<AcademicPeriod> periods, IAppUserService appUsers)
         {
             _uow = uow;
             _periods = periods;
+            _appUsers = appUsers;
         }
 
 
@@ -31,6 +34,8 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var data = await _uow.Projects
                     .Query()
+                    .Include(p => p.Budgets)
+                    .Include(p => p.ProjectResearchCategories)
                     .Select(p => new ProjectListResponseDTO
                     {
                         ProjectId = p.ProjectId,
@@ -47,10 +52,13 @@ namespace tesisproject.backend.Services.Implementations
                         FundingTypeId = p.Budgets
                             .Select(b => b.FundingTypeId)
                             .Distinct()
+                            .ToList(),
+                        ResearchCategoryIds = p.ProjectResearchCategories
+                            .Select(prc => prc.ResearchCategoryId)
+                            .Distinct()
                             .ToList()
                     })
                     .ToListAsync(ct);
-
 
                 if (data.Count == 0)
                     return ServiceResult<List<ProjectListResponseDTO>>.Fail("No projects found.", ErrorType.NotFound);
@@ -62,6 +70,7 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<List<ProjectListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
+
 
         public async Task<ServiceResult<ProjectListResponseDTO>> GetByIdAsync(int id, CancellationToken ct = default)
         {
@@ -471,24 +480,87 @@ namespace tesisproject.backend.Services.Implementations
                 await _uow.Projects.AddAsync(projectEntity, ct);
 
                 // ============================================
-                // 5) Miembros del grupo
+                // 5) Miembros del grupo (AppUser + GroupMember)
                 // ============================================
 
-                PhaseLog("Fase 5 - Miembros", "Insertando miembros...");
+                PhaseLog("Fase 5 - Miembros", "Asegurando AppUsers e insertando miembros...");
 
                 if (request.GroupMembers is not null && request.GroupMembers.Count > 0)
                 {
-                    var groupMembers = request.GroupMembers
-                        .Select(m => new GroupMember
+                    PhaseLog("Fase 5 - Miembros", $"Total GroupMembers en request: {request.GroupMembers.Count}");
+
+                    // Logear cada miembro que llega en el request
+                    for (int i = 0; i < request.GroupMembers.Count; i++)
+                    {
+                        var m = request.GroupMembers[i];
+                        PhaseLog("Fase 5 - Miembros",
+                            $"Member[{i}]: Email={m.Email}, AspUserId={m.AspUserId}, MemberRole={m.MemberRole}");
+                    }
+
+                    // 5.1 Construir los RegisterRequest en el mismo orden
+                    var registerDtos = request.GroupMembers
+                        .Select(m => new RegisterRequest
                         {
-                            Group = groupEntity,
-                            UserId = m.ExternalUserId,
-                            MemberRoleId = m.MemberRole,
-                            JoinedAt = DateTime.UtcNow
+                            Email = m.Email,
+                            Username = m.Document,
+                            Password = "aaaaaqqq1231231", // TODO: regla real
+                            AspUserId = m.AspUserId
                         })
                         .ToList();
 
+                    PhaseLog("Fase 5 - Miembros",
+                        $"RegisterRequest count: {registerDtos.Count}, first email: {registerDtos.First().Email}");
+
+                    // 5.2 Llamar una sola vez al servicio de AppUser
+                    var ensureResult = await _appUsers.EnsureAppUsersAsync(registerDtos, ct);
+
+                    PhaseLog("Fase 5 - Miembros",
+                        $"EnsureAppUsersAsync => Success={ensureResult.Success}, " +
+                        $"Error={ensureResult.Error}, DataCount={(ensureResult.Data?.Count ?? 0)}");
+
+                    if (!ensureResult.Success || ensureResult.Data is null)
+                    {
+                        PhaseLog("Fase 5 - Miembros", $"Error asegurando AppUsers: {ensureResult.Error}");
+                        return ServiceResult<ProjectDetailResponseDTO>.Fail(
+                            ensureResult.Message?? "Error ensuring app users.",
+                            ErrorType.Unexpected);
+                    }
+
+                    var appUserIds = ensureResult.Data;
+
+                    if (appUserIds.Count != request.GroupMembers.Count)
+                    {
+                        PhaseLog("Fase 5 - Miembros",
+                            $"Cantidad de AppUserIds ({appUserIds.Count}) != GroupMembers ({request.GroupMembers.Count})");
+                        return ServiceResult<ProjectDetailResponseDTO>.Fail("Inconsistent app user mapping.");
+                    }
+
+                    // 5.3 Crear GroupMember usando IdUser (tabla intermedia)
+                    var groupMembers = new List<GroupMember>();
+
+                    for (int i = 0; i < request.GroupMembers.Count; i++)
+                    {
+                        var memberDto = request.GroupMembers[i];
+                        var appUserId = appUserIds[i];
+
+                        PhaseLog("Fase 5 - Miembros",
+                            $"Creando GroupMember[{i}]: AppUserId={appUserId}, MemberRoleId={memberDto.MemberRole}");
+
+                        groupMembers.Add(new GroupMember
+                        {
+                            Group = groupEntity,
+                            UserId = appUserId,             // IdUser de APP_USER
+                            MemberRoleId = memberDto.MemberRole,
+                            JoinedAt = DateTime.UtcNow
+                        });
+                    }
+
+                    PhaseLog("Fase 5 - Miembros", $"Insertando {groupMembers.Count} GroupMembers...");
                     await _uow.GroupMembers.AddRangeAsync(groupMembers, ct);
+                }
+                else
+                {
+                    PhaseLog("Fase 5 - Miembros", "No hay GroupMembers en el request.");
                 }
 
                 // ============================================
@@ -565,7 +637,7 @@ namespace tesisproject.backend.Services.Implementations
                                 {
                                     Objective = objectiveEntity,
                                     ActivityResult = actDto.ActivityResult ?? string.Empty,
-                                    ImprovementAction = actDto.ImprovementAction ?? string.Empty,
+                                    ActionText = actDto.ActionText ?? string.Empty,
                                     IsCompleted = actDto.IsCompleted,
                                     CreatedAt = DateTime.UtcNow
                                 };

@@ -21,7 +21,7 @@
 @using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategoryGroup.Response
 
-
+@using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.Services.Interfaces
 
@@ -45,6 +45,7 @@
 @inject IFundingTypeClientService FundingTypeClient
 @inject IExternalUserService ExternalUserService
 @inject IResearchCategoryGroupClientService ResearchCategoryGroupClient
+@inject IToastService Toast
 
 <div class="w-full h-full flex flex-col bg-page-bg">
     <!-- Header Principal -->
@@ -135,10 +136,8 @@
                                                             BudgetsChanged="@OnBudgetsChanged" />
                     </div>
 
-
                     <!-- STEP 3: Proyecto + miembros -->
                     <div class="@(CurrentStep == 3 ? "block" : "hidden")">
-                        <!-- STEP 3: Proyecto + miembros -->
                         <div class="@(CurrentStep == 3 ? "block" : "hidden")">
                             <ProjectCreateStep3ProjectTeam DideModel="@DideData"
                                                            IsBusy="false"
@@ -147,20 +146,16 @@
                                                            SingleInstanceRoleIds="@_singleInstanceRoleIds"
                                                            OnAddResearcherRequested="HandleOpenResearcherPicker"
                                                            OnResearchersChanged="@HandleResearchersChanged" />
-
-
-
                         </div>
-
                     </div>
-                    <UserPickerModal ModalId="wizard-user-picker"
-                 IsOpen="@_showUserPicker"
-                 IsOpenChanged="v => _showUserPicker = v"
-                 Users="@_researcherCandidates"
-                 InitialSelectedUserId="@_preselectedUserId"
-                 OnSubmit="HandleResearcherPickedAsync"
-                 OnCancel="() => _showUserPicker = false" />
 
+                    <UserPickerModal ModalId="wizard-user-picker"
+                                     IsOpen="@_showUserPicker"
+                                     IsOpenChanged="v => _showUserPicker = v"
+                                     Users="@_researcherCandidates"
+                                     InitialSelectedUserId="@_preselectedUserId"
+                                     OnSubmit="HandleResearcherPickedAsync"
+                                     OnCancel="() => _showUserPicker = false" />
 
                     <!-- STEP 4: Categorías de investigación -->
                     <div class="@(CurrentStep == 4 ? "block" : "hidden")">
@@ -220,7 +215,7 @@
                                   Disabled="@(CurrentStep == 1 || IsSaving)" />
                 </div>
 
-                <!-- Indicador central (opcional) -->
+                <!-- Indicador central -->
                 <div class="hidden md:block text-sm font-medium text-muted">
                     @GetCurrentStepLabel()
                 </div>
@@ -277,13 +272,10 @@
     private List<CreateBudgetRequestDTO> _budgets = new();
     private int? _coordinatorRoleId;
 
-
     private bool _showUserPicker;
     private List<ExternalUserDTO> _researcherCandidates = new();
     private int? _preselectedUserId;
     private byte[]? _resolutionFileBytes;
-
-
 
     private DocumentResponseDTO? _projectDocument;
 
@@ -298,7 +290,6 @@
 
     private List<ResearchCategoryTreeItemDTO> _selectedResearchCategories = new();
     private List<ResearchCategoryGroupListItemDTO> _researchCategoryGroups = new();
-
 
     private int Progress => (int)Math.Round(CurrentStep * 100.0 / 6.0);
 
@@ -327,8 +318,6 @@
         new(5, "Objetivos y actividades"),
         new(6, "Resumen y confirmación")
     };
-
-
 
     private string GetStepCircleClass(int stepNumber)
     {
@@ -377,6 +366,23 @@
         && DideData.ResearchTypeId.Value > 0
         && _budgets.Any(b => b.FundingTypeId > 0 && b.InitialAmount > 0);
 
+    private bool HasSingleInstanceRoleConflicts()
+    {
+        if (DideData.Researchers is null || DideData.Researchers.Count == 0)
+            return false;
+
+        // Roles que no se pueden repetir (coordinador principal, subrogante, etc.)
+        var conflicts = DideData.Researchers
+            .Where(r => r.Role > 0 && _singleInstanceRoleIds.Contains(r.Role))
+            .GroupBy(r => r.Role)
+            .Any(g => g.Count() > 1);
+
+        return conflicts;
+    }
+
+    private bool IsStep3Valid =>
+        !HasSingleInstanceRoleConflicts();
+
     private bool CanGoNext => CurrentStep switch
     {
         1 => IsStep1Valid && !IsStep1Busy,
@@ -398,85 +404,107 @@
 
     private async Task LoadCatalogsAsync()
     {
-        var docTypeResult = await DocumentTypeClient.GetListAsync(
-            onlyActives: true,
-            ct: CancellationToken.None
-        );
-
-        if (docTypeResult.Success && docTypeResult.Response is not null)
-            _documentTypeOptions = docTypeResult.Response;
-
-        var researchTypeResult = await ProjectTypeClient.GetListAsync(
-            onlyActives: true,
-            ct: CancellationToken.None);
-
-        if (researchTypeResult.Success && researchTypeResult.Response is not null)
-            _researchTypeOptions = researchTypeResult.Response;
-
-
-
-        var memberRoleTypeResult = await MemberRoleTypeClient.GetListAsync(
-            onlyActives: true,
-            ct: CancellationToken.None
-        );
-
-        if (memberRoleTypeResult.Success && memberRoleTypeResult.Response is not null)
+        try
         {
-            _memberRoleTypeOptions = memberRoleTypeResult.Response
-                .Where(x => x.Flag == 1)
-                .ToList();
+            var docTypeResult = await DocumentTypeClient.GetListAsync(
+                onlyActives: true,
+                ct: CancellationToken.None
+            );
 
-            _singleInstanceRoleIds = _memberRoleTypeOptions
-                .Where(x =>
-                    x.Name.Contains("coordinador", StringComparison.OrdinalIgnoreCase) ||
-                    x.Name.Contains("subrogante", StringComparison.OrdinalIgnoreCase))
-                .Select(x => x.Id)
-                .ToList();
+            if (docTypeResult.Success && docTypeResult.Response is not null)
+                _documentTypeOptions = docTypeResult.Response;
+            else if (!docTypeResult.Success)
+                Toast.ShowWarning(docTypeResult.Error ?? "No se pudieron cargar los tipos de documento.");
 
-            var coordinator = _memberRoleTypeOptions
-                .FirstOrDefault(x =>
-                    x.Name.Contains("coordinador", StringComparison.OrdinalIgnoreCase) &&
-                    x.Name.Contains("principal", StringComparison.OrdinalIgnoreCase));
+            var researchTypeResult = await ProjectTypeClient.GetListAsync(
+                onlyActives: true,
+                ct: CancellationToken.None);
 
-            _coordinatorRoleId = coordinator?.Id;
+            if (researchTypeResult.Success && researchTypeResult.Response is not null)
+                _researchTypeOptions = researchTypeResult.Response;
+            else if (!researchTypeResult.Success)
+                Toast.ShowWarning(researchTypeResult.Error ?? "No se pudieron cargar los tipos de proyecto.");
+
+            var memberRoleTypeResult = await MemberRoleTypeClient.GetListAsync(
+                onlyActives: true,
+                ct: CancellationToken.None
+            );
+
+            if (memberRoleTypeResult.Success && memberRoleTypeResult.Response is not null)
+            {
+                _memberRoleTypeOptions = memberRoleTypeResult.Response
+                    .Where(x => x.Flag == 1)
+                    .ToList();
+
+                _singleInstanceRoleIds = _memberRoleTypeOptions
+                    .Where(x =>
+                        x.Name.Contains("coordinador", StringComparison.OrdinalIgnoreCase) ||
+                        x.Name.Contains("subrogante", StringComparison.OrdinalIgnoreCase))
+                    .Select(x => x.Id)
+                    .ToList();
+
+                var coordinator = _memberRoleTypeOptions
+                    .FirstOrDefault(x =>
+                        x.Name.Contains("coordinador", StringComparison.OrdinalIgnoreCase) &&
+                        x.Name.Contains("principal", StringComparison.OrdinalIgnoreCase));
+
+                _coordinatorRoleId = coordinator?.Id;
+            }
+            else if (!memberRoleTypeResult.Success)
+            {
+                Toast.ShowWarning(memberRoleTypeResult.Error ?? "No se pudieron cargar los roles de miembro.");
+            }
+
+            var facultiesResult = await ExternalAcademicsClient.GetFacultiesWithProgramsAsync(
+                CancellationToken.None);
+            if (facultiesResult.Success && facultiesResult.Response is not null)
+                _faculties = facultiesResult.Response;
+            else if (!facultiesResult.Success)
+                Toast.ShowWarning(facultiesResult.Error ?? "No se pudieron cargar las facultades y programas.");
+
+            var objectiveTypeResult = await ObjectiveTypeClient.GetListAsync(
+                onlyActives: true,
+                ct: CancellationToken.None);
+
+            if (objectiveTypeResult.Success && objectiveTypeResult.Response is not null)
+                _objectiveTypeOptions = objectiveTypeResult.Response;
+            else if (!objectiveTypeResult.Success)
+                Toast.ShowWarning(objectiveTypeResult.Error ?? "No se pudieron cargar los tipos de objetivo.");
+
+            var categoryTreeResult = await ResearchCategoryClient.GetTreeAsync(
+                onlyActives: true, ct: CancellationToken.None);
+            if (categoryTreeResult.Success && categoryTreeResult.Response is not null)
+                _researchCategoryTree = categoryTreeResult.Response;
+            else if (!categoryTreeResult.Success)
+                Toast.ShowWarning(categoryTreeResult.Error ?? "No se pudo cargar el árbol de categorías.");
+
+            var categoryTypeResult = await ResearchCategoryTypeClient.ListAsync(
+                onlyActives: true, ct: CancellationToken.None);
+            if (categoryTypeResult.Success && categoryTypeResult.Response is not null)
+                _researchCategoryTypes = categoryTypeResult.Response;
+            else if (!categoryTypeResult.Success)
+                Toast.ShowWarning(categoryTypeResult.Error ?? "No se pudieron cargar los tipos de categoría.");
+
+            var categoryGroupResult = await ResearchCategoryGroupClient.GetListAsync(
+                onlyActives: true,
+                ct: CancellationToken.None);
+
+            if (categoryGroupResult.Success && categoryGroupResult.Response is not null)
+                _researchCategoryGroups = categoryGroupResult.Response;
+            else if (!categoryGroupResult.Success)
+                Toast.ShowWarning(categoryGroupResult.Error ?? "No se pudieron cargar los grupos de categorías.");
+
+            var fundingResult = await FundingTypeClient.GetListAsync(
+                onlyActives: true, ct: CancellationToken.None);
+            if (fundingResult.Success && fundingResult.Response is not null)
+                _fundingTypeOptions = fundingResult.Response;
+            else if (!fundingResult.Success)
+                Toast.ShowWarning(fundingResult.Error ?? "No se pudieron cargar los tipos de financiamiento.");
         }
-
-
-        var facultiesResult = await ExternalAcademicsClient.GetFacultiesWithProgramsAsync(
-            CancellationToken.None);
-        if (facultiesResult.Success && facultiesResult.Response is not null)
-            _faculties = facultiesResult.Response;
-
-        var objectiveTypeResult = await ObjectiveTypeClient.GetListAsync(
-            onlyActives: true,
-            ct: CancellationToken.None);
-
-        if (objectiveTypeResult.Success && objectiveTypeResult.Response is not null)
-            _objectiveTypeOptions = objectiveTypeResult.Response;
-
-
-        var categoryTreeResult = await ResearchCategoryClient.GetTreeAsync(
-            onlyActives: true, ct: CancellationToken.None);
-        if (categoryTreeResult.Success && categoryTreeResult.Response is not null)
-            _researchCategoryTree = categoryTreeResult.Response;
-
-        var categoryTypeResult = await ResearchCategoryTypeClient.ListAsync(
-            onlyActives: true, ct: CancellationToken.None);
-        if (categoryTypeResult.Success && categoryTypeResult.Response is not null)
-            _researchCategoryTypes = categoryTypeResult.Response;
-
-        var categoryGroupResult = await ResearchCategoryGroupClient.GetListAsync(
-    onlyActives: true,
-    ct: CancellationToken.None);
-
-        if (categoryGroupResult.Success && categoryGroupResult.Response is not null)
-            _researchCategoryGroups = categoryGroupResult.Response;
-
-
-        var fundingResult = await FundingTypeClient.GetListAsync(
-            onlyActives: true, ct: CancellationToken.None);
-        if (fundingResult.Success && fundingResult.Response is not null)
-            _fundingTypeOptions = fundingResult.Response;
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al cargar los catálogos del proyecto: {ex.Message}");
+        }
     }
 
     // ==========================
@@ -505,53 +533,82 @@
 
     private void HandleCancel()
     {
-        Nav.NavigateTo("/projects/home");
+        //Nav.NavigateTo("/projects/home");
     }
+
+    // ==========================
+    // User Picker / Investigadores
+    // ==========================
 
     private async Task HandleOpenResearcherPicker()
     {
-        // Obtener usuarios externos
-        var result = await ExternalUserService.GetListAsync();
+        try
+        {
+            var result = await ExternalUserService.GetListAsync();
 
-        if (!result.Success || result.Response is null)
-            return;
+            if (!result.Success || result.Response is null)
+            {
+                Toast.ShowError(result.Error ?? "No se pudieron cargar los usuarios externos.");
+                return;
+            }
 
-        // Evitar duplicados (por correo o cédula)
-        var existingEmails = DideData.Researchers.Select(r => r.email).ToHashSet();
+            // Evitar duplicados (por correo)
+            var existingEmails = (DideData.Researchers ?? new List<ResearcherInfo>())
+                .Select(r => r.email?.Trim().ToLowerInvariant())
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .ToHashSet();
 
-        _researcherCandidates = result.Response
-            .Where(u =>
-                !existingEmails.Contains(u.Email))
-            .OrderBy(u => u.FullName)
-            .ToList();
+            _researcherCandidates = result.Response
+                .Where(u =>
+                    !string.IsNullOrWhiteSpace(u.Email) &&
+                    !existingEmails.Contains(u.Email.Trim().ToLowerInvariant()))
+                .OrderBy(u => u.FullName)
+                .ToList();
 
-        _preselectedUserId = null;
-        _showUserPicker = true;
+            if (_researcherCandidates.Count == 0)
+            {
+                Toast.ShowInfo("No hay usuarios disponibles para agregar al equipo.");
+                return;
+            }
+
+            _preselectedUserId = null;
+            _showUserPicker = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al cargar usuarios externos: {ex.Message}");
+        }
     }
 
     private Task HandleResearcherPickedAsync(int userId)
     {
-        var user = _researcherCandidates.First(x => x.UserId == userId);
+        var user = _researcherCandidates.FirstOrDefault(x => x.UserId == userId);
+
+        if (user is null)
+        {
+            Toast.ShowError("No se encontró el usuario seleccionado.");
+            _showUserPicker = false;
+            return Task.CompletedTask;
+        }
 
         var researcher = new ResearcherInfo
         {
-            // IMPORTANTE: guardar el id del usuario externo
             FullName = user.FullName,
             email = user.Email,
+            Document = user.Document,
+            AspNetUserId = user.AspNetUserId,
             FacultyCareerId = user.FacultyCareerId ?? 0,
-            Role = 0,                            // luego el usuario elige el rol en Step 3
-            RoleName = user.Role,
-
+            Role = 0,
+            RoleName = user.Position
         };
-
 
         DideData.Researchers.Add(researcher);
 
+        Toast.ShowSuccess("Investigador agregado al equipo del proyecto.");
         _showUserPicker = false;
         return Task.CompletedTask;
     }
-
-
 
     // ==========================
     // Step 1: selección de archivos
@@ -613,18 +670,22 @@
             if (response.Success && response.Response is not null)
             {
                 ResolutionData = response.Response;
+                Toast.ShowSuccess("Resolución analizada correctamente.");
             }
             else
             {
-                Console.WriteLine($"Error analyzing resolution: {response.Error}");
+                //Console.WriteLine($"Error analyzing resolution: {response.Error}");
+                Toast.ShowError(response.Error ?? "No se pudo analizar el documento de resolución.");
             }
         }
         catch (OperationCanceledException)
         {
+            // cancelación silenciosa
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            //Console.WriteLine(ex);
+            Toast.ShowError($"Error al procesar la resolución: {ex.Message}");
         }
         finally
         {
@@ -635,23 +696,6 @@
             }
         }
     }
-
-    private bool HasSingleInstanceRoleConflicts()
-    {
-        if (DideData.Researchers is null || DideData.Researchers.Count == 0)
-            return false;
-
-        // Roles que no se pueden repetir (coordinador principal, subrogante, etc.)
-        var conflicts = DideData.Researchers
-            .Where(r => r.Role > 0 && _singleInstanceRoleIds.Contains(r.Role))
-            .GroupBy(r => r.Role)
-            .Any(g => g.Count() > 1);
-
-        return conflicts;
-    }
-
-    private bool IsStep3Valid =>
-        !HasSingleInstanceRoleConflicts();
 
     private async Task LoadDideAsync()
     {
@@ -681,13 +725,15 @@
             if (ct.IsCancellationRequested)
                 return;
 
-            if (response.Response is not null)
+            if (response.Success && response.Response is not null)
             {
                 DideData = response.Response;
+                Toast.ShowSuccess("Formulario DIDE analizado correctamente.");
             }
             else
             {
-                Console.WriteLine($"Error analyzing DIDE form: {response.Error}");
+                //Console.WriteLine($"Error analyzing DIDE form: {response.Error}");
+                Toast.ShowError(response.Error ?? "No se pudo analizar el formulario DIDE.");
             }
         }
         catch (OperationCanceledException)
@@ -695,7 +741,8 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine(ex);
+            //Console.WriteLine(ex);
+            Toast.ShowError($"Error al procesar el formulario DIDE: {ex.Message}");
         }
         finally
         {
@@ -719,23 +766,13 @@
 
     private List<int> ExtractSelectedResearchCategoryIds()
     {
-        var result = new List<int>();
+        if (_selectedResearchCategories is null || _selectedResearchCategories.Count == 0)
+            return new List<int>();
 
-        void Traverse(ResearchCategoryTreeItemDTO node)
-        {
-            result.Add(node.Id);
-            foreach (var child in node.Children)
-            {
-                Traverse(child);
-            }
-        }
-
-        foreach (var root in _selectedResearchCategories)
-        {
-            Traverse(root);
-        }
-
-        return result.Distinct().ToList();
+        return _selectedResearchCategories
+            .Select(x => x.Id)
+            .Distinct()
+            .ToList();
     }
 
     // ==========================
@@ -747,43 +784,48 @@
         if (IsSaving)
             return;
 
-        Console.WriteLine("=== [HandleSaveAsync] Inicio ===");
+        //Console.WriteLine("=== [HandleSaveAsync] Inicio ===");
         IsSaving = true;
 
         try
         {
-            Console.WriteLine($"→ Validando campos iniciales...");
+            //Console.WriteLine("→ Validando campos iniciales...");
 
             if (string.IsNullOrWhiteSpace(DideData.ProjectName))
             {
-                Console.WriteLine("❌ ProjectName faltante");
+                //Console.WriteLine("❌ ProjectName faltante");
+                Toast.ShowWarning("Ingrese el nombre del proyecto antes de crear el registro.");
                 return;
             }
 
             if (DideData.ResearchTypeId is null || DideData.ResearchTypeId.Value <= 0)
             {
-                Console.WriteLine("❌ ResearchTypeId faltante");
+                //Console.WriteLine("❌ ResearchTypeId faltante");
+                Toast.ShowWarning("Seleccione el tipo de investigación del proyecto.");
                 return;
             }
 
             if (_budgets is null || !_budgets.Any(b => b.FundingTypeId > 0 && b.InitialAmount > 0))
             {
-                Console.WriteLine("❌ Budgets no válidos");
+                //Console.WriteLine("❌ Budgets no válidos");
+                Toast.ShowWarning("Debe registrar al menos un presupuesto con monto inicial mayor a 0.");
                 return;
             }
 
             var facultyId = ResolveCoordinatorFacultyId();
-            Console.WriteLine($"→ FacultyId resuelto: {facultyId}");
+            //Console.WriteLine($"→ FacultyId resuelto: {facultyId}");
 
             if (facultyId <= 0)
             {
-                Console.WriteLine("❌ Faculty ID inválido");
+                //Console.WriteLine("❌ Faculty ID inválido");
+                Toast.ShowError("No se pudo determinar la facultad del proyecto. Verifique los investigadores y sus facultades.");
                 return;
             }
 
             if (!_scheduledDate.HasValue)
             {
-                Console.WriteLine("❌ No hay fecha programada para visita");
+                //Console.WriteLine("❌ No hay fecha programada para visita");
+                Toast.ShowWarning("Seleccione la fecha programada para la visita del proyecto.");
                 return;
             }
 
@@ -793,15 +835,22 @@
 
             if (_projectDocument is null)
             {
-                Console.WriteLine("→ Documento no existe aún, preparando upload...");
+                //Console.WriteLine("→ Documento no existe aún, preparando upload...");
 
                 if (_selectedResolutionFile is null)
                 {
-                    Console.WriteLine("❌ No seleccionaste archivo PDF de resolución");
+                    //Console.WriteLine("❌ No seleccionaste archivo PDF de resolución");
+                    Toast.ShowWarning("Debe seleccionar el PDF de la resolución inicial antes de crear el proyecto.");
                     return;
                 }
 
-                Console.WriteLine($"→ Subiendo PDF: {_selectedResolutionFile.Name} (tipo: {_selectedResolutionFile.ContentType})");
+                //Console.WriteLine($"→ Subiendo PDF: {_selectedResolutionFile.Name} (tipo: {_selectedResolutionFile.ContentType})");
+
+                if (_resolutionFileBytes is null)
+                {
+                    Toast.ShowError("No se encontraron los bytes del archivo de resolución. Vuelva a seleccionar el archivo.");
+                    return;
+                }
 
                 var dto = new UploadDocumentClientDTO
                 {
@@ -813,27 +862,25 @@
                 };
                 var content = MultipartBuilder.Build(
                     dto,
-                    _resolutionFileBytes!,
-                    _selectedResolutionFile!.Name,
+                    _resolutionFileBytes,
+                    _selectedResolutionFile.Name,
                     _selectedResolutionFile.ContentType
                 );
 
-
-
-                Console.WriteLine("→ Subiendo documento...");
+                //Console.WriteLine("→ Subiendo documento...");
                 var uploadResponse = await DocumentClient.UploadAsync(content);
 
-
-                Console.WriteLine($"← Respuesta Upload: Success={uploadResponse.Success}, Error={uploadResponse.Error}");
+                //Console.WriteLine($"← Respuesta Upload: Success={uploadResponse.Success}, Error={uploadResponse.Error}");
 
                 if (!uploadResponse.Success || uploadResponse.Response is null)
                 {
-                    Console.WriteLine("❌ Error subiendo documento");
+                    //Console.WriteLine("❌ Error subiendo documento");
+                    Toast.ShowError(uploadResponse.Error ?? "No se pudo subir el documento de resolución.");
                     return;
                 }
 
                 _projectDocument = uploadResponse.Response;
-                Console.WriteLine($"✓ Documento subido. DocumentId: {_projectDocument.DocumentId}");
+                //Console.WriteLine($"✓ Documento subido. DocumentId: {_projectDocument.DocumentId}");
             }
 
             var documentDto = _projectDocument;
@@ -842,7 +889,8 @@
             // CREAR DTO PRINCIPAL DEL PROYECTO
             // ===============================
 
-            Console.WriteLine("→ Preparando Project DTO...");
+            //Console.WriteLine("→ Preparando Project DTO...");
+
             // 1) Obtener acrónimo de la facultad
             var faculty = _faculties.FirstOrDefault(f => f.FacultyId == facultyId);
             var facultyAcronym = faculty?.Acronym ?? string.Empty;
@@ -864,7 +912,7 @@
                 FacultyId = facultyId
             };
 
-            Console.WriteLine($"→ ProjectDto listo: Name={projectDto.ProjectName}, Code={projectDto.ProjectCode}, Type={projectDto.ProjectTypeId}, FacultyId={projectDto.FacultyId}");
+            //Console.WriteLine($"→ ProjectDto listo: Name={projectDto.ProjectName}, Code={projectDto.ProjectCode}, Type={projectDto.ProjectTypeId}, FacultyId={projectDto.FacultyId}");
 
             // ===============================
             // BUDGETS
@@ -885,7 +933,7 @@
                 }
             }
 
-            Console.WriteLine($"→ Budgets listos. Count={budgetsDto.Count}");
+            //Console.WriteLine($"→ Budgets listos. Count={budgetsDto.Count}");
 
             // ===============================
             // OBJECTIVES
@@ -909,7 +957,7 @@
                 }
             }
 
-            Console.WriteLine($"→ Objectives listos. Count={objectivesDto.Count}");
+            //Console.WriteLine($"→ Objectives listos. Count={objectivesDto.Count}");
 
             // ===============================
             // GROUP MEMBERS (miembros del proyecto)
@@ -919,25 +967,30 @@
 
             if (DideData.Researchers != null)
             {
-                // foreach (var r in DideData.Researchers)
-                // {
-                //     Validar que tengamos id de usuario y rol
-                //     if (r.ExternalUserId > 0 && r.Role > 0)
-                //     {
-                //         groupMembersDto.Add(new AddGroupMemberRequestDTO
-                //         {
-                //             ExternalUserId = r.ExternalUserId, 👈 se usará como UserId en el back
-                //             MemberRole = r.Role                👈 Id de MemberRoleType
-                //         });
-                //     }
-                // }
+                foreach (var r in DideData.Researchers)
+                {
+                    // Basta con que tenga email y rol
+                    if (!string.IsNullOrWhiteSpace(r.email) && r.Role > 0)
+                    {
+                        groupMembersDto.Add(new AddGroupMemberRequestDTO
+                        {
+                            AspUserId = r.AspNetUserId > 0 ? r.AspNetUserId : null,
+                            MemberRole = r.Role,
+                            Document = r.Document,
+                            GroupId = 0, // el back ignora esto y usa el group generado
+                            Email = r.email,
+                        });
+                    }
+                }
             }
 
+            //Console.WriteLine("[Wizard] Researchers total: " + (DideData.Researchers?.Count ?? 0));
+            //Console.WriteLine("[Wizard] GroupMembers a enviar: " +
+            //   System.Text.Json.JsonSerializer.Serialize(groupMembersDto));
 
             // ===============================
             // REQUEST COMPLETO
             // ===============================
-
 
             var request = new AddProjectFullRequestDTO
             {
@@ -949,28 +1002,29 @@
                 ScheduledDate = _scheduledDate.Value
             };
 
-
-            Console.WriteLine("→ Llamando a ProjectClient.CreateFullAsync() ...");
+            //Console.WriteLine("→ Llamando a ProjectClient.CreateFullAsync() ...");
             var response = await ProjectClient.CreateFullAsync(request, CancellationToken.None);
 
-            Console.WriteLine($"← Respuesta CreateFull: Success={response.Success}, Error={response.Error}");
+            //Console.WriteLine($"← Respuesta CreateFull: Success={response.Success}, Error={response.Error}");
 
             if (!response.Success || response.Response is null)
             {
-                Console.WriteLine($"❌ Error creando proyecto: {response.Error}");
+                //Console.WriteLine($"❌ Error creando proyecto: {response.Error}");
+                Toast.ShowError(response.Error ?? "No se pudo crear el proyecto.");
                 return;
             }
 
-            Console.WriteLine($"✓ Proyecto creado. ProjectId={response.Response.ProjectId}");
-            Nav.NavigateTo($"/projects/{response.Response.ProjectId}");
+            //Console.WriteLine($"✓ Proyecto creado. ProjectId={response.Response.ProjectId}");
+            Toast.ShowSuccess("Proyecto creado correctamente.");
+
+            //Nav.NavigateTo($"/projects/{response.Response.ProjectId}");
         }
         finally
         {
-            Console.WriteLine("=== [HandleSaveAsync] FIN ===");
+            //Console.WriteLine("=== [HandleSaveAsync] FIN ===");
             IsSaving = false;
         }
     }
-
 
     private Task OnBudgetsChanged(List<CreateBudgetRequestDTO> newBudgets)
     {
@@ -980,7 +1034,6 @@
 
         return Task.CompletedTask;
     }
-
 
     private int ResolveCoordinatorFacultyId()
     {
@@ -1028,7 +1081,6 @@
         return facById?.FacultyId ?? 0;
     }
 
-
     private List<AddObjectiveActivityRequestDTO> MapActivities(DideObjectiveInfo obj)
     {
         var result = new List<AddObjectiveActivityRequestDTO>();
@@ -1040,7 +1092,9 @@
         {
             result.Add(new AddObjectiveActivityRequestDTO
             {
-                // Activity = act.ActivityText,
+                ActivityResult = act.ActivityResult,
+                ActionText = act.ActivityText,
+                IsCompleted = false,
             });
         }
 
@@ -1052,7 +1106,6 @@
         // No hace falta cambiar nada más, solo forzar re-render del padre
         StateHasChanged();
     }
-
 
     // ==========================
     // Dispose

@@ -22,25 +22,23 @@ namespace tesisproject.frontend.SharedUI
 
         #region Parámetros de personalización del layout
 
-        /// <summary>
-        /// Clases CSS para el layout del grid. Por defecto: lista vertical
-        /// </summary>
         [Parameter]
         public string GridClasses { get; set; } = "space-y-4";
 
-        /// <summary>
-        /// Título opcional para mostrar en el header
-        /// </summary>
         [Parameter]
         public string Title { get; set; } = "";
 
-        /// <summary>
-        /// Indica si mostrar el contador de elementos
-        /// </summary>
         [Parameter]
         public bool ShowItemCount { get; set; } = false;
 
+        /// <summary>
+        /// Icono opcional para mostrar junto al título en el header
+        /// </summary>
+        [Parameter]
+        public RenderFragment? HeaderIcon { get; set; }
+
         #endregion
+
 
         #region Parámetros del estado vacío
 

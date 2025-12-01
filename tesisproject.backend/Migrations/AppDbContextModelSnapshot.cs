@@ -223,6 +223,29 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("tesisproject.shared.Entities.Auth.AppUser", b =>
+                {
+                    b.Property<int>("IdUser")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("IdUser"));
+
+                    b.Property<int?>("IdAsp")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("IdLocal")
+                        .HasColumnType("int");
+
+                    b.HasKey("IdUser");
+
+                    b.HasIndex("IdAsp");
+
+                    b.HasIndex("IdLocal");
+
+                    b.ToTable("AppUsers");
+                });
+
             modelBuilder.Entity("tesisproject.shared.Entities.Auth.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -633,6 +656,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsFilterEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -646,27 +672,6 @@ namespace tesisproject.backend.Migrations
                     b.HasIndex("ResearchCategoryGroupId");
 
                     b.ToTable("ResearchCategoryTypes");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ResearcherType", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ResearcherType");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ScopeType", b =>
@@ -1123,6 +1128,11 @@ namespace tesisproject.backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ObjectiveActivityId"));
 
+                    b.Property<string>("ActionText")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.Property<string>("ActivityResult")
                         .IsRequired()
                         .HasMaxLength(1000)
@@ -1130,11 +1140,6 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("ImprovementAction")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<bool>("IsCompleted")
                         .HasMaxLength(1000)
@@ -1533,54 +1538,6 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("ProjectScopes");
                 });
 
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Researcher", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("ActiveDirectoryId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("CreatedByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<int>("Level")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ReginaCode")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)");
-
-                    b.Property<int>("ResearcherTypeId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int?>("UpdatedByUserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedByUserId");
-
-                    b.HasIndex("ResearcherTypeId");
-
-                    b.HasIndex("UpdatedByUserId");
-
-                    b.ToTable("Researchers");
-                });
-
             modelBuilder.Entity("tesisproject.shared.Entities.Core.UserFacultyScope", b =>
                 {
                     b.Property<int>("UserFacultyScopeId")
@@ -1756,6 +1713,14 @@ namespace tesisproject.backend.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("tesisproject.shared.Entities.Auth.AppUser", b =>
+                {
+                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                        .WithMany()
+                        .HasForeignKey("IdLocal")
+                        .OnDelete(DeleteBehavior.NoAction);
+                });
+
             modelBuilder.Entity("tesisproject.shared.Entities.Auth.RefreshToken", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
@@ -1806,7 +1771,7 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Budget", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                    b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("ApprovedByUserId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -1837,13 +1802,13 @@ namespace tesisproject.backend.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                    b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("CertifiedByUserId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                    b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("ExecutedByUserId")
                         .OnDelete(DeleteBehavior.NoAction);
@@ -1897,7 +1862,7 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Document", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                    b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -1914,7 +1879,7 @@ namespace tesisproject.backend.Migrations
                         .HasForeignKey("tesisproject.shared.Entities.Core.Document", "RelatedDocumentId")
                         .OnDelete(DeleteBehavior.NoAction);
 
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                    b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UpdatedByUserId")
                         .OnDelete(DeleteBehavior.NoAction);
@@ -1936,7 +1901,7 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.ExternalResearcherProject", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                    b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -1984,7 +1949,7 @@ namespace tesisproject.backend.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                    b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -2075,7 +2040,7 @@ namespace tesisproject.backend.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
 
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                    b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -2105,7 +2070,7 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Project", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                    b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -2226,31 +2191,9 @@ namespace tesisproject.backend.Migrations
                     b.Navigation("ScopeType");
                 });
 
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.Researcher", b =>
-                {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("tesisproject.shared.Entities.Catalogs.ResearcherType", "ResearcherType")
-                        .WithMany()
-                        .HasForeignKey("ResearcherTypeId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
-                        .WithMany()
-                        .HasForeignKey("UpdatedByUserId")
-                        .OnDelete(DeleteBehavior.NoAction);
-
-                    b.Navigation("ResearcherType");
-                });
-
             modelBuilder.Entity("tesisproject.shared.Entities.Core.UserFacultyScope", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                    b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("IdentityUserId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -2277,7 +2220,7 @@ namespace tesisproject.backend.Migrations
                         .OnDelete(DeleteBehavior.NoAction)
                         .HasConstraintName("FK_Visits_Documents_FundingDocumentId");
 
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                    b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("PerformedByUserId")
                         .OnDelete(DeleteBehavior.NoAction);
@@ -2315,7 +2258,7 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.VisitIssue", b =>
                 {
-                    b.HasOne("Microsoft.AspNetCore.Identity.IdentityUser<int>", null)
+                    b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("ReportedByUserId")
                         .OnDelete(DeleteBehavior.NoAction);

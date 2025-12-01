@@ -3,19 +3,17 @@
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.StatCard
 @using tesisproject.shared.DTOs.External
+@using tesisproject.frontend.SharedUI.Table
 
 <div class="p-6 space-y-4">
     <!-- Header + actions -->
     <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-        <h3 class="text-base font-semibold text-foreground">Miembros del proyecto</h3>
-
         <div class="flex items-center gap-2">
-
             <ActionButton Text="Agregar Miembros"
                           Intent="ButtonIntent.Accept"
                           Variant="ButtonVariant.Filled"
                           Size="ButtonSize.Sm"
-                          Execute="@(()=> OnInviteMember.InvokeAsync())" >
+                          Execute="@(()=> OnInviteMember.InvokeAsync())">
                 <Icon>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
                         <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
@@ -35,149 +33,85 @@
     }
     else
     {
-        <!-- KPIs -->
-        <div class="grid md:grid-cols-3 gap-3">
-            <StatCard Title="Miembros"
-                      FormattedValue="@totalMembers.ToString("N0", CultureInfo.InvariantCulture)"
-                      Variant="StatCardVariant.Outlined"
-                      Emphasis="StatCardEmphasis.Normal"
-                      Size="StatCardSize.Md">
-                <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="size-6" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M7.5 6a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM4.5 18.75A6.75 6.75 0 0 1 18 18.75v.75H4.5v-.75Z" />
-                    </svg>
-                </Icon>
-            </StatCard>
+        <!-- Tabla reutilizable -->
+        <DataTable TItem="ExternalUserDTO"
+                   Items="filtered"
+                   Columns="_columns"
+                   PageSize="PageSize"
+                   Total="filtered.Count"
+                   CurrentPage="currentPage"
+                   OnPageChanged="HandlePageChanged"
+                   EmptyText="Este proyecto no tiene miembros aun.">
 
-            <StatCard Title="Roles"
-                      FormattedValue="@uniqueRolesCount.ToString("N0", CultureInfo.InvariantCulture)"
-                      Variant="StatCardVariant.Outlined"
-                      Emphasis="StatCardEmphasis.Normal"
-                      Size="StatCardSize.Md">
-                <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="size-6" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M3 6.75A2.75 2.75 0 0 1 5.75 4h12.5A2.75 2.75 0 0 1 21 6.75v10.5A2.75 2.75 0 0 1 18.25 20H5.75A2.75 2.75 0 0 1 3 17.25V6.75Z" />
-                        <path d="M7 8h10v2H7zM7 12h7v2H7z" />
-                    </svg>
-                </Icon>
-            </StatCard>
+            <RowTemplate Context="m">
+                <td class="px-4 py-3 text-sm font-medium text-foreground align-middle w-48">
+                    @m.FullName
+                </td>
 
-            <StatCard Title="Facultad"
-                      FormattedValue="@withFacultyCareer.ToString("N0", CultureInfo.InvariantCulture)"
-                      Variant="StatCardVariant.Outlined"
-                      Emphasis="StatCardEmphasis.Normal"
-                      Size="StatCardSize.Md">
-                <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="size-6" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2 1 7l11 5 9-4.091V17h2V7L12 2z" />
-                        <path d="M3 19h9v-6L3 8v11z" />
-                    </svg>
-                </Icon>
-            </StatCard>
-        </div>
+                <td class="px-4 py-3 text-sm text-muted align-middle w-56">
+                    @m.Email
+                </td>
 
-        <!-- Header + count -->
-        <div class="flex justify-between items-center mt-4">
-            <h4 class="text-sm font-medium text-foreground">Members</h4>
-            <div class="text-xs text-muted">
-                <span>Total: @filtered.Count</span>
-            </div>
-        </div>
+                <td class="px-4 py-3 text-sm align-middle w-40">
+                    <span class="px-2 py-0.5 rounded-full text-xs border border-border text-foreground bg-foreground/5">
+                        @m.Role
+                    </span>
+                </td>
 
-        <!-- Table -->
-        <div class="overflow-x-auto rounded-lg border border-border bg-background">
-            <table class="min-w-full text-sm">
-                <thead class="bg-foreground/5 text-left">
-                    <tr class="[&>th]:py-2 [&>th]:px-3 [&>th]:font-semibold [&>th]:text-xs text-foreground">
-                        <th class="w-48">Nombre</th>
-                        <th class="w-56">Email</th>
-                        <th class="w-40">Rol</th>
-                        <th class="w-40">Position</th>
-                        <th class="w-32">Document</th>
-                        <th class="w-32">Faculty/Career</th>
-                        <th class="text-right w-44">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var m in PagedItems)
-                    {
-                        <tr class="border-t border-border hover:bg-foreground/5 transition-colors">
-                            <td class="py-2 px-3 font-medium text-foreground">@m.FullName</td>
-                            <td class="py-2 px-3 text-muted">@m.Email</td>
-                            <td class="py-2 px-3">
-                                <span class="px-2 py-0.5 rounded-full text-xs border border-border text-foreground bg-foreground/5">
-                                    @m.Role
-                                </span>
-                            </td>
-                            <td class="py-2 px-3 text-foreground">@m.Position</td>
-                            <td class="py-2 px-3 text-foreground">@m.Document</td>
-                            <td class="py-2 px-3 text-foreground">@((m.FacultyCareerId?.ToString()) ?? "-")</td>
-                            <td class="py-2 px-3 text-right">
-                                <div class="inline-flex gap-1">
-                                    <ActionButton Text="Change role"
-                                                  Intent="ButtonIntent.Neutral"
-                                                  Variant="ButtonVariant.Ghost"
-                                                  Size="ButtonSize.Xs"
-                                                  Execute="@(()=> OnChangeRole.InvokeAsync(m.UserId))" />
-                                    <ActionButton Text="Remove"
-                                                  Intent="ButtonIntent.Danger"
-                                                  Variant="ButtonVariant.Outline"
-                                                  Size="ButtonSize.Xs"
-                                                  Execute="@(()=> OnRemoveMember.InvokeAsync(m.UserId))" />
-                                    <ActionButton Text="Remove"
-                                                  Intent="ButtonIntent.Danger"
-                                                  Variant="ButtonVariant.Outline"
-                                                  Size="ButtonSize.Xs"
-                                                  Execute="@(()=> OnRemoveMember.InvokeAsync(m.UserGroupId))" />
-                                </div>
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-        </div>
+                <td class="px-4 py-3 text-sm text-foreground align-middle w-40">
+                    @m.Position
+                </td>
 
-        <!-- Pagination -->
-        <div class="flex items-center justify-between mt-3 text-sm">
-            <span class="text-muted">
-                Showing @((currentPage - 1) * PageSize + 1)
-                –
-                @(Math.Min(currentPage * PageSize, filtered.Count))
-                of @filtered.Count
-            </span>
+                <td class="px-4 py-3 text-sm text-foreground align-middle w-32">
+                    @m.Document
+                </td>
 
-            <div class="flex gap-2">
-                <button class="px-3 py-1 rounded border border-border text-foreground bg-background hover:bg-foreground/5 disabled:opacity-50 transition-colors"
-                        disabled="@(!CanPrev)"
-                        @onclick="PrevPage">
-                    Prev
-                </button>
-                <button class="px-3 py-1 rounded bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition-colors"
-                        disabled="@(!CanNext)"
-                        @onclick="NextPage">
-                    Next
-                </button>
-            </div>
-        </div>
+                <td class="px-4 py-3 text-sm text-foreground align-middle w-32">
+                    @GetFacultyNameFor(m)
+                </td>
+
+                <td class="px-4 py-3 text-sm text-foreground align-middle w-40">
+                    @GetProgramNameFor(m)
+                </td>
+
+                <td class="px-4 py-3 text-sm text-right align-middle w-44">
+                    <div class="inline-flex gap-1">
+                        <ActionButton Text="Cambiar Rol"
+                                      Intent="ButtonIntent.Neutral"
+                                      Variant="ButtonVariant.Ghost"
+                                      Size="ButtonSize.Xs"
+                                      Execute="@(()=> OnChangeRole.InvokeAsync(m.UserId))" />
+
+                        <ActionButton Text="Eliminar"
+                                      Intent="ButtonIntent.Danger"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Xs"
+                                      Execute="@(()=> OnRemoveMember.InvokeAsync(m.UserGroupId))" />
+                    </div>
+                </td>
+            </RowTemplate>
+        </DataTable>
     }
 </div>
 
 @code {
+    [Parameter] public List<ExternalFacultyDTO>? Faculties { get; set; }
+
     // ===== Parameters =====
     [Parameter] public List<ExternalUserDTO>? Members { get; set; }
     [Parameter] public bool IsLoading { get; set; }
 
     // Eventos (padre)
     [Parameter] public EventCallback OnInviteMember { get; set; }
-    [Parameter] public EventCallback<int> OnChangeRole { get; set; }   // UserId
-    [Parameter] public EventCallback<int> OnRemoveMember { get; set; } // UserId
+    [Parameter] public EventCallback<int> OnChangeRole { get; set; }
+    [Parameter] public EventCallback<int> OnRemoveMember { get; set; }
 
     // Paginación + filtro
     [Parameter] public int PageSize { get; set; } = 15;
     private int currentPage = 1;
     private string searchText = string.Empty;
 
-    // KPIs
+    // KPIs (por si luego los usas en StatCards)
     private int totalMembers => Members?.Count ?? 0;
 
     private int uniqueRolesCount => Members?
@@ -200,25 +134,72 @@
             )
             .ToList();
 
-    private IEnumerable<ExternalUserDTO> PagedItems => filtered
-        .Skip((currentPage - 1) * PageSize)
-        .Take(PageSize);
+    private IReadOnlyList<ColumnDef<ExternalUserDTO>> _columns = Array.Empty<ColumnDef<ExternalUserDTO>>();
 
-    private bool CanPrev => currentPage > 1;
-    private bool CanNext => currentPage * PageSize < filtered.Count;
-
-    private void PrevPage()
+    protected override void OnInitialized()
     {
-        if (CanPrev) currentPage--;
+        _columns = new[]
+        {
+            new ColumnDef<ExternalUserDTO>("Nombre",   m => m.FullName ?? string.Empty,   "12rem", Sortable: true),
+            new ColumnDef<ExternalUserDTO>("Email",    m => m.Email ?? string.Empty,      "14rem", Sortable: true),
+            new ColumnDef<ExternalUserDTO>("Rol",      m => m.Role ?? string.Empty,       "10rem", Sortable: true),
+            new ColumnDef<ExternalUserDTO>("Position", m => m.Position ?? string.Empty,   "10rem", Sortable: true),
+            new ColumnDef<ExternalUserDTO>("Cedula",   m => m.Document ?? string.Empty,   "8rem",  Sortable: true),
+            new ColumnDef<ExternalUserDTO>("Facultad", m => GetFacultyNameFor(m),         "12rem", Sortable: true),
+            new ColumnDef<ExternalUserDTO>("Carrera",  m => GetProgramNameFor(m),         "12rem", Sortable: true),
+            new ColumnDef<ExternalUserDTO>("Acciones", m => string.Empty,                 "11rem", Sortable: false),
+        };
     }
-    private void NextPage()
+
+
+    private Task HandlePageChanged(int page)
     {
-        if (CanNext) currentPage++;
+        currentPage = page;
+        return Task.CompletedTask;
     }
 
-    protected override void OnParametersSet()
+    private string GetFacultyNameFor(ExternalUserDTO member)
     {
-        if ((currentPage - 1) * PageSize >= filtered.Count)
-            currentPage = 1;
+        if (!member.FacultyCareerId.HasValue || Faculties is null || Faculties.Count == 0)
+            return "-";
+
+        int id = member.FacultyCareerId.Value;
+
+        // 1) Ver si es FACULTAD
+        var faculty = Faculties.FirstOrDefault(f => f.FacultyId == id);
+        if (faculty is not null)
+            return faculty.Name; // Es facultad directa
+
+        // 2) Ver si es PROGRAMA
+        var program = Faculties
+            .SelectMany(f => f.Programs ?? new List<ExternalProgramDTO>())
+            .FirstOrDefault(p => p.ProgramId == id);
+
+        if (program is not null)
+        {
+            var parentFaculty = Faculties.FirstOrDefault(f => f.FacultyId == program.FacultyId);
+            return parentFaculty?.Name ?? "-";
+        }
+
+        return "-";
+    }
+
+    private string GetProgramNameFor(ExternalUserDTO member)
+    {
+        if (!member.FacultyCareerId.HasValue || Faculties is null || Faculties.Count == 0)
+            return "-";
+
+        int id = member.FacultyCareerId.Value;
+
+        // Si es FACULTAD → no tiene programa asociado
+        if (Faculties.Any(f => f.FacultyId == id))
+            return "-";
+
+        // Si es PROGRAMA → devolver su nombre
+        var program = Faculties
+            .SelectMany(f => f.Programs ?? new List<ExternalProgramDTO>())
+            .FirstOrDefault(p => p.ProgramId == id);
+
+        return program?.Name ?? "-";
     }
 }

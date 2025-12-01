@@ -9,10 +9,12 @@
 @using tesisproject.shared.Enums
 @using tesisproject.shared.Responses
 @using tesisproject.frontend.Services
+@using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
 
 @inject IToastService Toast
 @inject IGroupService GroupService
 @inject IExternalUserService ExternalUserService
+@inject IMemberRoleTypeClientService MemberRoleTypeService
 
 <div class="space-y-4">
     <!-- Header -->
@@ -45,7 +47,9 @@
                          OnRequestAddMember="HandleAddMember"
                          OnRequestUpdateGroup="HandleUpdateGroup"
                          OnRequestRemoveMember="HandleRemoveMember"
-                         OnAskCandidates="HandleAskCandidates" />
+                         OnAskCandidates="HandleAskCandidates"
+                         MemberRoles="@_memberRoleTypes" />
+
     </div>
 
 </div>
@@ -72,8 +76,13 @@
     private bool isLoading;
     private bool isLoadingMembers;
 
+    // ====== Roles de miembro (FLAG = 2) ======
+    private List<MemberRoleTypeDetailDTO> _memberRoleTypes = new();
+    private int? _selectedRoleId; // usado por GroupTabContent + UserPickerModal
+
     protected override async Task OnInitializedAsync()
     {
+        await LoadMemberRolesAsync();
         await LoadGroupsAsync();
         await EnsureDefaultSelection();
     }
@@ -148,13 +157,11 @@
         }
     }
 
-    // Evento del hijo con tupla (tipo, id)
     private async Task HandleGroupSelected(int groupId)
     {
         selectedGroupId = groupId;
         await LoadMembersFor(groupId);
     }
-
 
     private async Task LoadMembersFor(int groupId)
     {
@@ -212,5 +219,35 @@
             .Where(u => !existingIds.Contains(u.UserId))
             .OrderBy(u => u.FullName)
             .ToList();
+    }
+
+    private async Task LoadMemberRolesAsync()
+    {
+        try
+        {
+            var resp = await MemberRoleTypeService.GetListAsync(onlyActives: true);
+            if (!resp.Success || resp.Response is null)
+            {
+                Toast.ShowError(resp.Error ?? "No se pudieron cargar los roles de miembro.");
+                _memberRoleTypes = new();
+                return;
+            }
+
+            _memberRoleTypes = resp.Response
+                .Where(r => r.Flag == 2) // SOLO roles de grupo
+                .Select(r => new MemberRoleTypeDetailDTO
+                {
+                    Id = r.Id,
+                    Name = r.Name,
+                    IsActive = r.IsActive,
+                    Flag = r.Flag
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al cargar roles de miembro: {ex.Message}");
+            _memberRoleTypes = new();
+        }
     }
 }

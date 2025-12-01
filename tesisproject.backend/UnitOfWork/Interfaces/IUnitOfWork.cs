@@ -36,6 +36,8 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
 
         // 🔹 Nuevo repositorio agregado:
         IAspNetUserRepository AspNetUsers { get; }
+        IAppUserRepository AppUsers { get; }
+
 
         Task<int> SaveChangesAsync(CancellationToken ct = default);
     }

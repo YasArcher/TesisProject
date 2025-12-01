@@ -4,28 +4,38 @@
     <div class="bg-background border border-border rounded-xl shadow-lg shadow-[color-mix(in_srgb,var(--color-foreground)_10%,transparent)] overflow-hidden flex flex-col"
          style="@GetContainerStyle()">
         
-        @if (Items is not null && Items.Any())
-        {
-            @if (ShowItemCount || !string.IsNullOrEmpty(Title))
-            {
-                <!-- Header fijo con contador -->
-                <div class="px-6 py-4 bg-primary-subtle border-b border-border flex-shrink-0">
-                    <div class="flex items-center justify-between">
-                        @if (!string.IsNullOrEmpty(Title))
-                        {
-                            <h3 class="text-sm font-semibold text-foreground">
-                                @Title
-                            </h3>
-                        }
-                        @if (ShowItemCount)
-                        {
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-subtle text-foreground">
-                                @Items.Count() @(Items.Count() == 1 ? "elemento" : "elementos")
-                            </span>
-                        }
-                    </div>
+@if (Items is not null && Items.Any())
+{
+    @if (ShowItemCount || !string.IsNullOrEmpty(Title))
+    {
+        <!-- Header fijo con contador -->
+        <div class="px-6 py-4 bg-primary-subtle border-b border-border flex-shrink-0">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    @if (HeaderIcon is not null)
+                    {
+                        <span class="inline-flex items-center justify-center text-muted">
+                            @HeaderIcon
+                        </span>
+                    }
+
+                    @if (!string.IsNullOrEmpty(Title))
+                    {
+                        <h3 class="text-sm font-semibold text-foreground">
+                            @Title
+                        </h3>
+                    }
                 </div>
-            }
+
+                @if (ShowItemCount)
+                {
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-subtle text-foreground">
+                        @Items.Count() @(Items.Count() == 1 ? "elemento" : "elementos")
+                    </span>
+                }
+            </div>
+        </div>
+    }
             
             <!-- Contenedor de elementos con scroll -->
             <div class="@GetScrollClasses() flex-1">

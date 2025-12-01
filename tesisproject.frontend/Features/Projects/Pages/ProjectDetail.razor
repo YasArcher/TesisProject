@@ -4,6 +4,7 @@
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.Tabs
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
 @using tesisproject.shared.DTOs.Group.Request
 @using tesisproject.shared.DTOs.Project.Response
 @using tesisproject.frontend.Features.Projects.Components
@@ -13,17 +14,19 @@
 @using tesisproject.shared.DTOs.Visit.Response
 @using tesisproject.shared.DTOs.External
 @using tesisproject.shared.DTOs.VisitIssues.Request
-@using tesisproject.shared.DTOs.VisitIssues.Response 
+@using tesisproject.shared.DTOs.VisitIssues.Response
 
 @inject IVisitClientService VisitService
 @inject IProjectClientService ProjectService
 @inject IBudgetClientService BudgetService
 @inject IProjectExtensionClientService ProjectExtensionService
+@inject IExternalAcademicsClientService ExternalAcademicsService
 @inject IGroupService GroupService
 @inject NavigationManager Nav
 @inject IToastService Toast
 @inject IExternalUserService ExternalUserService
 @inject IVisitIssueClientService VisitIssueService
+@inject IMemberRoleTypeClientService MemberRoleTypeService
 
 <div class="flex flex-col h-full">
     <!-- Header -->
@@ -101,6 +104,7 @@
                 </Icon>
                 <ChildContent>
                     <ProjectMembersTab Members="_members"
+                                       Faculties="_faculties"
                                        IsLoading="@_loadingMembers"
                                        OnInviteMember="HandleInviteMember"
                                        OnChangeRole="HandleChangeRole"
@@ -194,7 +198,9 @@
                  Users="@_memberCandidates"
                  InitialSelectedUserId="@_preselectedUserId"
                  OnSubmit="HandleUserPickedAsync"
-                 OnCancel="() => _showUserPicker = false" />
+                 OnCancel="() => _showUserPicker = false"
+                 Roles="_memberRoles"
+                 @bind-SelectedRoleId="_selectedRoleIdForProject" />
 
 <VisitIssueFormModal Id="visit-issue-modal"
                      IsOpen="@_issueModalOpen"
@@ -268,9 +274,19 @@
     private List<ExternalUserDTO> _memberCandidates = new();
     private int? _preselectedUserId;
 
+    // ======= Facultades / Programas externos =======
+    private List<ExternalFacultyDTO> _faculties = new();
+    private bool _loadingFaculties;
+    private string? _facultiesError;
+
+    // ======= Roles de miembro para el picker de proyecto =======
+    private IEnumerable<MemberRoleTypeDetailDTO>? _memberRoles;
+    private int? _selectedRoleIdForProject;
+
     // ======= Lifecycle =======
     protected override async Task OnInitializedAsync()
     {
+        await EnsureFacultiesAsync();
         await EnsureTabDataAsync(_activeTab);
     }
 
@@ -280,6 +296,40 @@
         await EnsureTabDataAsync(newKey);
         StateHasChanged();
     }
+
+    private async Task EnsureFacultiesAsync()
+    {
+        if (_faculties.Count > 0) return;
+
+        try
+        {
+            _loadingFaculties = true;
+            _facultiesError = null;
+
+            var res = await ExternalAcademicsService.GetFacultiesWithProgramsAsync();
+
+            if (res.Success)
+            {
+                _faculties = res.Response ?? new();
+            }
+            else
+            {
+                _faculties = new();
+                _facultiesError = res.Error ?? "No se pudieron cargar las facultades.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _faculties = new();
+            _facultiesError = $"Error de conexión al directorio académico: {ex.Message}";
+        }
+        finally
+        {
+            _loadingFaculties = false;
+        }
+    }
+
+
 
     /// Lazy-load / Refresh por tab
     private async Task EnsureTabDataAsync(string tabKey)
@@ -452,6 +502,8 @@
             Toast.ShowWarning("Este proyecto no tiene un grupo asignado.");
             return;
         }
+
+        await EnsureMemberRolesAsync();
 
         var all = await ExternalUserService.GetListAsync();
         if (!all.Success)
@@ -917,31 +969,126 @@
             _showUserPicker = false;
             return;
         }
+        var selectedRole = _memberRoles?.FirstOrDefault(r => r.Id == _selectedRoleIdForProject.Value);
+        if (selectedRole is null)
+        {
+            Toast.ShowError("No se pudo identificar el rol seleccionado.");
+            return;
+        }
+
+        if (IsCoordinatorRole(selectedRole.Name))
+        {
+            var alreadyHasRole = ProjectAlreadyHasRole(selectedRole.Id);
+            if (alreadyHasRole)
+            {
+                Toast.ShowWarning($"Ya existe un miembro con el rol '{selectedRole.Name}' en este proyecto.");
+                return;
+            }
+        }
+
+
+        if (_selectedRoleIdForProject is null || _selectedRoleIdForProject <= 0)
+        {
+            Toast.ShowWarning("Seleccione un rol para el miembro.");
+            return;
+        }
+
+        var selected = _memberCandidates.FirstOrDefault(u => u.UserId == userId);
+        if (selected is null)
+        {
+            Toast.ShowError("No se encontró el usuario seleccionado.");
+            _showUserPicker = false;
+            return;
+        }
+
+        var req = new AddGroupMemberRequestDTO
+        {
+            GroupId = _project.ProjectGroupId,
+            MemberRole = _selectedRoleIdForProject.Value,
+            Email = selected.Email,
+            Document = selected.Document,
+            AspUserId = selected.AspNetUserId
+        };
+
+        var res = await GroupService.AddMemberAsync(req);
+        if (!res.Success)
+        {
+            Toast.ShowError(res.Error ?? "No se pudo agregar el miembro.");
+            return;
+        }
+
+        Toast.ShowSuccess("Miembro agregado.");
+        _showUserPicker = false;
+
+        await EnsureTabDataAsync("members");
+        StateHasChanged();
+    }
+
+    private async Task EnsureMemberRolesAsync()
+    {
+        // Si ya están cargados, no vuelvas a pedirlos
+        if (_memberRoles is not null && _memberRoles.Any())
+            return;
 
         try
         {
-            var req = new AddGroupMemberRequestDTO
-            {
-                ExternalUserId = userId,
-                GroupId = _project.ProjectGroupId
-            };
+            var res = await MemberRoleTypeService.GetListAsync(onlyActives: true);
 
-            var res = await GroupService.AddMemberAsync(req);
-            if (!res.Success)
+            if (!res.Success || res.Response is null)
             {
-                Toast.ShowError(res.Error ?? "No se pudo agregar el miembro.");
+                Toast.ShowError(res.Error ?? "No se pudieron cargar los roles.");
+                _memberRoles = Array.Empty<MemberRoleTypeDetailDTO>();
                 return;
             }
 
-            Toast.ShowSuccess("Miembro agregado.");
-            _showUserPicker = false;
+            var allRoles = res.Response; // List<MemberRoleTypeListItemDTO>
 
-            await EnsureTabDataAsync("members");
-            StateHasChanged();
+            _memberRoles = allRoles
+                .Where(r => r.Flag == 1) // tu filtro de grupo/proyecto
+                .Select(r => new MemberRoleTypeDetailDTO
+                {
+                    Id = r.Id,
+                    Name = r.Name,
+                    IsActive = r.IsActive,
+                    Flag = r.Flag
+                })
+                .ToList();
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Error al agregar miembro: {ex.Message}");
+            Toast.ShowError($"No se pudieron cargar los roles: {ex.Message}");
+            _memberRoles = Array.Empty<MemberRoleTypeDetailDTO>();
         }
+    }
+
+    private static bool IsCoordinatorRole(string roleName)
+    {
+        if (string.IsNullOrWhiteSpace(roleName))
+            return false;
+
+        var name = roleName.Trim();
+
+        return name.Contains("coordinador", StringComparison.OrdinalIgnoreCase)
+            && (name.Contains("principal", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("subrogante", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task<bool> GroupAlreadyHasRoleAsync(int roleId)
+    {
+        if (_project?.ProjectGroupId is null or 0)
+            return false;
+
+        var res = await GroupService.GetMembersByGroupIdAsync(_project.ProjectGroupId);
+
+        if (!res.Success || res.Response is null)
+            return false;
+
+        return res.Response.Any(m => m.MemberRoleId == roleId);
+    }
+    private bool ProjectAlreadyHasRole(int roleId)
+    {
+        if (_members is null || _members.Count == 0)
+            return false;
+        return _members.Any(m => m.MemberRoleId == roleId);
     }
 }

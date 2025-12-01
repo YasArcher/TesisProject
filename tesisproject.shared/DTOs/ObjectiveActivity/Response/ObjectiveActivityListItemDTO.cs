@@ -20,7 +20,7 @@ namespace tesisproject.shared.DTOs.ObjectiveActivity.Response
         public string ActivityResult { get; set; } = string.Empty;
 
         [StringLength(1000)]
-        public string ImprovementAction { get; set; } = string.Empty;
+        public string ActionText { get; set; } = string.Empty;
 
         public bool IsCompleted { get; set; }
 

@@ -35,6 +35,8 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public ICatalogRepository<ResearchCategoryType> ResearchCategoryTypes { get; }
         public ICatalogRepository<FundingType> FundingTypes { get; }
         public ICatalogRepository<ResearchCategoryGroup> ResearchCategoryGroups { get; set; }
+        public IAppUserRepository AppUsers { get; }
+
 
         public UnitOfWork(
             AppDbContext ctx,
@@ -64,7 +66,8 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             IResearchCategoryRepository researchCategories,
             ICatalogRepository<ResearchCategoryType> researchCategoryTypes,
             ICatalogRepository<FundingType> fundingTypes,
-            ICatalogRepository<ResearchCategoryGroup> researchCategoryGroups)
+            ICatalogRepository<ResearchCategoryGroup> researchCategoryGroups,
+            IAppUserRepository appUsers)
         {
             _ctx = ctx;
             Projects = projectRepository;
@@ -94,6 +97,7 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             ResearchCategoryTypes = researchCategoryTypes;
             FundingTypes = fundingTypes;
             ResearchCategoryGroups = researchCategoryGroups;
+            AppUsers = appUsers;
         }
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)

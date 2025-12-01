@@ -19,7 +19,7 @@ namespace tesisproject.shared.DTOs.ObjectiveActivity.Request
         public string? ActivityResult { get; set; }
 
         [StringLength(1000)]
-        public string? ImprovementAction { get; set; }
+        public string? ActionText { get; set; }
 
         /// <summary>
         /// Optional initial completion state (defaults to false in entity).

@@ -1,5 +1,4 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Memory;
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Filters;
@@ -11,18 +10,18 @@ namespace tesisproject.backend.Services.Implementations
     public sealed class ProjectsFiltersService : IProjectsFiltersService
     {
         private readonly ICatalogQueryService _catalogs;
-        private readonly IMemoryCache _cache;
         private readonly IExternalAcademicsService _extTypes;
+        private readonly ICatalogRepository<ResearchCategoryType> _researchTypes;
 
         public ProjectsFiltersService(
             ICatalogQueryService catalogs,
             ICatalogRepository<ProjectExtensionType> extTypes,
-            IMemoryCache cache,
-            IExternalAcademicsService externalAcademicsService)
+            IExternalAcademicsService externalAcademicsService,
+            ICatalogRepository<ResearchCategoryType> researchTypes)
         {
             _catalogs = catalogs;
-            _cache = cache;
             _extTypes = externalAcademicsService;
+            _researchTypes = researchTypes;
         }
 
         public async Task<ServiceResult<ProjectsFilterBootstrapDTO>> GetBootstrapAsync(
@@ -32,81 +31,82 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var dto = new ProjectsFilterBootstrapDTO();
 
-                // states
-                dto.ProjectStates = await _cache.GetOrCreateAsync(
-                    "filters:projects:states",
-                    async entry =>
-                    {
-                        entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(20);
+                // =======================
+                // ProjectStates
+                // =======================
+                var statesRes = await _catalogs.GetKeyValuesAsync<ProjectState>(ct: ct);
+                dto.ProjectStates = statesRes.Success && statesRes.Data is not null
+                    ? statesRes.Data
+                    : new List<KeyValueItemDTO>();
 
-                        var res = await _catalogs.GetKeyValuesAsync<ProjectState>(ct: ct);
-                        return res.Success && res.Data is not null
-                            ? res.Data
-                            : new List<KeyValueItemDTO>();
-                    }
-                ) ?? new List<KeyValueItemDTO>();
+                // =======================
+                // ProjectTypes
+                // =======================
+                var typesRes = await _catalogs.GetKeyValuesAsync<ProjectType>(ct: ct);
+                dto.ProjectTypes = typesRes.Success && typesRes.Data is not null
+                    ? typesRes.Data
+                    : new List<KeyValueItemDTO>();
 
-                // types
-                dto.ProjectTypes = await _cache.GetOrCreateAsync(
-                    "filters:projects:types",
-                    async entry =>
-                    {
-                        entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(20);
+                // =======================
+                // Faculties (API externa)
+                // =======================
+                var facRes = await _extTypes.GetFacultiesKeyValuesAsync(ct);
+                dto.Faculties = facRes.Success && facRes.Data is not null
+                    ? facRes.Data
+                    : new List<KeyValueItemDTO>();
 
-                        var res = await _catalogs.GetKeyValuesAsync<ProjectType>(ct: ct);
-                        return res.Success && res.Data is not null
-                            ? res.Data
-                            : new List<KeyValueItemDTO>();
-                    }
-                ) ?? new List<KeyValueItemDTO>();
-                // dentro de GetBootstrapAsync
-                dto.Faculties = await _cache.GetOrCreateAsync(
-                    "filters:projects:faculties",
-                    async entry =>
-                    {
-                        entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(20);
-                        var res = await _extTypes.GetFacultiesKeyValuesAsync(ct);
-                        return res.Success && res.Data is not null ? res.Data : new List<KeyValueItemDTO>();
-                    }
-                ) ?? new List<KeyValueItemDTO>();
+                // =======================
+                // Funding
+                // =======================
+                var fundingRes = await _catalogs.GetKeyValuesAsync<FundingType>(ct: ct);
+                dto.Funding = fundingRes.Success && fundingRes.Data is not null
+                    ? fundingRes.Data
+                    : new List<KeyValueItemDTO>();
 
-                dto.Funding = await _cache.GetOrCreateAsync(
-                    "filters:projects:funding",
-                    async entry =>
-                    {
-                        entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(20);
+                // =======================
+                // ResearchCategoryTypes dinámicos
+                // =======================
+                var typesQuery = _researchTypes.Query()
+                    .Where(t => t.IsActive && t.IsFilterEnabled)
+                    .Include(t => t.ResearchCategoryGroup)   // 👈 para traer el nombre del grupo
+                    .Include(t => t.ResearchCategories);
 
-                        var res = await _catalogs.GetKeyValuesAsync<FundingType>(ct: ct);
-                        return res.Success && res.Data is not null
-                            ? res.Data
-                            : new List<KeyValueItemDTO>();
-                    }
-                ) ?? new List<KeyValueItemDTO>();
+                var types = await typesQuery.ToListAsync(ct);
 
+                if (types is null || types.Count == 0)
+                {
+                    dto.ResearchCategoryTypes = new List<ResearchCategoryFilterTypeDTO>();
+                }
+                else
+                {
+                    dto.ResearchCategoryTypes = types
+                        // solo tipos que tengan al menos una categoría activa
+                        .Where(t => t.ResearchCategories.Any(c => c.IsActive))
+                        .OrderBy(t => t.ResearchCategoryGroupId)
+                        .ThenBy(t => t.Id)
+                        .Select(t => new ResearchCategoryFilterTypeDTO
+                        {
+                            Id = t.Id,
+                            Name = t.Name,
 
+                            // 👇 nuevos campos para agrupar en el front
+                            ResearchCategoryGroupId = t.ResearchCategoryGroupId,
+                            ResearchCategoryGroupName = t.ResearchCategoryGroup.Name,
 
-                // extensionTypes (si lo necesitas, activa este bloque)
-                /*
-                dto.ExtensionTypes = await _cache.GetOrCreateAsync(
-                    "filters:projects:extTypes",
-                    async entry =>
-                    {
-                        entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(20);
-
-                        var list = await _extTypes.Query()
-                            .OrderBy(x => x.Name)
-                            .Select(x => new ProjectExtensionTypeItemDTO
-                            {
-                                Id = x.Id,
-                                Name = x.Name,
-                                IsBudgetExecutable = x.IsBudgetExecutable
-                            })
-                            .ToListAsync(ct);
-
-                        return list ?? new List<ProjectExtensionTypeItemDTO>();
-                    }
-                ) ?? new List<ProjectExtensionTypeItemDTO>();
-                */
+                            Categories = t.ResearchCategories
+                                .Where(c => c.IsActive)
+                                .OrderBy(c => c.Name)
+                                .Select(c => new ResearchCategoryItemDTO
+                                {
+                                    Id = c.Id,
+                                    Name = c.Name,
+                                    ParentCategoryId = c.ParentCategoryId,
+                                    ResearchCategoryTypeId = c.ResearchCategoryTypeId
+                                })
+                                .ToList()
+                        })
+                        .ToList();
+                }
 
                 return ServiceResult<ProjectsFilterBootstrapDTO>
                     .Ok(dto, "Projects filters bootstrap generated.");

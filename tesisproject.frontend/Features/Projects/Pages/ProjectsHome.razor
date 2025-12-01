@@ -136,23 +136,23 @@
                     });
                 }
 
-                // Tipo de Proyecto
                 if (bootstrap.Funding?.Any() == true)
                 {
                     _filterConfig.Items.Add(new()
                     {
-                        Key = "type",
-                        Label = "Tipo",
+                        Key = "funding",                      // 👈 que NO sea "type", para no chocar con ProjectType
+                        Label = "Tipo de financiamiento",
                         Type = "select",
-                        EntityField = "FundingTypeId",
+                        EntityField = "FundingTypeId",        // 👈 esto es lo que llega como filter.Field
                         Placeholder = "Todos los financiamientos",
-                        Options = bootstrap.Funding.Select(type => new OptionItem
+                        Options = bootstrap.Funding.Select(f => new OptionItem
                         {
-                            Value = type.Name ?? string.Empty,
-                            Label = type.Name ?? string.Empty
+                            Value = f.Id.ToString(),          // 👈 ID en string
+                            Label = f.Name ?? string.Empty
                         }).ToList()
                     });
                 }
+
                 // Facultad (desde API externa, mapeada en bootstrap.Faculties)
                 if (bootstrap.Faculties?.Any() == true)
                 {
@@ -183,6 +183,37 @@
                         Options = new List<OptionItem>()           // se cargará dinámicamente
                     });
                     */
+                }
+
+                if (bootstrap.ResearchCategoryTypes?.Any() == true)
+                {
+                    var grouped = bootstrap.ResearchCategoryTypes
+                        .GroupBy(t => new { t.ResearchCategoryGroupId, t.ResearchCategoryGroupName });
+
+                    foreach (var group in grouped)
+                    {
+                        var groupLabel = group.Key.ResearchCategoryGroupName;
+
+                        foreach (var type in group.OrderBy(t => t.Id))
+                        {
+                            _filterConfig.Items.Add(new()
+                            {
+                                Key = $"researchType_{type.Id}",
+                                GroupKey = group.Key.ResearchCategoryGroupId.ToString(),
+                                GroupLabel = groupLabel,    // 👈 título de la “card”: ÁREAS DE INVESTIGACIÓN
+                                Label = type.Name,          // 👈 solo “Dominio”, “Línea de investigación”, etc.
+                                Type = "select",
+                                EntityField = "ResearchCategoryId",
+                                Placeholder = $"Todas las {type.Name}",
+                                Options = type.Categories.Select(c => new OptionItem
+                                {
+                                    Value = c.Id.ToString(),
+                                    Label = c.Name,
+                                    ParentValue = c.ParentCategoryId?.ToString()
+                                }).ToList()
+                            });
+                        }
+                    }
                 }
 
                 // Siempre agregar filtros de fechas y porcentaje (no dependen del bootstrap)
@@ -328,6 +359,17 @@
         // 2) aplicar filtros confirmados con Apply
         foreach (var filter in currentFilters?.Filters ?? new())
         {
+            // Primero, manejar genéricamente las categorías
+            if (filter.Field == "ResearchCategoryId" &&
+                filter.Value is string catStr &&
+                int.TryParse(catStr, out var catId))
+            {
+                query = query.Where(p => p.ResearchCategoryIds != null &&
+                                         p.ResearchCategoryIds.Contains(catId));
+                continue;
+            }
+
+            // Resto del switch como ya lo tienes
             query = filter.Field switch
             {
                 "ProjectStateName" when filter.Value is string state =>
@@ -335,6 +377,15 @@
 
                 "ProjectTypeName" when filter.Value is string type =>
                     query.Where(p => p.ProjectTypeName == type),
+
+                "FundingTypeId" when filter.Value is string fundingIdStr
+                                  && int.TryParse(fundingIdStr, out var fundingId) =>
+                    query.Where(p => p.FundingTypeId != null &&
+                                     p.FundingTypeId.Contains(fundingId)),
+
+                "PrincipalCoordinatorFacultyId" when filter.Value is string facultyStr
+                                                   && int.TryParse(facultyStr, out var facultyId) =>
+                    query.Where(p => p.PrincipalCoordinatorFacultyId == facultyId),
 
                 "StartDate" when filter.Value is string[] dateRange && dateRange.Length == 2 =>
                     ApplyDateRangeFilter(query, p => p.StartDate, dateRange),
@@ -348,6 +399,7 @@
                 _ => query
             };
         }
+
 
         filteredProjects = query.ToList();
     }

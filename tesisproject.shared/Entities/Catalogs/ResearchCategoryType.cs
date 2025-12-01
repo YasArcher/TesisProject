@@ -11,6 +11,7 @@ namespace tesisproject.shared.Entities.Catalogs
     {
         public int ResearchCategoryGroupId { get; set; }
         public ResearchCategoryGroup ResearchCategoryGroup { get; set; } = null!;
+        public bool IsFilterEnabled { get; set; } = false;
         public ICollection<ResearchCategory> ResearchCategories { get; set; } = new List<ResearchCategory>();
     }
 }
