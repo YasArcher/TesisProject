@@ -18,7 +18,7 @@ namespace tesisproject.shared.Entities.Base
         // ================================
         //        Core Information
         // ================================
-        [Required, StringLength(100)]
+        [Required, StringLength(200)]
         public string Name { get; set; } = string.Empty; // Nombre del elemento del catálogo
 
         public bool IsActive { get; set; } = true;       // Estado activo/inactivo

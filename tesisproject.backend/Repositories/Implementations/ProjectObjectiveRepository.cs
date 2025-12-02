@@ -35,6 +35,19 @@ namespace tesisproject.backend.Repositories.Implementations
                 .ToListAsync(ct);
         }
 
+        // Implementación
+        public async Task<IReadOnlyList<ProjectObjective>> ListByProjectWithActivitiesAsync(
+            int projectId,
+            CancellationToken ct = default)
+        {
+            return await _ctx.ProjectObjectives
+                .Where(o => o.ProjectId == projectId)
+                .Include(o => o.ObjectiveType)
+                .Include(o => o.Activities)
+                    .ThenInclude(a => a.ResponsibleUsers)
+                .ToListAsync(ct);
+        }
+
         public IQueryable<ProjectObjective> QueryWithRefs(
             bool asNoTracking = true)
         {

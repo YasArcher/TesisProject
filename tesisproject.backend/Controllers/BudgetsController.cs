@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.Controllers.Extensions;
-using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.Utils;
 using tesisproject.shared.DTOs.Budgets.Request;
@@ -21,7 +20,14 @@ namespace tesisproject.backend.Controllers
         public async Task<ActionResult<ApiResponse<BudgetDTO>>> Create(
             [FromBody] CreateBudgetRequestDTO request,
             CancellationToken ct)
-            => (await _service.CreateAsync(request, ct)).ToActionResult();
+        {
+            var userId = User.GetUserId();
+            if (userId is null)
+                return Unauthorized(ApiResponse<BudgetDTO>.Fail("User not authenticated."));
+
+            return (await _service.CreateAsync(request, userId.Value, ct))
+                .ToActionResult();
+        }
 
         // GET: api/Budgets/{id}
         [HttpGet("{id:int}")]
@@ -38,7 +44,9 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/Budgets/project/{projectId}
         [HttpGet("project/{projectId:int}")]
-        public async Task<ActionResult<ApiResponse<List<BudgetDTO>>>> GetByProjectId(int projectId, CancellationToken ct = default)
+        public async Task<ActionResult<ApiResponse<List<BudgetDTO>>>> GetByProjectId(
+            int projectId,
+            CancellationToken ct = default)
         {
             var result = await _service.GetByProjectIdAsync(projectId, ct);
             return result.ToActionResult();
@@ -50,7 +58,14 @@ namespace tesisproject.backend.Controllers
             int id,
             [FromBody] UpdateBudgetRequestDTO request,
             CancellationToken ct)
-            => (await _service.UpdateAsync(id, request, ct)).ToActionResult();
+        {
+            var userId = User.GetUserId();
+            if (userId is null)
+                return Unauthorized(ApiResponse<BudgetDTO>.Fail("User not authenticated."));
+
+            return (await _service.UpdateAsync(id, request, userId.Value, ct))
+                .ToActionResult();
+        }
 
         // DELETE: api/Budgets/{id}
         [HttpDelete("{id:int}")]

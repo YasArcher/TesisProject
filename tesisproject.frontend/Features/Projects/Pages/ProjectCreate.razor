@@ -20,6 +20,7 @@
 @using tesisproject.shared.DTOs.ProjectObjective.Request
 @using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategoryGroup.Response
+@using tesisproject.shared.DTOs.Convocation.Response
 
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.ActionButton
@@ -46,6 +47,7 @@
 @inject IExternalUserService ExternalUserService
 @inject IResearchCategoryGroupClientService ResearchCategoryGroupClient
 @inject IToastService Toast
+@inject IConvocationClientService ConvocationClient
 
 <div class="w-full h-full flex flex-col bg-page-bg">
     <!-- Header Principal -->
@@ -133,7 +135,8 @@
                                                             ResearchTypeOptions="@_researchTypeOptions"
                                                             FundingTypeOptions="@_fundingTypeOptions"
                                                             Budgets="@_budgets"
-                                                            BudgetsChanged="@OnBudgetsChanged" />
+                                                            BudgetsChanged="@OnBudgetsChanged"
+                                                            ConvocationName="@_activeConvocation?.Name" />
                     </div>
 
                     <!-- STEP 3: Proyecto + miembros -->
@@ -191,7 +194,8 @@
                                                    ScheduledDateChanged="date => _scheduledDate = date"
                                                    OnPrevious="@GoPrevious"
                                                    OnSave="@HandleSaveAsync"
-                                                   CoordinatorRoleId="@_coordinatorRoleId" />
+                                                   CoordinatorRoleId="@_coordinatorRoleId"
+                                                   ConvocationName="@_activeConvocation?.Name" />
                     </div>
                 </div>
             </section>
@@ -258,6 +262,9 @@
     private int _defaultStateId = 1;
     private int _selectedProjectTypeId = 1;
     private int _fundingTypeId = 0;
+    private List<ConvocationListItemResponseDTO> _convocations = new();
+    private ConvocationListItemResponseDTO? _activeConvocation;
+
 
     // Catálogos para selects
     private List<DocumentTypeListItemDTO> _documentTypeOptions = new();
@@ -278,6 +285,8 @@
     private byte[]? _resolutionFileBytes;
 
     private DocumentResponseDTO? _projectDocument;
+    private bool IsStep5Valid => AreObjectivesAndActivitiesValid();
+
 
     private const long MaxDideFileSizeBytes = 10L * 1024 * 1024;
     private const long MaxResolutionFileSizeBytes = 10L * 1024 * 1024;
@@ -389,9 +398,10 @@
         2 => IsStep2Valid && !IsStep2Busy,
         3 => IsStep3Valid,
         4 => true,
-        5 => true,
+        5 => IsStep5Valid,
         _ => false
     };
+
 
     // ==========================
     // Ciclo de vida
@@ -449,6 +459,29 @@
                         x.Name.Contains("principal", StringComparison.OrdinalIgnoreCase));
 
                 _coordinatorRoleId = coordinator?.Id;
+
+                var convocationResult = await ConvocationClient.GetListAsync(
+    CancellationToken.None);
+
+                if (convocationResult.Success && convocationResult.Response is not null)
+                {
+                    _convocations = convocationResult.Response;
+
+                    // Tomar la última convocatoria con IsActive = true (por Id)
+                    _activeConvocation = _convocations
+                        .Where(c => c.IsActive)
+                        .OrderBy(c => c.Id)
+                        .LastOrDefault();
+
+                    if (_activeConvocation is null)
+                    {
+                        Toast.ShowWarning("No se encontró ninguna convocatoria activa.");
+                    }
+                }
+                else if (!convocationResult.Success)
+                {
+                    Toast.ShowWarning(convocationResult.Error ?? "No se pudieron cargar las convocatorias.");
+                }
             }
             else if (!memberRoleTypeResult.Success)
             {
@@ -843,6 +876,13 @@
                 return;
             }
 
+            if (_activeConvocation is null || _activeConvocation.Id <= 0)
+            {
+                Toast.ShowWarning("No se pudo determinar la convocatoria activa para el proyecto.");
+                return;
+            }
+
+
             // ===============================
             // UPLOAD DOCUMENTO
             // ===============================
@@ -923,7 +963,8 @@
                 CreatedByUserId = _currentUserId,
                 ProjectStateId = 3,
                 DurationInMonths = ResolutionData.Duration > 0 ? ResolutionData.Duration : 12,
-                FacultyId = facultyId
+                FacultyId = facultyId,
+                ConvocationId = _activeConvocation.Id
             };
 
             //Console.WriteLine($"→ ProjectDto listo: Name={projectDto.ProjectName}, Code={projectDto.ProjectCode}, Type={projectDto.ProjectTypeId}, FacultyId={projectDto.FacultyId}");
@@ -963,10 +1004,12 @@
                     {
                         ObjectiveTypeId = obj.ObjectiveType,
                         Objective = obj.ObjectiveText,
-                        Result = "Result not provided in DIDE form",
+                        Result = string.IsNullOrWhiteSpace(obj.ObjetiveResult)
+                            ? "Result not provided in DIDE form"
+                            : obj.ObjetiveResult,
+                        WeightedPercentage = obj.ObjetivePercentage,
                         Activities = MapActivities(obj)
                     };
-
                     objectivesDto.Add(objectiveDto);
                 }
             }
@@ -1073,6 +1116,62 @@
             return MapProgramToFaculty(withFaculty.FacultyCareerId);
 
         return 0;
+    }
+
+    private bool AreObjectivesAndActivitiesValid()
+    {
+        if (DideData.Objectives is null || DideData.Objectives.Count == 0)
+            return false;
+
+        foreach (var obj in DideData.Objectives)
+        {
+            // 1) Objetivo debe tener texto y resultado
+            if (string.IsNullOrWhiteSpace(obj.ObjectiveText))
+                return false;
+
+            if (string.IsNullOrWhiteSpace(obj.ObjetiveResult))
+                return false;
+
+            // 2) Validación de porcentaje:
+            //    - Objetivo general (ObjectiveType == 1): puede ir con 0, pero no negativo.
+            //    - Objetivos específicos (ObjectiveType != 1): % obligatorio > 0.
+            if (obj.ObjectiveType == 1)
+            {
+                if (obj.ObjetivePercentage < 0)
+                    return false;
+            }
+            else
+            {
+                if (obj.ObjetivePercentage <= 0)
+                    return false;
+            }
+
+            // 3) Para objetivos específicos (ObjectiveType != 1), exigir actividades
+            if (obj.ObjectiveType != 1)
+            {
+                if (obj.Activities is null || obj.Activities.Count == 0)
+                    return false;
+
+                foreach (var act in obj.Activities)
+                {
+                    if (string.IsNullOrWhiteSpace(act.ActivityText))
+                        return false;
+
+                    if (string.IsNullOrWhiteSpace(act.ActivityResult))
+                        return false;
+                }
+            }
+        }
+
+        // 4) La suma de % de objetivos específicos debe ser exactamente 100
+        var totalSpecific = DideData.Objectives
+            .Where(o => o.ObjectiveType != 1)
+            .Sum(o => o.ObjetivePercentage);
+
+        if (totalSpecific != 100)
+            return false;
+
+        return true;
     }
 
     private int MapProgramToFaculty(int facultyCareerId)

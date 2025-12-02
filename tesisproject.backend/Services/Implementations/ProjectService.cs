@@ -56,7 +56,8 @@ namespace tesisproject.backend.Services.Implementations
                         ResearchCategoryIds = p.ProjectResearchCategories
                             .Select(prc => prc.ResearchCategoryId)
                             .Distinct()
-                            .ToList()
+                            .ToList(),
+                        ConvocationId = p.ConvocationId
                     })
                     .ToListAsync(ct);
 
@@ -101,7 +102,8 @@ namespace tesisproject.backend.Services.Implementations
                         ResearchCategoryIds = p.ProjectResearchCategories
                             .Select(prc => prc.ResearchCategoryId)
                             .Distinct()
-                            .ToList()
+                            .ToList(),
+                        ConvocationId = p.ConvocationId
                     })
                     .FirstOrDefaultAsync(ct);
 
@@ -134,7 +136,8 @@ namespace tesisproject.backend.Services.Implementations
                         StartDate = p.StartDate,
                         TentativeEndDate = p.TentativeEndDate,
                         ExecutionPercentage = p.ExecutionPercentage,
-                        PrincipalCoordinatorFacultyId = p.FacultyId
+                        PrincipalCoordinatorFacultyId = p.FacultyId,
+                        ConvocationId = p.ConvocationId
                     })
                     .ToListAsync(ct);
 
@@ -179,7 +182,8 @@ namespace tesisproject.backend.Services.Implementations
                         StartDate = p.StartDate,
                         TentativeEndDate = p.TentativeEndDate,
                         ExecutionPercentage = p.ExecutionPercentage,
-                        PrincipalCoordinatorFacultyId = p.FacultyId
+                        PrincipalCoordinatorFacultyId = p.FacultyId,
+                        ConvocationId = p.ConvocationId
                     })
                     .FirstAsync(ct);
 
@@ -280,7 +284,7 @@ namespace tesisproject.backend.Services.Implementations
 
                        ProjectTypeId = p.ProjectTypeId,
                        ProjectTypeName = p.ProjectType.Name ?? string.Empty,
-
+                       ConvocationId = p.ConvocationId,
                        ProjectStateId = p.ProjectStateId,
                        ProjectStateName = p.ProjectState.Name ?? string.Empty,
 
@@ -463,7 +467,8 @@ namespace tesisproject.backend.Services.Implementations
                     RealEndDate = null,
                     ExecutionPercentage = 0,
                     FacultyId = p.FacultyId,
-                    InitialDocumentId = d?.DocumentId
+                    InitialDocumentId = d?.DocumentId,
+                    ConvocationId = p.ConvocationId
                 };
 
                 projectEntity.ProjectGroup = groupEntity;
@@ -513,7 +518,7 @@ namespace tesisproject.backend.Services.Implementations
                     {
                         PhaseLog("Fase 5 - Miembros", $"Error asegurando AppUsers: {ensureResult.Error}");
                         return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                            ensureResult.Message?? "Error ensuring app users.",
+                            ensureResult.Message ?? "Error ensuring app users.",
                             ErrorType.Unexpected);
                     }
 
@@ -615,7 +620,8 @@ namespace tesisproject.backend.Services.Implementations
                             Project = projectEntity,
                             ObjectiveTypeId = objDto.ObjectiveTypeId,
                             Objetive = objDto.Objective,
-                            Result = objDto.Result
+                            Result = objDto.Result,
+                            WeightedPercentage = objDto.WeightedPercentage,
                         };
 
                         await _uow.ProjectObjectives.AddAsync(objectiveEntity, ct);
@@ -710,7 +716,8 @@ namespace tesisproject.backend.Services.Implementations
             TentativeEndDate = dto.StartDate?.AddMonths(dto.DurationInMonths),
             ExecutionPercentage = 0,
             DurationInMonths = dto.DurationInMonths,
-            FacultyId = dto.FacultyId
+            FacultyId = dto.FacultyId,
+            ConvocationId = dto.ConvocationId
         };
 
 
@@ -805,6 +812,7 @@ namespace tesisproject.backend.Services.Implementations
             target.TentativeEndDate = dto.TentativeEndDate;
             target.RealEndDate = dto.RealEndDate;
             target.ExecutionPercentage = dto.ExecutionPercentage;
+            target.ConvocationId = dto.ConvocationId;
         }
     }
 }

@@ -24,5 +24,6 @@ namespace tesisproject.shared.DTOs.Project.Request
         public int ProjectStateId { get; set; }
         public int DurationInMonths { get; set; }
         public int FacultyId { get; set; }
+        public int ConvocationId { get; set; }
     }
 }

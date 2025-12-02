@@ -60,6 +60,16 @@
                         </span>
                     </div>
 
+                    <!-- Convocatoria (solo lectura) -->
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-medium text-foreground">Convocatoria</label>
+                        <span class="text-sm text-foreground">
+                            @(string.IsNullOrWhiteSpace(ConvocationName)
+                                                        ? "Sin convocatoria activa"
+                                                        : ConvocationName)
+                        </span>
+                    </div>
+
                     <!-- Duration (months) -->
                     <TextInput TValue="int"
                                Label="Duración (meses)"
@@ -241,6 +251,9 @@
     /// Catálogo de tipos de investigación (ProjectType → KeyValueItemDTO).
     /// </summary>
     [Parameter] public IReadOnlyList<ProjectTypeListItemDTO> ResearchTypeOptions { get; set; } = Array.Empty<ProjectTypeListItemDTO>();
+
+    [Parameter] public string? ConvocationName { get; set; }
+
 
     // ==========================
     // Estado interno

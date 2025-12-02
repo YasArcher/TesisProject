@@ -36,6 +36,8 @@ namespace tesisproject.shared.Entities.Core
         public string ProjectName { get; set; } = string.Empty;
         [Required]
         public int ProjectNumber { get; set; } = 0;
+        [Required]
+        public int ConvocationId { get; set; } = 0;
 
         // ================================
         //              Dates
@@ -79,6 +81,7 @@ namespace tesisproject.shared.Entities.Core
         public ICollection<ExternalResearcherProject> ExternalResearcherProjects { get; set; } = new List<ExternalResearcherProject>();
         public ICollection<Visit> Visits { get; set; } = new List<Visit>();
         public ICollection<Product> Products { get; set; } = new List<Product>();
+        public Convocation Convocation { get; set; } = null!;
         public ICollection<ProjectResearchCategory> ProjectResearchCategories { get; set; } = new List<ProjectResearchCategory>();
     }
 }

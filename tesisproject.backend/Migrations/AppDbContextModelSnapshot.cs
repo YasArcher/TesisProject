@@ -301,8 +301,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -330,8 +330,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -351,8 +351,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -372,8 +372,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -393,8 +393,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -417,8 +417,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("ReferenceUrl")
                         .HasColumnType("nvarchar(max)");
@@ -444,8 +444,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -474,8 +474,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -495,8 +495,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -543,8 +543,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -564,8 +564,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -585,8 +585,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -606,8 +606,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<int?>("ParentCategoryId")
                         .HasColumnType("int");
@@ -637,8 +637,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -661,8 +661,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.Property<int>("ResearchCategoryGroupId")
                         .HasColumnType("int");
@@ -687,8 +687,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -708,8 +708,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -729,8 +729,8 @@ namespace tesisproject.backend.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -1376,6 +1376,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<DateTime>("ApprovalDate")
                         .HasColumnType("date");
 
+                    b.Property<int>("ConvocationId")
+                        .HasColumnType("int");
+
                     b.Property<int>("CreatedByUserId")
                         .HasColumnType("int");
 
@@ -1422,6 +1425,8 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("date");
 
                     b.HasKey("ProjectId");
+
+                    b.HasIndex("ConvocationId");
 
                     b.HasIndex("CreatedByUserId");
 
@@ -1493,6 +1498,9 @@ namespace tesisproject.backend.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("WeightedPercentage")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -1651,16 +1659,7 @@ namespace tesisproject.backend.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
 
-                    b.Property<DateTime?>("DueDate")
-                        .HasColumnType("datetime2");
-
                     b.Property<int?>("ReportedByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("ResolvedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Status")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAtUtc")
@@ -2086,6 +2085,12 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Project", b =>
                 {
+                    b.HasOne("tesisproject.shared.Entities.Core.Convocation", "Convocation")
+                        .WithMany("Projects")
+                        .HasForeignKey("ConvocationId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
@@ -2114,6 +2119,8 @@ namespace tesisproject.backend.Migrations
                         .HasForeignKey("ProjectTypeId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.Navigation("Convocation");
 
                     b.Navigation("InitialDocument");
 
@@ -2317,6 +2324,8 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Convocation", b =>
                 {
+                    b.Navigation("Projects");
+
                     b.Navigation("Rules");
                 });
 

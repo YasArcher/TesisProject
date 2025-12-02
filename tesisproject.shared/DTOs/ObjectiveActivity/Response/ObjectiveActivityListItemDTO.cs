@@ -25,10 +25,5 @@ namespace tesisproject.shared.DTOs.ObjectiveActivity.Response
         public bool IsCompleted { get; set; }
 
         public DateTime CreatedAt { get; set; }
-
-        /// <summary>
-        /// Number of assigned users (from ObjectiveActivityUser).
-        /// </summary>
-        public int ResponsibleUsersCount { get; set; }
     }
 }

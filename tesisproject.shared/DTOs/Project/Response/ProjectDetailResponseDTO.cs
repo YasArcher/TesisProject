@@ -11,10 +11,13 @@ namespace tesisproject.shared.DTOs.Project.Response
         public string ProjectCode { get; set; } = string.Empty;
         public string ProjectName { get; set; } = string.Empty;
 
+        // 🔹 Convocatoria asociada al proyecto
+        public int ConvocationId { get; set; }
+
         public ICollection<ProjectObjectiveListItemDTO>? ProjectObjectives { get; set; }
 
-        // 🔹 IDs de categorías de investigación asociadas al proyecto
-        //     (son exactamente los ResearchCategoryId de ProjectResearchCategory)
+        // IDs de categorías de investigación asociadas al proyecto
+        // (son exactamente los ResearchCategoryId de ProjectResearchCategory)
         public ICollection<int> ResearchCategoryIds { get; set; } = new List<int>();
 
         public int ProjectTypeId { get; set; }

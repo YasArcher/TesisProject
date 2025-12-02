@@ -106,6 +106,7 @@ namespace tesisproject.backend.Services.Implementations
 
         public async Task<ServiceResult<BudgetDTO>> CreateAsync(
             CreateBudgetRequestDTO request,
+            int currentUserId,
             CancellationToken ct = default)
         {
             try
@@ -123,6 +124,14 @@ namespace tesisproject.backend.Services.Implementations
                         "Project does not exist.",
                         ErrorType.NotFound);
                 }
+                var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+                if (user is null)
+                {
+                    return ServiceResult<BudgetDTO>.Fail(
+                        "User not found.",
+                        ErrorType.NotFound
+                    );
+                }
 
                 // ============================================
                 // 2) Crear Budget
@@ -130,7 +139,7 @@ namespace tesisproject.backend.Services.Implementations
                 var entity = new Budget
                 {
                     ProjectId = request.ProjectId,
-                    ApprovedByUserId = request.ApprovedByUserId,
+                    ApprovedByUserId = user.IdUser,
                     InitialAmount = request.InitialAmount,
 
                     // Nuevos valores iniciales estándar
@@ -166,7 +175,7 @@ namespace tesisproject.backend.Services.Implementations
         }
 
 
-        public async Task<ServiceResult<BudgetDTO>> UpdateAsync(int budgetId, UpdateBudgetRequestDTO request, CancellationToken ct = default)
+        public async Task<ServiceResult<BudgetDTO>> UpdateAsync(int budgetId, UpdateBudgetRequestDTO request, int currentUserId, CancellationToken ct = default)
         {
             try
             {
@@ -179,8 +188,15 @@ namespace tesisproject.backend.Services.Implementations
 
                 if (request.ExecutedAmount > request.CertifiedAmount)
                     return ServiceResult<BudgetDTO>.Fail("Executed amount cannot exceed certified amount.", ErrorType.Validation);
-
-                e.ApprovedByUserId = request.ApprovedByUserId;
+                var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+                if (user is null)
+                {
+                    return ServiceResult<BudgetDTO>.Fail(
+                        "User not found.",
+                        ErrorType.NotFound
+                    );
+                }
+                e.ApprovedByUserId = user.IdUser;
                 e.InitialAmount = request.InitialAmount;
                 e.CertifiedAmount = request.CertifiedAmount;
                 e.ExecutedAmount = request.ExecutedAmount;

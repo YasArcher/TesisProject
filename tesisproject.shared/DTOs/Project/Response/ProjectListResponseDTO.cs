@@ -1,4 +1,6 @@
-﻿namespace tesisproject.shared.DTOs.Project.Response
+﻿using System;
+
+namespace tesisproject.shared.DTOs.Project.Response
 {
     /// <summary>
     /// Represents a single item in the project list.
@@ -25,5 +27,8 @@
         public IReadOnlyList<int> ResearchCategoryIds { get; set; } = Array.Empty<int>();
 
         public IReadOnlyList<int> FundingTypeId { get; set; } = Array.Empty<int>();
+
+        // 🔹 Nueva info: convocatoria asociada al proyecto
+        public int ConvocationId { get; set; }
     }
 }
