@@ -74,6 +74,8 @@ builder.Services.AddScoped<IFundingTypeClientService, FundingTypeClientService>(
 builder.Services.AddScoped<IResearchCategoryGroupClientService, ResearchCategoryGroupClientService>();
 builder.Services.AddScoped<IVisitIssueClientService, VisitIssueClientService>();
 builder.Services.AddScoped<ITransactionTypeClientService, TransactionTypeClientService>();
+builder.Services.AddScoped<IProjectObjectiveClientService, ProjectObjectiveClientService>();
+
 
 // External
 builder.Services.AddScoped<IExternalAcademicsClientService, ExternalAcademicsClientService>();

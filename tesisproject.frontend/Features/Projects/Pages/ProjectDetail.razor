@@ -19,6 +19,9 @@
 @using tesisproject.shared.DTOs.VisitIssues.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
 @using tesisproject.shared.DTOs.Catalog.TransactionTypes.Response
+@using tesisproject.shared.DTOs.ProjectObjective.Response
+@using tesisproject.shared.DTOs.ObjectiveActivity.Response
+
 
 
 @inject IVisitClientService VisitService
@@ -36,6 +39,8 @@
 @inject IResearchCategoryTypeClientService ResearchCategoryTypeService
 @inject IResearchCategoryGroupClientService ResearchCategoryGroupService
 @inject ITransactionTypeClientService TransactionTypeService
+@inject IProjectObjectiveClientService ProjectObjectiveService
+
 
 <div class="flex flex-col h-full">
     <!-- Header -->
@@ -138,9 +143,15 @@
                         <VisitDetailPanel ProjectId="@ProjectId"
                                           VisitId="@vid"
                                           Value="@_visitDetail"
+                                          VisitIssues="@_visitIssues"
                                           IsLoading="@_loadingVisitDetail"
                                           ErrorMessage="@_visitDetailError"
+                                          ProjectObjectives="@_projectObjectives"
+                                          OnSaveObjectivesRequested="HandleSaveObjectivesAsync"
                                           OnBack="HandleCloseVisit"
+                                          OnAddIssue="HandleAddIssue"
+                                          OnEditIssue="HandleEditIssue"
+                                          OnDeleteIssue="HandleDeleteIssue"
                                           OnChangeVisitState="HandleChangeVisitStateAsync" />
                     }
                     else
@@ -242,6 +253,12 @@
     private string _activeTab = "overview";
     private bool _loadingOverview;
     private string? _error;
+
+    // ======= Objetivos del proyecto (para avance en visitas) =======
+    private IReadOnlyList<ProjectObjectiveWithActivitiesDTO> _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
+    private bool _loadingObjectives;
+    private string? _objectivesError;
+
 
     // ======= Miembros =======
     private List<ExternalUserDTO>? _members;
@@ -543,6 +560,7 @@
                         _visits = new();
                         _visitsError = res.Error ?? "No se pudieron cargar las visitas.";
                     }
+                    await EnsureProjectObjectivesAsync();
                 }
                 catch (Exception ex)
                 {
@@ -618,6 +636,39 @@
                     _loadingBudget = false;
                 }
                 break;
+        }
+    }
+
+    private async Task EnsureProjectObjectivesAsync()
+    {
+        if (_projectObjectives is { Count: > 0 })
+            return;
+
+        try
+        {
+            _loadingObjectives = true;
+            _objectivesError = null;
+
+            var res = await ProjectObjectiveService.GetByProjectWithActivitiesAsync(ProjectId);
+
+            if (res.Success && res.Response is not null)
+            {
+                _projectObjectives = res.Response;
+            }
+            else
+            {
+                _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
+                _objectivesError = res.Error ?? "No se pudieron cargar los objetivos del proyecto.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
+            _objectivesError = $"Error al cargar objetivos: {ex.Message}";
+        }
+        finally
+        {
+            _loadingObjectives = false;
         }
     }
 
@@ -904,6 +955,8 @@
         _loadingVisitDetail = true;
         _visitDetailError = null;
 
+        await EnsureProjectObjectivesAsync();
+
         try
         {
             // <<<< MODIFICAR: Cargar detalle de la visita Y sus issues
@@ -924,7 +977,6 @@
                 _visitIssues = issuesRes.Response?.ToList() ?? new();
             else
                 _visitIssues = new();
-            await Task.Delay(500); // Simular carga
         }
         catch (Exception ex)
         {
@@ -941,16 +993,33 @@
     }
 
     // >>> SWAP: cerrar detalle y volver a la lista
-    private Task HandleCloseVisit()
+    private async Task HandleCloseVisit()
     {
         _openVisitId = null;
         _visitDetail = null;
         _visitDetailError = null;
         _visitIssues = null;
-        // (opcional) refrescar lista si quieres
-         _ = EnsureTabDataAsync("visits");
-        return Task.CompletedTask;
+        await EnsureTabDataAsync("visits");
+        StateHasChanged();
     }
+
+    private async Task HandleSaveObjectivesAsync(IEnumerable<ObjectiveActivityListItemDTO> activities)
+    {
+        // Aquí llegarán TODAS las actividades (de todos los objetivos) con su estado actual.
+        var list = activities.ToList();
+
+        // TODO: cuando tengas el endpoint de backend, llamarlo aquí.
+        // Ejemplo (inventado, solo para referencia):
+        // var res = await ProjectObjectiveService.UpdateActivitiesProgressAsync(ProjectId, list, ct);
+        // if (!res.Success) { Toast.ShowError(res.Error ?? "No se pudo guardar el avance."); return; }
+
+        // De momento solo mostramos algo para comprobar que el flujo está bien conectado.
+        Toast.ShowInfo($"Avance de objetivos recibido: {list.Count} actividades (pendiente implementar guardado en backend).");
+
+        await Task.CompletedTask;
+    }
+
+
     // <<<< AGREGAR: Handlers para VisitIssues
 
     /// <summary>Abrir modal para agregar nuevo issue</summary>
@@ -974,11 +1043,6 @@
         _issueInitialValues = new VisitIssueFormModal.VisitIssueFormModel
         {
             Description = data.issue.Description,
-            ActionPlan = null, // El DTO de respuesta no tiene ActionPlan, se rellena al editar
-            Status = data.issue.Status,
-            DueDate = data.issue.DueDate,
-            ResolvedDate = data.issue.ResolvedDate,
-            ReportedByUserId = data.issue.ReportedByUserId
         };
         _issueError = null;
         _savingIssue = false;
@@ -1031,12 +1095,7 @@
                 // ACTUALIZAR
                 var updateDto = new VisitIssueUpdateRequestDTO
                 {
-                    Description = form.Description,
-                    ActionPlan = form.ActionPlan,
-                    Status = form.Status,
-                    DueDate = form.DueDate,
-                    ResolvedDate = form.ResolvedDate,
-                    ReportedByUserId = form.ReportedByUserId
+                    Description = form.Description
                 };
 
                  var res = await VisitIssueService.UpdateAsync(_editingIssueId.Value, updateDto);
@@ -1056,9 +1115,6 @@
                 {
                     VisitId = _openVisitId.Value,
                     Description = form.Description,
-                    Status = form.Status,
-                    DueDate = form.DueDate,
-                    ReportedByUserId = form.ReportedByUserId
                 };
 
                  var res = await VisitIssueService.CreateAsync(createDto);

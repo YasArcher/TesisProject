@@ -63,6 +63,13 @@
                     }
                 </div>
 
+                <!-- Convocation -->
+                <div>
+                    <span class="text-xs font-medium text-muted block">Convocation</span>
+                    <span class="text-foreground">@DisplayOrDash(ConvocationName)</span>
+                </div>
+
+
                 <!-- Header date -->
                 <div>
                     <span class="text-xs font-medium text-muted block">Header date</span>
@@ -382,6 +389,7 @@
     [Parameter] public IReadOnlyList<MemberRoleTypeListItemDTO> MemberRoleTypeOptions { get; set; } = Array.Empty<MemberRoleTypeListItemDTO>();
     [Parameter] public IReadOnlyList<ObjectiveTypeListItemDTO> ObjectiveTypeOptions { get; set; } = Array.Empty<ObjectiveTypeListItemDTO>();
     [Parameter] public IReadOnlyList<ExternalFacultyDTO> Faculties { get; set; } = Array.Empty<ExternalFacultyDTO>();
+    [Parameter] public string? ConvocationName { get; set; }
 
 
     [Parameter] public IReadOnlyList<FundingTypeListItemDTO> FundingTypeOptions { get; set; } = Array.Empty<FundingTypeListItemDTO>();

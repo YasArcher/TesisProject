@@ -1,0 +1,372 @@
+﻿@using tesisproject.shared.DTOs.ProjectObjective.Response
+@using tesisproject.shared.DTOs.ObjectiveActivity.Response
+@using tesisproject.frontend.SharedUI.Card
+@using tesisproject.frontend.SharedUI.StatCard
+@using tesisproject.frontend.SharedUI.Table
+@using tesisproject.frontend.SharedUI.ActionButton
+
+<div class="space-y-6">
+    <!-- RESUMEN GLOBAL - Cards de estadísticas -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <StatCard Title="Project completion"
+                  Variant="StatCardVariant.Soft"
+                  Emphasis="StatCardEmphasis.Strong"
+                  Size="StatCardSize.Md">
+            <ChildContent>
+                <span class="text-3xl font-bold">@GlobalCompletionDisplay</span>
+            </ChildContent>
+            <Footer>
+                <span class="text-xs text-muted">
+                    Based on weighted specific objectives and their activities
+                </span>
+            </Footer>
+        </StatCard>
+
+        <StatCard Title="Specific objectives"
+                  Variant="StatCardVariant.Outlined"
+                  Size="StatCardSize.Md">
+            <ChildContent>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-bold">@SpecificObjectives.Count()</span>
+                    <span class="text-sm text-muted">objectives</span>
+                </div>
+            </ChildContent>
+            <Footer>
+                <span class="text-xs text-muted">
+                    Total weight: @SpecificTotalWeight%
+                </span>
+            </Footer>
+        </StatCard>
+
+        <StatCard Title="Activities progress"
+                  Variant="StatCardVariant.Outlined"
+                  Size="StatCardSize.Md">
+            <ChildContent>
+                <div class="flex items-baseline gap-2">
+                    <span class="text-2xl font-bold">@TotalCompletedActivities</span>
+                    <span class="text-sm text-muted">/ @TotalActivities</span>
+                </div>
+            </ChildContent>
+            <Footer>
+                <span class="text-xs text-muted">
+                    @CompletedActivitiesPercentageDisplay completed
+                </span>
+            </Footer>
+        </StatCard>
+    </div>
+
+    <!-- OBJETIVO GENERAL -->
+    @if (GeneralObjective is not null)
+    {
+        <Card Tone="CardTone.Info" Class="bg-background border-2 border-primary-light">
+            <CardHeader>
+                <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                    <div class="flex-1 space-y-2">
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-primary-subtle text-primary text-xs font-semibold uppercase tracking-wider">
+                                @GeneralObjective.ObjectiveTypeName
+                            </span>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full border-2 border-border text-xs font-semibold text-muted">
+                                Weight: @GeneralObjective.WeightedPercentage%
+                            </span>
+                        </div>
+                        <h3 class="text-base lg:text-lg font-bold text-foreground leading-snug">
+                            @GeneralObjective.Objective
+                        </h3>
+                    </div>
+
+                    <div class="flex-shrink-0 text-center lg:text-right space-y-2">
+                        <div>
+                            <span class="text-xs text-muted uppercase tracking-wide block mb-1">Overall completion</span>
+                            <span class="text-2xl lg:text-3xl font-bold text-primary">
+                                @GlobalCompletionDisplay
+                            </span>
+                        </div>
+                        <div class="w-full lg:w-32 h-2.5 rounded-full bg-muted/20 overflow-hidden">
+                            <div class="h-full bg-primary transition-all duration-500"
+                                 style="width:@GetGlobalCompletion().ToString("0.##")%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </CardHeader>
+
+            <CardBody>
+                <div class="pt-2 border-t border-border">
+                    <p class="text-sm text-muted leading-relaxed">
+                        @GeneralObjective.Result
+                    </p>
+                </div>
+            </CardBody>
+        </Card>
+    }
+
+    <!-- OBJETIVOS ESPECÍFICOS + ACTIVIDADES -->
+    <div class="space-y-5">
+        @if (!SpecificObjectives.Any())
+        {
+            <div class="text-center py-8 px-4 bg-muted/5 border border-border rounded-xl">
+                <p class="text-sm text-muted">No specific objectives found for this project.</p>
+            </div>
+        }
+        else
+        {
+            @foreach (var objective in SpecificObjectives)
+            {
+                var completion = GetObjectiveCompletion(objective);
+                var completedCount = objective.Activities?.Count(a => a.IsCompleted) ?? 0;
+                var totalCount = objective.Activities?.Count ?? 0;
+
+                <Card Class="bg-background border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
+                    <CardHeader>
+                        <div class="space-y-3">
+                            <!-- Encabezado del objetivo -->
+                            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                                <div class="flex-1 space-y-2">
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-secondary-subtle text-secondary text-xs font-semibold uppercase tracking-wider">
+                                            @objective.ObjectiveTypeName
+                                        </span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full border border-border text-xs font-medium text-muted">
+                                            Weight: <span class="ml-1 font-bold">@objective.WeightedPercentage%</span>
+                                        </span>
+                                    </div>
+
+                                    <h4 class="text-sm lg:text-base font-bold text-foreground leading-snug">
+                                        @objective.Objective
+                                    </h4>
+
+                                    <p class="text-xs lg:text-sm text-muted leading-relaxed">
+                                        @objective.Result
+                                    </p>
+                                </div>
+
+                                <div class="flex-shrink-0 text-center lg:text-right space-y-2 lg:min-w-[140px]">
+                                    <span class="text-xs text-muted uppercase tracking-wide block">
+                                        Completion
+                                    </span>
+                                    <span class="text-xl lg:text-2xl font-bold @(completion >= 100 ? "text-secondary" : "text-primary")">
+                                        @completion.ToString("0.##")%
+                                    </span>
+                                    <div class="text-xs text-muted">
+                                        @completedCount / @totalCount activities
+                                    </div>
+                                    <div class="w-full lg:w-32 h-2 rounded-full bg-muted/20 overflow-hidden">
+                                        <div class="h-full @(completion >= 100 ? "bg-secondary" : "bg-primary") transition-all duration-500"
+                                             style="width:@completion.ToString("0.##")%;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </CardHeader>
+
+                    <CardBody>
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between pt-2 border-t border-border">
+                                <h5 class="text-xs font-bold text-muted uppercase tracking-wider">
+                                    Activities (@totalCount)
+                                </h5>
+                            </div>
+
+                            <DataTable TItem="ObjectiveActivityListItemDTO"
+                                       Items="objective.Activities"
+                                       Columns="@_activityColumns"
+                                       EmptyText="No activities defined for this objective.">
+                                <RowTemplate Context="activity">
+                                    <td class="px-4 py-3.5 text-sm align-top">
+                                        <div class="font-medium text-foreground">
+                                            @activity.ActionText
+                                        </div>
+                                    </td>
+
+                                    <td class="px-4 py-3.5 text-xs lg:text-sm text-muted align-top">
+                                        <div class="leading-relaxed">
+                                            @activity.ActivityResult
+                                        </div>
+                                    </td>
+
+                                    <td class="px-4 py-3.5 text-sm text-right align-top">
+                                        <div class="inline-flex items-center gap-3">
+                                            @if (_lockedActivityIds.Contains(activity.ObjectiveActivityId))
+                                            {
+                                                <input type="checkbox"
+                                                       class="h-5 w-5 rounded border-border text-secondary cursor-not-allowed"
+                                                       checked="true"
+                                                       disabled="true" />
+
+                                                <span class="px-3 py-1 rounded-full text-xs font-bold bg-secondary-subtle text-secondary border border-secondary-light whitespace-nowrap">
+                                                    ✓ Completed
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <input type="checkbox"
+                                                       class="h-5 w-5 rounded border-border text-secondary focus:ring-primary-subtle transition-colors duration-200"
+                                                       @bind="activity.IsCompleted"
+                                                       @bind:event="onchange"
+                                                       disabled="@_isSaving" />
+
+                                                @if (activity.IsCompleted)
+                                                {
+                                                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-secondary-subtle text-secondary border border-secondary-light whitespace-nowrap">
+                                                        ✓ Completed
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted border border-muted/30 whitespace-nowrap">
+                                                        Pending
+                                                    </span>
+                                                }
+                                            }
+                                        </div>
+                                    </td>
+                                </RowTemplate>
+                            </DataTable>
+                        </div>
+                    </CardBody>
+                </Card>
+            }
+        }
+    </div>
+
+    <!-- BOTÓN GUARDAR PROGRESO -->
+    <div class="flex justify-end pt-4 border-t border-border">
+        <ActionButton Text="Save progress"
+                      Intent="ButtonIntent.Warning"
+                      Variant="ButtonVariant.Filled"
+                      Size="ButtonSize.Md"
+                      Disabled="@(_isSaving || !HasChanges)"
+                      ConfirmBeforeExecute="true"
+                      ConfirmTitle="Confirm activity completion"
+                      ConfirmMessage="Once an activity is marked as completed, it cannot be reverted from this interface. Do you want to continue?"
+                      Execute="OnSaveClicked">
+            <Icon>
+                <svg xmlns="http://www.w3.org/2000/svg"
+                     viewBox="0 0 24 24"
+                     fill="currentColor"
+                     class="w-4 h-4">
+                    <path d="M5 3a2 2 0 0 0-2 2v14.25A1.75 1.75 0 0 0 4.75 21h14.5A1.75 1.75 0 0 0 21 19.25V7.828a2 2 0 0 0-.586-1.414l-2.828-2.828A2 2 0 0 0 16.172 3H5Zm8.25 4a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 13.25 7ZM7 13.25A.75.75 0 0 1 7.75 12.5h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 7 13.25Zm.75 2.75a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5h-5.5Z" />
+                </svg>
+            </Icon>
+        </ActionButton>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public IReadOnlyList<ProjectObjectiveWithActivitiesDTO> Objectives { get; set; }
+        = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
+
+    [Parameter]
+    public EventCallback<IEnumerable<ObjectiveActivityListItemDTO>> OnSaveRequested { get; set; }
+
+    private bool _isSaving;
+    private HashSet<int> _lockedActivityIds = new();
+
+    private ProjectObjectiveWithActivitiesDTO? GeneralObjective =>
+        Objectives.FirstOrDefault(o => o.ObjectiveTypeId == 1);
+
+    private IEnumerable<ProjectObjectiveWithActivitiesDTO> SpecificObjectives =>
+        Objectives.Where(o => o.ObjectiveTypeId != 1);
+
+    private readonly IReadOnlyList<ColumnDef<ObjectiveActivityListItemDTO>> _activityColumns =
+        new[]
+        {
+            new ColumnDef<ObjectiveActivityListItemDTO>(
+                Title: "Activity",
+                ValueSelector: _ => null!,
+                Width: "35%",
+                Sortable: false),
+
+            new ColumnDef<ObjectiveActivityListItemDTO>(
+                Title: "Expected Result",
+                ValueSelector: _ => null!,
+                Width: "45%",
+                Sortable: false),
+
+            new ColumnDef<ObjectiveActivityListItemDTO>(
+                Title: "Status",
+                ValueSelector: _ => null!,
+                Width: "20%",
+                Sortable: false)
+        };
+
+    protected override void OnParametersSet()
+    {
+        _lockedActivityIds = Objectives
+            .SelectMany(o => o.Activities)
+            .Where(a => a.IsCompleted)
+            .Select(a => a.ObjectiveActivityId)
+            .ToHashSet();
+    }
+
+    private double GetObjectiveCompletion(ProjectObjectiveWithActivitiesDTO objective)
+    {
+        var total = objective.Activities?.Count ?? 0;
+        if (total == 0) return 0;
+
+        var completed = objective.Activities.Count(a => a.IsCompleted);
+        return (double)completed / total * 100.0;
+    }
+
+    private double GetGlobalCompletion()
+    {
+        var specific = SpecificObjectives.ToList();
+        if (!specific.Any()) return 0;
+
+        var total = 0.0;
+        foreach (var obj in specific)
+        {
+            var weight = obj.WeightedPercentage;
+            var completion = GetObjectiveCompletion(obj);
+            total += weight * (completion / 100.0);
+        }
+
+        return total;
+    }
+
+    private string GlobalCompletionDisplay => $"{GetGlobalCompletion():0.##}%";
+
+    private int TotalActivities =>
+        Objectives.Sum(o => o.Activities?.Count ?? 0);
+
+    private int TotalCompletedActivities =>
+        Objectives.Sum(o => o.Activities?.Count(a => a.IsCompleted) ?? 0);
+
+    private string CompletedActivitiesPercentageDisplay
+    {
+        get
+        {
+            if (TotalActivities == 0) return "0%";
+            var pct = (double)TotalCompletedActivities / TotalActivities * 100.0;
+            return $"{pct:0.##}%";
+        }
+    }
+
+    private int SpecificTotalWeight =>
+        SpecificObjectives.Sum(o => o.WeightedPercentage);
+
+    private bool HasChanges =>
+        Objectives.SelectMany(o => o.Activities)
+                  .Any(a => !_lockedActivityIds.Contains(a.ObjectiveActivityId) && a.IsCompleted);
+
+    private async Task OnSaveClicked()
+    {
+        if (!OnSaveRequested.HasDelegate)
+            return;
+
+        _isSaving = true;
+        try
+        {
+            var allActivities = Objectives
+                .SelectMany(o => o.Activities)
+                .ToList();
+
+            await OnSaveRequested.InvokeAsync(allActivities);
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+}

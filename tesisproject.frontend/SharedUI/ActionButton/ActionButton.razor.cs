@@ -86,7 +86,9 @@ namespace tesisproject.frontend.SharedUI.ActionButton
 
         // ---- Utility methods ----
         protected static bool IsDestructive(ButtonIntent intent)
-            => intent == ButtonIntent.Delete || intent == ButtonIntent.Danger;
+            => intent == ButtonIntent.Delete
+            || intent == ButtonIntent.Danger
+            || intent == ButtonIntent.Warning;
 
         protected tesisproject.frontend.SharedUI.ConfirmDialog.ConfirmIntent GetConfirmIntent()
         {

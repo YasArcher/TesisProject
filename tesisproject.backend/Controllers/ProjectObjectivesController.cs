@@ -18,11 +18,19 @@ namespace tesisproject.backend.Controllers
             => _service = service;
 
         // GET: api/projectobjectives/by-project/{projectId}
+        // 👉 Listado "ligero" (sin actividades)
         [HttpGet("by-project/{projectId:int}")]
         public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectObjectiveListItemDTO>>>> GetByProject(
             int projectId,
             CancellationToken ct = default)
             => (await _service.ListByProjectAsync(projectId, ct)).ToActionResult();
+
+        // GET: api/projectobjectives/by-project/{projectId}/with-activities
+        [HttpGet("by-project/{projectId:int}/with-activities")]
+        public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>>> GetByProjectWithActivities(
+            int projectId,
+            CancellationToken ct = default)
+            => (await _service.ListByProjectWithActivitiesAsync(projectId, ct)).ToActionResult();
 
         // GET: api/projectobjectives/{id}
         [HttpGet("{id:int}")]

@@ -19,6 +19,10 @@ namespace tesisproject.backend.Repositories.Interfaces
             int projectId,
             CancellationToken ct = default);
 
+        Task<IReadOnlyList<ProjectObjective>> ListByProjectWithActivitiesAsync(
+            int projectId,
+            CancellationToken ct = default);
+
         /// <summary>
         /// Exposes a queryable including navigations for advanced filtering in Services.
         /// </summary>

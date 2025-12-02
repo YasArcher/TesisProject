@@ -1,5 +1,6 @@
 ﻿using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.DTOs.ObjectiveActivity.Response;
 using tesisproject.shared.DTOs.ProjectObjective.Request;
 using tesisproject.shared.DTOs.ProjectObjective.Response;
 using tesisproject.shared.Entities.Core;
@@ -216,6 +217,41 @@ namespace tesisproject.backend.Services.Implementations
             await _uow.SaveChangesAsync(ct);
 
             return ServiceResult<bool>.Ok(true);
+        }
+
+        public async Task<ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>>
+        ListByProjectWithActivitiesAsync(int projectId, CancellationToken ct = default)
+        {
+            var objectives = await _uow.ProjectObjectives
+                .ListByProjectWithActivitiesAsync(projectId, ct);
+
+            // 2) Mapear a DTO
+            var dtoList = objectives
+                .Select(o => new ProjectObjectiveWithActivitiesDTO
+                {
+                    Id = o.Id,
+                    ProjectId = o.ProjectId,
+                    ObjectiveTypeId = o.ObjectiveTypeId,
+                    WeightedPercentage = o.WeightedPercentage,
+                    ObjectiveTypeName = o.ObjectiveType.Name,
+                    Objective = o.Objetive,
+                    Result = o.Result,
+                    Activities = o.Activities
+                        .Select(a => new ObjectiveActivityListItemDTO
+                        {
+                            ObjectiveActivityId = a.ObjectiveActivityId,
+                            ObjectiveId = a.ObjectiveId,
+                            ActivityResult = a.ActivityResult,
+                            ActionText = a.ActionText,
+                            IsCompleted = a.IsCompleted,
+                            CreatedAt = a.CreatedAt
+                        })
+                        .ToList()
+                })
+                .ToList();
+
+            // 3) Devolver envuelto en tu ServiceResult
+            return ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>.Ok(dtoList);
         }
     }
 }

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace tesisproject.backend.Migrations
 {
     /// <inheritdoc />
-    public partial class AddAppUserBridge : Migration
+    public partial class Convocation_in_Project : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -734,6 +734,7 @@ namespace tesisproject.backend.Migrations
                     InitialDocumentId = table.Column<int>(type: "int", nullable: true),
                     ProjectName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ProjectNumber = table.Column<int>(type: "int", nullable: false),
+                    ConvocationId = table.Column<int>(type: "int", nullable: false),
                     ApprovalDate = table.Column<DateTime>(type: "date", nullable: false),
                     StartDate = table.Column<DateTime>(type: "date", nullable: true),
                     DurationInMonths = table.Column<int>(type: "int", nullable: false),
@@ -750,6 +751,11 @@ namespace tesisproject.backend.Migrations
                         column: x => x.CreatedByUserId,
                         principalTable: "AppUsers",
                         principalColumn: "IdUser");
+                    table.ForeignKey(
+                        name: "FK_Projects_Convocations_ConvocationId",
+                        column: x => x.ConvocationId,
+                        principalTable: "Convocations",
+                        principalColumn: "Id");
                     table.ForeignKey(
                         name: "FK_Projects_Documents_InitialDocumentId",
                         column: x => x.InitialDocumentId,
@@ -880,7 +886,8 @@ namespace tesisproject.backend.Migrations
                     ProjectId = table.Column<int>(type: "int", nullable: false),
                     ObjectiveTypeId = table.Column<int>(type: "int", nullable: false),
                     Objetive = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
-                    Result = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false)
+                    Result = table.Column<string>(type: "nvarchar(500)", maxLength: 500, nullable: false),
+                    WeightedPercentage = table.Column<int>(type: "int", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -1013,11 +1020,15 @@ namespace tesisproject.backend.Migrations
                     TransactionTypeId = table.Column<int>(type: "int", nullable: false),
                     CertifiedByUserId = table.Column<int>(type: "int", nullable: false),
                     ExecutedByUserId = table.Column<int>(type: "int", nullable: true),
-                    Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    CertifiedAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    ExecutedAmount = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     CertifiedAt = table.Column<DateTime>(type: "date", nullable: false),
                     ExecutedAt = table.Column<DateTime>(type: "date", nullable: true),
                     BudgetItem = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
-                    CURNumber = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true)
+                    CURNumber = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
+                    CertificationDescription = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    ExecutionDescription = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -1116,9 +1127,6 @@ namespace tesisproject.backend.Migrations
                         .Annotation("SqlServer:Identity", "1, 1"),
                     VisitId = table.Column<int>(type: "int", nullable: false),
                     Description = table.Column<string>(type: "nvarchar(4000)", maxLength: 4000, nullable: true),
-                    Status = table.Column<int>(type: "int", nullable: false),
-                    DueDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    ResolvedDate = table.Column<DateTime>(type: "datetime2", nullable: true),
                     ReportedByUserId = table.Column<int>(type: "int", nullable: true),
                     CreatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAtUtc = table.Column<DateTime>(type: "datetime2", nullable: true)
@@ -1534,6 +1542,11 @@ namespace tesisproject.backend.Migrations
                 column: "ResearchCategoryId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Projects_ConvocationId",
+                table: "Projects",
+                column: "ConvocationId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Projects_CreatedByUserId",
                 table: "Projects",
                 column: "CreatedByUserId");
@@ -1745,9 +1758,6 @@ namespace tesisproject.backend.Migrations
                 name: "FundingTypes");
 
             migrationBuilder.DropTable(
-                name: "Convocations");
-
-            migrationBuilder.DropTable(
                 name: "Institutions");
 
             migrationBuilder.DropTable(
@@ -1779,6 +1789,9 @@ namespace tesisproject.backend.Migrations
 
             migrationBuilder.DropTable(
                 name: "ResearchCategoryGroups");
+
+            migrationBuilder.DropTable(
+                name: "Convocations");
 
             migrationBuilder.DropTable(
                 name: "Documents");

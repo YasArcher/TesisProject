@@ -32,19 +32,6 @@ namespace tesisproject.shared.Entities.Core
         [StringLength(4000)]
         public string? Description { get; set; }              // optional details
 
-        //[StringLength(4000)]
-        //public string? ActionPlan { get; set; }               // free text (one or many actions in a single field)
-
-        // ================================
-        //            Status
-        // ================================
-        [Required]
-        public IssueStatus Status { get; set; } = IssueStatus.Open; // Open/InProgress/Resolved/WontFix
-
-        // Optional basic scheduling fields (still minimal)
-        public DateTime? DueDate { get; set; }
-        public DateTime? ResolvedDate { get; set; }
-
         // ================================
         //            Audit
         // ================================

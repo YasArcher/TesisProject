@@ -37,8 +37,7 @@ namespace tesisproject.backend.Services.Implementations
                     ActivityResult = a.ActivityResult ?? string.Empty,
                     ActionText = a.ActionText ?? string.Empty,
                     IsCompleted = a.IsCompleted,
-                    CreatedAt = a.CreatedAt,
-                    ResponsibleUsersCount = a.ResponsibleUsers?.Count ?? 0
+                    CreatedAt = a.CreatedAt
                 })
                 .ToList();
 

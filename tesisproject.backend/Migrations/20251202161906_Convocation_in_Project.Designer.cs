@@ -12,8 +12,8 @@ using tesisproject.backend.Data;
 namespace tesisproject.backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20251201180154_AddDescription_amount")]
-    partial class AddDescription_amount
+    [Migration("20251202161906_Convocation_in_Project")]
+    partial class Convocation_in_Project
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1379,6 +1379,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<DateTime>("ApprovalDate")
                         .HasColumnType("date");
 
+                    b.Property<int>("ConvocationId")
+                        .HasColumnType("int");
+
                     b.Property<int>("CreatedByUserId")
                         .HasColumnType("int");
 
@@ -1425,6 +1428,8 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("date");
 
                     b.HasKey("ProjectId");
+
+                    b.HasIndex("ConvocationId");
 
                     b.HasIndex("CreatedByUserId");
 
@@ -1496,6 +1501,9 @@ namespace tesisproject.backend.Migrations
                         .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("WeightedPercentage")
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -1654,16 +1662,7 @@ namespace tesisproject.backend.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("nvarchar(4000)");
 
-                    b.Property<DateTime?>("DueDate")
-                        .HasColumnType("datetime2");
-
                     b.Property<int?>("ReportedByUserId")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("ResolvedDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("Status")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdatedAtUtc")
@@ -2089,6 +2088,12 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Project", b =>
                 {
+                    b.HasOne("tesisproject.shared.Entities.Core.Convocation", "Convocation")
+                        .WithMany("Projects")
+                        .HasForeignKey("ConvocationId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.HasOne("tesisproject.shared.Entities.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
@@ -2117,6 +2122,8 @@ namespace tesisproject.backend.Migrations
                         .HasForeignKey("ProjectTypeId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.Navigation("Convocation");
 
                     b.Navigation("InitialDocument");
 
@@ -2320,6 +2327,8 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Convocation", b =>
                 {
+                    b.Navigation("Projects");
+
                     b.Navigation("Rules");
                 });
 

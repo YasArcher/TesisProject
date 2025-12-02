@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using tesisproject.shared.Entities.Catalogs;
 
 namespace tesisproject.shared.Entities.Core
@@ -33,11 +30,17 @@ namespace tesisproject.shared.Entities.Core
         [Required, StringLength(500)]
         public string Result { get; set; } = string.Empty;    // resultado_esperado
 
+        /// <summary>
+        /// Weighted percentage of this objective within the project (0–100).
+        /// </summary>
+        [Required, Range(0, 100)]
+        public int WeightedPercentage { get; set; }  // porcentaje_ponderado
+
         // ================================
         //      Navigation Properties
         // ================================
         public Project Project { get; set; } = null!;                 // Navegación a Project
         public ObjectiveType ObjectiveType { get; set; } = null!;     // Navegación a ObjectiveType
-        public ICollection<ObjectiveActivity>? Activities { get; set; } // Navegación a ObjectiveActivitie
+        public ICollection<ObjectiveActivity> Activities { get; set; } = new List<ObjectiveActivity>(); // Navegación a ObjectiveActivity
     }
 }

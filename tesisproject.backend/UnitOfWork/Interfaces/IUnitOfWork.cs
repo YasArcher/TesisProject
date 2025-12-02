@@ -1,6 +1,7 @@
 ﻿using tesisproject.backend.Data;
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.shared.Entities.Catalogs;
+using tesisproject.shared.Entities.Core;
 
 namespace tesisproject.backend.UnitOfWork.Interfaces
 {

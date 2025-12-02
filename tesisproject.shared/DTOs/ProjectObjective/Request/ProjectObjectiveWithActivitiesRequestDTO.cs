@@ -18,7 +18,9 @@ namespace tesisproject.shared.DTOs.ProjectObjective.Request
 
         [Required, StringLength(500)]
         public string Result { get; set; } = string.Empty;
-
+        // % ponderado del objetivo (entero)
+        [Required]
+        public int WeightedPercentage { get; set; }
         // Actividades asociadas a ESTE objetivo
         public List<AddObjectiveActivityRequestDTO> Activities { get; set; } = new();
     }

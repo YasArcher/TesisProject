@@ -58,56 +58,6 @@
                                                placeholder="Describe el problema encontrado durante la visita..." />
                                 <ValidationMessage For="() => form.Description" class="text-sm text-error mt-1" />
                             </div>
-
-                            <!-- Plan de acción (solo en edición) -->
-                            @if (IsEditMode)
-                            {
-                                <div>
-                                    <label class="block text-sm font-medium text-foreground mb-1">
-                                        Plan de acción
-                                    </label>
-                                    <InputTextArea @bind-Value="form.ActionPlan"
-                                                   class="w-full rounded-lg border border-border bg-background p-3 focus:outline-none focus:ring-2 focus:ring-primary"
-                                                   rows="3"
-                                                   placeholder="Indica las acciones a tomar para resolver el problema..." />
-                                    <ValidationMessage For="() => form.ActionPlan" class="text-sm text-error mt-1" />
-                                </div>
-                            }
-
-                            <!-- Estado -->
-                            <div>
-                                <label class="block text-sm font-medium text-foreground mb-1">
-                                    Estado
-                                </label>
-                                <InputSelect @bind-Value="form.Status"
-                                             class="w-full rounded-lg border border-border bg-background p-2 focus:outline-none focus:ring-2 focus:ring-primary">
-                                    <option value="@IssueStatus.Open">Pendiente</option>
-                                    <option value="@IssueStatus.InProgress">En Progreso</option>
-                                    <option value="@IssueStatus.Resolved">Resuelto</option>
-                                </InputSelect>
-                            </div>
-
-                            <!-- Fecha de vencimiento -->
-                            <div>
-                                <label class="block text-sm font-medium text-foreground mb-1">
-                                    Fecha de vencimiento
-                                </label>
-                                <InputDate @bind-Value="form.DueDate"
-                                           class="w-full rounded-lg border border-border bg-background p-2 focus:outline-none focus:ring-2 focus:ring-primary" />
-                            </div>
-
-                            <!-- Fecha de resolución (solo si está resuelto) -->
-                            @if (IsEditMode && form.Status == IssueStatus.Resolved)
-                            {
-                                <div>
-                                    <label class="block text-sm font-medium text-foreground mb-1">
-                                        Fecha de resolución
-                                    </label>
-                                    <InputDate @bind-Value="form.ResolvedDate"
-                                               class="w-full rounded-lg border border-border bg-background p-2 focus:outline-none focus:ring-2 focus:ring-primary" />
-                                </div>
-                            }
-
                             @if (!string.IsNullOrWhiteSpace(ErrorMessage))
                             {
                                 <div class="rounded-lg bg-error/10 border border-error/20 p-3">
@@ -186,20 +136,7 @@
             {
                 form = new VisitIssueFormModel
                 {
-                    Description = InitialValues.Description,
-                    ActionPlan = InitialValues.ActionPlan,
-                    Status = InitialValues.Status,
-                    DueDate = InitialValues.DueDate,
-                    ResolvedDate = InitialValues.ResolvedDate,
-                    ReportedByUserId = InitialValues.ReportedByUserId
-                };
-            }
-            else
-            {
-                form = new VisitIssueFormModel
-                {
-                    Status = IssueStatus.Open,
-                    DueDate = DateTime.Today.AddDays(7)
+                    Description = InitialValues.Description
                 };
             }
         }
@@ -225,16 +162,5 @@
         [Required(ErrorMessage = "La descripción del problema es requerida.")]
         [StringLength(4000, ErrorMessage = "La descripción no puede exceder 4000 caracteres.")]
         public string? Description { get; set; }
-
-        [StringLength(4000, ErrorMessage = "El plan de acción no puede exceder 4000 caracteres.")]
-        public string? ActionPlan { get; set; }
-
-        public IssueStatus Status { get; set; } = IssueStatus.Open;
-
-        public DateTime? DueDate { get; set; }
-
-        public DateTime? ResolvedDate { get; set; }
-
-        public int? ReportedByUserId { get; set; }
     }
 }

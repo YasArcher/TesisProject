@@ -1,6 +1,7 @@
 ﻿using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.DTOs.Budgets.Request;
 using tesisproject.shared.DTOs.VisitIssues.Request;
 using tesisproject.shared.DTOs.VisitIssues.Response;
 using tesisproject.shared.Entities.Core;
@@ -30,6 +31,7 @@ namespace tesisproject.backend.Services.Implementations
         // =========================
         public async Task<ServiceResult<VisitIssueResponseDTO>> CreateAsync(
             VisitIssueCreateRequestDTO request,
+            int currentUserId,
             CancellationToken ct = default)
         {
             // Validar existencia de Visit
@@ -38,16 +40,20 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<VisitIssueResponseDTO>.Fail(
                     $"Visit {request.VisitId} was not found.",
                     ErrorType.NotFound);
-
+            var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+            if (user is null)
+            {
+                return ServiceResult<VisitIssueResponseDTO>.Fail(
+                    "User not found.",
+                    ErrorType.NotFound
+                );
+            }
             var entity = new VisitIssue
             {
                 VisitId = request.VisitId,
                 Description = request.Description,
-                //ActionPlan = request.ActionPlan,
-                Status = request.Status ?? IssueStatus.Open,
-                DueDate = request.DueDate,
-                ReportedByUserId = request.ReportedByUserId,
-                CreatedAtUtc = DateTime.UtcNow
+                CreatedAtUtc = DateTime.UtcNow,
+                ReportedByUserId = user.IdUser
             };
 
             await _issueRepo.AddAsync(entity, ct);
@@ -97,6 +103,7 @@ namespace tesisproject.backend.Services.Implementations
         public async Task<ServiceResult<VisitIssueResponseDTO>> UpdateAsync(
             int id,
             VisitIssueUpdateRequestDTO request,
+            int currentUserId,
             CancellationToken ct = default)
         {
             var entity = await _issueRepo.FirstOrDefaultAsync(x => x.VisitIssueId == id, ct);
@@ -104,23 +111,17 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<VisitIssueResponseDTO>.Fail(
                     $"VisitIssue {id} was not found.",
                     ErrorType.NotFound);
-
+            var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+            if (user is null)
+            {
+                return ServiceResult<VisitIssueResponseDTO>.Fail(
+                    "User not found.",
+                    ErrorType.NotFound
+                );
+            }
             // Aplicar solo campos no nulos (PATCH-like)
             if (request.Description is not null) entity.Description = request.Description;
-           // if (request.ActionPlan is not null) entity.ActionPlan = request.ActionPlan;
-            if (request.DueDate.HasValue) entity.DueDate = request.DueDate;
-            if (request.ResolvedDate.HasValue) entity.ResolvedDate = request.ResolvedDate;
-            if (request.ReportedByUserId.HasValue) entity.ReportedByUserId = request.ReportedByUserId;
-
-            if (request.Status.HasValue)
-            {
-                entity.Status = request.Status.Value;
-
-                // Si se marca como Resolved y no hay fecha, asigna ahora
-                if (entity.Status == IssueStatus.Resolved && entity.ResolvedDate is null)
-                    entity.ResolvedDate = DateTime.UtcNow;
-            }
-
+            entity.ReportedByUserId = user.IdUser;
             entity.UpdatedAtUtc = DateTime.UtcNow;
 
             _issueRepo.Update(entity);
@@ -156,10 +157,6 @@ namespace tesisproject.backend.Services.Implementations
             VisitIssueId = e.VisitIssueId,
             VisitId = e.VisitId,
             Description = e.Description,
-            //ActionPlan = e.ActionPlan,
-            Status = e.Status,
-            DueDate = e.DueDate,
-            ResolvedDate = e.ResolvedDate,
             ReportedByUserId = e.ReportedByUserId,
             CreatedAtUtc = e.CreatedAtUtc,
             UpdatedAtUtc = e.UpdatedAtUtc

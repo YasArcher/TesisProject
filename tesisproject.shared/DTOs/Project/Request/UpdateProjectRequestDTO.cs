@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using tesisproject.shared.Entities.Catalogs;
 
 namespace tesisproject.shared.DTOs.Project.Request
@@ -41,6 +38,8 @@ namespace tesisproject.shared.DTOs.Project.Request
 
         [Range(0, 100)]
         public decimal? ExecutionPercentage { get; set; }
-    }
 
+        [Required]
+        public int ConvocationId { get; set; }
+    }
 }

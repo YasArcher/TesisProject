@@ -40,5 +40,9 @@ namespace tesisproject.backend.Services.Interfaces
         Task<ServiceResult<bool>> DeleteAsync(
             int id,
             CancellationToken ct = default);
+
+        Task<ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>> ListByProjectWithActivitiesAsync(
+            int projectId,
+            CancellationToken ct = default);
     }
 }
