@@ -427,7 +427,7 @@
                     builder.AddAttribute(seq++, "class", "flex items-center gap-2");
 
                     // MIN
-                    builder.OpenComponent(seq++, typeof(TextInput));
+                    builder.OpenComponent(seq++, typeof(TextInput<string>));
                     builder.AddAttribute(seq++, "Label", (string?)null);
                     builder.AddAttribute(seq++, "Value", minStr);
                     builder.AddAttribute(seq++, "ValueChanged",
@@ -445,7 +445,7 @@
                     builder.CloseComponent();
 
                     // MAX
-                    builder.OpenComponent(seq++, typeof(TextInput));
+                    builder.OpenComponent(seq++, typeof(TextInput<string>));
                     builder.AddAttribute(seq++, "Label", (string?)null);
                     builder.AddAttribute(seq++, "Value", maxStr);
                     builder.AddAttribute(seq++, "ValueChanged",

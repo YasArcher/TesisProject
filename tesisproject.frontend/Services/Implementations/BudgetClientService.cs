@@ -11,9 +11,9 @@ namespace tesisproject.frontend.Services.Implementations
         public BudgetClientService(IApiClient api) => _api = api;
 
         // Obtiene el presupuesto de un proyecto
-        public Task<HttpResponseWrapper<BudgetDTO?>> GetBudgetAsync(int idProject, CancellationToken ct = default)
+        public Task<HttpResponseWrapper<List<BudgetDTO>?>> GetProjectBudgetsAsync(int projectId, CancellationToken ct = default)
         {
-            return _api.GetAsync<BudgetDTO>($"{_baseUrl}/project/{idProject}", ct);
+            return _api.GetAsync<List<BudgetDTO>>($"{_baseUrl}/project/{projectId}", ct);
         }
 
         // Lista de transacciones de un presupuesto
@@ -30,6 +30,19 @@ namespace tesisproject.frontend.Services.Implementations
         public Task<HttpResponseWrapper<BudgetTransactionDTO?>> ExecuteAccrualAsync(int budgetId, ExecuteDevengadoRequestDTO request, CancellationToken ct = default)
         {
             return _api.PostAsync<ExecuteDevengadoRequestDTO, BudgetTransactionDTO>($"{_baseUrl}/transactions/{budgetId}/devengar", request, ct);
+        }
+
+        public Task<HttpResponseWrapper<BudgetTransactionDTO?>> CancelTransactionAsync(
+            int transactionId,
+            CancellationToken ct = default)
+        {
+            // Enviamos un body vacío porque nuestro ApiClient siempre serializa algo.
+            var emptyBody = new { };
+
+            return _api.PutAsync<object, BudgetTransactionDTO>(
+                $"{_baseUrl}/transactions/{transactionId}/cancel",
+                emptyBody,
+                ct);
         }
     }
 }

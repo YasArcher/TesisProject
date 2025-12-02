@@ -60,12 +60,16 @@ namespace tesisproject.backend.Repositories.Implementations
             return await q.AsNoTracking().FirstOrDefaultAsync(b => b.BudgetId == budgetId, ct);
         }
 
-        public async Task<Budget?> GetByProjectIdAsync(int projectId, bool includeTransactions = false, CancellationToken ct = default)
+        public async Task<List<Budget>> GetByProjectIdAsync(int projectId, bool includeTransactions = false, CancellationToken ct = default)
         {
             var q = _set.AsQueryable();
-            if (includeTransactions) q = q.Include(b => b.Transactions);
-            return await q.AsNoTracking().FirstOrDefaultAsync(b => b.ProjectId == projectId, ct);
+
+            if (includeTransactions)
+                q = q.Include(b => b.Transactions);
+
+            return await q.AsNoTracking().Where(b => b.ProjectId == projectId).ToListAsync(ct);
         }
+
 
         public async Task<bool> ExistsForProjectAsync(int projectId, CancellationToken ct = default)
             => await _set.AnyAsync(b => b.ProjectId == projectId, ct);
@@ -75,13 +79,17 @@ namespace tesisproject.backend.Repositories.Implementations
     => await _ctx.Set<BudgetTransaction>().AddAsync(tx, ct);
 
         public async Task<BudgetTransaction?> GetTransactionByIdAsync(int txId, CancellationToken ct = default)
-            => await _ctx.Set<BudgetTransaction>().FirstOrDefaultAsync(t => t.BudgetTransactionId == txId, ct);
+            => await _ctx.Set<BudgetTransaction>()
+                         .Include(t => t.TransactionType) // 👈 necesario
+                         .FirstOrDefaultAsync(t => t.BudgetTransactionId == txId, ct);
+
 
         public async Task<int?> FindBudgetIdByTransactionAsync(int txId, CancellationToken ct = default)
             => await _ctx.Set<BudgetTransaction>()
-                        .Where(t => t.BudgetTransactionId == txId)
-                        .Select(t => (int?)t.BudgetId)
-                        .FirstOrDefaultAsync(ct);
+                         .Where(t => t.BudgetTransactionId == txId)
+                         .Select(t => (int?)t.BudgetId)
+                         .FirstOrDefaultAsync(ct);
+
 
         public async Task<List<BudgetTransaction>> GetTransactionsAsync(int budgetId, CancellationToken ct = default)
             => await _ctx.Set<BudgetTransaction>()

@@ -31,8 +31,6 @@ namespace tesisproject.frontend.Services.Implementations
         public Task<HttpResponseWrapper<AuthResponse?>> RefreshAsync(
             CancellationToken ct = default)
         {
-            // POST: api/auth/refresh
-            // No necesita body, así que mandamos un objeto vacío {}
             return _api.PostAsync<object, AuthResponse>(
                 $"{_baseUrl}/refresh",
                 new { },

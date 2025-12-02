@@ -13,6 +13,10 @@ namespace tesisproject.shared.DTOs.Budgets.Request
         public int ProjectId { get; set; }
         public int ApprovedByUserId { get; set; }
         public decimal InitialAmount { get; set; }
+
+        public int FundingTypeId { get; set; }          // ID del tipo
+        public string? FundingTypeName { get; set; }
+
         public decimal CertifiedAmount { get; set; }
         public decimal ExecutedAmount { get; set; }
         public DateTime? ApprovedAt { get; set; }

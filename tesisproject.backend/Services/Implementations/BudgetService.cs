@@ -66,21 +66,41 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-        public async Task<ServiceResult<BudgetDTO>> GetByProjectIdAsync(int projectId, CancellationToken ct = default)
+        public async Task<ServiceResult<List<BudgetDTO>>> GetByProjectIdAsync(
+            int projectId,
+            CancellationToken ct = default)
         {
             try
             {
-                var e = await _uow.Budgets.GetByProjectIdAsync(projectId, includeTransactions: false, ct);
-                if (e is null)
-                    return ServiceResult<BudgetDTO>.Fail("Budget not found for project.", ErrorType.NotFound);
+                // Opción A: usar directamente el repositorio genérico (sin el método custom)
+                var query = _uow.Budgets
+                    .Query(asNoTracking: true)
+                    .Where(b => b.ProjectId == projectId);
 
-                return ServiceResult<BudgetDTO>.Ok(MapToDTO(e), "Budget retrieved");
+                // Si tienes navegación FundingType en la entidad Budget:
+                query = query.Include(b => b.FundingType);
+
+                var list = await query.ToListAsync(ct);
+
+                if (list.Count == 0)
+                    return ServiceResult<List<BudgetDTO>>.Fail(
+                        "No budgets found for project.",
+                        ErrorType.NotFound);
+
+                var dtoList = list
+                    .Select(MapToDTO)
+                    .ToList();
+
+                return ServiceResult<List<BudgetDTO>>.Ok(dtoList, "Budgets retrieved");
             }
             catch (Exception ex)
             {
-                return ServiceResult<BudgetDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<List<BudgetDTO>>.Fail(
+                    ex.Message,
+                    ErrorType.Unexpected);
             }
         }
+
 
         // =============== WRITES ===============
 
@@ -210,11 +230,17 @@ namespace tesisproject.backend.Services.Implementations
             BudgetId = e.BudgetId,
             ProjectId = e.ProjectId,
             ApprovedByUserId = e.ApprovedByUserId,
+
+            FundingTypeId = e.FundingTypeId,
+            FundingTypeName = e.FundingType?.Name,
+
             InitialAmount = e.InitialAmount,
             CertifiedAmount = e.CertifiedAmount,
             ExecutedAmount = e.ExecutedAmount,
             ApprovedAt = e.ApprovedAt
         };
+
+
         public async Task<ServiceResult<BudgetTransactionDTO>> AddCertificationAsync(
             AddCertificationRequestDTO request,
             int currentUserId,
@@ -223,6 +249,13 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+                if (user is null)
+                {
+                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                        "User not found.",
+                        ErrorType.NotFound
+                    );
+                }
                 var budget = await _uow.Budgets.GetByIdAsync(new object[] { request.BudgetId }, ct);
                 if (budget is null)
                     return ServiceResult<BudgetTransactionDTO>.Fail("Budget not found.", ErrorType.NotFound);
@@ -244,7 +277,7 @@ namespace tesisproject.backend.Services.Implementations
                     BudgetItem = request.BudgetItem,
                     CertificationDescription = request.CertificationDescription,
                     CertifiedByUserId = user.IdUser,
-                    CertifiedAt = DateTime.UtcNow.Date
+                    CertifiedAt = (request.CertifiedAt ?? DateTime.UtcNow).Date
                 };
 
                 await _uow.Budgets.AddTransactionAsync(tx, ct);
@@ -329,7 +362,6 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 // 6) Validar que el acumulado ejecutado del presupuesto no se pase
-                //    Budget tiene InitialAmount, CertifiedAmount y ExecutedAmount
                 var newExecutedTotal = budget.ExecutedAmount + request.ExecutedAmount;
                 if (newExecutedTotal > budget.CertifiedAmount)
                 {
@@ -344,14 +376,24 @@ namespace tesisproject.backend.Services.Implementations
                 tx.CURNumber = request.CURNumber;
                 tx.ExecutionDescription = request.ExecutionDescription;
                 tx.ExecutedByUserId = user.IdUser;
-                tx.ExecutedAt = DateTime.UtcNow.Date;
+                tx.ExecutedAt = (request.ExecutedAt ?? DateTime.UtcNow).Date;
+                tx.TransactionTypeId = 2;
 
-                // 8) Actualizar el acumulado ejecutado del presupuesto
+                // 8) Actualizar agregados del presupuesto
                 budget.ExecutedAmount = newExecutedTotal;
+
+                // 👇 Aquí la parte importante con múltiples certificaciones:
+                var newCertifiedTotal = budget.CertifiedAmount - tx.CertifiedAmount;
+                if (newCertifiedTotal < 0)
+                    newCertifiedTotal = 0;
+
+                budget.CertifiedAmount = newCertifiedTotal;
+
                 _uow.Budgets.Update(budget);
 
                 // 9) Guardar cambios
                 await _uow.SaveChangesAsync(ct);
+
 
                 return ServiceResult<BudgetTransactionDTO>.Ok(
                     Map(tx),
@@ -397,6 +439,94 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<List<BudgetTransactionDTO>>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
+
+        public async Task<ServiceResult<BudgetTransactionDTO>> CancelTransactionAsync(
+            int budgetTransactionId,
+            CancellationToken ct = default)
+        {
+            try
+            {
+                // 1) Obtener la transacción
+                var tx = await _uow.Budgets.GetTransactionByIdAsync(budgetTransactionId, ct);
+
+                if (tx is null)
+                {
+                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                        "Budget transaction not found.",
+                        ErrorType.NotFound
+                    );
+                }
+
+                // 2) Validar que no sea un devengado (no se puede cancelar)
+                if (tx.TransactionTypeId == 2 || tx.ExecutedAt != null)
+                {
+                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                        "Executed transactions cannot be cancelled.",
+                        ErrorType.Validation
+                    );
+                }
+
+                // 3) Validar si ya está cancelada
+                if (tx.TransactionTypeId == 3)
+                {
+                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                        "This transaction is already cancelled.",
+                        ErrorType.Validation
+                    );
+                }
+
+                // 4) Ajustar el presupuesto:
+                //    - Solo tiene sentido para certificaciones (TransactionTypeId == 1)
+                var budget = await _uow.Budgets.GetByIdAsync(new object[] { tx.BudgetId }, ct);
+                if (budget is null)
+                {
+                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                        "Budget not found.",
+                        ErrorType.NotFound
+                    );
+                }
+
+                if (tx.TransactionTypeId == 1)
+                {
+                    // Restar del acumulado certificado el valor de ESTA transacción
+                    var newCertifiedTotal = budget.CertifiedAmount - tx.CertifiedAmount;
+
+                    // Por seguridad, evitar negativos
+                    if (newCertifiedTotal < 0)
+                        newCertifiedTotal = 0;
+
+                    budget.CertifiedAmount = newCertifiedTotal;
+                    _uow.Budgets.Update(budget);
+                }
+
+                // 5) Marcar la transacción como cancelada
+                tx.TransactionTypeId = 3;
+
+                // 6) Guardar cambios
+                await _uow.SaveChangesAsync(ct);
+
+                return ServiceResult<BudgetTransactionDTO>.Ok(
+                    Map(tx),
+                    "Transaction cancelled."
+                );
+            }
+            catch (DbUpdateException dbex)
+            {
+                return ServiceResult<BudgetTransactionDTO>.Fail(
+                    dbex.InnerException?.Message ?? dbex.Message,
+                    ErrorType.Conflict
+                );
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<BudgetTransactionDTO>.Fail(
+                    ex.Message,
+                    ErrorType.Unexpected
+                );
+            }
+        }
+
+
 
         // Mapper local
         private static BudgetTransactionDTO Map(BudgetTransaction t) => new()

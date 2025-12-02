@@ -2,6 +2,7 @@
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Net.Http.Headers;
 using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.Responses;
 
@@ -10,19 +11,26 @@ namespace tesisproject.frontend.Services.Implementations
     public sealed class ApiClient : IApiClient
     {
         private readonly HttpClient _http;
+        private readonly ITokenStore _tokenStore; // 👈 NUEVO
         private static readonly JsonSerializerOptions _jsonOptions = new()
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             PropertyNameCaseInsensitive = true
         };
 
-        public ApiClient(HttpClient http) => _http = http;
+        public ApiClient(HttpClient http, ITokenStore tokenStore) // 👈 INYECTAR
+        {
+            _http = http;
+            _tokenStore = tokenStore;
+        }
 
         // ==================== GET ====================
         public async Task<HttpResponseWrapper<T?>> GetAsync<T>(string url, CancellationToken ct = default)
         {
             try
             {
+                await AttachAuthHeaderAsync(ct); // 👈 aquí
+
                 using var resp = await _http.GetAsync(url, ct);
                 return await ParseResponseAsync<T>(resp, ct);
             }
@@ -44,6 +52,8 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
+                await AttachAuthHeaderAsync(ct); // 👈 aquí
+
                 var json = new StringContent(
                     JsonSerializer.Serialize(body, _jsonOptions),
                     Encoding.UTF8,
@@ -70,6 +80,8 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
+                await AttachAuthHeaderAsync(ct); // 👈 aquí
+
                 var json = new StringContent(
                     JsonSerializer.Serialize(body, _jsonOptions),
                     Encoding.UTF8,
@@ -96,6 +108,8 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
+                await AttachAuthHeaderAsync(ct); // 👈 aquí
+
                 var json = new StringContent(
                     JsonSerializer.Serialize(body, _jsonOptions),
                     Encoding.UTF8,
@@ -126,6 +140,8 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
+                await AttachAuthHeaderAsync(ct); // 👈 aquí
+
                 using var resp = await _http.DeleteAsync(url, ct);
                 return await ParseResponseAsync<NoContent?>(resp, ct);
             }
@@ -219,6 +235,22 @@ namespace tesisproject.frontend.Services.Implementations
                 httpResponse: resp);
         }
 
+        // 👇 Método auxiliar para adjuntar el Bearer token
+        private async Task AttachAuthHeaderAsync(CancellationToken ct)
+        {
+            // el mismo token que usa tu CustomAuthStateProvider
+            var token = await _tokenStore.GetAsync();
+
+            // limpiamos siempre antes
+            _http.DefaultRequestHeaders.Authorization = null;
+
+            if (!string.IsNullOrWhiteSpace(token))
+            {
+                _http.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", token);
+            }
+        }
+
         // ==================== POST MULTIPART ====================
         public async Task<HttpResponseWrapper<TResponse?>> PostMultipartAsync<TResponse>(
             string url,
@@ -227,6 +259,8 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
+                await AttachAuthHeaderAsync(ct); // 👈 aquí
+
                 using var resp = await _http.PostAsync(url, content, ct);
                 return await ParseResponseAsync<TResponse>(resp, ct);
             }

@@ -36,6 +36,7 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public ICatalogRepository<FundingType> FundingTypes { get; }
         public ICatalogRepository<ResearchCategoryGroup> ResearchCategoryGroups { get; set; }
         public IAppUserRepository AppUsers { get; }
+        public ICatalogRepository<TransactionType> TransactionTypes { get; }
 
 
         public UnitOfWork(
@@ -67,7 +68,8 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             ICatalogRepository<ResearchCategoryType> researchCategoryTypes,
             ICatalogRepository<FundingType> fundingTypes,
             ICatalogRepository<ResearchCategoryGroup> researchCategoryGroups,
-            IAppUserRepository appUsers)
+            IAppUserRepository appUsers,
+            ICatalogRepository<TransactionType> transactionTypes)
         {
             _ctx = ctx;
             Projects = projectRepository;
@@ -98,6 +100,7 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             FundingTypes = fundingTypes;
             ResearchCategoryGroups = researchCategoryGroups;
             AppUsers = appUsers;
+            TransactionTypes = transactionTypes;
         }
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)

@@ -67,10 +67,17 @@
 @*TextInput*@
 
 <h3 class="text-xl font-semibold mb-4">TextInput</h3>
-<TextInput Value="Mi texto fijo"
-           Label="Contraseña"
-           InputType="password"
-           Placeholder="Ingresa tu contraseña" />
+
+<TextInput TValue="decimal"
+           Label="Monto certificado *"
+           InputType="number"
+           Placeholder="Ej. 8500"
+           @bind-Value="_demoAmount" />
+
+<p class="mt-2 text-sm text-muted">
+    Valor actual: @_demoAmount
+</p>
+
 
 <h3 class="text-xl font-semibold mb-4">Modal Demo</h3>
 <div class="space-x-3">
@@ -134,6 +141,7 @@
 
 
 @code {
+    private decimal _demoAmount = 0m;
     private Task OnAnyModalClosed() => Task.CompletedTask;
 }
 
