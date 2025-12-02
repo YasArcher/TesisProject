@@ -18,5 +18,10 @@ namespace tesisproject.frontend.Services.Interfaces
 
         Task<ArticlesKpiSummaryDto?> GetArticlesKpiSummaryAsync(
             CancellationToken cancellationToken = default);
+        Task<ArticlesQuartileStatsDto> GetArticlesQuartileStatsAsync(
+            CancellationToken cancellationToken = default);
+        Task<ArticlesDashboardDto> GetArticlesDashboardAsync(
+             ArticlesDashboardFilterDto filter,
+             CancellationToken cancellationToken = default);
     }
 }

@@ -1,0 +1,58 @@
+﻿@using Microsoft.JSInterop
+
+<div id="@Id" class="w-full h-full" style="height:@Height;"></div>
+
+@code {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    [Parameter] public string Id { get; set; } = $"echart-{Guid.NewGuid()}";
+
+    /// <summary>
+    /// Altura del contenedor.
+    /// En la mayoría de casos usaremos "100%" y la tarjeta padre define la altura.
+    /// </summary>
+    [Parameter] public string Height { get; set; } = "100%";
+
+    // Nueva API (objeto)
+    [Parameter] public object? Option { get; set; }
+
+    // API antigua (JSON string) por compatibilidad
+    [Parameter] public string? OptionsJson { get; set; }
+
+    private bool _firstRenderDone = false;
+
+    private object? EffectiveOption => (object?)Option ?? OptionsJson;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _firstRenderDone = true;
+
+            if (EffectiveOption != null)
+            {
+                await JS.InvokeVoidAsync("echartsInterop.init", Id, EffectiveOption);
+            }
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_firstRenderDone && EffectiveOption != null)
+        {
+            await JS.InvokeVoidAsync("echartsInterop.init", Id, EffectiveOption);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("echartsInterop.dispose", Id);
+        }
+        catch
+        {
+            // Ignorar errores al destruir
+        }
+    }
+}

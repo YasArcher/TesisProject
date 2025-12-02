@@ -57,5 +57,35 @@ namespace tesisproject.frontend.Services.Implementations
                 "api/reports/articles/kpis/summary",
                 cancellationToken);
         }
+
+        public Task<ArticlesQuartileStatsDto?> GetArticlesQuartileStatsAsync(
+         CancellationToken cancellationToken = default)
+        {
+            // 👇 Aquí importante: misma ruta del backend
+            return _apiClient.GetAsync<ArticlesQuartileStatsDto?>(
+                "api/reports/articles/quality/quartiles",
+                cancellationToken);
+        }
+        public async Task<ArticlesDashboardDto> GetArticlesDashboardAsync(
+            ArticlesDashboardFilterDto filter,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await _apiClient.PostAsync<ArticlesDashboardFilterDto, ArticlesDashboardDto>(
+                "api/reports/articles/dashboard",
+                filter,
+                cancellationToken);
+
+            // Nunca devolvemos null al componente
+            return result ?? new ArticlesDashboardDto
+            {
+                AppliedFilter = filter,
+                ByYear = new List<ArticlesByYearDto>(),
+                ByField = new List<ArticlesByFieldDto>(),
+                ByResearchLine = new List<ArticlesByResearchLineDto>(),
+                Quartiles = new ArticlesQuartileStatsDto(),
+                AccessIndexing = new ArticlesOpenAccessIndexingStatsDto(),
+                TimeToPublication = new ArticlesTimeToPublicationStatsDto()
+            };
+        }
     }
 }

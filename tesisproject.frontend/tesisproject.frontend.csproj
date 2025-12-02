@@ -39,6 +39,7 @@
   <ItemGroup>
     <Folder Include="Features\Projects\Pages\" />
     <Folder Include="State\" />
+    <Folder Include="wwwroot\images\" />
   </ItemGroup>
 
 </Project>

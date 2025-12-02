@@ -1,120 +1,232 @@
 ﻿@page "/management/statisticalreports"
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Reports
-@inject IInsightsService Insights
-@inject IApiClient ApiClient
+
 <PageTitle>Reportes estadísticos</PageTitle>
 
-<div class="flex flex-col gap-4 h-full">
+<div class="flex flex-col gap-6 h-full bg-slate-50/80 px-3 py-4 md:px-6 md:py-6">
 
-    <!-- Título + descripción -->
+    <!-- ========================================================= -->
+    <!-- TÍTULO PRINCIPAL                                          -->
+    <!-- ========================================================= -->
     <div class="flex flex-col gap-1">
-        <h1 class="text-2xl font-semibold text-slate-800">
+        <div class="inline-flex items-center gap-2 text-[11px] font-medium text-slate-500 uppercase tracking-[0.16em]">
+            <span class="w-1 h-4 rounded-full bg-[#7A1E19]"></span>
+            Panel de reportería
+        </div>
+        <h1 class="text-2xl md:text-3xl font-semibold text-slate-900">
             Reportes estadísticos de artículos
         </h1>
-        <p class="text-sm text-slate-500">
-            Visualiza indicadores clave, distribución por año, área de conocimiento y líneas de investigación.
+        <p class="text-sm text-slate-500 max-w-3xl">
+            Explora indicadores clave, tendencias temporales y concentración de la producción científica por áreas de conocimiento y líneas de investigación.
         </p>
     </div>
 
+    <!-- ========================================================= -->
+    <!-- SECCIÓN SUPERIOR: FILTROS / BOTONES / CHECKBOXES + KPIS   -->
+    <!-- ========================================================= -->
+    <section class="bg-gradient-to-br from-white via-white to-slate-50 shadow-sm rounded-2xl border border-slate-200 px-4 py-4 md:px-6 md:py-5 relative overflow-hidden">
+        <!-- decoración sutil -->
+        <div class="pointer-events-none absolute -right-10 -top-10 w-40 h-40 bg-[#7A1E19]/5 rounded-full blur-3xl"></div>
+        <div class="pointer-events-none absolute -left-16 bottom-0 w-40 h-32 bg-amber-500/5 rounded-full blur-3xl"></div>
 
-    <!-- Sección de filtros (horizontal) -->
-    <div class="bg-white/90 shadow-sm rounded-xl border border-slate-200 px-4 py-3 flex flex-wrap items-end gap-4">
-        <div class="flex flex-col">
-            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                Año mínimo
-            </label>
-            <input type="number"
-                   class="mt-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/60 focus:border-[#7A1E19]"
-                   @bind="_filterMinYear"
-                   @bind:event="oninput" />
+        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)] gap-6 relative z-10">
+
+            <!-- --------------------------------------------- -->
+            <!-- IZQUIERDA: Panel único de filtros y acciones  -->
+            <!-- --------------------------------------------- -->
+            <div class="flex flex-col gap-4">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <h2 class="text-sm font-semibold text-slate-800 uppercase tracking-wide">
+                            Configuración del reporte
+                        </h2>
+                        <p class="mt-1 text-xs text-slate-500">
+                            Ajusta el rango de años, elige qué secciones incluir y genera el informe en PDF.
+                        </p>
+                    </div>
+                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] px-2 py-0.5 border border-emerald-100">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Datos listos para análisis
+                    </span>
+                </div>
+
+                <!-- Filtros de años -->
+                <div class="flex flex-wrap items-end gap-4">
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Año mínimo
+                        </label>
+                        <input type="number"
+                               class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19] transition-shadow"
+                               @bind="_filterMinYear"
+                               @bind:event="oninput" />
+                    </div>
+
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Año máximo
+                        </label>
+                        <input type="number"
+                               class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19] transition-shadow"
+                               @bind="_filterMaxYear"
+                               @bind:event="oninput" />
+                    </div>
+                </div>
+
+                <!-- Checkboxes de secciones del PDF -->
+                <div class="bg-slate-50/90 border border-slate-200 rounded-xl px-3 py-2 flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                    <span class="font-semibold uppercase tracking-wide text-[11px] text-slate-700">
+                        Secciones del PDF:
+                    </span>
+
+                    <label class="inline-flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
+                        <input type="checkbox" class="rounded border-slate-300 text-[#7A1E19] focus:ring-[#7A1E19]"
+                               @bind="_includeKpis" />
+                        <span>KPIs resumen</span>
+                    </label>
+
+                    <label class="inline-flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
+                        <input type="checkbox" class="rounded border-slate-300 text-[#7A1E19] focus:ring-[#7A1E19]"
+                               @bind="_includeByYear" />
+                        <span>Gráfico por año</span>
+                    </label>
+
+                    <label class="inline-flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
+                        <input type="checkbox" class="rounded border-slate-300 text-[#7A1E19] focus:ring-[#7A1E19]"
+                               @bind="_includeByField" />
+                        <span>Áreas de conocimiento</span>
+                    </label>
+
+                    <label class="inline-flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
+                        <input type="checkbox" class="rounded border-slate-300 text-[#7A1E19] focus:ring-[#7A1E19]"
+                               @bind="_includeByResearchLine" />
+                        <span>Líneas de investigación</span>
+                    </label>
+
+                    <label class="inline-flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
+                        <input type="checkbox" class="rounded border-slate-300 text-[#7A1E19] focus:ring-[#7A1E19]"
+                               @bind="_includeQuartiles" />
+                        <span>Calidad por cuartiles</span>
+                    </label>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="flex flex-wrap items-center gap-2 mt-1">
+                    <button class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
+                            @onclick="OpenPdfPreviewAsync"
+                            disabled="@(_isLoading || _isPdfGenerating)">
+                        <span class="material-icons text-sm">picture_as_pdf</span>
+                        @if (_isPdfGenerating)
+                        {
+                            <span>Generando PDF...</span>
+                        }
+                        else
+                        {
+                            <span>Exportar reporte (PDF)</span>
+                        }
+                    </button>
+
+                    <button class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
+                            @onclick="RunEtlAndReload"
+                            disabled="@_isLoading">
+                        <span class="material-icons text-sm">sync</span>
+                        Actualizar datos (ETL)
+                    </button>
+
+                    <button class="inline-flex items-center gap-2 rounded-lg bg-[#7A1E19] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#681813] hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
+                            @onclick="ApplyFilters"
+                            disabled="@_isLoading">
+                        <span class="material-icons text-sm">filter_alt</span>
+                        Aplicar filtros
+                    </button>
+                </div>
+            </div>
+
+            <!-- --------------------------------------------- -->
+            <!-- DERECHA: KPI CARDS                            -->
+            <!-- --------------------------------------------- -->
+            <div class="flex flex-col gap-3">
+                <h2 class="text-sm font-semibold text-slate-800 uppercase tracking-wide flex items-center gap-2">
+                    <span class="w-1 h-4 rounded-full bg-amber-500"></span>
+                    Indicadores globales
+                </h2>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <!-- Total artículos -->
+                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1 hover:shadow-md hover:-translate-y-0.5 transition">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total de artículos</span>
+                            <span class="inline-flex items-center justify-center rounded-full bg-slate-100 text-slate-500 p-1">
+                                <span class="material-icons text-[16px]">library_books</span>
+                            </span>
+                        </div>
+                        <span class="text-2xl font-bold text-slate-900">
+                            @_kpis?.TotalArticles ?? 0
+                        </span>
+                        <span class="text-[11px] text-slate-400">
+                            Registrados en el sistema
+                        </span>
+                    </div>
+
+                    <!-- Publicados este año -->
+                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1 hover:shadow-md hover:-translate-y-0.5 transition">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Publicados este año</span>
+                            <span class="inline-flex items-center justify-center rounded-full bg-emerald-50 text-emerald-600 p-1">
+                                <span class="material-icons text-[16px]">event</span>
+                            </span>
+                        </div>
+                        <span class="text-2xl font-bold text-slate-900">
+                            @_kpis?.PublishedThisYear ?? 0
+                        </span>
+                        <span class="text-[11px] text-slate-400">
+                            Según la fecha de publicación
+                        </span>
+                    </div>
+
+                    <!-- Q1 + Q2 -->
+                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1 hover:shadow-md hover:-translate-y-0.5 transition">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Artículos Q1 + Q2</span>
+                            <span class="inline-flex items-center justify-center rounded-full bg-indigo-50 text-indigo-600 p-1">
+                                <span class="material-icons text-[16px]">auto_graph</span>
+                            </span>
+                        </div>
+                        <span class="text-2xl font-bold text-slate-900">
+                            @_kpis?.Q1Q2Count ?? 0
+                        </span>
+                        <span class="text-[11px] text-slate-400">
+                            Según métricas del venue
+                        </span>
+                    </div>
+
+                    <!-- Open Access / Indexados Scopus -->
+                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1 hover:shadow-md hover:-translate-y-0.5 transition">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Open Access / Scopus</span>
+                            <span class="inline-flex items-center justify-center rounded-full bg-amber-50 text-amber-600 p-1">
+                                <span class="material-icons text-[16px]">public</span>
+                            </span>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-semibold text-slate-900">
+                                OA: @_kpis?.OpenAccessCount ?? 0
+                            </span>
+                            <span class="text-[11px] text-slate-500">
+                                Indexados en Scopus: @_kpis?.IndexedInScopusCount ?? 0
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
+    </section>
 
-        <div class="flex flex-col">
-            <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                Año máximo
-            </label>
-            <input type="number"
-                   class="mt-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/60 focus:border-[#7A1E19]"
-                   @bind="_filterMaxYear"
-                   @bind:event="oninput" />
-        </div>
-
-        <div class="ml-auto flex items-center gap-2">
-            <a class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
-               href="@GetExportPdfUrl()"
-               target="_blank">
-                <span class="material-icons text-sm">picture_as_pdf</span>
-                Exportar reporte (PDF)
-            </a>
-
-            <button class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 disabled:opacity-60"
-                    @onclick="RunEtlAndReload"
-                    disabled="@_isLoading">
-                <span class="material-icons text-sm">sync</span>
-                Actualizar datos (ETL)
-            </button>
-
-            <button class="inline-flex items-center gap-2 rounded-lg bg-[#7A1E19] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#681813] disabled:opacity-60"
-                    @onclick="ApplyFilters"
-                    disabled="@_isLoading">
-                <span class="material-icons text-sm">filter_alt</span>
-                Aplicar filtros
-            </button>
-        </div>
-
-    </div>
-
-    <!-- Sección de KPIs -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <!-- Total artículos -->
-        <div class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1">
-            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total de artículos</span>
-            <span class="text-2xl font-bold text-slate-800">
-                @_kpis?.TotalArticles ?? 0
-            </span>
-            <span class="text-xs text-slate-400">
-                Registrados en el sistema
-            </span>
-        </div>
-
-        <!-- Publicados este año -->
-        <div class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1">
-            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Publicados este año</span>
-            <span class="text-2xl font-bold text-slate-800">
-                @_kpis?.PublishedThisYear ?? 0
-            </span>
-            <span class="text-xs text-slate-400">
-                Según la fecha de publicación
-            </span>
-        </div>
-
-        <!-- Q1 + Q2 -->
-        <div class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1">
-            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Artículos Q1 + Q2</span>
-            <span class="text-2xl font-bold text-slate-800">
-                @_kpis?.Q1Q2Count ?? 0
-            </span>
-            <span class="text-xs text-slate-400">
-                Según métricas del venue
-            </span>
-        </div>
-
-        <!-- Open Access / Indexados -->
-        <div class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1">
-            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Open Access / Scopus</span>
-            <span class="text-sm font-semibold text-slate-800">
-                OA: @_kpis?.OpenAccessCount ?? 0
-            </span>
-            <span class="text-xs text-slate-500">
-                Indexados en Scopus: @_kpis?.IndexedInScopusCount ?? 0
-            </span>
-        </div>
-    </div>
-
-    <!-- Contenido principal: "gráficas" / tablas -->
-    <div class="flex-1 flex flex-col gap-4 overflow-y-auto pb-4">
-
+    <!-- ========================================================= -->
+    <!-- SECCIÓN INFERIOR: IZQ GRÁFICOS / DER TABLAS              -->
+    <!-- ========================================================= -->
+    <div class="flex-1 overflow-y-auto pb-4">
         @if (_isLoading)
         {
             <div class="flex items-center justify-center py-16 text-slate-500 text-sm">
@@ -129,261 +241,366 @@
         }
         else
         {
-            <!-- Artículos por año -->
-            <section class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-4">
-                <div class="flex items-center justify-between mb-3">
-                    <div>
-                        <h2 class="text-base font-semibold text-slate-800">Distribución por año</h2>
-                        <p class="text-xs text-slate-500">
-                            Artículos creados en el sistema por año (según filtros aplicados).
-                        </p>
-                    </div>
-                </div>
+            <section class="grid grid-cols-1 xl:grid-cols-2 gap-4 auto-rows-[minmax(360px,auto)]">
+                <!-- ----------------------------------------- -->
+                <!-- IZQUIERDA: SOLO GRÁFICOS                  -->
+                <!-- ----------------------------------------- -->
+                <div class="flex flex-col gap-4">
 
-                @if (_filteredByYear.Count == 0)
-                {
-                    <p class="text-xs text-slate-400">No hay datos para el rango de años seleccionado.</p>
-                }
-                else
-                {
-                    <!-- Mini gráfica de barras -->
-                    <div class="space-y-2 mb-4">
-                        @foreach (var item in _filteredByYear)
+                    <!-- Distribución por año (GRÁFICO) -->
+                    <section class="bg-white border-l-4 border-[#7A1E19]/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
+                        <div class="flex items-start justify-between mb-3">
+                            <div>
+                                <h2 class="text-base font-semibold text-slate-900">Distribución por año</h2>
+                                <p class="text-xs text-slate-500">
+                                    Artículos creados en el sistema por año (según filtros aplicados).
+                                </p>
+                            </div>
+
+                            <button type="button"
+                                    class="ml-2 text-slate-400 hover:text-slate-600 relative group">
+                                <span class="material-icons text-base">info</span>
+                                <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
+                                    Muestra la evolución anual del número de artículos registrados en el sistema dentro del rango de años seleccionado.
+                                </span>
+                            </button>
+                        </div>
+
+                        @if (_filteredByYear.Count == 0)
                         {
-                            <div class="flex items-center gap-2">
-                                <span class="w-16 text-xs text-slate-500">@item.Year</span>
-                                <div class="flex-1 bg-slate-100 rounded-full h-3 overflow-hidden">
-                                    <div class="h-3 rounded-full bg-[#7A1E19]"
-                                         style="width:@GetYearBarWidth(item)"></div>
-                                </div>
-                                <span class="w-10 text-xs text-slate-700 text-right">@item.Count</span>
+                            <p class="text-xs text-slate-400">No hay datos para el rango de años seleccionado.</p>
+                        }
+                        else
+                        {
+                            <div class="flex-1 min-h-[220px]">
+                                <EChart Id="chart-by-year"
+                                        Height="@YearChartHeight"
+                                        Option="@YearChartOption" />
                             </div>
                         }
-                    </div>
+                    </section>
 
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm">
-                            <!-- (deja aquí tu tabla tal como ya la tienes) -->
-                        </table>
-                    </div>
-                }
+                    <!-- Top áreas de conocimiento (GRÁFICO) -->
+                    <section class="bg-white border-l-4 border-amber-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
+                        <div class="flex items-start justify-between mb-3">
+                            <div>
+                                <h2 class="text-base font-semibold text-slate-900">Top áreas de conocimiento</h2>
+                                <p class="text-xs text-slate-500">
+                                    Áreas amplias con mayor cantidad de artículos.
+                                </p>
+                            </div>
 
-            </section>
+                            <button type="button"
+                                    class="ml-2 text-slate-400 hover:text-slate-600 relative group">
+                                <span class="material-icons text-base">info</span>
+                                <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
+                                    Muestra las áreas amplias de conocimiento con mayor volumen de artículos, ayudando a identificar focos de producción científica.
+                                </span>
+                            </button>
+                        </div>
 
-            <!-- Artículos por área de conocimiento -->
-            <section class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-4">
-                <div class="flex items-center justify-between mb-3">
-                    <div>
-                        <h2 class="text-base font-semibold text-slate-800">Distribución por área de conocimiento</h2>
-                        <p class="text-xs text-slate-500">
-                            Conteo de artículos por área amplia, específica y detallada.
-                        </p>
-                    </div>
+                        @if (_byField.Count == 0)
+                        {
+                            <p class="text-xs text-slate-400">No hay datos de áreas de conocimiento disponibles.</p>
+                        }
+                        else
+                        {
+                            <div class="flex-1 min-h-[220px]">
+                                <EChart Id="chart-by-field"
+                                        Height="@FieldChartHeight"
+                                        Option="@FieldChartOption" />
+                            </div>
+                        }
+                    </section>
+
+                    <!-- Líneas de investigación (GRÁFICO) -->
+                    <section class="bg-white border-l-4 border-indigo-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
+                        <div class="flex items-start justify-between mb-3">
+                            <div>
+                                <h2 class="text-base font-semibold text-slate-900">Líneas de investigación (Top)</h2>
+                                <p class="text-xs text-slate-500">
+                                    Líneas de investigación con mayor producción científica.
+                                </p>
+                            </div>
+
+                            <button type="button"
+                                    class="ml-2 text-slate-400 hover:text-slate-600 relative group">
+                                <span class="material-icons text-base">info</span>
+                                <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
+                                    Permite visualizar qué líneas de investigación concentran más artículos, útil para priorizar recursos y planificación estratégica.
+                                </span>
+                            </button>
+                        </div>
+
+                        @if (_byResearchLine.Count == 0)
+                        {
+                            <p class="text-xs text-slate-400">No hay datos de líneas de investigación disponibles.</p>
+                        }
+                        else
+                        {
+                            <div class="flex-1 min-h-[220px]">
+                                <EChart Id="chart-by-researchline"
+                                        Height="@ResearchLineChartHeight"
+                                        Option="@ResearchLineChartOption" />
+                            </div>
+                        }
+                    </section>
+
+                    <!-- Calidad por cuartiles (GRÁFICO DONA) -->
+                    <section class="bg-white border-l-4 border-emerald-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
+                        <div class="flex items-start justify-between mb-3">
+                            <div>
+                                <h2 class="text-base font-semibold text-slate-900">Calidad por cuartiles</h2>
+                                <p class="text-xs text-slate-500">
+                                    Distribución de artículos según cuartiles Q1–Q4 y sin cuartil.
+                                </p>
+                            </div>
+
+                            <button type="button"
+                                    class="ml-2 text-slate-400 hover:text-slate-600 relative group">
+                                <span class="material-icons text-base">info</span>
+                                <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
+                                    Permite visualizar la calidad de las publicaciones según el cuartil del venue (Q1–Q4) y artículos sin clasificación.
+                                </span>
+                            </button>
+                        </div>
+
+                        @if (_quartileStats == null || _quartileStats.TotalArticles <= 0)
+                        {
+                            <p class="text-xs text-slate-400">
+                                No hay datos de cuartiles disponibles.
+                            </p>
+                        }
+                        else
+                        {
+                            <div class="flex-1 min-h-[220px]">
+                                <EChart Id="chart-quartiles"
+                                        Height="@QuartileChartHeight"
+                                        Option="@QuartileChartOption" />
+                            </div>
+                        }
+                    </section>
                 </div>
 
-                @if (_byField.Count == 0)
-                {
-                    <p class="text-xs text-slate-400">No hay datos de áreas de conocimiento disponibles.</p>
-                }
-                else
-                {
-                    <div class="overflow-x-auto max-h-80">
-                        <table class="min-w-full text-sm">
-                            <thead class="border-b border-slate-200 sticky top-0 bg-white">
-                                <tr class="text-left text-xs font-semibold text-slate-500 uppercase">
-                                    <th class="py-2 pr-4">Área amplia</th>
-                                    <th class="py-2 pr-4">Área específica</th>
-                                    <th class="py-2 pr-4">Área detallada</th>
-                                    <th class="py-2 pr-4 text-right">Artículos</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in _byField)
-                                {
-                                    <tr class="border-b border-slate-100 last:border-b-0">
-                                        <td class="py-1.5 pr-4 text-slate-700">@item.BroadFieldName</td>
-                                        <td class="py-1.5 pr-4 text-slate-700">@item.SpecificFieldName</td>
-                                        <td class="py-1.5 pr-4 text-slate-700">@item.DetailedFieldName</td>
-                                        <td class="py-1.5 pr-4 text-right font-semibold text-slate-800">@item.Count</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-            </section>
+                <!-- ----------------------------------------- -->
+                <!-- DERECHA: SOLO TABLAS                     -->
+                <!-- ----------------------------------------- -->
+                <div class="flex flex-col gap-4">
 
-            <!-- Artículos por línea de investigación -->
-            <section class="bg-white/90 border border-slate-200 rounded-xl shadow-sm px-4 py-4">
-                <div class="flex items-center justify-between mb-3">
-                    <div>
-                        <h2 class="text-base font-semibold text-slate-800">Distribución por línea de investigación</h2>
-                        <p class="text-xs text-slate-500">
-                            Conteo de artículos asociados a cada línea de investigación de la DIDE.
-                        </p>
-                    </div>
+                    <!-- Tabla artículos por año -->
+                    <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h2 class="text-base font-semibold text-slate-900">Tabla: artículos por año</h2>
+                                <p class="text-xs text-slate-500">
+                                    Conteo de artículos por año de creación en el sistema.
+                                </p>
+                            </div>
+                        </div>
+
+                        @if (_filteredByYear.Count == 0)
+                        {
+                            <p class="text-xs text-slate-400">No hay datos para el rango de años seleccionado.</p>
+                        }
+                        else
+                        {
+                            <div class="max-h-48 overflow-y-auto rounded-lg border border-slate-200">
+                                <table class="min-w-full text-xs">
+                                    <thead class="border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+                                        <tr class="text-left font-semibold text-slate-500 uppercase">
+                                            <th class="py-1.5 pr-3 pl-3">Año</th>
+                                            <th class="py-1.5 pr-3 text-right">Artículos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in _filteredByYear)
+                                        {
+                                            <tr class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
+                                                <td class="py-1.5 pr-3 pl-3 text-slate-700">@item.Year</td>
+                                                <td class="py-1.5 pr-3 text-right font-semibold text-slate-800">@item.Count</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </section>
+
+                    <!-- Tabla top áreas de conocimiento -->
+                    <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h2 class="text-base font-semibold text-slate-900">Tabla: top áreas de conocimiento</h2>
+                                <p class="text-xs text-slate-500">
+                                    Áreas amplias con mayor cantidad de artículos.
+                                </p>
+                            </div>
+                        </div>
+
+                        @if (_byField.Count == 0)
+                        {
+                            <p class="text-xs text-slate-400">No hay datos de áreas de conocimiento disponibles.</p>
+                        }
+                        else
+                        {
+                            <div class="max-h-48 overflow-y-auto rounded-lg border border-slate-200">
+                                <table class="min-w-full text-xs">
+                                    <thead class="border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+                                        <tr class="text-left font-semibold text-slate-500 uppercase">
+                                            <th class="py-1.5 pr-3 pl-3">Área amplia</th>
+                                            <th class="py-1.5 pr-3 text-right">Artículos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in _topBroadFields)
+                                        {
+                                            <tr class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
+                                                <td class="py-1.5 pr-3 pl-3 text-slate-700">@item.Name</td>
+                                                <td class="py-1.5 pr-3 text-right font-semibold text-slate-800">@item.Count</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </section>
+
+                    <!-- Tabla líneas de investigación -->
+                    <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h2 class="text-base font-semibold text-slate-900">Tabla: líneas de investigación</h2>
+                                <p class="text-xs text-slate-500">
+                                    Líneas de investigación con mayor producción científica.
+                                </p>
+                            </div>
+                        </div>
+
+                        @if (_byResearchLine.Count == 0)
+                        {
+                            <p class="text-xs text-slate-400">No hay datos de líneas de investigación disponibles.</p>
+                        }
+                        else
+                        {
+                            <div class="max-h-48 overflow-y-auto rounded-lg border border-slate-200">
+                                <table class="min-w-full text-xs">
+                                    <thead class="border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+                                        <tr class="text-left font-semibold text-slate-500 uppercase">
+                                            <th class="py-1.5 pr-3 pl-3">Línea de investigación</th>
+                                            <th class="py-1.5 pr-3 text-right">Artículos</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in _topResearchLines)
+                                        {
+                                            <tr class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
+                                                <td class="py-1.5 pr-3 pl-3 text-slate-700">@item.Name</td>
+                                                <td class="py-1.5 pr-3 text-right font-semibold text-slate-800">@item.Count</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </section>
+
+                    <!-- Tabla distribución por cuartiles -->
+                    <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h2 class="text-base font-semibold text-slate-900">Tabla: distribución por cuartiles</h2>
+                                <p class="text-xs text-slate-500">
+                                    Conteo y porcentaje de artículos por cuartil (Q1–Q4) y sin clasificación.
+                                </p>
+                            </div>
+                        </div>
+
+                        @if (_quartileStats == null || _quartileStats.TotalArticles <= 0)
+                        {
+                            <p class="text-xs text-slate-400">
+                                No hay datos de cuartiles disponibles.
+                            </p>
+                        }
+                        else
+                        {
+                            <div class="flex-1 overflow-y-auto max-h-60 rounded-lg border border-slate-200">
+                                <table class="min-w-full text-xs">
+                                    <thead class="bg-slate-50 sticky top-0 z-10">
+                                        <tr class="text-left font-semibold text-slate-500 uppercase">
+                                            <th class="py-1.5 px-3 border-b border-slate-200">Cuartil</th>
+                                            <th class="py-1.5 px-3 border-b border-slate-200 text-right">Artículos</th>
+                                            <th class="py-1.5 px-3 border-b border-slate-200 text-right">% sobre total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        @foreach (var row in QuartileRows)
+                                        {
+                                            <tr class="hover:bg-slate-50/80">
+                                                <td class="py-1.5 px-3 text-slate-700">@row.Label</td>
+                                                <td class="py-1.5 px-3 text-right font-semibold text-slate-800">@row.Count</td>
+                                                <td class="py-1.5 px-3 text-right text-slate-700">
+                                                    @row.Percent.ToString("0.##")%
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </section>
                 </div>
-
-                @if (_byResearchLine.Count == 0)
-                {
-                    <p class="text-xs text-slate-400">No hay datos de líneas de investigación disponibles.</p>
-                }
-                else
-                {
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full text-sm">
-                            <thead class="border-b border-slate-200">
-                                <tr class="text-left text-xs font-semibold text-slate-500 uppercase">
-                                    <th class="py-2 pr-4">Línea de investigación</th>
-                                    <th class="py-2 pr-4 text-right">Artículos</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in _byResearchLine)
-                                {
-                                    <tr class="border-b border-slate-100 last:border-b-0">
-                                        <td class="py-1.5 pr-4 text-slate-700">@item.ResearchLineName</td>
-                                        <td class="py-1.5 pr-4 text-right font-semibold text-slate-800">@item.Count</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
             </section>
         }
     </div>
+
+    <!-- ========================================================= -->
+    <!-- MODAL DE PREVISUALIZACIÓN DE PDF                         -->
+    <!-- ========================================================= -->
+    @if (_showPdfPreview)
+    {
+        <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+            <div class="bg-white rounded-2xl shadow-xl w-[90vw] h-[90vh] max-w-5xl flex flex-col overflow-hidden">
+                <!-- Header del modal -->
+                <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-semibold text-slate-800">Previsualización de reporte PDF</span>
+                        <span class="text-[11px] text-slate-500">
+                            Vista previa de las secciones seleccionadas según los filtros actuales.
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        @if (!string.IsNullOrEmpty(_pdfPreviewDataUrl))
+                        {
+                            <a href="@_pdfPreviewDataUrl"
+                               download="Reporte_Estadistico_Articulos.pdf"
+                               class="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700">
+                                <span class="material-icons text-[14px]">download</span>
+                                Descargar
+                            </a>
+                        }
+                        <button type="button"
+                                class="inline-flex items-center justify-center rounded-full p-1.5 hover:bg-slate-100"
+                                @onclick="ClosePdfPreview">
+                            <span class="material-icons text-[18px] text-slate-500">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Contenido del modal -->
+                <div class="flex-1 bg-slate-100">
+                    @if (_isPdfGenerating || string.IsNullOrEmpty(_pdfPreviewDataUrl))
+                    {
+                        <div class="w-full h-full flex items-center justify-center text-slate-500 text-sm">
+                            Generando PDF...
+                        </div>
+                    }
+                    else
+                    {
+                        <iframe src="@_pdfPreviewDataUrl"
+                                class="w-full h-full border-0"></iframe>
+                    }
+                </div>
+            </div>
+        </div>
+    }
 </div>
-
-@code {
-    private bool _isLoading = true;
-    private string? _errorMessage;
-
-    private ArticlesKpiSummaryDto? _kpis;
-    private List<ArticlesByYearDto> _allByYear = new();
-    private List<ArticlesByYearDto> _filteredByYear = new();
-    private List<ArticlesByFieldDto> _byField = new();
-    private List<ArticlesByResearchLineDto> _byResearchLine = new();
-
-    // Filtros
-    private int? _filterMinYear;
-    private int? _filterMaxYear;
-    private int _maxYearCount;
-
-    private string GetYearBarWidth(ArticlesByYearDto item)
-    {
-        if (_maxYearCount <= 0)
-            return "0%";
-
-        var percent = (int)Math.Round(item.Count * 100.0 / _maxYearCount);
-        return $"{percent}%";
-    }
-    private string GetExportPdfUrl()
-    {
-        var parts = new List<string>();
-
-        if (_filterMinYear.HasValue)
-            parts.Add($"minYear={_filterMinYear.Value}");
-
-        if (_filterMaxYear.HasValue)
-            parts.Add($"maxYear={_filterMaxYear.Value}");
-
-        var query = parts.Count > 0 ? "?" + string.Join("&", parts) : string.Empty;
-
-        // Ruta relativa al backend
-        return $"api/reports/articles/statistics/pdf{query}";
-    }
-    protected override async Task OnInitializedAsync()
-    {
-        _isLoading = true;
-        _errorMessage = null;
-
-        try
-        {
-            // Llamamos a todos los endpoints de reportería
-            _kpis = await Insights.GetArticlesKpiSummaryAsync();
-            _allByYear = await Insights.GetArticlesByYearAsync();
-            _byField = await Insights.GetArticlesByFieldAsync();
-            _byResearchLine = await Insights.GetArticlesByResearchLineAsync();
-
-            // Valores iniciales para filtros de año (mínimo y máximo detectados)
-            if (_allByYear.Count > 0)
-            {
-                var min = _allByYear.Min(x => x.Year);
-                var max = _allByYear.Max(x => x.Year);
-                _filterMinYear = min;
-                _filterMaxYear = max;
-            }
-
-            ApplyFilters();
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = "Ocurrió un error al cargar los datos de reportería. " +
-                            "Por favor, verifica la conexión con el servidor o ejecuta primero el ETL.";
-            Console.Error.WriteLine(ex);
-        }
-        finally
-        {
-            _isLoading = false;
-        }
-    }
-
-    private void ApplyFilters()
-    {
-        if (_allByYear.Count == 0)
-        {
-            _filteredByYear = new List<ArticlesByYearDto>();
-            _maxYearCount = 0;
-            return;
-        }
-
-        var minYear = _filterMinYear ?? _allByYear.Min(x => x.Year);
-        var maxYear = _filterMaxYear ?? _allByYear.Max(x => x.Year);
-
-        if (minYear > maxYear)
-        {
-            var tmp = minYear;
-            minYear = maxYear;
-            maxYear = tmp;
-        }
-
-        _filteredByYear = _allByYear
-            .Where(x => x.Year >= minYear && x.Year <= maxYear)
-            .OrderBy(x => x.Year)
-            .ToList();
-
-        _maxYearCount = _filteredByYear.Count > 0
-            ? _filteredByYear.Max(x => x.Count)
-            : 0;
-    }
-
-    private async Task RunEtlAndReload()
-    {
-        _isLoading = true;
-        _errorMessage = null;
-        StateHasChanged();
-        try
-        {
-            // Ejecuta el ETL completo en el backend
-            await ApiClient.PostAsync<object, object>(
-                "api/bi/etl/full",
-                new { });
-
-            // Vuelve a cargar los datos del DW
-            await OnInitializedAsync();
-        }
-        catch (Exception ex)
-        {
-            _errorMessage = "No se pudo ejecutar el ETL desde la interfaz. " +
-                            "Verifica el backend o consulta al administrador.";
-            Console.Error.WriteLine(ex);
-        }
-        finally
-        {
-            _isLoading = false;
-            StateHasChanged();
-        }
-    }
-
-}
