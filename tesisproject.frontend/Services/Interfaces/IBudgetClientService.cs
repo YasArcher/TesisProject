@@ -4,7 +4,7 @@ namespace tesisproject.frontend.Services.Interfaces
 {
     public interface IBudgetClientService
     {
-        Task<HttpResponseWrapper<BudgetDTO?>> GetBudgetAsync(int idProject, CancellationToken ct = default);
+        Task<HttpResponseWrapper<List<BudgetDTO>?>> GetProjectBudgetsAsync(int projectId, CancellationToken ct = default);
 
         Task<HttpResponseWrapper<List<BudgetTransactionDTO>?>> GetListBudgetTransactionAsync(int idBudget, CancellationToken ct = default);
         //Crear certificacion
@@ -12,5 +12,8 @@ namespace tesisproject.frontend.Services.Interfaces
 
         //Ejecutar debengado
         Task<HttpResponseWrapper<BudgetTransactionDTO?>> ExecuteAccrualAsync(int budgetId , ExecuteDevengadoRequestDTO request, CancellationToken ct = default);
+
+        Task<HttpResponseWrapper<BudgetTransactionDTO?>> CancelTransactionAsync(int transactionId, CancellationToken ct = default);
+
     }
 }

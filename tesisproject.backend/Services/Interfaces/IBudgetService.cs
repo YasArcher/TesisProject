@@ -7,7 +7,7 @@ namespace tesisproject.backend.Services.Interfaces
     {
         Task<ServiceResult<List<BudgetListItemDTO>>> GetAllAsync(CancellationToken ct = default);
         Task<ServiceResult<BudgetDTO>> GetByIdAsync(int budgetId, CancellationToken ct = default);
-        Task<ServiceResult<BudgetDTO>> GetByProjectIdAsync(int projectId, CancellationToken ct = default);
+        Task<ServiceResult<List<BudgetDTO>>> GetByProjectIdAsync(int projectId, CancellationToken ct = default);
         Task<ServiceResult<BudgetDTO>> CreateAsync(CreateBudgetRequestDTO request, CancellationToken ct = default);
         Task<ServiceResult<BudgetDTO>> UpdateAsync(int budgetId, UpdateBudgetRequestDTO request, CancellationToken ct = default);
         Task<ServiceResult<bool>> DeleteAsync(int budgetId, CancellationToken ct = default);
@@ -15,7 +15,8 @@ namespace tesisproject.backend.Services.Interfaces
         // ------- NUEVOS ----------
         Task<ServiceResult<BudgetTransactionDTO>> AddCertificationAsync(AddCertificationRequestDTO request, int currentUserId, CancellationToken ct = default);
         Task<ServiceResult<BudgetTransactionDTO>> ExecuteDevengadoAsync(ExecuteDevengadoRequestDTO request, int currentUserId, CancellationToken ct = default);
-
+        // ======= NEW: Cancel Transaction =======
+        Task<ServiceResult<BudgetTransactionDTO>> CancelTransactionAsync(int budgetTransactionId, CancellationToken ct = default);
         Task<ServiceResult<List<BudgetTransactionDTO>>> GetTransactionsAsync(int budgetId, CancellationToken ct = default);
     }
 }

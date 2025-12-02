@@ -1,10 +1,11 @@
 ﻿@using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@using tesisproject.frontend.SharedUI.DateInput
 @using tesisproject.shared.DTOs.Budgets.Request
 @using tesisproject.frontend.SharedUI.Modal
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.TextInput
-@using tesisproject.frontend.SharedUI.DateInput
 
 <Modal Id="AccrualModal"
        Title="Devengar transacción"
@@ -17,32 +18,65 @@
        IsOpenChanged="IsOpenChanged">
 
     <ChildContent>
-        <EditForm Model="_model" OnValidSubmit="HandleSubmit">
+        <EditForm EditContext="_editContext">
             <DataAnnotationsValidator />
+            <div class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Monto devengado -->
+                    <div>
+                        <label class="block text-sm font-medium text-foreground mb-1">
+                            Monto devengado *
+                        </label>
+                        <InputNumber @bind-Value="_model.ExecutedAmount"
+                                     class="w-full rounded-md border border-border px-3 py-2 text-sm
+                                            focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
+                                            disabled:opacity-60"
+                                     disabled="@IsSaving" />
+                        <ValidationMessage For="@(() => _model.ExecutedAmount)" />
+                    </div>
 
-            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
-            {
-                <div class="mb-3 text-sm text-error">@ErrorMessage</div>
-            }
+                    <!-- CUR -->
+                    <div>
+                        <TextInput TValue="string"
+                                   Label="CUR *"
+                                   Placeholder="Ej.: 000123"
+                                   @bind-Value="_model.CURNumber"
+                                   For="@(() => _model.CURNumber)"
+                                   Required="true"
+                                   MaxLength="100"
+                                   Disabled="@IsSaving" />
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <!-- Fecha de devengo -->
+                    </div>
+                </div>
+
+                                <!-- Fecha de devengo (opcional: vacío = hoy) -->
                 <div>
                     <DateInput Label="Fecha de devengo"
                                Value="@_executedDate"
                                ValueChanged="OnExecutedDateChanged"
                                Disabled="@IsSaving" />
-                    <p class="mt-1 text-xs text-muted">Vacío = hoy (UTC)</p>
+                    <p class="mt-1 text-xs text-muted">
+                        Vacío = hoy (UTC)
+                    </p>
                 </div>
 
-                <!-- CUR (opcional) -->
+                <!-- Descripción del devengo -->
                 <div>
-                    <TextInput Label="CUR (opcional)"
-                               Placeholder="Ej.: 120-2025-000123"
-                               Value="@_model.CURNumber"
-                               ValueChanged="(v => _model.CURNumber = v)"
-                               MaxLength="50"
-                               Disabled="@IsSaving" />
+                    <label class="block text-sm font-medium text-foreground mb-1">
+                        Descripción del devengo *
+                    </label>
+                    <textarea class="w-full rounded-md border border-border px-3 py-2 text-sm
+                                     focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
+                                     disabled:opacity-60"
+                              @bind="_model.ExecutionDescription"
+                              maxlength="1000"
+                              rows="4"
+                              disabled="@IsSaving">
+                    </textarea>
+                    <ValidationMessage For="@(() => _model.ExecutionDescription)" />
+                    <p class="mt-1 text-xs text-muted">
+                        Máximo 1000 caracteres.
+                    </p>
                 </div>
             </div>
         </EditForm>
@@ -57,12 +91,13 @@
                           Disabled="@IsSaving"
                           Execute="Close"
                           Class="btn-primary-ghost" />
+
             <ActionButton Text="@(IsSaving ? "Devengando..." : "Confirmar devengo")"
                           Variant="ButtonVariant.Filled"
                           Intent="ButtonIntent.Accept"
                           Size="ButtonSize.Sm"
                           Disabled="@IsSaving"
-                          Execute="HandleSubmit"
+                          Execute="OnSaveClick"
                           Class="btn-primary-solid" />
         </div>
     </Footer>
@@ -73,58 +108,74 @@
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
     [Parameter] public bool IsSaving { get; set; }
-    [Parameter] public string? ErrorMessage { get; set; }
     [Parameter] public ExecuteDevengadoRequestDTO? Value { get; set; }
     [Parameter] public EventCallback<ExecuteDevengadoRequestDTO> OnSubmit { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
 
     private ExecuteDevengadoRequestDTO _model = new();
-
-    // DateInput trabaja con DateOnly?
+    private EditContext _editContext = default!;
     private DateOnly? _executedDate;
+    private bool _wasOpen;
 
     protected override void OnParametersSet()
     {
-        if (IsOpen)
+        // Solo inicializar CUANDO se abre el modal
+        if (IsOpen && (!_wasOpen || _editContext is null))
         {
             _model = Value is not null
                 ? new ExecuteDevengadoRequestDTO
                 {
                     BudgetTransactionId = Value.BudgetTransactionId,
+                    ExecutedAmount = Value.ExecutedAmount,
                     CURNumber = Value.CURNumber,
+                    ExecutionDescription = Value.ExecutionDescription,
+                    ExecutedAt = Value.ExecutedAt
                 }
-                : new ExecuteDevengadoRequestDTO();
+                : new ExecuteDevengadoRequestDTO
+                {
+                    BudgetTransactionId = Value?.BudgetTransactionId ?? 0
+                };
 
-            // Sincroniza DTO(DateTime?) -> UI(DateOnly?)
             _executedDate = _model.ExecutedAt.HasValue
-                ? DateOnly.FromDateTime(DateTime.SpecifyKind(_model.ExecutedAt.Value, DateTimeKind.Utc))
+                ? DateOnly.FromDateTime(_model.ExecutedAt.Value)
                 : (DateOnly?)null;
+
+            _editContext = new EditContext(_model);
+            _editContext.OnValidationStateChanged += (_, __) => InvokeAsync(StateHasChanged);
         }
+
+        _wasOpen = IsOpen;
     }
 
-    private Task OnExecutedDateChanged(DateOnly? d)
-    {
-        _executedDate = d;
-        // UI(DateOnly?) -> DTO(DateTime? en UTC a las 00:00)
-        _model.ExecutedAt = d.HasValue
-            ? new DateTime(d.Value.Year, d.Value.Month, d.Value.Day, 0, 0, 0, DateTimeKind.Utc)
-            : (DateTime?)null;
-        return Task.CompletedTask;
-    }
-
-    private async Task HandleSubmit()
+    private async Task OnSaveClick()
     {
         if (IsSaving) return;
-        if (OnSubmit.HasDelegate)
-            await OnSubmit.InvokeAsync(_model);
+
+        if (_editContext.Validate())
+        {
+            if (OnSubmit.HasDelegate)
+                await OnSubmit.InvokeAsync(_model);
+        }
     }
 
     private async Task Close()
     {
         if (IsSaving) return;
+
         if (OnCancel.HasDelegate)
             await OnCancel.InvokeAsync();
+
         if (IsOpenChanged.HasDelegate)
             await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private Task OnExecutedDateChanged(DateOnly? d)
+    {
+        _executedDate = d;
+        _model.ExecutedAt = d.HasValue
+            ? new DateTime(d.Value.Year, d.Value.Month, d.Value.Day, 0, 0, 0, DateTimeKind.Utc)
+            : (DateTime?)null;
+
+        return Task.CompletedTask;
     }
 }

@@ -1,16 +1,17 @@
-﻿using System.Linq.Expressions;
+﻿using System.Globalization;
+using System.Linq.Expressions;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using System.Threading;
 
 namespace tesisproject.frontend.SharedUI.TextInput
 {
-    public partial class TextInput : ComponentBase, IHasValidationState, IDisposable
+    public partial class TextInput<TValue> : ComponentBase, IHasValidationState, IDisposable
     {
-        // ---- Public API (existing) ----
+        // ---- Public API ----
         [Parameter] public string? Label { get; set; }
-        [Parameter] public string? Value { get; set; }
-        [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+        [Parameter] public TValue? Value { get; set; }
+        [Parameter] public EventCallback<TValue?> ValueChanged { get; set; }
         [Parameter] public string? Placeholder { get; set; }
         [Parameter] public bool Disabled { get; set; }
         [Parameter] public bool Required { get; set; }
@@ -19,33 +20,31 @@ namespace tesisproject.frontend.SharedUI.TextInput
         [Parameter] public int DebounceMs { get; set; } = 0;
         [Parameter] public string InputType { get; set; } = "text";
 
-        // ---- NEW: Password toggle functionality ----
+        // Password toggle
         [Parameter] public bool ShowPasswordToggle { get; set; } = false;
 
-        // ---- Optional: hook into EditForm validation ----
+        // EditForm / validación
         [CascadingParameter] private EditContext? EditContext { get; set; }
-        [Parameter] public Expression<Func<string?>>? For { get; set; }
+        [Parameter] public Expression<Func<TValue?>>? For { get; set; }
 
-        // ---- IHasValidationState ----
+        // IHasValidationState
         public string? ErrorMessage { get; private set; }
         public bool HasError => !string.IsNullOrWhiteSpace(ErrorMessage);
 
-        // ---- Internal ----
-        protected string? _value;
+        // Internos
+        protected string? _text;                  // lo que ve el input
+        private TValue? _currentValue;            // valor tipado
         private CancellationTokenSource? _debounceCts;
         private FieldIdentifier? _fieldId;
-
-        // NEW: Password visibility state
         private bool _showPassword = false;
-
-        // NEW: secuencia de cambios para descartar emisiones atrasadas
         private long _inputSeq = 0;
 
         protected override void OnInitialized()
         {
-            _value = Value;
+            _currentValue = Value;
+            _text = FormatValue(_currentValue);
 
-            // Auto-enable password toggle for password inputs
+            // auto habilitar toggle para password
             if (InputType == "password" && !ShowPasswordToggle)
                 ShowPasswordToggle = true;
 
@@ -61,29 +60,73 @@ namespace tesisproject.frontend.SharedUI.TextInput
         protected override void OnParametersSet()
         {
             // Solo sincroniza si el padre realmente cambió el Value
-            if (!Equals(_value, Value))
+            if (!EqualityComparer<TValue?>.Default.Equals(_currentValue, Value))
             {
-                _value = Value;
+                _currentValue = Value;
+                _text = FormatValue(_currentValue);
                 RecomputeErrors();
             }
         }
 
-        // Mostrar/ocultar contraseña
-        private string GetActualInputType() =>
-            (InputType == "password" && ShowPasswordToggle && _showPassword) ? "text" : InputType;
+        // Password
+        private string GetActualInputType()
+        {
+
+            return (InputType == "password" && ShowPasswordToggle && _showPassword)
+                ? "text"
+                : InputType;
+        }
 
         private void TogglePasswordVisibility() => _showPassword = !_showPassword;
 
         private bool ShouldShowPasswordToggle() => ShowPasswordToggle && InputType == "password";
 
+        // Formatear valor tipado a string
+        private string? FormatValue(TValue? value)
+        {
+            if (value is null)
+                return string.Empty;
+
+            if (value is IFormattable formattable && InputType == "number")
+                return formattable.ToString(null, CultureInfo.CurrentCulture);
+
+            return value?.ToString();
+        }
+
+        // Parsear string a TValue
+        private bool TryParseValueFromString(string? value, out TValue? result)
+        {
+            // string → string
+            if (typeof(TValue) == typeof(string))
+            {
+                result = (TValue?)(object?)value;
+                return true;
+            }
+
+            // vacío → default (útil para tipos anulables)
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                result = default;
+                return true;
+            }
+
+            // conversión genérica usando BindConverter
+            if (BindConverter.TryConvertTo<TValue>(value, CultureInfo.CurrentCulture, out var parsed))
+            {
+                result = parsed;
+                return true;
+            }
+
+            result = default;
+            return false;
+        }
+
         private async Task OnInputAsync(ChangeEventArgs e)
         {
-            _value = e.Value?.ToString();
+            _text = e.Value?.ToString();
 
-            // Cada input incrementa la versión
             var mySeq = Interlocked.Increment(ref _inputSeq);
 
-            // Reinicia CTS del debounce
             _debounceCts?.Cancel();
             _debounceCts?.Dispose();
             _debounceCts = new CancellationTokenSource();
@@ -97,17 +140,19 @@ namespace tesisproject.frontend.SharedUI.TextInput
 
                 if (token.IsCancellationRequested) return;
 
-                // Solo emite si sigue siendo la última versión registrada
                 if (mySeq == Volatile.Read(ref _inputSeq))
                 {
-                    // Evita re-renders innecesarios si el padre ya tiene ese mismo valor
-                    if (ValueChanged.HasDelegate)
-                        await InvokeAsync(() => ValueChanged.InvokeAsync(_value));
+                    if (TryParseValueFromString(_text, out var parsed))
+                    {
+                        _currentValue = parsed;
 
-                    // Recalcula errores en el local
-                    RecomputeErrors();
+                        if (ValueChanged.HasDelegate)
+                            await InvokeAsync(() => ValueChanged.InvokeAsync(_currentValue));
+
+                        RecomputeErrors();
+                    }
+                    // si falla el parse, simplemente no se actualiza el valor tipado
                 }
-                // Si no coincide, era una emisión vieja: ignorar.
             }
             catch (TaskCanceledException)
             {
@@ -128,23 +173,29 @@ namespace tesisproject.frontend.SharedUI.TextInput
 
         private void RecomputeErrors()
         {
+            // primero, errores del EditForm/DataAnnotations
             if (_fieldId.HasValue && EditContext != null)
             {
-                ErrorMessage = EditContext.GetValidationMessages(_fieldId.Value).FirstOrDefault();
-                if (!string.IsNullOrWhiteSpace(ErrorMessage)) return;
+                var fromContext = EditContext.GetValidationMessages(_fieldId.Value).FirstOrDefault();
+                if (!string.IsNullOrWhiteSpace(fromContext))
+                {
+                    ErrorMessage = fromContext;
+                    return;
+                }
             }
 
             ErrorMessage = null;
 
-            if (Required && string.IsNullOrWhiteSpace(_value))
+            // Validaciones locales básicas
+            if (Required && string.IsNullOrWhiteSpace(_text))
             {
-                ErrorMessage = "This field is required.";
+                ErrorMessage = "Este campo es obligatorio";
                 return;
             }
 
-            if (MaxLength.HasValue && _value?.Length > MaxLength.Value)
+            if (MaxLength.HasValue && _text?.Length > MaxLength.Value)
             {
-                ErrorMessage = $"Maximum length is {MaxLength.Value} characters.";
+                ErrorMessage = $"Cantidad maxima de caracteres {MaxLength.Value}.";
                 return;
             }
         }

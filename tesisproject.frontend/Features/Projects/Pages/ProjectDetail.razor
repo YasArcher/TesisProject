@@ -18,6 +18,8 @@
 @using tesisproject.shared.DTOs.VisitIssues.Request
 @using tesisproject.shared.DTOs.VisitIssues.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+@using tesisproject.shared.DTOs.Catalog.TransactionTypes.Response
+
 
 @inject IVisitClientService VisitService
 @inject IProjectClientService ProjectService
@@ -33,6 +35,7 @@
 @inject IResearchCategoryClientService ResearchCategoryService
 @inject IResearchCategoryTypeClientService ResearchCategoryTypeService
 @inject IResearchCategoryGroupClientService ResearchCategoryGroupService
+@inject ITransactionTypeClientService TransactionTypeService
 
 <div class="flex flex-col h-full">
     <!-- Header -->
@@ -159,11 +162,16 @@
                     </svg>
                 </Icon>
                 <ChildContent>
-                    <ProjectFinancialTab Budget="_budget"
-                                         Transactions="_transactions"
+                    <ProjectFinancialTab @key="_budgetRefreshToken"
+                                         Budgets="_budgets"
+                                         BudgetTransactionsByBudgetId="_budgetTransactions"
                                          IsLoading="_loadingBudget"
+                                         TransactionTypes="_transactionTypes"
                                          OnAddCertification="HandleAddCertification"
-                                         OnExecuteDevengado="HandleExecuteDevengado" />
+                                         OnExecuteDevengado="HandleExecuteDevengado"
+                                         OnCancelTransaction="HandleCancelTransaction"
+                                         TransactionPageSize="15" />
+
                 </ChildContent>
             </Tab>
 
@@ -190,7 +198,6 @@
                            IsOpenChanged="v => _certModalOpen = v"
                            Value="@_certSeed"
                            IsSaving="@_savingCert"
-                           ErrorMessage="@_certError"
                            OnSubmit="OnSubmitCertification"
                            OnCancel="OnCancelCertification" />
 
@@ -198,7 +205,6 @@
                      IsOpenChanged="v => _accrualModalOpen = v"
                      Value="@_accrualSeed"
                      IsSaving="@_savingAccrual"
-                     ErrorMessage="@_accrualError"
                      OnSubmit="OnSubmitAccrual"
                      OnCancel="OnCancelAccrual" />
 <!-- MODAL: User Picker -->
@@ -260,18 +266,26 @@
     private int? _editingIssueId;
     private VisitIssueFormModal.VisitIssueFormModel? _issueInitialValues;
 
+    // ======= Tipos de transacción (catálogo) =======
+    private IReadOnlyList<TransactionTypeListItemDTO> _transactionTypes = Array.Empty<TransactionTypeListItemDTO>();
+    private bool _loadingTransactionTypes;
+    private string? _transactionTypesError;
+
     // ======= Presupuesto =======
-    private BudgetDTO? _budget;
-    private List<BudgetTransactionDTO>? _transactions;
+    private List<BudgetDTO> _budgets = new();
+    private Dictionary<int, List<BudgetTransactionDTO>> _budgetTransactions = new();
     private bool _loadingBudget;
     private string? _budgetError;
+    private int _budgetRefreshToken = 0;
+
+    // Para saber en qué presupuesto se está devengando
+    private int? _selectedBudgetIdForAccrual;
+
 
     // ======= Modales presupuesto =======
     private bool _certModalOpen;
     private bool _savingCert;
-    private string? _certError;
     private AddCertificationRequestDTO _certSeed = new();
-    private int _currentUserId = 1; // TODO: obtener de claims
 
     // ======= Prórrogas =======
     private List<ProjectExtensionListResponseDTO>? _extensions;
@@ -280,7 +294,6 @@
 
     private bool _accrualModalOpen;
     private bool _savingAccrual;
-    private string? _accrualError;
     private ExecuteDevengadoRequestDTO _accrualSeed = new();
 
     // ====== User Picker (miembros) ======
@@ -307,6 +320,7 @@
     private bool _loadingResearchCategoryGroups;
     private string? _researchCategoryGroupsError;
 
+
     // ======= Lifecycle =======
     protected override async Task OnInitializedAsync()
     {
@@ -315,6 +329,7 @@
         await EnsureResearchCategoryTypesAsync();
         await EnsureResearchCategoryTreeAsync();
         await EnsureTabDataAsync(_activeTab);
+        await EnsureTransactionTypesAsync();
     }
 
     private async Task OnTabChanged(string newKey)
@@ -543,39 +558,59 @@
             case "financial":
                 _loadingBudget = true;
                 _budgetError = null;
+
                 try
                 {
-                    var b = await BudgetService.GetBudgetAsync(ProjectId);
+                    var b = await BudgetService.GetProjectBudgetsAsync(ProjectId);
+
                     if (b.Success)
                     {
-                        _budget = b.Response;
-                        if (_budget is not null)
+                        var budgets = b.Response ?? new();
+
+                        _budgets = budgets;
+                        _budgetTransactions = new();
+
+                        if (_budgets.Count > 0)
                         {
-                            var tr = await BudgetService.GetListBudgetTransactionAsync(_budget.BudgetId);
-                            if (tr.Success)
-                                _transactions = tr.Response ?? new();
-                            else
+                            foreach (var budget in _budgets)
                             {
-                                _transactions = new();
-                                _budgetError = tr.Error ?? "No se pudieron cargar las transacciones.";
+                                try
+                                {
+                                    var tr = await BudgetService.GetListBudgetTransactionAsync(budget.BudgetId);
+
+                                    if (tr.Success && tr.Response is not null)
+                                    {
+                                        _budgetTransactions[budget.BudgetId] = tr.Response.ToList();
+                                    }
+                                    else
+                                    {
+                                        _budgetTransactions[budget.BudgetId] = new List<BudgetTransactionDTO>();
+                                        _budgetError ??= tr.Error ?? "No se pudieron cargar las transacciones.";
+                                    }
+                                }
+                                catch (Exception exInner)
+                                {
+                                    _budgetTransactions[budget.BudgetId] = new List<BudgetTransactionDTO>();
+                                    _budgetError ??= $"Error al cargar transacciones: {exInner.Message}";
+                                }
                             }
                         }
                         else
                         {
-                            _transactions = null;
+                            _budgetError = "El proyecto no tiene presupuestos registrados.";
                         }
                     }
                     else
                     {
-                        _budget = null;
-                        _transactions = null;
+                        _budgets = new();
+                        _budgetTransactions = new();
                         _budgetError = b.Error ?? "No se pudo cargar el presupuesto.";
                     }
                 }
                 catch (Exception ex)
                 {
-                    _budget = null;
-                    _transactions = null;
+                    _budgets = new();
+                    _budgetTransactions = new();
                     _budgetError = $"Error de conexión: {ex.Message}";
                 }
                 finally
@@ -655,20 +690,22 @@
     }
 
     // ===== Acciones presupuesto =====
-    private Task HandleAddCertification()
+    private Task HandleAddCertification(int budgetId)
     {
-        if (_budget is null) return Task.CompletedTask;
+        var targetBudget = _budgets.FirstOrDefault(b => b.BudgetId == budgetId);
+        if (targetBudget is null)
+            return Task.CompletedTask;
 
-        _certError = null;
         _savingCert = false;
+
         _certSeed = new AddCertificationRequestDTO
         {
-            BudgetId = _budget.BudgetId,
-            CertifiedByUserId = _currentUserId,
-            CertifiedAt = null,
-            Amount = 0,
+            BudgetId = targetBudget.BudgetId,
+            Name = string.Empty,
+            CertifiedAmount = 0,
             BudgetItem = string.Empty,
-            CURNumber = null
+            CertificationDescription = string.Empty,
+            CertifiedAt = null
         };
 
         _certModalOpen = true;
@@ -676,54 +713,38 @@
         return Task.CompletedTask;
     }
 
-    private async Task OnSubmitCertification(AddCertificationRequestDTO dto)
-    {
-        if (_budget is null) return;
-
-        try
-        {
-            _savingCert = true;
-            _certError = null;
-
-            var res = await BudgetService.CreateCertificationAsync(_budget.BudgetId, dto);
-            if (!res.Success)
-            {
-                _certError = res.Error ?? "No se pudo crear la certificación.";
-                return;
-            }
-
-            _certModalOpen = false;
-            await ReloadBudgetTabAsync();
-        }
-        catch (Exception ex)
-        {
-            _certError = $"Error: {ex.Message}";
-        }
-        finally
-        {
-            _savingCert = false;
-        }
-    }
-
-    private Task OnCancelCertification()
-    {
-        _certModalOpen = false;
-        _certError = null;
-        return Task.CompletedTask;
-    }
 
     private Task HandleExecuteDevengado(int budgetTransactionId)
     {
-        if (_budget is null) return Task.CompletedTask;
+        // Buscar a qué presupuesto pertenece esta transacción
+        int? budgetId = null;
 
-        _accrualError = null;
+        foreach (var kvp in _budgetTransactions)
+        {
+            var txList = kvp.Value;
+            if (txList is not null && txList.Any(t => t.BudgetTransactionId == budgetTransactionId))
+            {
+                budgetId = kvp.Key; // este es el BudgetId
+                break;
+            }
+        }
+
+        if (!budgetId.HasValue)
+        {
+            Toast.ShowError("No se pudo identificar el presupuesto de esta transacción.");
+            return Task.CompletedTask;
+        }
+
+        _selectedBudgetIdForAccrual = budgetId.Value;
         _savingAccrual = false;
+
         _accrualSeed = new ExecuteDevengadoRequestDTO
         {
             BudgetTransactionId = budgetTransactionId,
-            ExecutedByUserId = _currentUserId,
-            ExecutedAt = null,
-            CURNumber = null
+            ExecutedAmount = 0,
+            CURNumber = string.Empty,
+            ExecutionDescription = string.Empty,
+            ExecutedAt = null
         };
 
         _accrualModalOpen = true;
@@ -731,28 +752,80 @@
         return Task.CompletedTask;
     }
 
-    private async Task OnSubmitAccrual(ExecuteDevengadoRequestDTO dto)
-    {
-        if (_budget is null) return;
 
+    private async Task OnSubmitCertification(AddCertificationRequestDTO dto)
+    {
         try
         {
-            _savingAccrual = true;
-            _accrualError = null;
+            _savingCert = true;
 
-            var res = await BudgetService.ExecuteAccrualAsync(_budget.BudgetId, dto);
+            var res = await BudgetService.CreateCertificationAsync(dto.BudgetId, dto);
+
             if (!res.Success)
             {
-                _accrualError = res.Error ?? "No se pudo ejecutar el devengo.";
-                return;
+                // 🔹 Usa exactamente lo que responde el backend
+                var backendMessage = res.Error ?? "No se pudo crear la certificación.";
+                Toast.ShowError(backendMessage);
+
+                return; 
             }
 
-            _accrualModalOpen = false;
+            Toast.ShowSuccess("Certificación creada correctamente.");
+            _certModalOpen = false;
+
             await ReloadBudgetTabAsync();
         }
         catch (Exception ex)
         {
-            _accrualError = $"Error: {ex.Message}";
+            // 🔹 Captura exacta del error que provocó el fallo
+            var msg = $"Error inesperado: {ex.Message}";
+
+            // Si quieres aún más detalle:
+            // msg += $"\nDetalle: {ex.StackTrace}";
+
+            Toast.ShowError(msg);
+        }
+        finally
+        {
+            _savingCert = false;
+        }
+    }
+
+    private async Task OnSubmitAccrual(ExecuteDevengadoRequestDTO dto)
+    {
+        if (!_selectedBudgetIdForAccrual.HasValue)
+        {
+            Toast.ShowError("No se pudo determinar el presupuesto asociado al devengo.");
+            return;
+        }
+
+        try
+        {
+            _savingAccrual = true;
+
+            var res = await BudgetService.ExecuteAccrualAsync(_selectedBudgetIdForAccrual.Value, dto);
+
+            if (!res.Success)
+            {
+                // 🔹 Mensaje exacto que devuelve el backend
+                var backendMessage = res.Error ?? "No se pudo ejecutar el devengo.";
+                Toast.ShowError(backendMessage);
+                return; // Mantienes el modal abierto para que corrija
+            }
+
+            Toast.ShowSuccess("Devengo ejecutado correctamente.");
+
+            _accrualModalOpen = false;
+            _selectedBudgetIdForAccrual = null; // limpiar selección
+
+            await ReloadBudgetTabAsync();
+        }
+        catch (Exception ex)
+        {
+            // 🔹 Mensaje exacto desde la excepción
+            var msg = $"Error inesperado al ejecutar el devengo: {ex.Message}";
+            Toast.ShowError(msg);
+            // _accrualError = msg; // si ya no quieres texto en el modal, no lo uses
         }
         finally
         {
@@ -760,12 +833,20 @@
         }
     }
 
+
+    private Task OnCancelCertification()
+    {
+        _certModalOpen = false;
+        return Task.CompletedTask;
+    }
+
     private Task OnCancelAccrual()
     {
         _accrualModalOpen = false;
-        _accrualError = null;
+        _selectedBudgetIdForAccrual = null;
         return Task.CompletedTask;
     }
+
 
     private async Task HandleChangeVisitStateAsync((int visitId, int newStateId) e)
     {
@@ -809,6 +890,7 @@
     private async Task ReloadBudgetTabAsync()
     {
         await EnsureTabDataAsync("financial");
+        _budgetRefreshToken++;
         StateHasChanged();
     }
 
@@ -1179,6 +1261,40 @@
 
         return res.Response.Any(m => m.MemberRoleId == roleId);
     }
+
+    private async Task EnsureTransactionTypesAsync()
+    {
+        if (_transactionTypes is { Count: > 0 })
+            return;
+
+        try
+        {
+            _loadingTransactionTypes = true;
+            _transactionTypesError = null;
+
+            var res = await TransactionTypeService.GetListAsync(onlyActives: true);
+
+            if (res.Success && res.Response is not null)
+            {
+                _transactionTypes = res.Response;
+            }
+            else
+            {
+                _transactionTypes = Array.Empty<TransactionTypeListItemDTO>();
+                _transactionTypesError = res.Error ?? "No se pudieron cargar los tipos de transacción.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _transactionTypes = Array.Empty<TransactionTypeListItemDTO>();
+            _transactionTypesError = $"Error al cargar tipos de transacción: {ex.Message}";
+        }
+        finally
+        {
+            _loadingTransactionTypes = false;
+        }
+    }
+
     private bool ProjectAlreadyHasRole(int roleId)
     {
         if (_members is null || _members.Count == 0)
@@ -1215,6 +1331,30 @@
         finally
         {
             _loadingResearchCategoryTypes = false;
+        }
+    }
+    // ===== Acciones presupuesto =====
+
+    private async Task HandleCancelTransaction(int budgetTransactionId)
+    {
+        try
+        {
+            var res = await BudgetService.CancelTransactionAsync(budgetTransactionId);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "No se pudo cancelar la transacción.");
+                return;
+            }
+
+            Toast.ShowSuccess("Transacción cancelada correctamente.");
+
+            // Recargar pestaña financiera
+            await ReloadBudgetTabAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al cancelar la transacción: {ex.Message}");
         }
     }
 

@@ -6,6 +6,7 @@
 @using tesisproject.shared.DTOs.Budgets.Request
 @using tesisproject.shared.Enums
 @using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.Catalog.TransactionTypes.Response
 
 <DataTable TItem="BudgetTransactionDTO"
            Items="@Transactions"
@@ -21,6 +22,9 @@
     [Parameter] public string EmptyText { get; set; } = "Aún no hay transacciones.";
     [Parameter] public EventCallback<int> OnExecuteDevengado { get; set; }
     [Parameter] public int PageSize { get; set; } = 3;
+    [Parameter] public IReadOnlyList<TransactionTypeListItemDTO> TransactionTypes { get; set; } = Array.Empty<TransactionTypeListItemDTO>();
+    [Parameter] public EventCallback<int> OnCancelTransaction { get; set; }
+
 
     private int TotalTransactions => Transactions?.Count ?? 0;
 
@@ -118,25 +122,36 @@
 
     <!-- Estado -->
     <td class="px-4 py-3 text-sm text-foreground align-middle">
-        @if (IsExecuted(transaction.ExecutedAt))
-                {
-        <span class="px-2 py-1 rounded text-xs bg-green-100 text-green-700">Devengada</span>
-                }
-                else
-                {
-        <span class="px-2 py-1 rounded text-xs bg-yellow-100 text-yellow-800">Certificada</span>
-                }
+        @{
+                var(bgClass, textClass) = GetTransactionTypeClasses(transaction.TransactionTypeId);
+            var label = GetTransactionTypeName(transaction.TransactionTypeId);
+        }
+        <span class="@($"px-2 py-1 rounded text-xs {bgClass} {textClass}")">
+            @label
+        </span>
     </td>
 
     <!-- Acción -->
+    <!-- Acción -->
     <td class="px-4 py-3 text-sm text-foreground align-middle text-right">
-        <ActionButton Text="Devengar"
-                      Intent="ButtonIntent.Accept"
-                      Variant="ButtonVariant.Outline"
-                      Size="ButtonSize.Xs"
-                      Disabled="@IsExecuted(transaction.ExecutedAt)"
-                      Execute="@(() => OnExecuteDevengado.InvokeAsync(transaction.BudgetTransactionId))" />
+        @if (transaction.TransactionTypeId == 1 && !IsExecuted(transaction.ExecutedAt))
+        {
+            <div class="flex justify-end gap-2">
+                <ActionButton Text="Devengar"
+                              Intent="ButtonIntent.Accept"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Xs"
+                              Execute="@(() => OnExecuteDevengado.InvokeAsync(transaction.BudgetTransactionId))" />
+
+                <ActionButton Text="Cancelar"
+                              Intent="ButtonIntent.Danger"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Xs"
+                              Execute="@(() => OnCancelTransaction.InvokeAsync(transaction.BudgetTransactionId))" />
+            </div>
+        }
     </td>
+
 </text>;
 
     // ===== Celdas y utilidades =====
@@ -156,4 +171,21 @@
 
     private static bool IsExecuted(DateTime? executedAt)
         => executedAt.HasValue && executedAt.Value != DateTime.MinValue;
+    private string GetTransactionTypeName(int transactionTypeId)
+=> TransactionTypes
+    .FirstOrDefault(t => t.Id == transactionTypeId)?.Name
+    ?? $"Tipo #{transactionTypeId}";
+
+    private static (string bgClass, string textClass) GetTransactionTypeClasses(int transactionTypeId)
+    {
+        // Usamos SOLO el ID para la lógica de color
+        return transactionTypeId switch
+        {
+            1 => ("bg-yellow-100", "text-yellow-800"), // (ej. Certificación)
+            2 => ("bg-green-100", "text-green-700"),  // (ej. Devengado)
+            3 => ("bg-red-100", "text-red-700"),    // (ej. Anulado)
+            _ => ("bg-gray-200", "text-gray-700")    // otros
+        };
+    }
+
 }

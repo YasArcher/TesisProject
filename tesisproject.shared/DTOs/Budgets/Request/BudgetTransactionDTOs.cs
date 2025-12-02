@@ -36,24 +36,30 @@ namespace tesisproject.shared.DTOs.Budgets.Request
     // Request: Certificar (crear transacción)
     public class AddCertificationRequestDTO
     {
-        [Required]
+        [Required(ErrorMessage = "Debe seleccionar un presupuesto.")]
         public int BudgetId { get; set; }
 
         // Nombre de la transacción (ej. "Certificación de gastos varios")
-        [Required, StringLength(200)]
+        [Required(ErrorMessage = "Ingrese el nombre de la transacción.")]
+        [StringLength(200, ErrorMessage = "El nombre de la transacción no puede superar los 200 caracteres.")]
         public string Name { get; set; } = string.Empty;
 
         // Monto certificado
-        [Required, Range(0.01, double.MaxValue)]
+        [Required(ErrorMessage = "Ingrese el monto a certificar.")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "El monto a certificar debe ser mayor a 0.")]
         public decimal CertifiedAmount { get; set; }
 
         // Partida presupuestaria asociada al certificado
-        [Required, StringLength(100)]
+        [Required(ErrorMessage = "Ingrese la partida presupuestaria.")]
+        [StringLength(100, ErrorMessage = "La partida presupuestaria no puede superar los 100 caracteres.")]
         public string BudgetItem { get; set; } = string.Empty;
 
         // Descripción / detalle de la certificación
-        [Required, StringLength(1000)]
+        [Required(ErrorMessage = "Ingrese una breve descripción de la certificación.")]
+        [StringLength(1000, ErrorMessage = "La descripción de la certificación no puede superar los 1000 caracteres.")]
         public string CertificationDescription { get; set; } = string.Empty;
+
+        public DateTime? CertifiedAt { get; set; }
     }
 
 
@@ -61,18 +67,22 @@ namespace tesisproject.shared.DTOs.Budgets.Request
     public class ExecuteDevengadoRequestDTO
     {
         // Transacción que ya tiene la certificación creada
-        [Required]
+        [Required(ErrorMessage = "Debe seleccionar la certificación que desea devengar.")]
         public int BudgetTransactionId { get; set; }
 
         // Monto devengado (puede ser menor al certificado, pero > 0)
-        [Required, Range(0.01, double.MaxValue)]
+        [Required(ErrorMessage = "Ingrese el monto a devengar.")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "El monto a devengar debe ser mayor a 0.")]
         public decimal ExecutedAmount { get; set; }
 
-        [Required, StringLength(100)]
+        [Required(ErrorMessage = "Ingrese el número de CUR.")]
+        [StringLength(100, ErrorMessage = "El número de CUR no puede superar los 100 caracteres.")]
         public string CURNumber { get; set; } = string.Empty;
 
-        [Required, StringLength(1000)]
+        [Required(ErrorMessage = "Ingrese una breve descripción de la ejecución.")]
+        [StringLength(1000, ErrorMessage = "La descripción de la ejecución no puede superar los 1000 caracteres.")]
         public string ExecutionDescription { get; set; } = string.Empty;
-    }
 
+        public DateTime? ExecutedAt { get; set; }
+    }
 }

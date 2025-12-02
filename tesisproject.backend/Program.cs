@@ -224,13 +224,8 @@ static class StartupExtensions
         builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
         builder.Services.AddScoped<IProjectResearchCategoryRepository, ProjectResearchCategoryRepository>();
         builder.Services.AddScoped<IResearchCategoryRepository, ResearchCategoryRepository>();
-        builder.Services.AddScoped<IAppUserRepository, AppUserRepository>();
-
-
-        // ?? OJO: ya NO registramos repositorios de catálogo específicos como:
-        // IObjectiveTypeRepository, IMemberRoleTypeRepository,
-        // IProjectTypeRepository, IDocumentTypeRepository, IResearchCategoryTypeRepository, etc.
-        // Porque ahora usas ICatalogRepository<T> en el UnitOfWork.
+        builder.Services.AddScoped<IAppUserRepository, AppUserRepository>(); 
+        builder.Services.AddScoped<ITransactionTypeService, TransactionTypeService>();
 
         // =========================
         // Repositorios genéricos

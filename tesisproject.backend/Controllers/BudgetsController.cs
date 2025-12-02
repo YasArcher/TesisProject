@@ -1,9 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.Controllers.Extensions;
+using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Interfaces;
+using tesisproject.backend.Utils;
 using tesisproject.shared.DTOs.Budgets.Request;
 using tesisproject.shared.Responses;
-using tesisproject.backend.Utils;
 
 namespace tesisproject.backend.Controllers
 {
@@ -37,10 +38,11 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/Budgets/project/{projectId}
         [HttpGet("project/{projectId:int}")]
-        public async Task<ActionResult<ApiResponse<BudgetDTO>>> GetByProjectId(
-            int projectId,
-            CancellationToken ct = default)
-            => (await _service.GetByProjectIdAsync(projectId, ct)).ToActionResult();
+        public async Task<ActionResult<ApiResponse<List<BudgetDTO>>>> GetByProjectId(int projectId, CancellationToken ct = default)
+        {
+            var result = await _service.GetByProjectIdAsync(projectId, ct);
+            return result.ToActionResult();
+        }
 
         // PUT: api/Budgets/{id}
         [HttpPut("{id:int}")]
@@ -97,5 +99,13 @@ namespace tesisproject.backend.Controllers
             int budgetId,
             CancellationToken ct)
             => (await _service.GetTransactionsAsync(budgetId, ct)).ToActionResult();
+
+        // PUT: api/Budgets/transactions/{transactionId}/cancel
+        [HttpPut("transactions/{transactionId:int}/cancel")]
+        public async Task<ActionResult<ApiResponse<BudgetTransactionDTO>>> CancelTransaction(
+            int transactionId,
+            CancellationToken ct)
+            => (await _service.CancelTransactionAsync(transactionId, ct))
+                .ToActionResult();
     }
 }

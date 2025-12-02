@@ -25,17 +25,18 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <!-- Resolution code -->
-                    <TextInput Label="Código de resolución"
-                               Value="@ResolutionModel.ResolutionCode"
-                               ValueChanged="val => ResolutionModel.ResolutionCode = val"
+                    <TextInput TValue="string"
+                               Label="Código de resolución"
                                Placeholder="Ej. UTA-CONIN-2021-XXXX-R"
+                               @bind-Value="ResolutionModel.ResolutionCode"
+                               For="@(() => ResolutionModel.ResolutionCode)"
                                Disabled="@IsBusy" />
 
                     <!-- Project name -->
-                    <TextInput Label="Nombre del proyecto"
-                               Value="@DideModel.ProjectName"
-                               ValueChanged="val => DideModel.ProjectName = val ?? string.Empty"
+                    <TextInput TValue="string"
+                               Label="Nombre del proyecto"
                                Placeholder="Título del proyecto según formulario DIDE"
+                               @bind-Value="DideModel.ProjectName"
                                Disabled="@IsBusy"
                                Required="true" />
 
@@ -60,12 +61,13 @@
                     </div>
 
                     <!-- Duration (months) -->
-                    <TextInput Label="Duración (meses)"
-                               Value="@ResolutionModel.Duration.ToString()"
-                               ValueChanged="val => ResolutionModel.Duration = ParseIntOrDefault(val)"
+                    <TextInput TValue="int"
+                               Label="Duración (meses)"
+                               InputType="number"
+                               @bind-Value="ResolutionModel.Duration"
                                Placeholder="Ej. 18"
-                               Disabled="@IsBusy" 
-                               InputType="number" />
+                               Disabled="@IsBusy" />
+
                 </div>
             </div>
 
@@ -134,12 +136,12 @@
                                 </div>
 
                                 <!-- Monto -->
-                                <TextInput Label="Monto (USD)"
-                                           Value="@row.InitialAmount.ToString()"
-                                           ValueChanged="val => OnBudgetAmountChanged(rowIndex, val)"
+                                <TextInput TValue="decimal"
+                                           Label="Monto (USD)"
+                                           InputType="number"
+                                           @bind-Value="row.InitialAmount"
                                            Placeholder="Ej. 8500"
-                                           Disabled="@IsBusy"
-                                           InputType="number" />
+                                           Disabled="@IsBusy" />
 
                                 <!-- Tipo de financiamiento -->
                                 <div class="flex flex-col gap-1">
