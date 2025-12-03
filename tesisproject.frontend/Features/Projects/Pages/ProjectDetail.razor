@@ -21,9 +21,14 @@
 @using tesisproject.shared.DTOs.Catalog.TransactionTypes.Response
 @using tesisproject.shared.DTOs.ProjectObjective.Response
 @using tesisproject.shared.DTOs.ObjectiveActivity.Response
+@using tesisproject.shared.DTOs.ExternalResearcherProject.Response
+@using tesisproject.shared.DTOs.ExternalResearcher.Request
+@using tesisproject.shared.DTOs.ExternalResearcher.Response
+@using tesisproject.shared.DTOs.Institution.Response
+@using tesisproject.shared.DTOs.ExternalResearcherProject.Request
 
-
-
+@inject IExternalResearcherClientService ExternalResearcherClient
+@inject IInstitutionClientService InstitutionClient
 @inject IVisitClientService VisitService
 @inject IProjectClientService ProjectService
 @inject IBudgetClientService BudgetService
@@ -40,6 +45,7 @@
 @inject IResearchCategoryGroupClientService ResearchCategoryGroupService
 @inject ITransactionTypeClientService TransactionTypeService
 @inject IProjectObjectiveClientService ProjectObjectiveService
+@inject IExternalResearcherProjectClientService ExternalResearcherProjectService
 
 
 <div class="flex flex-col h-full">
@@ -124,9 +130,13 @@
                     <ProjectMembersTab Members="_members"
                                        Faculties="_faculties"
                                        IsLoading="@_loadingMembers"
+                                       ExternalResearchersProjects="_externalResearchers"
+                                       IsLoadingExternalResearchers="@_loadingExternalResearchers"
                                        OnInviteMember="HandleInviteMember"
                                        OnChangeRole="HandleChangeRole"
-                                       OnRemoveMember="HandleRemoveMember" />
+                                       OnRemoveMember="HandleRemoveMember"
+                                       OnAddExternalResearcher="HandleOpenExternalResearcherPicker"
+                                       OnRemoveExternalResearcher="HandleRemoveExternalResearcher" />
                 </ChildContent>
             </Tab>
 
@@ -240,6 +250,23 @@
                      OnSubmit="HandleSubmitIssue"
                      OnCancel="HandleCancelIssue" />
 
+<ExternalResearcherPickerModal ModalId="project-external-researcher-picker"
+                               IsOpen="@_showExternalResearcherPicker"
+                               IsOpenChanged="v => _showExternalResearcherPicker = v"
+                               Researchers="@_externalResearcherCandidates"
+                               OnSubmit="HandleExternalResearcherPickedAsync"
+                               OnCancel="() => _showExternalResearcherPicker = false"
+                               OnCreateNewRequested="HandleOpenExternalResearcherCreateModal" />
+
+<ExternalResearcherCreateModal ModalId="project-external-researcher-create"
+                               IsOpen="@_showExternalResearcherCreateModal"
+                               IsOpenChanged="v => _showExternalResearcherCreateModal = v"
+                               OnSave="HandleExternalResearcherCreatedAsync"
+                               OnCancel="HandleExternalResearcherCreateCanceled"
+                               InstitutionSuggestions="@_institutionSuggestions"
+                               OnInstitutionSearchRequested="HandleInstitutionSearchAsync" />
+
+
 
 @code {
     // ======= Categorías de investigación (árbol) =======
@@ -264,6 +291,11 @@
     private List<ExternalUserDTO>? _members;
     private bool _loadingMembers;
     private string? _membersError;
+
+    // ======= Investigadores externos =======
+    private List<ExternalResearcherProjectListItemDTO>? _externalResearchers;
+    private bool _loadingExternalResearchers;
+    private string? _externalResearchersError;
 
     // ======= Visitas (lista) =======
     private List<VisitListResponseDTO>? _visits;
@@ -337,6 +369,230 @@
     private bool _loadingResearchCategoryGroups;
     private string? _researchCategoryGroupsError;
 
+    // Investigadores externos (picker / crear)
+    private bool _showExternalResearcherPicker;
+    private bool _showExternalResearcherCreateModal;
+
+    private List<ExternalResearcherListItemDTO> _externalResearcherCandidates = new();
+    private List<InstitutionListItemDTO> _institutionSuggestions = new();
+    private List<InstitutionListItemDTO> _allInstitutions = new();
+
+    private async Task HandleOpenExternalResearcherPicker()
+    {
+        try
+        {
+            var result = await ExternalResearcherClient.ListAsync(
+                term: null,
+                institutionId: null,
+                ct: CancellationToken.None);
+
+            if (!result.Success || result.Response is null)
+            {
+                Toast.ShowError(result.Error ?? "No se pudieron cargar los investigadores externos.");
+                return;
+            }
+
+            // Evitar duplicados: ya asociados a este proyecto
+            var existingIds = new HashSet<int>(_externalResearchers?.Select(er => er.ExternalResearcherId) ?? Enumerable.Empty<int>());
+
+            _externalResearcherCandidates = result.Response
+                .Where(r => !existingIds.Contains(r.Id))
+                .OrderBy(r => r.FullName)
+                .ToList();
+
+            if (_externalResearcherCandidates.Count == 0)
+            {
+                Toast.ShowInfo("No hay investigadores externos disponibles para agregar.");
+            }
+
+            _showExternalResearcherPicker = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al cargar investigadores externos: {ex.Message}");
+        }
+    }
+
+    private void HandleOpenExternalResearcherCreateModal()
+    {
+        _showExternalResearcherPicker = false;
+        _showExternalResearcherCreateModal = true;
+    }
+
+    private void HandleExternalResearcherCreateCanceled()
+    {
+        _showExternalResearcherCreateModal = false;
+    }
+
+    private async Task HandleExternalResearcherCreatedAsync(ExternalResearcherCreateRequestDTO dto)
+    {
+        try
+        {
+            var result = await ExternalResearcherClient.CreateAsync(dto, CancellationToken.None);
+
+            if (!result.Success)
+            {
+                Toast.ShowError(result.Error ?? "No se pudo crear el investigador externo.");
+                return;
+            }
+
+            Toast.ShowSuccess("Investigador externo creado correctamente.");
+
+            _showExternalResearcherCreateModal = false;
+
+            // Recargar candidatos y reabrir picker
+            await HandleOpenExternalResearcherPicker();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al crear investigador externo: {ex.Message}");
+        }
+    }
+
+    private async Task EnsureInstitutionsLoadedAsync()
+    {
+        if (_allInstitutions.Count > 0)
+            return;
+
+        var result = await InstitutionClient.ListAsync(
+            onlyActives: true,
+            ct: CancellationToken.None);
+
+        if (result.Success && result.Response is not null)
+        {
+            _allInstitutions = result.Response;
+        }
+        else if (!result.Success)
+        {
+            Toast.ShowWarning(result.Error ?? "No se pudieron cargar las instituciones.");
+        }
+    }
+
+    private async Task HandleInstitutionSearchAsync(string searchTerm)
+    {
+        await EnsureInstitutionsLoadedAsync();
+
+        if (_allInstitutions.Count == 0)
+        {
+            _institutionSuggestions = new List<InstitutionListItemDTO>();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            _institutionSuggestions = _allInstitutions
+                .OrderBy(i => i.Name)
+                .Take(20)
+                .ToList();
+        }
+        else
+        {
+            var term = searchTerm.Trim();
+
+            _institutionSuggestions = _allInstitutions
+                .Where(i =>
+                    (!string.IsNullOrWhiteSpace(i.Name) &&
+                     i.Name.Contains(term, StringComparison.OrdinalIgnoreCase))
+                    || (!string.IsNullOrWhiteSpace(i.CountryName) &&
+                        i.CountryName.Contains(term, StringComparison.OrdinalIgnoreCase)))
+                .OrderBy(i => i.Name)
+                .Take(20)
+                .ToList();
+        }
+    }
+
+    private async Task HandleExternalResearcherPickedAsync(int externalResearcherId)
+    {
+        var researcher = _externalResearcherCandidates
+            .FirstOrDefault(r => r.Id == externalResearcherId);
+
+        if (researcher is null)
+        {
+            Toast.ShowError("No se encontró el investigador externo seleccionado.");
+            _showExternalResearcherPicker = false;
+            return;
+        }
+
+        try
+        {
+            // TODO: completa las propiedades según tu ExternalResearcherProjectCreateRequestDTO
+            var createDto = new ExternalResearcherProjectCreateRequestDTO
+            {
+                ExternalResearcherId = researcher.Id,
+                ProjectId = ProjectId,
+                Role = "Investigador"
+            };
+
+            var res = await ExternalResearcherProjectService.CreateAsync(createDto, CancellationToken.None);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "No se pudo asociar el investigador externo al proyecto.");
+                return;
+            }
+
+            Toast.ShowSuccess($"Investigador externo '{researcher.FullName}' agregado al proyecto.");
+            _showExternalResearcherPicker = false;
+
+            // Recargar solo la pestaña de miembros
+            await EnsureTabDataAsync("members");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al asociar investigador externo: {ex.Message}");
+        }
+    }
+
+
+    private async Task HandleRemoveExternalResearcher(int externalResearcherProjectId)
+    {
+        try
+        {
+            // 1) Obtener los datos actuales del registro
+            var existingRes = await ExternalResearcherProjectService.GetByIdAsync(
+                externalResearcherProjectId,
+                CancellationToken.None);
+
+            if (!existingRes.Success || existingRes.Response is null)
+            {
+                Toast.ShowError(existingRes.Error ?? "No se pudo obtener el registro del investigador externo.");
+                return;
+            }
+
+            var existing = existingRes.Response;
+
+            // 2) Construir DTO completo (copiando todo lo requerido)
+            var dto = new ExternalResearcherProjectUpdateRequestDTO
+            {
+                Id = existing.Id,
+                ExternalResearcherId = existing.ExternalResearcherId,
+                ProjectId = existing.ProjectId,
+                Role = existing.Role,
+                ExitDate = DateTime.UtcNow 
+            };
+
+            // 3) Enviar actualización
+            var res = await ExternalResearcherProjectService.UpdateAsync(dto, CancellationToken.None);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "No se pudo desvincular al investigador externo.");
+                return;
+            }
+
+            Toast.ShowSuccess("Investigador externo desvinculado del proyecto.");
+
+            // 4) Recargar la pestaña de miembros
+            await EnsureTabDataAsync("members");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al desvincular investigador externo: {ex.Message}");
+        }
+    }
 
     // ======= Lifecycle =======
     protected override async Task OnInitializedAsync()
@@ -490,10 +746,14 @@
             case "members":
                 _loadingMembers = true;
                 _membersError = null;
+                _loadingExternalResearchers = true;
+                _externalResearchersError = null;
+
                 try
                 {
                     await EnsureProjectDetailIfNeeded();
 
+                    // ===== Miembros internos (Group) =====
                     if (_project?.ProjectGroupId is null or 0)
                     {
                         _members = new();
@@ -510,15 +770,32 @@
                             _membersError = res.Error ?? "No se pudieron cargar los miembros.";
                         }
                     }
+
+                    // ===== Investigadores externos del proyecto =====
+                    var extRes = await ExternalResearcherProjectService.GetByProjectAsync(ProjectId);
+
+                    if (extRes.Success && extRes.Response is not null)
+                    {
+                        _externalResearchers = extRes.Response;
+                    }
+                    else
+                    {
+                        _externalResearchers = new();
+                        _externalResearchersError = extRes.Error ?? "No se pudieron cargar los investigadores externos.";
+                    }
                 }
                 catch (Exception ex)
                 {
                     _members = new();
-                    _membersError = $"Error de conexión: {ex.Message}";
+                    _membersError ??= $"Error de conexión: {ex.Message}";
+
+                    _externalResearchers = new();
+                    _externalResearchersError ??= $"Error de conexión al cargar investigadores externos: {ex.Message}";
                 }
                 finally
                 {
                     _loadingMembers = false;
+                    _loadingExternalResearchers = false;
                 }
                 break;
 

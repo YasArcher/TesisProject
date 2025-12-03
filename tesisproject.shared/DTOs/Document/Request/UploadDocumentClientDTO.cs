@@ -12,6 +12,5 @@ namespace tesisproject.shared.DTOs.Document.Request
         public int? RelatedDocumentId { get; set; }
         public string? ResolutionCode { get; set; }
         public DateTime? ResolutionDate { get; set; }
-        public int CreatedByUserId { get; set; }
     }
 }

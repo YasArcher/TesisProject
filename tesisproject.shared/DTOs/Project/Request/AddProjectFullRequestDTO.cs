@@ -21,7 +21,7 @@ namespace tesisproject.shared.DTOs.Project.Request
         [Required]
         public DocumentResponseDTO ProjectDocumentData { get; set; } = null!;
 
-        // Se envía la colección de miembros del grupo
+        // Miembros internos (grupo UTA)
         public List<AddGroupMemberRequestDTO> GroupMembers { get; set; } = new();
 
         // ===================================
@@ -38,5 +38,13 @@ namespace tesisproject.shared.DTOs.Project.Request
         //   4) Fecha programada de la primera visita
         // ===================================
         public DateTime ScheduledDate { get; set; }
+
+        // ===================================
+        //   5) Investigadores externos
+        // ===================================
+        /// <summary>
+        /// Identificadores de investigadores externos que participarán en el proyecto.
+        /// </summary>
+        public List<int> ExternalResearcherIds { get; set; } = new();
     }
 }

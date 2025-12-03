@@ -4,31 +4,27 @@
 @using tesisproject.shared.DTOs.Filters   @* KeyValueItemDTO *@
 
 <div class="w-full flex flex-col gap-6">
-    <!-- Descripción -->
-    <section class="flex flex-col gap-2">
-        <h3 class="text-lg font-semibold">Step 5: Objectives & activities</h3>
-        <p class="text-sm text-muted">
-            Review and adjust the objectives and their activities detected from the DIDE
-            project form. These objectives will be stored as part of the project definition.
-        </p>
-    </section>
-
     <!-- Editor de objetivos y actividades -->
     <section class="mt-2">
         <h4 class="text-sm font-semibold mb-3">Objectives & activities</h4>
 
-        <ObjectivesActivitiesEditor Objectives="DideModel.Objectives" />
+        <ObjectivesActivitiesEditor Objectives="DideModel.Objectives"
+                                    ObjectivesChanged="HandleObjectivesChanged" />
+
         @* Si luego quieres usar ObjectiveTypeOptions aquí, solo hay que pasárselos al editor *@
     </section>
 </div>
 
 @code {
+    [Parameter] public EventCallback OnObjectivesChanged { get; set; }
     [Parameter] public DideProjectFormInfo DideModel { get; set; } = new();
-
     [Parameter] public bool IsBusy { get; set; }
-
-    // <<< ESTE ES EL QUE FALTABA >>>
 
     [Parameter] public IReadOnlyList<ObjectiveTypeListItemDTO> ObjectiveTypeOptions { get; set; } = Array.Empty<ObjectiveTypeListItemDTO>();
 
+    private async Task HandleObjectivesChanged()
+    {
+        if (OnObjectivesChanged.HasDelegate)
+            await OnObjectivesChanged.InvokeAsync();
+    }
 }

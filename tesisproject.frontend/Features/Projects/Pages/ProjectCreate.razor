@@ -21,10 +21,13 @@
 @using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategoryGroup.Response
 @using tesisproject.shared.DTOs.Convocation.Response
-
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.ExternalResearcher.Request
+@using tesisproject.shared.DTOs.ExternalResearcher.Response
+@using tesisproject.shared.DTOs.Institution.Response
+
 
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Net.Http
@@ -48,6 +51,9 @@
 @inject IResearchCategoryGroupClientService ResearchCategoryGroupClient
 @inject IToastService Toast
 @inject IConvocationClientService ConvocationClient
+@inject IExternalResearcherClientService ExternalResearcherClient
+@inject IInstitutionClientService InstitutionClient
+
 
 <div class="w-full h-full flex flex-col bg-page-bg">
     <!-- Header Principal -->
@@ -148,7 +154,11 @@
                                                            Faculties="@_faculties"
                                                            SingleInstanceRoleIds="@_singleInstanceRoleIds"
                                                            OnAddResearcherRequested="HandleOpenResearcherPicker"
-                                                           OnResearchersChanged="@HandleResearchersChanged" />
+                                                           OnAddExternalResearcherRequested="HandleOpenExternalResearcherPicker"
+                                                           OnResearchersChanged="@HandleResearchersChanged"
+                                                           ExternalResearchers="@_selectedExternalResearchers"
+                                                           OnRemoveExternalResearcherRequested="HandleRemoveExternalResearcher" />
+
                         </div>
                     </div>
 
@@ -159,6 +169,22 @@
                                      InitialSelectedUserId="@_preselectedUserId"
                                      OnSubmit="HandleResearcherPickedAsync"
                                      OnCancel="() => _showUserPicker = false" />
+                    <ExternalResearcherPickerModal ModalId="wizard-external-researcher-picker"
+                                                   IsOpen="@_showExternalResearcherPicker"
+                                                   IsOpenChanged="v => _showExternalResearcherPicker = v"
+                                                   Researchers="@_externalResearcherCandidates"
+                                                   OnSubmit="HandleExternalResearcherPickedAsync"
+                                                   OnCancel="() => _showExternalResearcherPicker = false"
+                                                   OnCreateNewRequested="HandleOpenExternalResearcherCreateModal" />
+
+                    <ExternalResearcherCreateModal ModalId="wizard-external-researcher-create"
+                                                   IsOpen="@_showExternalResearcherCreateModal"
+                                                   IsOpenChanged="v => _showExternalResearcherCreateModal = v"
+                                                   OnSave="HandleExternalResearcherCreatedAsync"
+                                                   OnCancel="HandleExternalResearcherCreateCanceled"
+                                                   InstitutionSuggestions="@_institutionSuggestions"
+                                                   OnInstitutionSearchRequested="HandleInstitutionSearchAsync" />
+
 
                     <!-- STEP 4: Categorías de investigación -->
                     <div class="@(CurrentStep == 4 ? "block" : "hidden")">
@@ -174,7 +200,10 @@
                     <div class="@(CurrentStep == 5 ? "block" : "hidden")">
                         <ProjectCreateStep5Objectives DideModel="@DideData"
                                                       ObjectiveTypeOptions="@_objectiveTypeOptions"
-                                                      IsBusy="false" />
+                                                      IsBusy="false"
+                                                      OnObjectivesChanged="@HandleObjectivesChanged" />
+
+
                     </div>
 
                     <!-- STEP 6: Resumen final -->
@@ -258,13 +287,21 @@
     private CancellationTokenSource? _resolutionCts;
     private DateTime? _scheduledDate;
 
-    private int _currentUserId = 1;
     private int _defaultStateId = 1;
     private int _selectedProjectTypeId = 1;
     private int _fundingTypeId = 0;
     private List<ConvocationListItemResponseDTO> _convocations = new();
     private ConvocationListItemResponseDTO? _activeConvocation;
+    private List<ExternalResearcherListItemDTO> _selectedExternalResearchers = new();
 
+
+    // Investigadores externos
+    private bool _showExternalResearcherPicker;
+    private bool _showExternalResearcherCreateModal;
+
+    private List<ExternalResearcherListItemDTO> _externalResearcherCandidates = new();
+    private List<InstitutionListItemDTO> _institutionSuggestions = new();
+    private List<InstitutionListItemDTO> _allInstitutions = new();
 
     // Catálogos para selects
     private List<DocumentTypeListItemDTO> _documentTypeOptions = new();
@@ -327,6 +364,11 @@
         new(5, "Objetivos y actividades"),
         new(6, "Resumen y confirmación")
     };
+
+    private void HandleObjectivesChanged()
+    {
+        StateHasChanged();
+    }
 
     private string GetStepCircleClass(int stepNumber)
     {
@@ -822,6 +864,173 @@
         return result.Distinct().ToList();
     }
 
+    private async Task HandleOpenExternalResearcherPicker()
+    {
+        try
+        {
+            var result = await ExternalResearcherClient.ListAsync(
+                term: null,
+                institutionId: null,
+                ct: CancellationToken.None);
+
+            if (!result.Success || result.Response is null)
+            {
+                Toast.ShowError(result.Error ?? "No se pudieron cargar los investigadores externos.");
+                return;
+            }
+
+            _externalResearcherCandidates = result.Response
+                .Where(r => !_selectedExternalResearchers.Any(s => s.Id == r.Id))
+                .OrderBy(r => r.FullName)
+                .ToList();
+
+            if (_externalResearcherCandidates.Count == 0)
+            {
+                Toast.ShowInfo("No hay investigadores externos registrados. Puede crearlos con 'Nuevo investigador externo'.");
+            }
+
+            _showExternalResearcherPicker = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al cargar investigadores externos: {ex.Message}");
+        }
+    }
+
+    private void HandleOpenExternalResearcherCreateModal()
+    {
+        _showExternalResearcherPicker = false;
+        _showExternalResearcherCreateModal = true;
+    }
+
+    private void HandleExternalResearcherCreateCanceled()
+    {
+        _showExternalResearcherCreateModal = false;
+    }
+
+    private async Task HandleExternalResearcherCreatedAsync(ExternalResearcherCreateRequestDTO dto)
+    {
+        try
+        {
+            var result = await ExternalResearcherClient.CreateAsync(dto, CancellationToken.None);
+
+            if (!result.Success)
+            {
+                Toast.ShowError(result.Error ?? "No se pudo crear el investigador externo.");
+                return;
+            }
+
+            Toast.ShowSuccess("Investigador externo creado correctamente.");
+
+            _showExternalResearcherCreateModal = false;
+
+            // Recargar la lista para el picker:
+            await HandleOpenExternalResearcherPicker();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al crear investigador externo: {ex.Message}");
+        }
+    }
+
+    private async Task EnsureInstitutionsLoadedAsync()
+    {
+        if (_allInstitutions.Count > 0)
+            return;
+
+        var result = await InstitutionClient.ListAsync(
+            onlyActives: true,
+            ct: CancellationToken.None);
+
+        if (result.Success && result.Response is not null)
+        {
+            _allInstitutions = result.Response;
+        }
+        else if (!result.Success)
+        {
+            Toast.ShowWarning(result.Error ?? "No se pudieron cargar las instituciones.");
+        }
+    }
+
+    private async Task HandleInstitutionSearchAsync(string searchTerm)
+    {
+        await EnsureInstitutionsLoadedAsync();
+
+        if (_allInstitutions.Count == 0)
+        {
+            _institutionSuggestions = new List<InstitutionListItemDTO>();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            _institutionSuggestions = _allInstitutions
+                .OrderBy(i => i.Name)
+                .Take(20)
+                .ToList();
+        }
+        else
+        {
+            var term = searchTerm.Trim();
+
+            _institutionSuggestions = _allInstitutions
+                .Where(i =>
+                    (!string.IsNullOrWhiteSpace(i.Name) &&
+                     i.Name.Contains(term, StringComparison.OrdinalIgnoreCase))
+                    || (!string.IsNullOrWhiteSpace(i.CountryName) &&
+                        i.CountryName.Contains(term, StringComparison.OrdinalIgnoreCase)))
+                .OrderBy(i => i.Name)
+                .Take(20)
+                .ToList();
+        }
+    }
+
+
+    private Task HandleExternalResearcherPickedAsync(int externalResearcherId)
+    {
+        var researcher = _externalResearcherCandidates
+            .FirstOrDefault(r => r.Id == externalResearcherId);
+
+        if (researcher is null)
+        {
+            Toast.ShowError("No se encontró el investigador externo seleccionado.");
+            _showExternalResearcherPicker = false;
+            return Task.CompletedTask;
+        }
+
+        // Evitar duplicados
+        if (_selectedExternalResearchers.Any(r => r.Id == researcher.Id))
+        {
+            Toast.ShowInfo("Este investigador externo ya fue agregado.");
+            _showExternalResearcherPicker = false;
+            return Task.CompletedTask;
+        }
+
+        _selectedExternalResearchers.Add(researcher);
+
+        Toast.ShowSuccess($"Investigador externo '{researcher.FullName}' agregado al proyecto.");
+        _showExternalResearcherPicker = false;
+        StateHasChanged();
+
+        return Task.CompletedTask;
+    }
+
+    private Task HandleRemoveExternalResearcher(int id)
+    {
+        var existing = _selectedExternalResearchers.FirstOrDefault(r => r.Id == id);
+        if (existing is not null)
+        {
+            _selectedExternalResearchers.Remove(existing);
+            StateHasChanged();
+            Toast.ShowInfo($"Investigador externo '{existing.FullName}' fue removido.");
+        }
+
+        return Task.CompletedTask;
+    }
+
+
+
     // ==========================
     // Guardado final (Step 6)
     // ==========================
@@ -911,8 +1120,7 @@
                     DocumentTypeId = 1,
                     RelatedDocumentId = null,
                     ResolutionCode = ResolutionData.ResolutionCode,
-                    ResolutionDate = ResolutionData.ResolutionHeaderDate,
-                    CreatedByUserId = _currentUserId
+                    ResolutionDate = ResolutionData.ResolutionHeaderDate
                 };
                 var content = MultipartBuilder.Build(
                     dto,
@@ -960,7 +1168,6 @@
                                ?? DateTime.Today,
                 StartDate = ResolutionData.ExecutionStartDate,
                 ProjectCode = facultyAcronym,
-                CreatedByUserId = _currentUserId,
                 ProjectStateId = 3,
                 DurationInMonths = ResolutionData.Duration > 0 ? ResolutionData.Duration : 12,
                 FacultyId = facultyId,
@@ -981,7 +1188,6 @@
                     budgetsDto.Add(new CreateBudgetRequestDTO
                     {
                         ProjectId = 0,
-                        ApprovedByUserId = _currentUserId,
                         InitialAmount = b.InitialAmount,
                         FundingTypeId = b.FundingTypeId
                     });
@@ -1056,7 +1262,11 @@
                 GroupMembers = groupMembersDto,
                 Budgets = budgetsDto,
                 Objectives = objectivesDto,
-                ScheduledDate = _scheduledDate.Value
+                ScheduledDate = _scheduledDate.Value,
+                ExternalResearcherIds = _selectedExternalResearchers
+                    .Select(r => r.Id)
+                    .Distinct()
+                    .ToList()
             };
 
             //Console.WriteLine("→ Llamando a ProjectClient.CreateFullAsync() ...");
@@ -1216,7 +1426,6 @@
 
     private void HandleResearchersChanged()
     {
-        // No hace falta cambiar nada más, solo forzar re-render del padre
         StateHasChanged();
     }
 

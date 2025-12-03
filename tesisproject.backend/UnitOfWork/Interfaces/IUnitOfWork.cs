@@ -35,6 +35,10 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
         ICatalogRepository<FundingType> FundingTypes { get; }
         ICatalogRepository<ResearchCategoryGroup> ResearchCategoryGroups { get; }
         ICatalogRepository<TransactionType> TransactionTypes { get; }
+        IExternalResearcherRepository ExternalResearchers { get; }
+        ICatalogRepository<Country> Countries { get; }
+        ICatalogRepository<Institution> Institutions { get; }
+        IExternalResearcherProjectRepository ExternalResearcherProjects { get; }
 
         // 🔹 Nuevo repositorio agregado:
         IAspNetUserRepository AspNetUsers { get; }

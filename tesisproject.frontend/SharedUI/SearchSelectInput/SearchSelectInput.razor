@@ -1,0 +1,52 @@
+﻿@typeparam TValue
+@typeparam TItem
+
+<div class="w-full">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <label class="block text-sm font-medium text-foreground mb-2">
+            @Label
+            @if (Required)
+            {
+                <span class="text-error font-semibold">*</span>
+            }
+        </label>
+    }
+
+    <div class="relative">
+        <input type="text"
+               class="w-full rounded-lg border-2 border-border bg-background text-foreground px-4 py-2.5 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary placeholder:text-muted @(HasError ? "ring-2 ring-error border-error focus:ring-error focus:border-error" : "") @(Disabled ? "disabled:bg-muted cursor-not-allowed" : "")"
+               placeholder="@Placeholder"
+               value="@_searchText"
+               disabled="@Disabled"
+               autocomplete="off"
+               aria-invalid="@(HasError ? "true" : "false")"
+               aria-required="@(Required ? "true" : "false")"
+               @oninput="OnInputAsync"
+               @onfocus="OnFocus"
+               @onblur="OnBlur" />
+
+        @if (_isOpen && Suggestions?.Any() == true)
+        {
+            <ul class="absolute z-20 mt-2 w-full rounded-lg border-2 border-border bg-background shadow-lg max-h-60 overflow-auto">
+                @foreach (var item in Suggestions!)
+                {
+                    var label = ItemLabelSelector?.Invoke(item) ?? item?.ToString();
+                    <li class="px-4 py-3 text-sm text-foreground cursor-pointer transition-colors duration-150 bg-primary-subtle-hover border-b border-border last:border-b-0 first:rounded-t-lg last:rounded-b-lg"
+                        @onclick="@(() => OnItemSelected(item))">
+                        @label
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    @if (HasError)
+    {
+        <p class="mt-2 text-sm text-error font-medium">@ErrorMessage</p>
+    }
+    else if (!string.IsNullOrWhiteSpace(HelpText))
+    {
+        <p class="mt-2 text-sm text-muted">@HelpText</p>
+    }
+</div>
