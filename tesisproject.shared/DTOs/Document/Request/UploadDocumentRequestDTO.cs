@@ -25,9 +25,5 @@ namespace tesisproject.shared.DTOs.Document.Request
         public string? ResolutionCode { get; set; }
 
         public DateTime? ResolutionDate { get; set; }
-
-        // Auditoría mínima: quién lo crea
-        [Required]
-        public int CreatedByUserId { get; set; }
     }
 }

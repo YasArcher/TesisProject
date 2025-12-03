@@ -1,5 +1,6 @@
 ﻿using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.DTOs.Budgets.Request;
 using tesisproject.shared.DTOs.Document.Request;
 using tesisproject.shared.DTOs.Document.Response;
 using tesisproject.shared.Entities.Core;
@@ -23,6 +24,7 @@ namespace tesisproject.backend.Services.Implementations
 
         public async Task<ServiceResult<DocumentResponseDTO>> UploadAsync(
             UploadDocumentRequestDTO request,
+            int currentUserId,
             CancellationToken ct = default)
         {
             // ===== Validaciones básicas =====
@@ -34,11 +36,6 @@ namespace tesisproject.backend.Services.Implementations
             if (request.DocumentTypeId <= 0)
                 return ServiceResult<DocumentResponseDTO>.Fail(
                     "DocumentTypeId is required.",
-                    ErrorType.Validation);
-
-            if (request.CreatedByUserId <= 0)
-                return ServiceResult<DocumentResponseDTO>.Fail(
-                    "CreatedByUserId is required.",
                     ErrorType.Validation);
 
             try
@@ -74,6 +71,14 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     await request.File.CopyToAsync(stream, ct);
                 }
+                var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+                if (user is null)
+                {
+                    return ServiceResult<DocumentResponseDTO>.Fail(
+                        "User not found.",
+                        ErrorType.NotFound
+                    );
+                }
 
                 // ================================
                 // 2. Crear la entidad Document
@@ -88,7 +93,7 @@ namespace tesisproject.backend.Services.Implementations
                     ResolutionCode = request.ResolutionCode,
                     ResolutionDate = request.ResolutionDate,
                     CreatedAt = nowUtc,
-                    CreatedByUserId = request.CreatedByUserId
+                    CreatedByUserId = user.IdUser
                 };
 
                 await _uow.Documents.AddAsync(entity, ct);

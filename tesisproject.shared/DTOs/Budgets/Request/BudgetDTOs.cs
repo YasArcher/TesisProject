@@ -38,9 +38,6 @@ namespace tesisproject.shared.DTOs.Budgets.Request
         [Required]
         public int ProjectId { get; set; }
 
-        [Required]
-        public int ApprovedByUserId { get; set; }
-
         [Range(0, double.MaxValue)]
         public decimal InitialAmount { get; set; }
 

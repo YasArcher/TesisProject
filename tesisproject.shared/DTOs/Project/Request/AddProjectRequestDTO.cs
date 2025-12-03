@@ -20,7 +20,6 @@ namespace tesisproject.shared.DTOs.Project.Request
         public DateTime ApprovalDate { get; set; }
         public DateTime? StartDate { get; set; }
         public string? ProjectCode { get; set; }
-        public int CreatedByUserId { get; set; }
         public int ProjectStateId { get; set; }
         public int DurationInMonths { get; set; }
         public int FacultyId { get; set; }

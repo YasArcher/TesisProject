@@ -29,8 +29,6 @@ namespace tesisproject.frontend.Utils
             if (dto.ResolutionDate.HasValue)
                 form.Add(new StringContent(dto.ResolutionDate.Value.ToString("o")), nameof(dto.ResolutionDate));
 
-            form.Add(new StringContent(dto.CreatedByUserId.ToString()), nameof(dto.CreatedByUserId));
-
             return form;
         }
 

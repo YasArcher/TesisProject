@@ -12,7 +12,7 @@ namespace tesisproject.backend.Services.Interfaces
         Task<ServiceResult<List<ProjectListResponseDTO>>> GetAllAsync(CancellationToken ct = default);
         Task<ServiceResult<ProjectListResponseDTO>> GetByIdAsync(int id, CancellationToken ct = default);
 
-        Task<ServiceResult<ProjectListResponseDTO>> CreateAsync(AddProjectRequestDTO project, CancellationToken ct = default);
+        Task<ServiceResult<ProjectListResponseDTO>> CreateAsync(AddProjectRequestDTO project, int currentUserId, CancellationToken ct = default);
         Task<ServiceResult<NoContent>> UpdateAsync(int id, UpdateProjectRequestDTO project, CancellationToken ct = default);
         Task<ServiceResult<NoContent>> DeleteAsync(int id, CancellationToken ct = default);
 
@@ -20,7 +20,7 @@ namespace tesisproject.backend.Services.Interfaces
 
         Task<ServiceResult<ProjectDetailResponseDTO>> GetProjectDetailAsync(int projectId, CancellationToken ct = default);
 
-        Task<ServiceResult<ProjectDetailResponseDTO>> CreateFullAsync(AddProjectFullRequestDTO request, CancellationToken ct = default);
+        Task<ServiceResult<ProjectDetailResponseDTO>> CreateFullAsync(AddProjectFullRequestDTO request, int currentUserId, CancellationToken ct = default);
         Task<ServiceResult<NoContent>> UpdateResearchCategoriesAsync(int projectId, List<int> researchCategoryIds, CancellationToken ct = default);
     }
 }

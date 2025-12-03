@@ -226,6 +226,9 @@ static class StartupExtensions
         builder.Services.AddScoped<IResearchCategoryRepository, ResearchCategoryRepository>();
         builder.Services.AddScoped<IAppUserRepository, AppUserRepository>(); 
         builder.Services.AddScoped<ITransactionTypeService, TransactionTypeService>();
+        builder.Services.AddScoped<IExternalResearcherRepository, ExternalResearcherRepository>();
+        builder.Services.AddScoped<IExternalResearcherProjectRepository, ExternalResearcherProjectRepository>();
+
 
         // =========================
         // Repositorios genéricos
@@ -266,6 +269,11 @@ static class StartupExtensions
         builder.Services.AddScoped<IFundingTypeService, FundingTypeService>();
         builder.Services.AddScoped<IResearchCategoryGroupService, ResearchCategoryGroupService>();
         builder.Services.AddScoped<IAppUserService, AppUserService>();
+        builder.Services.AddScoped<IExternalResearcherService, ExternalResearcherService>();
+        builder.Services.AddScoped<ICountryService, CountryService>();
+        builder.Services.AddScoped<IInstitutionService, InstitutionService>();
+        builder.Services.AddScoped<IExternalResearcherProjectService, ExternalResearcherProjectService>();
+
     }
 
 

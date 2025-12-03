@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.Controllers.Extensions;
 using tesisproject.backend.Services.Interfaces;
+using tesisproject.backend.Utils;
 using tesisproject.shared.DTOs.Document.Request;
 using tesisproject.shared.DTOs.Document.Response;
 using tesisproject.shared.Responses;
@@ -9,6 +10,7 @@ namespace tesisproject.backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Produces("application/json")]
     public class DocumentsController : ControllerBase
     {
         private readonly IDocumentService _service;
@@ -24,11 +26,17 @@ namespace tesisproject.backend.Controllers
         /// </summary>
         [HttpPost("upload")]
         [ProducesResponseType(typeof(ApiResponse<DocumentResponseDTO>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse<DocumentResponseDTO>), StatusCodes.Status401Unauthorized)]
         public async Task<ActionResult<ApiResponse<DocumentResponseDTO>>> Upload(
             [FromForm] UploadDocumentRequestDTO request,
-            CancellationToken ct)
+            CancellationToken ct = default)
         {
-            var result = await _service.UploadAsync(request, ct);
+            // Igual que en BudgetsController
+            var userId = User.GetUserId();
+            if (userId is null)
+                return Unauthorized(ApiResponse<DocumentResponseDTO>.Fail("User not authenticated."));
+
+            var result = await _service.UploadAsync(request, userId.Value, ct);
             return result.ToActionResult();
         }
     }

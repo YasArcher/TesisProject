@@ -15,7 +15,6 @@ namespace tesisproject.backend.Services.Implementations
 
         public ProjectsFiltersService(
             ICatalogQueryService catalogs,
-            ICatalogRepository<ProjectExtensionType> extTypes,
             IExternalAcademicsService externalAcademicsService,
             ICatalogRepository<ResearchCategoryType> researchTypes)
         {
@@ -23,6 +22,7 @@ namespace tesisproject.backend.Services.Implementations
             _extTypes = externalAcademicsService;
             _researchTypes = researchTypes;
         }
+
 
         public async Task<ServiceResult<ProjectsFilterBootstrapDTO>> GetBootstrapAsync(
             CancellationToken ct = default)

@@ -37,8 +37,10 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public ICatalogRepository<ResearchCategoryGroup> ResearchCategoryGroups { get; set; }
         public IAppUserRepository AppUsers { get; }
         public ICatalogRepository<TransactionType> TransactionTypes { get; }
-
-
+        public IExternalResearcherRepository ExternalResearchers { get; }
+        public ICatalogRepository<Country> Countries { get; }
+        public ICatalogRepository<Institution> Institutions { get; }
+        public IExternalResearcherProjectRepository ExternalResearcherProjects { get; }
         public UnitOfWork(
             AppDbContext ctx,
             IProjectRepository projectRepository,
@@ -69,7 +71,11 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             ICatalogRepository<FundingType> fundingTypes,
             ICatalogRepository<ResearchCategoryGroup> researchCategoryGroups,
             IAppUserRepository appUsers,
-            ICatalogRepository<TransactionType> transactionTypes)
+            ICatalogRepository<TransactionType> transactionTypes,
+            IExternalResearcherRepository externalResearchers,
+            ICatalogRepository<Country> countries,
+            ICatalogRepository<Institution> institutions,
+            IExternalResearcherProjectRepository externalResearcherProjects)
         {
             _ctx = ctx;
             Projects = projectRepository;
@@ -101,6 +107,10 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             ResearchCategoryGroups = researchCategoryGroups;
             AppUsers = appUsers;
             TransactionTypes = transactionTypes;
+            ExternalResearchers = externalResearchers;
+            Countries = countries;
+            Institutions = institutions;
+            ExternalResearcherProjects = externalResearcherProjects;
         }
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)

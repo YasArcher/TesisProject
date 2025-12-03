@@ -8,6 +8,7 @@ namespace tesisproject.backend.Services.Interfaces
     {
         Task<ServiceResult<DocumentResponseDTO>> UploadAsync(
             UploadDocumentRequestDTO request,
+            int currentUserId,
             CancellationToken ct = default);
     }
 }

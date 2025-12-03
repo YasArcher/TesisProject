@@ -1,7 +1,7 @@
 ﻿@using tesisproject.shared.DTOs.Algorithms.Response
 @using tesisproject.frontend.SharedUI.ActionButton
 
-<div class="w-full grid grid-cols-2 gap-6" style="height: 425px;">
+<div class="w-full grid grid-cols-2 gap-6" style="height: 500px;">
     <!-- LEFT COLUMN: General + Specific objectives list -->
     <section class="h-full flex flex-col gap-4 border-2 border-border rounded-2xl bg-background p-5 shadow-sm min-h-0">
         <!-- General objective - FIXED HEIGHT -->
@@ -16,8 +16,8 @@
             @if (GeneralObjective is not null)
             {
                 <textarea class="w-full h-[40px] rounded-xl border-2 border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 resize-none"
-                          @bind="GeneralObjective.ObjectiveText"
-                          @bind:event="oninput"
+                          value="@GeneralObjective.ObjectiveText"
+                          @oninput="OnGeneralObjectiveTextChanged"
                           placeholder="Write the general objective here..."></textarea>
 
                 <div class="flex flex-col gap-1">
@@ -25,8 +25,8 @@
                         Expected Result
                     </label>
                     <textarea class="w-full h-[50px] rounded-xl border-2 border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all duration-200 resize-none"
-                              @bind="GeneralObjective.ObjetiveResult"
-                              @bind:event="oninput"
+                              value="@GeneralObjective.ObjetiveResult"
+                              @oninput="OnGeneralObjectiveResultChanged"
                               placeholder="Describe the expected result or main product..."></textarea>
                 </div>
             }
@@ -191,8 +191,8 @@
                 {
                     <div class="flex flex-col gap-2 overflow-y-auto pr-2 animate-fadeIn" style="min-height: 0;">
                         <textarea class="w-full h-[85px] rounded-xl border-2 border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all duration-200 resize-none"
-                                  @bind="_selectedObjective.ObjectiveText"
-                                  @bind:event="oninput"
+                                  value="@_selectedObjective.ObjectiveText"
+                                  @oninput="OnSelectedObjectiveTextChanged"
                                   placeholder="Write the specific objective here..."></textarea>
 
                         <!-- Percentage + expected result -->
@@ -205,8 +205,8 @@
                                        min="0"
                                        max="100"
                                        class="border-2 border-border rounded-xl px-3 py-2 text-base font-bold bg-background text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
-                                       @bind="_selectedObjective.ObjetivePercentage"
-                                       @bind:event="oninput" />
+                                       value="@_selectedObjective.ObjetivePercentage"
+                                       @oninput="OnSelectedObjectivePercentageChanged" />
                             </div>
 
                             <div class="col-span-2 flex flex-col gap-1">
@@ -214,8 +214,8 @@
                                     Expected Result
                                 </label>
                                 <textarea class="w-full h-[60px] rounded-xl border-2 border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all duration-200 resize-none"
-                                          @bind="_selectedObjective.ObjetiveResult"
-                                          @bind:event="oninput"
+                                          value="@_selectedObjective.ObjetiveResult"
+                                          @oninput="OnSelectedObjectiveResultChanged"
                                           placeholder="Describe the expected product/result..."></textarea>
                             </div>
                         </div>
@@ -262,14 +262,14 @@
                             <div class="grid grid-cols-[3fr_2fr_auto] gap-3 items-start p-2 bg-background border-2 border-border rounded-xl hover:border-accent/50 transition-all duration-200" @key="activity">
                                 <!-- Activity text -->
                                 <textarea class="w-full h-[60px] rounded-lg border border-border bg-background px-2 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 resize-none"
-                                          @bind="activity.ActivityText"
-                                          @bind:event="oninput"
+                                          value="@activity.ActivityText"
+                                          @oninput="@(e => OnActivityTextChanged(activity, e))"
                                           placeholder="Activity description..."></textarea>
 
                                 <!-- Activity result -->
                                 <textarea class="w-full h-[60px] rounded-lg border border-border bg-background px-2 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 resize-none"
-                                          @bind="activity.ActivityResult"
-                                          @bind:event="oninput"
+                                          value="@activity.ActivityResult"
+                                          @oninput="@(e => OnActivityResultChanged(activity, e))"
                                           placeholder="Expected result..."></textarea>
 
                                 <!-- Actions -->
@@ -335,7 +335,7 @@
 @code {
     [Parameter]
     public List<DideObjectiveInfo> Objectives { get; set; } = new();
-
+    [Parameter] public EventCallback ObjectivesChanged { get; set; }
     // General objective = ObjectiveType == 1
     private DideObjectiveInfo? GeneralObjective =>
         Objectives.FirstOrDefault(o => o.ObjectiveType == 1);
@@ -349,6 +349,58 @@
 
     private int TotalSpecificPercentage =>
         SpecificObjectives.Sum(o => o.ObjetivePercentage);
+    private async Task OnGeneralObjectiveResultChanged(ChangeEventArgs e)
+    {
+        if (GeneralObjective is null)
+            return;
+
+        GeneralObjective.ObjetiveResult = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
+    }
+
+    private async Task OnActivityTextChanged(DideObjectiveActivityInfo activity, ChangeEventArgs e)
+    {
+        activity.ActivityText = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
+    }
+
+    private async Task OnActivityResultChanged(DideObjectiveActivityInfo activity, ChangeEventArgs e)
+    {
+        activity.ActivityResult = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
+    }
+
+
+    private async Task OnSelectedObjectiveTextChanged(ChangeEventArgs e)
+    {
+        if (_selectedObjective is null)
+            return;
+
+        _selectedObjective.ObjectiveText = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
+    }
+
+    private async Task OnSelectedObjectivePercentageChanged(ChangeEventArgs e)
+    {
+        if (_selectedObjective is null)
+            return;
+
+        if (int.TryParse(e.Value?.ToString(), out var value))
+        {
+            _selectedObjective.ObjetivePercentage = value;
+            await NotifyObjectivesChanged();
+        }
+    }
+
+    private async Task OnSelectedObjectiveResultChanged(ChangeEventArgs e)
+    {
+        if (_selectedObjective is null)
+            return;
+
+        _selectedObjective.ObjetiveResult = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
+    }
+
 
     protected override void OnParametersSet()
     {
@@ -383,6 +435,19 @@
             _selectedObjective = SpecificObjectives.FirstOrDefault();
         }
     }
+    private async Task NotifyObjectivesChanged()
+    {
+        if (ObjectivesChanged.HasDelegate)
+            await ObjectivesChanged.InvokeAsync();
+    }
+    private async Task OnGeneralObjectiveTextChanged(ChangeEventArgs e)
+    {
+        if (GeneralObjective is null)
+            return;
+
+        GeneralObjective.ObjectiveText = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
+    }
 
     private void SelectObjective(DideObjectiveInfo objective)
     {
@@ -395,12 +460,12 @@
         _isObjectiveExpanded = !_isObjectiveExpanded;
     }
 
-    private void AddSpecificObjective()
+    private async void AddSpecificObjective()
     {
         var newObjective = new DideObjectiveInfo
         {
             ObjectiveText = string.Empty,
-            ObjectiveType = 2,          // específico
+            ObjectiveType = 2,
             ObjetivePercentage = 0,
             ObjetiveResult = string.Empty,
             Activities = new List<DideObjectiveActivityInfo>()
@@ -408,10 +473,12 @@
 
         Objectives.Add(newObjective);
         _selectedObjective = newObjective;
-        _isObjectiveExpanded = true; // Expand when creating new objective
+        _isObjectiveExpanded = true;
+
+        await NotifyObjectivesChanged();
     }
 
-    private void AddActivity()
+    private async void AddActivity()
     {
         if (_selectedObjective is null)
             return;
@@ -419,17 +486,21 @@
         _selectedObjective.Activities.Add(new DideObjectiveActivityInfo
         {
             ActivityText = string.Empty,
-            ActivityResult = string.Empty // siempre inicia en "0% lógico" sin campo numérico
+            ActivityResult = string.Empty
         });
+
+        await NotifyObjectivesChanged();
     }
 
-    private void RemoveActivity(DideObjectiveActivityInfo activity)
+    private async void RemoveActivity(DideObjectiveActivityInfo activity)
     {
         if (_selectedObjective is null)
             return;
 
         _selectedObjective.Activities.Remove(activity);
+        await NotifyObjectivesChanged();
     }
+
 
     private static string Shorten(string? text, int maxLength)
     {

@@ -1,0 +1,147 @@
+﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.frontend.SharedUI.SearchSelectInput
+@using tesisproject.shared.DTOs.ExternalResearcher.Request
+@using tesisproject.shared.DTOs.Institution.Response
+
+<Modal Id="@ModalId"
+       Title="Nuevo investigador externo"
+       IsOpen="@IsOpen"
+       IsOpenChanged="IsOpenChanged"
+       ShowCloseButton="true"
+       CloseOnBackdrop="true"
+       CloseOnEscape="true"
+       Size="ModalSize.Md"
+       OnClose="HandleClose">
+
+    <ChildContent>
+        <!-- OJO: sin OnValidSubmit -->
+        <EditForm Model="@Model">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="space-y-4">
+                <!-- Nombre completo -->
+                <TextInput TValue="string"
+                           Label="Nombre completo"
+                           InputType="text"
+                           Value="@Model.FullName"
+                           ValueChanged="v => Model.FullName = v"
+                           For="@(() => Model.FullName)"
+                           Required="true" />
+
+                <!-- Correo electrónico -->
+                <TextInput TValue="string"
+                           Label="Correo electrónico"
+                           InputType="email"
+                           Value="@Model.Email"
+                           ValueChanged="v => Model.Email = v"
+                           For="@(() => Model.Email)"
+                           Required="true" />
+
+                <!-- Teléfono (opcional) -->
+                <TextInput TValue="string"
+                           Label="Teléfono (opcional)"
+                           InputType="number"
+                           Value="@Model.PhoneNumber"
+                           ValueChanged="v => Model.PhoneNumber = v"
+                           For="@(() => Model.PhoneNumber)" />
+
+                <!-- Institución -->
+                <SearchSelectInput TValue="int?" TItem="InstitutionListItemDTO"
+                                   Label="Institución (opcional)"
+                                   Value="Model.InstitutionId"
+                                   ValueChanged="OnInstitutionChanged"
+                                   Placeholder="Escriba para buscar institución"
+                                   Required="false"
+                                   HelpText="Si la institución no aparece en el listado, deje este campo vacío y comuníquese con el administrador."
+                                   Items="InstitutionSuggestions"
+                                   ItemLabelSelector="(i => i.Name)"
+                                   ItemValueSelector="(i => i.Id)"
+                                   OnSearchRequested="OnInstitutionSearchRequested" />
+            </div>
+
+            <div class="mt-6 flex justify-end gap-2">
+                <ActionButton Text="Cancelar"
+                              Variant="ButtonVariant.Ghost"
+                              Size="ButtonSize.Sm"
+                              Execute="OnCancelClicked" />
+
+                <ActionButton Text="Guardar investigador"
+                              Variant="ButtonVariant.Soft"
+                              Size="ButtonSize.Sm"
+                              Execute="OnSaveClicked"
+                              Class="btn-primary" />
+            </div>
+        </EditForm>
+
+    </ChildContent>
+</Modal>
+
+@code {
+    [Parameter] public string ModalId { get; set; } = "external-researcher-create-modal";
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    /// <summary>Se emite cuando se crea correctamente el investigador.</summary>
+    [Parameter] public EventCallback<ExternalResearcherCreateRequestDTO> OnSave { get; set; }
+
+    /// <summary>Notifica cancelación.</summary>
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    /// <summary>
+    /// Lista de instituciones sugeridas (el padre la actualiza cuando se dispara OnSearchRequested).
+    /// </summary>
+    [Parameter] public IEnumerable<InstitutionListItemDTO>? InstitutionSuggestions { get; set; }
+
+    /// <summary>
+    /// El padre implementa la lógica de búsqueda de instituciones contra el backend.
+    /// </summary>
+    [Parameter] public EventCallback<string> OnInstitutionSearchRequested { get; set; }
+
+    private ExternalResearcherCreateRequestDTO Model { get; set; } = new();
+
+    // EditContext del EditForm (cascading)
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+
+    private async Task OnCancelClicked()
+    {
+        await CloseInternal();
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleClose()
+    {
+        await CloseInternal();
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task CloseInternal()
+    {
+        Model = new();
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private Task OnInstitutionChanged(int? newValue)
+    {
+        Model.InstitutionId = newValue;
+        return Task.CompletedTask;
+    }
+
+    private async Task OnSaveClicked()
+    {
+        // Validar usando el EditContext del EditForm
+        if (EditContext is not null)
+        {
+            var isValid = EditContext.Validate();
+            if (!isValid)
+                return;
+        }
+
+        await OnSave.InvokeAsync(Model);
+        await CloseInternal();
+    }
+}

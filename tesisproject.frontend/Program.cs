@@ -75,6 +75,11 @@ builder.Services.AddScoped<IResearchCategoryGroupClientService, ResearchCategory
 builder.Services.AddScoped<IVisitIssueClientService, VisitIssueClientService>();
 builder.Services.AddScoped<ITransactionTypeClientService, TransactionTypeClientService>();
 builder.Services.AddScoped<IProjectObjectiveClientService, ProjectObjectiveClientService>();
+builder.Services.AddScoped<IExternalResearcherClientService, ExternalResearcherClientService>();
+builder.Services.AddScoped<ICountryClientService, CountryClientService>();
+builder.Services.AddScoped<IInstitutionClientService, InstitutionClientService>();
+builder.Services.AddScoped<IExternalResearcherProjectClientService, ExternalResearcherProjectClientService>();
+builder.Services.AddScoped<IConvocationClientService, ConvocationClientService>();
 
 
 // External

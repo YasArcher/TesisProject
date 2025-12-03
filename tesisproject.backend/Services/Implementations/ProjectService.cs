@@ -3,6 +3,7 @@ using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.Auth;
+using tesisproject.shared.DTOs.Budgets.Request;
 using tesisproject.shared.DTOs.Project.Request;
 using tesisproject.shared.DTOs.Project.Response;
 using tesisproject.shared.DTOs.ProjectObjective.Response;
@@ -151,7 +152,7 @@ namespace tesisproject.backend.Services.Implementations
 
         // ================= WRITES =================
 
-        public async Task<ServiceResult<ProjectListResponseDTO>> CreateAsync(AddProjectRequestDTO dto, CancellationToken ct = default)
+        public async Task<ServiceResult<ProjectListResponseDTO>> CreateAsync(AddProjectRequestDTO dto, int currentUserId, CancellationToken ct = default)
         {
             try
             {
@@ -163,8 +164,15 @@ namespace tesisproject.backend.Services.Implementations
                         "A project with the same name already exists in this group.",
                         ErrorType.Conflict
                     );
-
-                var entity = MapToEntity(dto);
+                var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+                if (user is null)
+                {
+                    return ServiceResult<ProjectListResponseDTO>.Fail(
+                        "User not found.",
+                        ErrorType.NotFound
+                    );
+                }
+                var entity = MapToEntity(dto, user.IdUser);
                 await _uow.Projects.AddAsync(entity, ct);
                 await _uow.SaveChangesAsync(ct);
 
@@ -324,6 +332,7 @@ namespace tesisproject.backend.Services.Implementations
 
         public async Task<ServiceResult<ProjectDetailResponseDTO>> CreateFullAsync(
             AddProjectFullRequestDTO request,
+            int currentUserId,
             CancellationToken ct = default)
         {
             // Helper local para log interno
@@ -356,8 +365,15 @@ namespace tesisproject.backend.Services.Implementations
                     PhaseLog("Fase 1 - Validación", "ProjectStateId <= 0");
                     return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid ProjectStateId.");
                 }
-
-                if (p.CreatedByUserId <= 0)
+                var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+                if (user is null)
+                {
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
+                        "User not found.",
+                        ErrorType.NotFound
+                    );
+                }
+                if (user.IdUser <= 0)
                 {
                     PhaseLog("Fase 1 - Validación", "CreatedByUserId <= 0");
                     return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid CreatedByUserId.");
@@ -455,7 +471,7 @@ namespace tesisproject.backend.Services.Implementations
                 var projectEntity = new Project
                 {
                     ProjectCode = generatedCode,
-                    CreatedByUserId = p.CreatedByUserId,
+                    CreatedByUserId = user.IdUser,
                     ProjectTypeId = p.ProjectTypeId,
                     ProjectNumber = nextNumber,
                     ProjectStateId = p.ProjectStateId,
@@ -593,7 +609,7 @@ namespace tesisproject.backend.Services.Implementations
                         .Select(b => new Budget
                         {
                             Project = projectEntity,
-                            ApprovedByUserId = b.ApprovedByUserId,
+                            ApprovedByUserId = user.IdUser,
                             InitialAmount = b.InitialAmount,
                             CertifiedAmount = 0,
                             ExecutedAmount = 0,
@@ -644,6 +660,48 @@ namespace tesisproject.backend.Services.Implementations
                         }
                     }
                 }
+
+                // ============================================
+                // 8.5) Investigadores externos
+                // ============================================
+
+                PhaseLog("Fase 8.5 - ExternalResearchers", "Insertando investigadores externos...");
+
+                if (request.ExternalResearcherIds is not null && request.ExternalResearcherIds.Count > 0)
+                {
+                    var distinctExternalIds = request.ExternalResearcherIds
+                        .Where(id => id > 0)
+                        .Distinct()
+                        .ToList();
+
+                    if (distinctExternalIds.Count > 0)
+                    {
+                        var externalLinks = new List<ExternalResearcherProject>();
+
+                        foreach (var externalId in distinctExternalIds)
+                        {
+                            externalLinks.Add(new ExternalResearcherProject
+                            {
+                                ExternalResearcherId = externalId,
+                                Project = projectEntity,          // EF se encarga de ProjectId
+                                Role = "ExternalResearcher",      // fijo, porque en el front no manejas rol por externo
+                                CreatedAtUtc = DateTime.UtcNow,
+                                CreatedByUserId = user.IdUser,
+                                ExitDate = null
+                            });
+                        }
+
+                        PhaseLog("Fase 8.5 - ExternalResearchers",
+                            $"Insertando {externalLinks.Count} vínculos ExternalResearcherProject...");
+
+                        await _uow.ExternalResearcherProjects.AddRangeAsync(externalLinks, ct);
+                    }
+                }
+                else
+                {
+                    PhaseLog("Fase 8.5 - ExternalResearchers", "No hay investigadores externos en el request.");
+                }
+
 
                 // ============================================
                 // 9) Visitas
@@ -704,10 +762,10 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-        private static Project MapToEntity(AddProjectRequestDTO dto) => new()
+        private static Project MapToEntity(AddProjectRequestDTO dto, int userId) => new()
         {
             ProjectCode = dto.ProjectCode ?? string.Empty,
-            CreatedByUserId = dto.CreatedByUserId,
+            CreatedByUserId = userId,
             ProjectTypeId = dto.ProjectTypeId,
             ProjectStateId = dto.ProjectStateId,
             ProjectGroupId = dto.ProjectGroupId,
