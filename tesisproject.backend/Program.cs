@@ -13,6 +13,8 @@ using tesisproject.backend.Options;
 using tesisproject.backend.Repositories.Implementations;
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services;
+using tesisproject.backend.Services.Analytic.Implementations;
+using tesisproject.backend.Services.Analytic.Interfaces;
 using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Implementations;
@@ -68,9 +70,18 @@ static class StartupExtensions
 
     public static void ConfigureDatabase(this WebApplicationBuilder builder)
     {
+        var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
+
+        // BD operativa
         builder.Services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+            options.UseSqlServer(defaultConnection));
+
+        // BD de DW (puede ser otra conexión o la misma)
+
+        builder.Services.AddDbContext<DwContext>(options =>
+            options.UseSqlServer(defaultConnection));
     }
+
 
     public static void ConfigureIdentity(this WebApplicationBuilder builder)
     {
@@ -273,6 +284,7 @@ static class StartupExtensions
         builder.Services.AddScoped<ICountryService, CountryService>();
         builder.Services.AddScoped<IInstitutionService, InstitutionService>();
         builder.Services.AddScoped<IExternalResearcherProjectService, ExternalResearcherProjectService>();
+        builder.Services.AddScoped<IDwEtlService, DwEtlService>();
 
     }
 
