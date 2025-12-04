@@ -421,7 +421,7 @@ namespace tesisproject.backend.Data
 
                 // FK → Visit (opcional)
                 b.HasOne(p => p.Visit)
-                 .WithMany() // si quieres navegación, agrega ICollection<Product> en Visit y cámbialo a v => v.Products!
+                 .WithMany(v => v.Products)// si quieres navegación, agrega ICollection<Product> en Visit y cámbialo a v => v.Products!
                  .HasForeignKey(p => p.VisitId)
                  .OnDelete(DeleteBehavior.NoAction);
 
