@@ -10,17 +10,13 @@ using tesisproject.shared.Enums;
 namespace tesisproject.shared.Entities.Core.Products
 {
     /// <summary>
-    /// Defines which attributes a given ProductType requires (name, datatype, order, etc.).
-    /// Used to render dynamic forms and to validate ProductValue.
+    /// Global definition of a product attribute (name, datatype, unit).
+    /// Can be assigned to one or many ProductTypes via ProductTypeAttributeDefinition.
     /// </summary>
     public class ProductAttributeDefinition
     {
         // =============== Keys ===============
         public int Id { get; set; }
-
-        // =============== FK ===============
-        [Required]
-        public int ProductTypeId { get; set; }
 
         // =============== Definition ===============
         [Required, MaxLength(128)]
@@ -29,17 +25,23 @@ namespace tesisproject.shared.Entities.Core.Products
         [Required]
         public ProductAttributeDataType DataType { get; set; } = ProductAttributeDataType.Text;
 
-        public bool IsRequired { get; set; } = false;
-
-        /// <summary>Display order for forms.</summary>
-        public int DisplayOrder { get; set; } = 0;
-
-        /// <summary>Optional unit (only meaningful for numeric types).</summary>
+        /// <summary>
+        /// Optional unit (only meaningful for numeric types).
+        /// </summary>
         [MaxLength(32)]
         public string? Unit { get; set; }
 
         // =========== Navigations ============
-        public ICollection<ProductValue>? ProductValues { get; set; }
-        public ProductType? ProductType { get; set; }
+        /// <summary>
+        /// Links to product types that use this attribute.
+        /// </summary>
+        public ICollection<ProductTypeAttributeDefinition> ProductTypeLinks { get; set; }
+            = new List<ProductTypeAttributeDefinition>();
+
+        /// <summary>
+        /// Values assigned to concrete products for this attribute.
+        /// </summary>
+        public ICollection<ProductValue> ProductValues { get; set; }
+            = new List<ProductValue>();
     }
 }

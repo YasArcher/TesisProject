@@ -42,6 +42,7 @@ namespace tesisproject.backend.Data
         public DbSet<Convocation> Convocations => Set<Convocation>();
         public DbSet<ConvocationRule> ConvocationRules => Set<ConvocationRule>();
         public DbSet<ProjectResearchCategory> ProjectResearchCategories => Set<ProjectResearchCategory>();
+        DbSet<ProductTypeAttributeDefinition> ProductTypeAttributeDefinitions => Set<ProductTypeAttributeDefinition>();
 
         // =========================================================
         // DbSets - Catalogs
@@ -399,6 +400,12 @@ namespace tesisproject.backend.Data
             {
                 b.Property(x => x.Name).HasMaxLength(100).IsRequired();
                 b.HasIndex(x => x.Name).IsUnique(); // opcional
+
+                // Relación con la tabla puente de atributos
+                b.HasMany(pt => pt.AttributeDefinitions)
+                 .WithOne(link => link.ProductType)
+                 .HasForeignKey(link => link.ProductTypeId)
+                 .OnDelete(DeleteBehavior.NoAction);
             });
 
             // ============== Product (ProjectId requerido, VisitId opcional) ==============
@@ -415,13 +422,13 @@ namespace tesisproject.backend.Data
 
                 // FK → Project (requerido)
                 b.HasOne(p => p.Project)
-                 .WithMany(pr => pr.Products!) // si no tienes navegación en Project, usa .WithMany()
+                 .WithMany(pr => pr.Products!)
                  .HasForeignKey(p => p.ProjectId)
                  .OnDelete(DeleteBehavior.NoAction);
 
                 // FK → Visit (opcional)
                 b.HasOne(p => p.Visit)
-                 .WithMany(v => v.Products)// si quieres navegación, agrega ICollection<Product> en Visit y cámbialo a v => v.Products!
+                 .WithMany(v => v.Products)
                  .HasForeignKey(p => p.VisitId)
                  .OnDelete(DeleteBehavior.NoAction);
 
@@ -432,21 +439,43 @@ namespace tesisproject.backend.Data
                 b.HasIndex(p => p.IsActive);
             });
 
-            // ============== ProductAttributeDefinition ==========
+            // ============== ProductAttributeDefinition (GLOBAL) ==========
             builder.Entity<ProductAttributeDefinition>(b =>
             {
-                b.Property(a => a.AttributeName).HasMaxLength(128).IsRequired();
-                b.Property(a => a.DataType).HasMaxLength(32).IsRequired();
-                b.Property(a => a.Unit).HasMaxLength(32);
+                b.Property(a => a.AttributeName)
+                 .HasMaxLength(128)
+                 .IsRequired();
 
-                b.HasOne(a => a.ProductType)
-                 .WithMany()
-                 .HasForeignKey(a => a.ProductTypeId)
+                b.Property(a => a.DataType)
+                 .IsRequired();
+
+                b.Property(a => a.Unit)
+                 .HasMaxLength(32);
+
+                // Opcional: índice por nombre para búsquedas rápidas
+                b.HasIndex(a => a.AttributeName);
+            });
+
+            // ============== ProductTypeAttributeDefinition (PUENTE) ======
+            builder.Entity<ProductTypeAttributeDefinition>(b =>
+            {
+                b.HasKey(x => x.Id);
+
+                // No permitir duplicar la misma definición en el mismo tipo
+                b.HasIndex(x => new { x.ProductTypeId, x.AttributeDefinitionId })
+                 .IsUnique();
+
+                b.Property(x => x.DisplayOrder);
+
+                b.HasOne(x => x.ProductType)
+                 .WithMany(pt => pt.AttributeDefinitions)
+                 .HasForeignKey(x => x.ProductTypeId)
                  .OnDelete(DeleteBehavior.NoAction);
 
-                // Evita duplicados por (Tipo, Nombre)
-                b.HasIndex(a => new { a.ProductTypeId, a.AttributeName })
-                 .IsUnique();
+                b.HasOne(x => x.AttributeDefinition)
+                 .WithMany(ad => ad.ProductTypeLinks)
+                 .HasForeignKey(x => x.AttributeDefinitionId)
+                 .OnDelete(DeleteBehavior.NoAction);
             });
 
             // ============== ProductValue ========================
@@ -462,7 +491,7 @@ namespace tesisproject.backend.Data
                  .OnDelete(DeleteBehavior.NoAction);
 
                 b.HasOne(v => v.AttributeDefinition)
-                 .WithMany(d => d.ProductValues!)
+                 .WithMany(d => d.ProductValues)
                  .HasForeignKey(v => v.AttributeDefinitionId)
                  .OnDelete(DeleteBehavior.NoAction);
             });
@@ -472,9 +501,6 @@ namespace tesisproject.backend.Data
             {
                 // Un mismo usuario no puede repetirse en el mismo producto
                 b.HasIndex(x => new { x.ProductId, x.UserId }).IsUnique();
-
-                // Si manejas orden de autor y quieres que no se repita por producto:
-                // b.HasIndex(x => new { x.ProductId, x.AuthorOrder }).IsUnique();
 
                 b.HasOne(x => x.Product)
                  .WithMany(p => p.Authors!)

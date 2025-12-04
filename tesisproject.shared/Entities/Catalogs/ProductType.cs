@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using tesisproject.shared.Entities.Base;
+using tesisproject.shared.Entities.Core.Products;
 
 namespace tesisproject.shared.Entities.Catalogs
 {
@@ -14,5 +15,11 @@ namespace tesisproject.shared.Entities.Catalogs
     {
         // Keep it simple: Id, Name, IsActive come from CatalogEntityBase.
         // Add new fields here only if they apply to ALL product types.
+
+        /// <summary>
+        /// Attribute definitions assigned to this product type.
+        /// </summary>
+        public ICollection<ProductTypeAttributeDefinition> AttributeDefinitions { get; set; }
+            = new List<ProductTypeAttributeDefinition>();
     }
 }

@@ -11,6 +11,7 @@ namespace tesisproject.shared.Entities.Core.Products
     /// <summary>
     /// Stores the actual value of a product attribute (per product).
     /// One value per (Product, AttributeDefinition).
+    /// AttributeDefinition is global and may be linked to the Product's type.
     /// </summary>
     [Index(nameof(ProductId), nameof(AttributeDefinitionId), IsUnique = true)]
     public class ProductValue
