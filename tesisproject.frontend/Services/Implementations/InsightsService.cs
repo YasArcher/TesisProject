@@ -58,18 +58,23 @@ namespace tesisproject.frontend.Services.Implementations
                 cancellationToken);
         }
 
+        // Firma alineada con la interfaz (nullable)
         public Task<ArticlesQuartileStatsDto?> GetArticlesQuartileStatsAsync(
-         CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default)
         {
-            // 👇 Aquí importante: misma ruta del backend
+            // GET /api/reports/articles/quality/quartiles
             return _apiClient.GetAsync<ArticlesQuartileStatsDto?>(
                 "api/reports/articles/quality/quartiles",
                 cancellationToken);
         }
+
+        // Permitimos filtro opcional. Si es null, mandamos objeto vacío.
         public async Task<ArticlesDashboardDto> GetArticlesDashboardAsync(
-            ArticlesDashboardFilterDto filter,
+            ArticlesDashboardFilterDto? filter = null,
             CancellationToken cancellationToken = default)
         {
+            filter ??= new ArticlesDashboardFilterDto();
+
             var result = await _apiClient.PostAsync<ArticlesDashboardFilterDto, ArticlesDashboardDto>(
                 "api/reports/articles/dashboard",
                 filter,
@@ -85,6 +90,35 @@ namespace tesisproject.frontend.Services.Implementations
                 Quartiles = new ArticlesQuartileStatsDto(),
                 AccessIndexing = new ArticlesOpenAccessIndexingStatsDto(),
                 TimeToPublication = new ArticlesTimeToPublicationStatsDto()
+            };
+        }
+        public async Task<List<ArticlesTimeSeriesDto>> GetArticlesTimeSeriesAsync(
+            ArticlesFilterDto filter,
+            CancellationToken cancellationToken = default)
+        {
+            var result = await _apiClient.PostAsync<ArticlesFilterDto, List<ArticlesTimeSeriesDto>>(
+                "api/reports/articles/time-series",
+                filter,
+                cancellationToken);
+
+            return result ?? new List<ArticlesTimeSeriesDto>();
+        }
+        public async Task<ArticlesDetailedResultDto> GetArticlesDetailedAsync(
+            ArticlesDashboardFilterDto filter,
+            CancellationToken cancellationToken = default)
+        {
+            filter ??= new ArticlesDashboardFilterDto();
+
+            var result = await _apiClient.PostAsync<ArticlesDashboardFilterDto, ArticlesDetailedResultDto>(
+                "api/reports/articles/detailed",
+                filter,
+                cancellationToken);
+
+            return result ?? new ArticlesDetailedResultDto
+            {
+                AppliedFilter = filter,
+                Rows = new List<ArticleReportRowDto>(),
+                Kpis = new ArticlesKpiSummaryDto()
             };
         }
     }

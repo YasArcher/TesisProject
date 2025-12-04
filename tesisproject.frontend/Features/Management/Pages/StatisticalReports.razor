@@ -30,47 +30,70 @@
         <div class="pointer-events-none absolute -right-10 -top-10 w-40 h-40 bg-[#7A1E19]/5 rounded-full blur-3xl"></div>
         <div class="pointer-events-none absolute -left-16 bottom-0 w-40 h-32 bg-amber-500/5 rounded-full blur-3xl"></div>
 
+        <!-- Botón para mostrar/ocultar panel lateral de filtros -->
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="text-sm font-semibold text-slate-800 uppercase tracking-wide">
+                    Configuración del reporte
+                </h2>
+                <p class="mt-1 text-xs text-slate-500">
+                    Ajusta el rango de años, aplica filtros avanzados por dimensiones y genera el informe en PDF.
+                </p>
+            </div>
+
+            <button class="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
+                    @onclick="ToggleAdvancedFilters">
+                <span class="material-icons text-sm">tune</span>
+                @(_showAdvancedFilters ? "Cerrar panel de filtros" : "Abrir panel de filtros")
+            </button>
+        </div>
+
         <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)] gap-6 relative z-10">
 
             <!-- --------------------------------------------- -->
-            <!-- IZQUIERDA: Panel único de filtros y acciones  -->
+            <!-- IZQUIERDA: Filtros básicos + acciones         -->
             <!-- --------------------------------------------- -->
             <div class="flex flex-col gap-4">
-                <div class="flex items-start justify-between gap-2">
-                    <div>
-                        <h2 class="text-sm font-semibold text-slate-800 uppercase tracking-wide">
-                            Configuración del reporte
-                        </h2>
-                        <p class="mt-1 text-xs text-slate-500">
-                            Ajusta el rango de años, elige qué secciones incluir y genera el informe en PDF.
-                        </p>
-                    </div>
-                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] px-2 py-0.5 border border-emerald-100">
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Datos listos para análisis
-                    </span>
-                </div>
-
-                <!-- Filtros de años -->
-                <div class="flex flex-wrap items-end gap-4">
+                <!-- Filtros de fechas -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                            Año mínimo
+                            Fecha creación (desde)
                         </label>
-                        <input type="number"
+                        <input type="date"
                                class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19] transition-shadow"
-                               @bind="_filterMinYear"
-                               @bind:event="oninput" />
+                               @bind="_filterCreatedFrom"
+                               @bind:format="yyyy-MM-dd" />
                     </div>
 
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                            Año máximo
+                            Fecha creación (hasta)
                         </label>
-                        <input type="number"
+                        <input type="date"
                                class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19] transition-shadow"
-                               @bind="_filterMaxYear"
-                               @bind:event="oninput" />
+                               @bind="_filterCreatedTo"
+                               @bind:format="yyyy-MM-dd" />
+                    </div>
+
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Fecha publicación (desde)
+                        </label>
+                        <input type="date"
+                               class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19] transition-shadow"
+                               @bind="_filterPublicationFrom"
+                               @bind:format="yyyy-MM-dd" />
+                    </div>
+
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            Fecha publicación (hasta)
+                        </label>
+                        <input type="date"
+                               class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19] transition-shadow"
+                               @bind="_filterPublicationTo"
+                               @bind:format="yyyy-MM-dd" />
                     </div>
                 </div>
 
@@ -201,6 +224,24 @@
                         </span>
                     </div>
 
+                    <!-- Crecimiento acumulado -->
+                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1 hover:shadow-md hover:-translate-y-0.5 transition">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                                Crecimiento acumulado
+                            </span>
+                            <span class="inline-flex items-center justify-center rounded-full bg-blue-50 text-blue-600 p-1">
+                                <span class="material-icons text-[16px]">trending_up</span>
+                            </span>
+                        </div>
+                        <span class="text-2xl font-bold text-slate-900">
+                            @(_trendGrowthPercent.HasValue? _trendGrowthPercent.Value.ToString("0.##") + "%" : "–")
+                        </span>
+                        <span class="text-[11px] text-slate-400">
+                            Desde @_trendStartYear hasta @_trendEndYear
+                        </span>
+                    </div>
+
                     <!-- Open Access / Indexados Scopus -->
                     <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1 hover:shadow-md hover:-translate-y-0.5 transition">
                         <div class="flex items-center justify-between">
@@ -224,332 +265,711 @@
     </section>
 
     <!-- ========================================================= -->
-    <!-- SECCIÓN INFERIOR: IZQ GRÁFICOS / DER TABLAS              -->
+    <!-- SECCIÓN INFERIOR: TABS (Dashboard / Detallado)            -->
     <!-- ========================================================= -->
     <div class="flex-1 overflow-y-auto pb-4">
-        @if (_isLoading)
+
+        <!-- Tabs -->
+        <div class="mb-4 border-b border-slate-200">
+            <nav class="flex gap-2 text-sm">
+                <button type="button"
+                        class="@GetTabButtonClass("dashboard")"
+                        @onclick="SwitchToDashboard">
+                    <span class="material-icons text-[16px] mr-1">dashboard</span>
+                    Resumen gráfico
+                </button>
+
+                <button type="button"
+                        class="@GetTabButtonClass("detail")"
+                        @onclick="SwitchToDetail">
+                    <span class="material-icons text-[16px] mr-1">table_view</span>
+                    Vista detallada (tabla)
+                </button>
+            </nav>
+        </div>
+
+        @if (_activeTab == "dashboard")
         {
-            <div class="flex items-center justify-center py-16 text-slate-500 text-sm">
-                Cargando datos de reportería...
-            </div>
-        }
-        else if (!string.IsNullOrWhiteSpace(_errorMessage))
-        {
-            <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-                @_errorMessage
-            </div>
-        }
-        else
-        {
-            <section class="grid grid-cols-1 xl:grid-cols-2 gap-4 auto-rows-[minmax(360px,auto)]">
-                <!-- ----------------------------------------- -->
-                <!-- IZQUIERDA: SOLO GRÁFICOS                  -->
-                <!-- ----------------------------------------- -->
-                <div class="flex flex-col gap-4">
-
-                    <!-- Distribución por año (GRÁFICO) -->
-                    <section class="bg-white border-l-4 border-[#7A1E19]/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
-                        <div class="flex items-start justify-between mb-3">
-                            <div>
-                                <h2 class="text-base font-semibold text-slate-900">Distribución por año</h2>
-                                <p class="text-xs text-slate-500">
-                                    Artículos creados en el sistema por año (según filtros aplicados).
-                                </p>
-                            </div>
-
-                            <button type="button"
-                                    class="ml-2 text-slate-400 hover:text-slate-600 relative group">
-                                <span class="material-icons text-base">info</span>
-                                <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
-                                    Muestra la evolución anual del número de artículos registrados en el sistema dentro del rango de años seleccionado.
-                                </span>
-                            </button>
-                        </div>
-
-                        @if (_filteredByYear.Count == 0)
-                        {
-                            <p class="text-xs text-slate-400">No hay datos para el rango de años seleccionado.</p>
-                        }
-                        else
-                        {
-                            <div class="flex-1 min-h-[220px]">
-                                <EChart Id="chart-by-year"
-                                        Height="@YearChartHeight"
-                                        Option="@YearChartOption" />
-                            </div>
-                        }
-                    </section>
-
-                    <!-- Top áreas de conocimiento (GRÁFICO) -->
-                    <section class="bg-white border-l-4 border-amber-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
-                        <div class="flex items-start justify-between mb-3">
-                            <div>
-                                <h2 class="text-base font-semibold text-slate-900">Top áreas de conocimiento</h2>
-                                <p class="text-xs text-slate-500">
-                                    Áreas amplias con mayor cantidad de artículos.
-                                </p>
-                            </div>
-
-                            <button type="button"
-                                    class="ml-2 text-slate-400 hover:text-slate-600 relative group">
-                                <span class="material-icons text-base">info</span>
-                                <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
-                                    Muestra las áreas amplias de conocimiento con mayor volumen de artículos, ayudando a identificar focos de producción científica.
-                                </span>
-                            </button>
-                        </div>
-
-                        @if (_byField.Count == 0)
-                        {
-                            <p class="text-xs text-slate-400">No hay datos de áreas de conocimiento disponibles.</p>
-                        }
-                        else
-                        {
-                            <div class="flex-1 min-h-[220px]">
-                                <EChart Id="chart-by-field"
-                                        Height="@FieldChartHeight"
-                                        Option="@FieldChartOption" />
-                            </div>
-                        }
-                    </section>
-
-                    <!-- Líneas de investigación (GRÁFICO) -->
-                    <section class="bg-white border-l-4 border-indigo-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
-                        <div class="flex items-start justify-between mb-3">
-                            <div>
-                                <h2 class="text-base font-semibold text-slate-900">Líneas de investigación (Top)</h2>
-                                <p class="text-xs text-slate-500">
-                                    Líneas de investigación con mayor producción científica.
-                                </p>
-                            </div>
-
-                            <button type="button"
-                                    class="ml-2 text-slate-400 hover:text-slate-600 relative group">
-                                <span class="material-icons text-base">info</span>
-                                <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
-                                    Permite visualizar qué líneas de investigación concentran más artículos, útil para priorizar recursos y planificación estratégica.
-                                </span>
-                            </button>
-                        </div>
-
-                        @if (_byResearchLine.Count == 0)
-                        {
-                            <p class="text-xs text-slate-400">No hay datos de líneas de investigación disponibles.</p>
-                        }
-                        else
-                        {
-                            <div class="flex-1 min-h-[220px]">
-                                <EChart Id="chart-by-researchline"
-                                        Height="@ResearchLineChartHeight"
-                                        Option="@ResearchLineChartOption" />
-                            </div>
-                        }
-                    </section>
-
-                    <!-- Calidad por cuartiles (GRÁFICO DONA) -->
-                    <section class="bg-white border-l-4 border-emerald-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
-                        <div class="flex items-start justify-between mb-3">
-                            <div>
-                                <h2 class="text-base font-semibold text-slate-900">Calidad por cuartiles</h2>
-                                <p class="text-xs text-slate-500">
-                                    Distribución de artículos según cuartiles Q1–Q4 y sin cuartil.
-                                </p>
-                            </div>
-
-                            <button type="button"
-                                    class="ml-2 text-slate-400 hover:text-slate-600 relative group">
-                                <span class="material-icons text-base">info</span>
-                                <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
-                                    Permite visualizar la calidad de las publicaciones según el cuartil del venue (Q1–Q4) y artículos sin clasificación.
-                                </span>
-                            </button>
-                        </div>
-
-                        @if (_quartileStats == null || _quartileStats.TotalArticles <= 0)
-                        {
-                            <p class="text-xs text-slate-400">
-                                No hay datos de cuartiles disponibles.
-                            </p>
-                        }
-                        else
-                        {
-                            <div class="flex-1 min-h-[220px]">
-                                <EChart Id="chart-quartiles"
-                                        Height="@QuartileChartHeight"
-                                        Option="@QuartileChartOption" />
-                            </div>
-                        }
-                    </section>
+            if (_isLoading)
+            {
+                <div class="flex items-center justify-center py-16 text-slate-500 text-sm">
+                    Cargando datos de reportería...
                 </div>
-
-                <!-- ----------------------------------------- -->
-                <!-- DERECHA: SOLO TABLAS                     -->
-                <!-- ----------------------------------------- -->
-                <div class="flex flex-col gap-4">
-
-                    <!-- Tabla artículos por año -->
-                    <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
-                        <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <h2 class="text-base font-semibold text-slate-900">Tabla: artículos por año</h2>
-                                <p class="text-xs text-slate-500">
-                                    Conteo de artículos por año de creación en el sistema.
-                                </p>
-                            </div>
-                        </div>
-
-                        @if (_filteredByYear.Count == 0)
-                        {
-                            <p class="text-xs text-slate-400">No hay datos para el rango de años seleccionado.</p>
-                        }
-                        else
-                        {
-                            <div class="max-h-48 overflow-y-auto rounded-lg border border-slate-200">
-                                <table class="min-w-full text-xs">
-                                    <thead class="border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
-                                        <tr class="text-left font-semibold text-slate-500 uppercase">
-                                            <th class="py-1.5 pr-3 pl-3">Año</th>
-                                            <th class="py-1.5 pr-3 text-right">Artículos</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var item in _filteredByYear)
-                                        {
-                                            <tr class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
-                                                <td class="py-1.5 pr-3 pl-3 text-slate-700">@item.Year</td>
-                                                <td class="py-1.5 pr-3 text-right font-semibold text-slate-800">@item.Count</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
-                    </section>
-
-                    <!-- Tabla top áreas de conocimiento -->
-                    <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
-                        <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <h2 class="text-base font-semibold text-slate-900">Tabla: top áreas de conocimiento</h2>
-                                <p class="text-xs text-slate-500">
-                                    Áreas amplias con mayor cantidad de artículos.
-                                </p>
-                            </div>
-                        </div>
-
-                        @if (_byField.Count == 0)
-                        {
-                            <p class="text-xs text-slate-400">No hay datos de áreas de conocimiento disponibles.</p>
-                        }
-                        else
-                        {
-                            <div class="max-h-48 overflow-y-auto rounded-lg border border-slate-200">
-                                <table class="min-w-full text-xs">
-                                    <thead class="border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
-                                        <tr class="text-left font-semibold text-slate-500 uppercase">
-                                            <th class="py-1.5 pr-3 pl-3">Área amplia</th>
-                                            <th class="py-1.5 pr-3 text-right">Artículos</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var item in _topBroadFields)
-                                        {
-                                            <tr class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
-                                                <td class="py-1.5 pr-3 pl-3 text-slate-700">@item.Name</td>
-                                                <td class="py-1.5 pr-3 text-right font-semibold text-slate-800">@item.Count</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
-                    </section>
-
-                    <!-- Tabla líneas de investigación -->
-                    <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
-                        <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <h2 class="text-base font-semibold text-slate-900">Tabla: líneas de investigación</h2>
-                                <p class="text-xs text-slate-500">
-                                    Líneas de investigación con mayor producción científica.
-                                </p>
-                            </div>
-                        </div>
-
-                        @if (_byResearchLine.Count == 0)
-                        {
-                            <p class="text-xs text-slate-400">No hay datos de líneas de investigación disponibles.</p>
-                        }
-                        else
-                        {
-                            <div class="max-h-48 overflow-y-auto rounded-lg border border-slate-200">
-                                <table class="min-w-full text-xs">
-                                    <thead class="border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
-                                        <tr class="text-left font-semibold text-slate-500 uppercase">
-                                            <th class="py-1.5 pr-3 pl-3">Línea de investigación</th>
-                                            <th class="py-1.5 pr-3 text-right">Artículos</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (var item in _topResearchLines)
-                                        {
-                                            <tr class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
-                                                <td class="py-1.5 pr-3 pl-3 text-slate-700">@item.Name</td>
-                                                <td class="py-1.5 pr-3 text-right font-semibold text-slate-800">@item.Count</td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
-                    </section>
-
-                    <!-- Tabla distribución por cuartiles -->
-                    <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
-                        <div class="flex items-center justify-between mb-3">
-                            <div>
-                                <h2 class="text-base font-semibold text-slate-900">Tabla: distribución por cuartiles</h2>
-                                <p class="text-xs text-slate-500">
-                                    Conteo y porcentaje de artículos por cuartil (Q1–Q4) y sin clasificación.
-                                </p>
-                            </div>
-                        </div>
-
-                        @if (_quartileStats == null || _quartileStats.TotalArticles <= 0)
-                        {
-                            <p class="text-xs text-slate-400">
-                                No hay datos de cuartiles disponibles.
-                            </p>
-                        }
-                        else
-                        {
-                            <div class="flex-1 overflow-y-auto max-h-60 rounded-lg border border-slate-200">
-                                <table class="min-w-full text-xs">
-                                    <thead class="bg-slate-50 sticky top-0 z-10">
-                                        <tr class="text-left font-semibold text-slate-500 uppercase">
-                                            <th class="py-1.5 px-3 border-b border-slate-200">Cuartil</th>
-                                            <th class="py-1.5 px-3 border-b border-slate-200 text-right">Artículos</th>
-                                            <th class="py-1.5 px-3 border-b border-slate-200 text-right">% sobre total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-slate-100">
-                                        @foreach (var row in QuartileRows)
-                                        {
-                                            <tr class="hover:bg-slate-50/80">
-                                                <td class="py-1.5 px-3 text-slate-700">@row.Label</td>
-                                                <td class="py-1.5 px-3 text-right font-semibold text-slate-800">@row.Count</td>
-                                                <td class="py-1.5 px-3 text-right text-slate-700">
-                                                    @row.Percent.ToString("0.##")%
-                                                </td>
-                                            </tr>
-                                        }
-                                    </tbody>
-                                </table>
-                            </div>
-                        }
-                    </section>
+            }
+            else if (!string.IsNullOrWhiteSpace(_errorMessage))
+            {
+                <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                    @_errorMessage
                 </div>
-            </section>
+            }
+            else
+            {
+                <!-- ========================================================= -->
+                <!-- DASHBOARD: IZQ GRÁFICOS / DER TABLAS                     -->
+                <!-- ========================================================= -->
+                <section class="grid grid-cols-1 xl:grid-cols-2 gap-4 auto-rows-[minmax(360px,auto)]">
+                    <!-- ----------------------------------------- -->
+                    <!-- IZQUIERDA: SOLO GRÁFICOS                  -->
+                    <!-- ----------------------------------------- -->
+                    <div class="flex flex-col gap-4">
+
+                        <!-- Distribución por año (GRÁFICO) -->
+                        <section class="bg-white border-l-4 border-[#7A1E19]/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
+                            <div class="flex items-start justify-between mb-3">
+                                <div>
+                                    <h2 class="text-base font-semibold text-slate-900">Distribución por año</h2>
+                                    <p class="text-xs text-slate-500">
+                                        Artículos creados en el sistema por año (según filtros aplicados).
+                                    </p>
+                                </div>
+
+                                <button type="button"
+                                        class="ml-2 text-slate-400 hover:text-slate-600 relative group">
+                                    <span class="material-icons text-base">info</span>
+                                    <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
+                                        Muestra la evolución anual del número de artículos registrados en el sistema dentro del rango de años seleccionado.
+                                    </span>
+                                </button>
+                            </div>
+
+                            @if (_filteredByYear.Count == 0)
+                            {
+                                <p class="text-xs text-slate-400">No hay datos para el rango de años seleccionado.</p>
+                            }
+                            else
+                            {
+                                <div class="flex-1 min-h-[220px]">
+                                    <EChart Id="chart-by-year"
+                                            Height="@YearChartHeight"
+                                            Option="@YearChartOption" />
+                                </div>
+                            }
+                        </section>
+
+                        <!-- Tendencia temporal -->
+                        <section class="bg-white border-l-4 border-blue-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
+                            <div class="flex items-start justify-between mb-3">
+                                <div>
+                                    <h2 class="text-base font-semibold text-slate-900">Tendencia temporal de artículos</h2>
+                                    <p class="text-xs text-slate-500">
+                                        Evolución del número de artículos a lo largo de los años.
+                                    </p>
+                                </div>
+                            </div>
+
+                            @if (_filteredByYear.Count == 0)
+                            {
+                                <p class="text-xs text-slate-400">No hay datos para el rango de años seleccionado.</p>
+                            }
+                            else
+                            {
+                                <div class="flex-1 min-h-[220px]">
+                                    <EChart Id="chart-trend"
+                                            Height="@TrendChartHeight"
+                                            Option="@YearTrendChartOption" />
+                                </div>
+                            }
+                        </section>
+
+                        <!-- Top áreas de conocimiento (GRÁFICO) -->
+                        <section class="bg-white border-l-4 border-amber-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
+                            <div class="flex items-start justify-between mb-3">
+                                <div>
+                                    <h2 class="text-base font-semibold text-slate-900">Top áreas de conocimiento</h2>
+                                    <p class="text-xs text-slate-500">
+                                        Áreas amplias con mayor cantidad de artículos.
+                                    </p>
+                                </div>
+
+                                <button type="button"
+                                        class="ml-2 text-slate-400 hover:text-slate-600 relative group">
+                                    <span class="material-icons text-base">info</span>
+                                    <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
+                                        Muestra las áreas amplias de conocimiento con mayor volumen de artículos, ayudando a identificar focos de producción científica.
+                                    </span>
+                                </button>
+                            </div>
+
+                            @if (_byField.Count == 0)
+                            {
+                                <p class="text-xs text-slate-400">No hay datos de áreas de conocimiento disponibles.</p>
+                            }
+                            else
+                            {
+                                <div class="flex-1 min-h-[220px]">
+                                    <EChart Id="chart-by-field"
+                                            Height="@FieldChartHeight"
+                                            Option="@FieldChartOption" />
+                                </div>
+                            }
+                        </section>
+
+                        <!-- Líneas de investigación (GRÁFICO) -->
+                        <section class="bg-white border-l-4 border-indigo-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
+                            <div class="flex items-start justify-between mb-3">
+                                <div>
+                                    <h2 class="text-base font-semibold text-slate-900">Líneas de investigación (Top)</h2>
+                                    <p class="text-xs text-slate-500">
+                                        Líneas de investigación con mayor producción científica.
+                                    </p>
+                                </div>
+
+                                <button type="button"
+                                        class="ml-2 text-slate-400 hover:text-slate-600 relative group">
+                                    <span class="material-icons text-base">info</span>
+                                    <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
+                                        Permite visualizar qué líneas de investigación concentran más artículos, útil para priorizar recursos y planificación estratégica.
+                                    </span>
+                                </button>
+                            </div>
+
+                            @if (_byResearchLine.Count == 0)
+                            {
+                                <p class="text-xs text-slate-400">No hay datos de líneas de investigación disponibles.</p>
+                            }
+                            else
+                            {
+                                <div class="flex-1 min-h-[220px]">
+                                    <EChart Id="chart-by-researchline"
+                                            Height="@ResearchLineChartHeight"
+                                            Option="@ResearchLineChartOption" />
+                                </div>
+                            }
+                        </section>
+
+                        <!-- Calidad por cuartiles (GRÁFICO DONA) -->
+                        <section class="bg-white border-l-4 border-emerald-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
+                            <div class="flex items-start justify-between mb-3">
+                                <div>
+                                    <h2 class="text-base font-semibold text-slate-900">Calidad por cuartiles</h2>
+                                    <p class="text-xs text-slate-500">
+                                        Distribución de artículos según cuartiles Q1–Q4 y sin cuartil.
+                                    </p>
+                                </div>
+
+                                <button type="button"
+                                        class="ml-2 text-slate-400 hover:text-slate-600 relative group">
+                                    <span class="material-icons text-base">info</span>
+                                    <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
+                                        Permite visualizar la calidad de las publicaciones según el cuartil del venue (Q1–Q4) y artículos sin clasificación.
+                                    </span>
+                                </button>
+                            </div>
+
+                            @if (_quartileStats == null || _quartileStats.TotalArticles <= 0)
+                            {
+                                <p class="text-xs text-slate-400">
+                                    No hay datos de cuartiles disponibles.
+                                </p>
+                            }
+                            else
+                            {
+                                <div class="flex-1 min-h-[220px]">
+                                    <EChart Id="chart-quartiles"
+                                            Height="@QuartileChartHeight"
+                                            Option="@QuartileChartOption" />
+                                </div>
+                            }
+                        </section>
+                    </div>
+
+                    <!-- ----------------------------------------- -->
+                    <!-- DERECHA: SOLO TABLAS                     -->
+                    <!-- ----------------------------------------- -->
+                    <div class="flex flex-col gap-4">
+
+                        <!-- Tabla artículos por año -->
+                        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <h2 class="text-base font-semibold text-slate-900">Tabla: artículos por año</h2>
+                                    <p class="text-xs text-slate-500">
+                                        Conteo de artículos por año de creación en el sistema.
+                                    </p>
+                                </div>
+                            </div>
+
+                            @if (_filteredByYear.Count == 0)
+                            {
+                                <p class="text-xs text-slate-400">No hay datos para el rango de años seleccionado.</p>
+                            }
+                            else
+                            {
+                                <div class="max-h-48 overflow-y-auto rounded-lg border border-slate-200">
+                                    <table class="min-w-full text-xs">
+                                        <thead class="border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+                                            <tr class="text-left font-semibold text-slate-500 uppercase">
+                                                <th class="py-1.5 pr-3 pl-3">Año</th>
+                                                <th class="py-1.5 pr-3 text-right">Artículos</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in _filteredByYear)
+                                            {
+                                                <tr class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
+                                                    <td class="py-1.5 pr-3 pl-3 text-slate-700">@item.Year</td>
+                                                    <td class="py-1.5 pr-3 text-right font-semibold text-slate-800">@item.Count</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </section>
+
+                        <!-- Tabla top áreas de conocimiento -->
+                        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <h2 class="text-base font-semibold text-slate-900">Tabla: top áreas de conocimiento</h2>
+                                    <p class="text-xs text-slate-500">
+                                        Áreas amplias con mayor cantidad de artículos.
+                                    </p>
+                                </div>
+                            </div>
+
+                            @if (_byField.Count == 0)
+                            {
+                                <p class="text-xs text-slate-400">No hay datos de áreas de conocimiento disponibles.</p>
+                            }
+                            else
+                            {
+                                <div class="max-h-48 overflow-y-auto rounded-lg border border-slate-200">
+                                    <table class="min-w-full text-xs">
+                                        <thead class="border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+                                            <tr class="text-left font-semibold text-slate-500 uppercase">
+                                                <th class="py-1.5 pr-3 pl-3">Área amplia</th>
+                                                <th class="py-1.5 pr-3 text-right">Artículos</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in _topBroadFields)
+                                            {
+                                                <tr class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
+                                                    <td class="py-1.5 pr-3 pl-3 text-slate-700">@item.Name</td>
+                                                    <td class="py-1.5 pr-3 text-right font-semibold text-slate-800">@item.Count</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </section>
+
+                        <!-- Tabla líneas de investigación -->
+                        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <h2 class="text-base font-semibold text-slate-900">Tabla: líneas de investigación</h2>
+                                    <p class="text-xs text-slate-500">
+                                        Líneas de investigación con mayor producción científica.
+                                    </p>
+                                </div>
+                            </div>
+
+                            @if (_byResearchLine.Count == 0)
+                            {
+                                <p class="text-xs text-slate-400">No hay datos de líneas de investigación disponibles.</p>
+                            }
+                            else
+                            {
+                                <div class="max-h-48 overflow-y-auto rounded-lg border border-slate-200">
+                                    <table class="min-w-full text-xs">
+                                        <thead class="border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
+                                            <tr class="text-left font-semibold text-slate-500 uppercase">
+                                                <th class="py-1.5 pr-3 pl-3">Línea de investigación</th>
+                                                <th class="py-1.5 pr-3 text-right">Artículos</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var item in _topResearchLines)
+                                            {
+                                                <tr class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
+                                                    <td class="py-1.5 pr-3 pl-3 text-slate-700">@item.Name</td>
+                                                    <td class="py-1.5 pr-3 text-right font-semibold text-slate-800">@item.Count</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </section>
+
+                        <!-- Tabla distribución por cuartiles -->
+                        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <h2 class="text-base font-semibold text-slate-900">Tabla: distribución por cuartiles</h2>
+                                    <p class="text-xs text-slate-500">
+                                        Conteo y porcentaje de artículos por cuartil (Q1–Q4) y sin clasificación.
+                                    </p>
+                                </div>
+                            </div>
+
+                            @if (_quartileStats == null || _quartileStats.TotalArticles <= 0)
+                            {
+                                <p class="text-xs text-slate-400">
+                                    No hay datos de cuartiles disponibles.
+                                </p>
+                            }
+                            else
+                            {
+                                <div class="flex-1 overflow-y-auto max-h-60 rounded-lg border border-slate-200">
+                                    <table class="min-w-full text-xs">
+                                        <thead class="bg-slate-50 sticky top-0 z-10">
+                                            <tr class="text-left font-semibold text-slate-500 uppercase">
+                                                <th class="py-1.5 px-3 border-b border-slate-200">Cuartil</th>
+                                                <th class="py-1.5 px-3 border-b border-slate-200 text-right">Artículos</th>
+                                                <th class="py-1.5 px-3 border-b border-slate-200 text-right">% sobre total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-100">
+                                            @foreach (var row in QuartileRows)
+                                            {
+                                                <tr class="hover:bg-slate-50/80">
+                                                    <td class="py-1.5 px-3 text-slate-700">@row.Label</td>
+                                                    <td class="py-1.5 px-3 text-right font-semibold text-slate-800">@row.Count</td>
+                                                    <td class="py-1.5 px-3 text-right text-slate-700">
+                                                        @row.Percent.ToString("0.##")%
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            }
+                        </section>
+
+                        <!-- Estadísticas de Open Access y Scopus -->
+                        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <h2 class="text-base font-semibold text-slate-900">Acceso abierto e indexación</h2>
+                                    <p class="text-xs text-slate-500">
+                                        Estadísticas de Open Access e indexación en Scopus.
+                                    </p>
+                                </div>
+                            </div>
+
+                            @if (_accessIndexingStats == null || _accessIndexingStats.TotalArticles <= 0)
+                            {
+                                <p class="text-xs text-slate-400">No hay datos disponibles.</p>
+                            }
+                            else
+                            {
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-600">Total de artículos</span>
+                                        <span class="font-semibold">@_accessIndexingStats.TotalArticles</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-600">Open Access</span>
+                                        <div class="text-right">
+                                            <span class="font-semibold">@_accessIndexingStats.OpenAccessCount</span>
+                                            <span class="text-xs text-slate-500 ml-2">(@_accessIndexingStats.OpenAccessPercent.ToString("0.##")%)</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-600">Indexados en Scopus</span>
+                                        <div class="text-right">
+                                            <span class="font-semibold">@_accessIndexingStats.ScopusIndexedCount</span>
+                                            <span class="text-xs text-slate-500 ml-2">(@_accessIndexingStats.ScopusIndexedPercent.ToString("0.##")%)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </section>
+
+                        <!-- Tiempo hasta publicación -->
+                        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <h2 class="text-base font-semibold text-slate-900">Tiempo hasta publicación</h2>
+                                    <p class="text-xs text-slate-500">
+                                        Días desde creación hasta publicación.
+                                    </p>
+                                </div>
+                            </div>
+
+                            @if (_timeToPublicationStats == null || _timeToPublicationStats.ArticlesWithDatesCount <= 0)
+                            {
+                                <p class="text-xs text-slate-400">No hay datos disponibles.</p>
+                            }
+                            else
+                            {
+                                <div class="space-y-3">
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-600">Artículos con fechas</span>
+                                        <span class="font-semibold">@_timeToPublicationStats.ArticlesWithDatesCount</span>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <span class="text-sm text-slate-600">Promedio de días</span>
+                                        <span class="font-semibold">@_timeToPublicationStats.AverageDays?.ToString("0")</span>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-3 pt-2">
+                                        <div class="text-center p-2 bg-blue-50 rounded-lg">
+                                            <div class="text-xs text-slate-500">≤ 6 meses</div>
+                                            <div class="text-lg font-bold text-blue-600">@_timeToPublicationStats.Bucket0To180</div>
+                                        </div>
+                                        <div class="text-center p-2 bg-green-50 rounded-lg">
+                                            <div class="text-xs text-slate-500">6-12 meses</div>
+                                            <div class="text-lg font-bold text-green-600">@_timeToPublicationStats.Bucket181To365</div>
+                                        </div>
+                                        <div class="text-center p-2 bg-orange-50 rounded-lg">
+                                            <div class="text-xs text-slate-500">> 12 meses</div>
+                                            <div class="text-lg font-bold text-orange-600">@_timeToPublicationStats.BucketMore365</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </section>
+                    </div>
+                </section>
+            }
+        }
+        else if (_activeTab == "detail")
+        {
+            @* ======================= VISTA DETALLADA ======================= *@
+
+            @if (_isLoadingDetailed)
+            {
+                <div class="flex items-center justify-center py-16 text-slate-500 text-sm">
+                    Cargando datos detallados...
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(_detailedErrorMessage))
+            {
+                <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                    @_detailedErrorMessage
+                </div>
+            }
+            else if (_detailedFilteredRows == null || _detailedFilteredRows.Count == 0)
+            {
+                <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-6 text-sm text-slate-500">
+                    No se encontraron artículos para los filtros actuales. Ajusta los filtros superiores o el rango de fechas.
+                </div>
+            }
+            else
+            {
+                <section class="flex flex-col gap-4">
+                    <!-- Header vista detallada -->
+                    <header class="flex flex-col gap-1">
+                        <h2 class="text-base md:text-lg font-semibold text-slate-900">
+                            Vista detallada tipo tabla
+                        </h2>
+                        <p class="text-xs md:text-sm text-slate-500 max-w-3xl">
+                            Revisa el detalle fila a fila, aplica filtros adicionales por año y mes de creación, y obtén un resumen cuantitativo de los artículos visibles.
+                        </p>
+                    </header>
+
+                    <!-- Filtros locales (año / mes) -->
+                    <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex flex-wrap gap-3 items-end">
+                                <div class="flex flex-col">
+                                    <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                                        Año de creación
+                                    </label>
+                                    <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                            @onchange="OnDetailYearChanged">
+                                        <option value="">Todos los años</option>
+                                        @foreach (var year in _detailAvailableYears)
+                                        {
+                                            <option value="@year" selected="@(_detailYearFilter == year)">@year</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                <div class="flex flex-col">
+                                    <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                                        Mes de creación
+                                    </label>
+                                    <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                            @onchange="OnDetailMonthChanged">
+                                        <option value="">Todos los meses</option>
+                                        @foreach (var m in DetailMonths)
+                                        {
+                                            <option value="@m.Value" selected="@(_detailMonthFilter == m.Value)">
+                                                @m.Label
+                                            </option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <button type="button"
+                                    class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                                    @onclick="ClearDetailFilters">
+                                <span class="material-icons text-[14px]">refresh</span>
+                                Limpiar filtros locales
+                            </button>
+                        </div>
+
+                        <p class="text-[11px] text-slate-400">
+                            Estos filtros operan sobre los resultados ya filtrados por el panel principal (fechas, proyectos, áreas OCDE, etc.).
+                        </p>
+                    </section>
+
+                    <!-- KPIs de la vista detallada -->
+                    <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-3 py-3 flex flex-col gap-1">
+                            <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                                Total en tabla
+                            </span>
+                            <span class="text-xl font-bold text-slate-900">
+                                @_detailKpis.TotalArticles
+                            </span>
+                            <span class="text-[11px] text-slate-400">
+                                Suma de artículos visibles
+                            </span>
+                        </div>
+
+                        <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-3 py-3 flex flex-col gap-1">
+                            <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                                Publicados este año
+                            </span>
+                            <span class="text-xl font-bold text-slate-900">
+                                @_detailKpis.PublishedThisYear
+                            </span>
+                            <span class="text-[11px] text-slate-400">
+                                Según fecha de publicación
+                            </span>
+                        </div>
+
+                        <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-3 py-3 flex flex-col gap-1">
+                            <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                                Q1 + Q2
+                            </span>
+                            <span class="text-xl font-bold text-slate-900">
+                                @_detailKpis.Q1Q2Count
+                            </span>
+                            <span class="text-[11px] text-slate-400">
+                                Artículos de alto impacto
+                            </span>
+                        </div>
+
+                        <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-3 py-3 flex flex-col gap-1">
+                            <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                                Open Access / Scopus
+                            </span>
+                            <span class="text-sm font-semibold text-slate-900">
+                                OA: @_detailKpis.OpenAccessCount
+                            </span>
+                            <span class="text-[11px] text-slate-400">
+                                Indexados Scopus: @_detailKpis.IndexedInScopusCount
+                            </span>
+                        </div>
+                    </section>
+
+                    <!-- Tabla detallada -->
+                    <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col gap-3 h-full overflow-hidden">
+                        <div class="flex items-center justify-between mb-1">
+                            <div>
+                                <h3 class="text-sm md:text-base font-semibold text-slate-900">
+                                    Artículos detallados
+                                </h3>
+                                <p class="text-[11px] md:text-xs text-slate-500">
+                                    Vista tabular con dimensiones clave: tiempo, proyecto, línea de investigación, áreas OCDE, estado, venue y calidad.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 max-h-[480px] overflow-auto rounded-lg border border-slate-200">
+                            <table class="min-w-full text-[11px] md:text-xs">
+                                <thead class="bg-slate-50 sticky top-0 z-10">
+                                    <tr class="text-left font-semibold text-slate-500 uppercase">
+                                        <th class="py-1.5 px-2 border-b border-slate-200">Creación</th>
+                                        <th class="py-1.5 px-2 border-b border-slate-200">Publicación</th>
+                                        <th class="py-1.5 px-2 border-b border-slate-200">Período</th>
+                                        <th class="py-1.5 px-2 border-b border-slate-200">Proyecto</th>
+                                        <th class="py-1.5 px-2 border-b border-slate-200">Línea</th>
+                                        <th class="py-1.5 px-2 border-b border-slate-200">Área amplia</th>
+                                        <th class="py-1.5 px-2 border-b border-slate-200">Área específica</th>
+                                        <th class="py-1.5 px-2 border-b border-slate-200">Área detallada</th>
+                                        <th class="py-1.5 px-2 border-b border-slate-200">Estado</th>
+                                        <th class="py-1.5 px-2 border-b border-slate-200">Venue</th>
+                                        <th class="py-1.5 px-2 border-b border-slate-200 text-center">Quartil</th>
+                                        <th class="py-1.5 px-2 border-b border-slate-200 text-center">OA</th>
+                                        <th class="py-1.5 px-2 border-b border-slate-200 text-center">Scopus</th>
+                                        <th class="py-1.5 px-2 border-b border-slate-200 text-right">Art.</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    @foreach (var row in _detailedFilteredRows)
+                                    {
+                                        <tr class="hover:bg-slate-50/80">
+                                            <td class="py-1.5 px-2 text-slate-700">
+                                                @row.CreatedDate?.ToString("dd/MM/yyyy")
+                                            </td>
+                                            <td class="py-1.5 px-2 text-slate-700">
+                                                @row.PublicationDate?.ToString("dd/MM/yyyy")
+                                            </td>
+                                            <td class="py-1.5 px-2 text-slate-700">
+                                                @row.AcademicTermName
+                                            </td>
+                                            <td class="py-1.5 px-2 text-slate-700">
+                                                @row.ProjectName
+                                            </td>
+                                            <td class="py-1.5 px-2 text-slate-700">
+                                                @row.ResearchLineName
+                                            </td>
+                                            <td class="py-1.5 px-2 text-slate-700">
+                                                @row.BroadFieldName
+                                            </td>
+                                            <td class="py-1.5 px-2 text-slate-700">
+                                                @row.SpecificFieldName
+                                            </td>
+                                            <td class="py-1.5 px-2 text-slate-700">
+                                                @row.DetailedFieldName
+                                            </td>
+                                            <td class="py-1.5 px-2 text-slate-700">
+                                                @row.PublicationStatusName
+                                            </td>
+                                            <td class="py-1.5 px-2 text-slate-700">
+                                                @row.VenueName
+                                            </td>
+                                            <td class="py-1.5 px-2 text-center text-slate-700">
+                                                @row.Quartile
+                                            </td>
+                                            <td class="py-1.5 px-2 text-center">
+                                                @if (row.IsOpenAccess)
+                                                {
+                                                    <span class="inline-flex items-center justify-center rounded-full bg-emerald-50 text-emerald-600 px-2 py-0.5 text-[10px] font-semibold">
+                                                        Sí
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="inline-flex items-center justify-center rounded-full bg-slate-50 text-slate-500 px-2 py-0.5 text-[10px]">
+                                                        No
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td class="py-1.5 px-2 text-center">
+                                                @if (row.IndexedInScopus)
+                                                {
+                                                    <span class="inline-flex items-center justify-center rounded-full bg-indigo-50 text-indigo-600 px-2 py-0.5 text-[10px] font-semibold">
+                                                        Sí
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="inline-flex items-center justify-center rounded-full bg-slate-50 text-slate-500 px-2 py-0.5 text-[10px]">
+                                                        No
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td class="py-1.5 px-2 text-right font-semibold text-slate-800">
+                                                @row.ArticleCount
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </section>
+            }
         }
     </div>
 
@@ -599,6 +1019,245 @@
                         <iframe src="@_pdfPreviewDataUrl"
                                 class="w-full h-full border-0"></iframe>
                     }
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- ========================================================= -->
+    <!-- PANEL LATERAL DE FILTROS AVANZADOS (DRAWER DERECHA)      -->
+    <!-- ========================================================= -->
+    @if (_showAdvancedFilters)
+    {
+        <div class="fixed inset-0 z-30 flex">
+            <!-- Fondo oscuro clicable para cerrar -->
+            <div class="flex-1 bg-black/30" @onclick="ToggleAdvancedFilters"></div>
+
+            <!-- Drawer a la derecha -->
+            <div class="w-full sm:w-[360px] md:w-[420px] lg:w-[460px] bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col">
+                <!-- Header del panel -->
+                <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                    <div class="flex flex-col">
+                        <span class="text-sm font-semibold text-slate-800">Filtros avanzados</span>
+                        <span class="text-[11px] text-slate-500">
+                            Aplica filtros por proyecto, áreas OCDE, líneas, estados, venues y más.
+                        </span>
+                    </div>
+                    <button type="button"
+                            class="inline-flex items-center justify-center rounded-full p-1.5 hover:bg-slate-100"
+                            @onclick="ToggleAdvancedFilters">
+                        <span class="material-icons text-[18px] text-slate-500">close</span>
+                    </button>
+                </div>
+
+                <!-- Contenido con scroll -->
+                <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+
+                    <!-- Proyecto -->
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                            Proyecto
+                        </label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                @bind="_selectedProjectId">
+                            <option value="0">Todos</option>
+                            @foreach (var p in _projects)
+                            {
+                                <option value="@p.Id">@p.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Período Académico -->
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                            Período académico
+                        </label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                @bind="_selectedAcademicTermId">
+                            <option value="0">Todos</option>
+                            @foreach (var term in _academicTerms)
+                            {
+                                <option value="@term.Id">@term.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Línea de investigación -->
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                            Línea de investigación
+                        </label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                @bind="_selectedResearchLineId">
+                            <option value="0">Todas</option>
+                            @foreach (var rl in _researchLines)
+                            {
+                                <option value="@rl.Id">@rl.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- OCDE: Área amplia / específica / detallada -->
+                    <div class="border border-slate-200 rounded-xl px-3 py-3 bg-slate-50/60 space-y-3">
+                        <div class="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">
+                            Áreas OCDE
+                        </div>
+
+                        <!-- Campo amplio -->
+                        <div class="flex flex-col">
+                            <label class="text-xs font-semibold text-slate-500 mb-1">
+                                Área amplia
+                            </label>
+                            <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                    @onchange="OnBroadFieldChanged">
+                                <option value="0">Todas</option>
+                                @foreach (var bf in _broadFields)
+                                {
+                                    <option value="@bf.Id" selected="@(_selectedBroadFieldId == bf.Id)">
+                                        @bf.Name
+                                    </option>
+                                }
+                            </select>
+                        </div>
+
+                        <!-- Campo específico -->
+                        <div class="flex flex-col">
+                            <label class="text-xs font-semibold text-slate-500 mb-1">
+                                Área específica
+                            </label>
+                            <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                    @onchange="OnSpecificFieldChanged"
+                                    disabled="@(_specificFields.Count == 0)">
+                                <option value="0">Todas</option>
+                                @foreach (var sf in _specificFields)
+                                {
+                                    <option value="@sf.Id" selected="@(_selectedSpecificFieldId == sf.Id)">
+                                        @sf.Name
+                                    </option>
+                                }
+                            </select>
+                            @if (_broadFields.Count > 0 && _specificFields.Count == 0 && _selectedBroadFieldId > 0)
+                            {
+                                <span class="mt-1 text-[11px] text-slate-400">
+                                    No hay áreas específicas para el área amplia seleccionada.
+                                </span>
+                            }
+                        </div>
+
+                        <!-- Campo detallado -->
+                        <div class="flex flex-col">
+                            <label class="text-xs font-semibold text-slate-500 mb-1">
+                                Área detallada
+                            </label>
+                            <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                    @onchange="OnDetailedFieldChanged"
+                                    disabled="@(_detailedFields.Count == 0)">
+                                <option value="0">Todas</option>
+                                @foreach (var df in _detailedFields)
+                                {
+                                    <option value="@df.Id" selected="@(_selectedDetailedFieldId == df.Id)">
+                                        @df.Name
+                                    </option>
+                                }
+                            </select>
+                            @if (_specificFields.Count > 0 && _detailedFields.Count == 0 && _selectedSpecificFieldId > 0)
+                            {
+                                <span class="mt-1 text-[11px] text-slate-400">
+                                    No hay áreas detalladas para el área específica seleccionada.
+                                </span>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Estado de publicación -->
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                            Estado de publicación
+                        </label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                @bind="_selectedPublicationStatusId">
+                            <option value="0">Todos</option>
+                            @foreach (var st in _publicationStatuses)
+                            {
+                                <option value="@st.Id">@st.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Fuente de indexación -->
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                            Fuente de indexación
+                        </label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                @bind="_selectedIndexingSourceId">
+                            <option value="0">Todas</option>
+                            @foreach (var idx in _indexingSources)
+                            {
+                                <option value="@idx.Id">@idx.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Venue -->
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                            Revista / Venue
+                        </label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                @bind="_selectedVenueId">
+                            <option value="0">Todos</option>
+                            @foreach (var v in _venues)
+                            {
+                                <option value="@v.Id">@v.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Open Access -->
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                            Open Access
+                        </label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                @bind="_filterIsOpenAccess">
+                            <option value="">Todos</option>
+                            <option value="true">Solo Open Access</option>
+                            <option value="false">Solo no Open Access</option>
+                        </select>
+                    </div>
+
+                    <!-- Cuartiles -->
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                            Cuartiles
+                        </label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                @bind="_selectedQuartile">
+                            <option value="">Todos los cuartiles</option>
+                            <option value="Q1">Q1</option>
+                            <option value="Q2">Q2</option>
+                            <option value="Q3">Q3</option>
+                            <option value="Q4">Q4</option>
+                            <option value="SIN_CUARTIL">Sin cuartil</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Footer del panel: botones -->
+                <div class="px-4 py-3 border-t border-slate-200 flex items-center justify-between gap-2">
+                    <button class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            @onclick="ClearFilters">
+                        <span class="material-icons text-sm">clear_all</span>
+                        Limpiar filtros
+                    </button>
+
+                    <button class="inline-flex items-center gap-2 rounded-lg bg-[#7A1E19] px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-[#681813]"
+                            @onclick="ApplyFilters">
+                        <span class="material-icons text-sm">done</span>
+                        Aplicar filtros
+                    </button>
                 </div>
             </div>
         </div>

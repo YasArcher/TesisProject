@@ -661,6 +661,410 @@ namespace tesisproject.backend.BI.Reports
             return Ok(dashboard);
         }
 
+
+        // =====================================================================
+        // 1.c) ENDPOINT TENDENCIAS / SERIES DE TIEMPO
+        // =====================================================================
+
+        [HttpPost("articles/time-series")]
+        public async Task<ActionResult<IEnumerable<ArticlesTimeSeriesDto>>> GetArticlesTimeSeries(
+            [FromBody] ArticlesFilterDto filter,
+            CancellationToken ct)
+        {
+            var facts = _dw.FactArticlePublications.AsQueryable();
+
+            // ---------------------------
+            // 1) Filtros por dimensiones simples (coinciden con el DTO)
+            // ---------------------------
+
+            if (filter.FieldKey.HasValue)
+            {
+                facts = facts.Where(f => f.FieldKey == filter.FieldKey.Value);
+            }
+
+            if (filter.ResearchLineKey.HasValue)
+            {
+                facts = facts.Where(f => f.ResearchLineKey == filter.ResearchLineKey.Value);
+            }
+
+            if (filter.IsOpenAccess.HasValue)
+            {
+                facts = facts.Where(f => f.IsOpenAccess == filter.IsOpenAccess.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(filter.Quartile))
+            {
+                var q = filter.Quartile.Trim().ToUpper();
+
+                if (q == "SIN_CUARTIL")
+                {
+                    facts = facts.Where(f =>
+                        f.Quartile == null ||
+                        f.Quartile == "" ||
+                        f.Quartile == "N/A");
+                }
+                else
+                {
+                    facts = facts.Where(f =>
+                        f.Quartile != null &&
+                        f.Quartile.ToUpper() == q);
+                }
+            }
+
+            // ---------------------------
+            // 2) Filtro por nivel de fecha (creación vs publicación)
+            // ---------------------------
+
+            var dateLevel = (filter.DateLevel ?? "created").ToLower();
+            bool usePublication = dateLevel == "publication";
+
+            if (usePublication)
+            {
+                facts = facts.Where(f => f.PublicationDate != null);
+
+                if (filter.FromYear.HasValue)
+                    facts = facts.Where(f => f.PublicationDate!.Year >= filter.FromYear.Value);
+
+                if (filter.ToYear.HasValue)
+                    facts = facts.Where(f => f.PublicationDate!.Year <= filter.ToYear.Value);
+
+                if (filter.Year.HasValue)
+                    facts = facts.Where(f => f.PublicationDate!.Year == filter.Year.Value);
+            }
+            else
+            {
+                facts = facts.Where(f => f.CreatedDate != null);
+
+                if (filter.FromYear.HasValue)
+                    facts = facts.Where(f => f.CreatedDate!.Year >= filter.FromYear.Value);
+
+                if (filter.ToYear.HasValue)
+                    facts = facts.Where(f => f.CreatedDate!.Year <= filter.ToYear.Value);
+
+                if (filter.Year.HasValue)
+                    facts = facts.Where(f => f.CreatedDate!.Year == filter.Year.Value);
+            }
+
+            // -----------------------------------------------------------------
+            // 3) Primera versión: serie de tiempo anual
+            //    (una fila por año, usando CreatedDate o PublicationDate)
+            // -----------------------------------------------------------------
+
+            if (usePublication)
+            {
+                var seriesPub = await facts
+                    .GroupBy(f => f.PublicationDate!.Year)
+                    .Select(g => new ArticlesTimeSeriesDto
+                    {
+                        Period = g.Key.ToString(),        // "2023"
+                        Year = g.Key,
+                        Quarter = null,
+                        Month = null,
+                        Week = null,
+                        ArticleCount = g.Sum(x => x.ArticleCount),
+                        OpenAccessCount = g.Sum(x => x.IsOpenAccess ? x.ArticleCount : 0),
+                        Q1Q2Count = g.Sum(x =>
+                            (x.Quartile == "Q1" || x.Quartile == "Q2")
+                                ? x.ArticleCount
+                                : 0),
+                        AverageSJR = null                 // de momento no calculamos SJR
+                    })
+                    .OrderBy(x => x.Year)
+                    .ToListAsync(ct);
+
+                return Ok(seriesPub);
+            }
+            else
+            {
+                var seriesCreated = await facts
+                    .GroupBy(f => f.CreatedDate!.Year)
+                    .Select(g => new ArticlesTimeSeriesDto
+                    {
+                        Period = g.Key.ToString(),        // "2023"
+                        Year = g.Key,
+                        Quarter = null,
+                        Month = null,
+                        Week = null,
+                        ArticleCount = g.Sum(x => x.ArticleCount),
+                        OpenAccessCount = g.Sum(x => x.IsOpenAccess ? x.ArticleCount : 0),
+                        Q1Q2Count = g.Sum(x =>
+                            (x.Quartile == "Q1" || x.Quartile == "Q2")
+                                ? x.ArticleCount
+                                : 0),
+                        AverageSJR = null
+                    })
+                    .OrderBy(x => x.Year)
+                    .ToListAsync(ct);
+
+                return Ok(seriesCreated);
+            }
+        }
+
+        // =====================================================================
+        // 1.c) ENDPOINT DETALLADO (tabla tipo Excel)
+        // =====================================================================
+        [HttpPost("articles/detailed")]
+        public async Task<ActionResult<ArticlesDetailedResultDto>> GetArticlesDetailed(
+            [FromBody] ArticlesDashboardFilterDto filter,
+            CancellationToken ct)
+        {
+            // Punto de partida: mismos hechos que el dashboard
+            var facts = _dw.FactArticlePublications.AsQueryable();
+
+            // ---------------------------
+            // 1) Filtros por fecha
+            // ---------------------------
+            if (filter.CreatedFrom.HasValue)
+            {
+                var from = filter.CreatedFrom.Value.Date;
+                facts = facts.Where(f =>
+                    f.CreatedDate != null &&
+                    f.CreatedDate.Date >= from);
+            }
+
+            if (filter.CreatedTo.HasValue)
+            {
+                var to = filter.CreatedTo.Value.Date;
+                facts = facts.Where(f =>
+                    f.CreatedDate != null &&
+                    f.CreatedDate.Date <= to);
+            }
+
+            if (filter.PublicationFrom.HasValue)
+            {
+                var fromPub = filter.PublicationFrom.Value.Date;
+                facts = facts.Where(f =>
+                    f.PublicationDate != null &&
+                    f.PublicationDate.Date >= fromPub);
+            }
+
+            if (filter.PublicationTo.HasValue)
+            {
+                var toPub = filter.PublicationTo.Value.Date;
+                facts = facts.Where(f =>
+                    f.PublicationDate != null &&
+                    f.PublicationDate.Date <= toPub);
+            }
+
+            // ---------------------------
+            // 2) Filtros por dimensiones
+            // ---------------------------
+            if (filter.AcademicTermKeys?.Any() == true)
+            {
+                facts = facts.Where(f =>
+                    f.AcademicTermKey != null &&
+                    filter.AcademicTermKeys.Contains(f.AcademicTermKey.Value));
+            }
+
+            if (filter.ProjectKeys?.Any() == true)
+            {
+                facts = facts.Where(f =>
+                    f.ProjectKey != null &&
+                    filter.ProjectKeys.Contains(f.ProjectKey.Value));
+            }
+
+            if (filter.ResearchLineKeys?.Any() == true)
+            {
+                facts = facts.Where(f =>
+                    f.ResearchLineKey != null &&
+                    filter.ResearchLineKeys.Contains(f.ResearchLineKey.Value));
+            }
+
+            if (filter.FieldKeys?.Any() == true)
+            {
+                facts = facts.Where(f =>
+                    f.FieldKey != null &&
+                    filter.FieldKeys.Contains(f.FieldKey.Value));
+            }
+
+            if (filter.PublicationStatusKeys?.Any() == true)
+            {
+                facts = facts.Where(f =>
+                    f.PublicationStatusKey != null &&
+                    filter.PublicationStatusKeys.Contains(f.PublicationStatusKey.Value));
+            }
+
+            if (filter.VenueKeys?.Any() == true)
+            {
+                facts = facts.Where(f =>
+                    f.VenueKey != null &&
+                    filter.VenueKeys.Contains(f.VenueKey.Value));
+            }
+
+            // Open Access
+            if (filter.IsOpenAccess.HasValue)
+            {
+                facts = facts.Where(f => f.IsOpenAccess == filter.IsOpenAccess.Value);
+            }
+
+            // ---------------------------
+            // 3) Filtro por cuartiles
+            // ---------------------------
+            if (filter.Quartiles?.Any() == true)
+            {
+                var requested = filter.Quartiles
+                    .Where(q => !string.IsNullOrWhiteSpace(q))
+                    .Select(q => q.Trim().ToUpper())
+                    .ToList();
+
+                bool includeNoQuartile = requested.Contains("SIN_CUARTIL") || requested.Contains("NOQ");
+
+                var quartileCodes = requested
+                    .Where(q => q == "Q1" || q == "Q2" || q == "Q3" || q == "Q4")
+                    .ToList();
+
+                if (includeNoQuartile && quartileCodes.Count > 0)
+                {
+                    facts = facts.Where(f =>
+                        (f.Quartile != null && quartileCodes.Contains(f.Quartile)) ||
+                        (f.Quartile == null || f.Quartile == "" || f.Quartile == "N/A"));
+                }
+                else if (includeNoQuartile)
+                {
+                    facts = facts.Where(f => f.Quartile == null || f.Quartile == "" || f.Quartile == "N/A");
+                }
+                else if (quartileCodes.Count > 0)
+                {
+                    facts = facts.Where(f => f.Quartile != null && quartileCodes.Contains(f.Quartile));
+                }
+            }
+
+            // ---------------------------
+            // 4) Filtro por fuentes de indexación
+            // ---------------------------
+            if (filter.IndexingSourceKeys?.Any() == true)
+            {
+                var filteredArticleKeys = await _dw.FactArticleIndexings
+                    .Where(fi => filter.IndexingSourceKeys.Contains(fi.IndexingSourceKey))
+                    .Select(fi => fi.ArticleKey)
+                    .Distinct()
+                    .ToListAsync(ct);
+
+                if (filteredArticleKeys.Count == 0)
+                {
+                    return Ok(new ArticlesDetailedResultDto
+                    {
+                        AppliedFilter = filter
+                    });
+                }
+
+                facts = facts.Where(f => filteredArticleKeys.Contains(f.ArticleKey));
+            }
+
+            // ===================== KPIs (sobre facts filtrado) =====================
+            var nowYear = DateTime.UtcNow.Year;
+
+            var totalArticles = await facts
+                .SumAsync(f => (int?)f.ArticleCount) ?? 0;
+
+            var publishedThisYear = await facts
+                .Where(f => f.PublicationDate != null && f.PublicationDate.Year == nowYear)
+                .SumAsync(f => (int?)f.ArticleCount) ?? 0;
+
+            var q1q2Count = await facts
+                .Where(f => f.Quartile == "Q1" || f.Quartile == "Q2")
+                .SumAsync(f => (int?)f.ArticleCount) ?? 0;
+
+            var openAccessCount = await facts
+                .Where(f => f.IsOpenAccess)
+                .SumAsync(f => (int?)f.ArticleCount) ?? 0;
+
+            var filteredArticleKeysForScopus = await facts
+                .Select(f => f.ArticleKey)
+                .Distinct()
+                .ToListAsync(ct);
+
+            var scopusIndexed = 0;
+            if (filteredArticleKeysForScopus.Count > 0)
+            {
+                scopusIndexed = await _dw.FactArticleIndexings
+                    .Where(fi =>
+                        fi.IndexingSource!.Name == "Scopus" &&
+                        filteredArticleKeysForScopus.Contains(fi.ArticleKey))
+                    .Select(fi => fi.ArticleKey)
+                    .Distinct()
+                    .CountAsync(ct);
+            }
+
+            var kpis = new ArticlesKpiSummaryDto
+            {
+                TotalArticles = totalArticles,
+                PublishedThisYear = publishedThisYear,
+                Q1Q2Count = q1q2Count,
+                OpenAccessCount = openAccessCount,
+                IndexedInScopusCount = scopusIndexed
+            };
+
+            // ===================== Lookup para indexación Scopus =====================
+            var scopusArticleSet = new HashSet<int>();
+            if (filteredArticleKeysForScopus.Count > 0)
+            {
+                var scopusArticles = await _dw.FactArticleIndexings
+                    .Where(fi => fi.IndexingSource!.Name == "Scopus")
+                    .Select(fi => fi.ArticleKey)
+                    .Distinct()
+                    .ToListAsync(ct);
+
+                scopusArticleSet = new HashSet<int>(scopusArticles);
+            }
+
+            // ===================== Proyección a filas detalladas =====================
+            var rows = await facts
+                .Include(f => f.Project)
+                .Include(f => f.AcademicTerm)
+                .Include(f => f.ResearchLine)
+                .Include(f => f.Field)
+                .Include(f => f.Venue)
+                .Include(f => f.PublicationStatus)
+                .Select(f => new ArticleReportRowDto
+                {
+                    ArticleKey = f.ArticleKey,
+
+                    // DimDate -> DateTime?
+                    CreatedDate = f.CreatedDate != null
+                        ? (DateTime?)f.CreatedDate.Date
+                        : null,
+                    PublicationDate = f.PublicationDate != null
+                        ? (DateTime?)f.PublicationDate.Date
+                        : null,
+
+                    CreatedYear = f.CreatedDate != null ? (int?)f.CreatedDate.Year : null,
+                    CreatedMonth = f.CreatedDate != null ? (int?)f.CreatedDate.Month : null,
+                    CreatedDay = f.CreatedDate != null ? (int?)f.CreatedDate.Day : null,
+
+                    PublicationYear = f.PublicationDate != null ? (int?)f.PublicationDate.Year : null,
+                    PublicationMonth = f.PublicationDate != null ? (int?)f.PublicationDate.Month : null,
+                    PublicationDay = f.PublicationDate != null ? (int?)f.PublicationDate.Day : null,
+
+                    AcademicTermName = f.AcademicTerm != null ? f.AcademicTerm.Name : null,
+                    ProjectName = f.Project != null ? f.Project.Name : null,
+                    ResearchLineName = f.ResearchLine != null ? f.ResearchLine.Name : null,
+
+                    BroadFieldName = f.Field != null ? f.Field.BroadFieldName : null,
+                    SpecificFieldName = f.Field != null ? f.Field.SpecificFieldName : null,
+                    DetailedFieldName = f.Field != null ? f.Field.DetailedFieldName : null,
+
+                    PublicationStatusName = f.PublicationStatus != null ? f.PublicationStatus.Name : null,
+                    VenueName = f.Venue != null ? f.Venue.Name : null,
+                    Quartile = f.Quartile,
+                    IsOpenAccess = f.IsOpenAccess,
+
+                    IndexedInScopus = scopusArticleSet.Contains(f.ArticleKey),
+
+                    ArticleCount = f.ArticleCount
+                })
+                .OrderByDescending(r => r.CreatedDate ?? r.PublicationDate)
+                .ToListAsync(ct);
+
+            var result = new ArticlesDetailedResultDto
+            {
+                AppliedFilter = filter,
+                Rows = rows,
+                Kpis = kpis
+            };
+
+            return Ok(result);
+        }
         // =====================================================================
         // 2) ENDPOINT PDF
         // =====================================================================

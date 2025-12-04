@@ -58,6 +58,7 @@ services.AddScoped<IArticlesService, ArticlesService>();
 services.AddScoped<IVenuesService, VenuesService>();
 services.AddHttpContextAccessor();
 
+
 // ===== CORS =====
 const string CorsPolicyName = "wasm";
 services.AddCors(o => o.AddPolicy(CorsPolicyName, p => p
