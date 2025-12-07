@@ -12,7 +12,6 @@ using tesisproject.backend.Data;
 using tesisproject.backend.Options;
 using tesisproject.backend.Repositories.Implementations;
 using tesisproject.backend.Repositories.Interfaces;
-using tesisproject.backend.Services;
 using tesisproject.backend.Services.Analytic.Implementations;
 using tesisproject.backend.Services.Analytic.Interfaces;
 using tesisproject.backend.Services.Implementations;
@@ -225,7 +224,6 @@ static class StartupExtensions
         builder.Services.AddScoped<IVisitIssueRepository, VisitIssueRepository>();
         builder.Services.AddScoped<IConvocationRepository, ConvocationRepository>();
         builder.Services.AddScoped<IProductRepository, ProductRepository>();
-        builder.Services.AddScoped<IProductTypeRepository, ProductTypeRepository>();
         builder.Services.AddScoped<IProductAttributeDefinitionRepository, ProductAttributeDefinitionRepository>();
         builder.Services.AddScoped<IProductAuthorRepository, ProductAuthorRepository>();
         builder.Services.AddScoped<IProductValueRepository, ProductValueRepository>();
@@ -236,7 +234,6 @@ static class StartupExtensions
         builder.Services.AddScoped<IProjectResearchCategoryRepository, ProjectResearchCategoryRepository>();
         builder.Services.AddScoped<IResearchCategoryRepository, ResearchCategoryRepository>();
         builder.Services.AddScoped<IAppUserRepository, AppUserRepository>(); 
-        builder.Services.AddScoped<ITransactionTypeService, TransactionTypeService>();
         builder.Services.AddScoped<IExternalResearcherRepository, ExternalResearcherRepository>();
         builder.Services.AddScoped<IExternalResearcherProjectRepository, ExternalResearcherProjectRepository>();
 
@@ -264,27 +261,28 @@ static class StartupExtensions
         builder.Services.AddScoped<IVisitIssueService, VisitIssueService>();
         builder.Services.AddScoped<IConvocationService, ConvocationService>();
         builder.Services.AddScoped<IProductService, ProductService>();
-        builder.Services.AddScoped<IProductTypeService, ProductTypeService>();
-        builder.Services.AddScoped<IObjectiveTypeService, ObjectiveTypeService>();
         builder.Services.AddScoped<IProjectObjectiveService, ProjectObjectiveService>();
         builder.Services.AddScoped<IObjectiveActivityService, ObjectiveActivityService>();
         builder.Services.AddScoped<IObjectiveActivityUserService, ObjectiveActivityUserService>();
         builder.Services.AddScoped<IDocumentService, DocumentService>();
         builder.Services.AddScoped<IDocumentRecognitionService, DocumentRecognitionService>();
         builder.Services.AddScoped<IMemberRoleTypeService, MemberRoleTypeService>();
-        builder.Services.AddScoped<IProjectTypeService, ProjectTypeService>();
-        builder.Services.AddScoped<IDocumentTypeService, DocumentTypeService>();
         builder.Services.AddScoped<IProjectResearchCategoryService, ProjectResearchCategoryService>();
         builder.Services.AddScoped<IResearchCategoryService, ResearchCategoryService>();
         builder.Services.AddScoped<IResearchCategoryTypeService, ResearchCategoryTypeService>();
-        builder.Services.AddScoped<IFundingTypeService, FundingTypeService>();
-        builder.Services.AddScoped<IResearchCategoryGroupService, ResearchCategoryGroupService>();
         builder.Services.AddScoped<IAppUserService, AppUserService>();
         builder.Services.AddScoped<IExternalResearcherService, ExternalResearcherService>();
         builder.Services.AddScoped<ICountryService, CountryService>();
         builder.Services.AddScoped<IInstitutionService, InstitutionService>();
         builder.Services.AddScoped<IExternalResearcherProjectService, ExternalResearcherProjectService>();
         builder.Services.AddScoped<IDwEtlService, DwEtlService>();
+        builder.Services.AddScoped<IAcademicPeriodService, AcademicPeriodService>();
+        builder.Services.AddScoped<IIndexingSourceService, IndexingSourceService>();
+        builder.Services.AddScoped(typeof(ICatalogCrudService<>), typeof(CatalogCrudService<>));
+        builder.Services.AddScoped<IProductAttributeService, ProductAttributeService>();
+        builder.Services.AddScoped<IProductAttributeDefinitionService, ProductAttributeDefinitionService>();
+        builder.Services.AddScoped<IProductTypeDesignService, ProductTypeDesignService>();
+
 
     }
 

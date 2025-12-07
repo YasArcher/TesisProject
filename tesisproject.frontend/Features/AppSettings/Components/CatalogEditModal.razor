@@ -1,0 +1,100 @@
+﻿@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+
+<Modal Id="@Id"
+       IsOpen="@IsOpen"
+       IsOpenChanged="IsOpenChanged"
+       Title="@(IsEditMode ? (EditTitle ?? "Edit item") : (NewTitle ?? "New item"))"
+       Size="ModalSize.Md">
+
+    <ChildContent>
+        <div class="space-y-4">
+            <div class="space-y-1">
+                <TextInput TValue="string"
+                           Label="Name"
+                           @bind-Value="Model.Name"
+                           Placeholder="e.g. Scientific production"
+                           Disabled="Model.IsLocked"
+                           Required="true" />
+            </div>
+
+            <div class="flex items-center gap-2">
+                <input type="checkbox"
+                       class="rounded border-border"
+                       @bind="Model.IsActive"
+                       disabled="Model.IsLocked" />
+                <span class="text-sm text-foreground">Active</span>
+            </div>
+
+            @if (Model.IsLocked)
+            {
+                <div class="text-xs text-muted">
+                    This item is locked and cannot be modified.
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <div class="text-xs text-red-600">@Error</div>
+            }
+        </div>
+    </ChildContent>
+
+    <Footer>
+        <div class="flex items-center justify-end gap-2">
+            <ActionButton Text="Close"
+                          Intent="ButtonIntent.Delete"
+                          Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Sm"
+                          Execute="OnCancelInternal" />
+
+            @if (!Model.IsLocked)
+            {
+                <ActionButton Text="Save"
+                              Intent="ButtonIntent.Accept"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Sm"
+                              IsBusy="IsSaving"
+                              Execute="OnSaveInternal" />
+            }
+        </div>
+    </Footer>
+</Modal>
+
+@code {
+    [Parameter] public string Id { get; set; } = "catalog-edit-modal";
+
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public CatalogDetailDTO Model { get; set; } = new();
+
+    // Títulos opcionales
+    [Parameter] public string? NewTitle { get; set; }
+    [Parameter] public string? EditTitle { get; set; }
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+
+    private async Task OnCancelInternal()
+    {
+        if (OnCancel.HasDelegate)
+            await OnCancel.InvokeAsync();
+
+        if (IsOpenChanged.HasDelegate)
+            await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task OnSaveInternal()
+    {
+        if (OnSave.HasDelegate)
+            await OnSave.InvokeAsync();
+    }
+}

@@ -1,7 +1,7 @@
 ﻿@using Microsoft.AspNetCore.Components
 @using tesisproject.shared.DTOs.Algorithms.Response
-@using tesisproject.shared.DTOs.Catalog.ObjectiveType.Response
-@using tesisproject.shared.DTOs.Filters   @* KeyValueItemDTO *@
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+@using tesisproject.shared.DTOs.Filters
 
 <div class="w-full flex flex-col gap-6">
     <!-- Editor de objetivos y actividades -->
@@ -20,7 +20,7 @@
     [Parameter] public DideProjectFormInfo DideModel { get; set; } = new();
     [Parameter] public bool IsBusy { get; set; }
 
-    [Parameter] public IReadOnlyList<ObjectiveTypeListItemDTO> ObjectiveTypeOptions { get; set; } = Array.Empty<ObjectiveTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> ObjectiveTypeOptions { get; set; } = Array.Empty<CatalogListItemDTO>();
 
     private async Task HandleObjectivesChanged()
     {

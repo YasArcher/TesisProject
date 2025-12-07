@@ -8,7 +8,7 @@ namespace tesisproject.backend.Controllers
 {
     [ApiController]
     [Route("api/analytics/etl")]
-    [Authorize(Roles = "Admin")] // o el rol que tú uses
+    //[Authorize(Roles = "Admin")] // o el rol que tú uses
     public class DwEtlController : ControllerBase
     {
         private readonly IDwEtlService _etlService;

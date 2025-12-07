@@ -80,6 +80,16 @@ builder.Services.AddScoped<ICountryClientService, CountryClientService>();
 builder.Services.AddScoped<IInstitutionClientService, InstitutionClientService>();
 builder.Services.AddScoped<IExternalResearcherProjectClientService, ExternalResearcherProjectClientService>();
 builder.Services.AddScoped<IConvocationClientService, ConvocationClientService>();
+builder.Services.AddScoped<IAcademicPeriodClientService, AcademicPeriodClientService>();
+builder.Services.AddScoped<IIndexingSourceClientService, IndexingSourceClientService>();
+builder.Services.AddScoped<IProductClientService, ProductClientService>();
+builder.Services.AddScoped<IProductTypeClientService, ProductTypeClientService>();
+builder.Services.AddScoped<IProductTypeDesignClientService, ProductTypeDesignClientService>();
+builder.Services.AddScoped<IProductAttributeClientService, ProductAttributeClientService>();
+builder.Services.AddScoped<IProductAttributeDefinitionClientService, ProductAttributeDefinitionClientService>();
+
+
+
 
 
 // External

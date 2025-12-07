@@ -22,6 +22,36 @@ namespace tesisproject.backend.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("AcademicPeriod", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("AcademicPeriods");
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<int>", b =>
                 {
                     b.Property<int>("Id")
@@ -288,7 +318,7 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.AcademicPeriod", b =>
+            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.Country", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -299,25 +329,7 @@ namespace tesisproject.backend.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("AcademicPeriod");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.Country", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("IsActive")
+                    b.Property<bool>("IsLocked")
                         .HasColumnType("bit");
 
                     b.Property<string>("IsoAlpha3")
@@ -349,6 +361,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -370,6 +385,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -389,6 +407,9 @@ namespace tesisproject.backend.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -413,6 +434,9 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -440,6 +464,9 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -472,6 +499,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -493,6 +523,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -501,6 +534,37 @@ namespace tesisproject.backend.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ObjectiveTypes");
+                });
+
+            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ProductAttribute", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("DataType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Unit")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ProductAttribute");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ProductType", b =>
@@ -512,6 +576,9 @@ namespace tesisproject.backend.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -541,6 +608,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<bool>("IsBudgetExecutable")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -560,6 +630,9 @@ namespace tesisproject.backend.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -583,6 +656,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -602,6 +678,9 @@ namespace tesisproject.backend.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -635,6 +714,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -657,6 +739,9 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsFilterEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -685,6 +770,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -706,6 +794,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsLocked")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -725,6 +816,9 @@ namespace tesisproject.backend.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -857,6 +951,9 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("nvarchar(64)");
 
                     b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsLocked")
                         .HasColumnType("bit");
 
                     b.Property<string>("Name")
@@ -1267,32 +1364,23 @@ namespace tesisproject.backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AttributeName")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
-                    b.Property<int>("DataType")
-                        .HasMaxLength(32)
-                        .HasColumnType("int");
-
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsRequired")
                         .HasColumnType("bit");
 
+                    b.Property<int>("ProductAttributeId")
+                        .HasColumnType("int");
+
                     b.Property<int>("ProductTypeId")
                         .HasColumnType("int");
 
-                    b.Property<string>("Unit")
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("ProductTypeId", "AttributeName")
-                        .IsUnique();
+                    b.HasIndex("ProductAttributeId");
+
+                    b.HasIndex("ProductTypeId");
 
                     b.ToTable("ProductAttributeDefinitions");
                 });
@@ -1341,6 +1429,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<int?>("ProductAttributeId")
+                        .HasColumnType("int");
+
                     b.Property<int>("ProductId")
                         .HasColumnType("int");
 
@@ -1353,6 +1444,8 @@ namespace tesisproject.backend.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AttributeDefinitionId");
+
+                    b.HasIndex("ProductAttributeId");
 
                     b.HasIndex("ProductId", "AttributeDefinitionId")
                         .IsUnique();
@@ -2028,11 +2121,19 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Products.ProductAttributeDefinition", b =>
                 {
+                    b.HasOne("tesisproject.shared.Entities.Catalogs.ProductAttribute", "ProductAttribute")
+                        .WithMany("TypeDefinitions")
+                        .HasForeignKey("ProductAttributeId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
                     b.HasOne("tesisproject.shared.Entities.Catalogs.ProductType", "ProductType")
                         .WithMany()
                         .HasForeignKey("ProductTypeId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.Navigation("ProductAttribute");
 
                     b.Navigation("ProductType");
                 });
@@ -2061,6 +2162,11 @@ namespace tesisproject.backend.Migrations
                         .HasForeignKey("AttributeDefinitionId")
                         .OnDelete(DeleteBehavior.NoAction)
                         .IsRequired();
+
+                    b.HasOne("tesisproject.shared.Entities.Catalogs.ProductAttribute", null)
+                        .WithMany("Values")
+                        .HasForeignKey("ProductAttributeId")
+                        .OnDelete(DeleteBehavior.NoAction);
 
                     b.HasOne("tesisproject.shared.Entities.Core.Products.Product", "Product")
                         .WithMany("Values")
@@ -2215,7 +2321,7 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Visit", b =>
                 {
-                    b.HasOne("tesisproject.shared.Entities.Catalogs.AcademicPeriod", "AcademicPeriod")
+                    b.HasOne("AcademicPeriod", "AcademicPeriod")
                         .WithMany()
                         .HasForeignKey("AcademicPeriodId")
                         .OnDelete(DeleteBehavior.NoAction)
@@ -2288,6 +2394,13 @@ namespace tesisproject.backend.Migrations
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.Country", b =>
                 {
                     b.Navigation("Institutions");
+                });
+
+            modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ProductAttribute", b =>
+                {
+                    b.Navigation("TypeDefinitions");
+
+                    b.Navigation("Values");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Catalogs.ResearchCategory", b =>

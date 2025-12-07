@@ -1,30 +1,31 @@
-﻿using tesisproject.shared.DTOs.Catalog.TransactionTypes.Request;
-using tesisproject.shared.DTOs.Catalog.TransactionTypes.Response;
+﻿using tesisproject.shared.DTOs.Catalog.Common.Request;
+using tesisproject.shared.DTOs.Catalog.Common.Response;
 using tesisproject.shared.DTOs.Filters;
+using tesisproject.shared.Responses;
 
 namespace tesisproject.frontend.Services.Interfaces
 {
     public interface ITransactionTypeClientService
     {
-        Task<HttpResponseWrapper<List<TransactionTypeListItemDTO>?>> GetListAsync(
+        Task<HttpResponseWrapper<List<CatalogListItemDTO>?>> GetListAsync(
             bool onlyActives = true,
             CancellationToken ct = default);
 
-        Task<HttpResponseWrapper<TransactionTypeListItemDTO?>> GetByIdAsync(
+        Task<HttpResponseWrapper<CatalogDetailDTO?>> GetByIdAsync(
             int id,
             CancellationToken ct = default);
 
-        Task<HttpResponseWrapper<TransactionTypeListItemDTO?>> CreateAsync(
-            AddTransactionTypeRequestDTO request,
+        Task<HttpResponseWrapper<CatalogDetailDTO?>> CreateAsync(
+            AddCatalogRequestDTO request,
             CancellationToken ct = default);
 
-        Task<HttpResponseWrapper<TransactionTypeListItemDTO?>> UpdateAsync(
-            UpdateTransactionTypeRequestDTO request,
+        Task<HttpResponseWrapper<CatalogDetailDTO?>> UpdateAsync(
+            UpdateCatalogRequestDTO request,
             CancellationToken ct = default);
 
-        Task<HttpResponseWrapper<List<KeyValueItemDTO>?>> GetKeyValuesAsync(
-            string? term = null,
-            int? take = null,
-            CancellationToken ct = default);
+        Task<HttpResponseWrapper<NoContent?>> DeleteAsync(
+    int id,
+    CancellationToken ct = default);
+
     }
 }

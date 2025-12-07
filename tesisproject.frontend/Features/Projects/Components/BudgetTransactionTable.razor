@@ -4,9 +4,9 @@
 @using tesisproject.frontend.SharedUI.Table
 @using tesisproject.shared.DTOs.Budgets
 @using tesisproject.shared.DTOs.Budgets.Request
+@using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.Enums
 @using tesisproject.frontend.Utils
-@using tesisproject.shared.DTOs.Catalog.TransactionTypes.Response
 
 <DataTable TItem="BudgetTransactionDTO"
            Items="@Transactions"
@@ -22,7 +22,7 @@
     [Parameter] public string EmptyText { get; set; } = "Aún no hay transacciones.";
     [Parameter] public EventCallback<int> OnExecuteDevengado { get; set; }
     [Parameter] public int PageSize { get; set; } = 3;
-    [Parameter] public IReadOnlyList<TransactionTypeListItemDTO> TransactionTypes { get; set; } = Array.Empty<TransactionTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> TransactionTypes { get; set; } = Array.Empty<CatalogListItemDTO>();
     [Parameter] public EventCallback<int> OnCancelTransaction { get; set; }
 
 

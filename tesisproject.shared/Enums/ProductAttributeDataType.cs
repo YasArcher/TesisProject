@@ -8,21 +8,21 @@ using System.Threading.Tasks;
 namespace tesisproject.shared.Enums
 {
     /// <summary>
-    /// Enumerates all supported data types for ProductAttributeDefinition.
+    /// Enumerates all supported data types for ProductAttribute.
     /// Determines how each attribute is rendered and validated.
     /// </summary>
     public enum ProductAttributeDataType
     {
-        [Description("Plain text value")]
+        [Description("Texto libre")]
         Text = 0,
 
-        [Description("Numeric value (integer or decimal)")]
+        [Description("Valor numérico (entero o decimal)")]
         Number = 1,
 
-        [Description("Date or datetime value")]
+        [Description("Fecha")]
         Date = 2,
 
-        [Description("URL or link value")]
+        [Description("Enlace o URL")]
         Url = 3
     }
 }

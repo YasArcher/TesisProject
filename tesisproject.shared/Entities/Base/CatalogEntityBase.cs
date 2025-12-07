@@ -22,5 +22,7 @@ namespace tesisproject.shared.Entities.Base
         public string Name { get; set; } = string.Empty; // Nombre del elemento del catálogo
 
         public bool IsActive { get; set; } = true;       // Estado activo/inactivo
+        public bool IsLocked { get; set; } = false;     // Indica si el elemento está bloqueado para edición/eliminación
+
     }
 }

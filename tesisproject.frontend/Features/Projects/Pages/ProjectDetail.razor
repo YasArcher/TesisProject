@@ -4,8 +4,8 @@
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.Tabs
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
-@using tesisproject.shared.DTOs.Catalog.ResearchCategoryGroup.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
 @using tesisproject.shared.DTOs.Group.Request
 @using tesisproject.shared.DTOs.Project.Response
@@ -18,7 +18,6 @@
 @using tesisproject.shared.DTOs.VisitIssues.Request
 @using tesisproject.shared.DTOs.VisitIssues.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
-@using tesisproject.shared.DTOs.Catalog.TransactionTypes.Response
 @using tesisproject.shared.DTOs.ProjectObjective.Response
 @using tesisproject.shared.DTOs.ObjectiveActivity.Response
 @using tesisproject.shared.DTOs.ExternalResearcherProject.Response
@@ -316,7 +315,7 @@
     private VisitIssueFormModal.VisitIssueFormModel? _issueInitialValues;
 
     // ======= Tipos de transacción (catálogo) =======
-    private IReadOnlyList<TransactionTypeListItemDTO> _transactionTypes = Array.Empty<TransactionTypeListItemDTO>();
+    private IReadOnlyList<CatalogListItemDTO> _transactionTypes = Array.Empty<CatalogListItemDTO>();
     private bool _loadingTransactionTypes;
     private string? _transactionTypesError;
 
@@ -364,8 +363,8 @@
     private bool _loadingResearchCategoryTypes;
 
     // ======= Agrupaciones de Categorías de Investigación =======
-    private IReadOnlyList<ResearchCategoryGroupListItemDTO> _researchCategoryGroups
-        = Array.Empty<ResearchCategoryGroupListItemDTO>();
+    private IReadOnlyList<CatalogListItemDTO> _researchCategoryGroups
+        = Array.Empty<CatalogListItemDTO>();
     private bool _loadingResearchCategoryGroups;
     private string? _researchCategoryGroupsError;
 
@@ -661,14 +660,14 @@
             }
             else
             {
-                _researchCategoryGroups = Array.Empty<ResearchCategoryGroupListItemDTO>();
+                _researchCategoryGroups = Array.Empty<CatalogListItemDTO>();
                 _researchCategoryGroupsError = res.Error
                     ?? "No se pudieron cargar las agrupaciones de categorías.";
             }
         }
         catch (Exception ex)
         {
-            _researchCategoryGroups = Array.Empty<ResearchCategoryGroupListItemDTO>();
+            _researchCategoryGroups = Array.Empty<CatalogListItemDTO>();
             _researchCategoryGroupsError = $"Error al cargar agrupaciones: {ex.Message}";
         }
         finally
@@ -1613,13 +1612,13 @@
             }
             else
             {
-                _transactionTypes = Array.Empty<TransactionTypeListItemDTO>();
+                _transactionTypes = Array.Empty<CatalogListItemDTO>();
                 _transactionTypesError = res.Error ?? "No se pudieron cargar los tipos de transacción.";
             }
         }
         catch (Exception ex)
         {
-            _transactionTypes = Array.Empty<TransactionTypeListItemDTO>();
+            _transactionTypes = Array.Empty<CatalogListItemDTO>();
             _transactionTypesError = $"Error al cargar tipos de transacción: {ex.Message}";
         }
         finally

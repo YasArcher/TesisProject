@@ -1,0 +1,1723 @@
+﻿@page "/settings"
+
+@using tesisproject.frontend.Features.AppSettings.Components
+@using tesisproject.frontend.SharedUI.Tabs
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.Services.Interfaces
+
+@using tesisproject.shared.DTOs.Catalog.Common.Request
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+@using tesisproject.shared.DTOs.Catalog.ProductAttribute.Request
+@using tesisproject.shared.DTOs.Catalog.ProductAttribute.Response
+@using tesisproject.shared.DTOs.Products.ProductAttributeDefinition.Request
+@using tesisproject.shared.DTOs.Products.ProductTypeDesign.Request
+@using tesisproject.shared.DTOs.Products.ProductTypeDesign.Response
+@using tesisproject.shared.Enums
+
+@inject IToastService Toast
+@inject IProductTypeClientService ProductTypeClient
+@inject IProductTypeDesignClientService ProductTypeDesignClient
+@inject IProductAttributeClientService ProductAttributeClient
+
+@inject IDocumentTypeClientService DocumentTypeClient
+@inject IFundingTypeClientService FundingTypeClient
+@inject IObjectiveTypeClientService ObjectiveTypeClient
+@inject IProjectTypeClientService ProjectTypeClient
+@inject ITransactionTypeClientService TransactionTypeClient
+
+<div class="flex flex-col h-full space-y-4">
+    <!-- Header -->
+    <div class="rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div class="space-y-2">
+                <h1 class="text-2xl font-bold text-foreground">
+                    System Settings
+                </h1>
+                <p class="text-sm text-muted">
+                    Configure system catalogs, products and other options.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs container -->
+    <div class="flex-1 overflow-y-auto min-h-0">
+        <Tabs ActiveKey="@_activeTab"
+              OnChange="OnTabChanged"
+              Variant="TabVariant.Underline">
+
+            <!-- Products configuration tab -->
+            <Tab Key="products" Title="Products">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         viewBox="0 0 24 24"
+                         fill="currentColor"
+                         class="size-5">
+                        <path fill-rule="evenodd"
+                              d="M4.5 5.25A2.25 2.25 0 0 1 6.75 3h10.5A2.25 2.25 0 0 1 19.5 5.25v13.5a.75.75 0 0 1-1.133.62L12 15.884l-6.367 3.486A.75.75 0 0 1 4.5 18.75V5.25Z"
+                              clip-rule="evenodd" />
+                    </svg>
+                </Icon>
+
+                <ChildContent>
+                    <Tabs ActiveKey="@_productsSubTab"
+                          OnChange="OnProductsSubTabChanged"
+                          Variant="TabVariant.Pills">
+
+                        <!-- Sub-tab: Product catalogs (Product Types + Attributes) -->
+                        <Tab Key="catalogs" Title="Product catalogs">
+                            <ChildContent>
+                                <ProductCatalogsTab Loading="@_catalogLoading"
+                                                    Error="@_catalogError"
+                                                    ProductTypes="@(_catalogProductTypes)"
+                                                    ProductAttributes="@(_catalogProductAttributes)"
+                                                    TypeModalOpen="@_typeModalOpen"
+                                                    TypeModalOpenChanged="v => _typeModalOpen = v"
+                                                    IsTypeEditMode="@_isTypeEditMode"
+                                                    SavingType="@_savingType"
+                                                    TypeError="@_typeError"
+                                                    TypeEditModel="@_typeEditModel"
+                                                    AttributeModalOpen="@_attributeModalOpen"
+                                                    AttributeModalOpenChanged="v => _attributeModalOpen = v"
+                                                    IsAttributeEditMode="@_isAttributeEditMode"
+                                                    SavingAttribute="@_savingAttribute"
+                                                    AttributeError="@_attributeError"
+                                                    AttributeEditModel="@_attributeEditModel"
+                                                    DataTypes="@_dataTypes"
+                                                    OnNewProductTypeRequested="HandleOpenNewProductTypeModal"
+                                                    OnEditProductTypeRequested="HandleOpenEditProductTypeModal"
+                                                    OnTypeCancelRequested="HandleCancelTypeEdit"
+                                                    OnTypeSaveRequested="HandleSaveTypeAsync"
+                                                    OnDeleteProductTypeRequested="HandleDeleteProductTypeAsync"
+                                                    OnNewAttributeRequested="HandleOpenNewAttributeModal"
+                                                    OnEditAttributeRequested="HandleOpenEditAttributeModal"
+                                                    OnAttributeCancelRequested="HandleCancelAttributeEdit"
+                                                    OnAttributeSaveRequested="HandleSaveAttributeAsync"
+                                                    OnDeleteAttributeRequested="HandleDeleteAttributeAsync" />
+                            </ChildContent>
+                        </Tab>
+
+                        <!-- Sub-tab: Designer -->
+                        <Tab Key="designer" Title="Designer">
+                            <ChildContent>
+                                <ProductTypeDesignerTab Loading="@_designerLoading"
+                                                        Error="@_designerError"
+                                                        ProductTypes="@_designerProductTypes"
+                                                        CurrentDesign="@_designerCurrentDesign"
+                                                        AvailableAttributes="@_designerAvailableAttributes"
+                                                        DefinitionRows="@_designerDefinitionRows"
+                                                        Saving="@_designerSaving"
+                                                        DesignError="@_designerDesignError"
+                                                        OnProductTypeSelected="HandleDesignerLoadDesignAsync"
+                                                        OnAddDefinitionRequested="HandleDesignerAddDefinition"
+                                                        OnRemoveDefinitionRequested="HandleDesignerRemoveDefinition"
+                                                        OnSaveDesignRequested="HandleDesignerSaveDesignAsync" />
+                            </ChildContent>
+                        </Tab>
+
+                    </Tabs>
+                </ChildContent>
+            </Tab>
+
+            <!-- Core catalogs tab -->
+            <Tab Key="core-catalogs" Title="Core catalogs">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         viewBox="0 0 24 24"
+                         fill="currentColor"
+                         class="size-5">
+                        <path fill-rule="evenodd"
+                              d="M4 6h16v2H4V6zm0 5h16v2H4v-2zm0 5h16v2H4v-2z"
+                              clip-rule="evenodd" />
+                    </svg>
+                </Icon>
+                <ChildContent>
+                    <SimpleCatalogTab Loading="@_coreCatalogsLoading"
+                                      Error="@_coreCatalogsError"
+                                      DocumentTypes="@_documentTypes"
+                                      FundingTypes="@_fundingTypes"
+                                      ObjectiveTypes="@_objectiveTypes"
+                                      ProjectTypes="@_projectTypesCore"
+                                      TransactionTypes="@_transactionTypes"
+                                      DocumentTypeModalOpen="@_documentTypeModalOpen"
+                                      DocumentTypeModalOpenChanged="v => _documentTypeModalOpen = v"
+                                      IsDocumentTypeEditMode="@_isDocumentTypeEditMode"
+                                      SavingDocumentType="@_savingDocumentType"
+                                      DocumentTypeError="@_documentTypeError"
+                                      DocumentTypeEditModel="@_documentTypeEditModel"
+                                      FundingTypeModalOpen="@_fundingTypeModalOpen"
+                                      FundingTypeModalOpenChanged="v => _fundingTypeModalOpen = v"
+                                      IsFundingTypeEditMode="@_isFundingTypeEditMode"
+                                      SavingFundingType="@_savingFundingType"
+                                      FundingTypeError="@_fundingTypeError"
+                                      FundingTypeEditModel="@_fundingTypeEditModel"
+                                      ObjectiveTypeModalOpen="@_objectiveTypeModalOpen"
+                                      ObjectiveTypeModalOpenChanged="v => _objectiveTypeModalOpen = v"
+                                      IsObjectiveTypeEditMode="@_isObjectiveTypeEditMode"
+                                      SavingObjectiveType="@_savingObjectiveType"
+                                      ObjectiveTypeError="@_objectiveTypeError"
+                                      ObjectiveTypeEditModel="@_objectiveTypeEditModel"
+                                      ProjectTypeModalOpen="@_projectTypeModalOpen"
+                                      ProjectTypeModalOpenChanged="v => _projectTypeModalOpen = v"
+                                      IsProjectTypeEditMode="@_isProjectTypeEditMode"
+                                      SavingProjectType="@_savingProjectType"
+                                      ProjectTypeError="@_projectTypeError"
+                                      ProjectTypeEditModel="@_projectTypeEditModel"
+                                      TransactionTypeModalOpen="@_transactionTypeModalOpen"
+                                      TransactionTypeModalOpenChanged="v => _transactionTypeModalOpen = v"
+                                      IsTransactionTypeEditMode="@_isTransactionTypeEditMode"
+                                      SavingTransactionType="@_savingTransactionType"
+                                      TransactionTypeError="@_transactionTypeError"
+                                      TransactionTypeEditModel="@_transactionTypeEditModel"
+                                      OnNewDocumentTypeRequested="HandleOpenNewDocumentTypeModal"
+                                      OnEditDocumentTypeRequested="HandleOpenEditDocumentTypeModal"
+                                      OnDocumentTypeCancelRequested="HandleCancelDocumentTypeEdit"
+                                      OnDocumentTypeSaveRequested="HandleSaveDocumentTypeAsync"
+                                      OnDeleteDocumentTypeRequested="HandleDeleteDocumentTypeAsync"
+                                      OnNewFundingTypeRequested="HandleOpenNewFundingTypeModal"
+                                      OnEditFundingTypeRequested="HandleOpenEditFundingTypeModal"
+                                      OnFundingTypeCancelRequested="HandleCancelFundingTypeEdit"
+                                      OnFundingTypeSaveRequested="HandleSaveFundingTypeAsync"
+                                      OnDeleteFundingTypeRequested="HandleDeleteFundingTypeAsync"
+                                      OnNewObjectiveTypeRequested="HandleOpenNewObjectiveTypeModal"
+                                      OnEditObjectiveTypeRequested="HandleOpenEditObjectiveTypeModal"
+                                      OnObjectiveTypeCancelRequested="HandleCancelObjectiveTypeEdit"
+                                      OnObjectiveTypeSaveRequested="HandleSaveObjectiveTypeAsync"
+                                      OnDeleteObjectiveTypeRequested="HandleDeleteObjectiveTypeAsync"
+                                      OnNewProjectTypeRequested="HandleOpenNewProjectTypeCoreModal"
+                                      OnEditProjectTypeRequested="HandleOpenEditProjectTypeCoreModal"
+                                      OnProjectTypeCancelRequested="HandleCancelProjectTypeCoreEdit"
+                                      OnProjectTypeSaveRequested="HandleSaveProjectTypeCoreAsync"
+                                      OnDeleteProjectTypeRequested="HandleDeleteProjectTypeCoreAsync"
+                                      OnNewTransactionTypeRequested="HandleOpenNewTransactionTypeModal"
+                                      OnEditTransactionTypeRequested="HandleOpenEditTransactionTypeModal"
+                                      OnTransactionTypeCancelRequested="HandleCancelTransactionTypeEdit"
+                                      OnTransactionTypeSaveRequested="HandleSaveTransactionTypeAsync"
+                                      OnDeleteTransactionTypeRequested="HandleDeleteTransactionTypeAsync" />
+                </ChildContent>
+            </Tab>
+
+            <!-- Research categories tab -->
+            <Tab Key="research-categories" Title="Research categories">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         viewBox="0 0 24 24"
+                         fill="currentColor"
+                         class="size-5">
+                        <path d="M4 4h7v7H4z" />
+                        <path d="M13 4h7v7h-7z" />
+                        <path d="M4 13h7v7H4z" />
+                        <path d="M13 13h7v7h-7z" />
+                    </svg>
+                </Icon>
+                <ChildContent>
+                    <ResearchCategoryDesignerTab />
+                </ChildContent>
+            </Tab>
+                <!-- Countries & Institutions tab -->
+    <Tab Key="countries-institutions" Title="Countries & Institutions">
+        <Icon>
+            <svg xmlns="http://www.w3.org/2000/svg"
+                 viewBox="0 0 24 24"
+                 fill="currentColor"
+                 class="size-5">
+                <path d="M4.5 6.75A.75.75 0 0 1 5.25 6h13.5a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V6.75Z" />
+                <path d="M7.5 9h3v6h-3V9Zm6 0h3v6h-3V9Z" />
+            </svg>
+        </Icon>
+        <ChildContent>
+            <!-- Usa aquí tu componente -->
+                    <CountriesAndInstitutionsTab />
+        </ChildContent>
+    </Tab>
+        </Tabs>
+    </div>
+</div>
+
+@code {
+    // ==================== CORE CATALOGS STATE ====================
+
+    private bool _coreCatalogsLoading;
+    private string? _coreCatalogsError;
+
+    private List<CatalogListItemDTO> _documentTypes = new();
+    private List<CatalogListItemDTO> _fundingTypes = new();
+    private List<CatalogListItemDTO> _objectiveTypes = new();
+    private List<CatalogListItemDTO> _projectTypesCore = new();
+    private List<CatalogListItemDTO> _productTypesCore = new();
+    private List<CatalogListItemDTO> _transactionTypes = new();
+
+    private bool _coreCatalogsLoadedOnce;
+
+    // ===== DocumentType modal =====
+    private bool _documentTypeModalOpen;
+    private bool _isDocumentTypeEditMode;
+    private bool _savingDocumentType;
+    private string? _documentTypeError;
+    private CatalogDetailDTO _documentTypeEditModel = new();
+
+    // ===== FundingType modal =====
+    private bool _fundingTypeModalOpen;
+    private bool _isFundingTypeEditMode;
+    private bool _savingFundingType;
+    private string? _fundingTypeError;
+    private CatalogDetailDTO _fundingTypeEditModel = new();
+
+    // ===== ObjectiveType modal =====
+    private bool _objectiveTypeModalOpen;
+    private bool _isObjectiveTypeEditMode;
+    private bool _savingObjectiveType;
+    private string? _objectiveTypeError;
+    private CatalogDetailDTO _objectiveTypeEditModel = new();
+
+    // ===== ProjectType (core) modal =====
+    private bool _projectTypeModalOpen;
+    private bool _isProjectTypeEditMode;
+    private bool _savingProjectType;
+    private string? _projectTypeError;
+    private CatalogDetailDTO _projectTypeEditModel = new();
+
+    // ===== TransactionType modal =====
+    private bool _transactionTypeModalOpen;
+    private bool _isTransactionTypeEditMode;
+    private bool _savingTransactionType;
+    private string? _transactionTypeError;
+    private CatalogDetailDTO _transactionTypeEditModel = new();
+
+    private string _activeTab = "products";
+    private string _productsSubTab = "catalogs";
+
+    // --------- Estado del Designer ----------
+
+    private bool _designerLoading;
+    private string? _designerError;
+
+    private List<CatalogListItemDTO> _designerProductTypes = new();
+    private ProductTypeDesignDetailDTO? _designerCurrentDesign;
+
+    private List<ProductAttributeDetailDTO> _designerAvailableAttributes = new();
+    private List<ProductAttributeDefinitionUpsertDTO> _designerDefinitionRows = new();
+
+    private bool _productTypeModalOpen;
+    private bool _productTypeModalSaving;
+    private CatalogDetailDTO _productTypeModalModel = new();
+
+    private bool _designerSaving;
+    private string? _designerDesignError;
+
+    // ===== Estado de catálogos de productos =====
+
+    private bool _catalogLoading;
+    private string? _catalogError;
+
+    private List<CatalogListItemDTO> _catalogProductTypes = new();
+    private List<ProductAttributeListItemDTO> _catalogProductAttributes = new();
+
+    // ===== ProductType modal (para catálogos de producto) =====
+    private bool _typeModalOpen;
+    private bool _isTypeEditMode;
+    private bool _savingType;
+    private string? _typeError;
+    private CatalogDetailDTO _typeEditModel = new();
+
+    // ===== ProductAttribute modal =====
+    private bool _attributeModalOpen;
+    private bool _isAttributeEditMode;
+    private bool _savingAttribute;
+    private string? _attributeError;
+    private ProductAttributeDetailDTO _attributeEditModel = new();
+
+    private readonly IEnumerable<ProductAttributeDataType> _dataTypes =
+        Enum.GetValues(typeof(ProductAttributeDataType)).Cast<ProductAttributeDataType>();
+
+    // ==================== lifecycle ====================
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProductCatalogsAsync();
+    }
+
+    // ==================== ROOT TABS ====================
+
+    private async Task OnTabChanged(string newKey)
+    {
+        _activeTab = newKey;
+
+        if (newKey == "products")
+        {
+            // Opcional: refrescar si quieres
+        }
+        else if (newKey == "core-catalogs" && !_coreCatalogsLoadedOnce)
+        {
+            await LoadCoreCatalogsAsync();
+        }
+        // "research-categories" no necesita nada aquí: el componente hijo se encarga solo
+    }
+
+    // ==================== PRODUCT CATALOGS (PRODUCT TYPES + ATTRIBUTES) ====================
+
+    private async Task LoadProductCatalogsAsync()
+    {
+        _catalogLoading = true;
+        _catalogError = null;
+
+        try
+        {
+            var typesRes = await ProductTypeClient.GetListAsync();
+            if (!typesRes.Success || typesRes.Response is null)
+            {
+                _catalogError = typesRes.Error ?? "Failed to load product types.";
+                _catalogProductTypes = new();
+            }
+            else
+            {
+                _catalogProductTypes = typesRes.Response;
+            }
+
+            var attrsRes = await ProductAttributeClient.GetListAsync(onlyActives: false);
+            if (!attrsRes.Success || attrsRes.Response is null)
+            {
+                if (_catalogError is null)
+                    _catalogError = attrsRes.Error ?? "Failed to load product attributes.";
+                else
+                    Toast.ShowWarning(attrsRes.Error ?? "Failed to load product attributes.");
+
+                _catalogProductAttributes = new();
+            }
+            else
+            {
+                _catalogProductAttributes = attrsRes.Response;
+            }
+        }
+        catch (Exception ex)
+        {
+            _catalogError ??= $"Unexpected error loading product catalogs: {ex.Message}";
+        }
+        finally
+        {
+            _catalogLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // ===== ProductType handlers (product catalogs) =====
+
+    private void HandleOpenNewProductTypeModal()
+    {
+        _isTypeEditMode = false;
+        _typeError = null;
+        _typeEditModel = new CatalogDetailDTO
+        {
+            Id = 0,
+            Name = string.Empty,
+            IsActive = true,
+            IsLocked = false
+        };
+        _typeModalOpen = true;
+    }
+
+    private async Task HandleOpenEditProductTypeModal(int id)
+    {
+        _isTypeEditMode = true;
+        _typeError = null;
+
+        try
+        {
+            var res = await ProductTypeClient.GetByIdAsync(id);
+            if (!res.Success || res.Response is null)
+            {
+                Toast.ShowError(res.Error ?? "Failed to load product type.");
+                return;
+            }
+
+            _typeEditModel = res.Response;
+            _typeModalOpen = true;
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error loading product type: {ex.Message}");
+        }
+    }
+
+    private void HandleCancelTypeEdit()
+    {
+        _typeModalOpen = false;
+        _typeError = null;
+    }
+
+    private async Task HandleSaveTypeAsync()
+    {
+        if (_typeEditModel.IsLocked && _typeEditModel.Id != 0)
+        {
+            _typeError = "This product type is locked and cannot be modified.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_typeEditModel.Name))
+        {
+            _typeError = "Name is required.";
+            return;
+        }
+
+        try
+        {
+            _savingType = true;
+            _typeError = null;
+
+            if (_typeEditModel.Id == 0)
+            {
+                var req = new AddCatalogRequestDTO
+                {
+                    Name = _typeEditModel.Name.Trim()
+                };
+
+                var res = await ProductTypeClient.CreateAsync(req);
+                if (!res.Success)
+                {
+                    _typeError = res.Error ?? "Failed to create product type.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Product type created successfully.");
+            }
+            else
+            {
+                var req = new UpdateCatalogRequestDTO
+                {
+                    Id = _typeEditModel.Id,
+                    Name = _typeEditModel.Name.Trim(),
+                    IsActive = _typeEditModel.IsActive
+                };
+
+                var res = await ProductTypeClient.UpdateAsync(req);
+                if (!res.Success)
+                {
+                    _typeError = res.Error ?? "Failed to update product type.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Product type updated successfully.");
+            }
+
+            _typeModalOpen = false;
+            await LoadProductCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            _typeError = $"Unexpected error saving product type: {ex.Message}";
+        }
+        finally
+        {
+            _savingType = false;
+            StateHasChanged();
+        }
+    }
+
+    // ===== ProductAttribute handlers =====
+
+    private void HandleOpenNewAttributeModal()
+    {
+        _isAttributeEditMode = false;
+        _attributeError = null;
+        _attributeEditModel = new ProductAttributeDetailDTO
+        {
+            Id = 0,
+            Name = string.Empty,
+            IsActive = true,
+            IsLocked = false,
+            DataType = ProductAttributeDataType.Text,
+            Unit = null
+        };
+        _attributeModalOpen = true;
+    }
+
+    private async Task HandleOpenEditAttributeModal(int id)
+    {
+        _isAttributeEditMode = true;
+        _attributeError = null;
+
+        try
+        {
+            var res = await ProductAttributeClient.GetByIdAsync(id);
+            if (!res.Success || res.Response is null)
+            {
+                Toast.ShowError(res.Error ?? "Failed to load product attribute.");
+                return;
+            }
+
+            _attributeEditModel = res.Response;
+            _attributeModalOpen = true;
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error loading product attribute: {ex.Message}");
+        }
+    }
+
+    private void HandleCancelAttributeEdit()
+    {
+        _attributeModalOpen = false;
+        _attributeError = null;
+    }
+
+    private async Task HandleSaveAttributeAsync()
+    {
+        if (_attributeEditModel.IsLocked && _attributeEditModel.Id != 0)
+        {
+            _attributeError = "This attribute is locked and cannot be modified.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_attributeEditModel.Name))
+        {
+            _attributeError = "Name is required.";
+            return;
+        }
+
+        try
+        {
+            _savingAttribute = true;
+            _attributeError = null;
+
+            if (_attributeEditModel.Id == 0)
+            {
+                var req = new AddProductAttributeRequestDTO
+                {
+                    Name = _attributeEditModel.Name.Trim(),
+                    IsActive = _attributeEditModel.IsActive,
+                    DataType = _attributeEditModel.DataType,
+                    Unit = _attributeEditModel.Unit
+                };
+
+                var res = await ProductAttributeClient.CreateAsync(req);
+                if (!res.Success)
+                {
+                    _attributeError = res.Error ?? "Failed to create attribute.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Attribute created successfully.");
+            }
+            else
+            {
+                var req = new UpdateProductAttributeRequestDTO
+                {
+                    Id = _attributeEditModel.Id,
+                    Name = _attributeEditModel.Name.Trim(),
+                    IsActive = _attributeEditModel.IsActive,
+                    DataType = _attributeEditModel.DataType,
+                    Unit = _attributeEditModel.Unit
+                };
+
+                var res = await ProductAttributeClient.UpdateAsync(_attributeEditModel.Id, req);
+                if (!res.Success)
+                {
+                    _attributeError = res.Error ?? "Failed to update attribute.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Attribute updated successfully.");
+            }
+
+            _attributeModalOpen = false;
+            await LoadProductCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            _attributeError = $"Unexpected error saving attribute: {ex.Message}";
+        }
+        finally
+        {
+            _savingAttribute = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleDeleteProductTypeAsync(int id)
+    {
+        var type = _catalogProductTypes.FirstOrDefault(t => t.Id == id);
+        if (type?.IsLocked == true)
+        {
+            Toast.ShowWarning("This product type is locked and cannot be deleted.");
+            return;
+        }
+
+        try
+        {
+            var res = await ProductTypeClient.DeleteAsync(id);
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "Failed to delete product type.");
+                return;
+            }
+
+            Toast.ShowSuccess("Product type deleted successfully.");
+            await LoadProductCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Unexpected error deleting product type: {ex.Message}");
+        }
+    }
+
+    private async Task HandleDeleteAttributeAsync(int id)
+    {
+        var attr = _catalogProductAttributes.FirstOrDefault(a => a.Id == id);
+        if (attr?.IsLocked == true)
+        {
+            Toast.ShowWarning("This attribute is locked and cannot be deleted.");
+            return;
+        }
+
+        try
+        {
+            var res = await ProductAttributeClient.DeleteAsync(id);
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "Failed to delete attribute.");
+                return;
+            }
+
+            Toast.ShowSuccess("Attribute deleted successfully.");
+            await LoadProductCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Unexpected error deleting attribute: {ex.Message}");
+        }
+    }
+
+    // ==================== CORE CATALOGS LOAD ====================
+
+    private async Task LoadCoreCatalogsAsync()
+    {
+        _coreCatalogsLoading = true;
+        _coreCatalogsError = null;
+
+        try
+        {
+            // Document types
+            var docRes = await DocumentTypeClient.GetListAsync(onlyActives: false);
+            _documentTypes = docRes.Success && docRes.Response is not null
+                ? docRes.Response
+                : new List<CatalogListItemDTO>();
+
+            if (!docRes.Success && docRes.Error is not null)
+                _coreCatalogsError ??= docRes.Error;
+
+            // Funding types
+            var fundRes = await FundingTypeClient.GetListAsync(onlyActives: false);
+            _fundingTypes = fundRes.Success && fundRes.Response is not null
+                ? fundRes.Response
+                : new List<CatalogListItemDTO>();
+
+            if (!fundRes.Success && fundRes.Error is not null)
+                _coreCatalogsError ??= fundRes.Error;
+
+            // Objective types
+            var objRes = await ObjectiveTypeClient.GetListAsync(onlyActives: false);
+            _objectiveTypes = objRes.Success && objRes.Response is not null
+                ? objRes.Response
+                : new List<CatalogListItemDTO>();
+
+            if (!objRes.Success && objRes.Error is not null)
+                _coreCatalogsError ??= objRes.Error;
+
+            // Project types (core)
+            var projRes = await ProjectTypeClient.GetListAsync(onlyActives: false);
+            _projectTypesCore = projRes.Success && projRes.Response is not null
+                ? projRes.Response
+                : new List<CatalogListItemDTO>();
+
+            if (!projRes.Success && projRes.Error is not null)
+                _coreCatalogsError ??= projRes.Error;
+
+            // Product types (core)
+            var prodRes = await ProductTypeClient.GetListAsync();
+            _productTypesCore = prodRes.Success && prodRes.Response is not null
+                ? prodRes.Response
+                : new List<CatalogListItemDTO>();
+
+            if (!prodRes.Success && prodRes.Error is not null)
+                _coreCatalogsError ??= prodRes.Error;
+
+            // Transaction types
+            var trxRes = await TransactionTypeClient.GetListAsync(onlyActives: false);
+            _transactionTypes = trxRes.Success && trxRes.Response is not null
+                ? trxRes.Response
+                : new List<CatalogListItemDTO>();
+
+            if (!trxRes.Success && trxRes.Error is not null)
+                _coreCatalogsError ??= trxRes.Error;
+
+            _coreCatalogsLoadedOnce = true;
+        }
+        catch (Exception ex)
+        {
+            _coreCatalogsError ??= $"Unexpected error loading core catalogs: {ex.Message}";
+        }
+        finally
+        {
+            _coreCatalogsLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // ==================== CORE CATALOGS HANDLERS ====================
+
+    // ----- DocumentType -----
+
+    private void HandleOpenNewDocumentTypeModal()
+    {
+        _isDocumentTypeEditMode = false;
+        _documentTypeError = null;
+        _documentTypeEditModel = new CatalogDetailDTO
+        {
+            Id = 0,
+            Name = string.Empty,
+            IsActive = true,
+            IsLocked = false
+        };
+        _documentTypeModalOpen = true;
+    }
+
+    private async Task HandleOpenEditDocumentTypeModal(int id)
+    {
+        _isDocumentTypeEditMode = true;
+        _documentTypeError = null;
+
+        try
+        {
+            var res = await DocumentTypeClient.GetByIdAsync(id);
+            if (!res.Success || res.Response is null)
+            {
+                Toast.ShowError(res.Error ?? "Failed to load document type.");
+                return;
+            }
+
+            _documentTypeEditModel = res.Response;
+            _documentTypeModalOpen = true;
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error loading document type: {ex.Message}");
+        }
+    }
+
+    private void HandleCancelDocumentTypeEdit()
+    {
+        _documentTypeModalOpen = false;
+        _documentTypeError = null;
+    }
+
+    private async Task HandleSaveDocumentTypeAsync()
+    {
+        if (_documentTypeEditModel.IsLocked && _documentTypeEditModel.Id != 0)
+        {
+            _documentTypeError = "This document type is locked and cannot be modified.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_documentTypeEditModel.Name))
+        {
+            _documentTypeError = "Name is required.";
+            return;
+        }
+
+        try
+        {
+            _savingDocumentType = true;
+            _documentTypeError = null;
+
+            if (_documentTypeEditModel.Id == 0)
+            {
+                var req = new AddCatalogRequestDTO
+                {
+                    Name = _documentTypeEditModel.Name.Trim()
+                };
+
+                var res = await DocumentTypeClient.CreateAsync(req);
+                if (!res.Success)
+                {
+                    _documentTypeError = res.Error ?? "Failed to create document type.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Document type created successfully.");
+            }
+            else
+            {
+                var req = new UpdateCatalogRequestDTO
+                {
+                    Id = _documentTypeEditModel.Id,
+                    Name = _documentTypeEditModel.Name.Trim(),
+                    IsActive = _documentTypeEditModel.IsActive
+                };
+
+                var res = await DocumentTypeClient.UpdateAsync(req);
+                if (!res.Success)
+                {
+                    _documentTypeError = res.Error ?? "Failed to update document type.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Document type updated successfully.");
+            }
+
+            _documentTypeModalOpen = false;
+            await LoadCoreCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            _documentTypeError = $"Unexpected error saving document type: {ex.Message}";
+        }
+        finally
+        {
+            _savingDocumentType = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleDeleteDocumentTypeAsync(int id)
+    {
+        var item = _documentTypes.FirstOrDefault(t => t.Id == id);
+        if (item?.IsLocked == true)
+        {
+            Toast.ShowWarning("This document type is locked and cannot be deleted.");
+            return;
+        }
+
+        try
+        {
+            var res = await DocumentTypeClient.DeleteAsync(id);
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "Failed to delete document type.");
+                return;
+            }
+
+            Toast.ShowSuccess("Document type deleted successfully.");
+            await LoadCoreCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Unexpected error deleting document type: {ex.Message}");
+        }
+    }
+
+    // ----- FundingType -----
+
+    private void HandleOpenNewFundingTypeModal()
+    {
+        _isFundingTypeEditMode = false;
+        _fundingTypeError = null;
+        _fundingTypeEditModel = new CatalogDetailDTO
+        {
+            Id = 0,
+            Name = string.Empty,
+            IsActive = true,
+            IsLocked = false
+        };
+        _fundingTypeModalOpen = true;
+    }
+
+    private async Task HandleOpenEditFundingTypeModal(int id)
+    {
+        _isFundingTypeEditMode = true;
+        _fundingTypeError = null;
+
+        try
+        {
+            var res = await FundingTypeClient.GetByIdAsync(id);
+            if (!res.Success || res.Response is null)
+            {
+                Toast.ShowError(res.Error ?? "Failed to load funding type.");
+                return;
+            }
+
+            _fundingTypeEditModel = res.Response;
+            _fundingTypeModalOpen = true;
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error loading funding type: {ex.Message}");
+        }
+    }
+
+    private void HandleCancelFundingTypeEdit()
+    {
+        _fundingTypeModalOpen = false;
+        _fundingTypeError = null;
+    }
+
+    private async Task HandleSaveFundingTypeAsync()
+    {
+        if (_fundingTypeEditModel.IsLocked && _fundingTypeEditModel.Id != 0)
+        {
+            _fundingTypeError = "This funding type is locked and cannot be modified.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_fundingTypeEditModel.Name))
+        {
+            _fundingTypeError = "Name is required.";
+            return;
+        }
+
+        try
+        {
+            _savingFundingType = true;
+            _fundingTypeError = null;
+
+            if (_fundingTypeEditModel.Id == 0)
+            {
+                var req = new AddCatalogRequestDTO
+                {
+                    Name = _fundingTypeEditModel.Name.Trim()
+                };
+
+                var res = await FundingTypeClient.CreateAsync(req);
+                if (!res.Success)
+                {
+                    _fundingTypeError = res.Error ?? "Failed to create funding type.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Funding type created successfully.");
+            }
+            else
+            {
+                var req = new UpdateCatalogRequestDTO
+                {
+                    Id = _fundingTypeEditModel.Id,
+                    Name = _fundingTypeEditModel.Name.Trim(),
+                    IsActive = _fundingTypeEditModel.IsActive
+                };
+
+                var res = await FundingTypeClient.UpdateAsync(req);
+                if (!res.Success)
+                {
+                    _fundingTypeError = res.Error ?? "Failed to update funding type.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Funding type updated successfully.");
+            }
+
+            _fundingTypeModalOpen = false;
+            await LoadCoreCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            _fundingTypeError = $"Unexpected error saving funding type: {ex.Message}";
+        }
+        finally
+        {
+            _savingFundingType = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleDeleteFundingTypeAsync(int id)
+    {
+        var item = _fundingTypes.FirstOrDefault(t => t.Id == id);
+        if (item?.IsLocked == true)
+        {
+            Toast.ShowWarning("This funding type is locked and cannot be deleted.");
+            return;
+        }
+
+        try
+        {
+            var res = await FundingTypeClient.DeleteAsync(id);
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "Failed to delete funding type.");
+                return;
+            }
+
+            Toast.ShowSuccess("Funding type deleted successfully.");
+            await LoadCoreCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Unexpected error deleting funding type: {ex.Message}");
+        }
+    }
+
+    // ----- ObjectiveType -----
+
+    private void HandleOpenNewObjectiveTypeModal()
+    {
+        _isObjectiveTypeEditMode = false;
+        _objectiveTypeError = null;
+        _objectiveTypeEditModel = new CatalogDetailDTO
+        {
+            Id = 0,
+            Name = string.Empty,
+            IsActive = true,
+            IsLocked = false
+        };
+        _objectiveTypeModalOpen = true;
+    }
+
+    private async Task HandleOpenEditObjectiveTypeModal(int id)
+    {
+        _isObjectiveTypeEditMode = true;
+        _objectiveTypeError = null;
+
+        try
+        {
+            var res = await ObjectiveTypeClient.GetByIdAsync(id);
+            if (!res.Success || res.Response is null)
+            {
+                Toast.ShowError(res.Error ?? "Failed to load objective type.");
+                return;
+            }
+
+            _objectiveTypeEditModel = res.Response;
+            _objectiveTypeModalOpen = true;
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error loading objective type: {ex.Message}");
+        }
+    }
+
+    private void HandleCancelObjectiveTypeEdit()
+    {
+        _objectiveTypeModalOpen = false;
+        _objectiveTypeError = null;
+    }
+
+    private async Task HandleSaveObjectiveTypeAsync()
+    {
+        if (_objectiveTypeEditModel.IsLocked && _objectiveTypeEditModel.Id != 0)
+        {
+            _objectiveTypeError = "This objective type is locked and cannot be modified.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_objectiveTypeEditModel.Name))
+        {
+            _objectiveTypeError = "Name is required.";
+            return;
+        }
+
+        try
+        {
+            _savingObjectiveType = true;
+            _objectiveTypeError = null;
+
+            if (_objectiveTypeEditModel.Id == 0)
+            {
+                var req = new AddCatalogRequestDTO
+                {
+                    Name = _objectiveTypeEditModel.Name.Trim()
+                };
+
+                var res = await ObjectiveTypeClient.CreateAsync(req);
+                if (!res.Success)
+                {
+                    _objectiveTypeError = res.Error ?? "Failed to create objective type.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Objective type created successfully.");
+            }
+            else
+            {
+                var req = new UpdateCatalogRequestDTO
+                {
+                    Id = _objectiveTypeEditModel.Id,
+                    Name = _objectiveTypeEditModel.Name.Trim(),
+                    IsActive = _objectiveTypeEditModel.IsActive
+                };
+
+                var res = await ObjectiveTypeClient.UpdateAsync(req);
+                if (!res.Success)
+                {
+                    _objectiveTypeError = res.Error ?? "Failed to update objective type.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Objective type updated successfully.");
+            }
+
+            _objectiveTypeModalOpen = false;
+            await LoadCoreCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            _objectiveTypeError = $"Unexpected error saving objective type: {ex.Message}";
+        }
+        finally
+        {
+            _savingObjectiveType = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleDeleteObjectiveTypeAsync(int id)
+    {
+        var item = _objectiveTypes.FirstOrDefault(t => t.Id == id);
+        if (item?.IsLocked == true)
+        {
+            Toast.ShowWarning("This objective type is locked and cannot be deleted.");
+            return;
+        }
+
+        try
+        {
+            var res = await ObjectiveTypeClient.DeleteAsync(id);
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "Failed to delete objective type.");
+                return;
+            }
+
+            Toast.ShowSuccess("Objective type deleted successfully.");
+            await LoadCoreCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Unexpected error deleting objective type: {ex.Message}");
+        }
+    }
+
+    // ----- ProjectType (core) -----
+
+    private void HandleOpenNewProjectTypeCoreModal()
+    {
+        _isProjectTypeEditMode = false;
+        _projectTypeError = null;
+        _projectTypeEditModel = new CatalogDetailDTO
+        {
+            Id = 0,
+            Name = string.Empty,
+            IsActive = true,
+            IsLocked = false
+        };
+        _projectTypeModalOpen = true;
+    }
+
+    private async Task HandleOpenEditProjectTypeCoreModal(int id)
+    {
+        _isProjectTypeEditMode = true;
+        _projectTypeError = null;
+
+        try
+        {
+            var res = await ProjectTypeClient.GetByIdAsync(id);
+            if (!res.Success || res.Response is null)
+            {
+                Toast.ShowError(res.Error ?? "Failed to load project type.");
+                return;
+            }
+
+            _projectTypeEditModel = res.Response;
+            _projectTypeModalOpen = true;
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error loading project type: {ex.Message}");
+        }
+    }
+
+    private void HandleCancelProjectTypeCoreEdit()
+    {
+        _projectTypeModalOpen = false;
+        _projectTypeError = null;
+    }
+
+    private async Task HandleSaveProjectTypeCoreAsync()
+    {
+        if (_projectTypeEditModel.IsLocked && _projectTypeEditModel.Id != 0)
+        {
+            _projectTypeError = "This project type is locked and cannot be modified.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_projectTypeEditModel.Name))
+        {
+            _projectTypeError = "Name is required.";
+            return;
+        }
+
+        try
+        {
+            _savingProjectType = true;
+            _projectTypeError = null;
+
+            if (_projectTypeEditModel.Id == 0)
+            {
+                var req = new AddCatalogRequestDTO
+                {
+                    Name = _projectTypeEditModel.Name.Trim()
+                };
+
+                var res = await ProjectTypeClient.CreateAsync(req);
+                if (!res.Success)
+                {
+                    _projectTypeError = res.Error ?? "Failed to create project type.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Project type created successfully.");
+            }
+            else
+            {
+                var req = new UpdateCatalogRequestDTO
+                {
+                    Id = _projectTypeEditModel.Id,
+                    Name = _projectTypeEditModel.Name.Trim(),
+                    IsActive = _projectTypeEditModel.IsActive
+                };
+
+                var res = await ProjectTypeClient.UpdateAsync(req);
+                if (!res.Success)
+                {
+                    _projectTypeError = res.Error ?? "Failed to update project type.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Project type updated successfully.");
+            }
+
+            _projectTypeModalOpen = false;
+            await LoadCoreCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            _projectTypeError = $"Unexpected error saving project type: {ex.Message}";
+        }
+        finally
+        {
+            _savingProjectType = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleDeleteProjectTypeCoreAsync(int id)
+    {
+        var item = _projectTypesCore.FirstOrDefault(t => t.Id == id);
+        if (item?.IsLocked == true)
+        {
+            Toast.ShowWarning("This project type is locked and cannot be deleted.");
+            return;
+        }
+
+        try
+        {
+            var res = await ProjectTypeClient.DeleteAsync(id);
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "Failed to delete project type.");
+                return;
+            }
+
+            Toast.ShowSuccess("Project type deleted successfully.");
+            await LoadCoreCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Unexpected error deleting project type: {ex.Message}");
+        }
+    }
+
+    // ----- TransactionType -----
+
+    private void HandleOpenNewTransactionTypeModal()
+    {
+        _isTransactionTypeEditMode = false;
+        _transactionTypeError = null;
+        _transactionTypeEditModel = new CatalogDetailDTO
+        {
+            Id = 0,
+            Name = string.Empty,
+            IsActive = true,
+            IsLocked = false
+        };
+        _transactionTypeModalOpen = true;
+    }
+
+    private async Task HandleOpenEditTransactionTypeModal(int id)
+    {
+        _isTransactionTypeEditMode = true;
+        _transactionTypeError = null;
+
+        try
+        {
+            var res = await TransactionTypeClient.GetByIdAsync(id);
+            if (!res.Success || res.Response is null)
+            {
+                Toast.ShowError(res.Error ?? "Failed to load transaction type.");
+                return;
+            }
+
+            _transactionTypeEditModel = res.Response;
+            _transactionTypeModalOpen = true;
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error loading transaction type: {ex.Message}");
+        }
+    }
+
+    private void HandleCancelTransactionTypeEdit()
+    {
+        _transactionTypeModalOpen = false;
+        _transactionTypeError = null;
+    }
+
+    private async Task HandleSaveTransactionTypeAsync()
+    {
+        if (_transactionTypeEditModel.IsLocked && _transactionTypeEditModel.Id != 0)
+        {
+            _transactionTypeError = "This transaction type is locked and cannot be modified.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_transactionTypeEditModel.Name))
+        {
+            _transactionTypeError = "Name is required.";
+            return;
+        }
+
+        try
+        {
+            _savingTransactionType = true;
+            _transactionTypeError = null;
+
+            if (_transactionTypeEditModel.Id == 0)
+            {
+                var req = new AddCatalogRequestDTO
+                {
+                    Name = _transactionTypeEditModel.Name.Trim()
+                };
+
+                var res = await TransactionTypeClient.CreateAsync(req);
+                if (!res.Success)
+                {
+                    _transactionTypeError = res.Error ?? "Failed to create transaction type.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Transaction type created successfully.");
+            }
+            else
+            {
+                var req = new UpdateCatalogRequestDTO
+                {
+                    Id = _transactionTypeEditModel.Id,
+                    Name = _transactionTypeEditModel.Name.Trim(),
+                    IsActive = _transactionTypeEditModel.IsActive
+                };
+
+                var res = await TransactionTypeClient.UpdateAsync(req);
+                if (!res.Success)
+                {
+                    _transactionTypeError = res.Error ?? "Failed to update transaction type.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Transaction type updated successfully.");
+            }
+
+            _transactionTypeModalOpen = false;
+            await LoadCoreCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            _transactionTypeError = $"Unexpected error saving transaction type: {ex.Message}";
+        }
+        finally
+        {
+            _savingTransactionType = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleDeleteTransactionTypeAsync(int id)
+    {
+        var item = _transactionTypes.FirstOrDefault(t => t.Id == id);
+        if (item?.IsLocked == true)
+        {
+            Toast.ShowWarning("This transaction type is locked and cannot be deleted.");
+            return;
+        }
+
+        try
+        {
+            var res = await TransactionTypeClient.DeleteAsync(id);
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "Failed to delete transaction type.");
+                return;
+            }
+
+            Toast.ShowSuccess("Transaction type deleted successfully.");
+            await LoadCoreCatalogsAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Unexpected error deleting transaction type: {ex.Message}");
+        }
+    }
+
+    // ==================== SUB-TABS PRODUCTS ====================
+
+    private async Task OnProductsSubTabChanged(string key)
+    {
+        _productsSubTab = key;
+
+        if (key == "designer")
+        {
+            await LoadDesignerProductTypesAsync();
+        }
+        else if (key == "catalogs")
+        {
+            await LoadProductCatalogsAsync();
+        }
+    }
+
+    private Task CloseProductTypeModalAsync()
+    {
+        _productTypeModalOpen = false;
+        return Task.CompletedTask;
+    }
+
+    // ==================== LÓGICA DEL DESIGNER ====================
+
+    private async Task LoadDesignerProductTypesAsync()
+    {
+        _designerLoading = true;
+        _designerError = null;
+
+        try
+        {
+            var res = await ProductTypeClient.GetListAsync();
+            if (!res.Success || res.Response is null)
+            {
+                _designerError = res.Error ?? "Failed to load product types.";
+                _designerProductTypes = new();
+            }
+            else
+            {
+                _designerProductTypes = res.Response;
+            }
+        }
+        catch (Exception ex)
+        {
+            _designerError = $"Unexpected error loading product types: {ex.Message}";
+        }
+        finally
+        {
+            _designerLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleDesignerNewDesignAsync()
+    {
+        _designerDesignError = null;
+
+        try
+        {
+            var res = await ProductTypeDesignClient.GetTemplateAsync();
+            if (!res.Success || res.Response is null)
+            {
+                Toast.ShowError(res.Error ?? "Failed to load product type template.");
+                return;
+            }
+
+            _designerCurrentDesign = res.Response;
+
+            _designerAvailableAttributes = _designerCurrentDesign.Attributes.ToList();
+            _designerDefinitionRows = _designerCurrentDesign.Definitions
+                .OrderBy(d => d.DisplayOrder)
+                .Select(d => new ProductAttributeDefinitionUpsertDTO
+                {
+                    Id = d.Id,
+                    ProductAttributeId = d.ProductAttributeId,
+                    IsRequired = d.IsRequired,
+                    DisplayOrder = d.DisplayOrder
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error loading product type template: {ex.Message}");
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleDesignerLoadDesignAsync(int productTypeId)
+    {
+        _designerDesignError = null;
+
+        if (productTypeId <= 0)
+        {
+            Toast.ShowError("Invalid product type selected.");
+            return;
+        }
+
+        try
+        {
+            var res = await ProductTypeDesignClient.GetByProductTypeIdAsync(productTypeId);
+            if (!res.Success || res.Response is null)
+            {
+                Toast.ShowError(res.Error ?? "Failed to load product type design.");
+                return;
+            }
+
+            _designerCurrentDesign = res.Response;
+
+            _designerAvailableAttributes = _designerCurrentDesign.Attributes.ToList();
+            _designerDefinitionRows = _designerCurrentDesign.Definitions
+                .OrderBy(d => d.DisplayOrder)
+                .Select(d => new ProductAttributeDefinitionUpsertDTO
+                {
+                    Id = d.Id,
+                    ProductAttributeId = d.ProductAttributeId,
+                    IsRequired = d.IsRequired,
+                    DisplayOrder = d.DisplayOrder
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error loading product type design: {ex.Message}");
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private void HandleDesignerAddDefinition()
+    {
+        _designerDesignError = null;
+
+        if (_designerAvailableAttributes.Count == 0)
+        {
+            _designerDesignError = "There are no available attributes. Create attributes first in the catalogs tab.";
+            return;
+        }
+
+        var nextOrder = (_designerDefinitionRows.Count == 0)
+            ? 1
+            : _designerDefinitionRows.Max(d => d.DisplayOrder) + 1;
+
+        var defaultAttrId = _designerAvailableAttributes.First().Id;
+
+        _designerDefinitionRows.Add(new ProductAttributeDefinitionUpsertDTO
+        {
+            Id = 0,
+            ProductAttributeId = defaultAttrId,
+            IsRequired = false,
+            DisplayOrder = nextOrder
+        });
+    }
+
+    private void HandleDesignerRemoveDefinition(ProductAttributeDefinitionUpsertDTO row)
+    {
+        _designerDefinitionRows.Remove(row);
+    }
+
+    private async Task HandleDesignerSaveDesignAsync()
+    {
+        _designerDesignError = null;
+
+        if (_designerCurrentDesign is null)
+        {
+            _designerDesignError = "No product type design loaded.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_designerCurrentDesign.ProductType.Name))
+        {
+            _designerDesignError = "Product type name is required.";
+            return;
+        }
+
+        if (_designerCurrentDesign.ProductType.IsLocked)
+        {
+            _designerDesignError = "This product type is locked and cannot be modified.";
+            return;
+        }
+
+        if (_designerDefinitionRows.Count == 0)
+        {
+            _designerDesignError = "At least one attribute definition is required.";
+            return;
+        }
+
+        if (_designerDefinitionRows.Any(d => d.ProductAttributeId <= 0))
+        {
+            _designerDesignError = "All definitions must have a valid attribute.";
+            return;
+        }
+
+        try
+        {
+            _designerSaving = true;
+
+            var typeUpsert = new ProductTypeUpsertDTO
+            {
+                Id = _designerCurrentDesign.ProductType.Id,
+                Name = _designerCurrentDesign.ProductType.Name.Trim(),
+                IsActive = _designerCurrentDesign.ProductType.IsActive
+            };
+
+            var definitionsUpsert = _designerDefinitionRows
+                .OrderBy(d => d.DisplayOrder)
+                .ToList();
+
+            var request = new SaveProductTypeDesignRequestDTO
+            {
+                ProductType = typeUpsert,
+                Attributes = new List<ProductAttributeUpsertDTO>(),
+                Definitions = definitionsUpsert
+            };
+
+            var res = await ProductTypeDesignClient.SaveAsync(request);
+            if (!res.Success || res.Response is null)
+            {
+                _designerDesignError = res.Error ?? "Failed to save product type design.";
+                return;
+            }
+
+            _designerCurrentDesign = res.Response;
+
+            _designerAvailableAttributes = _designerCurrentDesign.Attributes.ToList();
+            _designerDefinitionRows = _designerCurrentDesign.Definitions
+                .OrderBy(d => d.DisplayOrder)
+                .Select(d => new ProductAttributeDefinitionUpsertDTO
+                {
+                    Id = d.Id,
+                    ProductAttributeId = d.ProductAttributeId,
+                    IsRequired = d.IsRequired,
+                    DisplayOrder = d.DisplayOrder
+                })
+                .ToList();
+
+            await LoadDesignerProductTypesAsync();
+
+            Toast.ShowSuccess("Product type design saved successfully.");
+        }
+        catch (Exception ex)
+        {
+            _designerDesignError = $"Unexpected error saving product type design: {ex.Message}";
+        }
+        finally
+        {
+            _designerSaving = false;
+            StateHasChanged();
+        }
+    }
+}

@@ -61,9 +61,20 @@ namespace tesisproject.backend.Data
         {
             modelBuilder.Entity<DimDate>(b =>
             {
+                b.ToTable("DimDates", "DW");
+
                 b.HasKey(d => d.DateKey);
 
-                // Índices típicos para filtros de tiempo
+                b.Property(d => d.DateKey)
+                 .ValueGeneratedNever(); // AAAAMMDD, sin IDENTITY
+
+                b.Property(d => d.Date)
+                 .IsRequired();
+
+                b.Property(d => d.Year).IsRequired();
+                b.Property(d => d.Month).IsRequired();
+                b.Property(d => d.Day).IsRequired();
+
                 b.HasIndex(d => d.Date);
                 b.HasIndex(d => new { d.Year, d.Month });
             });
@@ -72,8 +83,12 @@ namespace tesisproject.backend.Data
             {
                 b.HasKey(f => f.FacultyKey);
 
-                // Natural key (viene de Projects.FacultyId)
+                // Clave natural (Projects.FacultyId)
                 b.HasIndex(f => f.FacultyId);
+
+                // Útiles si luego filtras por código o nombre
+                b.HasIndex(f => f.FacultyCode);
+                b.HasIndex(f => f.FacultyName);
             });
 
             modelBuilder.Entity<DimProjectState>(b =>
@@ -106,7 +121,14 @@ namespace tesisproject.backend.Data
             modelBuilder.Entity<DimResearchCategory>(b =>
             {
                 b.HasKey(rc => rc.ResearchCategoryKey);
+
+                // Clave natural + jerarquía + filtros habituales
                 b.HasIndex(rc => rc.ResearchCategoryId);
+                b.HasIndex(rc => rc.ResearchCategoryGroupId);
+                b.HasIndex(rc => rc.ResearchCategoryTypeId);
+                b.HasIndex(rc => rc.Name);
+                b.HasIndex(rc => rc.ParentCategoryKey);
+
                 b.HasIndex(rc => rc.CategoryTypeName);
                 b.HasIndex(rc => rc.ResearchCategoryGroupName);
             });
@@ -117,6 +139,7 @@ namespace tesisproject.backend.Data
                 b.HasIndex(q => q.Code);
             });
         }
+
 
         // ============================================
         // Configuración de hechos
@@ -258,6 +281,12 @@ namespace tesisproject.backend.Data
                 b.HasOne(x => x.ResearchCategory)
                  .WithMany(rc => rc.ProjectLinks)
                  .HasForeignKey(x => x.ResearchCategoryKey)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                b.HasOne(x => x.Project)
+                 .WithMany()
+                 .HasForeignKey(x => x.ProjectId)          // FK en el bridge
+                 .HasPrincipalKey(p => p.ProjectId)        // clave natural en FactProject
                  .OnDelete(DeleteBehavior.NoAction);
             });
         }

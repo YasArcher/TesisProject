@@ -10,36 +10,49 @@ using tesisproject.shared.Enums;
 namespace tesisproject.shared.Entities.Core.Products
 {
     /// <summary>
-    /// Defines which attributes a given ProductType requires (name, datatype, order, etc.).
-    /// Used to render dynamic forms and to validate ProductValue.
+    /// Bridge entity between ProductType and ProductAttribute.
+    /// It defines how a given attribute is used for a specific ProductType
+    /// (required, display order, etc.).
     /// </summary>
     public class ProductAttributeDefinition
     {
         // =============== Keys ===============
         public int Id { get; set; }
 
-        // =============== FK ===============
+        // =============== FKs ===============
+
+        /// <summary>
+        /// Product type that uses this attribute.
+        /// </summary>
         [Required]
         public int ProductTypeId { get; set; }
 
-        // =============== Definition ===============
-        [Required, MaxLength(128)]
-        public string AttributeName { get; set; } = string.Empty;  // e.g., "ISSN/ISBN", "DOI", "Journal"
-
+        /// <summary>
+        /// Global attribute definition (DOI, Pages, Title, etc.).
+        /// </summary>
         [Required]
-        public ProductAttributeDataType DataType { get; set; } = ProductAttributeDataType.Text;
+        public int ProductAttributeId { get; set; }
 
+        // =============== Rules per type ===============
+
+        /// <summary>
+        /// Whether this attribute is required for this specific ProductType.
+        /// </summary>
         public bool IsRequired { get; set; } = false;
 
-        /// <summary>Display order for forms.</summary>
+        /// <summary>
+        /// Display order for UI forms within this ProductType.
+        /// </summary>
         public int DisplayOrder { get; set; } = 0;
 
-        /// <summary>Optional unit (only meaningful for numeric types).</summary>
-        [MaxLength(32)]
-        public string? Unit { get; set; }
-
         // =========== Navigations ============
-        public ICollection<ProductValue>? ProductValues { get; set; }
+
         public ProductType? ProductType { get; set; }
+        public ProductAttribute? ProductAttribute { get; set; }
+
+        /// <summary>
+        /// Values stored for this attribute when applied to concrete products.
+        /// </summary>
+        public ICollection<ProductValue>? ProductValues { get; set; }
     }
 }

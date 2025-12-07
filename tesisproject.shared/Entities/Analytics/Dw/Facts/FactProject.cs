@@ -28,7 +28,7 @@ namespace tesisproject.shared.Entities.Analytics.Dw.Facts
 
         public int ApprovalDateKey { get; set; }
         public int StartDateKey { get; set; }
-        public int EndDateKey { get; set; }
+        public int? EndDateKey { get; set; }
 
         // Navigation properties
         public DimFaculty Faculty { get; set; } = null!;

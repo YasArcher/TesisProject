@@ -2,22 +2,25 @@
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.DTOs.Catalog.Common.Request;
+using tesisproject.shared.DTOs.Catalog.Common.Response;
 using tesisproject.shared.Entities.Base;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
 {
     /// <summary>
-    /// Generic CRUD service for catalog entities that inherit from CatalogEntityBase.
-    /// Uses IGenericRepository<TCatalog> plus IUnitOfWork for SaveChanges.
+    /// Generic CRUD service for simple catalog entities (Id, Name, IsActive, IsLocked).
     /// </summary>
     public class CatalogCrudService<TCatalog> : ICatalogCrudService<TCatalog>
-        where TCatalog : CatalogEntityBase
+        where TCatalog : CatalogEntityBase, new()
     {
         private readonly IUnitOfWork _uow;
-        private readonly IGenericRepository<TCatalog> _repo;
+        private readonly ICatalogRepository<TCatalog> _repo;
 
-        public CatalogCrudService(IUnitOfWork uow, IGenericRepository<TCatalog> repo)
+        public CatalogCrudService(
+            IUnitOfWork uow,
+            ICatalogRepository<TCatalog> repo)
         {
             _uow = uow;
             _repo = repo;
@@ -25,121 +28,166 @@ namespace tesisproject.backend.Services.Implementations
 
         // =============== LIST ===============
 
-        public async Task<ServiceResult<IReadOnlyList<TCatalog>>> ListAsync(CancellationToken ct = default)
+        public async Task<ServiceResult<IReadOnlyList<CatalogListItemDTO>>> ListAsync(
+            CancellationToken ct = default)
         {
             try
             {
-                var items = await _repo.GetAllAsync(ct: ct);
+                // Si quieres solo activos, puedes pasar onlyActives: true
+                var items = await _repo.ListAsync(
+                    onlyActives: false,
+                    ct: ct);
 
-                if (items.Count == 0)
-                    return ServiceResult<IReadOnlyList<TCatalog>>
+                var dto = items
+                    .OrderBy(x => x.Name)
+                    .Select(MapToListItem)
+                    .ToList()
+                    .AsReadOnly();
+
+                if (dto.Count == 0)
+                    return ServiceResult<IReadOnlyList<CatalogListItemDTO>>
                         .Fail("No items found for this catalog.", ErrorType.NotFound);
 
-                return ServiceResult<IReadOnlyList<TCatalog>>
-                    .Ok(items, "Catalog items retrieved.");
+                return ServiceResult<IReadOnlyList<CatalogListItemDTO>>
+                    .Ok(dto, "Catalog items retrieved.");
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<TCatalog>>
+                return ServiceResult<IReadOnlyList<CatalogListItemDTO>>
                     .Fail(ex.Message, ErrorType.Unexpected);
             }
         }
 
         // =============== READ ONE ===============
 
-        public async Task<ServiceResult<TCatalog>> GetByIdAsync(int id, CancellationToken ct = default)
+        public async Task<ServiceResult<CatalogDetailDTO>> GetByIdAsync(
+            int id,
+            CancellationToken ct = default)
         {
             try
             {
                 if (id <= 0)
-                    return ServiceResult<TCatalog>
+                    return ServiceResult<CatalogDetailDTO>
                         .Fail("Id is required.", ErrorType.Validation);
 
                 var entity = await _repo.GetByIdAsync(new object[] { id }, ct);
                 if (entity is null)
-                    return ServiceResult<TCatalog>
+                    return ServiceResult<CatalogDetailDTO>
                         .Fail("Item not found.", ErrorType.NotFound);
 
-                return ServiceResult<TCatalog>.Ok(entity, "Catalog item retrieved.");
+                return ServiceResult<CatalogDetailDTO>.Ok(
+                    MapToDetail(entity),
+                    "Catalog item retrieved.");
             }
             catch (Exception ex)
             {
-                return ServiceResult<TCatalog>
+                return ServiceResult<CatalogDetailDTO>
                     .Fail(ex.Message, ErrorType.Unexpected);
             }
         }
 
         // =============== CREATE ===============
 
-        public async Task<ServiceResult<TCatalog>> CreateAsync(TCatalog entity, CancellationToken ct = default)
+        public async Task<ServiceResult<CatalogDetailDTO>> CreateAsync(
+            AddCatalogRequestDTO request,
+            CancellationToken ct = default)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(entity.Name))
-                    return ServiceResult<TCatalog>
+                var name = (request?.Name ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(name))
+                    return ServiceResult<CatalogDetailDTO>
                         .Fail("Name is required.", ErrorType.Validation);
+
+                var exists = await _repo.NameExistsAsync(name, excludeId: null, ct);
+                if (exists)
+                    return ServiceResult<CatalogDetailDTO>
+                        .Fail("Name already exists.", ErrorType.Validation);
+
+                var entity = new TCatalog
+                {
+                    Name = name,
+                    IsActive = true,
+                    // IsLocked viene de CatalogEntityBase, por defecto false
+                };
 
                 await _repo.AddAsync(entity, ct);
                 await _uow.SaveChangesAsync(ct);
 
-                return ServiceResult<TCatalog>.Ok(entity, "Catalog item created.");
+                return ServiceResult<CatalogDetailDTO>.Ok(
+                    MapToDetail(entity),
+                    "Catalog item created.");
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<TCatalog>
+                return ServiceResult<CatalogDetailDTO>
                     .Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<TCatalog>
+                return ServiceResult<CatalogDetailDTO>
                     .Fail(ex.Message, ErrorType.Unexpected);
             }
         }
 
         // =============== UPDATE ===============
 
-        public async Task<ServiceResult<TCatalog>> UpdateAsync(int id, TCatalog input, CancellationToken ct = default)
+        public async Task<ServiceResult<CatalogDetailDTO>> UpdateAsync(
+            UpdateCatalogRequestDTO request,
+            CancellationToken ct = default)
         {
             try
             {
-                if (id <= 0)
-                    return ServiceResult<TCatalog>
+                if (request is null || request.Id <= 0)
+                    return ServiceResult<CatalogDetailDTO>
                         .Fail("Id is required.", ErrorType.Validation);
 
-                var entity = await _repo.GetByIdAsync(new object[] { id }, ct);
+                var entity = await _repo.GetByIdAsync(new object[] { request.Id }, ct);
                 if (entity is null)
-                    return ServiceResult<TCatalog>
+                    return ServiceResult<CatalogDetailDTO>
                         .Fail("Item not found.", ErrorType.NotFound);
 
-                if (string.IsNullOrWhiteSpace(input.Name))
-                    return ServiceResult<TCatalog>
+                if (entity.IsLocked)
+                    return ServiceResult<CatalogDetailDTO>
+                        .Fail("Catalog item is locked and cannot be modified.", ErrorType.Conflict);
+
+                var name = (request.Name ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(name))
+                    return ServiceResult<CatalogDetailDTO>
                         .Fail("Name is required.", ErrorType.Validation);
 
-                // Solo mapeamos lo que sabemos que existe en CatalogEntityBase.
-                // Si tu catálogo tiene más propiedades (como IndexingSource),
-                // puedes extender este servicio en una subclase específica.
-                entity.Name = input.Name;
+                var duplicated = await _repo.NameExistsAsync(name, excludeId: request.Id, ct);
+                if (duplicated)
+                    return ServiceResult<CatalogDetailDTO>
+                        .Fail("Name already exists.", ErrorType.Validation);
+
+                entity.Name = name;
+                entity.IsActive = request.IsActive;
 
                 _repo.Update(entity);
                 await _uow.SaveChangesAsync(ct);
 
-                return ServiceResult<TCatalog>.Ok(entity, "Catalog item updated.");
+                return ServiceResult<CatalogDetailDTO>.Ok(
+                    MapToDetail(entity),
+                    "Catalog item updated.");
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<TCatalog>
+                return ServiceResult<CatalogDetailDTO>
                     .Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<TCatalog>
+                return ServiceResult<CatalogDetailDTO>
                     .Fail(ex.Message, ErrorType.Unexpected);
             }
         }
 
         // =============== DELETE ===============
 
-        public async Task<ServiceResult<NoContent>> DeleteAsync(int id, CancellationToken ct = default)
+        public async Task<ServiceResult<NoContent>> DeleteAsync(
+            int id,
+            CancellationToken ct = default)
         {
             try
             {
@@ -151,6 +199,10 @@ namespace tesisproject.backend.Services.Implementations
                 if (entity is null)
                     return ServiceResult<NoContent>
                         .Fail("Item not found.", ErrorType.NotFound);
+
+                if (entity.IsLocked)
+                    return ServiceResult<NoContent>
+                        .Fail("Catalog item is locked and cannot be deleted.", ErrorType.Conflict);
 
                 _repo.Remove(entity);
                 await _uow.SaveChangesAsync(ct);
@@ -169,5 +221,23 @@ namespace tesisproject.backend.Services.Implementations
                     .Fail(ex.Message, ErrorType.Unexpected);
             }
         }
+
+        // =============== MAPPING HELPERS ===============
+
+        private static CatalogListItemDTO MapToListItem(TCatalog x) => new()
+        {
+            Id = x.Id,
+            Name = x.Name,
+            IsActive = x.IsActive,
+            IsLocked = x.IsLocked
+        };
+
+        private static CatalogDetailDTO MapToDetail(TCatalog x) => new()
+        {
+            Id = x.Id,
+            Name = x.Name,
+            IsActive = x.IsActive,
+            IsLocked = x.IsLocked
+        };
     }
 }

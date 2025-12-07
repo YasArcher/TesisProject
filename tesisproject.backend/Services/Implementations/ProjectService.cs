@@ -613,7 +613,7 @@ namespace tesisproject.backend.Services.Implementations
                             InitialAmount = b.InitialAmount,
                             CertifiedAmount = 0,
                             ExecutedAmount = 0,
-                            ApprovedAt = null,
+                            ApprovedAt = DateTime.Now,
                             FundingTypeId = b.FundingTypeId
                         })
                         .ToList();

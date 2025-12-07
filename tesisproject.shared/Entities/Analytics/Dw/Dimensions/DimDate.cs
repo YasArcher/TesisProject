@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ namespace tesisproject.shared.Entities.Analytics.Dw.Dimensions
     public class DimDate
     {
         [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.None)]
         public int DateKey { get; set; }
 
         public DateTime Date { get; set; }

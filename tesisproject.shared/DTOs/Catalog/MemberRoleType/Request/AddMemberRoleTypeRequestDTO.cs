@@ -15,8 +15,9 @@ namespace tesisproject.shared.DTOs.Catalog.MemberRoleType.Request
         /// <summary>
         /// 1 = Project Member Roles
         /// 2 = Group Member Roles
+        /// 3 = Senesyt Member Roles
         /// </summary>
-        [Range(1, 2)]
+        /// 
         public int Flag { get; set; } = 1;
     }
 }

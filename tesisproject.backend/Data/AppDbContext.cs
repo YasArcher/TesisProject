@@ -64,6 +64,7 @@ namespace tesisproject.backend.Data
         public DbSet<ProductType> ProductTypes => Set<ProductType>();
         public DbSet<IndexingSource> IndexingSources => Set<IndexingSource>();
         public DbSet<ResearchCategoryGroup> ResearchCategoryGroups => Set<ResearchCategoryGroup>();
+        public DbSet<AcademicPeriod> AcademicPeriods => Set<AcademicPeriod>();
 
 
         // =========================================================
@@ -433,21 +434,21 @@ namespace tesisproject.backend.Data
             });
 
             // ============== ProductAttributeDefinition ==========
-            builder.Entity<ProductAttributeDefinition>(b =>
-            {
-                b.Property(a => a.AttributeName).HasMaxLength(128).IsRequired();
-                b.Property(a => a.DataType).HasMaxLength(32).IsRequired();
-                b.Property(a => a.Unit).HasMaxLength(32);
+            //builder.Entity<ProductAttributeDefinition>(b =>
+            //{
+            //    b.Property(a => a.AttributeName).HasMaxLength(128).IsRequired();
+            //    b.Property(a => a.DataType).HasMaxLength(32).IsRequired();
+            //    b.Property(a => a.Unit).HasMaxLength(32);
 
-                b.HasOne(a => a.ProductType)
-                 .WithMany()
-                 .HasForeignKey(a => a.ProductTypeId)
-                 .OnDelete(DeleteBehavior.NoAction);
+            //    b.HasOne(a => a.ProductType)
+            //     .WithMany()
+            //     .HasForeignKey(a => a.ProductTypeId)
+            //     .OnDelete(DeleteBehavior.NoAction);
 
-                // Evita duplicados por (Tipo, Nombre)
-                b.HasIndex(a => new { a.ProductTypeId, a.AttributeName })
-                 .IsUnique();
-            });
+            //    // Evita duplicados por (Tipo, Nombre)
+            //    b.HasIndex(a => new { a.ProductTypeId, a.AttributeName })
+            //     .IsUnique();
+            //});
 
             // ============== ProductValue ========================
             builder.Entity<ProductValue>(b =>

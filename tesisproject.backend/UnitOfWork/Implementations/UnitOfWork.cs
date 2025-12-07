@@ -18,7 +18,7 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public IVisitIssueRepository VisitIssues { get; set; }
         public IConvocationRepository Convocations { get; set; }
         public IProductRepository Products { get; set; }
-        public IProductTypeRepository ProductTypes { get; set; }
+        public ICatalogRepository<ProductType> ProductTypes { get; }
         public IProductAttributeDefinitionRepository ProductAttributeDefinitions { get; set; }
         public IProductValueRepository ProductValues { get; set; }
         public IProductAuthorRepository ProductAuthors { get; set; }
@@ -41,6 +41,10 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public ICatalogRepository<Country> Countries { get; }
         public ICatalogRepository<Institution> Institutions { get; }
         public IExternalResearcherProjectRepository ExternalResearcherProjects { get; }
+        public ICatalogRepository<AcademicPeriod> AcademicPeriods { get; }
+        public ICatalogRepository<IndexingSource> IndexingSources { get; }
+        public ICatalogRepository<ProductAttribute> ProductAttributes { get; }
+
         public UnitOfWork(
             AppDbContext ctx,
             IProjectRepository projectRepository,
@@ -53,7 +57,7 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             IVisitIssueRepository visitIssues,
             IConvocationRepository convocations,
             IProductRepository products,
-            IProductTypeRepository productTypes,
+            ICatalogRepository<ProductType> productTypes,
             IProductAttributeDefinitionRepository productAttributeDefinitions,
             IProductValueRepository productValues,
             IProductAuthorRepository productAuthors,
@@ -75,7 +79,10 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             IExternalResearcherRepository externalResearchers,
             ICatalogRepository<Country> countries,
             ICatalogRepository<Institution> institutions,
-            IExternalResearcherProjectRepository externalResearcherProjects)
+            IExternalResearcherProjectRepository externalResearcherProjects,
+            ICatalogRepository<AcademicPeriod> academicPeriods,
+            ICatalogRepository<IndexingSource> indexingSources,
+            ICatalogRepository<ProductAttribute> productAttributes)
         {
             _ctx = ctx;
             Projects = projectRepository;
@@ -111,6 +118,9 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             Countries = countries;
             Institutions = institutions;
             ExternalResearcherProjects = externalResearcherProjects;
+            AcademicPeriods = academicPeriods;
+            IndexingSources = indexingSources;
+            ProductAttributes = productAttributes;
         }
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)
