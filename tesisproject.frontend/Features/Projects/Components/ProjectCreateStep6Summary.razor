@@ -1,12 +1,9 @@
 ﻿@using Microsoft.AspNetCore.Components
 @using tesisproject.shared.DTOs.Algorithms.Response
-@using tesisproject.shared.DTOs.Catalog.DocumentType.Response
+@using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
-@using tesisproject.shared.DTOs.Catalog.ObjectiveType.Response
-@using tesisproject.shared.DTOs.Catalog.ProjectType.Response
 @using tesisproject.shared.DTOs.External
 @using tesisproject.shared.DTOs.Filters
-@using tesisproject.shared.DTOs.Catalog.FundingType.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.Utils
@@ -384,15 +381,15 @@
     [Parameter] public int? CoordinatorRoleId { get; set; }
 
 
-    [Parameter] public IReadOnlyList<DocumentTypeListItemDTO> DocumentTypeOptions { get; set; } = Array.Empty<DocumentTypeListItemDTO>();
-    [Parameter] public IReadOnlyList<ProjectTypeListItemDTO> ResearchTypeOptions { get; set; } = Array.Empty<ProjectTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> DocumentTypeOptions { get; set; } = Array.Empty<CatalogListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> ResearchTypeOptions { get; set; } = Array.Empty<CatalogListItemDTO>();
     [Parameter] public IReadOnlyList<MemberRoleTypeListItemDTO> MemberRoleTypeOptions { get; set; } = Array.Empty<MemberRoleTypeListItemDTO>();
-    [Parameter] public IReadOnlyList<ObjectiveTypeListItemDTO> ObjectiveTypeOptions { get; set; } = Array.Empty<ObjectiveTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> ObjectiveTypeOptions { get; set; } = Array.Empty<CatalogListItemDTO>();
     [Parameter] public IReadOnlyList<ExternalFacultyDTO> Faculties { get; set; } = Array.Empty<ExternalFacultyDTO>();
     [Parameter] public string? ConvocationName { get; set; }
 
 
-    [Parameter] public IReadOnlyList<FundingTypeListItemDTO> FundingTypeOptions { get; set; } = Array.Empty<FundingTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> FundingTypeOptions { get; set; } = Array.Empty<CatalogListItemDTO>();
     [Parameter] public IReadOnlyList<CreateBudgetRequestDTO> Budgets { get; set; } = Array.Empty<CreateBudgetRequestDTO>();
 
 

@@ -16,10 +16,12 @@ namespace tesisproject.shared.Entities.Core.Products
     {
         // =============== Keys ===============
         public int Id { get; set; }
+
         // ============== FKs ===============
         [Required]
         public int ProjectId { get; set; }   // FK → Project (existing entity in Core)
-        public int? VisitId { get; set; }   // FK → Visit (existing entity in Core)
+
+        public int? VisitId { get; set; }    // FK → Visit (existing entity in Core)
 
         // =============== Core ===============
         [Required, MaxLength(1024)]
@@ -28,7 +30,9 @@ namespace tesisproject.shared.Entities.Core.Products
         [MaxLength(4000)]
         public string? Description { get; set; }
 
-        // Product Type (catalog)
+        /// <summary>
+        /// Product type (catalog).
+        /// </summary>
         [Required]
         public int ProductTypeId { get; set; }
 
@@ -38,11 +42,12 @@ namespace tesisproject.shared.Entities.Core.Products
         public DateTime? UpdatedAt { get; set; }
 
         // =========== Navigations ============
-        public ICollection<ProductValue>? Values { get; set; }
+
         public ProductType? ProductType { get; set; }
+        public ICollection<ProductValue>? Values { get; set; }
         public ICollection<ProductAuthor>? Authors { get; set; }
+
         public Project? Project { get; set; }
         public Visit? Visit { get; set; }
-
     }
 }

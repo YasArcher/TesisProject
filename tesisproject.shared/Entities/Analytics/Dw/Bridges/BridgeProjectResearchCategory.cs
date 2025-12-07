@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using tesisproject.shared.Entities.Analytics.Dw.Dimensions;
+using tesisproject.shared.Entities.Analytics.Dw.Facts;
 
 namespace tesisproject.shared.Entities.Analytics.Dw.Bridges
 {
@@ -25,5 +26,6 @@ namespace tesisproject.shared.Entities.Analytics.Dw.Bridges
 
         // Navigation to dimension
         public DimResearchCategory ResearchCategory { get; set; } = null!;
+        public FactProject Project { get; set; } = null!;
     }
 }

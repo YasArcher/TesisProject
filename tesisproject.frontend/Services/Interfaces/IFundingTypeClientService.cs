@@ -1,5 +1,5 @@
-﻿using tesisproject.shared.DTOs.Catalog.FundingType.Request;
-using tesisproject.shared.DTOs.Catalog.FundingType.Response;
+﻿using tesisproject.shared.DTOs.Catalog.Common.Request;
+using tesisproject.shared.DTOs.Catalog.Common.Response;
 using tesisproject.shared.DTOs.Filters;
 using tesisproject.shared.Responses;
 
@@ -8,29 +8,27 @@ namespace tesisproject.frontend.Services.Interfaces
     public interface IFundingTypeClientService
     {
         // GET: api/FundingTypes?onlyActives=true
-        Task<HttpResponseWrapper<List<FundingTypeListItemDTO>?>> GetListAsync(
+        Task<HttpResponseWrapper<List<CatalogListItemDTO>?>> GetListAsync(
             bool onlyActives = true,
             CancellationToken ct = default);
 
         // GET: api/FundingTypes/{id}
-        Task<HttpResponseWrapper<FundingTypeListItemDTO?>> GetByIdAsync(
+        Task<HttpResponseWrapper<CatalogDetailDTO?>> GetByIdAsync(
             int id,
             CancellationToken ct = default);
 
         // POST: api/FundingTypes
-        Task<HttpResponseWrapper<FundingTypeListItemDTO?>> CreateAsync(
-            AddFundingTypeRequestDTO request,
+        Task<HttpResponseWrapper<CatalogDetailDTO?>> CreateAsync(
+            AddCatalogRequestDTO request,
             CancellationToken ct = default);
 
         // PUT: api/FundingTypes/{id}
-        Task<HttpResponseWrapper<FundingTypeListItemDTO?>> UpdateAsync(
-            UpdateFundingTypeRequestDTO request,
+        Task<HttpResponseWrapper<CatalogDetailDTO?>> UpdateAsync(
+            UpdateCatalogRequestDTO request,
             CancellationToken ct = default);
-
-        // GET: api/FundingTypes/key-values?term=..&take=..
-        Task<HttpResponseWrapper<List<KeyValueItemDTO>?>> GetKeyValuesAsync(
-            string? term = null,
-            int? take = null,
+        // DELETE: api/FundingTypes/{id}
+        Task<HttpResponseWrapper<NoContent?>> DeleteAsync(
+            int id,
             CancellationToken ct = default);
     }
 }

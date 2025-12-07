@@ -1,15 +1,13 @@
 ﻿@page "/projects/create"
 
+@using System.Text.Json;
 @using tesisproject.frontend.Features.Components
 @using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Algorithms.Response
 @using tesisproject.shared.DTOs.Budgets.Request
-@using tesisproject.shared.DTOs.Catalog.DocumentType.Response
-@using tesisproject.shared.DTOs.Catalog.ObjectiveType.Response
-@using tesisproject.shared.DTOs.Catalog.ProjectType.Response
+@using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
-@using tesisproject.shared.DTOs.Catalog.FundingType.Response
 @using tesisproject.shared.DTOs.Document.Request
 @using tesisproject.shared.DTOs.Document.Response
 @using tesisproject.shared.DTOs.External
@@ -19,7 +17,6 @@
 @using tesisproject.shared.DTOs.Project.Request
 @using tesisproject.shared.DTOs.ProjectObjective.Request
 @using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
-@using tesisproject.shared.DTOs.Catalog.ResearchCategoryGroup.Response
 @using tesisproject.shared.DTOs.Convocation.Response
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.ActionButton
@@ -161,14 +158,16 @@
 
                         </div>
                     </div>
-
                     <UserPickerModal ModalId="wizard-user-picker"
                                      IsOpen="@_showUserPicker"
                                      IsOpenChanged="v => _showUserPicker = v"
                                      Users="@_researcherCandidates"
                                      InitialSelectedUserId="@_preselectedUserId"
                                      OnSubmit="HandleResearcherPickedAsync"
-                                     OnCancel="() => _showUserPicker = false" />
+                                     OnCancel="() => _showUserPicker = false"
+                                     Roles="@_memberRolesForWizard"
+                                     @bind-SelectedRoleId="_selectedRoleIdForWizard" />
+
                     <ExternalResearcherPickerModal ModalId="wizard-external-researcher-picker"
                                                    IsOpen="@_showExternalResearcherPicker"
                                                    IsOpenChanged="v => _showExternalResearcherPicker = v"
@@ -294,6 +293,8 @@
     private ConvocationListItemResponseDTO? _activeConvocation;
     private List<ExternalResearcherListItemDTO> _selectedExternalResearchers = new();
 
+    private int? _selectedRoleIdForWizard;
+    private IEnumerable<MemberRoleTypeDetailDTO> _memberRolesForWizard = Array.Empty<MemberRoleTypeDetailDTO>();
 
     // Investigadores externos
     private bool _showExternalResearcherPicker;
@@ -304,15 +305,15 @@
     private List<InstitutionListItemDTO> _allInstitutions = new();
 
     // Catálogos para selects
-    private List<DocumentTypeListItemDTO> _documentTypeOptions = new();
-    private List<ProjectTypeListItemDTO> _researchTypeOptions = new();
+    private List<CatalogListItemDTO> _documentTypeOptions = new();
+    private List<CatalogListItemDTO> _researchTypeOptions = new();
     private List<MemberRoleTypeListItemDTO> _memberRoleTypeOptions = new();
-    private List<ObjectiveTypeListItemDTO> _objectiveTypeOptions = new();
+    private List<CatalogListItemDTO> _objectiveTypeOptions = new();
 
     private List<int> _singleInstanceRoleIds = new();
 
     private List<ExternalFacultyDTO> _faculties = new();
-    private List<FundingTypeListItemDTO> _fundingTypeOptions = new();
+    private List<CatalogListItemDTO> _fundingTypeOptions = new();
     private List<CreateBudgetRequestDTO> _budgets = new();
     private int? _coordinatorRoleId;
 
@@ -335,7 +336,7 @@
         = Array.Empty<ResearchCategoryTypeListItemDTO>();
 
     private List<ResearchCategoryTreeItemDTO> _selectedResearchCategories = new();
-    private List<ResearchCategoryGroupListItemDTO> _researchCategoryGroups = new();
+    private List<CatalogListItemDTO> _researchCategoryGroups = new();
 
     private int Progress => (int)Math.Round(CurrentStep * 100.0 / 6.0);
 
@@ -501,6 +502,15 @@
                         x.Name.Contains("principal", StringComparison.OrdinalIgnoreCase));
 
                 _coordinatorRoleId = coordinator?.Id;
+                _memberRolesForWizard = _memberRoleTypeOptions
+    .Select(r => new MemberRoleTypeDetailDTO
+    {
+        Id = r.Id,
+        Name = r.Name,
+        IsActive = r.IsActive,
+        Flag = r.Flag
+    })
+    .ToList();
 
                 var convocationResult = await ConvocationClient.GetListAsync(
     CancellationToken.None);
@@ -667,6 +677,32 @@
             return Task.CompletedTask;
         }
 
+        // 🔹 Validar que haya rol seleccionado
+        if (!_selectedRoleIdForWizard.HasValue || _selectedRoleIdForWizard.Value <= 0)
+        {
+            Toast.ShowWarning("Seleccione un rol para el investigador.");
+            return Task.CompletedTask;
+        }
+
+        // 🔹 Buscar detalle del rol
+        var selectedRole = _memberRolesForWizard
+            .FirstOrDefault(r => r.Id == _selectedRoleIdForWizard.Value);
+
+        if (selectedRole is null)
+        {
+            Toast.ShowError("No se pudo identificar el rol seleccionado.");
+            return Task.CompletedTask;
+        }
+
+        // 🔹 (Opcional) validar roles de instancia única (coordinador, subrogante)
+        if (_singleInstanceRoleIds.Contains(selectedRole.Id)
+            && DideData.Researchers is not null
+            && DideData.Researchers.Any(r => r.Role == selectedRole.Id))
+        {
+            Toast.ShowWarning($"Ya existe un miembro con el rol '{selectedRole.Name}' en el proyecto.");
+            return Task.CompletedTask;
+        }
+
         var researcher = new ResearcherInfo
         {
             FullName = user.FullName,
@@ -674,10 +710,11 @@
             Document = user.Document,
             AspNetUserId = user.AspNetUserId,
             FacultyCareerId = user.FacultyCareerId ?? 0,
-            Role = 0,
-            RoleName = user.Position
+            Role = selectedRole.Id,
+            RoleName = selectedRole.Name
         };
 
+        DideData.Researchers ??= new List<ResearcherInfo>();
         DideData.Researchers.Add(researcher);
 
         Toast.ShowSuccess("Investigador agregado al equipo del proyecto.");
@@ -1268,6 +1305,16 @@
                     .Distinct()
                     .ToList()
             };
+
+
+
+            // var json = JsonSerializer.Serialize(request, new JsonSerializerOptions
+            // {
+            //     WriteIndented = true
+            // });
+
+            // Console.WriteLine(json);
+
 
             //Console.WriteLine("→ Llamando a ProjectClient.CreateFullAsync() ...");
             var response = await ProjectClient.CreateFullAsync(request, CancellationToken.None);

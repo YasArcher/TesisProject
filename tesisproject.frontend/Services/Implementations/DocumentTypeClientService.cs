@@ -1,7 +1,8 @@
 ﻿using tesisproject.frontend.Services.Interfaces;
-using tesisproject.shared.DTOs.Catalog.DocumentType.Request;
-using tesisproject.shared.DTOs.Catalog.DocumentType.Response;
+using tesisproject.shared.DTOs.Catalog.Common.Request;
+using tesisproject.shared.DTOs.Catalog.Common.Response;
 using tesisproject.shared.DTOs.Filters;
+using tesisproject.shared.Responses;
 
 namespace tesisproject.frontend.Services.Implementations
 {
@@ -17,12 +18,12 @@ namespace tesisproject.frontend.Services.Implementations
         //           LIST
         // =========================
 
-        public Task<HttpResponseWrapper<List<DocumentTypeListItemDTO>?>> GetListAsync(
+        public Task<HttpResponseWrapper<List<CatalogListItemDTO>?>> GetListAsync(
             bool onlyActives = true,
             CancellationToken ct = default)
         {
             // GET: api/documenttypes?onlyActives=true
-            return _api.GetAsync<List<DocumentTypeListItemDTO>>(
+            return _api.GetAsync<List<CatalogListItemDTO>>(
                 $"{_baseUrl}?onlyActives={onlyActives}",
                 ct
             );
@@ -32,12 +33,12 @@ namespace tesisproject.frontend.Services.Implementations
         //          SINGLE
         // =========================
 
-        public Task<HttpResponseWrapper<DocumentTypeDetailDTO?>> GetByIdAsync(
+        public Task<HttpResponseWrapper<CatalogDetailDTO?>> GetByIdAsync(
             int id,
             CancellationToken ct = default)
         {
             // GET: api/documenttypes/{id}
-            return _api.GetAsync<DocumentTypeDetailDTO>(
+            return _api.GetAsync<CatalogDetailDTO>(
                 $"{_baseUrl}/{id}",
                 ct
             );
@@ -71,12 +72,12 @@ namespace tesisproject.frontend.Services.Implementations
         //          CREATE
         // =========================
 
-        public Task<HttpResponseWrapper<DocumentTypeDetailDTO?>> CreateAsync(
-            AddDocumentTypeRequestDTO request,
+        public Task<HttpResponseWrapper<CatalogDetailDTO?>> CreateAsync(
+            AddCatalogRequestDTO request,
             CancellationToken ct = default)
         {
             // POST: api/documenttypes
-            return _api.PostAsync<AddDocumentTypeRequestDTO, DocumentTypeDetailDTO>(
+            return _api.PostAsync<AddCatalogRequestDTO, CatalogDetailDTO>(
                 _baseUrl,
                 request,
                 ct
@@ -87,17 +88,28 @@ namespace tesisproject.frontend.Services.Implementations
         //          UPDATE
         // =========================
 
-        public Task<HttpResponseWrapper<DocumentTypeDetailDTO?>> UpdateAsync(
-            UpdateDocumentTypeRequestDTO request,
+        public Task<HttpResponseWrapper<CatalogDetailDTO?>> UpdateAsync(
+            UpdateCatalogRequestDTO request,
             CancellationToken ct = default)
         {
             if (request.Id <= 0)
                 throw new ArgumentException("Id must be a positive value.", nameof(request.Id));
 
             // PUT: api/documenttypes/{id}
-            return _api.PutAsync<UpdateDocumentTypeRequestDTO, DocumentTypeDetailDTO>(
+            return _api.PutAsync<UpdateCatalogRequestDTO, CatalogDetailDTO>(
                 $"{_baseUrl}/{request.Id}",
                 request,
+                ct
+            );
+        }
+
+        public Task<HttpResponseWrapper<NoContent?>> DeleteAsync(
+            int id,
+            CancellationToken ct = default)
+        {
+            // DELETE: api/documenttypes/{id}
+            return _api.DeleteAsync(
+                $"{_baseUrl}/{id}",
                 ct
             );
         }

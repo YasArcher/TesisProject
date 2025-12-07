@@ -1,6 +1,6 @@
 ﻿using tesisproject.frontend.Services.Interfaces;
-using tesisproject.shared.DTOs.Catalog.FundingType.Request;
-using tesisproject.shared.DTOs.Catalog.FundingType.Response;
+using tesisproject.shared.DTOs.Catalog.Common.Request;
+using tesisproject.shared.DTOs.Catalog.Common.Response;
 using tesisproject.shared.DTOs.Filters;
 using tesisproject.shared.Responses;
 
@@ -20,38 +20,38 @@ namespace tesisproject.frontend.Services.Implementations
         //           LIST
         // =========================
 
-        public Task<HttpResponseWrapper<List<FundingTypeListItemDTO>?>> GetListAsync(
+        public Task<HttpResponseWrapper<List<CatalogListItemDTO>?>> GetListAsync(
             bool onlyActives = true,
             CancellationToken ct = default)
         {
             // GET: api/FundingTypes?onlyActives={onlyActives}
             var url = $"{BaseUrl}?onlyActives={onlyActives}";
-            return _api.GetAsync<List<FundingTypeListItemDTO>>(url, ct);
+            return _api.GetAsync<List<CatalogListItemDTO>>(url, ct);
         }
 
         // =========================
         //          SINGLE
         // =========================
 
-        public Task<HttpResponseWrapper<FundingTypeListItemDTO?>> GetByIdAsync(
+        public Task<HttpResponseWrapper<CatalogDetailDTO?>> GetByIdAsync(
             int id,
             CancellationToken ct = default)
         {
             // GET: api/FundingTypes/{id}
             var url = $"{BaseUrl}/{id}";
-            return _api.GetAsync<FundingTypeListItemDTO>(url, ct);
+            return _api.GetAsync<CatalogDetailDTO>(url, ct);
         }
 
         // =========================
         //          CREATE
         // =========================
 
-        public Task<HttpResponseWrapper<FundingTypeListItemDTO?>> CreateAsync(
-            AddFundingTypeRequestDTO request,
+        public Task<HttpResponseWrapper<CatalogDetailDTO?>> CreateAsync(
+            AddCatalogRequestDTO request,
             CancellationToken ct = default)
         {
             // POST: api/FundingTypes
-            return _api.PostAsync<AddFundingTypeRequestDTO, FundingTypeListItemDTO>(
+            return _api.PostAsync<AddCatalogRequestDTO, CatalogDetailDTO>(
                 BaseUrl,
                 request,
                 ct
@@ -62,8 +62,8 @@ namespace tesisproject.frontend.Services.Implementations
         //          UPDATE
         // =========================
 
-        public Task<HttpResponseWrapper<FundingTypeListItemDTO?>> UpdateAsync(
-            UpdateFundingTypeRequestDTO request,
+        public Task<HttpResponseWrapper<CatalogDetailDTO?>> UpdateAsync(
+            UpdateCatalogRequestDTO request,
             CancellationToken ct = default)
         {
             if (request.Id <= 0)
@@ -71,7 +71,7 @@ namespace tesisproject.frontend.Services.Implementations
 
             // PUT: api/FundingTypes/{id}
             var url = $"{BaseUrl}/{request.Id}";
-            return _api.PutAsync<UpdateFundingTypeRequestDTO, FundingTypeListItemDTO>(
+            return _api.PutAsync<UpdateCatalogRequestDTO, CatalogDetailDTO>(
                 url,
                 request,
                 ct
@@ -79,30 +79,17 @@ namespace tesisproject.frontend.Services.Implementations
         }
 
         // =========================
-        //       KEY-VALUE LIST
+        //          DELETE
         // =========================
-
-        public Task<HttpResponseWrapper<List<KeyValueItemDTO>?>> GetKeyValuesAsync(
-            string? term = null,
-            int? take = null,
+        public Task<HttpResponseWrapper<NoContent?>> DeleteAsync(
+            int id,
             CancellationToken ct = default)
         {
-            var query = new List<string>();
-
-            if (!string.IsNullOrWhiteSpace(term))
-                query.Add($"term={Uri.EscapeDataString(term)}");
-
-            if (take.HasValue)
-                query.Add($"take={take.Value}");
-
-            var queryString = query.Count > 0
-                ? "?" + string.Join("&", query)
-                : string.Empty;
-
-            var url = $"{BaseUrl}/key-values{queryString}";
-
-            // GET: api/FundingTypes/key-values?...
-            return _api.GetAsync<List<KeyValueItemDTO>>(url, ct);
+            // DELETE: api/documenttypes/{id}
+            return _api.DeleteAsync(
+                $"{BaseUrl}/{id}",
+                ct
+            );
         }
     }
 }

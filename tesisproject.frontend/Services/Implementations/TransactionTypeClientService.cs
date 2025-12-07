@@ -1,7 +1,8 @@
 ﻿using tesisproject.frontend.Services.Interfaces;
-using tesisproject.shared.DTOs.Catalog.TransactionTypes.Request;
-using tesisproject.shared.DTOs.Catalog.TransactionTypes.Response;
+using tesisproject.shared.DTOs.Catalog.Common.Request;
+using tesisproject.shared.DTOs.Catalog.Common.Response;
 using tesisproject.shared.DTOs.Filters;
+using tesisproject.shared.Responses;
 
 namespace tesisproject.frontend.Services.Implementations
 {
@@ -18,33 +19,33 @@ namespace tesisproject.frontend.Services.Implementations
         // =========================
         //           LIST
         // =========================
-        public Task<HttpResponseWrapper<List<TransactionTypeListItemDTO>?>> GetListAsync(
+        public Task<HttpResponseWrapper<List<CatalogListItemDTO>?>> GetListAsync(
             bool onlyActives = true,
             CancellationToken ct = default)
         {
             var url = $"{BaseUrl}?onlyActives={onlyActives}";
-            return _api.GetAsync<List<TransactionTypeListItemDTO>>(url, ct);
+            return _api.GetAsync<List<CatalogListItemDTO>>(url, ct);
         }
 
         // =========================
         //          SINGLE
         // =========================
-        public Task<HttpResponseWrapper<TransactionTypeListItemDTO?>> GetByIdAsync(
+        public Task<HttpResponseWrapper<CatalogDetailDTO?>> GetByIdAsync(
             int id,
             CancellationToken ct = default)
         {
             var url = $"{BaseUrl}/{id}";
-            return _api.GetAsync<TransactionTypeListItemDTO>(url, ct);
+            return _api.GetAsync<CatalogDetailDTO>(url, ct);
         }
 
         // =========================
         //          CREATE
         // =========================
-        public Task<HttpResponseWrapper<TransactionTypeListItemDTO?>> CreateAsync(
-            AddTransactionTypeRequestDTO request,
+        public Task<HttpResponseWrapper<CatalogDetailDTO?>> CreateAsync(
+            AddCatalogRequestDTO request,
             CancellationToken ct = default)
         {
-            return _api.PostAsync<AddTransactionTypeRequestDTO, TransactionTypeListItemDTO>(
+            return _api.PostAsync<AddCatalogRequestDTO, CatalogDetailDTO>(
                 BaseUrl,
                 request,
                 ct
@@ -54,15 +55,15 @@ namespace tesisproject.frontend.Services.Implementations
         // =========================
         //          UPDATE
         // =========================
-        public Task<HttpResponseWrapper<TransactionTypeListItemDTO?>> UpdateAsync(
-            UpdateTransactionTypeRequestDTO request,
+        public Task<HttpResponseWrapper<CatalogDetailDTO?>> UpdateAsync(
+            UpdateCatalogRequestDTO request,
             CancellationToken ct = default)
         {
             if (request.Id <= 0)
                 throw new ArgumentException("Id must be a positive value.", nameof(request.Id));
 
             var url = $"{BaseUrl}/{request.Id}";
-            return _api.PutAsync<UpdateTransactionTypeRequestDTO, TransactionTypeListItemDTO>(
+            return _api.PutAsync<UpdateCatalogRequestDTO, CatalogDetailDTO>(
                 url,
                 request,
                 ct
@@ -70,28 +71,17 @@ namespace tesisproject.frontend.Services.Implementations
         }
 
         // =========================
-        //       KEY-VALUE LIST
+        //         DELETE
         // =========================
-        public Task<HttpResponseWrapper<List<KeyValueItemDTO>?>> GetKeyValuesAsync(
-            string? term = null,
-            int? take = null,
-            CancellationToken ct = default)
+        public Task<HttpResponseWrapper<NoContent?>> DeleteAsync(
+    int id,
+    CancellationToken ct = default)
         {
-            var query = new List<string>();
-
-            if (!string.IsNullOrWhiteSpace(term))
-                query.Add($"term={Uri.EscapeDataString(term)}");
-
-            if (take.HasValue)
-                query.Add($"take={take.Value}");
-
-            var queryString = query.Count > 0
-                ? "?" + string.Join("&", query)
-                : string.Empty;
-
-            var url = $"{BaseUrl}/key-values{queryString}";
-
-            return _api.GetAsync<List<KeyValueItemDTO>>(url, ct);
+            // DELETE: api/documenttypes/{id}
+            return _api.DeleteAsync(
+                $"{BaseUrl}/{id}",
+                ct
+            );
         }
     }
 }

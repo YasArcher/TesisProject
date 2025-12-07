@@ -5,8 +5,8 @@
 @using tesisproject.frontend.SharedUI.StatCard
 @using tesisproject.frontend.SharedUI.Tabs
 @using tesisproject.shared.DTOs.Budgets.Request
+@using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.Enums
-@using tesisproject.shared.DTOs.Catalog.TransactionTypes.Response
 
 
 <div class="p-6 space-y-4">
@@ -119,7 +119,7 @@
     [Parameter] public List<BudgetDTO> Budgets { get; set; } = new();
     [Parameter] public Dictionary<int, List<BudgetTransactionDTO>> BudgetTransactionsByBudgetId { get; set; } = new();
     [Parameter] public bool IsLoading { get; set; }
-    [Parameter] public IReadOnlyList<TransactionTypeListItemDTO> TransactionTypes { get; set; } = Array.Empty<TransactionTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> TransactionTypes { get; set; } = Array.Empty<CatalogListItemDTO>();
     [Parameter] public EventCallback<int> OnCancelTransaction { get; set; }
 
 

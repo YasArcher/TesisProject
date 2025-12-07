@@ -1,4 +1,4 @@
-﻿@using tesisproject.shared.DTOs.Catalog.ResearchCategoryGroup.Response
+﻿@using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.DTOs.Project.Response
 @using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
@@ -277,7 +277,7 @@
 
     [Parameter] public IReadOnlyList<ResearchCategoryTreeItemDTO>? ResearchCategoryTree { get; set; }
     [Parameter] public IReadOnlyList<ResearchCategoryTypeListItemDTO>? ResearchCategoryTypes { get; set; }
-    [Parameter] public IReadOnlyList<ResearchCategoryGroupListItemDTO>? ResearchCategoryGroups { get; set; }
+    [Parameter] public IReadOnlyList<CatalogListItemDTO>? ResearchCategoryGroups { get; set; }
 
     // índice para no recorrer el árbol mil veces
     private readonly Dictionary<int, ResearchCategoryTreeItemDTO> _allItems = new();

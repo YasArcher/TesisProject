@@ -1,0 +1,123 @@
+﻿@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.frontend.SharedUI.SelectInput
+@using tesisproject.shared.DTOs.Catalog.ProductAttribute.Response
+@using tesisproject.shared.Enums
+
+<Modal Id="product-attribute-modal"
+       IsOpen="@IsOpen"
+       IsOpenChanged="IsOpenChanged"
+       Title="@(IsEditMode ? "Edit attribute" : "New attribute")"
+       Size="ModalSize.Md">
+
+    <ChildContent>
+        <div class="space-y-4">
+            <!-- Attribute name -->
+            <div class="space-y-1">
+                <TextInput TValue="string"
+                           Label="Attribute name"
+                           @bind-Value="Model.Name"
+                           Placeholder="e.g. Title, Authors, DOI"
+                           Disabled="Model.IsLocked"
+                           Required="true" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <!-- Data type -->
+                <div class="space-y-1">
+                    <div class="space-y-1">
+                        <SelectInput TItem="ProductAttributeDataType"
+                                     Items="DataTypes"
+                                     Value="Model.DataType"
+                                     ValueChanged="@(dt => Model.DataType = dt)"
+                                     GetText="@(dt => dt.ToString())"
+                                     GetKey="@(dt => dt.ToString())"
+                                     Placeholder="Select data type"
+                                     Disabled="Model.IsLocked"
+                                     Size="SelectSize.Sm" />
+                    </div>
+
+                </div>
+
+
+                <!-- Unit -->
+                <div class="space-y-1">
+                    <TextInput TValue="string"
+                               Label="Unit (optional)"
+                               @bind-Value="Model.Unit"
+                               Placeholder="e.g. pages, score, %"
+                               Disabled="Model.IsLocked" />
+                </div>
+            </div>
+
+            <!-- Active checkbox -->
+            <div class="flex items-center gap-2">
+                <input type="checkbox"
+                       class="rounded border-border"
+                       @bind="Model.IsActive"
+                       disabled="Model.IsLocked" />
+                <span class="text-sm text-foreground">Active</span>
+            </div>
+
+            @if (Model.IsLocked)
+            {
+                <div class="text-xs text-muted">
+                    This attribute is locked and cannot be modified.
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <div class="text-xs text-red-600">@Error</div>
+            }
+        </div>
+    </ChildContent>
+
+    <Footer>
+        <div class="flex items-center justify-end gap-2">
+            <ActionButton Text="Close"
+                          Intent="ButtonIntent.Delete"
+                          Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Sm"
+                          Execute="OnCancel" />
+
+            @if (!Model.IsLocked)
+            {
+                <ActionButton Text="Save"
+                              Intent="ButtonIntent.Accept"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Sm"
+                              IsBusy="@IsSaving"
+                              Execute="OnSave" />
+            }
+        </div>
+    </Footer>
+
+</Modal>
+
+@code {
+    // ===== Parámetros que controla el padre =====
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public ProductAttributeDetailDTO Model { get; set; } = new();
+
+    [Parameter]
+    public IEnumerable<ProductAttributeDataType> DataTypes { get; set; }
+        = Enumerable.Empty<ProductAttributeDataType>();
+
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+
+    private Task OnDataTypeChanged(ProductAttributeDataType newValue)
+    {
+        Model.DataType = newValue;
+        return Task.CompletedTask;
+    }
+}

@@ -1,8 +1,8 @@
 ﻿@using Microsoft.AspNetCore.Components
 @using tesisproject.shared.DTOs.Algorithms.Response
+@using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
-@using tesisproject.shared.DTOs.Catalog.ResearchCategoryGroup.Response
 
 <div class="w-full flex flex-col gap-5">
     <!-- Selector de categorías -->
@@ -146,8 +146,8 @@
 
     // 🔴 NUEVO: grupos por los que se va a dividir el selector dinámico
     [Parameter]
-    public IReadOnlyList<ResearchCategoryGroupListItemDTO> ResearchCategoryGroups { get; set; }
-        = Array.Empty<ResearchCategoryGroupListItemDTO>();
+    public IReadOnlyList<CatalogListItemDTO> ResearchCategoryGroups { get; set; }
+        = Array.Empty<CatalogListItemDTO>();
 
     [Parameter]
     public EventCallback<List<ResearchCategoryTreeItemDTO>> OnResearchCategoriesChanged { get; set; }

@@ -44,23 +44,23 @@ namespace tesisproject.backend.Services.Implementations
                 var providedValues = request.AttributeValues ?? new List<ProductAttributeValueUpsertDTO>();
                 var providedById = providedValues.ToDictionary(v => v.AttributeDefinitionId, v => v);
 
-                // Required attributes must be present
-                foreach (var def in defs.Where(d => d.IsRequired))
-                {
-                    if (!providedById.ContainsKey(def.Id))
-                        return ServiceResult<ProductDetailResponseDTO>.Fail($"Required attribute '{def.AttributeName}' is missing.", ErrorType.Validation);
-                }
+                //// Required attributes must be present
+                //foreach (var def in defs.Where(d => d.IsRequired))
+                //{
+                //    if (!providedById.ContainsKey(def.Id))
+                //        return ServiceResult<ProductDetailResponseDTO>.Fail($"Required attribute '{def.AttributeName}' is missing.", ErrorType.Validation);
+                //}
 
                 // Each provided value must belong to the same ProductType
-                foreach (var av in providedValues)
-                {
-                    if (!defsById.TryGetValue(av.AttributeDefinitionId, out var def))
-                        return ServiceResult<ProductDetailResponseDTO>.Fail($"AttributeDefinitionId {av.AttributeDefinitionId} does not belong to ProductType {request.ProductTypeId}.", ErrorType.Validation);
+                //foreach (var av in providedValues)
+                //{
+                //    if (!defsById.TryGetValue(av.AttributeDefinitionId, out var def))
+                //        return ServiceResult<ProductDetailResponseDTO>.Fail($"AttributeDefinitionId {av.AttributeDefinitionId} does not belong to ProductType {request.ProductTypeId}.", ErrorType.Validation);
 
-                    var valCheck = ValidateAttributeValue(def.DataType, av.Value);
-                    if (!valCheck.IsValid)
-                        return ServiceResult<ProductDetailResponseDTO>.Fail($"Invalid value for '{def.AttributeName}': {valCheck.Error}.", ErrorType.Validation);
-                }
+                //    var valCheck = ValidateAttributeValue(def.DataType, av.Value);
+                //    if (!valCheck.IsValid)
+                //        return ServiceResult<ProductDetailResponseDTO>.Fail($"Invalid value for '{def.AttributeName}': {valCheck.Error}.", ErrorType.Validation);
+                //}
 
                 var entity = new Product
                 {
@@ -92,15 +92,15 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 // Values
-                foreach (var av in providedValues)
-                {
-                    await _uow.ProductValues.AddAsync(new ProductValue
-                    {
-                        ProductId = entity.Id,
-                        AttributeDefinitionId = av.AttributeDefinitionId,
-                        Value = NormalizeValue(defsById[av.AttributeDefinitionId].DataType, av.Value)
-                    }, ct);
-                }
+                //foreach (var av in providedValues)
+                //{
+                //    await _uow.ProductValues.AddAsync(new ProductValue
+                //    {
+                //        ProductId = entity.Id,
+                //        AttributeDefinitionId = av.AttributeDefinitionId,
+                //        Value = NormalizeValue(defsById[av.AttributeDefinitionId].DataType, av.Value)
+                //    }, ct);
+                //}
 
                 await _uow.SaveChangesAsync(ct);
 
@@ -249,40 +249,40 @@ namespace tesisproject.backend.Services.Implementations
                     }
                 }
 
-                // Upsert attribute values (if provided)
-                if (request.AttributeValues is not null && request.AttributeValues.Count > 0)
-                {
-                    // Load definitions for product's type
-                    var defs = await _uow.ProductAttributeDefinitions.GetByTypeAsync(entity.ProductTypeId, ct);
-                    var defsById = defs.ToDictionary(d => d.Id, d => d);
+                //// Upsert attribute values (if provided)
+                //if (request.AttributeValues is not null && request.AttributeValues.Count > 0)
+                //{
+                //    // Load definitions for product's type
+                //    var defs = await _uow.ProductAttributeDefinitions.GetByTypeAsync(entity.ProductTypeId, ct);
+                //    var defsById = defs.ToDictionary(d => d.Id, d => d);
 
-                    foreach (var av in request.AttributeValues)
-                    {
-                        if (!defsById.TryGetValue(av.AttributeDefinitionId, out var def))
-                            return ServiceResult<ProductDetailResponseDTO>.Fail($"AttributeDefinitionId {av.AttributeDefinitionId} does not belong to ProductType {entity.ProductTypeId}.", ErrorType.Validation);
+                //    foreach (var av in request.AttributeValues)
+                //    {
+                //        if (!defsById.TryGetValue(av.AttributeDefinitionId, out var def))
+                //            return ServiceResult<ProductDetailResponseDTO>.Fail($"AttributeDefinitionId {av.AttributeDefinitionId} does not belong to ProductType {entity.ProductTypeId}.", ErrorType.Validation);
 
-                        var valCheck = ValidateAttributeValue(def.DataType, av.Value);
-                        if (!valCheck.IsValid)
-                            return ServiceResult<ProductDetailResponseDTO>.Fail($"Invalid value for '{def.AttributeName}': {valCheck.Error}.", ErrorType.Validation);
+                //        var valCheck = ValidateAttributeValue(def.DataType, av.Value);
+                //        if (!valCheck.IsValid)
+                //            return ServiceResult<ProductDetailResponseDTO>.Fail($"Invalid value for '{def.AttributeName}': {valCheck.Error}.", ErrorType.Validation);
 
-                        var existing = await _uow.ProductValues.GetByPairAsync(entity.Id, av.AttributeDefinitionId, ct);
-                        if (existing is null)
-                        {
-                            await _uow.ProductValues.AddAsync(new ProductValue
-                            {
-                                ProductId = entity.Id,
-                                AttributeDefinitionId = av.AttributeDefinitionId,
-                                Value = NormalizeValue(def.DataType, av.Value)
-                            }, ct);
-                        }
-                        else
-                        {
-                            existing.Value = NormalizeValue(def.DataType, av.Value);
-                            existing.UpdatedAt = DateTime.UtcNow;
-                            _uow.ProductValues.Update(existing);
-                        }
-                    }
-                }
+                //        var existing = await _uow.ProductValues.GetByPairAsync(entity.Id, av.AttributeDefinitionId, ct);
+                //        if (existing is null)
+                //        {
+                //            await _uow.ProductValues.AddAsync(new ProductValue
+                //            {
+                //                ProductId = entity.Id,
+                //                AttributeDefinitionId = av.AttributeDefinitionId,
+                //                Value = NormalizeValue(def.DataType, av.Value)
+                //            }, ct);
+                //        }
+                //        else
+                //        {
+                //            existing.Value = NormalizeValue(def.DataType, av.Value);
+                //            existing.UpdatedAt = DateTime.UtcNow;
+                //            _uow.ProductValues.Update(existing);
+                //        }
+                //    }
+                //}
 
                 await _uow.SaveChangesAsync(ct);
 
@@ -363,11 +363,11 @@ namespace tesisproject.backend.Services.Implementations
                     .Select(v => new ProductValueResponseDTO
                     {
                         AttributeDefinitionId = v.AttributeDefinitionId,
-                        AttributeName = v.AttributeDefinition?.AttributeName ?? string.Empty,
-                        DataType = MapDataTypeToString(v.AttributeDefinition?.DataType ?? ProductAttributeDataType.Text),
+                        //AttributeName = v.AttributeDefinition?.AttributeName ?? string.Empty,
+                       // DataType = MapDataTypeToString(v.AttributeDefinition?.DataType ?? ProductAttributeDataType.Text),
                         IsRequired = v.AttributeDefinition?.IsRequired ?? false,
                         DisplayOrder = v.AttributeDefinition?.DisplayOrder ?? 0,
-                        Unit = v.AttributeDefinition?.Unit,
+                       // Unit = v.AttributeDefinition?.Unit,
                         Value = v.Value,
                         CreatedAt = v.CreatedAt,
                         UpdatedAt = v.UpdatedAt
