@@ -17,6 +17,8 @@ namespace tesisproject.shared.DTOs.Project.Response
         public DateTime? StartDate { get; set; }
         public DateTime? TentativeEndDate { get; set; }
         public decimal? ExecutionPercentage { get; set; }
+        public bool HasExternalParticipation { get; set; }
+
 
         /// <summary>
         /// Faculty/Career ID of the “Coordinador Principal”, resolved from external API.
