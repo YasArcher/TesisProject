@@ -13,10 +13,9 @@ namespace tesisproject.backend.Repositories.Implementations
         {
             return await _ctx.Set<ProjectExtension>()
                 .Include(pe => pe.Project)
-                .Include(pe => pe.ProjectExtensionType)
                 .Include(pe => pe.Document)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(pe => pe.ProjectExtensionId == projectExtensionId, ct);
+                .FirstOrDefaultAsync();
         }
 
         public async Task<List<ProjectExtension>> GetByProjectAsync(int projectId, CancellationToken ct = default)
@@ -24,7 +23,6 @@ namespace tesisproject.backend.Repositories.Implementations
             return await _ctx.Set<ProjectExtension>()
                 .Where(pe => pe.ProjectId == projectId)
                 .Include(pe => pe.Project)
-                .Include(pe => pe.ProjectExtensionType)
                 .Include(pe => pe.Document)
                 .AsNoTracking()
                 .ToListAsync(ct);
@@ -34,7 +32,6 @@ namespace tesisproject.backend.Repositories.Implementations
         {
             var q = _ctx.Set<ProjectExtension>()
                 .Include(pe => pe.Project)
-                .Include(pe => pe.ProjectExtensionType)
                 .Include(pe => pe.Document);
 
             return asNoTracking ? q.AsNoTracking() : q;

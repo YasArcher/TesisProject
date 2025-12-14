@@ -1,3 +1,4 @@
+using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Identity;
@@ -18,6 +19,7 @@ using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Implementations;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using OfficeOpenXml;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +34,7 @@ builder.ConfigureHttpClients();
 builder.ConfigureDependencyInjection();
 builder.ConfigureApiDocumentation();
 
+ExcelPackage.License.SetNonCommercialOrganization("Universidad Técnica de Ambato");
 var app = builder.Build();
 
 // ===== Configure pipeline =====
@@ -236,6 +239,13 @@ static class StartupExtensions
         builder.Services.AddScoped<IAppUserRepository, AppUserRepository>(); 
         builder.Services.AddScoped<IExternalResearcherRepository, ExternalResearcherRepository>();
         builder.Services.AddScoped<IExternalResearcherProjectRepository, ExternalResearcherProjectRepository>();
+        builder.Services.AddScoped<IProjectDocumentRepository, ProjectDocumentRepository>();
+        builder.Services.AddScoped<IExportTemplateColumnRepository, ExportTemplateColumnRepository>();
+        builder.Services.AddScoped<IExportTemplateRepository, ExportTemplateRepository>();
+        builder.Services.AddScoped<IExportFieldRepository, ExportFieldRepository>();
+        builder.Services.AddScoped<IMatrixExcelExportService, MatrixExcelExportService>();
+        builder.Services.AddScoped<IMatrixTemplateExcelExportService, MatrixTemplateExcelExportService>();
+
 
 
         // =========================
@@ -282,8 +292,10 @@ static class StartupExtensions
         builder.Services.AddScoped<IProductAttributeService, ProductAttributeService>();
         builder.Services.AddScoped<IProductAttributeDefinitionService, ProductAttributeDefinitionService>();
         builder.Services.AddScoped<IProductTypeDesignService, ProductTypeDesignService>();
-
-
+        builder.Services.AddScoped<IProjectMatrixService, ProjectMatrixService>();
+        builder.Services.AddScoped<IProjectFlatReportService, ProjectFlatReportService>();
+        builder.Services.AddScoped<IExportTemplateService, ExportTemplateService>();
+        builder.Services.AddScoped<IExportTemplateExcelService, ExportTemplateExcelService>();
     }
 
 

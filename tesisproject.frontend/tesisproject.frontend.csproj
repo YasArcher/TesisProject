@@ -40,8 +40,4 @@
     <ProjectReference Include="..\tesisproject.shared\tesisproject.shared.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Features\Articles\" />
-  </ItemGroup>
-
 </Project>

@@ -8,6 +8,7 @@ using tesisproject.shared.Entities.Auth;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Entities.Core.Products;
+using tesisproject.shared.Entities.Export;
 
 namespace tesisproject.backend.Data
 {
@@ -30,7 +31,6 @@ namespace tesisproject.backend.Data
         public DbSet<Project> Projects => Set<Project>();
         public DbSet<ProjectExtension> ProjectExtensions => Set<ProjectExtension>();
         public DbSet<ProjectObjective> ProjectObjectives => Set<ProjectObjective>();
-        public DbSet<ProjectScope> ProjectScopes => Set<ProjectScope>();
         public DbSet<Visit> Visits => Set<Visit>();
         public DbSet<VisitIssue> VisitIssues => Set<VisitIssue>();
         public DbSet<UserFacultyScope> UserFacultyScopes => Set<UserFacultyScope>();
@@ -42,6 +42,11 @@ namespace tesisproject.backend.Data
         public DbSet<Convocation> Convocations => Set<Convocation>();
         public DbSet<ConvocationRule> ConvocationRules => Set<ConvocationRule>();
         public DbSet<ProjectResearchCategory> ProjectResearchCategories => Set<ProjectResearchCategory>();
+        public DbSet<ProjectDocument> ProjectDocuments => Set<ProjectDocument>();
+        public DbSet<ExportField> ExportFields { get; set; }
+        public DbSet<ExportTemplate> ExportTemplates { get; set; }
+        public DbSet<ExportTemplateColumn> ExportTemplateColumns { get; set; }
+
 
         // =========================================================
         // DbSets - Catalogs
@@ -53,18 +58,17 @@ namespace tesisproject.backend.Data
         public DbSet<Institution> Institutions => Set<Institution>();
         public DbSet<MemberRoleType> MemberRoleTypes => Set<MemberRoleType>();
         public DbSet<ObjectiveType> ObjectiveTypes => Set<ObjectiveType>();
-        public DbSet<ProjectExtensionType> ProjectExtensionTypes => Set<ProjectExtensionType>();
         public DbSet<ProjectState> ProjectStates => Set<ProjectState>();
         public DbSet<ProjectType> ProjectTypes => Set<ProjectType>();
         public DbSet<ResearchCategory> ResearchCategories => Set<ResearchCategory>();
         public DbSet<ResearchCategoryType> ResearchCategoryTypes => Set<ResearchCategoryType>();
-        public DbSet<ScopeType> ScopeTypes => Set<ScopeType>();
         public DbSet<TransactionType> TransactionTypes => Set<TransactionType>();
         public DbSet<VisitState> VisitStates => Set<VisitState>();
         public DbSet<ProductType> ProductTypes => Set<ProductType>();
         public DbSet<IndexingSource> IndexingSources => Set<IndexingSource>();
         public DbSet<ResearchCategoryGroup> ResearchCategoryGroups => Set<ResearchCategoryGroup>();
         public DbSet<AcademicPeriod> AcademicPeriods => Set<AcademicPeriod>();
+        public DbSet<ProductAttribute> ProductAttributes => Set<ProductAttribute>();
 
 
         // =========================================================
@@ -96,6 +100,7 @@ namespace tesisproject.backend.Data
             ConfigureConvocations(builder);
             ConfigureProjectResearchCategory(builder);
             ConfigureResearchCategories(builder);
+            ConfigureProjectDocuments(builder);
 
             // 4) Visit (dos FKs hacia Documents, sin cascada)
             ConfigureVisit(builder);
@@ -490,7 +495,6 @@ namespace tesisproject.backend.Data
             builder.Entity<Convocation>(b =>
             {
                 b.Property(x => x.Name).HasMaxLength(200).IsRequired();
-                b.Property(x => x.Code).HasMaxLength(64);
                 b.HasIndex(x => x.IsActive);
                 // Si quieres evitar solapes por nombre+fechas (opcional):
                 // b.HasIndex(x => new { x.Name, x.StartDate, x.EndDate }).IsUnique();
@@ -523,6 +527,34 @@ namespace tesisproject.backend.Data
                  .OnDelete(DeleteBehavior.NoAction);
             });
         }
+
+        private static void ConfigureProjectDocuments(ModelBuilder builder)
+        {
+            builder.Entity<ProjectDocument>(b =>
+            {
+                b.HasKey(x => x.ProjectDocumentId);
+
+                // FK → Project (1 Proyecto tiene muchos ProjectDocuments)
+                b.HasOne(x => x.Project)
+                 .WithMany(p => p.ProjectDocuments) 
+                 .HasForeignKey(x => x.ProjectId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // FK → Document (1 Document puede ser usado por muchos ProjectDocuments)
+                b.HasOne(x => x.Document)
+                 .WithMany(d => d.ProjectDocuments) 
+                 .HasForeignKey(x => x.DocumentId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // Índices útiles
+                b.HasIndex(x => x.ProjectId);
+                b.HasIndex(x => x.DocumentId);
+
+                // evitar duplicados 
+                b.HasIndex(x => new { x.ProjectId, x.DocumentId }).IsUnique();
+            });
+        }
+
 
 
 

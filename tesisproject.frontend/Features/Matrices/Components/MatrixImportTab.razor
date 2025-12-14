@@ -1,0 +1,203 @@
+﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.frontend.SharedUI.FileUpload
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.Matrices.Response
+
+<div class="space-y-6">
+
+    <!-- Área de carga de archivo con diseño card -->
+    <div class="bg-background border-2 border-border rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200">
+        <div class="p-6 space-y-4">
+            <div class="flex items-center gap-2 mb-3">
+                <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <label class="text-base font-semibold text-foreground">
+                    Seleccionar Archivo de Matriz
+                </label>
+            </div>
+
+            <FileUpload AcceptedTypes=".xlsx,.xls"
+                        MaxFileSizeMB="50"
+                        IsUploading="@IsUploading"
+                        UploadText="Click para cargar o arrastre y suelte el archivo de matriz"
+                        OnFileSelected="OnFileSelected" />
+
+            @if (!string.IsNullOrWhiteSpace(SelectedFileName))
+            {
+                <div class="flex items-center gap-2 px-4 py-3 bg-secondary-subtle rounded-lg border border-secondary/20">
+                    <svg class="w-5 h-5 text-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div class="flex-1">
+                        <p class="text-xs text-muted font-medium">Archivo seleccionado</p>
+                        <p class="text-sm text-foreground font-semibold">@SelectedFileName</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Botón de carga con diseño mejorado -->
+    <div class="flex items-center gap-3">
+        <ActionButton Text="@(IsUploading ? "Cargando..." : "Cargar Matriz")"
+                      Execute="OnUploadClick"
+                      Intent="ButtonIntent.Accept"
+                      Variant="ButtonVariant.Filled"
+                      Size="ButtonSize.Md"
+                      Disabled="@IsUploading" />
+
+        @if (IsUploading)
+        {
+            <div class="flex items-center gap-2 px-3 py-2 bg-primary-subtle rounded-lg border border-primary-light">
+                <div class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
+                <span class="text-xs font-medium text-primary">Procesando archivo...</span>
+            </div>
+        }
+    </div>
+
+    <!-- Resultados con diseño mejorado -->
+    @if (Summary is not null)
+    {
+        <div class="bg-background border-2 border-border rounded-xl shadow-lg overflow-hidden">
+            <!-- Header del resumen -->
+            <div class="bg-gradient-to-r from-primary-subtle to-secondary-subtle px-6 py-4 border-b-2 border-border">
+                <div class="flex items-center gap-2">
+                    <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <h4 class="text-base font-semibold text-foreground">Resumen de Importación</h4>
+                </div>
+            </div>
+
+            <!-- Contenido del resumen con scroll -->
+            <div class="p-6 max-h-96 overflow-y-auto space-y-6">
+
+                <!-- Estadísticas principales -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="bg-primary-subtle border border-primary/20 rounded-lg p-4">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-primary rounded-lg">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-muted font-medium">Total de Filas</p>
+                                <p class="text-2xl font-bold text-primary">@Summary.TotalRows</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-secondary-subtle border border-secondary/20 rounded-lg p-4">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-secondary rounded-lg">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-muted font-medium">Filas Importadas</p>
+                                <p class="text-2xl font-bold text-secondary">@Summary.DataRows</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-accent/10 border border-accent/20 rounded-lg p-4">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-accent rounded-lg">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <p class="text-xs text-muted font-medium">Filas Omitidas</p>
+                                <p class="text-2xl font-bold text-accent">@Summary.SkippedRows</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Errores -->
+                @if (Summary.Errors.Any())
+                {
+                    <div class="bg-error-subtle border-2 border-error rounded-xl p-5">
+                        <div class="flex items-start gap-3 mb-3">
+                            <div class="flex-shrink-0 p-2 bg-error rounded-lg">
+                                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <h5 class="font-semibold text-error text-base">Errores Encontrados</h5>
+                                <p class="text-xs text-muted mt-1">Se encontraron @Summary.Errors.Count errores durante la importación</p>
+                            </div>
+                        </div>
+                        <ul class="space-y-2 mt-4">
+                            @foreach (var err in Summary.Errors)
+                            {
+                                <li class="flex items-start gap-2 text-sm text-foreground/90 bg-background rounded-lg p-3">
+                                    <svg class="w-4 h-4 text-error flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                                    </svg>
+                                    <span><strong class="font-semibold">Fila @err.RowNumber:</strong> @err.Message</span>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+
+                <!-- Proyectos importados -->
+                @if (Summary.ImportedProjects is not null && Summary.ImportedProjects.Count > 0)
+                {
+                    <div class="bg-background border-2 border-border rounded-xl p-5">
+                        <div class="flex items-center gap-2 mb-4">
+                            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                            </svg>
+                            <h5 class="font-semibold text-foreground text-base">
+                                Proyectos Importados (Vista Previa)
+                            </h5>
+                        </div>
+
+                        <div class="space-y-2 max-h-64 overflow-y-auto">
+                            @foreach (var p in Summary.ImportedProjects)
+                            {
+                                <div class="flex items-start gap-3 p-3 bg-primary-subtle/30 hover:bg-primary-subtle/50 rounded-lg border border-primary/10 transition-colors duration-200">
+                                    <div class="flex-shrink-0 w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="font-semibold text-sm text-primary">@p.ProjectCode</p>
+                                        <p class="text-sm text-foreground/80 truncate">@p.ProjectName</p>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        <div class="mt-4 pt-4 border-t border-border">
+                            <p class="text-xs text-muted flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Mostrando resumen de @Summary.TotalRows filas procesadas
+                            </p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? SelectedFileName { get; set; }
+    [Parameter] public bool IsUploading { get; set; }
+    [Parameter] public ProjectMatrixUploadSummaryDTO? Summary { get; set; }
+
+    [Parameter] public EventCallback<IBrowserFile> OnFileSelected { get; set; }
+    [Parameter] public EventCallback OnUploadClick { get; set; }
+}

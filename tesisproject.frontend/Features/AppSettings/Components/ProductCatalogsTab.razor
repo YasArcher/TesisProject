@@ -11,9 +11,9 @@
     <div class="mb-8">
         <div class="flex items-start justify-between">
             <div class="space-y-1">
-                <h2 class="text-2xl font-bold text-foreground">Product Catalogs</h2>
+                <h2 class="text-2xl font-bold text-foreground">Catálogos de Productos</h2>
                 <p class="text-sm text-muted max-w-2xl">
-                    Manage product types and attributes used to describe products in the system.
+                    Gestione los tipos de productos y atributos utilizados para describir productos en el sistema.
                 </p>
             </div>
         </div>
@@ -24,7 +24,7 @@
         <div class="flex items-center justify-center py-12">
             <div class="text-center space-y-3">
                 <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-                <p class="text-sm text-muted">Loading product catalogs...</p>
+                <p class="text-sm text-muted">Cargando catálogos de productos...</p>
             </div>
         </div>
     }
@@ -36,7 +36,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div class="flex-1">
-                    <h3 class="text-sm font-semibold text-error mb-1">Error loading data</h3>
+                    <h3 class="text-sm font-semibold text-error mb-1">Error al cargar los datos</h3>
                     <p class="text-sm text-error/80">@Error</p>
                 </div>
             </div>
@@ -54,18 +54,18 @@
                                 <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                                 </svg>
-                                <h3 class="text-base font-semibold text-foreground">Product Types</h3>
+                                <h3 class="text-base font-semibold text-foreground">Tipos de Producto</h3>
                             </div>
                             <p class="text-xs text-muted leading-relaxed">
-                                High-level categories like Scientific production, Patent, Software, etc.
+                                Categorías de alto nivel como Producción científica, Patente, Software, etc.
                             </p>
                         </div>
 
                         <div class="flex items-center gap-3 flex-shrink-0">
                             <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-primary/10 text-xs font-medium text-primary">
-                                @ProductTypes.Count @(ProductTypes.Count == 1 ? "type" : "types")
+                                @ProductTypes.Count @(ProductTypes.Count == 1 ? "tipo" : "tipos")
                             </span>
-                            <ActionButton Text="New type"
+                            <ActionButton Text="Nuevo tipo"
                                           Intent="ButtonIntent.Add"
                                           Variant="ButtonVariant.Outline"
                                           Size="ButtonSize.Xs"
@@ -89,10 +89,10 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                             </svg>
                             <p class="mt-3 text-sm text-muted">
-                                No product types yet
+                                Aún no hay tipos de producto
                             </p>
                             <p class="mt-1 text-xs text-muted/70">
-                                Create one to start organizing products
+                                Cree uno para comenzar a organizar productos
                             </p>
                         </div>
                     }
@@ -108,13 +108,13 @@
                                             @if (t.IsActive)
                                             {
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
-                                                    Active
+                                                    Activo
                                                 </span>
                                             }
                                             else
                                             {
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
-                                                    Inactive
+                                                    Inactivo
                                                 </span>
                                             }
 
@@ -124,7 +124,7 @@
                                                     <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                                     </svg>
-                                                    Locked
+                                                    Bloqueado
                                                 </span>
                                             }
                                         </div>
@@ -150,10 +150,10 @@
                                                           Variant="ButtonVariant.Outline"
                                                           Size="ButtonSize.Xs"
                                                           ConfirmBeforeExecute="true"
-                                                          ConfirmTitle="Delete product type"
-                                                          ConfirmMessage="Are you sure you want to delete this product type? This action cannot be undone."
-                                                          ConfirmButtonText="Delete"
-                                                          CancelButtonText="Cancel"
+                                                          ConfirmTitle="Eliminar tipo de producto"
+                                                          ConfirmMessage="¿Está seguro de que desea eliminar este tipo de producto? Esta acción no se puede deshacer."
+                                                          ConfirmButtonText="Eliminar"
+                                                          CancelButtonText="Cancelar"
                                                           Execute="@(() => OnDeleteProductTypeRequested.InvokeAsync(t.Id))">
                                                 <Icon>
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
@@ -166,7 +166,7 @@
                                         else
                                         {
                                             <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-muted/10 text-muted/60">
-                                                Protected
+                                                Protegido
                                             </span>
                                         }
                                     </div>
@@ -186,18 +186,18 @@
                                 <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
-                                <h3 class="text-base font-semibold text-foreground">Product Attributes</h3>
+                                <h3 class="text-base font-semibold text-foreground">Atributos de Producto</h3>
                             </div>
                             <p class="text-xs text-muted leading-relaxed">
-                                Atomic fields like Title, Authors, DOI, Year, etc.
+                                Campos atómicos como Título, Autores, DOI, Año, etc.
                             </p>
                         </div>
 
                         <div class="flex items-center gap-3 flex-shrink-0">
                             <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-primary/10 text-xs font-medium text-primary">
-                                @ProductAttributes.Count @(ProductAttributes.Count == 1 ? "attribute" : "attributes")
+                                @ProductAttributes.Count @(ProductAttributes.Count == 1 ? "atributo" : "atributos")
                             </span>
-                            <ActionButton Text="New attribute"
+                            <ActionButton Text="Nuevo atributo"
                                           Intent="ButtonIntent.Add"
                                           Variant="ButtonVariant.Outline"
                                           Size="ButtonSize.Xs"
@@ -221,10 +221,10 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
                             <p class="mt-3 text-sm text-muted">
-                                No attributes yet
+                                Aún no hay atributos
                             </p>
                             <p class="mt-1 text-xs text-muted/70">
-                                Create attributes like Title, Authors, DOI, Year, etc.
+                                Cree atributos como Título, Autores, DOI, Año, etc.
                             </p>
                         </div>
                     }
@@ -249,13 +249,13 @@
                                             @if (a.IsActive)
                                             {
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
-                                                    Active
+                                                    Activo
                                                 </span>
                                             }
                                             else
                                             {
                                                 <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
-                                                    Inactive
+                                                    Inactivo
                                                 </span>
                                             }
 
@@ -265,7 +265,7 @@
                                                     <svg class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                                     </svg>
-                                                    Locked
+                                                    Bloqueado
                                                 </span>
                                             }
                                         </div>
@@ -291,10 +291,10 @@
                                                           Variant="ButtonVariant.Outline"
                                                           Size="ButtonSize.Xs"
                                                           ConfirmBeforeExecute="true"
-                                                          ConfirmTitle="Delete attribute"
-                                                          ConfirmMessage="Are you sure you want to delete this attribute? It may affect existing product configurations."
-                                                          ConfirmButtonText="Delete"
-                                                          CancelButtonText="Cancel"
+                                                          ConfirmTitle="Eliminar atributo"
+                                                          ConfirmMessage="¿Está seguro de que desea eliminar este atributo? Puede afectar las configuraciones de productos existentes."
+                                                          ConfirmButtonText="Eliminar"
+                                                          CancelButtonText="Cancelar"
                                                           Execute="@(() => OnDeleteAttributeRequested.InvokeAsync(a.Id))">
                                                 <Icon>
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
@@ -307,7 +307,7 @@
                                         else
                                         {
                                             <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-muted/10 text-muted/60">
-                                                Protected
+                                                Protegido
                                             </span>
                                         }
                                     </div>
@@ -329,8 +329,8 @@
                   IsSaving="@SavingType"
                   Error="@TypeError"
                   Model="@TypeEditModel"
-                  NewTitle="New product type"
-                  EditTitle="Edit product type"
+                  NewTitle="Nuevo tipo de producto"
+                  EditTitle="Editar tipo de producto"
                   OnCancel="OnTypeCancelRequested"
                   OnSave="OnTypeSaveRequested" />
 

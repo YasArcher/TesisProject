@@ -28,7 +28,6 @@ namespace tesisproject.shared.Entities.Core
         public int ProjectStateId { get; set; }
         [Required]
         public int ProjectGroupId { get; set; }
-        public int? InitialDocumentId { get; set; }
 
         // ================================
         //          Core Information
@@ -37,13 +36,13 @@ namespace tesisproject.shared.Entities.Core
         [Required]
         public int ProjectNumber { get; set; } = 0;
         [Required]
-        public int ConvocationId { get; set; } = 0;
+        public int? ConvocationId { get; set; } = 0;
 
         // ================================
         //              Dates
         // ================================
         [Column(TypeName = "date")]
-        public DateTime ApprovalDate { get; set; }
+        public DateTime? ApprovalDate { get; set; }
 
         [Column(TypeName = "date")]
         public DateTime? StartDate { get; set; }
@@ -71,7 +70,6 @@ namespace tesisproject.shared.Entities.Core
         public ProjectType ProjectType { get; set; } = null!;
         public ProjectState ProjectState { get; set; } = null!;
         public Group ProjectGroup { get; set; } = null!;
-        public Document? InitialDocument { get; set; }
         public ICollection<Budget> Budgets { get; set; } = new List<Budget>();
         public ICollection<ProjectObjective> ProjectObjectives { get; set; } = null!;
 
@@ -83,5 +81,8 @@ namespace tesisproject.shared.Entities.Core
         public ICollection<Product> Products { get; set; } = new List<Product>();
         public Convocation Convocation { get; set; } = null!;
         public ICollection<ProjectResearchCategory> ProjectResearchCategories { get; set; } = new List<ProjectResearchCategory>();
+
+        // 🔹 Nueva colección de vínculos a documentos (aprobación, informe final, prórrogas, etc.)
+        public ICollection<ProjectDocument> ProjectDocuments { get; set; } = new List<ProjectDocument>();
     }
 }

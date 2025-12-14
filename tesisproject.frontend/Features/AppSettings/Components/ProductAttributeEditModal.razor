@@ -8,23 +8,21 @@
 <Modal Id="product-attribute-modal"
        IsOpen="@IsOpen"
        IsOpenChanged="IsOpenChanged"
-       Title="@(IsEditMode ? "Edit attribute" : "New attribute")"
+       Title="@(IsEditMode ? "Editar atributo" : "Nuevo atributo")"
        Size="ModalSize.Md">
 
     <ChildContent>
         <div class="space-y-4">
-            <!-- Attribute name -->
             <div class="space-y-1">
                 <TextInput TValue="string"
-                           Label="Attribute name"
+                           Label="Nombre del atributo"
                            @bind-Value="Model.Name"
-                           Placeholder="e.g. Title, Authors, DOI"
+                           Placeholder="ej. Título, Autores, DOI"
                            Disabled="Model.IsLocked"
                            Required="true" />
             </div>
 
             <div class="grid grid-cols-2 gap-4">
-                <!-- Data type -->
                 <div class="space-y-1">
                     <div class="space-y-1">
                         <SelectInput TItem="ProductAttributeDataType"
@@ -33,7 +31,7 @@
                                      ValueChanged="@(dt => Model.DataType = dt)"
                                      GetText="@(dt => dt.ToString())"
                                      GetKey="@(dt => dt.ToString())"
-                                     Placeholder="Select data type"
+                                     Placeholder="Seleccione tipo de dato"
                                      Disabled="Model.IsLocked"
                                      Size="SelectSize.Sm" />
                     </div>
@@ -41,29 +39,27 @@
                 </div>
 
 
-                <!-- Unit -->
                 <div class="space-y-1">
                     <TextInput TValue="string"
-                               Label="Unit (optional)"
+                               Label="Unidad (opcional)"
                                @bind-Value="Model.Unit"
-                               Placeholder="e.g. pages, score, %"
+                               Placeholder="ej. páginas, puntaje, %"
                                Disabled="Model.IsLocked" />
                 </div>
             </div>
 
-            <!-- Active checkbox -->
             <div class="flex items-center gap-2">
                 <input type="checkbox"
                        class="rounded border-border"
                        @bind="Model.IsActive"
                        disabled="Model.IsLocked" />
-                <span class="text-sm text-foreground">Active</span>
+                <span class="text-sm text-foreground">Activo</span>
             </div>
 
             @if (Model.IsLocked)
             {
                 <div class="text-xs text-muted">
-                    This attribute is locked and cannot be modified.
+                    Este atributo está bloqueado y no se puede modificar.
                 </div>
             }
 
@@ -76,7 +72,7 @@
 
     <Footer>
         <div class="flex items-center justify-end gap-2">
-            <ActionButton Text="Close"
+            <ActionButton Text="Cerrar"
                           Intent="ButtonIntent.Delete"
                           Variant="ButtonVariant.Outline"
                           Size="ButtonSize.Sm"
@@ -84,7 +80,7 @@
 
             @if (!Model.IsLocked)
             {
-                <ActionButton Text="Save"
+                <ActionButton Text="Guardar"
                               Intent="ButtonIntent.Accept"
                               Variant="ButtonVariant.Filled"
                               Size="ButtonSize.Sm"

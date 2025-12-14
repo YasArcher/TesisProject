@@ -21,14 +21,12 @@ namespace tesisproject.shared.Entities.Core
         [Required]
         public int ProjectId { get; set; }                // id_proyecto (FK -> Project)
 
-        [Required]
-        public int ProjectExtensionTypeId { get; set; }   // id_tipo_prorroga (FK -> ProjectExtensionType catálogo)
-
         public int? DocumentId { get; set; }              // id_documento (respaldo, opcional)
 
         // ================================
         //              Dates
         // ================================
+        public DateTime ExtensionDate { get; set; }        // fecha_prorroga
         public DateTime? RequestedAt { get; set; }        // fecha_solicitud
         public DateTime? ApprovedAt { get; set; }         // fecha_aprobacion
 
@@ -36,7 +34,6 @@ namespace tesisproject.shared.Entities.Core
         //      Navigation Properties
         // ================================
         public Project Project { get; set; } = null!;                     // Navegación a Project
-        public Document? Document { get; set; }                           // Navegación a Document (opcional)
-        public ProjectExtensionType? ProjectExtensionType { get; set; }   // Navegación a ProjectExtensionType
+        public Document? Document { get; set; }
     }
 }

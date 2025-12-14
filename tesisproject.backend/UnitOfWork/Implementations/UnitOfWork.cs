@@ -44,6 +44,13 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public ICatalogRepository<AcademicPeriod> AcademicPeriods { get; }
         public ICatalogRepository<IndexingSource> IndexingSources { get; }
         public ICatalogRepository<ProductAttribute> ProductAttributes { get; }
+        public IProjectDocumentRepository ProjectDocuments { get; }
+        public ICatalogRepository<ProjectState> ProjectStates { get; }
+        public ICatalogRepository<VisitState> VisitStates { get; }
+        public IExportTemplateColumnRepository ExportTemplateColumns { get; }
+        public IExportTemplateRepository ExportTemplates { get; }
+        public IExportFieldRepository ExportFields { get; }
+
 
         public UnitOfWork(
             AppDbContext ctx,
@@ -82,7 +89,13 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             IExternalResearcherProjectRepository externalResearcherProjects,
             ICatalogRepository<AcademicPeriod> academicPeriods,
             ICatalogRepository<IndexingSource> indexingSources,
-            ICatalogRepository<ProductAttribute> productAttributes)
+            ICatalogRepository<ProductAttribute> productAttributes,
+            IProjectDocumentRepository projectDocuments,
+            ICatalogRepository<ProjectState> projectStates,
+            ICatalogRepository<VisitState> visitStates,
+            IExportTemplateColumnRepository exportTemplateColumns,
+            IExportTemplateRepository exportTemplates,
+            IExportFieldRepository exportFields)
         {
             _ctx = ctx;
             Projects = projectRepository;
@@ -121,6 +134,12 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             AcademicPeriods = academicPeriods;
             IndexingSources = indexingSources;
             ProductAttributes = productAttributes;
+            ProjectDocuments = projectDocuments;
+            ProjectStates = projectStates;
+            VisitStates = visitStates;
+            ExportTemplateColumns = exportTemplateColumns;
+            ExportTemplates = exportTemplates;
+            ExportFields = exportFields;
         }
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)

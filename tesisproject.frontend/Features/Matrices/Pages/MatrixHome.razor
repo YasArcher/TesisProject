@@ -1,0 +1,230 @@
+﻿@page "/matrix"
+
+@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.frontend.Features.Matrices.Components
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.SharedUI.Tabs
+@using tesisproject.shared.DTOs.Matrices.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+
+@inject IResearchCategoryClientService ResearchCategoryClient
+@inject IProjectMatrixClientService MatrixClient
+@inject IToastService Toast
+
+<div class="min-h-screen bg-page-bg">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-1 py-8">
+
+        <!-- Header con diseño mejorado -->
+        <div class="mb-8">
+            <div class="bg-background border-2 border-border rounded-2xl shadow-lg overflow-hidden">
+                <div class="bg-gradient-to-r from-primary to-primary-light p-6">
+                    <div class="flex items-center gap-4">
+                        <div class="flex-shrink-0 p-3 bg-white/20 rounded-xl backdrop-blur-sm">
+                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <h2 class="text-3xl font-bold text-white mb-2">
+                                Matriz de Proyectos
+                            </h2>
+                            <p class="text-white/90 text-sm max-w-3xl leading-relaxed">
+                                Administre la importación, exportación y configuración de la matriz de proyectos de investigación.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs con diseño mejorado -->
+                <div class="bg-background border-t-2 border-border">
+                    <Tabs ActiveKey="@ActiveTabKey"
+                          Variant="TabVariant.Underline"
+                          OnChange="OnTabChanged">
+
+                        <!-- IMPORT TAB -->
+                        <Tab Key="import" Title="Importar">
+                            <div class="p-6">
+                                <MatrixImportTab SelectedFileName="@SelectedFileName"
+                                                 IsUploading="@IsUploading"
+                                                 Summary="@Summary"
+                                                 OnFileSelected="HandleFileSelected"
+                                                 OnUploadClick="UploadAsync" />
+                            </div>
+                        </Tab>
+
+                        <!-- EXPORT TAB -->
+                        <Tab Key="export" Title="Exportar">
+                            <div class="p-6">
+                                <MatrixExportTab />
+                            </div>
+                        </Tab>
+
+                        <!-- CONFIG TAB -->
+                        <Tab Key="config" Title="Configuración">
+                            <div class="p-6">
+                                <MatrixConfigTab IsLoading="@IsConfigLoading"
+                                                 ErrorMessage="@FlatErrorMessage"
+                                                 Projects="@FlatProjects"
+                                                 CategoryTree="@CategoryTree"
+                                                 OnReloadRequested="LoadConfigDataAsync" />
+                            </div>
+                        </Tab>
+
+                    </Tabs>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer informativo opcional -->
+        <div class="mt-8 text-center">
+            <p class="text-footer-text text-xs">
+                Administración de matrices de proyectos de investigación
+            </p>
+        </div>
+
+    </div>
+</div>
+
+@code {
+
+    // =========================
+    //          TABS
+    // =========================
+    private string ActiveTabKey { get; set; } = "import";
+
+    private async Task OnTabChanged(string key)
+    {
+        ActiveTabKey = key;
+
+        // Carga perezosa: cuando el usuario entra por primera vez a Configuración
+        if (key == "config"
+            && FlatProjects is null
+            && CategoryTree is null
+            && !IsFlatLoading
+            && !IsCategoryLoading)
+        {
+            await LoadConfigDataAsync();
+        }
+    }
+
+    // =========================
+    //      CONFIG / FLAT REPORT
+    // =========================
+    private bool IsFlatLoading = false;
+    private string? FlatErrorMessage;
+    private IReadOnlyList<ProjectFlatReportDTO>? FlatProjects;
+
+    // categorías de investigación
+    private IReadOnlyList<ResearchCategoryTreeItemDTO>? CategoryTree;
+    private bool IsCategoryLoading = false;
+    private string? CategoryErrorMessage;
+
+    // loading combinado para enviar al hijo
+    private bool IsConfigLoading => IsFlatLoading || IsCategoryLoading;
+
+    private async Task LoadConfigDataAsync()
+    {
+        FlatErrorMessage = null;
+        CategoryErrorMessage = null;
+        IsFlatLoading = true;
+        IsCategoryLoading = true;
+
+        try
+        {
+            // 1) Flat report
+            var flatResponse = await MatrixClient.GetFlatReportAsync();
+
+            if (!flatResponse.Success)
+            {
+                FlatErrorMessage = flatResponse.Error ?? "No se pudo cargar el informe plano.";
+                FlatProjects = null;
+                Toast.ShowError(FlatErrorMessage);
+            }
+            else
+            {
+                FlatProjects = flatResponse.Response ?? Array.Empty<ProjectFlatReportDTO>();
+            }
+
+            // 2) Árbol de categorías
+            var treeResponse = await ResearchCategoryClient.GetTreeAsync(onlyActives: true);
+
+            if (!treeResponse.Success)
+            {
+                CategoryErrorMessage = treeResponse.Error ?? "No se pudo cargar el árbol de categorías de investigación.";
+                CategoryTree = null;
+                Toast.ShowWarning(CategoryErrorMessage);
+            }
+            else
+            {
+                CategoryTree = treeResponse.Response ?? new List<ResearchCategoryTreeItemDTO>();
+            }
+        }
+        catch (Exception ex)
+        {
+            FlatErrorMessage = ex.Message;
+            FlatProjects = null;
+            CategoryErrorMessage = ex.Message;
+            CategoryTree = null;
+
+            Toast.ShowError("Error inesperado: " + ex.Message);
+        }
+        finally
+        {
+            IsFlatLoading = false;
+            IsCategoryLoading = false;
+        }
+    }
+
+    // =========================
+    //          IMPORT
+    // =========================
+    private IBrowserFile? SelectedFile;
+    private string? SelectedFileName;
+    private bool IsUploading = false;
+    private ProjectMatrixUploadSummaryDTO? Summary;
+
+    private Task HandleFileSelected(IBrowserFile file)
+    {
+        SelectedFile = file;
+        SelectedFileName = file.Name;
+        return Task.CompletedTask;
+    }
+
+    private async Task UploadAsync()
+    {
+        if (SelectedFile is null)
+        {
+            Toast.ShowError("Por favor seleccione un archivo primero.");
+            return;
+        }
+
+        try
+        {
+            IsUploading = true;
+
+            using var stream = SelectedFile.OpenReadStream(maxAllowedSize: 50_000_000); // 50MB
+            var result = await MatrixClient.UploadAsync(
+                stream,
+                SelectedFile.Name,
+                SelectedFile.ContentType
+            );
+
+            if (!result.Success)
+            {
+                Toast.ShowError(result.Error ?? "Falló la carga del archivo.");
+                return;
+            }
+
+            Summary = result.Response;
+            Toast.ShowSuccess("¡Matriz procesada exitosamente!");
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error inesperado: " + ex.Message);
+        }
+        finally
+        {
+            IsUploading = false;
+        }
+    }
+}

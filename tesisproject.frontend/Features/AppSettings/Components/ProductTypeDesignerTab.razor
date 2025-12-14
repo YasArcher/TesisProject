@@ -11,9 +11,9 @@
     <div class="mb-8">
         <div class="flex items-start justify-between">
             <div class="space-y-1">
-                <h2 class="text-2xl font-bold text-foreground">Product Type Designer</h2>
+                <h2 class="text-2xl font-bold text-foreground">Diseñador de Tipos de Producto</h2>
                 <p class="text-sm text-muted max-w-2xl">
-                    Configure the structure and attribute definitions for each product type in your catalog.
+                    Configure la estructura y definiciones de atributos para cada tipo de producto en su catálogo.
                 </p>
             </div>
         </div>
@@ -24,7 +24,7 @@
         <div class="flex items-center justify-center py-12">
             <div class="text-center space-y-3">
                 <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-                <p class="text-sm text-muted">Loading product type designer...</p>
+                <p class="text-sm text-muted">Cargando diseñador de tipos de producto...</p>
             </div>
         </div>
     }
@@ -36,7 +36,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div class="flex-1">
-                    <h3 class="text-sm font-semibold text-error mb-1">Error loading designer</h3>
+                    <h3 class="text-sm font-semibold text-error mb-1">Error al cargar el diseñador</h3>
                     <p class="text-sm text-error/80">@Error</p>
                 </div>
             </div>
@@ -53,10 +53,10 @@
                             <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                             </svg>
-                            <h3 class="text-base font-semibold text-foreground">Product Types</h3>
+                            <h3 class="text-base font-semibold text-foreground">Tipos de Producto</h3>
                         </div>
                     </div>
-                    <p class="text-xs text-muted">Select a type to configure</p>
+                    <p class="text-xs text-muted">Seleccione un tipo para configurar</p>
                 </div>
 
                 <div class="p-4">
@@ -66,8 +66,8 @@
                             <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                             </svg>
-                            <p class="mt-3 text-sm text-muted">No product types</p>
-                            <p class="mt-1 text-xs text-muted/70">Create them in the catalogs tab first</p>
+                            <p class="mt-3 text-sm text-muted">No hay tipos de producto</p>
+                            <p class="mt-1 text-xs text-muted/70">Créelos primero en la pestaña de catálogos</p>
                         </div>
                     }
                     else
@@ -87,13 +87,13 @@
                                                     @if (t.IsActive)
                                                     {
                                                         <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
-                                                            Active
+                                                            Activo
                                                         </span>
                                                     }
                                                     else
                                                     {
                                                         <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
-                                                            Inactive
+                                                            Inactivo
                                                         </span>
                                                     }
 
@@ -103,7 +103,7 @@
                                                             <svg class="h-3 w-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                                             </svg>
-                                                            Locked
+                                                            Bloqueado
                                                         </span>
                                                     }
                                                 </div>
@@ -133,9 +133,9 @@
                             <svg class="mx-auto h-16 w-16 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                             </svg>
-                            <h3 class="mt-4 text-base font-semibold text-foreground">No product type selected</h3>
+                            <h3 class="mt-4 text-base font-semibold text-foreground">Ningún tipo de producto seleccionado</h3>
                             <p class="mt-2 text-sm text-muted">
-                                Select a product type from the left sidebar to configure its attributes and structure.
+                                Seleccione un tipo de producto de la barra lateral izquierda para configurar sus atributos y estructura.
                             </p>
                         </div>
                     </div>
@@ -148,9 +148,9 @@
                             <div class="flex items-start gap-4">
                                 <div class="flex-1">
                                     <TextInput TValue="string"
-                                               Label="Product type name"
+                                               Label="Nombre del tipo de producto"
                                                @bind-Value="CurrentDesign.ProductType.Name"
-                                               Placeholder="e.g. Scientific production"
+                                               Placeholder="ej. Producción científica"
                                                Disabled="true"
                                                Required="true" />
                                 </div>
@@ -163,7 +163,7 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                                     </svg>
                                     <p class="text-xs text-accent/90">
-                                        This product type is locked. You can view its design but cannot modify it.
+                                        Este tipo de producto está bloqueado. Puede ver su diseño pero no modificarlo.
                                     </p>
                                 </div>
                             }
@@ -174,13 +174,13 @@
                     <div class="p-6 space-y-4">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h3 class="text-base font-semibold text-foreground">Attribute Definitions</h3>
+                                <h3 class="text-base font-semibold text-foreground">Definiciones de Atributos</h3>
                                 <p class="text-xs text-muted mt-1">
-                                    Define which attributes belong to this product type and their configuration.
+                                    Define qué atributos pertenecen a este tipo de producto y su configuración.
                                 </p>
                             </div>
 
-                            <ActionButton Text="Add definition"
+                            <ActionButton Text="Agregar definición"
                                           Intent="ButtonIntent.Add"
                                           Variant="ButtonVariant.Outline"
                                           Size="ButtonSize.Sm"
@@ -194,16 +194,16 @@
                                     <thead class="bg-primary">
                                         <tr>
                                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
-                                                Attribute
+                                                Atributo
                                             </th>
                                             <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-white">
-                                                Required
+                                                Requerido
                                             </th>
                                             <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-white">
-                                                Display Order
+                                                Orden de Visualización
                                             </th>
                                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white">
-                                                Actions
+                                                Acciones
                                             </th>
                                         </tr>
                                     </thead>
@@ -216,8 +216,8 @@
                                                         <svg class="h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                         </svg>
-                                                        <p class="mt-3 text-sm text-muted">No definitions yet</p>
-                                                        <p class="mt-1 text-xs text-muted/70">Add attributes to configure this product type</p>
+                                                        <p class="mt-3 text-sm text-muted">Aún no hay definiciones</p>
+                                                        <p class="mt-1 text-xs text-muted/70">Agregue atributos para configurar este tipo de producto</p>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -234,7 +234,7 @@
                                                                      ValueChanged="@(attr => OnAttributeChanged(row, attr))"
                                                                      GetText="@(a => $"{a.Name} ({a.DataType})")"
                                                                      GetKey="@(a => a.Id.ToString())"
-                                                                     Placeholder="Select attribute"
+                                                                     Placeholder="Seleccionar atributo"
                                                                      Size="SelectSize.Sm" />
                                                     </td>
 
@@ -243,7 +243,7 @@
                                                             <input type="checkbox"
                                                                    class="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/30 cursor-pointer"
                                                                    @bind="row.IsRequired" />
-                                                            <span class="sr-only">Mark as required</span>
+                                                            <span class="sr-only">Marcar como requerido</span>
                                                         </label>
                                                     </td>
 
@@ -292,7 +292,7 @@
                     <!-- Footer Actions -->
                     <div class="p-6 border-t border-border bg-background/50">
                         <div class="flex items-center justify-end gap-3">
-                            <ActionButton Text="Save Design"
+                            <ActionButton Text="Guardar Diseño"
                                           Intent="ButtonIntent.Accept"
                                           Variant="ButtonVariant.Filled"
                                           Size="ButtonSize.Sm"

@@ -6,8 +6,6 @@ using tesisproject.shared.Entities.Analytics.Dw.Dimensions;
 using tesisproject.shared.Entities.Analytics.Dw.Facts;
 using tesisproject.shared.Responses;
 using tesisproject.backend.Services.Interfaces;
-using tesisproject.shared.DTOs.External;
-
 
 namespace tesisproject.backend.Services.Analytic.Implementations
 {
@@ -83,6 +81,9 @@ namespace tesisproject.backend.Services.Analytic.Implementations
             _logger.LogInformation("DW ETL - DW tables cleared.");
         }
 
+        // =========================================================
+        // LOAD DIMENSIONS / FACTS / BRIDGES
+        // =========================================================
 
         public async Task<ServiceResult<NoContent>> LoadDimensionsAsync(CancellationToken ct = default)
         {
@@ -94,8 +95,8 @@ namespace tesisproject.backend.Services.Analytic.Implementations
             await LoadDimProductTypeAsync(ct);
             await LoadDimFacultyAsync(ct);
             await LoadDimResearchCategoryAsync(ct);
-            //await LoadDimIndexingDatabaseAsync(ct);
-            //await LoadDimQuartileAsync(ct);
+            await LoadDimIndexingDatabaseAsync(ct);
+            await LoadDimQuartileAsync(ct);
 
             _logger.LogInformation("DW ETL - Dimensions loaded");
 
@@ -119,7 +120,7 @@ namespace tesisproject.backend.Services.Analytic.Implementations
 
             await LoadFactProjectAsync(ct);
             await LoadFactBudgetAsync(ct);
-            //await LoadFactProductAsync(ct);
+            await LoadFactProductAsync(ct);
 
             _logger.LogInformation("DW ETL - Fact tables loaded");
 
@@ -129,6 +130,7 @@ namespace tesisproject.backend.Services.Analytic.Implementations
         // =========================================================
         // DIMENSIONS
         // =========================================================
+
         private async Task LoadDimDateAsync(CancellationToken ct)
         {
             _logger.LogInformation("DW ETL - Loading DimDate...");
@@ -159,7 +161,7 @@ namespace tesisproject.backend.Services.Analytic.Implementations
                 .Where(d => d != null)
                 .MaxAsync(ct);
 
-            // 🔥 ApprovalDate (fecha de aprobación del proyecto)
+            // ApprovalDate (fecha de aprobación del proyecto) - ahora puede ser null
             var minApprovalDate = await _appDb.Projects
                 .Select(p => (DateTime?)p.ApprovalDate)
                 .Where(d => d != null)
@@ -202,12 +204,12 @@ namespace tesisproject.backend.Services.Analytic.Implementations
 
             var minDate = new[]
                 {
-            minStartDate,
-            minEndDate,
-            minApprovalDate,
-            minBudgetDate,
-            minProductDate
-        }
+                    minStartDate,
+                    minEndDate,
+                    minApprovalDate,
+                    minBudgetDate,
+                    minProductDate
+                }
                 .Where(d => d.HasValue)
                 .Select(d => d!.Value.Date)
                 .DefaultIfEmpty(DateTime.Today.Date)
@@ -215,12 +217,12 @@ namespace tesisproject.backend.Services.Analytic.Implementations
 
             var maxDate = new[]
                 {
-            maxStartDate,
-            maxEndDate,
-            maxApprovalDate,
-            maxBudgetDate,
-            maxProductDate
-        }
+                    maxStartDate,
+                    maxEndDate,
+                    maxApprovalDate,
+                    maxBudgetDate,
+                    maxProductDate
+                }
                 .Where(d => d.HasValue)
                 .Select(d => d!.Value.Date)
                 .DefaultIfEmpty(DateTime.Today.Date)
@@ -295,43 +297,10 @@ namespace tesisproject.backend.Services.Analytic.Implementations
 
             await _dw.SaveChangesAsync(ct);
         }
-        //private async Task LoadDimIndexingDatabaseAsync(CancellationToken ct)
-        //{
-        //    _logger.LogInformation("DW ETL - Loading DimIndexingDatabase...");
-
-        //    var rawNames = await _appDb.ProductValues
-        //        .Include(v => v.AttributeDefinition)
-        //        .Where(v => v.AttributeDefinition != null &&
-        //                    v.AttributeDefinition.AttributeName == "BASE DE DATOS")
-        //        .Select(v => v.Value)
-        //        .Where(v => v != null && v != "")
-        //        .Distinct()
-        //        .ToListAsync(ct);
-
-        //    foreach (var name in rawNames)
-        //    {
-        //        var cleaned = name!.Trim();
-
-        //        var dim = new DimIndexingDatabase
-        //        {
-        //            Name = cleaned
-        //        };
-
-        //        _dw.DimIndexingDatabases.Add(dim);
-        //    }
-
-        //    await _dw.SaveChangesAsync(ct);
-
-        //    _logger.LogInformation(
-        //        "DW ETL - DimIndexingDatabase loaded ({Count} rows)",
-        //        await _dw.DimIndexingDatabases.CountAsync(ct));
-        //}
-
 
         private async Task LoadDimFundingTypeAsync(CancellationToken ct)
         {
             _logger.LogInformation("DW ETL - Loading DimFundingType...");
-
 
             var fundingTypes = await _appDb.FundingTypes
                 .AsNoTracking()
@@ -379,7 +348,7 @@ namespace tesisproject.backend.Services.Analytic.Implementations
         {
             _logger.LogInformation("DW ETL - Loading DimFaculty...");
 
-            // 2) Facultades realmente usadas en Projects
+            // Facultades realmente usadas en Projects
             var facultyIdsInUse = await _appDb.Projects
                 .AsNoTracking()
                 .Select(p => p.FacultyId)
@@ -393,7 +362,7 @@ namespace tesisproject.backend.Services.Analytic.Implementations
                 return;
             }
 
-            // 3) Consultar API externa (todas las facultades)
+            // Consultar API externa (todas las facultades)
             var apiResult = await _externalAcademics.GetFacultiesAsync(ct);
 
             if (!apiResult.Success || apiResult.Data is null)
@@ -410,7 +379,7 @@ namespace tesisproject.backend.Services.Analytic.Implementations
                     {
                         FacultyId = facultyId,
                         FacultyCode = null,
-                        FacultyName = $"Faculty {facultyId}" // fallback explícito
+                        FacultyName = $"Faculty {facultyId}"
                     };
 
                     _dw.DimFaculties.Add(dimFallback);
@@ -420,12 +389,12 @@ namespace tesisproject.backend.Services.Analytic.Implementations
                 return;
             }
 
-            // 4) Construir lookup por FacultyId desde la API
+            // Construir lookup por FacultyId desde la API
             var apiFacultiesById = apiResult.Data
                 .GroupBy(f => f.FacultyId)
                 .ToDictionary(g => g.Key, g => g.First());
 
-            // 5) Poblar DimFaculty solo para las facultades que aparecen en Projects
+            // Poblar DimFaculty solo para las facultades que aparecen en Projects
             foreach (var facultyId in facultyIdsInUse)
             {
                 apiFacultiesById.TryGetValue(facultyId, out var external);
@@ -455,19 +424,18 @@ namespace tesisproject.backend.Services.Analytic.Implementations
                 await _dw.DimFaculties.CountAsync(ct));
         }
 
-
         private async Task LoadDimResearchCategoryAsync(CancellationToken ct)
         {
             _logger.LogInformation("DW ETL - Loading DimResearchCategory...");
 
-            // 2) Traer categorías operacionales con su tipo y grupo
+            // Traer categorías operacionales con su tipo y grupo
             var categories = await _appDb.ResearchCategories
                 .Include(rc => rc.ResearchCategoryType)
                     .ThenInclude(t => t.ResearchCategoryGroup)
                 .AsNoTracking()
                 .ToListAsync(ct);
 
-            // 3) PRIMERA PASADA: insertar todas las filas sin ParentCategoryKey
+            // PRIMERA PASADA: insertar todas las filas sin ParentCategoryKey
             foreach (var rc in categories)
             {
                 var type = rc.ResearchCategoryType;
@@ -492,11 +460,7 @@ namespace tesisproject.backend.Services.Analytic.Implementations
 
             await _dw.SaveChangesAsync(ct);
 
-            // 4) SEGUNDA PASADA: resolver ParentCategoryKey
-            //    Necesitamos:
-            //    - DimResearchCategory: para mapear ResearchCategoryId -> ResearchCategoryKey
-            //    - ResearchCategory: para conocer ParentCategoryId
-
+            // SEGUNDA PASADA: resolver ParentCategoryKey
             var dimCategories = await _dw.DimResearchCategories
                 .ToListAsync(ct);
 
@@ -536,43 +500,81 @@ namespace tesisproject.backend.Services.Analytic.Implementations
                 await _dw.DimResearchCategories.CountAsync(ct));
         }
 
+        private async Task LoadDimIndexingDatabaseAsync(CancellationToken ct)
+        {
+            _logger.LogInformation("DW ETL - Loading DimIndexingDatabase...");
 
-        //private async Task LoadDimQuartileAsync(CancellationToken ct)
-        //{
-        //    _logger.LogInformation("DW ETL - Loading DimQuartile...");
+            // Tomamos valores de ProductValues cuyo atributo sea "BASE DE DATOS"
+            var rawNames = await _appDb.ProductValues
+                .Include(v => v.AttributeDefinition!)
+                    .ThenInclude(ad => ad.ProductAttribute!)
+                .Where(v =>
+                    v.AttributeDefinition != null &&
+                    v.AttributeDefinition.ProductAttribute != null &&
+                    v.AttributeDefinition.ProductAttribute.Name == "BASE DE DATOS")
+                .Select(v => v.Value)
+                .Where(v => v != null && v != "")
+                .Distinct()
+                .ToListAsync(ct);
 
-        //    // Tomamos todos los valores distintos del atributo "CUARTIL"
-        //    var rawCodes = await _appDb.ProductValues
-        //        .Include(v => v.AttributeDefinition)
-        //        .Where(v => v.AttributeDefinition != null &&
-        //                    v.AttributeDefinition.AttributeName == "CUARTIL")
-        //        .Select(v => v.Value)
-        //        .Where(v => v != null && v != "")
-        //        .Distinct()
-        //        .ToListAsync(ct);
+            foreach (var name in rawNames)
+            {
+                var cleaned = name!.Trim();
 
-        //    foreach (var code in rawCodes)
-        //    {
-        //        var cleaned = code!.Trim();
+                var dim = new DimIndexingDatabase
+                {
+                    Name = cleaned
+                };
 
-        //        var dim = new DimQuartile
-        //        {
-        //            Code = cleaned,
-        //            Description = null // si luego quieres "Cuartil Q1", etc., lo llenamos
-        //        };
+                _dw.DimIndexingDatabases.Add(dim);
+            }
 
-        //        _dw.DimQuartiles.Add(dim);
-        //    }
+            await _dw.SaveChangesAsync(ct);
 
-        //    await _dw.SaveChangesAsync(ct);
+            _logger.LogInformation(
+                "DW ETL - DimIndexingDatabase loaded ({Count} rows)",
+                await _dw.DimIndexingDatabases.CountAsync(ct));
+        }
 
-        //    _logger.LogInformation(
-        //        "DW ETL - DimQuartile loaded ({Count} rows)",
-        //        await _dw.DimQuartiles.CountAsync(ct));
-        //}
+        private async Task LoadDimQuartileAsync(CancellationToken ct)
+        {
+            _logger.LogInformation("DW ETL - Loading DimQuartile...");
+
+            // Tomamos todos los valores distintos del atributo "CUARTIL"
+            var rawCodes = await _appDb.ProductValues
+                .Include(v => v.AttributeDefinition!)
+                    .ThenInclude(ad => ad.ProductAttribute!)
+                .Where(v =>
+                    v.AttributeDefinition != null &&
+                    v.AttributeDefinition.ProductAttribute != null &&
+                    v.AttributeDefinition.ProductAttribute.Name == "CUARTIL")
+                .Select(v => v.Value)
+                .Where(v => v != null && v != "")
+                .Distinct()
+                .ToListAsync(ct);
+
+            foreach (var code in rawCodes)
+            {
+                var cleaned = code!.Trim();
+
+                var dim = new DimQuartile
+                {
+                    Code = cleaned,
+                    Description = null // si luego quieres "Cuartil Q1", etc., lo llenas aquí
+                };
+
+                _dw.DimQuartiles.Add(dim);
+            }
+
+            await _dw.SaveChangesAsync(ct);
+
+            _logger.LogInformation(
+                "DW ETL - DimQuartile loaded ({Count} rows)",
+                await _dw.DimQuartiles.CountAsync(ct));
+        }
 
         // =========================================================
-        // BRIDGE
+        // BRIDGES
         // =========================================================
 
         private async Task LoadBridgeProjectResearchCategoryAsync(CancellationToken ct)
@@ -633,7 +635,7 @@ namespace tesisproject.backend.Services.Analytic.Implementations
                 .AsNoTracking()
                 .ToListAsync(ct);
 
-            // Para fechas obligatorias (Approval, Start)
+            // Para fechas obligatorias (StartDate)
             int GetRequiredDateKey(DateTime date)
             {
                 var d = date.Date;
@@ -679,6 +681,15 @@ namespace tesisproject.backend.Services.Analytic.Implementations
                     continue;
                 }
 
+                // 🔥 NUEVO: StartDate puede ser null, lo validamos
+                if (p.StartDate == null)
+                {
+                    _logger.LogWarning(
+                        "DW ETL - Project {ProjectId} has null StartDate; skipping in FactProject.",
+                        p.ProjectId);
+                    continue;
+                }
+
                 var fact = new FactProject
                 {
                     ProjectId = p.ProjectId,
@@ -689,9 +700,13 @@ namespace tesisproject.backend.Services.Analytic.Implementations
                     FacultyKey = facultyKey,
                     ProjectStateKey = stateKey,
 
-                    // Estos dos son requeridos → int
-                    ApprovalDateKey = GetRequiredDateKey(p.ApprovalDate),
-                    StartDateKey = GetRequiredDateKey(p.StartDate!.Value),
+                    // ApprovalDateKey ahora es opcional: si no hay fecha, usamos -1 (sentinel)
+                    ApprovalDateKey = p.ApprovalDate.HasValue
+                        ? GetRequiredDateKey(p.ApprovalDate.Value)
+                        : -1,
+
+                    // ✅ ya no usamos .Value a lo loco
+                    StartDateKey = GetRequiredDateKey(p.StartDate.Value),
 
                     // Este es opcional → int?
                     EndDateKey = GetOptionalDateKey(p.RealEndDate)
@@ -702,6 +717,7 @@ namespace tesisproject.backend.Services.Analytic.Implementations
 
             await _dw.SaveChangesAsync(ct);
         }
+
 
         private async Task LoadFactBudgetAsync(CancellationToken ct)
         {
@@ -768,128 +784,131 @@ namespace tesisproject.backend.Services.Analytic.Implementations
             await _dw.SaveChangesAsync(ct);
         }
 
-        //private async Task LoadFactProductAsync(CancellationToken ct)
-        //{
-        //    _logger.LogInformation("DW ETL - Loading FactProduct...");
+        private async Task LoadFactProductAsync(CancellationToken ct)
+        {
+            _logger.LogInformation("DW ETL - Loading FactProduct...");
 
-        //    var dimDate = await _dw.DimDates.AsNoTracking().ToListAsync(ct);
-        //    var dimDateLookup = dimDate.ToDictionary(d => d.Date.Date, d => d.DateKey);
+            var dimDate = await _dw.DimDates.AsNoTracking().ToListAsync(ct);
+            var dimDateLookup = dimDate.ToDictionary(d => d.Date.Date, d => d.DateKey);
 
-        //    var dimFaculty = await _dw.DimFaculties.AsNoTracking().ToListAsync(ct);
-        //    var facultyLookup = dimFaculty.ToDictionary(f => f.FacultyId, f => f.FacultyKey);
+            var dimFaculty = await _dw.DimFaculties.AsNoTracking().ToListAsync(ct);
+            var facultyLookup = dimFaculty.ToDictionary(f => f.FacultyId, f => f.FacultyKey);
 
-        //    var dimProductTypes = await _dw.DimProductTypes.AsNoTracking().ToListAsync(ct);
-        //    var productTypeLookup = dimProductTypes.ToDictionary(p => p.ProductTypeId, p => p.ProductTypeKey);
+            var dimProductTypes = await _dw.DimProductTypes.AsNoTracking().ToListAsync(ct);
+            var productTypeLookup = dimProductTypes.ToDictionary(p => p.ProductTypeId, p => p.ProductTypeKey);
 
-        //    var dimIndexing = await _dw.DimIndexingDatabases.AsNoTracking().ToListAsync(ct);
-        //    var indexingLookup = dimIndexing
-        //        .ToDictionary(d => d.Name.Trim(), d => d.IndexingDatabaseKey);
+            var dimIndexing = await _dw.DimIndexingDatabases.AsNoTracking().ToListAsync(ct);
+            var indexingLookup = dimIndexing
+                .ToDictionary(d => d.Name.Trim(), d => d.IndexingDatabaseKey);
 
-        //    var dimQuartiles = await _dw.DimQuartiles.AsNoTracking().ToListAsync(ct);
-        //    var quartileLookup = dimQuartiles
-        //        .ToDictionary(q => q.Code.Trim(), q => q.QuartileKey);
+            var dimQuartiles = await _dw.DimQuartiles.AsNoTracking().ToListAsync(ct);
+            var quartileLookup = dimQuartiles
+                .ToDictionary(q => q.Code.Trim(), q => q.QuartileKey);
 
-        //    var products = await _appDb.Products
-        //        .Include(p => p.Project)
-        //        .Include(p => p.Values!)
-        //            .ThenInclude(v => v.AttributeDefinition)
-        //        .AsNoTracking()
-        //        .ToListAsync(ct);
+            var products = await _appDb.Products
+                .Include(p => p.Project)
+                .Include(p => p.Values!)
+                    .ThenInclude(v => v.AttributeDefinition!)
+                        .ThenInclude(ad => ad.ProductAttribute!)
+                .AsNoTracking()
+                .ToListAsync(ct);
 
-        //    int GetDateKey(DateTime? date)
-        //    {
-        //        if (date == null) return 0;
-        //        var d = date.Value.Date;
-        //        return dimDateLookup.TryGetValue(d, out var key) ? key : 0;
-        //    }
+            int GetDateKey(DateTime? date)
+            {
+                if (date == null) return 0;
+                var d = date.Value.Date;
+                return dimDateLookup.TryGetValue(d, out var key) ? key : 0;
+            }
 
-        //    foreach (var p in products)
-        //    {
-        //        if (p.Project == null)
-        //        {
-        //            _logger.LogWarning("DW ETL - Product {Id} has no Project loaded", p.Id);
-        //            continue;
-        //        }
+            foreach (var p in products)
+            {
+                if (p.Project == null)
+                {
+                    _logger.LogWarning("DW ETL - Product {Id} has no Project loaded", p.Id);
+                    continue;
+                }
 
-        //        if (!facultyLookup.TryGetValue(p.Project.FacultyId, out var facultyKey))
-        //        {
-        //            _logger.LogWarning("DW ETL - FacultyId {Id} not found in DimFaculty", p.Project.FacultyId);
-        //            continue;
-        //        }
+                if (!facultyLookup.TryGetValue(p.Project.FacultyId, out var facultyKey))
+                {
+                    _logger.LogWarning("DW ETL - FacultyId {Id} not found in DimFaculty", p.Project.FacultyId);
+                    continue;
+                }
 
-        //        if (!productTypeLookup.TryGetValue(p.ProductTypeId, out var productTypeKey))
-        //        {
-        //            _logger.LogWarning("DW ETL - ProductTypeId {Id} not found in DimProductType", p.ProductTypeId);
-        //            continue;
-        //        }
+                if (!productTypeLookup.TryGetValue(p.ProductTypeId, out var productTypeKey))
+                {
+                    _logger.LogWarning("DW ETL - ProductTypeId {Id} not found in DimProductType", p.ProductTypeId);
+                    continue;
+                }
 
-        //        int? indexingKey = null;
-        //        int? quartileKey = null;
+                int? indexingKey = null;
+                int? quartileKey = null;
 
-        //        // ===== BASE DE DATOS =====
-        //        var dbAttr = p.Values?
-        //            .FirstOrDefault(v =>
-        //                v.AttributeDefinition != null &&
-        //                v.AttributeDefinition.AttributeName == "BASE DE DATOS");
+                // ===== BASE DE DATOS (usa ProductAttribute.Name) =====
+                var dbAttr = p.Values?
+                    .FirstOrDefault(v =>
+                        v.AttributeDefinition != null &&
+                        v.AttributeDefinition.ProductAttribute != null &&
+                        v.AttributeDefinition.ProductAttribute.Name == "BASE DE DATOS");
 
-        //        if (dbAttr != null && !string.IsNullOrWhiteSpace(dbAttr.Value))
-        //        {
-        //            var cleaned = dbAttr.Value.Trim();
+                if (dbAttr != null && !string.IsNullOrWhiteSpace(dbAttr.Value))
+                {
+                    var cleaned = dbAttr.Value.Trim();
 
-        //            if (indexingLookup.TryGetValue(cleaned, out var idxKey))
-        //            {
-        //                indexingKey = idxKey;
-        //            }
-        //            else
-        //            {
-        //                _logger.LogWarning(
-        //                    "DW ETL - Indexing database '{Name}' not found in DimIndexingDatabase (ProductId={ProductId})",
-        //                    cleaned, p.Id);
-        //            }
-        //        }
+                    if (indexingLookup.TryGetValue(cleaned, out var idxKey))
+                    {
+                        indexingKey = idxKey;
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "DW ETL - Indexing database '{Name}' not found in DimIndexingDatabase (ProductId={ProductId})",
+                            cleaned, p.Id);
+                    }
+                }
 
-        //        // ===== CUARTIL =====
-        //        var quartAttr = p.Values?
-        //            .FirstOrDefault(v =>
-        //                v.AttributeDefinition != null &&
-        //                v.AttributeDefinition.AttributeName == "CUARTIL");
+                // ===== CUARTIL (usa ProductAttribute.Name) =====
+                var quartAttr = p.Values?
+                    .FirstOrDefault(v =>
+                        v.AttributeDefinition != null &&
+                        v.AttributeDefinition.ProductAttribute != null &&
+                        v.AttributeDefinition.ProductAttribute.Name == "CUARTIL");
 
-        //        if (quartAttr != null && !string.IsNullOrWhiteSpace(quartAttr.Value))
-        //        {
-        //            var cleaned = quartAttr.Value.Trim();
+                if (quartAttr != null && !string.IsNullOrWhiteSpace(quartAttr.Value))
+                {
+                    var cleaned = quartAttr.Value.Trim();
 
-        //            if (quartileLookup.TryGetValue(cleaned, out var qKey))
-        //            {
-        //                quartileKey = qKey;
-        //            }
-        //            else
-        //            {
-        //                _logger.LogWarning(
-        //                    "DW ETL - Quartile '{Code}' not found in DimQuartile (ProductId={ProductId})",
-        //                    cleaned, p.Id);
-        //            }
-        //        }
+                    if (quartileLookup.TryGetValue(cleaned, out var qKey))
+                    {
+                        quartileKey = qKey;
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "DW ETL - Quartile '{Code}' not found in DimQuartile (ProductId={ProductId})",
+                            cleaned, p.Id);
+                    }
+                }
 
-        //        var fact = new FactProduct
-        //        {
-        //            ProductId = p.Id,
-        //            ProjectId = p.ProjectId,
+                var fact = new FactProduct
+                {
+                    ProductId = p.Id,
+                    ProjectId = p.ProjectId,
 
-        //            ProductCount = 1,
-        //            IsActiveFlag = p.IsActive,
+                    ProductCount = 1,
+                    IsActiveFlag = p.IsActive,
 
-        //            FacultyKey = facultyKey,
-        //            ProductTypeKey = productTypeKey,
-        //            CreatedDateKey = GetDateKey(p.CreatedAt),
+                    FacultyKey = facultyKey,
+                    ProductTypeKey = productTypeKey,
+                    CreatedDateKey = GetDateKey(p.CreatedAt),
 
-        //            IndexingDatabaseKey = indexingKey,
-        //            QuartileKey = quartileKey
-        //        };
+                    IndexingDatabaseKey = indexingKey,
+                    QuartileKey = quartileKey
+                };
 
-        //        _dw.FactProducts.Add(fact);
-        //    }
+                _dw.FactProducts.Add(fact);
+            }
 
-        //    await _dw.SaveChangesAsync(ct);
-        //}
+            await _dw.SaveChangesAsync(ct);
+        }
     }
 }
