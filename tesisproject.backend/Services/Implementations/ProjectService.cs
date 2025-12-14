@@ -87,6 +87,7 @@ namespace tesisproject.backend.Services.Implementations
                         ProjectTypeName = p.ProjectType.Name,
                         ProjectGroupName = p.ProjectGroup.Name,
                         StartDate = p.StartDate,
+                        HasExternalParticipation = p.ExternalResearcherProjects.Any(),
                         TentativeEndDate = p.TentativeEndDate,
                         ExecutionPercentage = p.ExecutionPercentage,
                         PrincipalCoordinatorFacultyId = p.FacultyId,
@@ -109,6 +110,7 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<List<ProjectListResponseDTO>>.Ok(data, "Projects retrieved");
             }
             catch (Exception ex)
+
             {
                 return ServiceResult<List<ProjectListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
             }

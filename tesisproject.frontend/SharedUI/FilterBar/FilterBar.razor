@@ -6,14 +6,8 @@
 @using tesisproject.frontend.SharedUI.DateInput
 @using tesisproject.frontend.SharedUI.TextInput
 
-
 @* ============================================================
    FilterBar (Presentational Only)
-   - Pure UI component. Receives all data via Config.
-   - No service injections. No API calls inside.
-   - Emits a normalized FilterQuery to parent via OnApply.
-   - Parent is responsible for fetching options/data and mapping results.
-   Supported controls: search, select, multiselect, daterange, numberrange, boolean
    ============================================================ *@
 
 <div class="relative w-full">
@@ -27,15 +21,14 @@
                              DebounceMs="@GetDebounceMs()"
                              Class="w-full" />
             </div>
+
             <div class="flex items-center gap-2">
-                <!-- Toggle filtros -->
                 <ActionButton Text="Filtros"
                               Execute="ToggleExpanded"
                               Intent="ButtonIntent.Info"
                               Variant="@(_expanded ? ButtonVariant.Soft : ButtonVariant.Outline)"
                               Size="ButtonSize.Sm"
                               Class="px-3 py-2 rounded-lg flex items-center gap-2">
-
                     <Icon>
                         <svg class="w-4 h-4 transition-transform @(_expanded ? "rotate-180" : "")"
                              fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
@@ -44,11 +37,10 @@
                         </svg>
                     </Icon>
                 </ActionButton>
-
             </div>
         </div>
     </div>
-    <!-- Filters Dropdown - Positioned absolutely -->
+
     @if (_expanded)
     {
         <div class="absolute top-full left-0 right-0 z-50 mt-2 bg-background border border-border rounded-xl shadow-xl backdrop-blur-sm"
@@ -57,7 +49,6 @@
              @onclick:stopPropagation="true">
 
             <div class="p-4">
-                @* ZONA FILTROS (con groups) *@
                 @if (Config?.Items is not null && Config.Items.Count > 0)
                 {
                     var groupedItems = Config.Items
@@ -82,7 +73,11 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                                 @foreach (var item in group)
                                 {
-                                    <div class="space-y-1">
+                                    var isWide = IsWideFilter(item.Type);
+                                    // ✅ 2/3 en lg (col-span-2), full en md (col-span-2)
+                                    var colSpan = isWide ? "md:col-span-2 lg:col-span-2" : "";
+
+                                    <div class="space-y-1 @colSpan">
                                         <label class="text-xs font-medium text-muted">@item.Label</label>
                                         @RenderFilterControl(item)
                                         @if (!string.IsNullOrWhiteSpace(item.HelpText))
@@ -96,7 +91,6 @@
                     }
                 }
 
-                @* ZONA CHIPS + BOTONES *@
                 <div class="border-t border-border pt-4 mt-3">
                     @if (Config?.ShowChips == true && _activeChips.Count > 0)
                     {
@@ -142,7 +136,6 @@
         </div>
     }
 
-    <!-- Backdrop to close filters when clicking outside -->
     @if (_expanded)
     {
         <div class="fixed inset-0 z-40" @onclick="CloseFilters" @onclick:preventDefault="false"></div>
@@ -156,6 +149,31 @@
     [Parameter] public EventCallback OnClear { get; set; }
     [Parameter] public EventCallback<string?> OnSearchInstant { get; set; }
 
+    private static string FieldKey(string key) => $"{key}.field";
+    private static string RangeKey(string key) => $"{key}.range";
+
+    private string?[] GetOrCreateRange(string key)
+    {
+        if (_values.TryGetValue(key, out var obj) && obj is string?[] arr && arr.Length == 2)
+            return arr;
+
+        var created = new string?[2];
+        _values[key] = created;
+        return created;
+    }
+
+    private static bool RangeHasAny(string?[] range)
+        => range.Length == 2 && (!string.IsNullOrWhiteSpace(range[0]) || !string.IsNullOrWhiteSpace(range[1]));
+
+    // ✅ evita que se “apile” por ancho: 2 columnas iguales
+    private RenderFragment WrapRow(RenderFragment content) => b =>
+    {
+        b.OpenElement(0, "div");
+        b.AddAttribute(1, "class", "grid grid-cols-2 gap-2 min-w-0");
+        b.AddContent(2, content);
+        b.CloseElement();
+    };
+
     // ===================== Internal State =====================
     private bool _expanded = false;
     private string _search = string.Empty;
@@ -163,22 +181,39 @@
     private readonly List<ChipItem> _activeChips = new();
 
     private bool IsResearchFilter(FilterItemDescriptor item)
-    => item.Key.StartsWith("researchType_", StringComparison.OrdinalIgnoreCase);
+        => item.Key.StartsWith("researchType_", StringComparison.OrdinalIgnoreCase);
+
+    // ✅ estos ocuparán 2/3 del row en lg
+    private bool IsWideFilter(string? type)
+    {
+        var t = (type ?? "").ToLowerInvariant();
+        return t == "daterange" || t == "numberrange" || t == "datefieldrange";
+    }
 
     private bool IsSameResearchGroup(FilterItemDescriptor a, FilterItemDescriptor b)
-    => IsResearchFilter(a)
-       && IsResearchFilter(b)
-       && string.Equals(a.GroupKey, b.GroupKey, StringComparison.Ordinal);
-
-
+        => IsResearchFilter(a)
+           && IsResearchFilter(b)
+           && string.Equals(a.GroupKey, b.GroupKey, StringComparison.Ordinal);
 
     protected override void OnInitialized()
     {
         if (Config is null) return;
+
         foreach (var it in Config.Items)
         {
-            if (!_values.ContainsKey(it.Key)) _values[it.Key] = it.DefaultValue;
+            if (!_values.ContainsKey(it.Key))
+                _values[it.Key] = it.DefaultValue;
+
+            if (string.Equals(it.Type, "datefieldrange", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!_values.ContainsKey(FieldKey(it.Key)))
+                    _values[FieldKey(it.Key)] = null;
+
+                if (!_values.ContainsKey(RangeKey(it.Key)))
+                    _values[RangeKey(it.Key)] = new string?[2];
+            }
         }
+
         BuildChips();
     }
 
@@ -186,13 +221,11 @@
     {
         _search = s ?? string.Empty;
 
-        // emite al padre inmediatamente y SIN tocar los demás filtros
         if (OnSearchInstant.HasDelegate)
             await OnSearchInstant.InvokeAsync(_search);
     }
 
     private void ToggleExpanded() => _expanded = !_expanded;
-
     private void CloseFilters() => _expanded = false;
 
     private async Task Apply()
@@ -200,18 +233,14 @@
         try
         {
             var query = BuildQuery();
-
-            // Aplicar filtros PRIMERO
             await OnApply.InvokeAsync(query);
-
-            // Cerrar el dropdown DESPUÉS de aplicar filtros exitosamente
-            _expanded = false;
-            StateHasChanged();
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error applying filters: {ex.Message}");
-            // En caso de error, aún cerrar el dropdown
+        }
+        finally
+        {
             _expanded = false;
             StateHasChanged();
         }
@@ -222,13 +251,21 @@
         _search = string.Empty;
         _values.Clear();
         _activeChips.Clear();
+
         if (Config is not null)
         {
-            foreach (var it in Config.Items) _values[it.Key] = it.DefaultValue;
+            foreach (var it in Config.Items)
+            {
+                _values[it.Key] = it.DefaultValue;
+
+                if (string.Equals(it.Type, "datefieldrange", StringComparison.OrdinalIgnoreCase))
+                {
+                    _values[FieldKey(it.Key)] = null;
+                    _values[RangeKey(it.Key)] = new string?[2];
+                }
+            }
         }
 
-
-        // notifica que el search queda vacío para que el padre refresque al instante
         if (OnSearchInstant.HasDelegate)
             await OnSearchInstant.InvokeAsync(_search);
 
@@ -238,12 +275,24 @@
 
     private void RemoveChip(string key)
     {
-        // 👇 Chips combinados de categorías de investigación, por grupo
+        if (Config?.Items is not null)
+        {
+            var df = Config.Items.FirstOrDefault(x => x.Key == key);
+            if (df is not null && string.Equals(df.Type, "datefieldrange", StringComparison.OrdinalIgnoreCase))
+            {
+                _values[FieldKey(df.Key)] = null;
+                _values[RangeKey(df.Key)] = new string?[2];
+                BuildChips();
+                StateHasChanged();
+                return;
+            }
+        }
+
         const string researchPrefix = "researchCategories_";
 
         if (key.StartsWith(researchPrefix, StringComparison.Ordinal))
         {
-            var groupKey = key[researchPrefix.Length..]; // ej: "1", "2", "campos"
+            var groupKey = key[researchPrefix.Length..];
 
             if (Config?.Items is not null)
             {
@@ -265,18 +314,8 @@
         StateHasChanged();
     }
 
-
-
-    // Helper methods for complex expressions
-    private string GetSearchPlaceholder()
-    {
-        return Config?.SearchPlaceholder ?? "Search…";
-    }
-
-    private int GetDebounceMs()
-    {
-        return Config?.DebounceMs ?? 100;
-    }
+    private string GetSearchPlaceholder() => Config?.SearchPlaceholder ?? "Search…";
+    private int GetDebounceMs() => Config?.DebounceMs ?? 100;
 
     private RenderFragment RenderFilterControl(FilterItemDescriptor item) => builder =>
     {
@@ -290,18 +329,13 @@
                 {
                     var options = item.Options ?? new List<OptionItem>();
 
-                    // 🔹 Si es un filtro de categorías de investigación, filtramos según el padre
                     if (IsResearchFilter(item))
-                    {
                         options = GetHierarchicalOptions(item, options);
-                    }
 
-                    // valor actual guardado en _values (string)
                     var currentValue = current as string ?? string.Empty;
                     var selectedOption = options.FirstOrDefault(o => o.Value == currentValue);
 
-                    var selectType = typeof(SelectInput<OptionItem>);
-                    builder.OpenComponent(seq++, selectType);
+                    builder.OpenComponent(seq++, typeof(SelectInput<OptionItem>));
                     builder.AddAttribute(seq++, "Items", options);
                     builder.AddAttribute(seq++, "Value", selectedOption);
                     builder.AddAttribute(seq++, "ValueChanged",
@@ -309,11 +343,8 @@
                         {
                             _values[item.Key] = opt?.Value;
 
-                            // 🔹 lógica jerárquica (padres + limpiar hijos)
                             if (IsResearchFilter(item))
-                            {
                                 HandleResearchSelectionChange(item, opt);
-                            }
 
                             BuildChips();
                         }));
@@ -326,164 +357,234 @@
                     break;
                 }
 
-
-
             case "multiselect":
-                builder.OpenElement(seq++, "select");
-                builder.AddAttribute(seq++, "multiple", true);
-                builder.AddAttribute(seq++, "class", "w-full px-3 py-2 rounded-lg border border-border bg-background");
-                var selected = current as List<string> ?? new();
-                builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
                 {
-                    var v = e.Value?.ToString();
-                    if (!string.IsNullOrWhiteSpace(v))
+                    builder.OpenElement(seq++, "select");
+                    builder.AddAttribute(seq++, "multiple", true);
+                    builder.AddAttribute(seq++, "class", "w-full px-3 py-2 rounded-lg border border-border bg-background");
+                    var selected = current as List<string> ?? new();
+                    builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
                     {
-                        if (!selected.Contains(v)) selected.Add(v);
-                        _values[item.Key] = selected;
-                        BuildChips();
-                    }
-                }));
-                if (item.Options is not null)
-                {
-                    foreach (var opt in item.Options)
+                        var v = e.Value?.ToString();
+                        if (!string.IsNullOrWhiteSpace(v))
+                        {
+                            if (!selected.Contains(v)) selected.Add(v);
+                            _values[item.Key] = selected;
+                            BuildChips();
+                        }
+                    }));
+                    if (item.Options is not null)
                     {
-                        builder.OpenElement(seq++, "option");
-                        builder.AddAttribute(seq++, "value", opt.Value);
-                        if (selected.Contains(opt.Value)) builder.AddAttribute(seq++, "selected", true);
-                        builder.AddContent(seq++, opt.Label);
-                        builder.CloseElement();
+                        foreach (var opt in item.Options)
+                        {
+                            builder.OpenElement(seq++, "option");
+                            builder.AddAttribute(seq++, "value", opt.Value);
+                            if (selected.Contains(opt.Value)) builder.AddAttribute(seq++, "selected", true);
+                            builder.AddContent(seq++, opt.Label);
+                            builder.CloseElement();
+                        }
                     }
+                    builder.CloseElement();
+                    break;
                 }
-                builder.CloseElement();
-                break;
 
             case "daterange":
                 {
-                    // valor actual: string?[] { from, to } como ya lo usabas
-                    string?[] range;
-                    if (current is string?[] arr && arr.Length == 2)
-                        range = arr;
-                    else
-                        range = new string?[2];
+                    var range = GetOrCreateRange(item.Key);
+                    DateOnly? fromDate = ParseDate(range[0]);
+                    DateOnly? toDate = ParseDate(range[1]);
 
-                    var fromStr = range[0];
-                    var toStr = range[1];
+                    builder.AddContent(seq++, WrapRow(row =>
+                    {
+                        row.OpenComponent(0, typeof(DateInput));
+                        row.AddAttribute(1, "Label", (string?)null);
+                        row.AddAttribute(2, "Value", fromDate);
+                        row.AddAttribute(3, "ValueChanged",
+                            EventCallback.Factory.Create<DateOnly?>(this, async (DateOnly? newVal) =>
+                            {
+                                range[0] = newVal?.ToString("yyyy-MM-dd");
+                                _values[item.Key] = range;
+                                BuildChips();
+                                await InvokeAsync(StateHasChanged);
+                            }));
+                        row.AddAttribute(4, "Disabled", false);
+                        row.AddAttribute(5, "Required", false);
+                        row.CloseComponent();
 
-                    DateOnly? fromDate = ParseDate(fromStr);
-                    DateOnly? toDate = ParseDate(toStr);
-
-                    builder.OpenElement(seq++, "div");
-                    builder.AddAttribute(seq++, "class", "flex items-center gap-2");
-
-                    // FROM
-                    builder.OpenComponent(seq++, typeof(DateInput));
-                    builder.AddAttribute(seq++, "Label", (string?)null); // ya tienes label fuera
-                    builder.AddAttribute(seq++, "Value", fromDate);
-                    builder.AddAttribute(seq++, "ValueChanged",
-                        EventCallback.Factory.Create<DateOnly?>(this, async (DateOnly? newVal) =>
-                        {
-                            range[0] = newVal?.ToString("yyyy-MM-dd");
-                            _values[item.Key] = range;
-                            BuildChips();
-                            await InvokeAsync(StateHasChanged);
-                        }));
-                    builder.AddAttribute(seq++, "Disabled", false);
-                    builder.AddAttribute(seq++, "Required", false);
-                    builder.CloseComponent();
-
-                    // TO
-                    builder.OpenComponent(seq++, typeof(DateInput));
-                    builder.AddAttribute(seq++, "Label", (string?)null);
-                    builder.AddAttribute(seq++, "Value", toDate);
-                    builder.AddAttribute(seq++, "ValueChanged",
-                        EventCallback.Factory.Create<DateOnly?>(this, async (DateOnly? newVal) =>
-                        {
-                            range[1] = newVal?.ToString("yyyy-MM-dd");
-                            _values[item.Key] = range;
-                            BuildChips();
-                            await InvokeAsync(StateHasChanged);
-                        }));
-                    builder.AddAttribute(seq++, "Disabled", false);
-                    builder.AddAttribute(seq++, "Required", false);
-                    builder.CloseComponent();
-
-                    builder.CloseElement(); // div
+                        row.OpenComponent(10, typeof(DateInput));
+                        row.AddAttribute(11, "Label", (string?)null);
+                        row.AddAttribute(12, "Value", toDate);
+                        row.AddAttribute(13, "ValueChanged",
+                            EventCallback.Factory.Create<DateOnly?>(this, async (DateOnly? newVal) =>
+                            {
+                                range[1] = newVal?.ToString("yyyy-MM-dd");
+                                _values[item.Key] = range;
+                                BuildChips();
+                                await InvokeAsync(StateHasChanged);
+                            }));
+                        row.AddAttribute(14, "Disabled", false);
+                        row.AddAttribute(15, "Required", false);
+                        row.CloseComponent();
+                    }));
                     break;
                 }
 
             case "numberrange":
                 {
-                    // Mantener el mismo modelo interno: string?[] { min, max }
-                    string?[] range;
-                    if (current is string?[] arr && arr.Length == 2)
-                        range = arr;
-                    else
-                        range = new string?[2];
-
+                    var range = GetOrCreateRange(item.Key);
                     var minStr = range[0] ?? string.Empty;
                     var maxStr = range[1] ?? string.Empty;
 
-                    builder.OpenElement(seq++, "div");
-                    builder.AddAttribute(seq++, "class", "flex items-center gap-2");
+                    builder.AddContent(seq++, WrapRow(row =>
+                    {
+                        row.OpenComponent(0, typeof(TextInput<string>));
+                        row.AddAttribute(1, "Label", (string?)null);
+                        row.AddAttribute(2, "Value", minStr);
+                        row.AddAttribute(3, "ValueChanged",
+                            EventCallback.Factory.Create<string?>(this, async (string? newVal) =>
+                            {
+                                range[0] = newVal;
+                                _values[item.Key] = range;
+                                BuildChips();
+                                await InvokeAsync(StateHasChanged);
+                            }));
+                        row.AddAttribute(4, "InputType", "number");
+                        row.AddAttribute(5, "Placeholder", "Mín");
+                        row.AddAttribute(6, "Disabled", false);
+                        row.AddAttribute(7, "Required", false);
+                        row.CloseComponent();
 
-                    // MIN
-                    builder.OpenComponent(seq++, typeof(TextInput<string>));
-                    builder.AddAttribute(seq++, "Label", (string?)null);
-                    builder.AddAttribute(seq++, "Value", minStr);
-                    builder.AddAttribute(seq++, "ValueChanged",
-                        EventCallback.Factory.Create<string?>(this, async (string? newVal) =>
-                        {
-                            range[0] = newVal;
-                            _values[item.Key] = range;
-                            BuildChips();
-                            await InvokeAsync(StateHasChanged);
-                        }));
-                    builder.AddAttribute(seq++, "InputType", "number");
-                    builder.AddAttribute(seq++, "Placeholder", "Mín");
-                    builder.AddAttribute(seq++, "Disabled", false);
-                    builder.AddAttribute(seq++, "Required", false);
-                    builder.CloseComponent();
-
-                    // MAX
-                    builder.OpenComponent(seq++, typeof(TextInput<string>));
-                    builder.AddAttribute(seq++, "Label", (string?)null);
-                    builder.AddAttribute(seq++, "Value", maxStr);
-                    builder.AddAttribute(seq++, "ValueChanged",
-                        EventCallback.Factory.Create<string?>(this, async (string? newVal) =>
-                        {
-                            range[1] = newVal;
-                            _values[item.Key] = range;
-                            BuildChips();
-                            await InvokeAsync(StateHasChanged);
-                        }));
-                    builder.AddAttribute(seq++, "InputType", "number");
-                    builder.AddAttribute(seq++, "Placeholder", "Máx");
-                    builder.AddAttribute(seq++, "Disabled", false);
-                    builder.AddAttribute(seq++, "Required", false);
-                    builder.CloseComponent();
-
-                    builder.CloseElement(); // div
+                        row.OpenComponent(10, typeof(TextInput<string>));
+                        row.AddAttribute(11, "Label", (string?)null);
+                        row.AddAttribute(12, "Value", maxStr);
+                        row.AddAttribute(13, "ValueChanged",
+                            EventCallback.Factory.Create<string?>(this, async (string? newVal) =>
+                            {
+                                range[1] = newVal;
+                                _values[item.Key] = range;
+                                BuildChips();
+                                await InvokeAsync(StateHasChanged);
+                            }));
+                        row.AddAttribute(14, "InputType", "number");
+                        row.AddAttribute(15, "Placeholder", "Máx");
+                        row.AddAttribute(16, "Disabled", false);
+                        row.AddAttribute(17, "Required", false);
+                        row.CloseComponent();
+                    }));
                     break;
                 }
 
             case "boolean":
-                var isChecked = false;
-                if (current is bool b) isChecked = b;
-                builder.OpenElement(seq++, "label");
-                builder.AddAttribute(seq++, "class", "inline-flex items-center gap-2 select-none");
-                builder.OpenElement(seq++, "input");
-                builder.AddAttribute(seq++, "type", "checkbox");
-                builder.AddAttribute(seq++, "class", "w-4 h-4 rounded border border-border");
-                builder.AddAttribute(seq++, "checked", isChecked);
-                builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
                 {
-                    _values[item.Key] = e.Value?.ToString()?.ToLowerInvariant() == "true";
-                    BuildChips();
-                }));
-                builder.CloseElement();
-                builder.AddContent(seq++, item.Placeholder ?? "Enabled");
-                builder.CloseElement();
-                break;
+                    var isChecked = current is bool b && b;
+
+                    builder.OpenElement(seq++, "label");
+                    builder.AddAttribute(seq++, "class", "inline-flex items-center gap-2 select-none");
+
+                    builder.OpenElement(seq++, "input");
+                    builder.AddAttribute(seq++, "type", "checkbox");
+                    builder.AddAttribute(seq++, "class", "w-4 h-4 rounded border border-border");
+                    builder.AddAttribute(seq++, "checked", isChecked);
+                    builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
+                    {
+                        _values[item.Key] = e.Value?.ToString()?.ToLowerInvariant() == "true";
+                        BuildChips();
+                    }));
+                    builder.CloseElement();
+
+                    builder.AddContent(seq++, item.Placeholder ?? "Enabled");
+                    builder.CloseElement();
+                    break;
+                }
+
+            case "datefieldrange":
+                {
+                    var fieldK = FieldKey(item.Key);
+                    var rangeK = RangeKey(item.Key);
+
+                    var options = item.Options ?? new List<OptionItem>();
+
+                    _values.TryGetValue(fieldK, out var fieldObj);
+                    var selectedField = fieldObj as string;
+
+                    var range = GetOrCreateRange(rangeK);
+                    DateOnly? fromDate = ParseDate(range[0]);
+                    DateOnly? toDate = ParseDate(range[1]);
+
+                    var selectedOption = options.FirstOrDefault(o => o.Value == (selectedField ?? string.Empty));
+
+                    builder.OpenElement(seq++, "div");
+                    builder.AddAttribute(seq++, "class", "grid grid-cols-1 lg:grid-cols-3 gap-2");
+
+                    // =========================
+                    // 1) SELECT (1/3)
+                    // =========================
+                    builder.OpenElement(seq++, "div");
+                    builder.AddAttribute(seq++, "class", "lg:col-span-1");
+
+                    builder.OpenComponent(seq++, typeof(SelectInput<OptionItem>));
+                    builder.AddAttribute(seq++, "Items", options);
+                    builder.AddAttribute(seq++, "Value", selectedOption);
+                    builder.AddAttribute(seq++, "ValueChanged",
+                        EventCallback.Factory.Create<OptionItem?>(this, (OptionItem? opt) =>
+                        {
+                            _values[fieldK] = opt?.Value;
+                            BuildChips();
+                        }));
+                    builder.AddAttribute(seq++, "GetText", (Func<OptionItem, string>)(o => o.Label ?? o.Value ?? string.Empty));
+                    builder.AddAttribute(seq++, "GetKey", (Func<OptionItem, string>)(o => o.Value ?? string.Empty));
+                    builder.AddAttribute(seq++, "Placeholder", item.Placeholder ?? "Filtrar por…");
+                    builder.AddAttribute(seq++, "AllowClear", true);
+                    builder.AddAttribute(seq++, "Size", SelectSize.Sm);
+                    builder.CloseComponent();
+
+                    builder.CloseElement(); // cierre SELECT wrapper
+
+                    var disabled = string.IsNullOrWhiteSpace(selectedField);
+
+                    // =========================
+                    // 2) RANGE (2/3)
+                    // =========================
+                    builder.OpenElement(seq++, "div");
+                    builder.AddAttribute(seq++, "class", "lg:col-span-2");
+
+                    builder.AddContent(seq++, WrapRow(row =>
+                    {
+                        row.OpenComponent(0, typeof(DateInput));
+                        row.AddAttribute(1, "Label", (string?)null);
+                        row.AddAttribute(2, "Value", fromDate);
+                        row.AddAttribute(3, "ValueChanged",
+                            EventCallback.Factory.Create<DateOnly?>(this, async (DateOnly? newVal) =>
+                            {
+                                range[0] = newVal?.ToString("yyyy-MM-dd");
+                                _values[rangeK] = range;
+                                BuildChips();
+                                await InvokeAsync(StateHasChanged);
+                            }));
+                        row.AddAttribute(4, "Disabled", disabled);
+                        row.AddAttribute(5, "Required", false);
+                        row.CloseComponent();
+
+                        row.OpenComponent(10, typeof(DateInput));
+                        row.AddAttribute(11, "Label", (string?)null);
+                        row.AddAttribute(12, "Value", toDate);
+                        row.AddAttribute(13, "ValueChanged",
+                            EventCallback.Factory.Create<DateOnly?>(this, async (DateOnly? newVal) =>
+                            {
+                                range[1] = newVal?.ToString("yyyy-MM-dd");
+                                _values[rangeK] = range;
+                                BuildChips();
+                                await InvokeAsync(StateHasChanged);
+                            }));
+                        row.AddAttribute(14, "Disabled", disabled);
+                        row.AddAttribute(15, "Required", false);
+                        row.CloseComponent();
+                    }));
+
+                    builder.CloseElement(); // cierre RANGE wrapper
+                    builder.CloseElement(); // cierre GRID container
+                    break;
+                }
 
             default:
                 builder.OpenElement(seq++, "div");
@@ -500,14 +601,6 @@
         return DateOnly.TryParse(s, out var d) ? d : null;
     }
 
-    private static string? GetRangePart(object? val, int index)
-    {
-        if (val is string s) return s;
-        if (val is string?[] arr && arr.Length > index) return arr[index];
-        if (val is List<string?> list && list.Count > index) return list[index];
-        return null;
-    }
-
     private FilterQuery BuildQuery()
     {
         var q = new FilterQuery
@@ -521,13 +614,33 @@
 
         foreach (var it in Config.Items)
         {
+            var type = (it.Type ?? "").ToLowerInvariant();
+
+            if (type == "datefieldrange")
+            {
+                var selectedField = _values.TryGetValue(FieldKey(it.Key), out var fObj) ? fObj as string : null;
+                if (string.IsNullOrWhiteSpace(selectedField)) continue;
+
+                var range = GetOrCreateRange(RangeKey(it.Key));
+                if (!RangeHasAny(range)) continue;
+
+                q.Filters.Add(new FilterRule
+                {
+                    Field = selectedField,
+                    Operator = it.Operators?.FirstOrDefault() ?? "between",
+                    Value = range
+                });
+
+                continue;
+            }
+
             if (string.IsNullOrWhiteSpace(it.EntityField)) continue;
             if (!_values.TryGetValue(it.Key, out var val) || val is null) continue;
 
             var op = it.Operators?.FirstOrDefault() ?? InferDefaultOperator(it.Type);
             var rule = new FilterRule { Field = it.EntityField!, Operator = op };
 
-            switch ((it.Type ?? "").ToLowerInvariant())
+            switch (type)
             {
                 case "select":
                     rule.Value = val?.ToString();
@@ -537,8 +650,8 @@
                     break;
                 case "daterange":
                 case "numberrange":
-                    if (val is string?[] arr && (arr[0] is not null || arr[1] is not null)) rule.Value = arr;
-                    else if (val is List<string?> list && list.Count == 2) rule.Value = list.ToArray();
+                    if (val is string?[] arr && RangeHasAny(arr)) rule.Value = arr;
+                    else if (val is List<string?> list && list.Count == 2 && RangeHasAny(list.ToArray())) rule.Value = list.ToArray();
                     else continue;
                     break;
                 case "boolean":
@@ -548,9 +661,10 @@
                     rule.Value = val;
                     break;
             }
+
             q.Filters.Add(rule);
         }
-        BuildChips();
+
         return q;
     }
 
@@ -569,10 +683,12 @@
         _activeChips.Clear();
         if (Config?.Items is null) return;
 
-        // 1) Chips normales (todo menos ResearchCategoryId)
         foreach (var it in Config.Items)
         {
-            if (it.EntityField == "ResearchCategoryId") // 👈 los saltamos aquí
+            if (string.Equals(it.Type, "datefieldrange", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (it.EntityField == "ResearchCategoryId")
                 continue;
 
             if (!_values.TryGetValue(it.Key, out var val) || val is null)
@@ -590,7 +706,30 @@
             }
         }
 
-        // 2) Chips combinados por GRUPO para ResearchCategoryId
+        foreach (var it in Config.Items)
+        {
+            if (!string.Equals(it.Type, "datefieldrange", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var selectedField = _values.TryGetValue(FieldKey(it.Key), out var fObj) ? fObj as string : null;
+            if (string.IsNullOrWhiteSpace(selectedField))
+                continue;
+
+            var range = GetOrCreateRange(RangeKey(it.Key));
+            if (!RangeHasAny(range))
+                continue;
+
+            var displayRange = string.Join(" – ", range.Where(x => !string.IsNullOrWhiteSpace(x)));
+            var fieldLabel = it.Options?.FirstOrDefault(o => o.Value == selectedField)?.Label ?? selectedField;
+
+            _activeChips.Add(new ChipItem
+            {
+                Key = it.Key,
+                Label = it.Label,
+                Value = $"{fieldLabel}: {displayRange}"
+            });
+        }
+
         var researchItems = Config.Items
             .Where(i => i.EntityField == "ResearchCategoryId")
             .ToList();
@@ -598,9 +737,7 @@
         if (researchItems.Count == 0)
             return;
 
-        // Agrupamos por GroupKey (mismo grupo lógico: Áreas, Campos, etc.)
-        var grouped = researchItems
-            .GroupBy(i => i.GroupKey ?? "default");
+        var grouped = researchItems.GroupBy(i => i.GroupKey ?? "default");
 
         foreach (var group in grouped)
         {
@@ -619,9 +756,7 @@
                 if (string.IsNullOrWhiteSpace(valueText))
                     continue;
 
-                // ej: "Dominio: Fortalecimiento social"
-                var typeLabel = it.Label ?? string.Empty;
-                parts.Add($"{typeLabel}: {valueText}");
+                parts.Add($"{it.Label}: {valueText}");
             }
 
             if (parts.Count == 0)
@@ -629,28 +764,21 @@
 
             _activeChips.Add(new ChipItem
             {
-                // 👇 clave incluye el grupo, para poder borrarlo por separado
                 Key = $"researchCategories_{groupKey}",
-                Label = groupLabel,                             // ej: "ÁREAS DE INVESTIGACIÓN"
-                Value = string.Join(" · ", parts)               // ej: "Dominio: X · Línea: Y"
+                Label = groupLabel,
+                Value = string.Join(" · ", parts)
             });
         }
     }
 
-
     private string? GetDisplayValue(object val, FilterItemDescriptor item)
     {
-        // SELECT simple: mapear Value → Label
         if ((item.Type ?? "").ToLowerInvariant() == "select" && val is string sVal)
         {
-            var label = item.Options?
-                .FirstOrDefault(o => o.Value == sVal)?
-                .Label;
-
+            var label = item.Options?.FirstOrDefault(o => o.Value == sVal)?.Label;
             return !string.IsNullOrWhiteSpace(label) ? label : sVal;
         }
 
-        // Lo demás igual que ya tenías
         return val switch
         {
             bool b => b ? (item.TrueLabel ?? "Yes") : (item.FalseLabel ?? "No"),
@@ -661,69 +789,48 @@
         };
     }
 
-
     private IEnumerable<string> ResolveLabels(FilterItemDescriptor it, List<string> values)
     {
         var opts = it.Options ?? new();
         foreach (var v in values)
-        {
-            var label = opts.FirstOrDefault(o => o.Value == v)?.Label ?? v;
-            yield return label;
-        }
+            yield return opts.FirstOrDefault(o => o.Value == v)?.Label ?? v;
     }
+
+    // === Tus helpers jerárquicos (igual) ===
     private void HandleResearchSelectionChange(FilterItemDescriptor item, OptionItem? selected)
     {
-        if (Config?.Items == null)
-            return;
+        if (Config?.Items == null) return;
 
         var index = Config.Items.FindIndex(i => i.Key == item.Key);
-        if (index < 0)
-            return;
+        if (index < 0) return;
 
-        // ============================
-        // 1) Propagar selección hacia ARRIBA (padres, abuelos, etc.)
-        // ============================
-
-        // Empezamos con el padre inmediato del ítem seleccionado
         string? currentParentVal = selected?.ParentValue;
 
         for (int i = index - 1; i >= 0 && !string.IsNullOrWhiteSpace(currentParentVal); i--)
         {
             var parentDescriptor = Config.Items[i];
 
-            // Solo filtros de investigación del MISMO grupo
             if (!IsSameResearchGroup(parentDescriptor, item))
             {
-                // Si ya llegamos a otro grupo, salimos
-                if (IsResearchFilter(parentDescriptor))
-                    break;
-
+                if (IsResearchFilter(parentDescriptor)) break;
                 continue;
             }
 
-            // Asignamos el valor del padre actual (ej: nivel 2)
             _values[parentDescriptor.Key] = currentParentVal;
 
-            // Para subir otro nivel (abuelo), buscamos en las opciones del padre
             var parentOptions = parentDescriptor.Options ?? new List<OptionItem>();
             var parentOption = parentOptions.FirstOrDefault(o => o.Value == currentParentVal);
 
-            // El ParentValue de esa opción es el ID del siguiente ancestro (ej: nivel 1)
             currentParentVal = parentOption?.ParentValue;
         }
 
-        // ============================
-        // 2) Limpiar niveles HIJOS (más profundos) del mismo grupo
-        // ============================
         for (int i = index + 1; i < Config.Items.Count; i++)
         {
             var childDescriptor = Config.Items[i];
 
             if (!IsSameResearchGroup(childDescriptor, item))
             {
-                if (IsResearchFilter(childDescriptor))
-                    break; // ya entramos en otro grupo → dejamos de limpiar
-
+                if (IsResearchFilter(childDescriptor)) break;
                 continue;
             }
 
@@ -733,12 +840,10 @@
 
     private List<OptionItem> GetHierarchicalOptions(FilterItemDescriptor item, List<OptionItem> baseOptions)
     {
-        if (Config?.Items == null)
-            return baseOptions;
+        if (Config?.Items == null) return baseOptions;
 
         var index = Config.Items.FindIndex(i => i.Key == item.Key);
-        if (index <= 0)
-            return baseOptions;
+        if (index <= 0) return baseOptions;
 
         for (int i = index - 1; i >= 0; i--)
         {
@@ -747,7 +852,6 @@
             if (!IsResearchFilter(parentDescriptor))
                 continue;
 
-            // si es de otro grupo, ya no seguimos buscando padres
             if (!IsSameResearchGroup(parentDescriptor, item))
                 break;
 
@@ -755,17 +859,12 @@
                 parentValObj is string parentVal &&
                 !string.IsNullOrWhiteSpace(parentVal))
             {
-                return baseOptions
-                    .Where(o => o.ParentValue == parentVal)
-                    .ToList();
+                return baseOptions.Where(o => o.ParentValue == parentVal).ToList();
             }
 
-            // encontramos el padre pero sin valor → mostramos todo
             break;
         }
 
         return baseOptions;
     }
-
-
 }
