@@ -4,25 +4,35 @@
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.FilterBar
+@using tesisproject.shared.DTOs.Export
 @using tesisproject.shared.DTOs.Project.Response
 @using tesisproject.shared.DTOs.Filters
 
 @inject IProjectClientService ProjectService
 @inject IProjectFiltersClientService ProjectFiltersService
 @inject NavigationManager Nav
+@inject IExportTemplateClientService ExportTemplates
+@inject IJSRuntime JS
+@inject IToastService Toast
 
 <div class="space-y-6 p-4">
     <!-- Filtros + Botón Crear -->
     <section class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div class="flex-1">
-            <!-- Filter Bar - Now as floating dropdown -->
             <FilterBar Config="@_filterConfig"
                        OnApply="@HandleApplyFilters"
                        OnClear="@HandleClearFilters"
                        OnSearchInstant="@HandleSearchInstant" />
         </div>
 
-        <div class="shrink-0">
+        <div class="shrink-0 flex flex-wrap items-center gap-2">
+            <ActionButton Text="Exportar matriz"
+                          Execute="@OpenExportPanelAsync"
+                          Intent="ButtonIntent.Accept"
+                          Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Sm"
+                          Disabled="@isLoading" />
+
             <ActionButton Text="Crear Nuevo Proyecto"
                           Execute="CreateNewProject"
                           Intent="ButtonIntent.Accept"
@@ -32,6 +42,87 @@
                           Class="px-4 py-2 rounded-md" />
         </div>
     </section>
+    @if (showExportPanel)
+{
+    <div class="mt-3 p-3 border border-border rounded-lg bg-background flex flex-col gap-3">
+        <div class="flex flex-col md:flex-row md:items-start gap-3">
+            <div class="flex-1">
+                <label class="block text-xs font-semibold text-muted mb-1">
+                    Seleccione una plantilla de exportación
+                </label>
+                @if (isExportTemplatesLoading)
+                {
+                    <div class="text-xs text-muted">Cargando plantillas...</div>
+                }
+                else if (exportTemplates is null || exportTemplates.Count == 0)
+                {
+                    <div class="text-xs text-muted">
+                        No hay plantillas de exportación configuradas. Cree una en la sección de Matriz &gt; Exportar.
+                    </div>
+                }
+                else
+                {
+                        <select class="w-full input-text text-sm"
+                                value="@selectedTemplateId"
+                                @onchange="OnTemplateChanged">
+                            <option value="">-- Seleccione una plantilla --</option>
+                            @foreach (var t in exportTemplates)
+                            {
+                                <option value="@t.Id">
+                                    @($"{t.Name} ({t.Key})")
+                                </option>
+                            }
+                        </select>
+                }
+            </div>
+
+            <div class="flex items-center gap-2">
+                <ActionButton Text="Cancelar"
+                              Execute="@CloseExportPanel"
+                              Intent="ButtonIntent.Accept"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Xs"
+                              Disabled="@isExporting" />
+
+                <ActionButton Text="Exportar"
+                              Execute="@ExportWithSelectedTemplateAsync"
+                              Intent="ButtonIntent.Add"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Xs"
+                              Disabled="@(isExporting 
+                                          || exportTemplates == null 
+                                          || exportTemplates.Count == 0
+                                          || selectedTemplateId is null
+                                          || selectedFieldKeys.Count == 0)" />
+            </div>
+        </div>
+
+        @* 👇 Bloque nuevo: selección de características *@
+        @if (availableColumns?.Count > 0)
+        {
+            <div>
+                <label class="block text-xs font-semibold text-muted mb-1">
+                    Seleccione las características a incluir en la exportación
+                </label>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 max-h-64 overflow-y-auto border border-border rounded-md p-2">
+                    @foreach (var col in availableColumns.OrderBy(c => c.OrderIndex))
+                    {
+                        <label class="inline-flex items-center gap-2 text-xs">
+                            <input type="checkbox"
+                                   value="@col.FieldKey"
+                                   checked="@selectedFieldKeys.Contains(col.FieldKey)"
+                                   @onchange="@((ChangeEventArgs e) => ToggleColumn(col.FieldKey, e))" />
+                            <span>@col.Header</span>
+                        </label>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+
 
     <!-- Projects Container - Simple layout, with scroll enabled -->
     <Container TItem="ProjectListResponseDTO"
@@ -65,6 +156,124 @@
 
 
 @code {
+
+    // =========================
+    //    EXPORT CON PLANTILLAS
+    // =========================
+    private bool showExportPanel = false;
+    private bool isExportTemplatesLoading = false;
+    private bool isExporting = false;
+
+    private async Task OnTemplateChanged(ChangeEventArgs e)
+    {
+        availableColumns.Clear();
+        selectedFieldKeys.Clear();
+
+        if (e?.Value is null || string.IsNullOrWhiteSpace(e.Value.ToString()))
+        {
+            selectedTemplateId = null;
+            return;
+        }
+
+        if (!int.TryParse(e.Value.ToString(), out var id))
+        {
+            selectedTemplateId = null;
+            return;
+        }
+
+        selectedTemplateId = id;
+
+        try
+        {
+            var tmplResp = await ExportTemplates.GetTemplateAsync(selectedTemplateId.Value);
+
+            if (!tmplResp.Success || tmplResp.Response is null)
+            {
+                Toast.ShowError(tmplResp.Error ?? "No se pudo cargar el detalle de la plantilla.");
+                return;
+            }
+
+            var detail = tmplResp.Response;
+
+            if (detail.Columns is null || detail.Columns.Count == 0)
+            {
+                Toast.ShowWarning("La plantilla seleccionada no tiene columnas configuradas.");
+                return;
+            }
+
+            availableColumns = detail.Columns
+                .OrderBy(c => c.OrderIndex)
+                .Select(c =>
+                {
+                    // Este es el identificador REAL que se manda al backend
+                    var fieldKey = string.IsNullOrWhiteSpace(c.FieldKey)
+                        ? (c.TargetHeader ?? string.Empty)
+                        : c.FieldKey;
+
+                    // 👇 Nombre amigable que quieres ver en los checkboxes
+                    // 1) FieldDisplayName (viene de DisplayName en BD)
+                    // 2) TargetHeader (si el usuario la sobreescribió en la plantilla)
+                    // 3) FieldKey (fallback)
+                    var displayName =
+                        !string.IsNullOrWhiteSpace(c.FieldDisplayName)
+                            ? c.FieldDisplayName
+                            : (!string.IsNullOrWhiteSpace(c.TargetHeader)
+                                ? c.TargetHeader
+                                : (c.FieldKey ?? string.Empty));
+
+                    return new ColumnOption
+                    {
+                        FieldKey = fieldKey,
+                        Header = displayName,   // 👈 ESTO es lo que se muestra en el checkbox
+                        OrderIndex = c.OrderIndex
+                    };
+                })
+                .ToList();
+
+
+            // marcar todas por defecto
+            selectedFieldKeys = availableColumns
+                .Select(c => c.FieldKey)
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .ToHashSet();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error al cargar columnas de la plantilla: " + ex.Message);
+        }
+    }
+
+
+    private void ToggleColumn(string fieldKey, ChangeEventArgs e)
+    {
+        // Blazor suele mandar "true"/"false" como string
+        var isChecked =
+            e.Value is bool b && b ||
+            string.Equals(e.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+
+        if (isChecked)
+            selectedFieldKeys.Add(fieldKey);
+        else
+            selectedFieldKeys.Remove(fieldKey);
+    }
+
+
+    // 🔹 ViewModel interno para las columnas seleccionables
+    private class ColumnOption
+    {
+        public string FieldKey { get; set; } = string.Empty;
+        public string Header { get; set; } = string.Empty;
+        public int OrderIndex { get; set; }
+    }
+
+
+
+    // Todas las características posibles de la plantilla elegida
+    private List<ColumnOption> availableColumns = new();
+
+    // Conjunto de FieldKey seleccionados por el usuario
+    private HashSet<string> selectedFieldKeys = new();
+
     // Data
     private List<ProjectListResponseDTO>? allProjects;
     private List<ProjectListResponseDTO>? filteredProjects;
@@ -72,6 +281,160 @@
     private string? errorMessage;
     private FilterQuery? currentFilters;
     private string? currentSearch;
+
+    // =========================
+    //   EXPORT CON PLANTILLAS
+    // =========================
+
+    private List<ExportTemplateListItemDTO>? exportTemplates;
+    private int? selectedTemplateId;
+
+    private async Task ExportWithSelectedTemplateAsync()
+    {
+        if (selectedTemplateId is null || selectedTemplateId.Value <= 0)
+        {
+            Toast.ShowWarning("Por favor seleccione una plantilla de exportación.");
+            return;
+        }
+
+        if (availableColumns is null || availableColumns.Count == 0)
+        {
+            Toast.ShowWarning("La plantilla seleccionada no tiene características disponibles.");
+            return;
+        }
+
+        if (selectedFieldKeys.Count == 0)
+        {
+            Toast.ShowWarning("Seleccione al menos una característica para exportar.");
+            return;
+        }
+
+        try
+        {
+            isExporting = true;
+
+            // 1) Obtener la plantilla solo para el nombre
+            var tmpl = exportTemplates?.FirstOrDefault(t => t.Id == selectedTemplateId.Value);
+            var exportName = string.IsNullOrWhiteSpace(tmpl?.Name) ? "Proyectos" : tmpl!.Name;
+
+            // 2) Quedarnos solo con las columnas que el usuario seleccionó
+            var selectedColumns = availableColumns
+                .Where(c => selectedFieldKeys.Contains(c.FieldKey))
+                .OrderBy(c => c.OrderIndex)
+                .ToList();
+
+            if (!selectedColumns.Any())
+            {
+                Toast.ShowWarning("No hay columnas seleccionadas para exportar.");
+                return;
+            }
+
+            // 3) Construir ExportRequestDTO
+            var exportRequest = new ExportRequestDTO
+            {
+                Name = exportName,
+                Columns = selectedColumns
+                    .Select(c => new ExportColumnDTO
+                    {
+                        FieldKey = c.FieldKey,
+                        Header = c.Header,
+                        OrderIndex = c.OrderIndex
+                    })
+                    .ToList()
+            };
+
+            // 👇 IDs de los proyectos actualmente visibles en el dashboard
+            var projectsSource = filteredProjects ?? allProjects ?? new List<ProjectListResponseDTO>();
+
+            var ids = projectsSource
+                .Select(p => p.ProjectId)
+                .Distinct()
+                .ToList();
+
+            // Si no hay proyectos, puedes mandar null o lista vacía según como lo manejes en backend
+            exportRequest.ProjectIds = ids.Any() ? ids : null;
+
+
+            // 4) Llamar al endpoint de matriz-excel
+            var httpResp = await ExportTemplates.ExportMatrixExcelAsync(exportRequest);
+
+            if (!httpResp.IsSuccessStatusCode)
+            {
+                var msg = httpResp.ReasonPhrase ?? "Error al generar el archivo de exportación.";
+                Toast.ShowError(msg);
+                return;
+            }
+
+            // 5) Descargar el archivo
+            var bytes = await httpResp.Content.ReadAsByteArrayAsync();
+            var base64 = Convert.ToBase64String(bytes);
+
+            var fileName = string.IsNullOrWhiteSpace(exportRequest.Name)
+                ? "proyectos.xlsx"
+                : $"{exportRequest.Name}.xlsx";
+
+            await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, base64);
+
+            Toast.ShowSuccess("Exportación generada correctamente.");
+            showExportPanel = false;
+            selectedTemplateId = null;
+            availableColumns.Clear();
+            selectedFieldKeys.Clear();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error al exportar proyectos: " + ex.Message);
+        }
+        finally
+        {
+            isExporting = false;
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task OpenExportPanelAsync()
+    {
+        Console.WriteLine(">>> OpenExportPanelAsync CALLED");
+        showExportPanel = true;
+
+        // Si ya cargaste antes, no vuelves a llamar
+        if (exportTemplates != null && exportTemplates.Count > 0)
+            return;
+
+        try
+        {
+            isExportTemplatesLoading = true;
+
+            var resp = await ExportTemplates.ListTemplatesAsync();
+
+            if (!resp.Success)
+            {
+                Toast.ShowError(resp.Error ?? "No se pudieron cargar las plantillas de exportación.");
+                exportTemplates = new List<ExportTemplateListItemDTO>();
+                return;
+            }
+
+            exportTemplates = resp.Response ?? new List<ExportTemplateListItemDTO>();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error al cargar plantillas: " + ex.Message);
+            exportTemplates = new List<ExportTemplateListItemDTO>();
+        }
+        finally
+        {
+            isExportTemplatesLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseExportPanel()
+    {
+        showExportPanel = false;
+        selectedTemplateId = null;
+    }
+
 
     // Filter Configuration
     private FilterBarConfig _filterConfig = new()
@@ -81,6 +444,100 @@
         ShowChips = true,
         Items = new List<FilterItemDescriptor>()
     };
+
+
+    private async Task ExportProjectsMatrixAsync()
+    {
+        try
+        {
+            // Podrías bloquear la UI con un flag diferente si quieres
+            isLoading = true;
+
+            // 1) Construir un ExportRequestDTO súper básico
+            var request = new ExportRequestDTO
+            {
+                Name = "Proyectos", // nombre del archivo (sin .xlsx)
+                Columns = new List<ExportColumnDTO>
+            {
+                new()
+                {
+                    FieldKey = "PROJECT_CODE",
+                    Header = "Código",
+                    OrderIndex = 1
+                },
+                new()
+                {
+                    FieldKey = "PROJECT_NAME",
+                    Header = "Proyecto",
+                    OrderIndex = 2
+                },
+                new()
+                {
+                    FieldKey = "PROJECT_TYPE_NAME",
+                    Header = "Tipo",
+                    OrderIndex = 3
+                },
+                new()
+                {
+                    FieldKey = "PROJECT_STATE_NAME",
+                    Header = "Estado",
+                    OrderIndex = 4
+                },
+                new()
+                {
+                    FieldKey = "FACULTY_NAME",
+                    Header = "Facultad",
+                    OrderIndex = 5
+                },
+
+                // 🔹 Si quieres que incluya objetivos/categorías dinámicas de una:
+                new()
+                {
+                    FieldKey = "MATRIX_DYNAMIC_OBJECTIVES",
+                    Header = "OBJ_",     // el header real lo pone el backend por cada columna
+                    OrderIndex = 100
+                },
+                new()
+                {
+                    FieldKey = "MATRIX_DYNAMIC_CATEGORIES",
+                    Header = "CAT_",
+                    OrderIndex = 200
+                },
+            }
+            };
+
+            // 2) Llamar al backend
+            var httpResp = await ExportTemplates.ExportMatrixExcelAsync(request);
+
+            if (!httpResp.IsSuccessStatusCode)
+            {
+                var msg = httpResp.ReasonPhrase ?? "Error al generar el archivo de exportación.";
+                Toast.ShowError(msg);
+                return;
+            }
+
+            // 3) Descargar
+            var bytes = await httpResp.Content.ReadAsByteArrayAsync();
+            var base64 = Convert.ToBase64String(bytes);
+
+            var fileName = string.IsNullOrWhiteSpace(request.Name)
+                ? "proyectos.xlsx"
+                : $"{request.Name}.xlsx";
+
+            await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, base64);
+
+            Toast.ShowSuccess("Exportación de proyectos generada correctamente.");
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error al exportar proyectos: " + ex.Message);
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

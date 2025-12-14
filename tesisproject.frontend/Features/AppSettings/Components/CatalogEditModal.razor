@@ -6,16 +6,16 @@
 <Modal Id="@Id"
        IsOpen="@IsOpen"
        IsOpenChanged="IsOpenChanged"
-       Title="@(IsEditMode ? (EditTitle ?? "Edit item") : (NewTitle ?? "New item"))"
+       Title="@(IsEditMode ? (EditTitle ?? "Editar elemento") : (NewTitle ?? "Nuevo elemento"))"
        Size="ModalSize.Md">
 
     <ChildContent>
         <div class="space-y-4">
             <div class="space-y-1">
                 <TextInput TValue="string"
-                           Label="Name"
+                           Label="Nombre"
                            @bind-Value="Model.Name"
-                           Placeholder="e.g. Scientific production"
+                           Placeholder="ej. Producción científica"
                            Disabled="Model.IsLocked"
                            Required="true" />
             </div>
@@ -25,13 +25,13 @@
                        class="rounded border-border"
                        @bind="Model.IsActive"
                        disabled="Model.IsLocked" />
-                <span class="text-sm text-foreground">Active</span>
+                <span class="text-sm text-foreground">Activo</span>
             </div>
 
             @if (Model.IsLocked)
             {
                 <div class="text-xs text-muted">
-                    This item is locked and cannot be modified.
+                    Este elemento está bloqueado y no se puede modificar.
                 </div>
             }
 
@@ -44,7 +44,7 @@
 
     <Footer>
         <div class="flex items-center justify-end gap-2">
-            <ActionButton Text="Close"
+            <ActionButton Text="Cerrar"
                           Intent="ButtonIntent.Delete"
                           Variant="ButtonVariant.Outline"
                           Size="ButtonSize.Sm"
@@ -52,7 +52,7 @@
 
             @if (!Model.IsLocked)
             {
-                <ActionButton Text="Save"
+                <ActionButton Text="Guardar"
                               Intent="ButtonIntent.Accept"
                               Variant="ButtonVariant.Filled"
                               Size="ButtonSize.Sm"

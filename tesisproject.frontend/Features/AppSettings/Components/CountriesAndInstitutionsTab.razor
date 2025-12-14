@@ -20,9 +20,9 @@
 <div class="p-6 max-w-[1800px] mx-auto space-y-6">
     <!-- Page Header -->
     <div class="space-y-1">
-        <h2 class="text-2xl font-bold text-foreground">Countries & Institutions</h2>
+        <h2 class="text-2xl font-bold text-foreground">Países e Instituciones</h2>
         <p class="text-sm text-muted max-w-3xl">
-            Manage countries and their associated institutions. Select a country to view and manage its institutions.
+            Administre países y sus instituciones asociadas. Seleccione un país para ver y gestionar sus instituciones.
         </p>
     </div>
 
@@ -39,21 +39,21 @@
                             <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <h3 class="text-base font-semibold text-foreground">Countries</h3>
+                            <h3 class="text-base font-semibold text-foreground">Países</h3>
                         </div>
                     </div>
                     <p class="text-xs text-muted mb-3">
-                        Geographic locations for institutional classification.
+                        Ubicaciones geográficas para clasificación institucional.
                     </p>
 
                     <!-- Search countries -->
                     <SearchInput Value="@_countrySearchTerm"
                                  ValueChanged="OnCountrySearchChanged"
-                                 Placeholder="Search countries..."
+                                 Placeholder="Buscar países..."
                                  Class="mb-3" />
 
                     <ActionButton Execute="OpenCreateCountryModal"
-                                  Text="New Country"
+                                  Text="Nuevo País"
                                   Intent="ButtonIntent.Add"
                                   Variant="ButtonVariant.Outline"
                                   Size="ButtonSize.Sm"
@@ -67,7 +67,7 @@
                         <div class="flex items-center justify-center py-8">
                             <div class="text-center space-y-2">
                                 <div class="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-primary border-r-transparent"></div>
-                                <p class="text-xs text-muted">Loading countries...</p>
+                                <p class="text-xs text-muted">Cargando países...</p>
                             </div>
                         </div>
                     }
@@ -77,8 +77,8 @@
                             <svg class="mx-auto h-10 w-10 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <p class="mt-2 text-xs text-muted">No countries yet</p>
-                            <p class="mt-1 text-xs text-muted/70">Create your first country to begin</p>
+                            <p class="mt-2 text-xs text-muted">Aún no hay países</p>
+                            <p class="mt-1 text-xs text-muted/70">Crea tu primer país para comenzar</p>
                         </div>
                     }
                     else
@@ -107,7 +107,7 @@
                                                     @if (country.IsActive)
                                                     {
                                                         <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
-                                                            Active
+                                                            Activo
                                                         </span>
                                                     }
                                                 </div>
@@ -139,7 +139,7 @@
                                                       Variant="ButtonVariant.Outline"
                                                       Size="ButtonSize.Xs"
                                                       ConfirmBeforeExecute="true"
-                                                      ConfirmMessage="@($"Are you sure you want to delete '{country.Name}'? This will affect all associated institutions.")"
+                                                      ConfirmMessage="@($"¿Está seguro de que desea eliminar '{country.Name}'? Esto afectará a todas las instituciones asociadas.")"
                                                       Class="flex-1">
                                             <Icon>
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
@@ -166,23 +166,23 @@
                                 <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                 </svg>
-                                <h3 class="text-base font-semibold text-foreground">Institutions</h3>
+                                <h3 class="text-base font-semibold text-foreground">Instituciones</h3>
                             </div>
                             <p class="text-xs text-muted">
                                 @if (_selectedCountryId.HasValue)
                                 {
                                     var selectedCountry = _countries.FirstOrDefault(c => c.Id == _selectedCountryId);
-                                    <text>Manage institutions for @selectedCountry?.Name</text>
+                                    <text>Administrar instituciones de @selectedCountry?.Name</text>
                                 }
                                 else
                                 {
-                                    <text>Select a country to view and manage its institutions</text>
+                                    <text>Seleccione un país para ver y administrar sus instituciones</text>
                                 }
                             </p>
                         </div>
 
                         <ActionButton Execute="OpenCreateInstitutionModal"
-                                      Text="New Institution"
+                                      Text="Nueva Institución"
                                       Intent="ButtonIntent.Add"
                                       Variant="ButtonVariant.Outline"
                                       Size="ButtonSize.Sm"
@@ -197,7 +197,7 @@
                             <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7" />
                             </svg>
-                            <p class="mt-3 text-sm text-muted">Select a country to view its institutions</p>
+                            <p class="mt-3 text-sm text-muted">Seleccione un país para ver sus instituciones</p>
                         </div>
                     }
                     else if (_loadingInstitutions)
@@ -205,7 +205,7 @@
                         <div class="flex items-center justify-center py-12">
                             <div class="text-center space-y-2">
                                 <div class="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-primary border-r-transparent"></div>
-                                <p class="text-xs text-muted">Loading institutions...</p>
+                                <p class="text-xs text-muted">Cargando instituciones...</p>
                             </div>
                         </div>
                     }
@@ -215,8 +215,8 @@
                             <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
-                            <p class="mt-3 text-sm font-medium text-muted">No institutions yet</p>
-                            <p class="mt-1 text-xs text-muted/70">Add institutions to this country</p>
+                            <p class="mt-3 text-sm font-medium text-muted">Aún no hay instituciones</p>
+                            <p class="mt-1 text-xs text-muted/70">Agregue instituciones a este país</p>
                         </div>
                     }
                     else
@@ -224,7 +224,7 @@
                         <!-- Search institutions -->
                         <SearchInput Value="@_institutionSearchTerm"
                                      ValueChanged="OnInstitutionSearchChanged"
-                                     Placeholder="Search institutions..."
+                                     Placeholder="Buscar instituciones..."
                                      Class="mb-4" />
 
                         <DataTable TItem="InstitutionListItemDTO"
@@ -232,7 +232,7 @@
                                    PageSize="6"
                                    Total="@_filteredInstitutions.Count"
                                    Columns="@_institutionColumns"
-                                   EmptyText="No institutions found">
+                                   EmptyText="No se encontraron instituciones">
                             <RowTemplate>
                                 @{
                                     var inst = context;
@@ -250,7 +250,7 @@
                                             <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            Active
+                                            Activa
                                         </span>
                                     }
                                     else
@@ -259,7 +259,7 @@
                                             <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
-                                            Inactive
+                                            Inactiva
                                         </span>
                                     }
                                 </td>
@@ -281,7 +281,7 @@
                                                       Variant="ButtonVariant.Outline"
                                                       Size="ButtonSize.Xs"
                                                       ConfirmBeforeExecute="true"
-                                                      ConfirmMessage="@($"Are you sure you want to delete '{inst.Name}'?")">
+                                                      ConfirmMessage="@($"¿Está seguro de que desea eliminar '{inst.Name}'?")">
                                             <Icon>
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
                                                     <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
@@ -303,25 +303,25 @@
     <Modal Id="country-modal"
            IsOpen="@_countryModalOpen"
            IsOpenChanged="v => _countryModalOpen = v"
-           Title="@(_isCountryEdit ? "Edit Country" : "New Country")"
+           Title="@(_isCountryEdit ? "Editar País" : "Nuevo País")"
            Size="ModalSize.Md">
         <ChildContent>
             <div class="space-y-4">
                 <TextInput @bind-Value="_countryEditModel.Name"
-                           Label="Country Name"
-                           Placeholder="e.g., United States"
+                           Label="Nombre del País"
+                           Placeholder="ej., Ecuador"
                            Required="true" />
 
                 <div class="grid grid-cols-2 gap-4">
                     <TextInput @bind-Value="_countryEditModel.IsoCode"
-                               Label="ISO Code (2 chars)"
-                               Placeholder="e.g., US"
+                               Label="Código ISO (2 caracteres)"
+                               Placeholder="ej., EC"
                                Required="true"
                                MaxLength="2" />
 
                     <TextInput @bind-Value="_countryEditModel.IsoAlpha3"
-                               Label="ISO Alpha-3 (3 chars)"
-                               Placeholder="e.g., USA"
+                               Label="ISO Alpha-3 (3 caracteres)"
+                               Placeholder="ej., ECU"
                                Required="true"
                                MaxLength="3" />
                 </div>
@@ -332,18 +332,18 @@
                         <input type="checkbox"
                                class="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/30 cursor-pointer"
                                @bind="_countryEditModel.IsActive" />
-                        <span class="text-sm text-foreground">Active</span>
+                        <span class="text-sm text-foreground">Activo</span>
                     </label>
                 }
 
                 <div class="flex justify-end gap-2 pt-4 border-t border-border">
                     <ActionButton Execute="CloseCountryModal"
-                                  Text="Cancel"
+                                  Text="Cancelar"
                                   Intent="ButtonIntent.Neutral"
                                   Variant="ButtonVariant.Outline"
                                   Size="ButtonSize.Sm" />
                     <ActionButton Execute="SaveCountryAsync"
-                                  Text="Save"
+                                  Text="Guardar"
                                   Intent="ButtonIntent.Accept"
                                   Size="ButtonSize.Sm"
                                   Disabled="@(!CanSaveCountry())" />
@@ -356,18 +356,18 @@
     <Modal Id="institution-modal"
            IsOpen="@_institutionModalOpen"
            IsOpenChanged="v => _institutionModalOpen = v"
-           Title="@(_isInstitutionEdit ? "Edit Institution" : "New Institution")"
+           Title="@(_isInstitutionEdit ? "Editar Institución" : "Nueva Institución")"
            Size="ModalSize.Md">
         <ChildContent>
             <div class="space-y-4">
                 <TextInput @bind-Value="_institutionEditModel.Name"
-                           Label="Institution Name"
-                           Placeholder="e.g., Harvard University"
+                           Label="Nombre de la Institución"
+                           Placeholder="ej., Universidad Nacional de Chimborazo"
                            Required="true" />
 
                 <div class="space-y-2">
                     <label class="text-sm font-medium text-foreground">
-                        Country @(_selectedCountryId.HasValue ? "(Pre-selected)" : "")
+                        País @(_selectedCountryId.HasValue ? "(Preseleccionado)" : "")
                     </label>
                     @if (_isInstitutionEdit || !_selectedCountryId.HasValue)
                     {
@@ -376,7 +376,7 @@
                                      @bind-Value="_selectedCountryForInstitution"
                                      GetText="@(c => c.Name)"
                                      GetKey="@(c => c.Id.ToString())"
-                                     Placeholder="-- Select country --"
+                                     Placeholder="-- Seleccionar país --"
                                      Size="SelectSize.Md" />
                     }
                     else
@@ -386,7 +386,7 @@
                                value="@(_countries.FirstOrDefault(c => c.Id == _selectedCountryId)?.Name ?? "")"
                                disabled />
                         <p class="text-xs text-muted mt-1">
-                            Country was pre-selected from the sidebar.
+                            El país fue preseleccionado desde la barra lateral.
                         </p>
                     }
                 </div>
@@ -397,18 +397,18 @@
                         <input type="checkbox"
                                class="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/30 cursor-pointer"
                                @bind="_institutionEditModel.IsActive" />
-                        <span class="text-sm text-foreground">Active</span>
+                        <span class="text-sm text-foreground">Activa</span>
                     </label>
                 }
 
                 <div class="flex justify-end gap-2 pt-4 border-t border-border">
                     <ActionButton Execute="CloseInstitutionModal"
-                                  Text="Cancel"
+                                  Text="Cancelar"
                                   Intent="ButtonIntent.Neutral"
                                   Variant="ButtonVariant.Outline"
                                   Size="ButtonSize.Sm" />
                     <ActionButton Execute="SaveInstitutionAsync"
-                                  Text="Save"
+                                  Text="Guardar"
                                   Intent="ButtonIntent.Accept"
                                   Size="ButtonSize.Sm"
                                   Disabled="@(!CanSaveInstitution())" />
@@ -454,10 +454,10 @@
     {
         _institutionColumns = new()
         {
-            new("Name", i => i.Name, Sortable: true),
-            new("Country", i => i.CountryName ?? "", Sortable: true, Width: "200px"),
-            new("Status", i => i.IsActive ? "Active" : "Inactive", Sortable: true, Width: "120px"),
-            new("Actions", i => "", Sortable: false, Width: "150px")
+            new("Nombre", i => i.Name, Sortable: true),
+            new("País", i => i.CountryName ?? "", Sortable: true, Width: "200px"),
+            new("Estado", i => i.IsActive ? "Activa" : "Inactiva", Sortable: true, Width: "120px"),
+            new("Acciones", i => "", Sortable: false, Width: "150px")
         };
     }
 
@@ -576,7 +576,7 @@
             var result = await CountryClient.ListAsync(onlyActives: false);
             if (!result.Success)
             {
-                Toast.ShowError("Failed to load countries.");
+                Toast.ShowError("Error al cargar los países.");
                 _countries = new();
                 _filteredCountries = new();
                 return;
@@ -646,7 +646,7 @@
     {
         if (!CanSaveCountry())
         {
-            Toast.ShowWarning("Please fill all required fields correctly.");
+            Toast.ShowWarning("Por favor complete todos los campos requeridos correctamente.");
             return;
         }
 
@@ -663,10 +663,10 @@
             var result = await CountryClient.UpdateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Failed to update country.");
+                Toast.ShowError("Error al actualizar el país.");
                 return;
             }
-            Toast.ShowSuccess("Country updated successfully.");
+            Toast.ShowSuccess("País actualizado exitosamente.");
         }
         else
         {
@@ -679,10 +679,10 @@
             var result = await CountryClient.CreateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Failed to create country.");
+                Toast.ShowError("Error al crear el país.");
                 return;
             }
-            Toast.ShowSuccess("Country created successfully.");
+            Toast.ShowSuccess("País creado exitosamente.");
             _selectedCountryId = result.Response?.Id;
         }
         _countryModalOpen = false;
@@ -714,7 +714,7 @@
             var result = await InstitutionClient.ListAsync(onlyActives: false);
             if (!result.Success)
             {
-                Toast.ShowError("Failed to load institutions.");
+                Toast.ShowError("Error al cargar las instituciones.");
                 _institutions = new();
                 _filteredInstitutions = new();
                 return;
@@ -738,7 +738,7 @@
     {
         if (!_selectedCountryId.HasValue)
         {
-            Toast.ShowWarning("Select a country first.");
+            Toast.ShowWarning("Seleccione un país primero.");
             return;
         }
 
@@ -759,7 +759,7 @@
         var result = await InstitutionClient.GetByIdAsync(institutionId);
         if (!result.Success || result.Response is null)
         {
-            Toast.ShowError("Failed to load institution details.");
+            Toast.ShowError("Error al cargar los detalles de la institución.");
             return;
         }
         _institutionEditModel = result.Response;
@@ -779,7 +779,7 @@
     {
         if (!CanSaveInstitution())
         {
-            Toast.ShowWarning("Institution name and country are required.");
+            Toast.ShowWarning("El nombre de la institución y el país son requeridos.");
             return;
         }
 
@@ -795,10 +795,10 @@
             var result = await InstitutionClient.UpdateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Failed to update institution.");
+                Toast.ShowError("Error al actualizar la institución.");
                 return;
             }
-            Toast.ShowSuccess("Institution updated successfully.");
+            Toast.ShowSuccess("Institución actualizada exitosamente.");
         }
         else
         {
@@ -810,10 +810,10 @@
             var result = await InstitutionClient.CreateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Failed to create institution.");
+                Toast.ShowError("Error al crear la institución.");
                 return;
             }
-            Toast.ShowSuccess("Institution created successfully.");
+            Toast.ShowSuccess("Institución creada exitosamente.");
         }
         _institutionModalOpen = false;
         await LoadInstitutionsAsync();
@@ -824,10 +824,10 @@
         // var result = await InstitutionClient.DeleteAsync(institutionId);
         // if (!result.Success)
         // {
-        //     Toast.ShowError("Failed to delete institution.");
+        //     Toast.ShowError("Error al eliminar la institución.");
         //     return;
         // }
-        Toast.ShowSuccess("Institution deleted successfully.");
+        Toast.ShowSuccess("Institución eliminada exitosamente.");
         await LoadInstitutionsAsync();
     }
 }

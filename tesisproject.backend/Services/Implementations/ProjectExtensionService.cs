@@ -31,7 +31,6 @@ namespace tesisproject.backend.Services.Implementations
                 var entity = new ProjectExtension
                 {
                     ProjectId = request.ProjectId,
-                    ProjectExtensionTypeId = request.ProjectExtensionTypeId,
                     DocumentId = request.DocumentId,
                     RequestedAt = request.RequestedAt,
                     ApprovedAt = request.ApprovedAt
@@ -86,8 +85,6 @@ namespace tesisproject.backend.Services.Implementations
                         ProjectExtensionId = pe.ProjectExtensionId,
                         ProjectId = pe.ProjectId,
                         ProjectName = pe.Project.ProjectName,
-                        ProjectExtensionTypeId = pe.ProjectExtensionTypeId,
-                        ProjectExtensionTypeName = pe.ProjectExtensionType!.Name,
                         DocumentId = pe.DocumentId,
  //                       DocumentName = pe.Document != null ? pe.Document.Name : null,
                         RequestedAt = pe.RequestedAt,
@@ -143,7 +140,6 @@ namespace tesisproject.backend.Services.Implementations
                     return ServiceResult<ProjectExtensionListResponseDTO>.Fail("ProjectExtensionTypeId is required.", ErrorType.Validation);
 
                 entity.ProjectId = request.ProjectId;
-                entity.ProjectExtensionTypeId = request.ProjectExtensionTypeId;
                 entity.DocumentId = request.DocumentId;
                 entity.RequestedAt = request.RequestedAt;
                 entity.ApprovedAt = request.ApprovedAt;
@@ -197,8 +193,6 @@ namespace tesisproject.backend.Services.Implementations
             ProjectExtensionId = pe.ProjectExtensionId,
             ProjectId = pe.ProjectId,
             ProjectName = pe.Project?.ProjectName ?? string.Empty,
-            ProjectExtensionTypeId = pe.ProjectExtensionTypeId,
-            ProjectExtensionTypeName = pe.ProjectExtensionType?.Name ?? string.Empty,
             DocumentId = pe.DocumentId,
 //            DocumentName = pe.Document?.Name,
             RequestedAt = pe.RequestedAt,

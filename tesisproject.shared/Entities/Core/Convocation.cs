@@ -10,7 +10,6 @@ namespace tesisproject.shared.Entities.Core
 {
     public class Convocation : CatalogEntityBase
     {
-        [MaxLength(64)]
         public string? Code { get; set; }
 
         public ICollection<ConvocationRule>? Rules { get; set; }

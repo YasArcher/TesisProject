@@ -2,8 +2,11 @@
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.Common.Utils;
 using tesisproject.shared.DTOs.Auth;
-using tesisproject.shared.DTOs.Budgets.Request;
+using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response;
+using tesisproject.shared.DTOs.External;
+using tesisproject.shared.DTOs.Matrices.Response;
 using tesisproject.shared.DTOs.Project.Request;
 using tesisproject.shared.DTOs.Project.Response;
 using tesisproject.shared.DTOs.ProjectObjective.Response;
@@ -18,14 +21,52 @@ namespace tesisproject.backend.Services.Implementations
         private readonly IUnitOfWork _uow;
         private readonly ICatalogRepository<AcademicPeriod> _periods;
         private readonly IAppUserService _appUsers;
+        private readonly IExternalAcademicsService _externalAcademics;
+        private readonly IResearchCategoryService _researchCategoryService;
+        private readonly ILogger<ProjectService> _logger;
 
-        public ProjectService(IUnitOfWork uow, ICatalogRepository<AcademicPeriod> periods, IAppUserService appUsers)
+        // 🔹 ResearchCategoryType fijos
+        private const int CAT_TYPE_DOMINIO = 1;
+        private const int CAT_TYPE_LINEA = 2;
+        private const int CAT_TYPE_SUBLINEA = 3;
+        private const int CAT_TYPE_CAMPO_AMPLO = 4;
+        private const int CAT_TYPE_CAMPO_ESPECIFICO = 5;
+        private const int CAT_TYPE_CAMPO_DETALLADO = 6;
+        private const int CAT_TYPE_ALCANCE_TERRITORIAL = 7;
+        private const int CAT_TYPE_IMPACTO_ESPERADO = 8;
+
+        // 🔹 VisitStates: Realizada
+        private const int REALIZED_VISIT_STATE_ID = 3;
+
+        // 🔹 DocumentTypes (catálogo fijo)
+        // 1 = Memorando inicial
+        // 2 = Memorando Informe Final
+        // 3 = Resolucion Prorroga
+        // 4 = Resolucion Informe Final
+        // 5 = Contrato Auspicio
+        private const int DOCUMENT_TYPE_RESOLUCION_PRORROGA = 3;
+        private const int DOCUMENT_TYPE_VISIT_RESOLUTION = 6; // para visitas históricas con resolución
+        private const int DOCUMENT_TYPE_FINAL_PROJECT_RESOLUTION = 4; // para visitas históricas con resolución
+
+        // 🔹 Convocatoria por defecto (para registros sin CallCode o sin match)
+        private const int DEFAULT_CONVOCATION_ID = 1;
+
+
+        public ProjectService(
+            IUnitOfWork uow,
+            ICatalogRepository<AcademicPeriod> periods,
+            IAppUserService appUsers,
+            IExternalAcademicsService externalAcademics,
+            IResearchCategoryService researchCategoryService,
+            ILogger<ProjectService> logger)
         {
             _uow = uow;
             _periods = periods;
             _appUsers = appUsers;
+            _externalAcademics = externalAcademics;
+            _researchCategoryService = researchCategoryService;
+            _logger = logger;
         }
-
 
         // ================= READS =================
 
@@ -58,7 +99,7 @@ namespace tesisproject.backend.Services.Implementations
                             .Select(prc => prc.ResearchCategoryId)
                             .Distinct()
                             .ToList(),
-                        ConvocationId = p.ConvocationId
+                        ConvocationId = p.ConvocationId ?? 0
                     })
                     .ToListAsync(ct);
 
@@ -72,7 +113,6 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<List<ProjectListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
-
 
         public async Task<ServiceResult<ProjectListResponseDTO>> GetByIdAsync(int id, CancellationToken ct = default)
         {
@@ -94,7 +134,6 @@ namespace tesisproject.backend.Services.Implementations
                         ExecutionPercentage = p.ExecutionPercentage,
                         PrincipalCoordinatorFacultyId = p.FacultyId,
 
-                        // 🔹 MAPEO AGREGADO
                         FundingTypeId = p.Budgets
                             .Select(b => b.FundingTypeId)
                             .Distinct()
@@ -104,7 +143,7 @@ namespace tesisproject.backend.Services.Implementations
                             .Select(prc => prc.ResearchCategoryId)
                             .Distinct()
                             .ToList(),
-                        ConvocationId = p.ConvocationId
+                        ConvocationId = p.ConvocationId ?? 0
                     })
                     .FirstOrDefaultAsync(ct);
 
@@ -117,7 +156,6 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<ProjectListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
-
 
         public async Task<ServiceResult<List<ProjectListResponseDTO>>> GetByTypeAsync(int projectTypeId, CancellationToken ct = default)
         {
@@ -138,7 +176,7 @@ namespace tesisproject.backend.Services.Implementations
                         TentativeEndDate = p.TentativeEndDate,
                         ExecutionPercentage = p.ExecutionPercentage,
                         PrincipalCoordinatorFacultyId = p.FacultyId,
-                        ConvocationId = p.ConvocationId
+                        ConvocationId = p.ConvocationId ?? 0
                     })
                     .ToListAsync(ct);
 
@@ -164,6 +202,7 @@ namespace tesisproject.backend.Services.Implementations
                         "A project with the same name already exists in this group.",
                         ErrorType.Conflict
                     );
+
                 var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
                 if (user is null)
                 {
@@ -172,6 +211,7 @@ namespace tesisproject.backend.Services.Implementations
                         ErrorType.NotFound
                     );
                 }
+
                 var entity = MapToEntity(dto, user.IdUser);
                 await _uow.Projects.AddAsync(entity, ct);
                 await _uow.SaveChangesAsync(ct);
@@ -191,7 +231,7 @@ namespace tesisproject.backend.Services.Implementations
                         TentativeEndDate = p.TentativeEndDate,
                         ExecutionPercentage = p.ExecutionPercentage,
                         PrincipalCoordinatorFacultyId = p.FacultyId,
-                        ConvocationId = p.ConvocationId
+                        ConvocationId = p.ConvocationId ?? 0
                     })
                     .FirstAsync(ct);
 
@@ -273,8 +313,6 @@ namespace tesisproject.backend.Services.Implementations
                 var dto = await _uow.Projects
                    .Query()
                    .Include(p => p.ProjectResearchCategories)
-                   // si ya no necesitas navegar a ResearchCategory / Parent / SubCategories,
-                   // estos Include/ThenInclude se podrían limpiar más adelante
                    .Where(p => p.ProjectId == projectId)
                    .Select(p => new ProjectDetailResponseDTO
                    {
@@ -284,7 +322,6 @@ namespace tesisproject.backend.Services.Implementations
 
                        ProjectObjectives = MapToDTO(p.ProjectObjectives),
 
-                       // ✅ NUEVO: IDs de categorías tal cual en ProjectResearchCategory
                        ResearchCategoryIds = p.ProjectResearchCategories
                            .Select(prc => prc.ResearchCategoryId)
                            .Distinct()
@@ -292,7 +329,7 @@ namespace tesisproject.backend.Services.Implementations
 
                        ProjectTypeId = p.ProjectTypeId,
                        ProjectTypeName = p.ProjectType.Name ?? string.Empty,
-                       ConvocationId = p.ConvocationId,
+                       ConvocationId = p.ConvocationId ?? 0,
                        ProjectStateId = p.ProjectStateId,
                        ProjectStateName = p.ProjectState.Name ?? string.Empty,
 
@@ -335,7 +372,6 @@ namespace tesisproject.backend.Services.Implementations
             int currentUserId,
             CancellationToken ct = default)
         {
-            // Helper local para log interno
             void PhaseLog(string phase, string message)
                 => Console.WriteLine($"[DEBUG] [{phase}] {message}");
 
@@ -365,6 +401,7 @@ namespace tesisproject.backend.Services.Implementations
                     PhaseLog("Fase 1 - Validación", "ProjectStateId <= 0");
                     return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid ProjectStateId.");
                 }
+
                 var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
                 if (user is null)
                 {
@@ -373,6 +410,7 @@ namespace tesisproject.backend.Services.Implementations
                         ErrorType.NotFound
                     );
                 }
+
                 if (user.IdUser <= 0)
                 {
                     PhaseLog("Fase 1 - Validación", "CreatedByUserId <= 0");
@@ -390,12 +428,12 @@ namespace tesisproject.backend.Services.Implementations
                     PhaseLog("Fase 1 - Validación", "ScheduledDate is default");
                     return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid scheduled date.");
                 }
+
                 // ============================================
                 // 1.5) Generar ProjectNumber + ProjectCode real
                 // ============================================
                 PhaseLog("Fase 1.5 - Código", "Generando código de proyecto...");
 
-                // El front manda aquí solo el prefijo de facultad, por ej. "PFCHE"
                 var facultyCode = (p.ProjectCode ?? string.Empty).Trim();
 
                 if (string.IsNullOrWhiteSpace(facultyCode))
@@ -404,30 +442,25 @@ namespace tesisproject.backend.Services.Implementations
                     return ServiceResult<ProjectDetailResponseDTO>.Fail("Faculty project code (prefix) is required.");
                 }
 
-                // Buscar último número usado para esa facultad
                 var lastNumber = await _uow.Projects
                     .Query(asNoTracking: true)
                     .Where(x => x.FacultyId == p.FacultyId &&
-                                x.ProjectCode.StartsWith(facultyCode))  // PFCHE...
+                                x.ProjectCode.StartsWith(facultyCode))
                     .OrderByDescending(x => x.ProjectNumber)
                     .Select(x => (int?)x.ProjectNumber)
                     .FirstOrDefaultAsync(ct) ?? 0;
 
                 var nextNumber = lastNumber + 1;
-
-                // Construir código final: PFCHE17-A
                 var generatedCode = $"{facultyCode}{nextNumber}-A";
 
                 PhaseLog("Fase 1.5 - Código",
                     $"facultyCode={facultyCode}, last={lastNumber}, next={nextNumber}, final={generatedCode}");
 
-                // Por seguridad con [StringLength(20)]
                 if (generatedCode.Length > 20)
                 {
                     PhaseLog("Fase 1.5 - Código", $"generatedCode demasiado largo: {generatedCode.Length}");
                     return ServiceResult<ProjectDetailResponseDTO>.Fail("Generated project code is too long.");
                 }
-
 
                 // ============================================
                 // 2) Crear Group
@@ -462,11 +495,9 @@ namespace tesisproject.backend.Services.Implementations
                 // ============================================
                 // 4) Crear Project
                 // ============================================
+
                 PhaseLog("Fase 4 - Project",
-    $"Creando entidad proyecto con: generatedCode={generatedCode}, nextNumber={nextNumber}");
-
-
-                PhaseLog("Fase 4 - Project", "Creando entidad proyecto...");
+                    $"Creando entidad proyecto con: generatedCode={generatedCode}, nextNumber={nextNumber}");
 
                 var projectEntity = new Project
                 {
@@ -483,7 +514,6 @@ namespace tesisproject.backend.Services.Implementations
                     RealEndDate = null,
                     ExecutionPercentage = 0,
                     FacultyId = p.FacultyId,
-                    InitialDocumentId = d?.DocumentId,
                     ConvocationId = p.ConvocationId
                 };
 
@@ -492,7 +522,29 @@ namespace tesisproject.backend.Services.Implementations
                 await _uow.Projects.AddAsync(projectEntity, ct);
 
                 // ============================================
-                // 5) Miembros del grupo (AppUser + GroupMember)
+                // 4.5) Vincular documento inicial (si existe)
+                // ============================================
+
+                if (d is not null && d.DocumentId > 0)
+                {
+                    PhaseLog("Fase 4.5 - ProjectDocument",
+                        $"Vinculando DocumentId={d.DocumentId} al proyecto {generatedCode}...");
+
+                    var projectDocument = new ProjectDocument
+                    {
+                        Project = projectEntity,
+                        DocumentId = d.DocumentId,
+                    };
+
+                    await _uow.ProjectDocuments.AddAsync(projectDocument, ct);
+                }
+                else
+                {
+                    PhaseLog("Fase 4.5 - ProjectDocument", "No se recibió DocumentId para vincular.");
+                }
+
+                // ============================================
+                // 5) Miembros del grupo
                 // ============================================
 
                 PhaseLog("Fase 5 - Miembros", "Asegurando AppUsers e insertando miembros...");
@@ -501,7 +553,6 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     PhaseLog("Fase 5 - Miembros", $"Total GroupMembers en request: {request.GroupMembers.Count}");
 
-                    // Logear cada miembro que llega en el request
                     for (int i = 0; i < request.GroupMembers.Count; i++)
                     {
                         var m = request.GroupMembers[i];
@@ -509,13 +560,12 @@ namespace tesisproject.backend.Services.Implementations
                             $"Member[{i}]: Email={m.Email}, AspUserId={m.AspUserId}, MemberRole={m.MemberRole}");
                     }
 
-                    // 5.1 Construir los RegisterRequest en el mismo orden
                     var registerDtos = request.GroupMembers
                         .Select(m => new RegisterRequest
                         {
                             Email = m.Email,
                             Username = m.Document,
-                            Password = "aaaaaqqq1231231", // TODO: regla real
+                            Password = "aaaaaqqq1231231",
                             AspUserId = m.AspUserId
                         })
                         .ToList();
@@ -523,7 +573,6 @@ namespace tesisproject.backend.Services.Implementations
                     PhaseLog("Fase 5 - Miembros",
                         $"RegisterRequest count: {registerDtos.Count}, first email: {registerDtos.First().Email}");
 
-                    // 5.2 Llamar una sola vez al servicio de AppUser
                     var ensureResult = await _appUsers.EnsureAppUsersAsync(registerDtos, ct);
 
                     PhaseLog("Fase 5 - Miembros",
@@ -547,7 +596,6 @@ namespace tesisproject.backend.Services.Implementations
                         return ServiceResult<ProjectDetailResponseDTO>.Fail("Inconsistent app user mapping.");
                     }
 
-                    // 5.3 Crear GroupMember usando IdUser (tabla intermedia)
                     var groupMembers = new List<GroupMember>();
 
                     for (int i = 0; i < request.GroupMembers.Count; i++)
@@ -561,7 +609,7 @@ namespace tesisproject.backend.Services.Implementations
                         groupMembers.Add(new GroupMember
                         {
                             Group = groupEntity,
-                            UserId = appUserId,             // IdUser de APP_USER
+                            UserId = appUserId,
                             MemberRoleId = memberDto.MemberRole,
                             JoinedAt = DateTime.UtcNow
                         });
@@ -683,8 +731,8 @@ namespace tesisproject.backend.Services.Implementations
                             externalLinks.Add(new ExternalResearcherProject
                             {
                                 ExternalResearcherId = externalId,
-                                Project = projectEntity,          // EF se encarga de ProjectId
-                                Role = "ExternalResearcher",      // fijo, porque en el front no manejas rol por externo
+                                Project = projectEntity,
+                                Role = "ExternalResearcher",
                                 CreatedAtUtc = DateTime.UtcNow,
                                 CreatedByUserId = user.IdUser,
                                 ExitDate = null
@@ -702,9 +750,8 @@ namespace tesisproject.backend.Services.Implementations
                     PhaseLog("Fase 8.5 - ExternalResearchers", "No hay investigadores externos en el request.");
                 }
 
-
                 // ============================================
-                // 9) Visitas
+                // 9) Visitas (nuevos proyectos)
                 // ============================================
 
                 PhaseLog("Fase 9 - Visitas", "Generando visitas...");
@@ -778,7 +825,6 @@ namespace tesisproject.backend.Services.Implementations
             ConvocationId = dto.ConvocationId
         };
 
-
         private static ICollection<ProjectObjectiveListItemDTO> MapToDTO(
             ICollection<ProjectObjective> entities)
         {
@@ -827,7 +873,6 @@ namespace tesisproject.backend.Services.Implementations
                 var toRemoveIds = currentIds.Except(newIds).ToList();
                 var toAddIds = newIds.Except(currentIds).ToList();
 
-                // Quitar relaciones sobrantes
                 var linksToRemove = currentLinks
                     .Where(x => toRemoveIds.Contains(x.ResearchCategoryId))
                     .ToList();
@@ -837,7 +882,6 @@ namespace tesisproject.backend.Services.Implementations
                     _uow.ProjectResearchCategories.RemoveRange(linksToRemove);
                 }
 
-                // Agregar las nuevas
                 foreach (var catId in toAddIds)
                 {
                     project.ProjectResearchCategories.Add(new ProjectResearchCategory
@@ -859,13 +903,954 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
+        public async Task<ServiceResult<int>> ImportFromMatrixAsync(
+    ProjectMatrixUploadSummaryDTO summary,
+    int currentUserId,
+    CancellationToken ct = default)
+        {
+            void PhaseLog(string phase, string message)
+            {
+                var formatted = $"[IMPORT] [{phase}] {message}";
+                Console.WriteLine(formatted);
+                _logger.LogInformation(formatted);
+            }
+
+            try
+            {
+                PhaseLog("Init", "Starting ImportFromMatrixAsync...");
+
+                // 🔹 AcademicPeriods (para mapear visitas históricas)
+                var academicPeriodsCache = await _uow.AcademicPeriods
+                    .Query(asNoTracking: true)
+                    .ToListAsync(ct);
+                PhaseLog("Init", $"AcademicPeriods loaded: {academicPeriodsCache.Count}");
+
+                // 🔹 Categorías de investigación (una sola vez)
+                var categoriesResult = await _researchCategoryService.ListAsync(
+                    onlyActives: true,
+                    ct: ct);
+
+                if (!categoriesResult.Success || categoriesResult.Data is null)
+                {
+                    PhaseLog("Init-Categories",
+                        $"No se pudieron cargar categorías de investigación: {categoriesResult.Error}");
+                }
+
+                var allCategories = categoriesResult.Data; // IReadOnlyList<ResearchCategoryListItemDTO>?
+
+                // 🔹 Tipos de documento (para dto.Documents → DocumentType)
+                var documentTypes = await _uow.DocumentTypes
+                    .Query(asNoTracking: true)
+                    .ToListAsync(ct);
+                PhaseLog("Init", $"DocumentTypes loaded: {documentTypes.Count}");
+
+                // 🔹 Convocatorias en caché
+                var convocationsCache = await _uow.Convocations
+                    .Query(asNoTracking: false)
+                    .ToListAsync(ct);
+                PhaseLog("Init", $"Convocations loaded: {convocationsCache.Count}");
+
+                // 🔹 Facultades externas
+                var facultiesResult = await _externalAcademics.GetFacultiesAsync(ct);
+                if (!facultiesResult.Success || facultiesResult.Data is null || facultiesResult.Data.Count == 0)
+                {
+                    PhaseLog("Init-Faculties", "Cannot retrieve faculties from external API.");
+                    return ServiceResult<int>.Fail("Cannot retrieve faculties from external API.", ErrorType.Unexpected);
+                }
+                var externalFacultiesCache = facultiesResult.Data;
+                PhaseLog("Init-Faculties", $"External faculties loaded: {externalFacultiesCache.Count}");
+
+                // 🔹 Estados de proyecto (FINALIZADO, EN CIERRE, etc.)
+                var projectStatesCache = await _uow.ProjectStates
+                    .Query(asNoTracking: true)
+                    .ToListAsync(ct);
+                PhaseLog("Init", $"ProjectStates loaded: {projectStatesCache.Count}");
+
+                if (summary.ImportedProjects is null || summary.ImportedProjects.Count == 0)
+                {
+                    PhaseLog("Init", "Summary.ImportedProjects is null or empty.");
+                    return ServiceResult<int>.Fail("No imported projects found in summary.");
+                }
+
+                PhaseLog("Init", $"ImportedProjects in summary: {summary.ImportedProjects.Count}");
+
+                // Usuario que ejecuta el import
+                var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+                if (user is null || user.IdUser <= 0)
+                {
+                    PhaseLog("Init", $"User not found or invalid. currentUserId={currentUserId}");
+                    return ServiceResult<int>.Fail("User not found or invalid.", ErrorType.NotFound);
+                }
+
+                PhaseLog("Init", $"Import executed by UserId={user.IdUser}");
+
+                int createdCount = 0;
+                int skippedCount = 0;
+
+                foreach (var dto in summary.ImportedProjects)
+                {
+                    ct.ThrowIfCancellationRequested();
+
+                    if (dto is null)
+                    {
+                        skippedCount++;
+                        continue;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(dto.ProjectCode))
+                    {
+                        PhaseLog("Row", "Skipping project: ProjectCode is null/empty.");
+                        skippedCount++;
+                        continue;
+                    }
+
+                    if (!dto.Number.HasValue || dto.Number.Value <= 0)
+                    {
+                        PhaseLog("Row", $"Skipping project {dto.ProjectCode}: invalid Number.");
+                        skippedCount++;
+                        continue;
+                    }
+
+                    // 2.2 Facultades (match más cercano del API externo)
+                    int? facultyId = null;
+                    if (!string.IsNullOrWhiteSpace(dto.Faculty))
+                    {
+                        facultyId = ResolveFacultyExternalId(externalFacultiesCache, dto.Faculty!);
+                        PhaseLog("Row", $"Resolved Faculty for {dto.ProjectCode}: {dto.Faculty} → {facultyId}");
+                    }
+
+                    // 2.3 Convocatoria
+                    int convocationId;
+                    Convocation? convocationEntity = null;
+                    var rawCallCode = dto.CallCode;
+
+                    // 🟦 Caso 1: CallCode vacío → usar ID fijo
+                    if (string.IsNullOrWhiteSpace(rawCallCode))
+                    {
+                        convocationId = DEFAULT_CONVOCATION_ID;
+
+                        PhaseLog("Row",
+                            $"CallCode empty → Assigning fixed ConvocationId={convocationId} to project {dto.ProjectCode}");
+                    }
+                    else
+                    {
+                        // 🟩 Caso 2: CallCode con texto → usar mejor coincidencia (Levenshtein)
+                        convocationEntity = await ResolveOrCreateConvocationAsync(
+                            convocationsCache,
+                            rawCallCode,
+                            ct);
+
+                        if (convocationEntity is null)
+                        {
+                            convocationId = DEFAULT_CONVOCATION_ID;
+
+                            PhaseLog("Row",
+                                $"CallCode '{rawCallCode}' could not be matched → Using fixed ConvocationId={convocationId} for project {dto.ProjectCode}");
+                        }
+                        else
+                        {
+                            convocationId = convocationEntity.Id;
+
+                            PhaseLog("Row",
+                                $"Resolved Convocation for {dto.ProjectCode}: CallCode='{rawCallCode}' → ConvocationId={convocationId}");
+                        }
+                    }
+
+                    // 2.4 Estado del proyecto
+                    int? projectStateId = null;
+                    if (!string.IsNullOrWhiteSpace(dto.State))
+                    {
+                        projectStateId = ResolveProjectStateId(projectStatesCache, dto.State!);
+                        PhaseLog("Row",
+                            $"Resolved ProjectState for {dto.ProjectCode}: State={dto.State} → ProjectStateId={projectStateId}");
+                    }
+
+                    // 2.5 Evitar duplicados: si ya existe mismo código y número, regenerar código
+                    var exists = await _uow.Projects
+                        .Query(asNoTracking: true)
+                        .AnyAsync(x =>
+                            x.ProjectCode == dto.ProjectCode &&
+                            x.ProjectNumber == dto.Number.Value,
+                            ct);
+
+                    if (exists)
+                    {
+                        PhaseLog("Row",
+                            $"Project {dto.ProjectCode} (#{dto.Number}) already exists. Generating unique code...");
+
+                        dto.ProjectCode = await GenerateUniqueProjectCodeAsync(dto.ProjectCode!, ct);
+
+                        PhaseLog("Row", $" → New code: {dto.ProjectCode}");
+                    }
+
+                    // ============================================
+                    // 3) Crear Group
+                    // ============================================
+
+                    var groupEntity = new Group
+                    {
+                        GroupTypeId = 1,
+                        Name = dto.ProjectCode!
+                    };
+
+                    await _uow.Groups.AddAsync(groupEntity, ct);
+                    PhaseLog("Row",
+                        $"Group queued for insert: Name={groupEntity.Name}");
+
+                    // ============================================
+                    // 4) Crear Project
+                    // ============================================
+
+                    PhaseLog("Row",
+                        $"Creating project: Code={dto.ProjectCode}, Number={dto.Number}, Name={dto.ProjectName}");
+
+                    var durationMonths = dto.TermMonths ?? 0;
+
+                    // Fechas desde documentos
+                    var approvalDoc = dto.Documents
+                        .FirstOrDefault(d => d.DocumentType == "APROBACION HCU/CONIN");
+
+                    DateTime? approvalDate = approvalDoc?.Date;
+
+                    var finalResolutionDoc = dto.Documents
+                        .FirstOrDefault(d => d.DocumentType == "RESOLUCION INFORME FINAL HCU");
+
+                    DateTime? realEndDate = finalResolutionDoc?.Date;
+
+                    // Si en la matriz vino FECHA DE FINALIZACIÓN ESTIMADA la usamos,
+                    // si no, la calculamos como StartDate + Plazo
+                    DateTime? tentativeEndDate = dto.EstimatedEndDate;
+
+                    if (!tentativeEndDate.HasValue && dto.StartDate.HasValue && durationMonths > 0)
+                    {
+                        tentativeEndDate = dto.StartDate.Value.AddMonths(durationMonths);
+                    }
+
+                    var projectEntity = new Project
+                    {
+                        ProjectCode = $"{dto.ProjectCode}-{dto.Number!.Value}",
+                        ProjectNumber = dto.Number!.Value,
+                        ProjectName = dto.ProjectName ?? string.Empty,
+                        CreatedByUserId = user.IdUser,
+                        ProjectTypeId = 1,
+                        FacultyId = facultyId ?? 0,
+                        ConvocationId = convocationId,
+                        ProjectStateId = projectStateId ?? 0,
+                        ApprovalDate = approvalDate,
+                        StartDate = dto.StartDate,
+                        DurationInMonths = durationMonths,
+                        TentativeEndDate = tentativeEndDate,
+                        RealEndDate = realEndDate,
+                        ExecutionPercentage = dto.ExecutionProgress * 100 ?? 0m,
+                    };
+
+                    projectEntity.ProjectGroup = groupEntity;
+
+                    await _uow.Projects.AddAsync(projectEntity, ct);
+
+                    if (dto.HasExternalParticipants)
+                    {
+                        var projectExternalResearchers = new ExternalResearcherProject
+                        {
+                            ExternalResearcherId = 1,
+                            Project = projectEntity,
+                            Role = "ExternalResearcher",
+                            CreatedAtUtc = DateTime.UtcNow,
+                            CreatedByUserId = user.IdUser,
+                            ExitDate = null
+                        };
+
+                        await _uow.ExternalResearcherProjects.AddAsync(projectExternalResearchers, ct);
+                    }
+
+                        // ============================================
+                        // 4.1) Documento de RESOLUCION INFORME FINAL HCU (si existe)
+                        //      → debe usar el tipo de doc "final de proyecto" (p.ej. Id = 4)
+                        // ============================================
+
+                        if (finalResolutionDoc is not null)
+                    {
+                        int? finalDocTypeId = ResolveDocumentTypeId(documentTypes, finalResolutionDoc.DocumentType);
+
+                        if (!finalDocTypeId.HasValue)
+                        {
+                            // Fallback al tipo fijo de "resolución final de proyecto"
+                            finalDocTypeId = DOCUMENT_TYPE_FINAL_PROJECT_RESOLUTION;
+                        }
+
+                        var finalDocument = new Document
+                        {
+                            DocumentTypeId = finalDocTypeId.Value,
+                            DocumentPath = "legacy-matrix",
+                            ResolutionCode = finalResolutionDoc.Code,
+                            ResolutionDate = finalResolutionDoc.Date,
+                            CreatedAt = DateTime.UtcNow,
+                            CreatedByUserId = user.IdUser
+                        };
+
+                        await _uow.Documents.AddAsync(finalDocument, ct);
+
+                        await _uow.ProjectDocuments.AddAsync(new ProjectDocument
+                        {
+                            Project = projectEntity,
+                            Document = finalDocument
+                        }, ct);
+
+                        PhaseLog("Row",
+                            $"Final resolution document created for project {dto.ProjectCode} (DocTypeId={finalDocTypeId}).");
+                    }
+
+                    // ============================================
+                    // 5) Presupuesto histórico  
+                    // ============================================
+
+                    if (dto.AssignedValue.HasValue && dto.AssignedValue.Value > 0)
+                    {
+                        var budgetEntity = new Budget
+                        {
+                            Project = projectEntity,
+                            ApprovedByUserId = user.IdUser,
+                            FundingTypeId = 2, // fijo según tu catálogo
+                            InitialAmount = dto.AssignedValue.Value,
+                            CertifiedAmount = 0,
+                            ExecutedAmount = dto.ExecutedValue ?? 0,
+                            ApprovedAt = approvalDate
+                        };
+
+                        await _uow.Budgets.AddAsync(budgetEntity, ct);
+                    }
+                    else
+                    {
+                        PhaseLog("Budget", $"No AssignedValue for project {dto.ProjectCode}");
+                    }
+
+                    // ============================================
+                    // 6) Categorías de investigación 
+                    // ============================================
+
+                    if (allCategories is not null && allCategories.Count > 0)
+                    {
+                        // Primero solo IDs, sin crear entidades todavía
+                        var candidateIds = new List<int>();
+
+                        var lineId = ResolveResearchCategoryId(
+                            allCategories,
+                            dto.ResearchLine,
+                            CAT_TYPE_LINEA);
+
+                        if (lineId.HasValue)
+                            candidateIds.Add(lineId.Value);
+
+                        var broadFieldId = ResolveResearchCategoryId(
+                            allCategories,
+                            dto.BroadField,
+                            CAT_TYPE_CAMPO_AMPLO);
+
+                        if (broadFieldId.HasValue)
+                            candidateIds.Add(broadFieldId.Value);
+
+                        var specificId = ResolveResearchCategoryId(
+                            allCategories,
+                            dto.SpecificField,
+                            CAT_TYPE_CAMPO_ESPECIFICO);
+
+                        if (specificId.HasValue)
+                            candidateIds.Add(specificId.Value);
+
+                        var detailedId = ResolveResearchCategoryId(
+                            allCategories,
+                            dto.DetailedField,
+                            CAT_TYPE_CAMPO_DETALLADO);
+
+                        if (detailedId.HasValue)
+                            candidateIds.Add(detailedId.Value);
+
+                        var scopeId = ResolveResearchCategoryId(
+                            allCategories,
+                            dto.TerritorialScope,
+                            CAT_TYPE_ALCANCE_TERRITORIAL);
+
+                        if (scopeId.HasValue)
+                            candidateIds.Add(scopeId.Value);
+
+                        var impactId = ResolveResearchCategoryId(
+                            allCategories,
+                            dto.ExpectedImpact,
+                            CAT_TYPE_IMPACTO_ESPERADO);
+
+                        if (impactId.HasValue)
+                            candidateIds.Add(impactId.Value);
+
+                        // 🔹 Dominio (NUEVO)
+                        var domainId = ResolveResearchCategoryId(
+                            allCategories,
+                            dto.Domain,
+                            CAT_TYPE_DOMINIO);
+
+                        if (domainId.HasValue)
+                            candidateIds.Add(domainId.Value);
+
+                        // Quitamos duplicados por si acaso
+                        candidateIds = candidateIds
+                            .Distinct()
+                            .ToList();
+
+                        if (candidateIds.Count > 0)
+                        {
+                            // 🔍 Aquí aplicamos la lógica jerárquica:
+                            // si una categoría es ancestro de otra, se elimina el ancestro.
+                            var leafIds = FilterToLeafCategories(candidateIds, allCategories);
+
+                            var researchCategoryLinks = leafIds
+                                .Select(id => new ProjectResearchCategory
+                                {
+                                    Project = projectEntity,
+                                    ResearchCategoryId = id
+                                })
+                                .ToList();
+
+                            if (researchCategoryLinks.Count > 0)
+                            {
+                                await _uow.ProjectResearchCategories
+                                    .AddRangeAsync(researchCategoryLinks, ct);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        PhaseLog("Categories", "No categories loaded; skipping research category mapping.");
+                    }
+
+                    // ============================================
+                    // 7) Documentos (GENÉRICO desde dto.Documents)
+                    //    (excepto FECHA* y RESOLUCION INFORME FINAL HCU, que ya tratamos arriba)
+                    // ============================================
+
+                    if (dto.Documents is not null && dto.Documents.Count > 0 && documentTypes.Count > 0)
+                    {
+                        foreach (var docDto in dto.Documents)
+                        {
+                            if (string.IsNullOrWhiteSpace(docDto.DocumentType))
+                                continue;
+
+                            // Ya usado para ApprovalDate / RealEndDate → no crear Document para FECHA*
+                            if (docDto.DocumentType.StartsWith("FECHA ", StringComparison.OrdinalIgnoreCase))
+                            {
+                                continue;
+                            }
+
+                            // Ya creamos el documento de resolución final arriba → no duplicar
+                            if (docDto.DocumentType == "RESOLUCION INFORME FINAL HCU")
+                            {
+                                continue;
+                            }
+
+                            var docTypeId = ResolveDocumentTypeId(documentTypes, docDto.DocumentType);
+                            if (!docTypeId.HasValue)
+                                continue;
+
+                            var document = new Document
+                            {
+                                DocumentTypeId = docTypeId.Value,
+                                DocumentPath = "legacy-matrix",
+                                ResolutionCode = docDto.Code,
+                                ResolutionDate = docDto.Date,
+                                CreatedAt = DateTime.UtcNow,
+                                CreatedByUserId = user.IdUser
+                            };
+
+                            await _uow.Documents.AddAsync(document, ct);
+
+                            await _uow.ProjectDocuments.AddAsync(new ProjectDocument
+                            {
+                                Project = projectEntity,
+                                Document = document
+                            }, ct);
+                        }
+                    }
+
+                    // ============================================
+                    // 8) Prórrogas (ProjectExtension + Document)
+                    // ============================================
+
+                    if (dto.Extensions is not null && dto.Extensions.Count > 0)
+                    {
+                        foreach (var ext in dto.Extensions)
+                        {
+                            if (string.IsNullOrWhiteSpace(ext.ResolutionCode) &&
+                                !ext.NewEndDate.HasValue)
+                            {
+                                continue;
+                            }
+
+                            var extensionDocument = new Document
+                            {
+                                DocumentTypeId = DOCUMENT_TYPE_RESOLUCION_PRORROGA,
+                                DocumentPath = "legacy-matrix",
+                                ResolutionCode = ext.ResolutionCode,
+                                ResolutionDate = ext.NewEndDate,
+                                CreatedAt = DateTime.UtcNow,
+                                CreatedByUserId = user.IdUser
+                            };
+
+                            await _uow.Documents.AddAsync(extensionDocument, ct);
+
+                            var extensionEntity = new ProjectExtension
+                            {
+                                Project = projectEntity,
+                                Document = extensionDocument,
+                                ExtensionDate = ext.NewEndDate
+                                                ?? projectEntity.TentativeEndDate
+                                                ?? DateTime.UtcNow,
+                                RequestedAt = null,
+                                ApprovedAt = ext.NewEndDate
+                            };
+
+                            await _uow.ProjectExtensions.AddAsync(extensionEntity, ct);
+                        }
+                    }
+
+                    // ============================================
+                    // 9) Visitas históricas (solo donde hay reporte)
+                    //    → aquí debe usarse DOCUMENT_TYPE_VISIT_RESOLUTION (Id = 6 en tu catálogo)
+                    // ============================================
+
+                    if (dto.VisitPeriods is not null && dto.VisitPeriods.Count > 0)
+                    {
+                        foreach (var vp in dto.VisitPeriods)
+                        {
+                            // Solo consideramos periodos que tengan reporte
+                            if (!vp.HasReport || string.IsNullOrWhiteSpace(vp.RawValue))
+                                continue;
+
+                            // Resolver periodo académico desde el caché
+                            var academicPeriodId = ResolveAcademicPeriodId(
+                                academicPeriodsCache,
+                                vp.PeriodLabel);
+
+                            if (!academicPeriodId.HasValue)
+                                continue;
+
+                            // Documento asociado a la visita (resolución / avance)
+                            var visitDocument = new Document
+                            {
+                                DocumentTypeId = DOCUMENT_TYPE_VISIT_RESOLUTION, // 👈 debe ser Id = 6
+                                DocumentPath = "legacy-matrix",
+                                ResolutionCode = vp.RawValue,
+                                ResolutionDate = null,
+                                CreatedAt = DateTime.UtcNow,
+                                CreatedByUserId = user.IdUser
+                            };
+
+                            // Creamos la visita enlazando por navegación, NO por DocumentId
+                            var visit = new Visit
+                            {
+                                Project = projectEntity,
+                                VisitStateId = REALIZED_VISIT_STATE_ID,
+                                AcademicPeriodId = academicPeriodId.Value,
+                                FundingDocument = null,
+                                Document = visitDocument,
+                                ProgressDocument = null,
+                                PerformedByUserId = null,
+                                ScheduledDate = null,
+                                PerformedDate = null,
+                                CreatedAt = DateTime.UtcNow
+                            };
+
+                            await _uow.Documents.AddAsync(visitDocument, ct);
+                            await _uow.Visits.AddAsync(visit, ct);
+                        }
+                    }
+
+                    // 10 objetivos
+
+                    if (!string.IsNullOrWhiteSpace(dto.GeneralObjective))
+                    {
+                        var objetive = new ProjectObjective
+                        {
+                            Project = projectEntity,
+                            ObjectiveTypeId = 1,
+                            Objetive = dto.GeneralObjective ?? string.Empty,
+                            Result = string.Empty
+                        };
+
+                        await _uow.ProjectObjectives.AddAsync(objetive, ct);
+                    }
+
+                    createdCount++;
+                }
+
+                await _uow.SaveChangesAsync(ct);
+
+                PhaseLog("Result",
+                    $"Created={createdCount}, Skipped={skippedCount}");
+
+                return ServiceResult<int>.Ok(createdCount);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[IMPORT] EXCEPTION → {ex}");
+                _logger.LogError(ex, "[IMPORT] Exception in ImportFromMatrixAsync");
+                return ServiceResult<int>.Fail("Unexpected server error.");
+            }
+        }
+
+
+
+
+        // ============================
+        //   HELPERS
+        // ============================
+
+        private static int? ResolveDocumentTypeId(
+            IReadOnlyList<DocumentType> documentTypes,
+            string? documentTypeKey)
+        {
+            if (documentTypes is null || documentTypes.Count == 0)
+                return null;
+
+            if (string.IsNullOrWhiteSpace(documentTypeKey))
+                return null;
+
+            var keyNorm = NormalizeHeader(documentTypeKey);
+
+            DocumentType? best = null;
+            double bestScore = 0.0;
+
+            foreach (var dt in documentTypes)
+            {
+                var dtNorm = NormalizeHeader(dt.Name);
+
+                var score = Levenshtein.SimilarityPercentage(
+                    keyNorm,
+                    dtNorm,
+                    normalize: false);
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = dt;
+                }
+            }
+
+            if (best is null || bestScore < 70.0)
+                return null;
+
+            return best.Id;
+        }
+
+        private static string NormalizeHeader(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            var s = value.Trim().ToUpperInvariant();
+
+            s = s
+                .Replace("Á", "A")
+                .Replace("É", "E")
+                .Replace("Í", "I")
+                .Replace("Ó", "O")
+                .Replace("Ú", "U")
+                .Replace("Ñ", "N");
+
+            while (s.Contains("  "))
+                s = s.Replace("  ", " ");
+
+            return s;
+        }
+
+        private async Task<string> GenerateUniqueProjectCodeAsync(
+            string baseCode,
+            CancellationToken ct)
+        {
+            var exists = await _uow.Projects
+                .Query(asNoTracking: true)
+                .AnyAsync(x => x.ProjectCode == baseCode, ct);
+
+            if (!exists)
+                return baseCode;
+
+            int counter = 1;
+            string newCode;
+
+            do
+            {
+                newCode = $"{baseCode}-DUP{counter}";
+                counter++;
+
+            } while (await _uow.Projects
+                .Query(asNoTracking: true)
+                .AnyAsync(x => x.ProjectCode == newCode, ct));
+
+            return newCode;
+        }
+
+        private static List<int> FilterToLeafCategories(
+            List<int> candidateIds,
+            IReadOnlyList<ResearchCategoryListItemDTO> allCategories)
+        {
+            // Mapa rápido id -> categoría
+            var byId = allCategories.ToDictionary(c => c.Id);
+
+            bool IsAncestor(int ancestorId, int childId)
+            {
+                var currentId = childId;
+
+                // Subimos por la cadena de padres hasta llegar a la raíz
+                while (byId.TryGetValue(currentId, out var cat) && cat.ParentCategoryId.HasValue)
+                {
+                    if (cat.ParentCategoryId.Value == ancestorId)
+                        return true;
+
+                    currentId = cat.ParentCategoryId.Value;
+                }
+
+                return false;
+            }
+
+            // Nos quedamos solo con los IDs que NO son ancestros de otro
+            var leafIds = candidateIds
+                .Where(id =>
+                    !candidateIds.Any(otherId =>
+                        otherId != id && IsAncestor(id, otherId)))
+                .ToList();
+
+            return leafIds;
+        }
+
+
+        private static int? ResolveResearchCategoryId(
+            IEnumerable<ResearchCategoryListItemDTO> allCategories,
+            string? rawName,
+            int expectedTypeId,
+            double minSimilarity = 0)
+        {
+            if (allCategories is null)
+                return null;
+
+            if (string.IsNullOrWhiteSpace(rawName))
+                return null;
+
+            var targetNorm = Levenshtein.NormalizeForComparison(rawName);
+
+            ResearchCategoryListItemDTO? best = null;
+            double bestScore = 0.0;
+
+            var candidates = allCategories
+                .Where(c => c.ResearchCategoryTypeId == expectedTypeId);
+
+            foreach (var cat in candidates)
+            {
+                var nameNorm = Levenshtein.NormalizeForComparison(cat.Name);
+                var score = Levenshtein.SimilarityPercentage(
+                    targetNorm,
+                    nameNorm,
+                    normalize: false);
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = cat;
+                }
+            }
+
+            if (best is null || bestScore < minSimilarity)
+                return null;
+
+            return best.Id;
+        }
+
+        private static int? ResolveFacultyExternalId(
+            List<ExternalFacultyDTO> faculties,
+            string facultyName)
+        {
+            if (faculties is null || faculties.Count == 0)
+                return null;
+
+            if (string.IsNullOrWhiteSpace(facultyName))
+                return null;
+
+            var targetNorm = Levenshtein.NormalizeForComparison(facultyName);
+
+            ExternalFacultyDTO? best = null;
+            double bestSimilarity = 0.0;
+
+            foreach (var fac in faculties)
+            {
+                var nameNorm = Levenshtein.NormalizeForComparison(fac.Name);
+                var sim = Levenshtein.SimilarityPercentage(nameNorm, targetNorm, normalize: false);
+
+                if (sim > bestSimilarity)
+                {
+                    bestSimilarity = sim;
+                    best = fac;
+                }
+            }
+
+            if (best is null)
+                return null;
+
+            Console.WriteLine($"[IMPORT][Faculty] '{facultyName}' -> '{best.Name}' ({bestSimilarity:F2}%)");
+
+            return best.FacultyId;
+        }
+
+        private async Task<Convocation?> ResolveOrCreateConvocationAsync(
+            List<Convocation> convocationsCache,
+            string callCode,
+            CancellationToken ct)
+        {
+            if (convocationsCache is null || convocationsCache.Count == 0)
+            {
+                Console.WriteLine("[IMPORT][Convocation] No convocations in cache.");
+                return null; // No hay nada contra qué mapear
+            }
+
+            if (string.IsNullOrWhiteSpace(callCode))
+            {
+                Console.WriteLine("[IMPORT][Convocation] Empty CallCode, cannot compare.");
+                return null; // No hay texto para comparar
+            }
+
+            var targetNorm = Levenshtein.NormalizeForComparison(callCode);
+
+            Convocation? bestMatch = null;
+            double bestSimilarity = double.MinValue;
+
+            foreach (var c in convocationsCache)
+            {
+                var code = c.Code ?? string.Empty;
+                var codeNorm = Levenshtein.NormalizeForComparison(code);
+
+                var sim = Levenshtein.SimilarityPercentage(
+                    codeNorm,
+                    targetNorm,
+                    normalize: false);
+
+                if (sim > bestSimilarity)
+                {
+                    bestSimilarity = sim;
+                    bestMatch = c;
+                }
+            }
+
+            if (bestMatch is null)
+            {
+                Console.WriteLine($"[IMPORT][Convocation] No match found for '{callCode}'.");
+                return null;
+            }
+
+            Console.WriteLine(
+                $"[IMPORT][Convocation] Using best match '{callCode}' -> '{bestMatch.Code}' ({bestSimilarity:F2}%)");
+
+            // ✅ No se crea nada nuevo, SIEMPRE se usa la mejor existente
+            return bestMatch;
+        }
+
+
+
+        private static int? ResolveProjectStateId(
+            List<ProjectState> states,
+            string stateName)
+        {
+            if (states is null || states.Count == 0)
+                return null;
+
+            if (string.IsNullOrWhiteSpace(stateName))
+                return null;
+
+            var norm = Levenshtein.NormalizeForComparison(stateName);
+
+            var manualMap = new Dictionary<string, string>
+            {
+                ["archivado"] = "CANCELADO",
+                ["ejecucion"] = "EN EJECUCION",
+                ["ejecución"] = "EN EJECUCION",
+                ["en ejecucion"] = "EN EJECUCION",
+                ["en ejecución"] = "EN EJECUCION",
+                ["en proceso de finalizacion"] = "EN CIERRE",
+                ["en proceso de finalización"] = "EN CIERRE",
+                ["finalizado"] = "FINALIZADO",
+                ["criterio final"] = "FINALIZADO"
+            };
+
+            if (manualMap.TryGetValue(norm, out var canonicalName))
+            {
+                var canonicalNorm = Levenshtein.NormalizeForComparison(canonicalName);
+
+                var exact = states.FirstOrDefault(s =>
+                    Levenshtein.NormalizeForComparison(s.Name) == canonicalNorm);
+
+                if (exact is not null)
+                    return exact.Id;
+            }
+
+            ProjectState? best = null;
+            double bestSim = 0.0;
+
+            foreach (var s in states)
+            {
+                var nameNorm = Levenshtein.NormalizeForComparison(s.Name);
+                var sim = Levenshtein.SimilarityPercentage(nameNorm, norm, normalize: false);
+
+                if (sim > bestSim)
+                {
+                    bestSim = sim;
+                    best = s;
+                }
+            }
+
+            if (best is not null)
+            {
+                Console.WriteLine($"[IMPORT][State] '{stateName}' -> '{best.Name}' ({bestSim:F2}%)");
+                return best.Id;
+            }
+
+            return null;
+        }
+
+        private static int? ResolveAcademicPeriodId(
+            List<AcademicPeriod> periods,
+            string? periodLabel)
+        {
+            if (periods is null || periods.Count == 0)
+                return null;
+
+            if (string.IsNullOrWhiteSpace(periodLabel))
+                return null;
+
+            var target = Levenshtein.NormalizeForComparison(periodLabel);
+
+            AcademicPeriod? best = null;
+            double bestScore = 0.0;
+
+            foreach (var p in periods)
+            {
+                var nameNorm = Levenshtein.NormalizeForComparison(p.Name);
+                var score = Levenshtein.SimilarityPercentage(nameNorm, target, normalize: false);
+
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = p;
+                }
+            }
+
+            if (best is null || bestScore < 70.0)
+                return null;
+
+            Console.WriteLine($"[IMPORT][Period] '{periodLabel}' -> '{best.Name}' ({bestScore:F2}%)");
+
+            return best.Id;
+        }
+
         private static void ApplyUpdate(Project target, UpdateProjectRequestDTO dto)
         {
             target.ProjectName = dto.ProjectName;
             target.ProjectTypeId = dto.ProjectTypeId;
             target.ProjectStateId = dto.ProjectStateId;
             target.ProjectGroupId = dto.ProjectGroupId;
-            target.InitialDocumentId = dto.InitialDocumentId;
             target.StartDate = dto.StartDate;
             target.TentativeEndDate = dto.TentativeEndDate;
             target.RealEndDate = dto.RealEndDate;

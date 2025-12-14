@@ -22,7 +22,6 @@
     <ChildContent>
         <div class="space-y-4">
 
-            <!-- Search -->
             <SearchInput Value="@search"
                          ValueChanged="OnSearchChanged"
                          Placeholder="Buscar por nombre o correo"
@@ -30,7 +29,6 @@
                          Class="w-full"
                          DebounceMs="10" />
 
-            <!-- Users table -->
             <div class="max-h-[350px] overflow-y-auto pr-1 border border-border rounded-xl">
                 <DataTable TItem="ExternalUserDTO"
                            Items="FilteredUsers ?? Enumerable.Empty<ExternalUserDTO>()"
@@ -38,15 +36,14 @@
                            RowTemplate="UserRowTemplate"
                            PageSize="4"
                            Total="@(FilteredUsers?.Count() ?? 0)"
-                           EmptyText="No users found." />
+                           EmptyText="No se encontraron usuarios." />
             </div>
 
             @if (ShowUserValidation && SelectedUserId is null)
             {
-                <p class="text-sm text-[color:var(--color-error)]">Please select a user.</p>
+                <p class="text-sm text-[color:var(--color-error)]">Por favor, seleccione un usuario.</p>
             }
 
-            <!-- Role selector (MemberRoleTypeDetailDTO, Flag = 2 viene filtrado desde el padre) -->
             @if (Roles is not null && Roles.Any())
             {
                 <div class="space-y-1">
@@ -65,14 +62,14 @@
 
                     @if (ShowRoleValidation && (SelectedRoleId is null || SelectedRoleId <= 0))
                     {
-                        <p class="text-sm text-[color:var(--color-error)]">Porfavor seleccione un rol</p>
+                        <p class="text-sm text-[color:var(--color-error)]">Por favor, seleccione un rol.</p>
                     }
                 </div>
             }
             else
             {
                 <p class="text-sm text-muted">
-                    No roles available for selection.
+                    No hay roles disponibles para seleccionar.
                 </p>
             }
 
@@ -81,12 +78,12 @@
 
     <Footer>
         <div class="flex items-center justify-end gap-2">
-            <ActionButton Text="Cancel"
+            <ActionButton Text="Cancelar"
                           Execute="OnCancelClicked"
                           Variant="ButtonVariant.Ghost"
                           Size="ButtonSize.Sm"
                           Class="inline-flex items-center justify-center rounded-xl px-4 py-2" />
-            <ActionButton Text="Add"
+            <ActionButton Text="Agregar"
                           Execute="Submit"
                           Variant="ButtonVariant.Soft"
                           Size="ButtonSize.Sm"
@@ -160,7 +157,7 @@
             new ColumnDef<ExternalUserDTO>("Nombre", u => u.FullName ?? string.Empty, "16rem"),
 
             // Email
-            new ColumnDef<ExternalUserDTO>("Email", u => u.Email ?? string.Empty, "18rem"),
+            new ColumnDef<ExternalUserDTO>("Correo", u => u.Email ?? string.Empty, "18rem"),
         };
 
     // Filtro por nombre (puedes ampliar a email si quieres)
@@ -196,7 +193,6 @@
     var cellClass = baseCell + selectedBg;
 }
 
-    <!-- Columna de selección -->
     <td class="@cellClass">
         <button type="button"
                 class="inline-flex items-center justify-center rounded-full border border-border w-5 h-5
@@ -213,12 +209,10 @@
         </button>
     </td>
 
-    <!-- Nombre -->
     <td class="@cellClass">
         @user.FullName
     </td>
 
-    <!-- Email -->
     <td class="@($"{cellClass} text-muted")">
         @user.Email
     </td>

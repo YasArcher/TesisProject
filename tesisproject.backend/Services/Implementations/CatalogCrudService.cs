@@ -44,12 +44,12 @@ namespace tesisproject.backend.Services.Implementations
                     .ToList()
                     .AsReadOnly();
 
-                if (dto.Count == 0)
-                    return ServiceResult<IReadOnlyList<CatalogListItemDTO>>
-                        .Fail("No items found for this catalog.", ErrorType.NotFound);
+                var message = dto.Count == 0
+                    ? "No items found for this catalog."
+                    : "Catalog items retrieved.";
 
                 return ServiceResult<IReadOnlyList<CatalogListItemDTO>>
-                    .Ok(dto, "Catalog items retrieved.");
+                    .Ok(dto, message);
             }
             catch (Exception ex)
             {
@@ -57,6 +57,7 @@ namespace tesisproject.backend.Services.Implementations
                     .Fail(ex.Message, ErrorType.Unexpected);
             }
         }
+
 
         // =============== READ ONE ===============
 

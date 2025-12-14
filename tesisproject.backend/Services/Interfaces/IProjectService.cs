@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using tesisproject.shared.DTOs.Matrices.Response;
 using tesisproject.shared.DTOs.Project.Request;
 using tesisproject.shared.DTOs.Project.Response;
 using tesisproject.shared.Responses;
@@ -22,5 +23,10 @@ namespace tesisproject.backend.Services.Interfaces
 
         Task<ServiceResult<ProjectDetailResponseDTO>> CreateFullAsync(AddProjectFullRequestDTO request, int currentUserId, CancellationToken ct = default);
         Task<ServiceResult<NoContent>> UpdateResearchCategoriesAsync(int projectId, List<int> researchCategoryIds, CancellationToken ct = default);
+
+        Task<ServiceResult<int>> ImportFromMatrixAsync(
+    ProjectMatrixUploadSummaryDTO summary,
+    int currentUserId,
+    CancellationToken ct = default);
     }
 }

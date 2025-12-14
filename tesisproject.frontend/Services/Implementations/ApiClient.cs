@@ -1,8 +1,9 @@
-﻿using System.Net.Http;
+﻿using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
-using System.Net.Http.Headers;
 using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.Responses;
 
@@ -12,6 +13,7 @@ namespace tesisproject.frontend.Services.Implementations
     {
         private readonly HttpClient _http;
         private readonly ITokenStore _tokenStore; // 👈 NUEVO
+
         private static readonly JsonSerializerOptions _jsonOptions = new()
         {
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -271,6 +273,35 @@ namespace tesisproject.frontend.Services.Implementations
                     response: default,
                     error: ex.Message,
                     httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
+            }
+        }
+
+        public async Task<HttpResponseMessage> PostRawAsync<TRequest>(
+        string url,
+        TRequest body,
+        CancellationToken ct = default)
+        {
+            try
+            {
+                await AttachAuthHeaderAsync(ct); // 👈 incluye el Bearer
+
+                var json = new StringContent(
+                    JsonSerializer.Serialize(body, _jsonOptions),
+                    Encoding.UTF8,
+                    "application/json");
+
+                // ⚠️ OJO: NO usamos using, porque devolvemos el HttpResponseMessage
+                var resp = await _http.PostAsync(url, json, ct);
+                return resp;
+            }
+            catch (Exception ex)
+            {
+                // En caso de error fuerte, devolvemos un HttpResponseMessage de error
+                var errorResponse = new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                {
+                    ReasonPhrase = ex.Message
+                };
+                return errorResponse;
             }
         }
     }

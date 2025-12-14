@@ -55,5 +55,8 @@ namespace tesisproject.shared.Entities.Core
         // Navegación inversa (1:1)
         [InverseProperty(nameof(RelatedDocument))]
         public Document? ReverseRelation { get; set; }
+
+        // 🔹 Nueva navegación: proyectos que referencian este documento
+        public ICollection<ProjectDocument> ProjectDocuments { get; set; } = new List<ProjectDocument>();
     }
 }

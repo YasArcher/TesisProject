@@ -87,9 +87,8 @@ builder.Services.AddScoped<IProductTypeClientService, ProductTypeClientService>(
 builder.Services.AddScoped<IProductTypeDesignClientService, ProductTypeDesignClientService>();
 builder.Services.AddScoped<IProductAttributeClientService, ProductAttributeClientService>();
 builder.Services.AddScoped<IProductAttributeDefinitionClientService, ProductAttributeDefinitionClientService>();
-
-
-
+builder.Services.AddScoped<IProjectMatrixClientService, ProjectMatrixClientService>();
+builder.Services.AddScoped<IExportTemplateClientService, ExportTemplateClientService>();
 
 
 // External

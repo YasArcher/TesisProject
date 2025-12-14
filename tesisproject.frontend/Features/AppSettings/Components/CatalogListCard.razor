@@ -55,13 +55,13 @@
                                 @if (item.IsActive)
                                 {
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-success-subtle text-success">
-                                        Active
+                                        Activo
                                     </span>
                                 }
                                 else
                                 {
                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                                        Inactive
+                                        Inactivo
                                     </span>
                                 }
                             }
@@ -69,7 +69,7 @@
                             @if (ShowLockedBadge && item.IsLocked)
                             {
                                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                                    Locked
+                                    Bloqueado
                                 </span>
                             }
                         </span>
@@ -86,7 +86,7 @@
                     else if (item.IsLocked && ShowLockedBadge)
                     {
                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                            Cannot edit
+                            No editable
                         </span>
                     }
                 </li>
@@ -103,13 +103,13 @@
     public IReadOnlyList<CatalogListItemDTO> Items { get; set; }
         = Array.Empty<CatalogListItemDTO>();
 
-    [Parameter] public string ItemLabel { get; set; } = "items";
-    [Parameter] public string EmptyMessage { get; set; } = "No items found.";
+    [Parameter] public string ItemLabel { get; set; } = "elementos";
+    [Parameter] public string EmptyMessage { get; set; } = "No se encontraron elementos.";
 
     [Parameter] public bool ShowNewButton { get; set; } = true;
-    [Parameter] public string NewButtonText { get; set; } = "New";
+    [Parameter] public string NewButtonText { get; set; } = "Nuevo";
 
-    [Parameter] public string EditButtonText { get; set; } = "Edit";
+    [Parameter] public string EditButtonText { get; set; } = "Editar";
 
     [Parameter] public bool ShowActiveBadge { get; set; } = true;
     [Parameter] public bool ShowLockedBadge { get; set; } = true;

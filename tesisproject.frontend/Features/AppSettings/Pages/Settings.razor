@@ -32,10 +32,10 @@
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div class="space-y-2">
                 <h1 class="text-2xl font-bold text-foreground">
-                    System Settings
+                    Configuración del Sistema
                 </h1>
                 <p class="text-sm text-muted">
-                    Configure system catalogs, products and other options.
+                    Configure catálogos del sistema, productos y otras opciones.
                 </p>
             </div>
         </div>
@@ -48,7 +48,7 @@
               Variant="TabVariant.Underline">
 
             <!-- Products configuration tab -->
-            <Tab Key="products" Title="Products">
+            <Tab Key="products" Title="Productos">
                 <Icon>
                     <svg xmlns="http://www.w3.org/2000/svg"
                          viewBox="0 0 24 24"
@@ -66,7 +66,7 @@
                           Variant="TabVariant.Pills">
 
                         <!-- Sub-tab: Product catalogs (Product Types + Attributes) -->
-                        <Tab Key="catalogs" Title="Product catalogs">
+                        <Tab Key="catalogs" Title="Catálogos de productos">
                             <ChildContent>
                                 <ProductCatalogsTab Loading="@_catalogLoading"
                                                     Error="@_catalogError"
@@ -99,7 +99,7 @@
                         </Tab>
 
                         <!-- Sub-tab: Designer -->
-                        <Tab Key="designer" Title="Designer">
+                        <Tab Key="designer" Title="Diseñador">
                             <ChildContent>
                                 <ProductTypeDesignerTab Loading="@_designerLoading"
                                                         Error="@_designerError"
@@ -121,7 +121,7 @@
             </Tab>
 
             <!-- Core catalogs tab -->
-            <Tab Key="core-catalogs" Title="Core catalogs">
+            <Tab Key="core-catalogs" Title="Catálogos principales">
                 <Icon>
                     <svg xmlns="http://www.w3.org/2000/svg"
                          viewBox="0 0 24 24"
@@ -199,7 +199,7 @@
             </Tab>
 
             <!-- Research categories tab -->
-            <Tab Key="research-categories" Title="Research categories">
+            <Tab Key="research-categories" Title="Categorías de investigación">
                 <Icon>
                     <svg xmlns="http://www.w3.org/2000/svg"
                          viewBox="0 0 24 24"
@@ -215,22 +215,21 @@
                     <ResearchCategoryDesignerTab />
                 </ChildContent>
             </Tab>
-                <!-- Countries & Institutions tab -->
-    <Tab Key="countries-institutions" Title="Countries & Institutions">
-        <Icon>
-            <svg xmlns="http://www.w3.org/2000/svg"
-                 viewBox="0 0 24 24"
-                 fill="currentColor"
-                 class="size-5">
-                <path d="M4.5 6.75A.75.75 0 0 1 5.25 6h13.5a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V6.75Z" />
-                <path d="M7.5 9h3v6h-3V9Zm6 0h3v6h-3V9Z" />
-            </svg>
-        </Icon>
-        <ChildContent>
-            <!-- Usa aquí tu componente -->
+            <!-- Countries & Institutions tab -->
+            <Tab Key="countries-institutions" Title="Países e Instituciones">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         viewBox="0 0 24 24"
+                         fill="currentColor"
+                         class="size-5">
+                        <path d="M4.5 6.75A.75.75 0 0 1 5.25 6h13.5a.75.75 0 0 1 .75.75v10.5a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V6.75Z" />
+                        <path d="M7.5 9h3v6h-3V9Zm6 0h3v6h-3V9Z" />
+                    </svg>
+                </Icon>
+                <ChildContent>
                     <CountriesAndInstitutionsTab />
-        </ChildContent>
-    </Tab>
+                </ChildContent>
+            </Tab>
         </Tabs>
     </div>
 </div>
@@ -367,7 +366,7 @@
             var typesRes = await ProductTypeClient.GetListAsync();
             if (!typesRes.Success || typesRes.Response is null)
             {
-                _catalogError = typesRes.Error ?? "Failed to load product types.";
+                _catalogError = typesRes.Error ?? "Error al cargar los tipos de producto.";
                 _catalogProductTypes = new();
             }
             else
@@ -379,9 +378,9 @@
             if (!attrsRes.Success || attrsRes.Response is null)
             {
                 if (_catalogError is null)
-                    _catalogError = attrsRes.Error ?? "Failed to load product attributes.";
+                    _catalogError = attrsRes.Error ?? "Error al cargar los atributos de producto.";
                 else
-                    Toast.ShowWarning(attrsRes.Error ?? "Failed to load product attributes.");
+                    Toast.ShowWarning(attrsRes.Error ?? "Error al cargar los atributos de producto.");
 
                 _catalogProductAttributes = new();
             }
@@ -392,7 +391,7 @@
         }
         catch (Exception ex)
         {
-            _catalogError ??= $"Unexpected error loading product catalogs: {ex.Message}";
+            _catalogError ??= $"Error inesperado al cargar los catálogos de producto: {ex.Message}";
         }
         finally
         {
@@ -427,7 +426,7 @@
             var res = await ProductTypeClient.GetByIdAsync(id);
             if (!res.Success || res.Response is null)
             {
-                Toast.ShowError(res.Error ?? "Failed to load product type.");
+                Toast.ShowError(res.Error ?? "Error al cargar el tipo de producto.");
                 return;
             }
 
@@ -436,7 +435,7 @@
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Error loading product type: {ex.Message}");
+            Toast.ShowError($"Error al cargar el tipo de producto: {ex.Message}");
         }
     }
 
@@ -450,13 +449,13 @@
     {
         if (_typeEditModel.IsLocked && _typeEditModel.Id != 0)
         {
-            _typeError = "This product type is locked and cannot be modified.";
+            _typeError = "Este tipo de producto está bloqueado y no puede ser modificado.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_typeEditModel.Name))
         {
-            _typeError = "Name is required.";
+            _typeError = "El nombre es requerido.";
             return;
         }
 
@@ -475,11 +474,11 @@
                 var res = await ProductTypeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _typeError = res.Error ?? "Failed to create product type.";
+                    _typeError = res.Error ?? "Error al crear el tipo de producto.";
                     return;
                 }
 
-                Toast.ShowSuccess("Product type created successfully.");
+                Toast.ShowSuccess("Tipo de producto creado exitosamente.");
             }
             else
             {
@@ -493,11 +492,11 @@
                 var res = await ProductTypeClient.UpdateAsync(req);
                 if (!res.Success)
                 {
-                    _typeError = res.Error ?? "Failed to update product type.";
+                    _typeError = res.Error ?? "Error al actualizar el tipo de producto.";
                     return;
                 }
 
-                Toast.ShowSuccess("Product type updated successfully.");
+                Toast.ShowSuccess("Tipo de producto actualizado exitosamente.");
             }
 
             _typeModalOpen = false;
@@ -505,7 +504,7 @@
         }
         catch (Exception ex)
         {
-            _typeError = $"Unexpected error saving product type: {ex.Message}";
+            _typeError = $"Error inesperado al guardar el tipo de producto: {ex.Message}";
         }
         finally
         {
@@ -542,7 +541,7 @@
             var res = await ProductAttributeClient.GetByIdAsync(id);
             if (!res.Success || res.Response is null)
             {
-                Toast.ShowError(res.Error ?? "Failed to load product attribute.");
+                Toast.ShowError(res.Error ?? "Error al cargar el atributo de producto.");
                 return;
             }
 
@@ -551,7 +550,7 @@
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Error loading product attribute: {ex.Message}");
+            Toast.ShowError($"Error al cargar el atributo de producto: {ex.Message}");
         }
     }
 
@@ -565,13 +564,13 @@
     {
         if (_attributeEditModel.IsLocked && _attributeEditModel.Id != 0)
         {
-            _attributeError = "This attribute is locked and cannot be modified.";
+            _attributeError = "Este atributo está bloqueado y no puede ser modificado.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_attributeEditModel.Name))
         {
-            _attributeError = "Name is required.";
+            _attributeError = "El nombre es requerido.";
             return;
         }
 
@@ -593,11 +592,11 @@
                 var res = await ProductAttributeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _attributeError = res.Error ?? "Failed to create attribute.";
+                    _attributeError = res.Error ?? "Error al crear el atributo.";
                     return;
                 }
 
-                Toast.ShowSuccess("Attribute created successfully.");
+                Toast.ShowSuccess("Atributo creado exitosamente.");
             }
             else
             {
@@ -613,11 +612,11 @@
                 var res = await ProductAttributeClient.UpdateAsync(_attributeEditModel.Id, req);
                 if (!res.Success)
                 {
-                    _attributeError = res.Error ?? "Failed to update attribute.";
+                    _attributeError = res.Error ?? "Error al actualizar el atributo.";
                     return;
                 }
 
-                Toast.ShowSuccess("Attribute updated successfully.");
+                Toast.ShowSuccess("Atributo actualizado exitosamente.");
             }
 
             _attributeModalOpen = false;
@@ -625,7 +624,7 @@
         }
         catch (Exception ex)
         {
-            _attributeError = $"Unexpected error saving attribute: {ex.Message}";
+            _attributeError = $"Error inesperado al guardar el atributo: {ex.Message}";
         }
         finally
         {
@@ -639,7 +638,7 @@
         var type = _catalogProductTypes.FirstOrDefault(t => t.Id == id);
         if (type?.IsLocked == true)
         {
-            Toast.ShowWarning("This product type is locked and cannot be deleted.");
+            Toast.ShowWarning("Este tipo de producto está bloqueado y no puede ser eliminado.");
             return;
         }
 
@@ -648,16 +647,16 @@
             var res = await ProductTypeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Failed to delete product type.");
+                Toast.ShowError(res.Error ?? "Error al eliminar el tipo de producto.");
                 return;
             }
 
-            Toast.ShowSuccess("Product type deleted successfully.");
+            Toast.ShowSuccess("Tipo de producto eliminado exitosamente.");
             await LoadProductCatalogsAsync();
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Unexpected error deleting product type: {ex.Message}");
+            Toast.ShowError($"Error inesperado al eliminar el tipo de producto: {ex.Message}");
         }
     }
 
@@ -666,7 +665,7 @@
         var attr = _catalogProductAttributes.FirstOrDefault(a => a.Id == id);
         if (attr?.IsLocked == true)
         {
-            Toast.ShowWarning("This attribute is locked and cannot be deleted.");
+            Toast.ShowWarning("Este atributo está bloqueado y no puede ser eliminado.");
             return;
         }
 
@@ -675,16 +674,16 @@
             var res = await ProductAttributeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Failed to delete attribute.");
+                Toast.ShowError(res.Error ?? "Error al eliminar el atributo.");
                 return;
             }
 
-            Toast.ShowSuccess("Attribute deleted successfully.");
+            Toast.ShowSuccess("Atributo eliminado exitosamente.");
             await LoadProductCatalogsAsync();
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Unexpected error deleting attribute: {ex.Message}");
+            Toast.ShowError($"Error inesperado al eliminar el atributo: {ex.Message}");
         }
     }
 
@@ -755,7 +754,7 @@
         }
         catch (Exception ex)
         {
-            _coreCatalogsError ??= $"Unexpected error loading core catalogs: {ex.Message}";
+            _coreCatalogsError ??= $"Error inesperado al cargar los catálogos principales: {ex.Message}";
         }
         finally
         {
@@ -792,7 +791,7 @@
             var res = await DocumentTypeClient.GetByIdAsync(id);
             if (!res.Success || res.Response is null)
             {
-                Toast.ShowError(res.Error ?? "Failed to load document type.");
+                Toast.ShowError(res.Error ?? "Error al cargar el tipo de documento.");
                 return;
             }
 
@@ -801,7 +800,7 @@
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Error loading document type: {ex.Message}");
+            Toast.ShowError($"Error al cargar el tipo de documento: {ex.Message}");
         }
     }
 
@@ -815,13 +814,13 @@
     {
         if (_documentTypeEditModel.IsLocked && _documentTypeEditModel.Id != 0)
         {
-            _documentTypeError = "This document type is locked and cannot be modified.";
+            _documentTypeError = "Este tipo de documento está bloqueado y no puede ser modificado.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_documentTypeEditModel.Name))
         {
-            _documentTypeError = "Name is required.";
+            _documentTypeError = "El nombre es requerido.";
             return;
         }
 
@@ -840,11 +839,11 @@
                 var res = await DocumentTypeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _documentTypeError = res.Error ?? "Failed to create document type.";
+                    _documentTypeError = res.Error ?? "Error al crear el tipo de documento.";
                     return;
                 }
 
-                Toast.ShowSuccess("Document type created successfully.");
+                Toast.ShowSuccess("Tipo de documento creado exitosamente.");
             }
             else
             {
@@ -858,11 +857,11 @@
                 var res = await DocumentTypeClient.UpdateAsync(req);
                 if (!res.Success)
                 {
-                    _documentTypeError = res.Error ?? "Failed to update document type.";
+                    _documentTypeError = res.Error ?? "Error al actualizar el tipo de documento.";
                     return;
                 }
 
-                Toast.ShowSuccess("Document type updated successfully.");
+                Toast.ShowSuccess("Tipo de documento actualizado exitosamente.");
             }
 
             _documentTypeModalOpen = false;
@@ -870,7 +869,7 @@
         }
         catch (Exception ex)
         {
-            _documentTypeError = $"Unexpected error saving document type: {ex.Message}";
+            _documentTypeError = $"Error inesperado al guardar el tipo de documento: {ex.Message}";
         }
         finally
         {
@@ -884,7 +883,7 @@
         var item = _documentTypes.FirstOrDefault(t => t.Id == id);
         if (item?.IsLocked == true)
         {
-            Toast.ShowWarning("This document type is locked and cannot be deleted.");
+            Toast.ShowWarning("Este tipo de documento está bloqueado y no puede ser eliminado.");
             return;
         }
 
@@ -893,16 +892,16 @@
             var res = await DocumentTypeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Failed to delete document type.");
+                Toast.ShowError(res.Error ?? "Error al eliminar el tipo de documento.");
                 return;
             }
 
-            Toast.ShowSuccess("Document type deleted successfully.");
+            Toast.ShowSuccess("Tipo de documento eliminado exitosamente.");
             await LoadCoreCatalogsAsync();
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Unexpected error deleting document type: {ex.Message}");
+            Toast.ShowError($"Error inesperado al eliminar el tipo de documento: {ex.Message}");
         }
     }
 
@@ -932,7 +931,7 @@
             var res = await FundingTypeClient.GetByIdAsync(id);
             if (!res.Success || res.Response is null)
             {
-                Toast.ShowError(res.Error ?? "Failed to load funding type.");
+                Toast.ShowError(res.Error ?? "Error al cargar el tipo de financiamiento.");
                 return;
             }
 
@@ -941,7 +940,7 @@
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Error loading funding type: {ex.Message}");
+            Toast.ShowError($"Error al cargar el tipo de financiamiento: {ex.Message}");
         }
     }
 
@@ -955,13 +954,13 @@
     {
         if (_fundingTypeEditModel.IsLocked && _fundingTypeEditModel.Id != 0)
         {
-            _fundingTypeError = "This funding type is locked and cannot be modified.";
+            _fundingTypeError = "Este tipo de financiamiento está bloqueado y no puede ser modificado.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_fundingTypeEditModel.Name))
         {
-            _fundingTypeError = "Name is required.";
+            _fundingTypeError = "El nombre es requerido.";
             return;
         }
 
@@ -980,11 +979,11 @@
                 var res = await FundingTypeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _fundingTypeError = res.Error ?? "Failed to create funding type.";
+                    _fundingTypeError = res.Error ?? "Error al crear el tipo de financiamiento.";
                     return;
                 }
 
-                Toast.ShowSuccess("Funding type created successfully.");
+                Toast.ShowSuccess("Tipo de financiamiento creado exitosamente.");
             }
             else
             {
@@ -998,11 +997,11 @@
                 var res = await FundingTypeClient.UpdateAsync(req);
                 if (!res.Success)
                 {
-                    _fundingTypeError = res.Error ?? "Failed to update funding type.";
+                    _fundingTypeError = res.Error ?? "Error al actualizar el tipo de financiamiento.";
                     return;
                 }
 
-                Toast.ShowSuccess("Funding type updated successfully.");
+                Toast.ShowSuccess("Tipo de financiamiento actualizado exitosamente.");
             }
 
             _fundingTypeModalOpen = false;
@@ -1010,7 +1009,7 @@
         }
         catch (Exception ex)
         {
-            _fundingTypeError = $"Unexpected error saving funding type: {ex.Message}";
+            _fundingTypeError = $"Error inesperado al guardar el tipo de financiamiento: {ex.Message}";
         }
         finally
         {
@@ -1024,7 +1023,7 @@
         var item = _fundingTypes.FirstOrDefault(t => t.Id == id);
         if (item?.IsLocked == true)
         {
-            Toast.ShowWarning("This funding type is locked and cannot be deleted.");
+            Toast.ShowWarning("Este tipo de financiamiento está bloqueado y no puede ser eliminado.");
             return;
         }
 
@@ -1033,16 +1032,16 @@
             var res = await FundingTypeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Failed to delete funding type.");
+                Toast.ShowError(res.Error ?? "Error al eliminar el tipo de financiamiento.");
                 return;
             }
 
-            Toast.ShowSuccess("Funding type deleted successfully.");
+            Toast.ShowSuccess("Tipo de financiamiento eliminado exitosamente.");
             await LoadCoreCatalogsAsync();
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Unexpected error deleting funding type: {ex.Message}");
+            Toast.ShowError($"Error inesperado al eliminar el tipo de financiamiento: {ex.Message}");
         }
     }
 
@@ -1072,7 +1071,7 @@
             var res = await ObjectiveTypeClient.GetByIdAsync(id);
             if (!res.Success || res.Response is null)
             {
-                Toast.ShowError(res.Error ?? "Failed to load objective type.");
+                Toast.ShowError(res.Error ?? "Error al cargar el tipo de objetivo.");
                 return;
             }
 
@@ -1081,7 +1080,7 @@
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Error loading objective type: {ex.Message}");
+            Toast.ShowError($"Error al cargar el tipo de objetivo: {ex.Message}");
         }
     }
 
@@ -1095,13 +1094,13 @@
     {
         if (_objectiveTypeEditModel.IsLocked && _objectiveTypeEditModel.Id != 0)
         {
-            _objectiveTypeError = "This objective type is locked and cannot be modified.";
+            _objectiveTypeError = "Este tipo de objetivo está bloqueado y no puede ser modificado.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_objectiveTypeEditModel.Name))
         {
-            _objectiveTypeError = "Name is required.";
+            _objectiveTypeError = "El nombre es requerido.";
             return;
         }
 
@@ -1120,11 +1119,11 @@
                 var res = await ObjectiveTypeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _objectiveTypeError = res.Error ?? "Failed to create objective type.";
+                    _objectiveTypeError = res.Error ?? "Error al crear el tipo de objetivo.";
                     return;
                 }
 
-                Toast.ShowSuccess("Objective type created successfully.");
+                Toast.ShowSuccess("Tipo de objetivo creado exitosamente.");
             }
             else
             {
@@ -1138,11 +1137,11 @@
                 var res = await ObjectiveTypeClient.UpdateAsync(req);
                 if (!res.Success)
                 {
-                    _objectiveTypeError = res.Error ?? "Failed to update objective type.";
+                    _objectiveTypeError = res.Error ?? "Error al actualizar el tipo de objetivo.";
                     return;
                 }
 
-                Toast.ShowSuccess("Objective type updated successfully.");
+                Toast.ShowSuccess("Tipo de objetivo actualizado exitosamente.");
             }
 
             _objectiveTypeModalOpen = false;
@@ -1150,7 +1149,7 @@
         }
         catch (Exception ex)
         {
-            _objectiveTypeError = $"Unexpected error saving objective type: {ex.Message}";
+            _objectiveTypeError = $"Error inesperado al guardar el tipo de objetivo: {ex.Message}";
         }
         finally
         {
@@ -1164,7 +1163,7 @@
         var item = _objectiveTypes.FirstOrDefault(t => t.Id == id);
         if (item?.IsLocked == true)
         {
-            Toast.ShowWarning("This objective type is locked and cannot be deleted.");
+            Toast.ShowWarning("Este tipo de objetivo está bloqueado y no puede ser eliminado.");
             return;
         }
 
@@ -1173,16 +1172,16 @@
             var res = await ObjectiveTypeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Failed to delete objective type.");
+                Toast.ShowError(res.Error ?? "Error al eliminar el tipo de objetivo.");
                 return;
             }
 
-            Toast.ShowSuccess("Objective type deleted successfully.");
+            Toast.ShowSuccess("Tipo de objetivo eliminado exitosamente.");
             await LoadCoreCatalogsAsync();
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Unexpected error deleting objective type: {ex.Message}");
+            Toast.ShowError($"Error inesperado al eliminar el tipo de objetivo: {ex.Message}");
         }
     }
 
@@ -1212,7 +1211,7 @@
             var res = await ProjectTypeClient.GetByIdAsync(id);
             if (!res.Success || res.Response is null)
             {
-                Toast.ShowError(res.Error ?? "Failed to load project type.");
+                Toast.ShowError(res.Error ?? "Error al cargar el tipo de proyecto.");
                 return;
             }
 
@@ -1221,7 +1220,7 @@
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Error loading project type: {ex.Message}");
+            Toast.ShowError($"Error al cargar el tipo de proyecto: {ex.Message}");
         }
     }
 
@@ -1235,13 +1234,13 @@
     {
         if (_projectTypeEditModel.IsLocked && _projectTypeEditModel.Id != 0)
         {
-            _projectTypeError = "This project type is locked and cannot be modified.";
+            _projectTypeError = "Este tipo de proyecto está bloqueado y no puede ser modificado.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_projectTypeEditModel.Name))
         {
-            _projectTypeError = "Name is required.";
+            _projectTypeError = "El nombre es requerido.";
             return;
         }
 
@@ -1260,11 +1259,11 @@
                 var res = await ProjectTypeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _projectTypeError = res.Error ?? "Failed to create project type.";
+                    _projectTypeError = res.Error ?? "Error al crear el tipo de proyecto.";
                     return;
                 }
 
-                Toast.ShowSuccess("Project type created successfully.");
+                Toast.ShowSuccess("Tipo de proyecto creado exitosamente.");
             }
             else
             {
@@ -1278,11 +1277,11 @@
                 var res = await ProjectTypeClient.UpdateAsync(req);
                 if (!res.Success)
                 {
-                    _projectTypeError = res.Error ?? "Failed to update project type.";
+                    _projectTypeError = res.Error ?? "Error al actualizar el tipo de proyecto.";
                     return;
                 }
 
-                Toast.ShowSuccess("Project type updated successfully.");
+                Toast.ShowSuccess("Tipo de proyecto actualizado exitosamente.");
             }
 
             _projectTypeModalOpen = false;
@@ -1290,7 +1289,7 @@
         }
         catch (Exception ex)
         {
-            _projectTypeError = $"Unexpected error saving project type: {ex.Message}";
+            _projectTypeError = $"Error inesperado al guardar el tipo de proyecto: {ex.Message}";
         }
         finally
         {
@@ -1304,7 +1303,7 @@
         var item = _projectTypesCore.FirstOrDefault(t => t.Id == id);
         if (item?.IsLocked == true)
         {
-            Toast.ShowWarning("This project type is locked and cannot be deleted.");
+            Toast.ShowWarning("Este tipo de proyecto está bloqueado y no puede ser eliminado.");
             return;
         }
 
@@ -1313,16 +1312,16 @@
             var res = await ProjectTypeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Failed to delete project type.");
+                Toast.ShowError(res.Error ?? "Error al eliminar el tipo de proyecto.");
                 return;
             }
 
-            Toast.ShowSuccess("Project type deleted successfully.");
+            Toast.ShowSuccess("Tipo de proyecto eliminado exitosamente.");
             await LoadCoreCatalogsAsync();
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Unexpected error deleting project type: {ex.Message}");
+            Toast.ShowError($"Error inesperado al eliminar el tipo de proyecto: {ex.Message}");
         }
     }
 
@@ -1352,7 +1351,7 @@
             var res = await TransactionTypeClient.GetByIdAsync(id);
             if (!res.Success || res.Response is null)
             {
-                Toast.ShowError(res.Error ?? "Failed to load transaction type.");
+                Toast.ShowError(res.Error ?? "Error al cargar el tipo de transacción.");
                 return;
             }
 
@@ -1361,7 +1360,7 @@
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Error loading transaction type: {ex.Message}");
+            Toast.ShowError($"Error al cargar el tipo de transacción: {ex.Message}");
         }
     }
 
@@ -1375,13 +1374,13 @@
     {
         if (_transactionTypeEditModel.IsLocked && _transactionTypeEditModel.Id != 0)
         {
-            _transactionTypeError = "This transaction type is locked and cannot be modified.";
+            _transactionTypeError = "Este tipo de transacción está bloqueado y no puede ser modificado.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_transactionTypeEditModel.Name))
         {
-            _transactionTypeError = "Name is required.";
+            _transactionTypeError = "El nombre es requerido.";
             return;
         }
 
@@ -1400,11 +1399,11 @@
                 var res = await TransactionTypeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _transactionTypeError = res.Error ?? "Failed to create transaction type.";
+                    _transactionTypeError = res.Error ?? "Error al crear el tipo de transacción.";
                     return;
                 }
 
-                Toast.ShowSuccess("Transaction type created successfully.");
+                Toast.ShowSuccess("Tipo de transacción creado exitosamente.");
             }
             else
             {
@@ -1418,11 +1417,11 @@
                 var res = await TransactionTypeClient.UpdateAsync(req);
                 if (!res.Success)
                 {
-                    _transactionTypeError = res.Error ?? "Failed to update transaction type.";
+                    _transactionTypeError = res.Error ?? "Error al actualizar el tipo de transacción.";
                     return;
                 }
 
-                Toast.ShowSuccess("Transaction type updated successfully.");
+                Toast.ShowSuccess("Tipo de transacción actualizado exitosamente.");
             }
 
             _transactionTypeModalOpen = false;
@@ -1430,7 +1429,7 @@
         }
         catch (Exception ex)
         {
-            _transactionTypeError = $"Unexpected error saving transaction type: {ex.Message}";
+            _transactionTypeError = $"Error inesperado al guardar el tipo de transacción: {ex.Message}";
         }
         finally
         {
@@ -1444,7 +1443,7 @@
         var item = _transactionTypes.FirstOrDefault(t => t.Id == id);
         if (item?.IsLocked == true)
         {
-            Toast.ShowWarning("This transaction type is locked and cannot be deleted.");
+            Toast.ShowWarning("Este tipo de transacción está bloqueado y no puede ser eliminado.");
             return;
         }
 
@@ -1453,16 +1452,16 @@
             var res = await TransactionTypeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Failed to delete transaction type.");
+                Toast.ShowError(res.Error ?? "Error al eliminar el tipo de transacción.");
                 return;
             }
 
-            Toast.ShowSuccess("Transaction type deleted successfully.");
+            Toast.ShowSuccess("Tipo de transacción eliminado exitosamente.");
             await LoadCoreCatalogsAsync();
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Unexpected error deleting transaction type: {ex.Message}");
+            Toast.ShowError($"Error inesperado al eliminar el tipo de transacción: {ex.Message}");
         }
     }
 
@@ -1500,7 +1499,7 @@
             var res = await ProductTypeClient.GetListAsync();
             if (!res.Success || res.Response is null)
             {
-                _designerError = res.Error ?? "Failed to load product types.";
+                _designerError = res.Error ?? "Error al cargar los tipos de producto.";
                 _designerProductTypes = new();
             }
             else
@@ -1510,7 +1509,7 @@
         }
         catch (Exception ex)
         {
-            _designerError = $"Unexpected error loading product types: {ex.Message}";
+            _designerError = $"Error inesperado al cargar los tipos de producto: {ex.Message}";
         }
         finally
         {
@@ -1528,7 +1527,7 @@
             var res = await ProductTypeDesignClient.GetTemplateAsync();
             if (!res.Success || res.Response is null)
             {
-                Toast.ShowError(res.Error ?? "Failed to load product type template.");
+                Toast.ShowError(res.Error ?? "Error al cargar la plantilla del tipo de producto.");
                 return;
             }
 
@@ -1548,7 +1547,7 @@
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Error loading product type template: {ex.Message}");
+            Toast.ShowError($"Error al cargar la plantilla del tipo de producto: {ex.Message}");
         }
         finally
         {
@@ -1562,7 +1561,7 @@
 
         if (productTypeId <= 0)
         {
-            Toast.ShowError("Invalid product type selected.");
+            Toast.ShowError("Tipo de producto seleccionado inválido.");
             return;
         }
 
@@ -1571,7 +1570,7 @@
             var res = await ProductTypeDesignClient.GetByProductTypeIdAsync(productTypeId);
             if (!res.Success || res.Response is null)
             {
-                Toast.ShowError(res.Error ?? "Failed to load product type design.");
+                Toast.ShowError(res.Error ?? "Error al cargar el diseño del tipo de producto.");
                 return;
             }
 
@@ -1591,7 +1590,7 @@
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Error loading product type design: {ex.Message}");
+            Toast.ShowError($"Error al cargar el diseño del tipo de producto: {ex.Message}");
         }
         finally
         {
@@ -1605,7 +1604,7 @@
 
         if (_designerAvailableAttributes.Count == 0)
         {
-            _designerDesignError = "There are no available attributes. Create attributes first in the catalogs tab.";
+            _designerDesignError = "No hay atributos disponibles. Cree atributos primero en la pestaña de catálogos.";
             return;
         }
 
@@ -1635,31 +1634,31 @@
 
         if (_designerCurrentDesign is null)
         {
-            _designerDesignError = "No product type design loaded.";
+            _designerDesignError = "No hay diseño de tipo de producto cargado.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_designerCurrentDesign.ProductType.Name))
         {
-            _designerDesignError = "Product type name is required.";
+            _designerDesignError = "El nombre del tipo de producto es requerido.";
             return;
         }
 
         if (_designerCurrentDesign.ProductType.IsLocked)
         {
-            _designerDesignError = "This product type is locked and cannot be modified.";
+            _designerDesignError = "Este tipo de producto está bloqueado y no puede ser modificado.";
             return;
         }
 
         if (_designerDefinitionRows.Count == 0)
         {
-            _designerDesignError = "At least one attribute definition is required.";
+            _designerDesignError = "Se requiere al menos una definición de atributo.";
             return;
         }
 
         if (_designerDefinitionRows.Any(d => d.ProductAttributeId <= 0))
         {
-            _designerDesignError = "All definitions must have a valid attribute.";
+            _designerDesignError = "Todas las definiciones deben tener un atributo válido.";
             return;
         }
 
@@ -1688,7 +1687,7 @@
             var res = await ProductTypeDesignClient.SaveAsync(request);
             if (!res.Success || res.Response is null)
             {
-                _designerDesignError = res.Error ?? "Failed to save product type design.";
+                _designerDesignError = res.Error ?? "Error al guardar el diseño del tipo de producto.";
                 return;
             }
 
@@ -1708,11 +1707,11 @@
 
             await LoadDesignerProductTypesAsync();
 
-            Toast.ShowSuccess("Product type design saved successfully.");
+            Toast.ShowSuccess("Diseño del tipo de producto guardado exitosamente.");
         }
         catch (Exception ex)
         {
-            _designerDesignError = $"Unexpected error saving product type design: {ex.Message}";
+            _designerDesignError = $"Error inesperado al guardar el diseño del tipo de producto: {ex.Message}";
         }
         finally
         {

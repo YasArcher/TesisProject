@@ -9,6 +9,7 @@
   <ItemGroup>
     <Folder Include="DTOs\Algorithms\Request\" />
     <Folder Include="DTOs\Budgets\Response\" />
+    <Folder Include="DTOs\Matrices\Request\" />
     <Folder Include="DTOs\Products\Products\Request\" />
     <Folder Include="DTOs\Products\Products\Response\" />
     <Folder Include="Validations\" />
