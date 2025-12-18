@@ -72,6 +72,12 @@ namespace tesisproject.shared.DTOs.Matrices.Response
         public string? CoordinatorName { get; set; }
         public string? CoordinatorEmail { get; set; }
         public string? CoordinatorPhone { get; set; }
+
+        public string? SubrogantName { get; set; }
+        public string? SubrogantEmail { get; set; }
+        public string? SubrogantPhone { get; set; }
+
+
     }
     /// <summary>
     /// Integrante del proyecto enriquecido con datos del directorio externo.

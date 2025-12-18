@@ -6,12 +6,14 @@ using tesisproject.shared.Common.Utils;
 using tesisproject.shared.DTOs.Auth;
 using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response;
 using tesisproject.shared.DTOs.External;
+using tesisproject.shared.DTOs.Matrices.Import;
 using tesisproject.shared.DTOs.Matrices.Response;
 using tesisproject.shared.DTOs.Project.Request;
 using tesisproject.shared.DTOs.Project.Response;
 using tesisproject.shared.DTOs.ProjectObjective.Response;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Entities.External;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -24,6 +26,7 @@ namespace tesisproject.backend.Services.Implementations
         private readonly IExternalAcademicsService _externalAcademics;
         private readonly IResearchCategoryService _researchCategoryService;
         private readonly ILogger<ProjectService> _logger;
+        private readonly IExternalDirectoryClient _externalDirectory;
 
         // 🔹 ResearchCategoryType fijos
         private const int CAT_TYPE_DOMINIO = 1;
@@ -58,7 +61,8 @@ namespace tesisproject.backend.Services.Implementations
             IAppUserService appUsers,
             IExternalAcademicsService externalAcademics,
             IResearchCategoryService researchCategoryService,
-            ILogger<ProjectService> logger)
+            ILogger<ProjectService> logger,
+            IExternalDirectoryClient externalDirectory)
         {
             _uow = uow;
             _periods = periods;
@@ -66,6 +70,7 @@ namespace tesisproject.backend.Services.Implementations
             _externalAcademics = externalAcademics;
             _researchCategoryService = researchCategoryService;
             _logger = logger;
+            _externalDirectory = externalDirectory;
         }
 
         // ================= READS =================
@@ -905,6 +910,178 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
+        private async Task InsertGroupMembersFromDirectoryAsync(
+    Group groupEntity,
+    ImportedProjectDTO dto,
+    IReadOnlyList<ExternalProfileDTO> directoryCache,
+    CancellationToken ct)
+        {
+            if (groupEntity is null) throw new ArgumentNullException(nameof(groupEntity));
+            if (dto is null) throw new ArgumentNullException(nameof(dto));
+            if (directoryCache is null) throw new ArgumentNullException(nameof(directoryCache));
+
+            // Roles (ajusta a tus IDs reales de MemberRoleType)
+            // Ejemplo: 1=Coordinador, 2=Subrogante, 3=Investigador
+            const int ROLE_COORDINATOR = 1;
+            const int ROLE_ALTERNATE_COORDINATOR = 2;
+            const int ROLE_INVESTIGATOR = 3; // si luego lo agregas al DTO
+
+            // Threshold recomendado para evitar matches basura
+            const double MIN_NAME_SIMILARITY = 80.0;
+
+            // ===== Helper local: resuelve personas por similitud contra directorio =====
+            List<ExternalProfileDTO> ResolvePeople(IEnumerable<string> names, List<string> discarded)
+            {
+                var resolved = new List<ExternalProfileDTO>();
+
+                foreach (var rawName in names ?? Enumerable.Empty<string>())
+                {
+                    ct.ThrowIfCancellationRequested();
+
+                    var name = (rawName ?? string.Empty).Trim();
+                    if (string.IsNullOrWhiteSpace(name))
+                        continue;
+
+                    ExternalProfileDTO? best = null;
+                    double bestScore = 0.0;
+
+                    for (int i = 0; i < directoryCache.Count; i++)
+                    {
+                        var p = directoryCache[i];
+                        if (p is null) continue;
+
+                        // ASP_ID no puede faltar según tú, igual validamos por seguridad
+                        if (!p.ASP_ID.HasValue || p.ASP_ID.Value <= 0) continue;
+
+                        var score = NameSimilarity.FlexibleFullNameSimilarityPercentage(
+                            name,
+                            p.FullName,
+                            normalize: true);
+
+                        if (score > bestScore)
+                        {
+                            bestScore = score;
+                            best = p;
+                        }
+                    }
+
+                    if (best is null || bestScore < MIN_NAME_SIMILARITY)
+                    {
+                        discarded.Add(name);
+                        continue;
+                    }
+
+                    // Evitar duplicados (mismo usuario externo repetido)
+                    if (resolved.Any(x => x.ASP_ID == best.ASP_ID))
+                        continue;
+
+                    resolved.Add(best);
+                }
+
+                return resolved;
+            }
+
+            // ===== 1) Resolver por rol =====
+            // DTO ya trae listas: Coordinators / AlternateCoordinators
+            var discardedCoordinators = new List<string>();
+            var discardedAlternates = new List<string>();
+
+            var matchedCoordinators = ResolvePeople(dto.Coordinators, discardedCoordinators);
+            var matchedAlternates = ResolvePeople(dto.AlternateCoordinators, discardedAlternates);
+
+            // Si luego agregas Investigators al DTO:
+            // var discardedInvestigators = new List<string>();
+            // var matchedInvestigators = ResolvePeople(dto.Investigators, discardedInvestigators);
+
+            // (Opcional) guardar auditoría si tú quieres:
+            dto.CoordinatorDiscardedTokens.AddRange(discardedCoordinators);
+            dto.AlternateCoordinatorDiscardedTokens.AddRange(discardedAlternates);
+
+            // ===== 2) Construir lista total de perfiles a asegurar en ASP local (una sola llamada) =====
+            var allProfiles = matchedCoordinators
+                .Concat(matchedAlternates)
+                //.Concat(matchedInvestigators)
+                .GroupBy(x => x.ASP_ID!.Value)
+                .Select(g => g.First())
+                .ToList();
+
+            if (allProfiles.Count == 0)
+                return;
+
+            var registerDtos = allProfiles
+                .Select(p => new RegisterRequest
+                {
+                    Email = p.Email,
+                    Username = p.Document,                // tu CreateFull usa Document aquí
+                    Password = "aaaaaqqq1231231",         // igual que tu flujo actual
+                    AspUserId = p.ASP_ID!.Value
+                })
+                .ToList();
+
+            // Misma lógica de CreateFull: EnsureAppUsersAsync
+            var ensure = await _appUsers.EnsureAppUsersAsync(registerDtos, ct);
+
+            if (!ensure.Success || ensure.Data is null || ensure.Data.Count != registerDtos.Count)
+            {
+                // No invento comportamiento: fallo duro porque se rompe la consistencia de mapeo
+                throw new InvalidOperationException(
+                    ensure.Message ?? "Error ensuring app users for group members.");
+            }
+
+            // ===== 3) Crear mapa ASP_ID -> Local AppUserId (el orden importa por tu contrato actual) =====
+            var appUserIdByAspId = new Dictionary<int, int>();
+
+            for (int i = 0; i < registerDtos.Count; i++)
+            {
+                var aspId = registerDtos[i].AspUserId;
+                var localAppUserId = ensure.Data[i];
+                if (aspId.HasValue)
+                {
+                    appUserIdByAspId[aspId.Value] = localAppUserId;
+                }
+            }
+
+            // ===== 4) Insertar GroupMembers por rol con tu regla de "2+ personas" =====
+            var now = DateTime.UtcNow;
+
+            async Task AddRoleMembersAsync(List<ExternalProfileDTO> matched, int roleId)
+            {
+                if (matched is null || matched.Count == 0) return;
+
+                // Regla: si hay 2+, solo consideramos los 2 primeros (1ro inactivo, 2do activo)
+                // Si quieres meter todos y solo “apagar” el primero, dímelo y lo ajusto.
+                var take = matched.Count >= 2 ? matched.Take(2).ToList() : matched.Take(1).ToList();
+
+                for (int i = 0; i < take.Count; i++)
+                {
+                    ct.ThrowIfCancellationRequested();
+
+                    var profile = take[i];
+                    var aspId = profile.ASP_ID!.Value;
+
+                    if (!appUserIdByAspId.TryGetValue(aspId, out var localUserId))
+                        continue;
+
+                    var gm = new GroupMember
+                    {
+                        Group = groupEntity,
+                        UserId = localUserId,
+                        MemberRoleId = roleId,
+                        JoinedAt = now,
+                        // 👇 regla:
+                        LeftAt = (take.Count >= 2 && i == 0) ? now : null
+                    };
+
+                    await _uow.GroupMembers.AddAsync(gm, ct);
+                }
+            }
+
+            await AddRoleMembersAsync(matchedCoordinators, ROLE_COORDINATOR);
+            await AddRoleMembersAsync(matchedAlternates, ROLE_ALTERNATE_COORDINATOR);
+            // await AddRoleMembersAsync(matchedInvestigators, ROLE_INVESTIGATOR);
+        }
+
+
         public async Task<ServiceResult<int>> ImportFromMatrixAsync(
     ProjectMatrixUploadSummaryDTO summary,
     int currentUserId,
@@ -985,6 +1162,12 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 PhaseLog("Init", $"Import executed by UserId={user.IdUser}");
+
+                var directoryResult = await _externalDirectory.GetAllAsync(ct);
+                if (!directoryResult.Success || directoryResult.Data is null || directoryResult.Data.Count == 0)
+                    return ServiceResult<int>.Fail("Cannot retrieve external directory.", ErrorType.Unexpected);
+
+                var directoryCache = directoryResult.Data;
 
                 int createdCount = 0;
                 int skippedCount = 0;
@@ -1099,6 +1282,9 @@ namespace tesisproject.backend.Services.Implementations
                     PhaseLog("Row",
                         $"Group queued for insert: Name={groupEntity.Name}");
 
+                    await InsertGroupMembersFromDirectoryAsync(groupEntity, dto, directoryCache, ct);
+
+
                     // ============================================
                     // 4) Crear Project
                     // ============================================
@@ -1127,6 +1313,13 @@ namespace tesisproject.backend.Services.Implementations
                     {
                         tentativeEndDate = dto.StartDate.Value.AddMonths(durationMonths);
                     }
+                    // Regla: si el código empieza con "PE" => External (2); caso contrario Internal (1)
+                    var originTypeId = (dto.ProjectCode ?? string.Empty)
+                        .Trim()
+                        .StartsWith("PE", StringComparison.OrdinalIgnoreCase)
+                            ? 2
+                            : 1;
+
 
                     var projectEntity = new Project
                     {
@@ -1138,6 +1331,7 @@ namespace tesisproject.backend.Services.Implementations
                         FacultyId = facultyId ?? 0,
                         ConvocationId = convocationId,
                         ProjectStateId = projectStateId ?? 0,
+                        ProjectOriginTypeId = originTypeId,
                         ApprovalDate = approvalDate,
                         StartDate = dto.StartDate,
                         DurationInMonths = durationMonths,
@@ -1706,29 +1900,30 @@ namespace tesisproject.backend.Services.Implementations
             if (convocationsCache is null || convocationsCache.Count == 0)
             {
                 Console.WriteLine("[IMPORT][Convocation] No convocations in cache.");
-                return null; // No hay nada contra qué mapear
+                return null;
             }
 
             if (string.IsNullOrWhiteSpace(callCode))
             {
                 Console.WriteLine("[IMPORT][Convocation] Empty CallCode, cannot compare.");
-                return null; // No hay texto para comparar
+                return null;
             }
-
-            var targetNorm = Levenshtein.NormalizeForComparison(callCode);
 
             Convocation? bestMatch = null;
             double bestSimilarity = double.MinValue;
 
             foreach (var c in convocationsCache)
             {
-                var code = c.Code ?? string.Empty;
-                var codeNorm = Levenshtein.NormalizeForComparison(code);
+                // ✅ Usa Code si existe; si no, Name (que es donde tienes el texto)
+                var candidate = c.Code;
+                if (string.IsNullOrWhiteSpace(candidate))
+                    candidate = c.Name;
 
-                var sim = Levenshtein.SimilarityPercentage(
-                    codeNorm,
-                    targetNorm,
-                    normalize: false);
+                if (string.IsNullOrWhiteSpace(candidate))
+                    continue;
+
+                // ✅ Normalización solo una vez (dentro del SimilarityPercentage)
+                var sim = Levenshtein.SimilarityPercentage(candidate, callCode, normalize: true);
 
                 if (sim > bestSimilarity)
                 {
@@ -1743,14 +1938,14 @@ namespace tesisproject.backend.Services.Implementations
                 return null;
             }
 
-            Console.WriteLine(
-                $"[IMPORT][Convocation] Using best match '{callCode}' -> '{bestMatch.Code}' ({bestSimilarity:F2}%)");
+            // (Opcional) umbral mínimo para evitar matches “forzados”
+            // if (bestSimilarity < 90.0) return null;
 
-            // ✅ No se crea nada nuevo, SIEMPRE se usa la mejor existente
+            Console.WriteLine(
+                $"[IMPORT][Convocation] Using best match '{callCode}' -> '{(bestMatch.Code ?? bestMatch.Name)}' ({bestSimilarity:F2}%)");
+
             return bestMatch;
         }
-
-
 
         private static int? ResolveProjectStateId(
             List<ProjectState> states,

@@ -454,11 +454,11 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => GetBudgetExecutedSummary(p)
             });
 
-            // 24 PRODUCT_TITLES_SUMMARY
+            // 24 PRODUCT_TITLES
             list.Add(new ColumnDef
             {
                 Order = i++,
-                FieldKey = "PRODUCT_TITLES_SUMMARY",
+                FieldKey = "PRODUCT_TITLES",
                 Header = "Productos (títulos)",
                 Selector = p => GetProductTitlesSummary(p)
             });
@@ -467,7 +467,7 @@ namespace tesisproject.backend.Services.Implementations
             list.Add(new ColumnDef
             {
                 Order = i++,
-                FieldKey = "PRODUCT_TYPES_SUMMARY",
+                FieldKey = "PRODUCT_TYPES",
                 Header = "Productos (tipos)",
                 Selector = p => GetProductTypesSummary(p)
             });
@@ -488,6 +488,32 @@ namespace tesisproject.backend.Services.Implementations
                 FieldKey = "CASES_RESEARCH_CATEGORIES",
                 Header = "Categorías de investigación (bundle)",
                 Selector = p => ResolveResearchCategoriesBundle(p)
+            });
+            // SUBROGANT_NAME
+            list.Add(new ColumnDef
+            {
+                Order = i++,
+                FieldKey = "SUBROGANT_NAME",
+                Header = "Subrogante del proyecto",
+                Selector = p => p.SubrogantName ?? "-"
+            });
+
+            // SUBROGANT_EMAIL
+            list.Add(new ColumnDef
+            {
+                Order = i++,
+                FieldKey = "SUBROGANT_EMAIL",
+                Header = "Correo del subrogante",
+                Selector = p => p.SubrogantEmail ?? "-"
+            });
+
+            // SUBROGANT_PHONE
+            list.Add(new ColumnDef
+            {
+                Order = i++,
+                FieldKey = "SUBROGANT_PHONE",
+                Header = "Teléfono del subrogante",
+                Selector = p => p.SubrogantPhone ?? "-"
             });
 
             return list;

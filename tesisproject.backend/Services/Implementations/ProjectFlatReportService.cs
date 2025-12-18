@@ -222,13 +222,16 @@ namespace tesisproject.backend.Services.Implementations
                         })
                         .ToList();
 
-                    // Coordinador: primero intentamos Principal (1), luego Subrogante (2)
+                    // Coordinador y Subrogante separados (sin fallback)
                     const int ROLE_COORDINADOR_PRINCIPAL_ID = 1;
                     const int ROLE_COORDINADOR_SUBROGANTE_ID = 2;
 
-                    var coordinator = internalMembers
-                        .FirstOrDefault(m => m.MemberRoleId == ROLE_COORDINADOR_PRINCIPAL_ID)
-                        ?? internalMembers.FirstOrDefault(m => m.MemberRoleId == ROLE_COORDINADOR_SUBROGANTE_ID);
+                    var coordinatorPrincipal = internalMembers
+                        .FirstOrDefault(m => m.MemberRoleId == ROLE_COORDINADOR_PRINCIPAL_ID);
+
+                    var coordinatorSubrogant = internalMembers
+                        .FirstOrDefault(m => m.MemberRoleId == ROLE_COORDINADOR_SUBROGANTE_ID);
+
 
                     // Investigadores SENESCYT = integrantes del proyecto cuyo IdUser
                     // pertenece a algún grupo tipo 2 (researchGroupIds)
@@ -381,9 +384,14 @@ namespace tesisproject.backend.Services.Implementations
                         // =========================
                         InternalMembers = internalMembers,
                         SenescytMembers = senescytMembers,
-                        CoordinatorName = coordinator?.FullName,
-                        CoordinatorEmail = coordinator?.Email,
-                        CoordinatorPhone = coordinator?.PhoneNumber
+                        CoordinatorName = coordinatorPrincipal?.FullName,
+                        CoordinatorEmail = coordinatorPrincipal?.Email,
+                        CoordinatorPhone = coordinatorPrincipal?.PhoneNumber,
+
+                        SubrogantName = coordinatorSubrogant?.FullName,
+                        SubrogantEmail = coordinatorSubrogant?.Email,
+                        SubrogantPhone = coordinatorSubrogant?.PhoneNumber
+
                     };
                 })
                 .ToList();

@@ -69,6 +69,7 @@ namespace tesisproject.backend.Data
         public DbSet<ResearchCategoryGroup> ResearchCategoryGroups => Set<ResearchCategoryGroup>();
         public DbSet<AcademicPeriod> AcademicPeriods => Set<AcademicPeriod>();
         public DbSet<ProductAttribute> ProductAttributes => Set<ProductAttribute>();
+        public DbSet<ProjectOriginType> ProjectOriginTypes => Set<ProjectOriginType>();
 
 
         // =========================================================
