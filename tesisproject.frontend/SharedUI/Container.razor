@@ -26,13 +26,14 @@
                         </h3>
                     }
                 </div>
+                        @if (ShowItemCount)
+                        {
+                            var count = TotalCount ?? Items.Count();
 
-                @if (ShowItemCount)
-                {
-                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-subtle text-foreground">
-                        @Items.Count() @(Items.Count() == 1 ? "elemento" : "elementos")
-                    </span>
-                }
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-subtle text-foreground">
+                                @count @(count == 1 ? "elemento" : "elementos")
+                            </span>
+                        }
             </div>
         </div>
     }
