@@ -58,6 +58,7 @@ namespace tesisproject.frontend.Services.Auth
 
                         // Si el refresh falla, limpiamos y quedamos anónimos
                         await _tokenStore.ClearAsync();
+                        NotifyUserLogout();
                         return Anonymous();
                     }
                 }
@@ -74,6 +75,7 @@ namespace tesisproject.frontend.Services.Auth
             catch
             {
                 await _tokenStore.ClearAsync();
+                NotifyUserLogout();
                 return Anonymous();
             }
         }
@@ -84,6 +86,13 @@ namespace tesisproject.frontend.Services.Auth
             await _tokenStore.SetAsync(token);
             NotifyUserAuthentication(token);
         }
+
+        public async Task LogoutAsync()
+        {
+            await _tokenStore.ClearAsync();
+            NotifyUserLogout();
+        }
+
 
         public void NotifyUserAuthentication(string token)
         {

@@ -1,10 +1,13 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+using tesisproject.frontend.Services.Auth; // asegúrate del namespace real de CustomAuthStateProvider
 
 namespace tesisproject.frontend.Layout
 {
-    public partial class MainLayout : IDisposable
+    public partial class MainLayout : LayoutComponentBase, IDisposable
     {
+        [Inject] public CustomAuthStateProvider AuthStateProvider { get; set; } = null!;
+
         private bool IsSidebarOpen = false;
 
         private static readonly string[] SidebarRoutes =
@@ -14,7 +17,6 @@ namespace tesisproject.frontend.Layout
             "/tailwind-test"
         ];
 
-        // Sidebar visible solo en rutas incluidas
         private bool ShowSidebar
         {
             get
@@ -33,6 +35,12 @@ namespace tesisproject.frontend.Layout
             }
         }
 
+        private async Task HandleLogout()
+        {
+            await AuthStateProvider.LogoutAsync();
+            Nav.NavigateTo("/login", replace: true);
+        }
+
         protected override void OnInitialized()
         {
             Nav.LocationChanged += OnLocationChanged;
@@ -40,7 +48,6 @@ namespace tesisproject.frontend.Layout
 
         private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
         {
-            // Cuando cambia de ruta, cierra el sidebar móvil
             IsSidebarOpen = false;
             StateHasChanged();
         }

@@ -1,5 +1,6 @@
-using Blazored.LocalStorage;
+﻿using Blazored.LocalStorage;
 using Blazored.Toast;
+using Microsoft.AspNetCore.Authorization; // ✅ NUEVO
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -17,10 +18,18 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 // 2) Servicios base
 builder.Services.AddOptions();
-builder.Services.AddAuthorizationCore();
+
+// ✅ CAMBIO: autorización global (por defecto TODO requiere usuario autenticado)
+builder.Services.AddAuthorizationCore(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
+
 builder.Services.AddBlazoredLocalStorage();
 
-// Componentes de UI de librer�a
+// Componentes de UI de librería
 builder.Services.AddBlazoredToast();
 builder.Services.AddScoped<IModalService, ModalService>();
 
@@ -90,12 +99,11 @@ builder.Services.AddScoped<IProductAttributeDefinitionClientService, ProductAttr
 builder.Services.AddScoped<IProjectMatrixClientService, ProjectMatrixClientService>();
 builder.Services.AddScoped<IExportTemplateClientService, ExportTemplateClientService>();
 
-
 // External
 builder.Services.AddScoped<IExternalAcademicsClientService, ExternalAcademicsClientService>();
 builder.Services.AddScoped<IExternalUserService, ExternalUserClientService>();
 
-// 7) Provider de autenticaci�n
+// 7) Provider de autenticación
 builder.Services.AddScoped<CustomAuthStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
     sp.GetRequiredService<CustomAuthStateProvider>());

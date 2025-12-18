@@ -5,6 +5,8 @@ namespace tesisproject.frontend.SharedUI.Header
     public partial class Header : ComponentBase
     {
         // Public API
+        [Parameter] public EventCallback OnLogout { get; set; }
+
         [Parameter] public string? Title { get; set; }
         [Parameter] public string? LogoUrl { get; set; }
         [Parameter] public RenderFragment? Logo { get; set; }
