@@ -246,7 +246,12 @@
                                     {
                                         if (item.Key == "logout")
                                         {
-                                            <div class="my-1 border-t border-border"></div>
+                                            <button type="button"
+                                                    class="w-full text-left px-3 py-2 text-sm rounded-xl bg-primary-subtle-hover focus:outline-none focus:ring-2 focus:ring-primary transition-colors text-error"
+                                                    @onclick="async () => await OnLogout.InvokeAsync()">
+                                                Logout
+                                            </button>
+
                                         }
                                         <button type="button"
                                                 role="menuitem"

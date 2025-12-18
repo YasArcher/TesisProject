@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using System.ComponentModel.DataAnnotations;
 using tesisproject.frontend.Services.Auth;
 using tesisproject.frontend.Services.Interfaces;
@@ -14,6 +15,18 @@ namespace tesisproject.frontend.Pages
         [Inject] public CustomAuthStateProvider AuthStateProvider { get; set; } = null!;
         [Inject] public NavigationManager Navigation { get; set; } = null!;
 
+        // ✅ BLOQUE CORRECTO: dentro de la clase
+        protected override async Task OnInitializedAsync()
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                Navigation.NavigateTo("/", replace: true);
+            }
+        }
+
         protected async Task HandleLogin()
         {
             var request = new LoginRequest
@@ -24,18 +37,15 @@ namespace tesisproject.frontend.Pages
 
             var result = await AuthClient.LoginAsync(request);
 
-            // Aquí usas tu HttpResponseWrapper<T> como ya lo haces en el resto del sistema
             if (result.HttpResponse.IsSuccessStatusCode && result.Response is not null)
             {
-                // Guardar el access token en tu AuthStateProvider
                 await AuthStateProvider.SetTokenAsync(result.Response.AccessToken);
 
-                // Redirigir a la página principal (o donde tú quieras)
-                Navigation.NavigateTo("/");
+                // ✅ replace:true evita volver al login con "atrás"
+                Navigation.NavigateTo("/", replace: true);
             }
             else
             {
-                // Aquí metes tu Toast / manejo de errores
                 var errorMessage = result.Error ?? "Invalid credentials.";
                 Console.WriteLine(errorMessage);
             }
