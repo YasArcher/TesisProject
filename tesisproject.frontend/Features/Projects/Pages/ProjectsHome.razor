@@ -126,7 +126,8 @@
 
     <!-- Projects Container - Simple layout, with scroll enabled -->
     <Container TItem="ProjectListResponseDTO"
-               Items="filteredProjects ?? new()"
+               Items="pagedProjects"
+               TotalCount="_totalItems"
                Title="Mis Proyectos"
                ShowItemCount="true"
                IsLoading="@isLoading"
@@ -134,8 +135,9 @@
                EmptyStateTitle="No se encontraron proyectos"
                EmptyStateDescription="@GetEmptyStateDescription()"
                EnableScroll="true"
-               MaxHeight="calc(100vh - 200px)"
+               MaxHeight="calc(100vh - 250px)"
                ScrollbarType="ScrollbarType.Thin">
+
         <EmptyStateAction>
             <ActionButton Text="Crear Nuevo Proyecto"
                           Execute="CreateNewProject"
@@ -152,10 +154,43 @@
             </div>
         </ChildContent>
     </Container>
+    @if ((filteredProjects?.Count ?? 0) > 0)
+    {
+        <div class="flex items-center justify-between gap-3">
+            <div class="text-xs text-muted">
+                Mostrando @pagedProjects.Count de @_totalItems
+                (Página @_page de @_totalPages)
+            </div>
+
+            <div class="flex items-center gap-2">
+                <ActionButton Text="Anterior"
+                              Execute="@PrevPage"
+                              Intent="ButtonIntent.Accept"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Xs"
+                              Disabled="@(_page <= 1 || isLoading)" />
+
+                <ActionButton Text="Siguiente"
+                              Execute="@NextPage"
+                              Intent="ButtonIntent.Accept"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Xs"
+                              Disabled="@(_page >= _totalPages || isLoading)" />
+            </div>
+        </div>
+    }
 </div>
 
 
 @code {
+    // Paging
+    private int _page = 1;
+    private int _pageSize = 12;
+    private int _totalItems = 0;
+    private int _totalPages = 1;
+
+    private List<ProjectListResponseDTO> pagedProjects = new();
+
 
     // =========================
     //    EXPORT CON PLANTILLAS
@@ -241,6 +276,38 @@
         {
             Toast.ShowError("Error al cargar columnas de la plantilla: " + ex.Message);
         }
+    }
+    private Task PrevPage()
+    {
+        if (_page > 1) _page--;
+        ApplyPaging();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task NextPage()
+    {
+        if (_page < _totalPages) _page++;
+        ApplyPaging();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void ApplyPaging()
+    {
+        var source = filteredProjects ?? new List<ProjectListResponseDTO>();
+
+        _totalItems = source.Count;
+        _totalPages = Math.Max(1, (int)Math.Ceiling(_totalItems / (double)_pageSize));
+
+        // Clamp por si la página quedó fuera de rango
+        if (_page > _totalPages) _page = _totalPages;
+        if (_page < 1) _page = 1;
+
+        pagedProjects = source
+            .Skip((_page - 1) * _pageSize)
+            .Take(_pageSize)
+            .ToList();
     }
 
 
@@ -584,11 +651,13 @@
                     Type = "datefieldrange",
                     Operators = new() { "between" },
                     Placeholder = "Filtrar por…",
-                    HelpText = "Seleccione si desea filtrar por fecha de inicio o fecha tentativa de fin",
+                    HelpText = "Seleccione cual tipo de fecha desea filtrar",
                     Options = new List<OptionItem>
                         {
-                            new() { Value = "StartDate",         Label = "Fecha de inicio" },
-                            new() { Value = "TentativeEndDate",  Label = "Fecha tentativa de fin" }
+                            new() { Value = "ApprovalDate",         Label = "Fecha de aprobación" },
+                            new() { Value = "StartDate",            Label = "Fecha de inicio" },
+                            new() { Value = "TentativeEndDate",     Label = "Fecha tentativa de fin" },
+                            new() { Value = "RealEndtDate",         Label = "Fecha de finalización" }
                         }
                 });
 
@@ -639,7 +708,7 @@
                         Placeholder = "Todas las facultades",
                         Options = bootstrap.Faculties.Select(f => new OptionItem
                         {
-                            Value = f.Id.ToString(),               // <-- Value = Id (recomendado)
+                            Value = f.Id.ToString(),
                             Label = f.Name
                         }).ToList()
                     });
@@ -758,7 +827,7 @@
             if (!resp.Success)
                 errorMessage = resp.Error ?? "Error desconocido al cargar proyectos";
 
-            // Aplicar filtros existentes o mostrar todos
+            _page = 1;
             ApplyFilters();
         }
         catch (Exception ex)
@@ -780,7 +849,7 @@
         currentFilters = query;
         // Asegúrate que no arrastre un Search viejo del query:
         currentFilters.Search = null;
-
+        _page = 1;
         ApplyFilters();
         StateHasChanged();
         return Task.CompletedTask;
@@ -789,7 +858,7 @@
     private Task HandleClearFilters()
     {
         currentFilters = null;
-        // Ojo: Clear del hijo ya llamó OnSearchInstant("") dejándonos currentSearch = null
+        _page = 1;
         ApplyFilters();
         StateHasChanged();
         return Task.CompletedTask;
@@ -798,6 +867,7 @@
     private Task HandleSearchInstant(string? text)
     {
         currentSearch = string.IsNullOrWhiteSpace(text) ? null : text;
+        _page = 1;
         ApplyFilters();
         StateHasChanged();
         return Task.CompletedTask;
@@ -871,6 +941,7 @@
 
 
         filteredProjects = query.ToList();
+        ApplyPaging();
     }
 
     private IQueryable<ProjectListResponseDTO> ApplyDateRangeFilter(

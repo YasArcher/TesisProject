@@ -21,6 +21,12 @@ namespace tesisproject.frontend.SharedUI
         #endregion
 
         #region Parámetros de personalización del layout
+        /// <summary>
+        /// Permite sobrescribir el conteo mostrado en el header
+        /// (útil para paginación)
+        /// </summary>
+        [Parameter]
+        public int? TotalCount { get; set; }
 
         [Parameter]
         public string GridClasses { get; set; } = "space-y-4";

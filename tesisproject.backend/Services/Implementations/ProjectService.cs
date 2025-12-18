@@ -83,6 +83,8 @@ namespace tesisproject.backend.Services.Implementations
                     .Query()
                     .Include(p => p.Budgets)
                     .Include(p => p.ProjectResearchCategories)
+                    .OrderByDescending(p => p.StartDate)
+                    .ThenByDescending(p => p.ProjectId)
                     .Select(p => new ProjectListResponseDTO
                     {
                         ProjectId = p.ProjectId,
@@ -96,15 +98,18 @@ namespace tesisproject.backend.Services.Implementations
                         TentativeEndDate = p.TentativeEndDate,
                         ExecutionPercentage = p.ExecutionPercentage,
                         PrincipalCoordinatorFacultyId = p.FacultyId,
-
+                        ApprovalDate = p.ApprovalDate,
+                        RealEndtDate = p.RealEndDate,
                         FundingTypeId = p.Budgets
                             .Select(b => b.FundingTypeId)
                             .Distinct()
                             .ToList(),
+
                         ResearchCategoryIds = p.ProjectResearchCategories
                             .Select(prc => prc.ResearchCategoryId)
                             .Distinct()
                             .ToList(),
+
                         ConvocationId = p.ConvocationId ?? 0
                     })
                     .ToListAsync(ct);
@@ -115,7 +120,6 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<List<ProjectListResponseDTO>>.Ok(data, "Projects retrieved");
             }
             catch (Exception ex)
-
             {
                 return ServiceResult<List<ProjectListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
             }

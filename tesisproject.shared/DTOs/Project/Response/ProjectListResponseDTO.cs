@@ -15,7 +15,9 @@ namespace tesisproject.shared.DTOs.Project.Response
         public string ProjectGroupName { get; set; } = string.Empty;
 
         public DateTime? StartDate { get; set; }
+        public DateTime? ApprovalDate { get; set; }
         public DateTime? TentativeEndDate { get; set; }
+        public DateTime? RealEndtDate { get; set; }
         public decimal? ExecutionPercentage { get; set; }
         public bool HasExternalParticipation { get; set; }
 
