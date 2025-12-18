@@ -47,6 +47,13 @@ namespace tesisproject.shared.DTOs.Matrices.Import
 
         // Objetivo
         public string? GeneralObjective { get; set; }  // OBJETIVO GENERAL
+        public List<string> Coordinators { get; set; } = new();
+        public List<string> AlternateCoordinators { get; set; } = new();
+
+        // opcional para auditoría
+        public List<string> CoordinatorDiscardedTokens { get; set; } = new();
+        public List<string> AlternateCoordinatorDiscardedTokens { get; set; } = new();
+
     }
 
     public class ProjectExtensionDTO

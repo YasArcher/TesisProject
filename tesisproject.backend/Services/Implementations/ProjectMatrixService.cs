@@ -1,13 +1,13 @@
 ﻿using ClosedXML.Excel;
 using System.Globalization;
 using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.Common.Utils;
 using tesisproject.shared.DTOs.Matrices.Import;
 using tesisproject.shared.DTOs.Matrices.Response;
 using tesisproject.shared.Responses;
-using System.Text.Json;
-
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -60,7 +60,6 @@ namespace tesisproject.backend.Services.Implementations
                             Message = "Workbook does not contain the expected third worksheet."
                         });
 
-                        // Antes devolvías el summary tal cual → ahora lo envolvemos en OK
                         return ServiceResult<ProjectMatrixUploadSummaryDTO>.Ok(
                             summary,
                             "Workbook does not contain the expected third worksheet.");
@@ -172,8 +171,6 @@ namespace tesisproject.backend.Services.Implementations
                         .ToList();
 
                     var projectPreview = PrintMatrixPreview(projectHeaders, projectSection, 30);
-                    //Console.WriteLine("=== PROJECT MATRIX (FIRST 30 ROWS) ===");
-                    //Console.WriteLine(projectPreview);
 
                     // ============================
                     //  MATRIZ FINANCIERA
@@ -190,8 +187,6 @@ namespace tesisproject.backend.Services.Implementations
                         .ToList();
 
                     var financialPreview = PrintMatrixPreview(financialHeaders, financialSection, 30);
-                    //Console.WriteLine("=== FINANCIAL MATRIX (FIRST 30 ROWS) ===");
-                    //Console.WriteLine(financialPreview);
 
                     // ============================
                     //  MATRIZ DE OBJETIVO (MAYÚSCULAS)
@@ -216,8 +211,6 @@ namespace tesisproject.backend.Services.Implementations
                     }
 
                     var objectivePreview = PrintMatrixPreview(objectiveHeaders, objectiveSection, 30);
-                    //Console.WriteLine("=== OBJECTIVE MATRIX (FIRST 30 ROWS) ===");
-                    //Console.WriteLine(objectivePreview);
 
                     // ============================
                     //  MATRIZ DE COLABORADORES EXTERNOS (FLAGS)
@@ -225,16 +218,6 @@ namespace tesisproject.backend.Services.Implementations
                     var externalFlagsSection = BuildExternalFlagsMatrix(
                         summary.ColumnMap,
                         dataMatrix);
-
-                    var externalHeaders = new List<string>
-                    {
-                        "HasExternal"
-                    };
-
-                    //var externalPreview = PrintMatrixPreview(externalHeaders, externalFlagsSection, 30);
-
-                    //Console.WriteLine("=== EXTERNAL FLAGS MATRIX (FIRST 30 ROWS) ===");
-                    //Console.WriteLine(externalPreview);
 
                     // ============================
                     //  MATRIZ COMPLETA SIN INTEGRANTES
@@ -252,8 +235,6 @@ namespace tesisproject.backend.Services.Implementations
                         .ToList();
 
                     var fullPreview = PrintMatrixPreview(fullHeaders, fullMatrix, 30);
-                    //Console.WriteLine("=== FULL MATRIX (FIRST 30 ROWS, NO MEMBERS) ===");
-                    //Console.WriteLine(fullPreview);
 
                     // ============================
                     //  MAPEO A IMPORTED PROJECTS
@@ -303,7 +284,7 @@ namespace tesisproject.backend.Services.Implementations
 
                         var json = JsonSerializer.Serialize(summary, dumpOptions);
 
-                        var dumpDir = @"C:\temp"; // cámbialo si quieres otra ruta
+                        var dumpDir = @"C:\temp";
                         Directory.CreateDirectory(dumpDir);
 
                         var dumpPath = Path.Combine(
@@ -318,6 +299,7 @@ namespace tesisproject.backend.Services.Implementations
                     {
                         Console.WriteLine($"[Matrix] Error dumping summary: {ex.Message}");
                     }
+
                     // ============================
                     //  LLAMAR A ProjectService.ImportFromMatrixAsync
                     // ============================
@@ -336,13 +318,11 @@ namespace tesisproject.backend.Services.Implementations
                         });
                     }
 
-                    // Antes devolvías directamente summary: lo envolvemos en OK
                     return ServiceResult<ProjectMatrixUploadSummaryDTO>.Ok(
                         summary,
                         "Matrix file processed.");
                 }
 
-                // Si no es Excel, antes agregabas error y devolvías summary
                 var notSupportedMessage =
                     $"File extension '{extension}' is not supported. Please upload an .xlsx file.";
 
@@ -358,7 +338,6 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                // En caso de error inesperado → Fail, igual que en ProjectService
                 return ServiceResult<ProjectMatrixUploadSummaryDTO>.Fail(
                     ex.Message,
                     ErrorType.Unexpected);
@@ -487,11 +466,11 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         // =====================================================
-        //   MATRIZ DE COLABORADORES EXTERNOS (FLAGS 0/1/2)
+        //   MATRIZ DE COLABORADORES EXTERNOS (FLAGS true/false)
         // =====================================================
         private static List<List<string>> BuildExternalFlagsMatrix(
-    ProjectMatrixColumnMapDTO map,
-    List<List<string>> dataMatrix)
+            ProjectMatrixColumnMapDTO map,
+            List<List<string>> dataMatrix)
         {
             var result = new List<List<string>>();
 
@@ -506,23 +485,20 @@ namespace tesisproject.backend.Services.Implementations
 
             foreach (var row in dataMatrix)
             {
-                // Hay externos si AL MENOS una de las 4 columnas tiene algo “positivo”
                 bool hasExternal =
                     HasPositiveValue(row, natInstIdx) ||
                     HasPositiveValue(row, natColIdx) ||
                     HasPositiveValue(row, intInstIdx) ||
                     HasPositiveValue(row, intColIdx);
 
-                // Una sola columna: "true" / "false"
                 result.Add(new List<string>
-        {
-            hasExternal ? "true" : "false"
-        });
+                {
+                    hasExternal ? "true" : "false"
+                });
             }
 
             return result;
         }
-
 
         // =====================================================
         //   MATRIZ COMPLETA (EXCLUYENDO INTEGRANTES/EXTERNOS)
@@ -541,52 +517,36 @@ namespace tesisproject.backend.Services.Implementations
 
             var indexSet = new HashSet<int>();
 
-            // 1) Columnas de proyecto
             foreach (var idx in map.ProjectColumns ?? new List<int>())
                 indexSet.Add(idx);
 
-            // 2) Columnas financieras
             foreach (var idx in map.FinancialColumns ?? new List<int>())
                 indexSet.Add(idx);
 
-            // 3) Rango de PRÓRROGAS (tal cual)
             AddRangeIfPresent(map.ExtensionRange, indexSet);
-
-            // 4) Rango de VISITAS / AVANCES (tal cual)
             AddRangeIfPresent(map.VisitRange, indexSet);
-
-            // 5) Rango de CATEGORÍAS (tal cual)
             AddRangeIfPresent(map.ResearchCategoryRange, indexSet);
 
-            // 6) Objetivo general (1 columna)
             if (map.ObjectiveColumn.HasValue)
                 indexSet.Add(map.ObjectiveColumn.Value);
 
-            // 7) Columnas de documentos
             foreach (var idx in map.DocumentColumns ?? new List<int>())
                 indexSet.Add(idx);
 
-            // 8) EXCLUIR integrantes internos y externos
             foreach (var idx in map.InternalMemberColumns ?? new List<int>())
                 indexSet.Remove(idx);
 
             foreach (var idx in map.ExternalMemberColumns ?? new List<int>())
                 indexSet.Remove(idx);
 
-            // 9) Ordenar por posición real en la hoja
             fullColumnIndexes = indexSet
                 .Where(i => i >= 0 && i < headers.Count)
                 .OrderBy(i => i)
                 .ToList();
 
-            // 10) Extraer matriz final con esos índices
-            var fullMatrix = ExtractColumnsSection(dataMatrix, fullColumnIndexes);
-            return fullMatrix;
+            return ExtractColumnsSection(dataMatrix, fullColumnIndexes);
         }
 
-        // ============================
-        //   HELPERS VARIOS
-        // ============================
         private static bool HasPositiveValue(List<string> row, int index)
         {
             if (index < 0 || index >= row.Count)
@@ -599,14 +559,11 @@ namespace tesisproject.backend.Services.Implementations
 
             var t = v.Trim().ToUpperInvariant();
 
-            // Valores que significan explícitamente "no hay nadie"
             if (t == "NO" || t == "0" || t == "NI")
                 return false;
 
-            // Cualquier otro texto -> consideramos que SÍ hay alguien
             return true;
         }
-
 
         private static void AddRangeIfPresent(MatrixRangeDTO? range, HashSet<int> target)
         {
@@ -614,9 +571,7 @@ namespace tesisproject.backend.Services.Implementations
                 return;
 
             for (int i = range.Start; i <= range.End; i++)
-            {
                 target.Add(i);
-            }
         }
 
         // =====================================================
@@ -947,11 +902,10 @@ namespace tesisproject.backend.Services.Implementations
         private static List<ImportedProjectDTO> BuildImportedProjects(
             List<string> headers,
             ProjectMatrixColumnMapDTO map,
-            List<List<string>> dataMatrix)     // <- antes se llamaba fullMatrix
+            List<List<string>> dataMatrix)
         {
             var result = new List<ImportedProjectDTO>();
 
-            // 👇 Tomamos la columna real de CONVOCATORIA desde el mapa
             int? convocationColumnIndex = null;
             if (map.NaturalKeyColumns is not null && map.NaturalKeyColumns.Count > 0)
             {
@@ -965,8 +919,9 @@ namespace tesisproject.backend.Services.Implementations
                 var project = new ImportedProjectDTO
                 {
                     CallCode = convocationColumnIndex.HasValue
-                ? SafeGet(row, convocationColumnIndex.Value)
-                : GetByHeader(headers, row, "CONVOCATORIA"),
+                        ? SafeGet(row, convocationColumnIndex.Value)
+                        : GetByHeader(headers, row, "CONVOCATORIA"),
+
                     ProjectCode = GetByHeader(headers, row, "CODIGO", "CÓDIGO"),
                     Number = ParseInt(GetByHeader(headers, row, "NRO.", "NRO")),
                     ProjectName = GetByHeader(headers, row, "PROYECTO"),
@@ -1000,6 +955,18 @@ namespace tesisproject.backend.Services.Implementations
                 project.TerritorialScope = GetByHeader(headers, row, "ALCANCE TERRITORIAL");
                 project.ExpectedImpact = GetByHeader(headers, row, "IMPACTO ESPERADO");
                 project.GeneralObjective = GetByHeader(headers, row, "OBJETIVO GENERAL");
+
+                // ✅ COORDINADOR / COORDINADOR SUBROGANTE
+                var coordinatorRaw = GetByHeader(headers, row, "COORDINADOR");
+                var alternateCoordinatorRaw = GetByHeader(headers, row, "COORDINADOR SUBROGANTE");
+
+                var coordinators = ParsePeopleFromCell(coordinatorRaw, out var coordinatorDiscarded);
+                var alternates = ParsePeopleFromCell(alternateCoordinatorRaw, out var alternateDiscarded);
+
+                project.Coordinators = coordinators.ToList();
+                project.AlternateCoordinators = alternates.ToList();
+                project.CoordinatorDiscardedTokens = coordinatorDiscarded;
+                project.AlternateCoordinatorDiscardedTokens = alternateDiscarded;
 
                 project.Documents.AddRange(
                     BuildDocuments(headers, row, map)
@@ -1085,9 +1052,6 @@ namespace tesisproject.backend.Services.Implementations
         // =====================================================
         //   VISITAS / PERIODOS DINÁMICOS
         // =====================================================
-        // =====================================================
-        //   VISITAS / PERIODOS DINÁMICOS
-        // =====================================================
         private static IEnumerable<ProjectVisitPeriodDTO> BuildVisitPeriods(
             List<string> headers,
             List<string> row,
@@ -1107,7 +1071,6 @@ namespace tesisproject.backend.Services.Implementations
                     string.IsNullOrWhiteSpace(raw))
                     continue;
 
-                // Solo cuenta si el valor parece código de resolución
                 var hasResolution = LooksLikeResolutionCode(raw);
                 var value = hasResolution ? raw : string.Empty;
 
@@ -1122,7 +1085,6 @@ namespace tesisproject.backend.Services.Implementations
 
             return result;
         }
-
 
         // =====================================================
         //   DOCUMENTOS (GENÉRICO) – EMPAREJA CÓDIGO + FECHA
@@ -1141,19 +1103,16 @@ namespace tesisproject.backend.Services.Implementations
                 .Select(NormalizeHeader)
                 .ToList();
 
-            // Claves para RESOLUCIÓN INFORME FINAL HCU
             var resolFinalKey = NormalizeHeader("RESOLUCION INFORME FINAL HCU");
             var resolFinalKeyAlt = NormalizeHeader("RESOLUCIÓN INFORME FINAL HCU");
             var fechaFinalKey = NormalizeHeader("FECHA RESOLUCION HCH");
             var fechaFinalKeyAlt = NormalizeHeader("FECHA RESOLUCIÓN HCH");
 
-            // Claves para APROBACION HCU/CONIN
             var approvalKey = NormalizeHeader("APROBACION HCU/CONIN");
             var approvalKeyAlt = NormalizeHeader("APROBACIÓN HCU/CONIN");
             var approvalDateKey = NormalizeHeader("FECHA APROBACION HCU/CONIN");
             var approvalDateKeyAlt = NormalizeHeader("FECHA APROBACIÓN HCU/CONIN");
 
-            // Ubicar columnas de FECHA
             var finalDateColIndex = normalizedHeaders.FindIndex(h =>
                 h == fechaFinalKey || h == fechaFinalKeyAlt);
 
@@ -1165,10 +1124,8 @@ namespace tesisproject.backend.Services.Implementations
                 if (colIndex < 0 || colIndex >= row.Count)
                     continue;
 
-                var headerLabel = headers[colIndex];
                 var headerNorm = normalizedHeaders[colIndex];
 
-                // ⛔ Estas columnas SON SOLO FECHAS, no documentos aparte
                 if (headerNorm == approvalDateKey || headerNorm == approvalDateKeyAlt ||
                     headerNorm == fechaFinalKey || headerNorm == fechaFinalKeyAlt)
                 {
@@ -1178,10 +1135,9 @@ namespace tesisproject.backend.Services.Implementations
                 var isApproval = headerNorm == approvalKey || headerNorm == approvalKeyAlt;
                 var isFinalRes = headerNorm == resolFinalKey || headerNorm == resolFinalKeyAlt;
 
-                var value = SafeGet(row, colIndex);   // código (si existe)
+                var value = SafeGet(row, colIndex);
                 DateTime? dateValue = null;
 
-                // 🔹 CASO ESPECIAL: APROBACION HCU/CONIN
                 if (isApproval)
                 {
                     string? dateRaw = null;
@@ -1191,23 +1147,18 @@ namespace tesisproject.backend.Services.Implementations
                         dateRaw = SafeGet(row, approvalDateColIndex);
                     }
 
-                    // Si NO hay código NI fecha → no tiene sentido crear documento
                     if (string.IsNullOrWhiteSpace(value) && string.IsNullOrWhiteSpace(dateRaw))
                         continue;
 
-                    // Si hay fecha, la parseamos
                     dateValue = ParseDate(dateRaw);
 
-                    // Si el código está vacío pero la fecha existe → usar código genérico
                     if (string.IsNullOrWhiteSpace(value))
                     {
                         value = "CODIGO NO EXISTENTE";
                     }
                 }
-                // 🔹 CASO ESPECIAL: RESOLUCION INFORME FINAL HCU
                 else if (isFinalRes)
                 {
-                    // si tampoco hay código, no creamos doc
                     if (string.IsNullOrWhiteSpace(value))
                         continue;
 
@@ -1217,29 +1168,24 @@ namespace tesisproject.backend.Services.Implementations
                         dateValue = ParseDate(dateRaw);
                     }
                 }
-                // 🔹 RESTO DE DOCUMENTOS
                 else
                 {
-                    // para los otros, mantenemos regla antigua: sin código -> no hay doc
                     if (string.IsNullOrWhiteSpace(value))
                         continue;
 
                     dateValue = ParseDate(value);
                 }
 
-                var doc = new ProjectDocumentDTO
+                result.Add(new ProjectDocumentDTO
                 {
-                    DocumentType = headerNorm, // p.ej. "APROBACION HCU/CONIN"
-                    Code = value,      // código real o "CODIGO NO EXISTENTE"
-                    Date = dateValue   // viene de la columna FECHA APROBACION HCU/CONIN
-                };
-
-                result.Add(doc);
+                    DocumentType = headerNorm,
+                    Code = value,
+                    Date = dateValue
+                });
             }
 
             return result;
         }
-
 
         private static bool LooksLikeResolutionCode(string? value)
         {
@@ -1248,11 +1194,9 @@ namespace tesisproject.backend.Services.Implementations
 
             var s = value.Trim().ToUpperInvariant();
 
-            // Debe tener al menos un guion
             if (!s.Contains('-'))
                 return false;
 
-            // Debe tener al menos un dígito
             bool hasDigit = false;
 
             foreach (var ch in s)
@@ -1260,7 +1204,6 @@ namespace tesisproject.backend.Services.Implementations
                 if (char.IsDigit(ch))
                     hasDigit = true;
 
-                // Solo letras mayúsculas, dígitos y guiones
                 if (!((ch >= 'A' && ch <= 'Z') || char.IsDigit(ch) || ch == '-'))
                     return false;
             }
@@ -1268,6 +1211,173 @@ namespace tesisproject.backend.Services.Implementations
             return hasDigit;
         }
 
+        // =====================================================
+        //   Parser de personas (coordinador/subrogante)
+        // =====================================================
+        private static IReadOnlyList<string> ParsePeopleFromCell(
+            string? raw,
+            out List<string> discardedTokens)
+        {
+            discardedTokens = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(raw))
+                return Array.Empty<string>();
+
+            var text = raw.Trim();
+
+            text = text.Replace("\r\n", "\n").Replace("\r", "\n");
+
+            var normUpper = NormalizeHeader(text);
+            if (normUpper == "NO APLICA" || normUpper == "NOAPLICA" || normUpper == "N/A" || normUpper == "NA")
+                return Array.Empty<string>();
+
+            text = Regex.Replace(text, @"\([^)]*\)", " ");
+            text = RemoveLeadingTitles(text);
+            text = CollapseSpaces(text);
+
+            if (string.IsNullOrWhiteSpace(text))
+                return Array.Empty<string>();
+
+            text = text.Replace(";", "\n").Replace("|", "\n");
+
+            var strongParts = text
+                .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+
+            var candidates = new List<string>();
+
+            foreach (var part in strongParts)
+            {
+                var p = part.Trim();
+                if (string.IsNullOrWhiteSpace(p))
+                    continue;
+
+                if (p.Contains(" y ", StringComparison.OrdinalIgnoreCase))
+                {
+                    var pieces = Regex.Split(p, @"\s+y\s+", RegexOptions.IgnoreCase)
+                                      .Select(x => x.Trim())
+                                      .Where(x => !string.IsNullOrWhiteSpace(x))
+                                      .ToList();
+
+                    if (pieces.Count >= 2 && pieces.All(LooksLikeRealName))
+                    {
+                        candidates.AddRange(pieces);
+                        continue;
+                    }
+                }
+
+                if (p.Count(ch => ch == ',') == 1)
+                {
+                    var parts = p.Split(',', 2, StringSplitOptions.TrimEntries);
+                    if (parts.Length == 2)
+                    {
+                        var leftWords = parts[0].Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+                        var rightWords = parts[1].Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+
+                        if (leftWords >= 1 && rightWords >= 1)
+                        {
+                            var rebuilt = $"{parts[1]} {parts[0]}";
+                            candidates.Add(rebuilt.Trim());
+                            continue;
+                        }
+                    }
+                }
+
+                candidates.Add(p);
+            }
+
+            var cleaned = new List<string>();
+
+            foreach (var c in candidates)
+            {
+                var x = c.Trim();
+                x = RemoveTrailingPunctuation(x);
+                x = CollapseSpaces(x);
+
+                if (!LooksLikeRealName(x))
+                {
+                    discardedTokens.Add(c);
+                    continue;
+                }
+
+                cleaned.Add(x);
+            }
+
+            var seen = new HashSet<string>();
+            var final = new List<string>();
+
+            foreach (var name in cleaned)
+            {
+                var key = NormalizePersonKey(name);
+                if (seen.Add(key))
+                    final.Add(name);
+            }
+
+            return final;
+        }
+
+        private static string RemoveLeadingTitles(string input)
+        {
+            var s = (input ?? string.Empty).Trim();
+
+            while (true)
+            {
+                var before = s;
+
+                s = Regex.Replace(
+                    s,
+                    @"^\s*(DR\.?|DRA\.?|ING\.?|MGS\.?|MG\.?|MSC\.?|PH\.?D\.?|PHD\.?)\s+",
+                    "",
+                    RegexOptions.IgnoreCase);
+
+                s = s.TrimStart();
+
+                if (s == before)
+                    break;
+            }
+
+            return s.Trim();
+        }
+
+        private static string CollapseSpaces(string input)
+        {
+            return Regex.Replace(input ?? "", @"\s+", " ").Trim();
+        }
+
+        private static string RemoveTrailingPunctuation(string input)
+        {
+            return (input ?? "").Trim().TrimEnd('.', ',', ';', ':', '-', '–', '—');
+        }
+
+        private static bool LooksLikeRealName(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return false;
+
+            if (!input.Any(char.IsLetter))
+                return false;
+
+            var words = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return words.Length >= 2;
+        }
+
+        private static string NormalizePersonKey(string name)
+        {
+            var s = (name ?? "").Trim().ToLowerInvariant();
+
+            s = s
+                .Replace("á", "a").Replace("é", "e").Replace("í", "i")
+                .Replace("ó", "o").Replace("ú", "u").Replace("ñ", "n");
+
+            var sb = new StringBuilder();
+            foreach (var ch in s)
+            {
+                if (char.IsLetterOrDigit(ch) || char.IsWhiteSpace(ch))
+                    sb.Append(ch);
+            }
+
+            return CollapseSpaces(sb.ToString());
+        }
 
         // =====================================================
         //   HELPERS PARA LECTURA DE CELDAS Y PARSING
@@ -1336,36 +1446,52 @@ namespace tesisproject.backend.Services.Implementations
 
             value = value.Trim();
 
-            // Formatos explícitos que queremos soportar
+            // ==========================================
+            // 0) Si hay múltiples fechas (saltos de línea)
+            // ==========================================
+            if (value.Contains('\n') || value.Contains('\r'))
+            {
+                var parts = value
+                    .Replace("\r\n", "\n")
+                    .Replace('\r', '\n')
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                DateTime? maxDate = null;
+
+                foreach (var part in parts)
+                {
+                    var parsed = ParseDate(part); // recursivo y seguro
+                    if (parsed.HasValue)
+                    {
+                        if (!maxDate.HasValue || parsed.Value > maxDate.Value)
+                            maxDate = parsed.Value;
+                    }
+                }
+
+                return maxDate;
+            }
+
+            // ================================
+            // 1) Caso especial: solo año "2017"
+            // ================================
+            if (Regex.IsMatch(value, @"^\d{4}$"))
+            {
+                if (int.TryParse(value, out var year) && year >= 1900 && year <= 2100)
+                    return new DateTime(year, 1, 1);
+            }
+
+            // ==========================================
+            // 2) Formatos explícitos
+            // ==========================================
             var formats = new[]
             {
-        // ISO / variantes
-        "yyyy-MM-dd",
-        "yyyy/MM/dd",
-        "yyyy-M-d",
-        "yyyy/M/d",
-
-        // Formatos día/mes/año comunes en ES
-        "dd/MM/yyyy",
-        "d/M/yyyy",
-        "dd-MM-yyyy",
-        "d-M-yyyy",
-        "dd.MM.yyyy",
-        "d.M.yyyy",
-
-        // Con año corto
-        "dd/MM/yy",
-        "d/M/yy",
-        "dd-MM-yy",
-        "d-M-yy",
-
-        // Con hora (por si el Excel trae tiempo)
-        "yyyy-MM-dd HH:mm:ss",
-        "dd/MM/yyyy HH:mm:ss",
-        "dd-MM-yyyy HH:mm:ss"
+        "yyyy",
+        "yyyy-MM-dd","yyyy/MM/dd","yyyy-M-d","yyyy/M/d",
+        "dd/MM/yyyy","d/M/yyyy","dd-MM-yyyy","d-M-yyyy","dd.MM.yyyy","d.M.yyyy",
+        "dd/MM/yy","d/M/yy","dd-MM-yy","d-M-yy",
+        "yyyy-MM-dd HH:mm:ss","dd/MM/yyyy HH:mm:ss","dd-MM-yyyy HH:mm:ss"
     };
 
-            // 1) Intentar parsear con los formatos exactos conocidos (invariant)
             if (DateTime.TryParseExact(
                     value,
                     formats,
@@ -1376,7 +1502,9 @@ namespace tesisproject.backend.Services.Implementations
                 return dtExact;
             }
 
-            // 2) Intentar con la cultura actual del sistema
+            // ==========================================
+            // 3) Parse general (culturas)
+            // ==========================================
             if (DateTime.TryParse(
                     value,
                     CultureInfo.CurrentCulture,
@@ -1386,7 +1514,6 @@ namespace tesisproject.backend.Services.Implementations
                 return dtCurrent;
             }
 
-            // 3) Intentar explícitamente con cultura "es-EC" (por si difiere)
             try
             {
                 var esEc = CultureInfo.GetCultureInfo("es-EC");
@@ -1399,31 +1526,27 @@ namespace tesisproject.backend.Services.Implementations
                     return dtEsEc;
                 }
             }
-            catch
-            {
-                // si falla obtener la cultura, simplemente lo ignoramos
-            }
+            catch { }
 
-            // 4) Último intento: puede venir como número serial de Excel
+            // ==========================================
+            // 4) Excel / OA date (solo serial real)
+            // ==========================================
             if (double.TryParse(
-                    value.Replace(",", "."), // por si viene con coma
+                    value.Replace(",", "."),
                     NumberStyles.Any,
                     CultureInfo.InvariantCulture,
                     out var oaNumber))
             {
-                try
+                if (oaNumber >= 20000)
                 {
-                    return DateTime.FromOADate(oaNumber);
-                }
-                catch
-                {
-                    // si no es un OA date válido, ignoramos
+                    try
+                    {
+                        return DateTime.FromOADate(oaNumber);
+                    }
+                    catch { }
                 }
             }
-
-            // Si no se pudo interpretar la fecha, devolvemos null
             return null;
         }
-
     }
 }

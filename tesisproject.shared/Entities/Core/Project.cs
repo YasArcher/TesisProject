@@ -28,6 +28,9 @@ namespace tesisproject.shared.Entities.Core
         public int ProjectStateId { get; set; }
         [Required]
         public int ProjectGroupId { get; set; }
+        [Required]
+        public int ProjectOriginTypeId { get; set; }
+
 
         // ================================
         //          Core Information
@@ -83,6 +86,8 @@ namespace tesisproject.shared.Entities.Core
         public ICollection<ProjectResearchCategory> ProjectResearchCategories { get; set; } = new List<ProjectResearchCategory>();
 
         // 🔹 Nueva colección de vínculos a documentos (aprobación, informe final, prórrogas, etc.)
+        public ProjectOriginType ProjectOriginType { get; set; } = null!;
         public ICollection<ProjectDocument> ProjectDocuments { get; set; } = new List<ProjectDocument>();
+
     }
 }
