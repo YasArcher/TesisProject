@@ -2,6 +2,7 @@
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.Common.Utils;
 using tesisproject.shared.DTOs.Catalog.Common.Request;
 using tesisproject.shared.DTOs.Catalog.Common.Response;
 using tesisproject.shared.Entities.Base;
@@ -134,8 +135,8 @@ namespace tesisproject.backend.Services.Implementations
         // =============== UPDATE ===============
 
         public async Task<ServiceResult<CatalogDetailDTO>> UpdateAsync(
-            UpdateCatalogRequestDTO request,
-            CancellationToken ct = default)
+           UpdateCatalogRequestDTO request,
+           CancellationToken ct = default)
         {
             try
             {
@@ -152,17 +153,89 @@ namespace tesisproject.backend.Services.Implementations
                     return ServiceResult<CatalogDetailDTO>
                         .Fail("Catalog item is locked and cannot be modified.", ErrorType.Conflict);
 
-                var name = (request.Name ?? string.Empty).Trim();
-                if (string.IsNullOrWhiteSpace(name))
+                var newName = (request.Name ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(newName))
                     return ServiceResult<CatalogDetailDTO>
                         .Fail("Name is required.", ErrorType.Validation);
 
-                var duplicated = await _repo.NameExistsAsync(name, excludeId: request.Id, ct);
-                if (duplicated)
-                    return ServiceResult<CatalogDetailDTO>
-                        .Fail("Name already exists.", ErrorType.Validation);
+                var nameChanged = !string.Equals(
+                    entity.Name?.Trim(),
+                    newName,
+                    StringComparison.OrdinalIgnoreCase);
 
-                entity.Name = name;
+                if (nameChanged)
+                {
+                    // 1) Duplicado exacto (bloquear)
+                    var duplicated = await _repo.NameExistsAsync(newName, excludeId: request.Id, ct);
+                    if (duplicated)
+                        return ServiceResult<CatalogDetailDTO>
+                            .Fail("Name already exists. Please review the catalog to avoid duplicates.", ErrorType.Validation);
+
+                    // 2) Posible duplicado (Levenshtein) -> bloquear y sugerir
+                    const double SIMILARITY_THRESHOLD = 90.0;
+
+                    var allItems = await _repo.ListAsync(onlyActives: false, ct: ct);
+
+                    var suggestions = allItems
+                        .Where(x => x.Id != entity.Id)
+                        .Select(x => new
+                        {
+                            x.Id,
+                            x.Name,
+                            x.IsActive,
+                            Similarity = Levenshtein.SimilarityPercentage(newName, x.Name)
+                        })
+                        .Where(x => x.Similarity >= SIMILARITY_THRESHOLD)
+                        .OrderByDescending(x => x.Similarity)
+                        .Take(5)
+                        .ToList();
+
+                    if (suggestions.Count > 0)
+                    {
+                        var hint = string.Join(" | ", suggestions.Select(s =>
+                            $"{s.Name} (Id: {s.Id}, Similarity: {s.Similarity:0.0}%, Active: {s.IsActive})"));
+
+                        return ServiceResult<CatalogDetailDTO>.Fail(
+                            $"This name looks very similar to existing items. Please review before saving. Candidates: {hint}",
+                            ErrorType.Validation);
+                    }
+
+                    // 3) Regla: si tiene referencias -> crear nuevo + desactivar actual
+                    var hasReferences = await _repo.HasReferencesAsync(entity.Id, ct);
+
+                    if (hasReferences)
+                    {
+                        var newEntity = new TCatalog
+                        {
+                            Name = newName,
+                            IsActive = true, // si quieres respetar el toggle: request.IsActive
+                        };
+
+                        await _repo.AddAsync(newEntity, ct);
+
+                        entity.IsActive = false;
+                        _repo.Update(entity);
+
+                        await _uow.SaveChangesAsync(ct);
+
+                        return ServiceResult<CatalogDetailDTO>.Ok(
+                            MapToDetail(newEntity),
+                            "Catalog item renamed by creating a new item and deactivating the previous one.");
+                    }
+
+                    // 4) Si NO tiene referencias -> update in-place
+                    entity.Name = newName;
+                    entity.IsActive = request.IsActive;
+
+                    _repo.Update(entity);
+                    await _uow.SaveChangesAsync(ct);
+
+                    return ServiceResult<CatalogDetailDTO>.Ok(
+                        MapToDetail(entity),
+                        "Catalog item updated.");
+                }
+
+                // Si NO cambió el nombre -> update normal (solo IsActive)
                 entity.IsActive = request.IsActive;
 
                 _repo.Update(entity);

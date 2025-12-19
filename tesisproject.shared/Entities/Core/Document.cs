@@ -7,14 +7,8 @@ namespace tesisproject.shared.Entities.Core
 {
     public class Document
     {
-        // ================================
-        //              Identity
-        // ================================
         [Key]
         public int DocumentId { get; set; }
-
-        // Autorreferencia (1:1). Se refuerza unicidad por Fluent API.
-        public int? RelatedDocumentId { get; set; }
 
         // ================================
         //          Type / Storage
@@ -29,9 +23,9 @@ namespace tesisproject.shared.Entities.Core
         //      Resolution (optional)
         // ================================
         [StringLength(100)]
-        public string? ResolutionCode { get; set; } // Número/código de resolución
+        public string? ResolutionCode { get; set; }
 
-        public DateTime? ResolutionDate { get; set; } // Fecha de resolución
+        public DateTime? ResolutionDate { get; set; }
 
         // ================================
         //               Audit
@@ -47,16 +41,6 @@ namespace tesisproject.shared.Entities.Core
         [ForeignKey(nameof(DocumentTypeId))]
         public DocumentType DocumentType { get; set; } = null!;
 
-        // Documento “pareja” (relación 1:1)
-        [ForeignKey(nameof(RelatedDocumentId))]
-        [InverseProperty(nameof(ReverseRelation))]
-        public Document? RelatedDocument { get; set; }
-
-        // Navegación inversa (1:1)
-        [InverseProperty(nameof(RelatedDocument))]
-        public Document? ReverseRelation { get; set; }
-
-        // 🔹 Nueva navegación: proyectos que referencian este documento
         public ICollection<ProjectDocument> ProjectDocuments { get; set; } = new List<ProjectDocument>();
     }
 }

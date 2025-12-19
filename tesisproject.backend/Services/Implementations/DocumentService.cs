@@ -88,7 +88,6 @@ namespace tesisproject.backend.Services.Implementations
                 var entity = new Document
                 {
                     DocumentTypeId = request.DocumentTypeId,
-                    RelatedDocumentId = request.RelatedDocumentId,
                     DocumentPath = relativePath,
                     ResolutionCode = request.ResolutionCode,
                     ResolutionDate = request.ResolutionDate,
@@ -110,8 +109,7 @@ namespace tesisproject.backend.Services.Implementations
                     ResolutionCode = entity.ResolutionCode,
                     ResolutionDate = entity.ResolutionDate,
                     CreatedAt = entity.CreatedAt,
-                    CreatedByUserId = entity.CreatedByUserId,
-                    RelatedDocumentId = entity.RelatedDocumentId
+                    CreatedByUserId = entity.CreatedByUserId
                 };
 
                 return ServiceResult<DocumentResponseDTO>.Ok(dto);

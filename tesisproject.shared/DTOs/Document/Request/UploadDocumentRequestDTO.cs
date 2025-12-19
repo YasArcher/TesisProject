@@ -19,8 +19,6 @@ namespace tesisproject.shared.DTOs.Document.Request
         [Required]
         public int DocumentTypeId { get; set; }
 
-        public int? RelatedDocumentId { get; set; }
-
         [StringLength(100)]
         public string? ResolutionCode { get; set; }
 

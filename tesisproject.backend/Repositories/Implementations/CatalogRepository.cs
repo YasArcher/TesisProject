@@ -1,5 +1,6 @@
-﻿using System.Linq.Expressions;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
+using System.Reflection;
 using tesisproject.backend.Data;
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.shared.DTOs.Filters;
@@ -104,6 +105,108 @@ namespace tesisproject.backend.Repositories.Implementations
             return await q.OrderBy(x => x.Name)
                           .Select(x => new KeyValueItemDTO { Id = x.Id, Name = x.Name })
                           .ToListAsync(ct);
+        }
+
+        public async Task<bool> HasReferencesAsync(int id, CancellationToken ct = default)
+        {
+            if (id <= 0) return false;
+
+            var principalType = _ctx.Model.FindEntityType(typeof(T));
+            if (principalType is null) return false;
+
+            // Recorremos todas las FKs que tienen como principal este catálogo
+            var foreignKeys = _ctx.Model.GetEntityTypes()
+                .SelectMany(et => et.GetForeignKeys())
+                .Where(fk => fk.PrincipalEntityType == principalType)
+                .ToList();
+
+            if (foreignKeys.Count == 0) return false;
+
+            foreach (var fk in foreignKeys)
+            {
+                // Solo soportamos FK simples (1 columna). Si tienes compuestas, se ignoran aquí.
+                if (fk.Properties.Count != 1) continue;
+
+                var fkProp = fk.Properties[0];
+                var dependentClr = fk.DeclaringEntityType.ClrType;
+
+                // Crear: e => EF.Property<fkType>(e, "FkPropName") == id
+                var param = Expression.Parameter(dependentClr, "e");
+                var fkType = fkProp.ClrType;
+
+                var efPropertyMethod = typeof(EF)
+                    .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .Single(m => m.Name == nameof(EF.Property) && m.IsGenericMethod && m.GetParameters().Length == 2)
+                    .MakeGenericMethod(fkType);
+
+                var left = Expression.Call(
+                    efPropertyMethod,
+                    param,
+                    Expression.Constant(fkProp.Name));
+
+                // Si la FK es nullable int? convertimos id a int?
+                Expression right = fkType == typeof(int?)
+                    ? Expression.Constant((int?)id, typeof(int?))
+                    : Expression.Constant(id, fkType);
+
+                // Si la FK no es int/int?, no podemos comparar con id (lo ignoramos)
+                if (fkType != typeof(int) && fkType != typeof(int?))
+                    continue;
+
+                var predicateBody = Expression.Equal(left, right);
+                var predicateType = typeof(Func<,>).MakeGenericType(dependentClr, typeof(bool));
+                var predicate = Expression.Lambda(predicateType, predicateBody, param);
+
+                // IQueryable depSet = _ctx.Set(dependentClr).AsNoTracking();
+                // DbSet<TDependent> set = _ctx.Set<TDependent>();
+                var setMethod = typeof(DbContext)
+                    .GetMethods()
+                    .Single(m => m.Name == nameof(DbContext.Set)
+                                 && m.IsGenericMethod
+                                 && m.GetParameters().Length == 0);
+
+                var dbSetObj = setMethod
+                    .MakeGenericMethod(dependentClr)
+                    .Invoke(_ctx, null)!;
+
+                // setNoTracking = set.AsNoTracking()
+                var asNoTrackingMethod = typeof(EntityFrameworkQueryableExtensions)
+                    .GetMethods()
+                    .Single(m => m.Name == nameof(EntityFrameworkQueryableExtensions.AsNoTracking)
+                                 && m.IsGenericMethod
+                                 && m.GetParameters().Length == 1);
+
+                var setNoTrackingObj = asNoTrackingMethod
+                    .MakeGenericMethod(dependentClr)
+                    .Invoke(null, new object[] { dbSetObj })!;
+
+
+                // Ejecutar AnyAsync<TDependent>(set, predicate, ct) vía reflexión
+                var anyAsync = typeof(EntityFrameworkQueryableExtensions)
+                    .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                    .Where(m => m.Name == nameof(EntityFrameworkQueryableExtensions.AnyAsync))
+                    .Where(m => m.IsGenericMethodDefinition)
+                    .Where(m =>
+                    {
+                        var p = m.GetParameters();
+                        return p.Length == 3
+                               && p[0].ParameterType.IsGenericType
+                               && p[0].ParameterType.GetGenericTypeDefinition() == typeof(IQueryable<>);
+                    })
+                    .Single()
+                    .MakeGenericMethod(dependentClr);
+
+                var taskObj = (Task)anyAsync.Invoke(null, new object[] { setNoTrackingObj, predicate, ct })!;
+                await taskObj.ConfigureAwait(false);
+
+                // Leer Task<bool>.Result
+                var resultProp = taskObj.GetType().GetProperty(nameof(Task<bool>.Result))!;
+                var hasAny = (bool)resultProp.GetValue(taskObj)!;
+
+                if (hasAny) return true;
+            }
+
+            return false;
         }
     }
 }

@@ -67,12 +67,15 @@ namespace tesisproject.frontend.Services.Implementations
             UpdateCatalogRequestDTO request,
             CancellationToken ct = default)
         {
-            var url = $"{BaseUrl}";
+            if (request.Id <= 0)
+                throw new ArgumentException("Id must be a positive value.", nameof(request.Id));
+
+            var url = $"{BaseUrl}/{request.Id}";
             return _api.PutAsync<UpdateCatalogRequestDTO, CatalogDetailDTO>(
                 url,
                 request,
-                ct);
-
+                ct
+            );
         }
 
         // =========================

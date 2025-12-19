@@ -13,8 +13,6 @@ namespace tesisproject.backend.Repositories.Implementations
         {
             return await _ctx.Set<Document>()
                 .Include(d => d.DocumentType)
-                .Include(d => d.RelatedDocument)
-                .Include(d => d.ReverseRelation)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(d => d.DocumentId == documentId, ct);
         }
@@ -22,9 +20,7 @@ namespace tesisproject.backend.Repositories.Implementations
         public IQueryable<Document> QueryWithRefs(bool asNoTracking = true)
         {
             var q = _ctx.Set<Document>()
-                .Include(d => d.DocumentType)
-                .Include(d => d.RelatedDocument)
-                .Include(d => d.ReverseRelation);
+                .Include(d => d.DocumentType);
 
             return asNoTracking ? q.AsNoTracking() : q;
         }
