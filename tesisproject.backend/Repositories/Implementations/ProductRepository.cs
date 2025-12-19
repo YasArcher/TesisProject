@@ -14,7 +14,7 @@ namespace tesisproject.backend.Repositories.Implementations
             => await _ctx.Set<Product>()
                 .Where(p => p.Id == productId)
                 .Include(p => p.ProductType)
-                .Include(p => p.Values!).ThenInclude(v => v.AttributeDefinition)
+                .Include(p => p.Values!).ThenInclude(v => v.AttributeDefinition).ThenInclude(d => d.ProductAttribute)
                 .Include(p => p.Authors!)
                 .AsSplitQuery()
                 .FirstOrDefaultAsync(ct);
@@ -30,7 +30,7 @@ namespace tesisproject.backend.Repositories.Implementations
         {
             var q = _ctx.Set<Product>()
                 .Include(p => p.ProductType)
-                .Include(p => p.Values!).ThenInclude(v => v.AttributeDefinition)
+                .Include(p => p.Values!).ThenInclude(v => v.AttributeDefinition).ThenInclude(d => d.ProductAttribute)
                 .Include(p => p.Authors!)
                 .AsSplitQuery();
 

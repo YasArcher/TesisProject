@@ -13,6 +13,7 @@ namespace tesisproject.backend.Repositories.Implementations
 
         public async Task<List<ProductAttributeDefinition>> GetByTypeAsync(int productTypeId, CancellationToken ct = default)
             => await _ctx.Set<ProductAttributeDefinition>()
+                .Include(d => d.ProductAttribute)
                 .Where(d => d.ProductTypeId == productTypeId)
                 .OrderBy(d => d.DisplayOrder)
                 .ToListAsync(ct);

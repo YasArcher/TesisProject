@@ -1,8 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
-using tesisproject.shared.DTOs.Product.Request;
-using tesisproject.shared.DTOs.Product.Response;
+using tesisproject.shared.DTOs.Products.Product.Request;
+using tesisproject.shared.DTOs.Products.Product.Response;
 using tesisproject.shared.Entities.Core.Products;
 using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
@@ -20,48 +20,45 @@ namespace tesisproject.backend.Services.Implementations
 
         // ===================== CREATE =====================
 
-        public async Task<ServiceResult<ProductDetailResponseDTO>> CreateAsync(ProductCreateRequestDTO request, CancellationToken ct = default)
+        public async Task<ServiceResult<ProductDetailResponseDTO>> CreateAsync(
+            ProductCreateRequestDTO request,
+            CancellationToken ct = default)
         {
             try
             {
                 // Basic validations
+                if (request is null)
+                    return ServiceResult<ProductDetailResponseDTO>.Fail("Request is required.", ErrorType.Validation);
+
                 if (request.ProjectId <= 0)
                     return ServiceResult<ProductDetailResponseDTO>.Fail("ProjectId is required.", ErrorType.Validation);
+
                 if (string.IsNullOrWhiteSpace(request.Title))
                     return ServiceResult<ProductDetailResponseDTO>.Fail("Title is required.", ErrorType.Validation);
+
                 if (request.ProductTypeId <= 0)
                     return ServiceResult<ProductDetailResponseDTO>.Fail("ProductTypeId is required.", ErrorType.Validation);
 
-                // Type & definitions
+                // ProductType exists
                 var type = await _uow.ProductTypes.GetByIdAsync(new object[] { request.ProductTypeId }, ct);
                 if (type is null)
                     return ServiceResult<ProductDetailResponseDTO>.Fail("ProductType not found.", ErrorType.NotFound);
 
-                var defs = await _uow.ProductAttributeDefinitions.GetByTypeAsync(request.ProductTypeId, ct);
-                var defsById = defs.ToDictionary(d => d.Id, d => d);
+                // Load definitions for this type (include ProductAttribute to validate DataType/Unit/Name)
+                var defs = await _uow.ProductAttributeDefinitions
+                    .QueryByType(request.ProductTypeId, asNoTracking: true)
+                    .Include(d => d.ProductAttribute)
+                    .OrderBy(d => d.DisplayOrder)
+                    .ToListAsync(ct);
 
-                // Validate attribute values presence/ownership
-                var providedValues = request.AttributeValues ?? new List<ProductAttributeValueUpsertDTO>();
-                var providedById = providedValues.ToDictionary(v => v.AttributeDefinitionId, v => v);
+                // Validate + normalize values (by definition)
+                var normalizedValuesResult = ValidateAndNormalizeValues(defs, request.Values);
+                if (!normalizedValuesResult.Success)
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(normalizedValuesResult.Message!, ErrorType.Validation);
 
-                //// Required attributes must be present
-                //foreach (var def in defs.Where(d => d.IsRequired))
-                //{
-                //    if (!providedById.ContainsKey(def.Id))
-                //        return ServiceResult<ProductDetailResponseDTO>.Fail($"Required attribute '{def.AttributeName}' is missing.", ErrorType.Validation);
-                //}
+                var normalizedValues = normalizedValuesResult.Data!; // Dictionary<int defId, string? value>
 
-                // Each provided value must belong to the same ProductType
-                //foreach (var av in providedValues)
-                //{
-                //    if (!defsById.TryGetValue(av.AttributeDefinitionId, out var def))
-                //        return ServiceResult<ProductDetailResponseDTO>.Fail($"AttributeDefinitionId {av.AttributeDefinitionId} does not belong to ProductType {request.ProductTypeId}.", ErrorType.Validation);
-
-                //    var valCheck = ValidateAttributeValue(def.DataType, av.Value);
-                //    if (!valCheck.IsValid)
-                //        return ServiceResult<ProductDetailResponseDTO>.Fail($"Invalid value for '{def.AttributeName}': {valCheck.Error}.", ErrorType.Validation);
-                //}
-
+                // Create product header
                 var entity = new Product
                 {
                     ProjectId = request.ProjectId,
@@ -74,45 +71,38 @@ namespace tesisproject.backend.Services.Implementations
                 };
 
                 await _uow.Products.AddAsync(entity, ct);
-                await _uow.SaveChangesAsync(ct); // need Id
+                await _uow.SaveChangesAsync(ct); // need ProductId
 
-                // Authors (avoid duplicates)
-                var uniqueAuthorIds = (request.AuthorUserIds ?? new List<int>()).Where(id => id > 0).Distinct().ToList();
-                foreach (var userId in uniqueAuthorIds)
+                // Sync authors
+                await SyncAuthorsAsync(entity.Id, request.AuthorUserIds, ct);
+
+                // Insert values
+                foreach (var kv in normalizedValues)
                 {
-                    var exists = await _uow.ProductAuthors.ExistsForUserAsync(entity.Id, userId, ct);
-                    if (!exists)
+                    await _uow.ProductValues.AddAsync(new ProductValue
                     {
-                        await _uow.ProductAuthors.AddAsync(new ProductAuthor
-                        {
-                            ProductId = entity.Id,
-                            UserId = userId
-                        }, ct);
-                    }
+                        ProductId = entity.Id,
+                        AttributeDefinitionId = kv.Key,
+                        Value = kv.Value,
+                        CreatedAt = DateTime.UtcNow
+                    }, ct);
                 }
-
-                // Values
-                //foreach (var av in providedValues)
-                //{
-                //    await _uow.ProductValues.AddAsync(new ProductValue
-                //    {
-                //        ProductId = entity.Id,
-                //        AttributeDefinitionId = av.AttributeDefinitionId,
-                //        Value = NormalizeValue(defsById[av.AttributeDefinitionId].DataType, av.Value)
-                //    }, ct);
-                //}
 
                 await _uow.SaveChangesAsync(ct);
 
                 var withRefs = await _uow.Products.GetByIdWithRefsAsync(entity.Id, ct);
                 if (withRefs is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail("Product could not be loaded after creation.", ErrorType.Unexpected);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(
+                        "Product could not be loaded after creation.",
+                        ErrorType.Unexpected);
 
                 return ServiceResult<ProductDetailResponseDTO>.Ok(MapToDetailDTO(withRefs), "Product created");
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<ProductDetailResponseDTO>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return ServiceResult<ProductDetailResponseDTO>.Fail(
+                    dbex.InnerException?.Message ?? dbex.Message,
+                    ErrorType.Conflict);
             }
             catch (Exception ex)
             {
@@ -145,6 +135,7 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 var q = _uow.Products.QueryWithRefs(); // includes ProductType
+
                 var items = await q
                     .OrderByDescending(p => p.CreatedAt)
                     .Select(p => new ProductListItemResponseDTO
@@ -172,7 +163,9 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-        public async Task<ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>> ListByProjectAsync(int projectId, CancellationToken ct = default)
+        public async Task<ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>> ListByProjectAsync(
+            int projectId,
+            CancellationToken ct = default)
         {
             try
             {
@@ -209,10 +202,15 @@ namespace tesisproject.backend.Services.Implementations
 
         // ===================== UPDATE =====================
 
-        public async Task<ServiceResult<ProductDetailResponseDTO>> UpdateAsync(ProductUpdateRequestDTO request, CancellationToken ct = default)
+        public async Task<ServiceResult<ProductDetailResponseDTO>> UpdateAsync(
+            ProductUpdateRequestDTO request,
+            CancellationToken ct = default)
         {
             try
             {
+                if (request is null)
+                    return ServiceResult<ProductDetailResponseDTO>.Fail("Request is required.", ErrorType.Validation);
+
                 var entity = await _uow.Products.GetByIdAsync(new object[] { request.Id }, ct);
                 if (entity is null)
                     return ServiceResult<ProductDetailResponseDTO>.Fail("Product not found.", ErrorType.NotFound);
@@ -220,7 +218,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (string.IsNullOrWhiteSpace(request.Title))
                     return ServiceResult<ProductDetailResponseDTO>.Fail("Title is required.", ErrorType.Validation);
 
-                // Update core
+                // Update header
                 entity.Title = request.Title.Trim();
                 entity.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
                 if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
@@ -229,60 +227,26 @@ namespace tesisproject.backend.Services.Implementations
 
                 // Sync authors (if provided)
                 if (request.AuthorUserIds is not null)
+                    await SyncAuthorsAsync(entity.Id, request.AuthorUserIds, ct);
+
+                // Sync values (if provided)
+                if (request.Values is not null)
                 {
-                    var existing = await _uow.ProductAuthors.GetByProductAsync(entity.Id, ct);
-                    var existingIds = existing.Select(a => a.UserId).ToHashSet();
-                    var newIds = request.AuthorUserIds.Where(id => id > 0).Distinct().ToHashSet();
+                    // Load definitions for this product type (include ProductAttribute)
+                    var defs = await _uow.ProductAttributeDefinitions
+                        .QueryByType(entity.ProductTypeId, asNoTracking: true)
+                        .Include(d => d.ProductAttribute)
+                        .OrderBy(d => d.DisplayOrder)
+                        .ToListAsync(ct);
 
-                    // remove
-                    foreach (var toRemove in existing.Where(a => !newIds.Contains(a.UserId)))
-                        _uow.ProductAuthors.Remove(toRemove);
+                    var normalizedValuesResult = ValidateAndNormalizeValues(defs, request.Values);
+                    if (!normalizedValuesResult.Success)
+                        return ServiceResult<ProductDetailResponseDTO>.Fail(normalizedValuesResult.Message!, ErrorType.Validation);
 
-                    // add
-                    foreach (var uid in newIds.Where(id => !existingIds.Contains(id)))
-                    {
-                        await _uow.ProductAuthors.AddAsync(new ProductAuthor
-                        {
-                            ProductId = entity.Id,
-                            UserId = uid
-                        }, ct);
-                    }
+                    var normalizedValues = normalizedValuesResult.Data!; // Dictionary<int defId, string? value>
+
+                    await SyncValuesAsync(entity.Id, normalizedValues, ct);
                 }
-
-                //// Upsert attribute values (if provided)
-                //if (request.AttributeValues is not null && request.AttributeValues.Count > 0)
-                //{
-                //    // Load definitions for product's type
-                //    var defs = await _uow.ProductAttributeDefinitions.GetByTypeAsync(entity.ProductTypeId, ct);
-                //    var defsById = defs.ToDictionary(d => d.Id, d => d);
-
-                //    foreach (var av in request.AttributeValues)
-                //    {
-                //        if (!defsById.TryGetValue(av.AttributeDefinitionId, out var def))
-                //            return ServiceResult<ProductDetailResponseDTO>.Fail($"AttributeDefinitionId {av.AttributeDefinitionId} does not belong to ProductType {entity.ProductTypeId}.", ErrorType.Validation);
-
-                //        var valCheck = ValidateAttributeValue(def.DataType, av.Value);
-                //        if (!valCheck.IsValid)
-                //            return ServiceResult<ProductDetailResponseDTO>.Fail($"Invalid value for '{def.AttributeName}': {valCheck.Error}.", ErrorType.Validation);
-
-                //        var existing = await _uow.ProductValues.GetByPairAsync(entity.Id, av.AttributeDefinitionId, ct);
-                //        if (existing is null)
-                //        {
-                //            await _uow.ProductValues.AddAsync(new ProductValue
-                //            {
-                //                ProductId = entity.Id,
-                //                AttributeDefinitionId = av.AttributeDefinitionId,
-                //                Value = NormalizeValue(def.DataType, av.Value)
-                //            }, ct);
-                //        }
-                //        else
-                //        {
-                //            existing.Value = NormalizeValue(def.DataType, av.Value);
-                //            existing.UpdatedAt = DateTime.UtcNow;
-                //            _uow.ProductValues.Update(existing);
-                //        }
-                //    }
-                //}
 
                 await _uow.SaveChangesAsync(ct);
 
@@ -294,7 +258,9 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<ProductDetailResponseDTO>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return ServiceResult<ProductDetailResponseDTO>.Fail(
+                    dbex.InnerException?.Message ?? dbex.Message,
+                    ErrorType.Conflict);
             }
             catch (Exception ex)
             {
@@ -326,12 +292,143 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<NoContent>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return ServiceResult<NoContent>.Fail(
+                    dbex.InnerException?.Message ?? dbex.Message,
+                    ErrorType.Conflict);
             }
             catch (Exception ex)
             {
                 return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
             }
+        }
+
+        // ===================== HELPERS =====================
+
+        private async Task SyncAuthorsAsync(int productId, IEnumerable<int>? authorUserIds, CancellationToken ct)
+        {
+            // If null => do nothing (caller decides). If empty => remove all.
+            if (authorUserIds is null) return;
+
+            var newIds = authorUserIds.Where(id => id > 0).Distinct().ToHashSet();
+
+            var existing = await _uow.ProductAuthors.GetByProductAsync(productId, ct);
+            var existingIds = existing.Select(a => a.UserId).ToHashSet();
+
+            // remove
+            foreach (var toRemove in existing.Where(a => !newIds.Contains(a.UserId)))
+                _uow.ProductAuthors.Remove(toRemove);
+
+            // add
+            foreach (var uid in newIds.Where(id => !existingIds.Contains(id)))
+            {
+                await _uow.ProductAuthors.AddAsync(new ProductAuthor
+                {
+                    ProductId = productId,
+                    UserId = uid,
+                    CreatedAt = DateTime.UtcNow
+                }, ct);
+            }
+        }
+
+        private async Task SyncValuesAsync(
+            int productId,
+            Dictionary<int, string?> normalizedValuesByDefinitionId,
+            CancellationToken ct)
+        {
+            // Existing values
+            var existing = await _uow.ProductValues.GetByProductAsync(productId, ct);
+            var existingByDefId = existing.ToDictionary(v => v.AttributeDefinitionId);
+
+            // Upsert requested
+            foreach (var kv in normalizedValuesByDefinitionId)
+            {
+                var defId = kv.Key;
+                var value = kv.Value;
+
+                if (!existingByDefId.TryGetValue(defId, out var current))
+                {
+                    await _uow.ProductValues.AddAsync(new ProductValue
+                    {
+                        ProductId = productId,
+                        AttributeDefinitionId = defId,
+                        Value = value,
+                        CreatedAt = DateTime.UtcNow
+                    }, ct);
+                }
+                else
+                {
+                    current.Value = value;
+                    current.UpdatedAt = DateTime.UtcNow;
+                    _uow.ProductValues.Update(current);
+                }
+            }
+
+            // Remove values not present in request (because request is treated as "full form submission")
+            var requestedDefIds = normalizedValuesByDefinitionId.Keys.ToHashSet();
+            foreach (var old in existing.Where(v => !requestedDefIds.Contains(v.AttributeDefinitionId)))
+                _uow.ProductValues.Remove(old);
+        }
+
+        private static ServiceResult<Dictionary<int, string?>> ValidateAndNormalizeValues(
+            List<ProductAttributeDefinition> definitions,
+            List<ProductValueUpsertDTO>? provided)
+        {
+            provided ??= new();
+
+            // defs by id
+            var defsById = definitions.ToDictionary(d => d.Id);
+
+            // collapse duplicates (keep last)
+            var providedByDefId = provided
+                .Where(x => x.AttributeDefinitionId > 0)
+                .GroupBy(x => x.AttributeDefinitionId)
+                .ToDictionary(g => g.Key, g => g.Last());
+
+            // required check
+            foreach (var def in definitions.Where(d => d.IsRequired))
+            {
+                if (!providedByDefId.TryGetValue(def.Id, out var pv) || string.IsNullOrWhiteSpace(pv.Value))
+                {
+                    return ServiceResult<Dictionary<int, string?>>.Fail(
+                        $"Required attribute value is missing (AttributeDefinitionId={def.Id}).",
+                        ErrorType.Validation);
+                }
+            }
+
+            // validate ownership + datatype + normalize
+            var normalized = new Dictionary<int, string?>();
+
+            foreach (var kv in providedByDefId)
+            {
+                var defId = kv.Key;
+                var dto = kv.Value;
+
+                if (!defsById.TryGetValue(defId, out var def))
+                {
+                    return ServiceResult<Dictionary<int, string?>>.Fail(
+                        $"AttributeDefinitionId {defId} does not belong to the selected ProductType.",
+                        ErrorType.Validation);
+                }
+
+                var dt = def.ProductAttribute?.DataType ?? ProductAttributeDataType.Text;
+
+                var check = ValidateAttributeValue(dt, dto.Value);
+                if (!check.IsValid)
+                {
+                    return ServiceResult<Dictionary<int, string?>>.Fail(
+                        $"Invalid value for AttributeDefinitionId={defId}: {check.Error}",
+                        ErrorType.Validation);
+                }
+
+                normalized[defId] = NormalizeValue(dt, dto.Value);
+            }
+
+            // If your UI expects ALL definitions to exist as rows (even if null),
+            // you can fill missing optional definitions here. If not, keep it sparse.
+            // foreach (var def in definitions)
+            //     if (!normalized.ContainsKey(def.Id)) normalized[def.Id] = null;
+
+            return ServiceResult<Dictionary<int, string?>>.Ok(normalized);
         }
 
         // ===================== MAPPING =====================
@@ -350,6 +447,7 @@ namespace tesisproject.backend.Services.Implementations
                 IsActive = p.IsActive,
                 CreatedAt = p.CreatedAt,
                 UpdatedAt = p.UpdatedAt,
+
                 Authors = (p.Authors ?? new List<ProductAuthor>())
                     .Select(a => new ProductAuthorResponseDTO
                     {
@@ -358,16 +456,22 @@ namespace tesisproject.backend.Services.Implementations
                         UpdatedAt = a.UpdatedAt
                     })
                     .ToList(),
+
                 Values = (p.Values ?? new List<ProductValue>())
-                    .OrderBy(v => v.AttributeDefinition!.DisplayOrder)
+                    .OrderBy(v => v.AttributeDefinition?.DisplayOrder ?? 0)
                     .Select(v => new ProductValueResponseDTO
                     {
                         AttributeDefinitionId = v.AttributeDefinitionId,
-                        //AttributeName = v.AttributeDefinition?.AttributeName ?? string.Empty,
-                       // DataType = MapDataTypeToString(v.AttributeDefinition?.DataType ?? ProductAttributeDataType.Text),
+
+                        // metadata from definition (and attribute if included)
+                        ProductAttributeId = v.AttributeDefinition?.ProductAttributeId ?? 0,
+                        ProductAttributeName = v.AttributeDefinition?.ProductAttribute?.Name ?? string.Empty,
+                        DataType = MapDataTypeToString(v.AttributeDefinition?.ProductAttribute?.DataType ?? ProductAttributeDataType.Text),
+                        Unit = v.AttributeDefinition?.ProductAttribute?.Unit,
+
                         IsRequired = v.AttributeDefinition?.IsRequired ?? false,
                         DisplayOrder = v.AttributeDefinition?.DisplayOrder ?? 0,
-                       // Unit = v.AttributeDefinition?.Unit,
+
                         Value = v.Value,
                         CreatedAt = v.CreatedAt,
                         UpdatedAt = v.UpdatedAt
@@ -392,14 +496,16 @@ namespace tesisproject.backend.Services.Implementations
             var trimmed = raw.Trim();
             if (trimmed.Length == 0) return null;
 
-            // Keep normalization simple: just trim; conversions/format can be added if needed
+            // If later you want strict formats:
+            // - Date => yyyy-MM-dd
+            // - Number => invariant culture
             return trimmed;
         }
 
         private static (bool IsValid, string? Error) ValidateAttributeValue(ProductAttributeDataType dt, string? value)
         {
-            // Null allowed unless the attribute is required; the required-ness is validated separately
-            if (value is null) return (true, null);
+            // null/empty allowed for non-required fields; required is validated separately
+            if (string.IsNullOrWhiteSpace(value)) return (true, null);
 
             switch (dt)
             {

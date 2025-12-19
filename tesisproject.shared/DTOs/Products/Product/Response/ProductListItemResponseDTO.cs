@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace tesisproject.shared.DTOs.Product.Response
+namespace tesisproject.shared.DTOs.Products.Product.Response
 {
     public class ProductListItemResponseDTO
     {

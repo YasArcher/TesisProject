@@ -25,7 +25,9 @@
 @using tesisproject.shared.DTOs.ExternalResearcher.Response
 @using tesisproject.shared.DTOs.Institution.Response
 @using tesisproject.shared.DTOs.ExternalResearcherProject.Request
+@using tesisproject.shared.DTOs.Products.Product.Response
 
+@inject IProductClientService ProductService
 @inject IExternalResearcherClientService ExternalResearcherClient
 @inject IInstitutionClientService InstitutionClient
 @inject IVisitClientService VisitService
@@ -156,12 +158,17 @@
                                           IsLoading="@_loadingVisitDetail"
                                           ErrorMessage="@_visitDetailError"
                                           ProjectObjectives="@_projectObjectives"
+                                          Products="@_visitProducts"
+                                          IsLoadingProducts="@_loadingProducts"
+                                          ProductsError="@_productsError"
+                                          OnProductCreated="HandleProductCreated"
                                           OnSaveObjectivesRequested="HandleSaveObjectivesAsync"
                                           OnBack="HandleCloseVisit"
                                           OnAddIssue="HandleAddIssue"
                                           OnEditIssue="HandleEditIssue"
                                           OnDeleteIssue="HandleDeleteIssue"
                                           OnChangeVisitState="HandleChangeVisitStateAsync" />
+
                     }
                     else
                     {
@@ -268,6 +275,13 @@
 
 
 @code {
+
+    // ======= products (para visitas/detail) =======
+    private List<ProductListItemResponseDTO> _projectProducts = new();
+    private List<ProductListItemResponseDTO> _visitProducts = new();
+    private bool _loadingProducts;
+    private string? _productsError;
+
     // ======= Categorías de investigación (árbol) =======
     private IReadOnlyList<ResearchCategoryTreeItemDTO> _researchCategoryTree = Array.Empty<ResearchCategoryTreeItemDTO>();
     private bool _loadingResearchCategories;
@@ -412,6 +426,35 @@
             Toast.ShowError($"Error al cargar investigadores externos: {ex.Message}");
         }
     }
+
+    private async Task HandleProductCreated(int visitId)
+    {
+        try
+        {
+            var productsRes = await ProductService.ListByProjectAsync(ProjectId, CancellationToken.None);
+
+            if (productsRes.Success && productsRes.Response is not null)
+            {
+                _projectProducts = productsRes.Response.ToList();
+
+                _visitProducts = _projectProducts
+                    .Where(p => p.VisitId == visitId)
+                    .OrderByDescending(p => p.CreatedAt)
+                    .ToList();
+
+                StateHasChanged();
+            }
+            else
+            {
+                Toast.ShowWarning(productsRes.Error ?? "No se pudieron recargar los productos.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error recargando productos: {ex.Message}");
+        }
+    }
+
 
     private void HandleOpenExternalResearcherCreateModal()
     {
@@ -1235,14 +1278,43 @@
 
         try
         {
-            // <<<< MODIFICAR: Cargar detalle de la visita Y sus issues
             var detailTask = VisitService.GetVisitDetailAsync(visitId);
             var issuesTask = VisitIssueService.ListByVisitAsync(visitId);
+            var productsTask = ProductService.ListByProjectAsync(ProjectId, CancellationToken.None);
 
-            await Task.WhenAll(detailTask, issuesTask);
+            await Task.WhenAll(detailTask, issuesTask, productsTask);
 
             var detailRes = await detailTask;
             var issuesRes = await issuesTask;
+            var productsRes = await productsTask;
+
+            if (detailRes.Success)
+                _visitDetail = detailRes.Response;
+            else
+                _visitDetailError = detailRes.Error ?? "No se pudo cargar el detalle de la visita.";
+
+            if (issuesRes.Success)
+                _visitIssues = issuesRes.Response?.ToList() ?? new();
+            else
+                _visitIssues = new();
+
+            if (productsRes.Success && productsRes.Response is not null)
+            {
+                _projectProducts = productsRes.Response.ToList();
+
+                _visitProducts = _projectProducts
+                    .Where(p => p.VisitId == visitId)
+                    .OrderByDescending(p => p.CreatedAt)
+                    .ToList();
+            }
+            else
+            {
+                _projectProducts = new();
+                _visitProducts = new();
+                _productsError = productsRes.Error ?? "No se pudieron cargar los productos del proyecto.";
+            }
+
+            await Task.WhenAll(detailTask, issuesTask);
 
             if (detailRes.Success)
                 _visitDetail = detailRes.Response;

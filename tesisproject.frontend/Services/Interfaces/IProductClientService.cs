@@ -1,5 +1,5 @@
-﻿using tesisproject.shared.DTOs.Product.Request;
-using tesisproject.shared.DTOs.Product.Response;
+﻿using tesisproject.shared.DTOs.Products.Product.Request;
+using tesisproject.shared.DTOs.Products.Product.Response;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.frontend.Services.Interfaces

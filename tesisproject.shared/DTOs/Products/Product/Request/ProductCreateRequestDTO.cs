@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace tesisproject.shared.DTOs.Product.Request
+namespace tesisproject.shared.DTOs.Products.Product.Request
 {
     public class ProductCreateRequestDTO
     {
@@ -14,22 +14,19 @@ namespace tesisproject.shared.DTOs.Product.Request
 
         public int? VisitId { get; set; }
 
-        [Required, MaxLength(1024)]
+        [Required, StringLength(1024)]
         public string Title { get; set; } = string.Empty;
 
-        [MaxLength(4000)]
+        [StringLength(4000)]
         public string? Description { get; set; }
 
         [Required]
         public int ProductTypeId { get; set; }
 
-        /// <summary>List of author user IDs (Identity users).</summary>
-        public List<int> AuthorUserIds { get; set; } = new();
+        // authors
+        public List<int>? AuthorUserIds { get; set; }
 
-        /// <summary>
-        /// Attribute values keyed by AttributeDefinitionId.
-        /// One entry per required/optional attribute you want to set.
-        /// </summary>
-        public List<ProductAttributeValueUpsertDTO> AttributeValues { get; set; } = new();
+        // values by AttributeDefinitionId
+        public List<ProductValueUpsertDTO>? Values { get; set; }
     }
 }
