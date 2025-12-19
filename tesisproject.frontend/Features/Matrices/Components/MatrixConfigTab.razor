@@ -118,11 +118,10 @@
     }
     else if (Projects is not null && Projects.Count > 0)
     {
-        <!-- Resumen de datos con gradiente -->
-        <div class="relative overflow-hidden bg-gradient-to-r from-primary to-primary-light rounded-xl shadow-md">
-            <div class="absolute inset-0 bg-primary-subtle opacity-50"></div>
-            <div class="relative flex items-center gap-3 px-6 py-4">
-                <div class="flex-shrink-0 p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+        <!-- Resumen de datos sin gradiente -->
+        <div class="bg-primary rounded-xl shadow-md">
+            <div class="flex items-center gap-3 px-6 py-4">
+                <div class="flex-shrink-0 p-3 bg-white/20 rounded-lg">
                     <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
                         <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
@@ -142,7 +141,7 @@
 
         <!-- Tabla de datos con diseño mejorado -->
         <div class="bg-background border-2 border-border rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <div class="bg-gradient-to-r from-primary-subtle to-secondary-subtle px-6 py-4 border-b-2 border-border">
+            <div class="bg-primary-subtle px-6 py-4 border-b-2 border-border">
                 <div class="flex items-center gap-2">
                     <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />

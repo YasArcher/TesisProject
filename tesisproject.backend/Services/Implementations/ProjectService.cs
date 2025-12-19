@@ -523,6 +523,7 @@ namespace tesisproject.backend.Services.Implementations
                     DurationInMonths = p.DurationInMonths,
                     TentativeEndDate = p.StartDate?.AddMonths(p.DurationInMonths),
                     RealEndDate = null,
+                    ProjectOriginTypeId = 1,
                     ExecutionPercentage = 0,
                     FacultyId = p.FacultyId,
                     ConvocationId = p.ConvocationId

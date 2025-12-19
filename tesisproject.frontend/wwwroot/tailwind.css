@@ -620,6 +620,9 @@
   .h-\[570px\] {
     height: 570px;
   }
+  .h-\[calc\(100vh-140px\)\] {
+    height: calc(100vh - 140px);
+  }
   .h-full {
     height: 100%;
   }
@@ -667,6 +670,9 @@
   }
   .min-h-0 {
     min-height: calc(var(--spacing) * 0);
+  }
+  .min-h-\[90px\] {
+    min-height: 90px;
   }
   .min-h-\[600px\] {
     min-height: 600px;

@@ -1,8 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.Controllers.Extensions;
 using tesisproject.backend.Services.Interfaces;
-using tesisproject.shared.DTOs.Product.Request;
-using tesisproject.shared.DTOs.Product.Response;
+using tesisproject.shared.DTOs.Products.Product.Request;
+using tesisproject.shared.DTOs.Products.Product.Response;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Controllers

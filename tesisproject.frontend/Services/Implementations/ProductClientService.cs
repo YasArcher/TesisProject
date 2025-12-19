@@ -1,6 +1,6 @@
 ﻿using tesisproject.frontend.Services.Interfaces;
-using tesisproject.shared.DTOs.Product.Request;
-using tesisproject.shared.DTOs.Product.Response;
+using tesisproject.shared.DTOs.Products.Product.Request;
+using tesisproject.shared.DTOs.Products.Product.Response;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.frontend.Services.Implementations
@@ -82,7 +82,7 @@ namespace tesisproject.frontend.Services.Implementations
                 throw new ArgumentException("Id must be a positive value.", nameof(id));
 
             var url = $"{_baseUrl}/{id}";
-            return _api.DeleteAsync(url, ct); // <-- aquí ya sin genérico
+            return _api.DeleteAsync(url, ct);
         }
     }
 }
