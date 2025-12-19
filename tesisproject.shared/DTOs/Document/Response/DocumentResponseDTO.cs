@@ -21,7 +21,5 @@ namespace tesisproject.shared.DTOs.Document.Response
         public DateTime CreatedAt { get; set; }
 
         public int CreatedByUserId { get; set; }
-
-        public int? RelatedDocumentId { get; set; }
     }
 }

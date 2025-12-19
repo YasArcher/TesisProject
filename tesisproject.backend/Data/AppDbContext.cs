@@ -310,13 +310,13 @@ namespace tesisproject.backend.Data
 
         private static void ConfigureDocument(ModelBuilder builder)
         {
-            // Document → relación 1:1 auto-referencial (RelatedDocument) sin cascada
             builder.Entity<Document>(b =>
             {
-                b.HasOne(d => d.RelatedDocument)
-                 .WithOne(d => d!.ReverseRelation)
-                 .HasForeignKey<Document>(d => d.RelatedDocumentId)
-                 .OnDelete(DeleteBehavior.NoAction);
+                // ✅ Unique index for ResolutionCode (allow multiple NULLs in SQL Server)
+                b.HasIndex(d => d.ResolutionCode)
+                 .IsUnique()
+                 .HasDatabaseName("UX_Documents_ResolutionCode")
+                 .HasFilter("[ResolutionCode] IS NOT NULL");
             });
         }
 

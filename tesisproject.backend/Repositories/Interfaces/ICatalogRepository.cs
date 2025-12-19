@@ -45,5 +45,8 @@ namespace tesisproject.backend.Repositories.Interfaces
         /// y posibilidad de filtrar con expresión (p.ej. por CountryId, Flag, etc.).
         /// </summary>
         Task<List<KeyValueItemDTO>> GetKeyValuesAsync(string? term = null, int? take = null, CancellationToken ct = default);
+
+        Task<bool> HasReferencesAsync(int id, CancellationToken ct = default);
+
     }
 }
