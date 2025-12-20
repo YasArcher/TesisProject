@@ -39,7 +39,10 @@ namespace tesisproject.backend.Services.Implementations
         private const int CAT_TYPE_IMPACTO_ESPERADO = 8;
 
         // 🔹 VisitStates: Realizada
-        private const int REALIZED_VISIT_STATE_ID = 3;
+        private const int PLANNED_VISIT_STATE_ID = 1;   // Planificada
+        private const int PENDING_VISIT_STATE_ID = 2;   // Pendiente
+        private const int REALIZED_VISIT_STATE_ID = 3;  // Realizada
+        private const int WAITING_VISIT_STATE_ID = 4;   // En Espera
 
         // 🔹 DocumentTypes (catálogo fijo)
         // 1 = Memorando inicial
@@ -1255,6 +1258,13 @@ namespace tesisproject.backend.Services.Implementations
                             $"Resolved ProjectState for {dto.ProjectCode}: State={dto.State} → ProjectStateId={projectStateId}");
                     }
 
+                    if (dto.StartDate.HasValue && dto.StartDate.Value.Date > DateTime.UtcNow.Date)
+                    {
+                        projectStateId = 6;
+                        PhaseLog("Row",
+                            $"StartDate is in the future → Forcing ProjectStateId=6 for {dto.ProjectCode} (StartDate={dto.StartDate:yyyy-MM-dd}).");
+                    }
+
                     // 2.5 Evitar duplicados: si ya existe mismo código y número, regenerar código
                     var exists = await _uow.Projects
                         .Query(asNoTracking: true)
@@ -1571,6 +1581,35 @@ namespace tesisproject.backend.Services.Implementations
                     }
 
                     // ============================================
+                    // 8.A) PRE-GENERAR VISITAS (por meses + prórrogas)
+                    // ============================================
+
+                    var nowUtc = DateTime.UtcNow;
+
+                    var isFinalized = IsFinalizedProjectState(projectStatesCache, projectEntity.ProjectStateId);
+                    var defaultVisitStateId = isFinalized ? REALIZED_VISIT_STATE_ID : PLANNED_VISIT_STATE_ID;
+                    // base: por meses
+                    var baseVisits = CalculateBaseVisitCount(durationMonths);
+
+                    // extra: 1 por cada prórroga válida (misma regla de validación que abajo)
+                    var extensionVisits = CountValidItems(dto.Extensions, ext =>
+                        !(string.IsNullOrWhiteSpace(ext.ResolutionCode) && !ext.NewEndDate.HasValue));
+
+                    var plannedVisits = BuildPlannedVisits(projectEntity, baseVisits + extensionVisits, nowUtc);
+
+                    foreach (var v in plannedVisits)
+                    {
+                        v.VisitStateId = defaultVisitStateId;
+                    }
+
+                    // Si no hay periodos académicos, no podemos persistir visitas (AcademicPeriodId es obligatorio)
+                    var defaultAcademicPeriodId = academicPeriodsCache
+                        .OrderByDescending(p => p.Id)
+                        .Select(p => p.Id)
+                        .FirstOrDefault();
+
+
+                    // ============================================
                     // 8) Prórrogas (ProjectExtension + Document)
                     // ============================================
 
@@ -1590,7 +1629,7 @@ namespace tesisproject.backend.Services.Implementations
                                 DocumentPath = "legacy-matrix",
                                 ResolutionCode = ext.ResolutionCode,
                                 ResolutionDate = ext.NewEndDate,
-                                CreatedAt = DateTime.UtcNow,
+                                CreatedAt = nowUtc,
                                 CreatedByUserId = user.IdUser
                             };
 
@@ -1602,7 +1641,7 @@ namespace tesisproject.backend.Services.Implementations
                                 Document = extensionDocument,
                                 ExtensionDate = ext.NewEndDate
                                                 ?? projectEntity.TentativeEndDate
-                                                ?? DateTime.UtcNow,
+                                                ?? nowUtc,
                                 RequestedAt = null,
                                 ApprovedAt = ext.NewEndDate
                             };
@@ -1612,54 +1651,124 @@ namespace tesisproject.backend.Services.Implementations
                     }
 
                     // ============================================
-                    // 9) Visitas históricas (solo donde hay reporte)
-                    //    → aquí debe usarse DOCUMENT_TYPE_VISIT_RESOLUTION (Id = 6 en tu catálogo)
+                    // 9) VISITAS (primero generadas, ahora se asignan periodos + docs)
+                    //    Reglas:
+                    //    - El Excel/JSON trae MUCHOS VisitPeriods históricos (placeholders).
+                    //    - Una visita "ejecutada" se identifica por: HasReport == true && RawValue no vacío.
+                    //    - Si el proyecto está FINALIZADO: queremos registrar visitas aunque falte resolución.
+                    //    - NO inflar cantidad: no crear visitas extra por periodos vacíos.
+                    //    - Si falta slot pero llega una ejecutada, reutilizar una visita "vacía" antes de crear una nueva.
                     // ============================================
 
-                    if (dto.VisitPeriods is not null && dto.VisitPeriods.Count > 0)
+                    if (plannedVisits.Count > 0)
                     {
-                        foreach (var vp in dto.VisitPeriods)
+                        var slotIndex = 0;
+
+                        if (dto.VisitPeriods is not null && dto.VisitPeriods.Count > 0)
                         {
-                            // Solo consideramos periodos que tengan reporte
-                            if (!vp.HasReport || string.IsNullOrWhiteSpace(vp.RawValue))
-                                continue;
-
-                            // Resolver periodo académico desde el caché
-                            var academicPeriodId = ResolveAcademicPeriodId(
-                                academicPeriodsCache,
-                                vp.PeriodLabel);
-
-                            if (!academicPeriodId.HasValue)
-                                continue;
-
-                            // Documento asociado a la visita (resolución / avance)
-                            var visitDocument = new Document
+                            foreach (var vp in dto.VisitPeriods)
                             {
-                                DocumentTypeId = DOCUMENT_TYPE_VISIT_RESOLUTION, // 👈 debe ser Id = 6
-                                DocumentPath = "legacy-matrix",
-                                ResolutionCode = vp.RawValue,
-                                ResolutionDate = null,
-                                CreatedAt = DateTime.UtcNow,
-                                CreatedByUserId = user.IdUser
-                            };
+                                // "Ejecutada" solo si hay evidencia (reporte + código)
+                                var rawValue = (vp.RawValue ?? string.Empty).Trim();
+                                var executed = vp.HasReport && !string.IsNullOrWhiteSpace(rawValue);
 
-                            // Creamos la visita enlazando por navegación, NO por DocumentId
-                            var visit = new Visit
+                                // ✅ Si NO está finalizado y NO está ejecutada, no debe consumir slots (evita desplazar los reales)
+                                if (!isFinalized && !executed)
+                                    continue;
+
+                                Visit? visit = null;
+
+                                // ✅ Caso A: hay slots disponibles -> usar slot y consumirlo
+                                if (slotIndex < plannedVisits.Count)
+                                {
+                                    visit = plannedVisits[slotIndex];
+                                    slotIndex++;
+                                }
+                                else
+                                {
+                                    // ✅ Caso B: NO hay slots -> NO crear visita extra salvo que sea necesario
+                                    // Si no está ejecutada (solo puede pasar si isFinalized==true), no hacemos nada
+                                    // porque la regla base ya generó slots suficientes; no queremos inflar por labels extra.
+                                    if (!executed)
+                                        continue;
+
+                                    // ✅ Reutiliza una visita lo más "vacía" posible: sin Document y sin AcademicPeriod asignado
+                                    visit = plannedVisits.FirstOrDefault(v => v.Document == null && v.AcademicPeriodId <= 0)
+                                         ?? plannedVisits.FirstOrDefault(v => v.Document == null);
+
+                                    if (visit is null)
+                                    {
+                                        // Caso raro: más reportes ejecutados que slots realmente disponibles
+                                        plannedVisits.Add(new Visit
+                                        {
+                                            Project = projectEntity,
+                                            VisitStateId = PLANNED_VISIT_STATE_ID,
+                                            AcademicPeriodId = 0,
+                                            FundingDocument = null,
+                                            Document = null,
+                                            ProgressDocument = null,
+                                            PerformedByUserId = null,
+                                            ScheduledDate = null,
+                                            PerformedDate = null,
+                                            CreatedAt = nowUtc
+                                        });
+
+                                        visit = plannedVisits[^1];
+                                    }
+                                }
+
+                                // --- Asignar periodo académico (si se puede resolver) ---
+                                var academicPeriodId = ResolveAcademicPeriodId(academicPeriodsCache, vp.PeriodLabel);
+                                if (academicPeriodId.HasValue)
+                                    visit.AcademicPeriodId = academicPeriodId.Value;
+
+                                // --- Documento SOLO si está ejecutada ---
+                                if (executed)
+                                {
+                                    var visitDocument = new Document
+                                    {
+                                        DocumentTypeId = DOCUMENT_TYPE_VISIT_RESOLUTION,
+                                        DocumentPath = "legacy-matrix",
+                                        ResolutionCode = rawValue,
+                                        ResolutionDate = null,
+                                        CreatedAt = nowUtc,
+                                        CreatedByUserId = user.IdUser
+                                    };
+
+                                    visit.Document = visitDocument;
+                                    visit.VisitStateId = REALIZED_VISIT_STATE_ID;
+
+                                    await _uow.Documents.AddAsync(visitDocument, ct);
+                                }
+                                else
+                                {
+                                    // Si no hay evidencia, queda planificada aquí;
+                                    // si el proyecto es finalizado, abajo se forzará REALIZED (tu regla de negocio).
+                                    visit.VisitStateId = PLANNED_VISIT_STATE_ID;
+                                }
+                            }
+                        }
+
+                        // 3) Asegurar AcademicPeriodId para TODAS las visitas antes de persistir
+                        // (porque es obligatorio en BD)
+                        if (defaultAcademicPeriodId <= 0)
+                        {
+                            PhaseLog("Visits", $"No AcademicPeriods available. Skipping planned visits for project {dto.ProjectCode}.");
+                        }
+                        else
+                        {
+                            foreach (var v in plannedVisits)
                             {
-                                Project = projectEntity,
-                                VisitStateId = REALIZED_VISIT_STATE_ID,
-                                AcademicPeriodId = academicPeriodId.Value,
-                                FundingDocument = null,
-                                Document = visitDocument,
-                                ProgressDocument = null,
-                                PerformedByUserId = null,
-                                ScheduledDate = null,
-                                PerformedDate = null,
-                                CreatedAt = DateTime.UtcNow
-                            };
+                                if (v.AcademicPeriodId <= 0)
+                                    v.AcademicPeriodId = defaultAcademicPeriodId;
 
-                            await _uow.Documents.AddAsync(visitDocument, ct);
-                            await _uow.Visits.AddAsync(visit, ct);
+                                // ✅ Tu regla de negocio: si el proyecto está FINALIZADO,
+                                // todas las visitas se consideran REALIZED aunque falte resolución en Excel.
+                                if (isFinalized)
+                                    v.VisitStateId = REALIZED_VISIT_STATE_ID;
+                            }
+
+                            await _uow.Visits.AddRangeAsync(plannedVisits, ct);
                         }
                     }
 
@@ -1695,8 +1804,6 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<int>.Fail("Unexpected server error.");
             }
         }
-
-
 
 
         // ============================
@@ -2045,6 +2152,63 @@ namespace tesisproject.backend.Services.Implementations
             Console.WriteLine($"[IMPORT][Period] '{periodLabel}' -> '{best.Name}' ({bestScore:F2}%)");
 
             return best.Id;
+        }
+
+        private static bool IsFinalizedProjectState(List<ProjectState> states, int? projectStateId)
+        {
+            if (!projectStateId.HasValue || projectStateId.Value <= 0) return false;
+            if (states is null || states.Count == 0) return false;
+
+            var state = states.FirstOrDefault(s => s.Id == projectStateId.Value);
+            if (state is null || string.IsNullOrWhiteSpace(state.Name)) return false;
+
+            var norm = Levenshtein.NormalizeForComparison(state.Name);
+            return norm == "finalizado";
+        }
+
+        private static int CalculateBaseVisitCount(int durationInMonths)
+        {
+            if (durationInMonths <= 0) return 0;
+
+            // MISMA REGLA QUE CreateFullAsync: división entera
+            // (12 meses => 2 visitas, 11 meses => 1 visita)
+            return durationInMonths / 6;
+        }
+
+        private static int CountValidItems<T>(IEnumerable<T>? items, Func<T, bool> isValid)
+        {
+            if (items is null) return 0;
+
+            var count = 0;
+            foreach (var item in items)
+            {
+                if (isValid(item)) count++;
+            }
+            return count;
+        }
+
+        private static List<Visit> BuildPlannedVisits(Project projectEntity, int totalVisits, DateTime createdAtUtc)
+        {
+            var list = new List<Visit>(Math.Max(0, totalVisits));
+
+            for (int i = 0; i < totalVisits; i++)
+            {
+                list.Add(new Visit
+                {
+                    Project = projectEntity,
+                    VisitStateId = 1,           // mismo estado que CreateFullAsync para "planificada"
+                    AcademicPeriodId = 0,       // se asigna DESPUÉS (obligatorio antes de AddRange)
+                    FundingDocument = null,
+                    Document = null,
+                    ProgressDocument = null,
+                    PerformedByUserId = null,
+                    ScheduledDate = null,
+                    PerformedDate = null,
+                    CreatedAt = createdAtUtc
+                });
+            }
+
+            return list;
         }
 
         private static void ApplyUpdate(Project target, UpdateProjectRequestDTO dto)

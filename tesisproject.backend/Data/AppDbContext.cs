@@ -1,8 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Linq;
 using System.Linq.Expressions;
 using tesisproject.shared.Entities.Auth;
 using tesisproject.shared.Entities.Catalogs;
@@ -312,13 +310,13 @@ namespace tesisproject.backend.Data
         {
             builder.Entity<Document>(b =>
             {
-                // ✅ Unique index for ResolutionCode (allow multiple NULLs in SQL Server)
-                b.HasIndex(d => d.ResolutionCode)
+                b.HasIndex(d => new { d.DocumentTypeId, d.ResolutionCode })
                  .IsUnique()
-                 .HasDatabaseName("UX_Documents_ResolutionCode")
-                 .HasFilter("[ResolutionCode] IS NOT NULL");
+                 .HasDatabaseName("UX_Documents_Type1_ResolutionCode")
+                 .HasFilter("[ResolutionCode] IS NOT NULL AND [DocumentTypeId] = 1");
             });
         }
+
 
         private static void ConfigureProjectBudget(ModelBuilder builder)
         {
