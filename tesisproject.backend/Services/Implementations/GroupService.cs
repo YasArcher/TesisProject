@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.Common.External;
 using tesisproject.shared.DTOs.Auth;
 using tesisproject.shared.DTOs.External;
 using tesisproject.shared.DTOs.Group.Request;
@@ -489,6 +490,13 @@ namespace tesisproject.backend.Services.Implementations
             int memberId,
             int memberRoleId)
         {
+            var chosen = ExternalCareerSelector.SelectBestCareer(
+                profile: p,
+                preferredTeacherFacultyCareerId: null, // si en algún flujo lo tienes, pásalo
+                preferredFacultyCareerId: null,        // idem
+                preferredFacultyId: null,              // idem
+                onlyActivePreferred: true);
+
             return new ExternalUserDTO
             {
                 UserId = p.ExternalId,
@@ -499,7 +507,7 @@ namespace tesisproject.backend.Services.Implementations
                 Phone = p.Phone,
                 Email = p.Email,
                 Position = p.Position,
-                FacultyCareerId = p.FacultyCareerId,
+                FacultyCareerId = chosen?.FacultyCareerId,
                 Role = role,
                 AspNetUserId = p.ASP_ID,
                 MemberRoleId = memberRoleId,

@@ -1,6 +1,7 @@
 ﻿using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.Services.Parsers;
 using tesisproject.backend.Utils;
+using tesisproject.shared.Common.External;
 using tesisproject.shared.Common.Utils;
 using tesisproject.shared.DTOs.Algorithms.Response;
 using tesisproject.shared.Entities.Catalogs;
@@ -226,8 +227,19 @@ namespace tesisproject.backend.Services.Implementations
                     r.FullName = profile.FullName;
 
                 // id_facultad_carrera del directorio
-                if (profile.FacultyCareerId.HasValue)
-                    r.FacultyCareerId = profile.FacultyCareerId.Value;
+                if (profile.Careers is { Count: > 0 })
+                {
+                    //De momento escojere el primero
+
+                    var chosen = ExternalCareerSelector.SelectBestCareer(
+                        profile: profile,
+                        onlyActivePreferred: true);
+
+                    if (chosen is not null)
+                    {
+                        r.FacultyCareerId = chosen.FacultyCareerId;
+                    }
+                }
                 //cedula
                 if (profile.Document != null)
                     r.Document = profile.Document;
