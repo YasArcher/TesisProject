@@ -14,6 +14,9 @@
         public string UsersEmailQueryParam { get; set; } = "emails";
         public string UsersDocumentQueryParam { get; set; } = "documents";
 
+        public string PeriodsEndpoint { get; set; } = "/api/periodos";
+        public string PeriodsNamesQueryParam { get; set; } = "nombres";
+
         public int TimeoutSeconds { get; set; } = 30;
         public string UserAgent { get; set; } = "TesisProject/1.0";
     }

@@ -55,7 +55,6 @@ namespace tesisproject.shared.Entities.Core
         public Document? Document { get; set; }                  // Informe de visita
         public Document? FundingDocument { get; set; }           // Informe económico
         public Document? ProgressDocument { get; set; }          // Informe de avance
-        public AcademicPeriod AcademicPeriod { get; set; } = null!; // Navegación a AcademicPeriod (catálogo)
         public ICollection<VisitIssue> Issues { get; set; } = new List<VisitIssue>();
         public ICollection<Product> Products { get; set; } = new List<Product>();
     }

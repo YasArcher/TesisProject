@@ -15,7 +15,5 @@ namespace tesisproject.shared.DTOs.Catalog.AcademicPeriod.Response
         public DateTime StartDate { get; set; }
 
         public DateTime EndDate { get; set; }
-
-        public bool IsActive { get; set; }
     }
 }

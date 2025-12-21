@@ -1,11 +1,12 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using tesisproject.backend.Data;
 using tesisproject.backend.Services.Analytic.Interfaces;
+using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.Entities.Analytics.Dw.Bridges;
 using tesisproject.shared.Entities.Analytics.Dw.Dimensions;
 using tesisproject.shared.Entities.Analytics.Dw.Facts;
+using tesisproject.shared.Entities.External;
 using tesisproject.shared.Responses;
-using tesisproject.backend.Services.Interfaces;
 
 namespace tesisproject.backend.Services.Analytic.Implementations
 {
@@ -19,17 +20,20 @@ namespace tesisproject.backend.Services.Analytic.Implementations
         private readonly DwContext _dw;
         private readonly ILogger<DwEtlService> _logger;
         private readonly IExternalAcademicsService _externalAcademics;
+        private readonly IExternalPeriodsClient _externalPeriods;
 
         public DwEtlService(
             AppDbContext appDb,
             DwContext dw,
             ILogger<DwEtlService> logger,
-            IExternalAcademicsService externalAcademics)
+            IExternalAcademicsService externalAcademics,
+            IExternalPeriodsClient externalPeriods)
         {
             _appDb = appDb;
             _dw = dw;
             _logger = logger;
             _externalAcademics = externalAcademics;
+            _externalPeriods = externalPeriods;
         }
 
         // =========================================================
@@ -234,25 +238,46 @@ namespace tesisproject.backend.Services.Analytic.Implementations
             }
 
             // === Periodos académicos ===
-            var academicPeriods = await _appDb.AcademicPeriods
-                .AsNoTracking()
-                .Where(p => p.IsActive)
+            var periodsResult = await _externalPeriods.GetAllAsync(ct);
+
+            if (!periodsResult.Success || periodsResult.Data is null || periodsResult.Data.Count == 0)
+            {
+                _logger.LogWarning("DW ETL - Cannot retrieve external academic periods. PeriodName will be NULL.");
+            }
+
+            var academicPeriods = (periodsResult.Data ?? Array.Empty<ExternalAcademicPeriodDTO>())
                 .OrderBy(p => p.StartDate)
-                .ToListAsync(ct);
+                .ToList();
+
 
             var current = minDate;
+            var periodIndex = 0;
+
             while (current <= maxDate)
             {
                 var dateKey = current.Year * 10000 + current.Month * 100 + current.Day;
 
                 string? periodName = null;
-                var period = academicPeriods
-                    .FirstOrDefault(p =>
-                        p.StartDate.Date <= current.Date &&
-                        current.Date <= p.EndDate.Date);
 
-                if (period is not null)
-                    periodName = period.Name;
+                if (academicPeriods.Count > 0)
+                {
+                    // avanzamos el puntero mientras la fecha ya se pasó del EndDate
+                    while (periodIndex < academicPeriods.Count &&
+                           current.Date > academicPeriods[periodIndex].EndDate.Date)
+                    {
+                        periodIndex++;
+                    }
+
+                    // si el puntero está dentro de un periodo válido y la fecha cae en rango, usamos ese
+                    if (periodIndex < academicPeriods.Count)
+                    {
+                        var p = academicPeriods[periodIndex];
+
+                        if (p.StartDate.Date <= current.Date && current.Date <= p.EndDate.Date)
+                            periodName = p.Name;
+                    }
+                }
+
 
                 var dim = new DimDate
                 {

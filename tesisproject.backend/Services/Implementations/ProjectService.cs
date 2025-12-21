@@ -21,7 +21,7 @@ namespace tesisproject.backend.Services.Implementations
     public class ProjectService : IProjectService
     {
         private readonly IUnitOfWork _uow;
-        private readonly ICatalogRepository<AcademicPeriod> _periods;
+        private readonly IExternalPeriodsClient _externalPeriods;
         private readonly IAppUserService _appUsers;
         private readonly IExternalAcademicsService _externalAcademics;
         private readonly IResearchCategoryService _researchCategoryService;
@@ -60,20 +60,20 @@ namespace tesisproject.backend.Services.Implementations
 
         public ProjectService(
             IUnitOfWork uow,
-            ICatalogRepository<AcademicPeriod> periods,
             IAppUserService appUsers,
             IExternalAcademicsService externalAcademics,
             IResearchCategoryService researchCategoryService,
             ILogger<ProjectService> logger,
-            IExternalDirectoryClient externalDirectory)
+            IExternalDirectoryClient externalDirectory,
+            IExternalPeriodsClient externalPeriods)
         {
             _uow = uow;
-            _periods = periods;
             _appUsers = appUsers;
             _externalAcademics = externalAcademics;
             _researchCategoryService = researchCategoryService;
             _logger = logger;
             _externalDirectory = externalDirectory;
+            _externalPeriods = externalPeriods;
         }
 
         // ================= READS =================
@@ -771,31 +771,39 @@ namespace tesisproject.backend.Services.Implementations
 
                 PhaseLog("Fase 9 - Visitas", "Generando visitas...");
 
-                var latest = await _periods
-                    .Query(asNoTracking: true)
-                    .OrderByDescending(p => p.Id)
-                    .FirstOrDefaultAsync(ct);
-
-                if (latest is not null &&
-                    projectEntity.StartDate is not null &&
-                    projectEntity.DurationInMonths > 0)
+                var periodsResult = await _externalPeriods.GetAllAsync(ct);
+                if (!periodsResult.Success || periodsResult.Data is null || periodsResult.Data.Count == 0)
                 {
-                    var totalVisits = projectEntity.DurationInMonths / 6;
-
-                    var visits = Enumerable.Range(0, totalVisits)
-                        .Select(_ => new Visit
-                        {
-                            Project = projectEntity,
-                            VisitStateId = 1,
-                            AcademicPeriodId = latest.Id,
-                            ScheduledDate = request.ScheduledDate,
-                            PerformedDate = null,
-                            CreatedAt = DateTime.UtcNow
-                        })
-                        .ToList();
-
-                    await _uow.Visits.AddRangeAsync(visits, ct);
+                    PhaseLog("Fase 9 - Visitas", "No external academic periods available. Skipping visits creation.");
                 }
+                else
+                {
+                    var latest = periodsResult.Data
+                        .OrderByDescending(p => p.PeriodId)   // o EndDate si prefieres
+                        .FirstOrDefault();
+
+                    if (latest is not null &&
+                        projectEntity.StartDate is not null &&
+                        projectEntity.DurationInMonths > 0)
+                    {
+                        var totalVisits = projectEntity.DurationInMonths / 6;
+
+                        var visits = Enumerable.Range(0, totalVisits)
+                            .Select(_ => new Visit
+                            {
+                                Project = projectEntity,
+                                VisitStateId = 1,
+                                AcademicPeriodId = latest.PeriodId, // ✅ ahora viene de API
+                                ScheduledDate = request.ScheduledDate,
+                                PerformedDate = null,
+                                CreatedAt = DateTime.UtcNow
+                            })
+                            .ToList();
+
+                        await _uow.Visits.AddRangeAsync(visits, ct);
+                    }
+                }
+
 
                 // ============================================
                 // 10) Guardar
@@ -1107,9 +1115,16 @@ namespace tesisproject.backend.Services.Implementations
                 PhaseLog("Init", "Starting ImportFromMatrixAsync...");
 
                 // 🔹 AcademicPeriods (para mapear visitas históricas)
-                var academicPeriodsCache = await _uow.AcademicPeriods
-                    .Query(asNoTracking: true)
-                    .ToListAsync(ct);
+                var periodsResult = await _externalPeriods.GetAllAsync(ct);
+                if (!periodsResult.Success || periodsResult.Data is null || periodsResult.Data.Count == 0)
+                {
+                    PhaseLog("Init-Periods", "Cannot retrieve academic periods from external API.");
+                    // Aquí decides: o fallas, o sigues sin visitas.
+                    // Yo lo dejo como "seguir" para no romper import completo:
+                }
+                var academicPeriodsCache = periodsResult.Data?.ToList() ?? new List<ExternalAcademicPeriodDTO>();
+                PhaseLog("Init", $"AcademicPeriods loaded (external): {academicPeriodsCache.Count}");
+
                 PhaseLog("Init", $"AcademicPeriods loaded: {academicPeriodsCache.Count}");
 
                 // 🔹 Categorías de investigación (una sola vez)
@@ -1604,10 +1619,9 @@ namespace tesisproject.backend.Services.Implementations
 
                     // Si no hay periodos académicos, no podemos persistir visitas (AcademicPeriodId es obligatorio)
                     var defaultAcademicPeriodId = academicPeriodsCache
-                        .OrderByDescending(p => p.Id)
-                        .Select(p => p.Id)
+                        .OrderByDescending(p => p.PeriodId)
+                        .Select(p => p.PeriodId)
                         .FirstOrDefault();
-
 
                     // ============================================
                     // 8) Prórrogas (ProjectExtension + Document)
@@ -2120,7 +2134,7 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         private static int? ResolveAcademicPeriodId(
-            List<AcademicPeriod> periods,
+            List<ExternalAcademicPeriodDTO> periods,
             string? periodLabel)
         {
             if (periods is null || periods.Count == 0)
@@ -2131,7 +2145,7 @@ namespace tesisproject.backend.Services.Implementations
 
             var target = Levenshtein.NormalizeForComparison(periodLabel);
 
-            AcademicPeriod? best = null;
+            ExternalAcademicPeriodDTO? best = null;
             double bestScore = 0.0;
 
             foreach (var p in periods)
@@ -2150,9 +2164,9 @@ namespace tesisproject.backend.Services.Implementations
                 return null;
 
             Console.WriteLine($"[IMPORT][Period] '{periodLabel}' -> '{best.Name}' ({bestScore:F2}%)");
-
-            return best.Id;
+            return best.PeriodId;
         }
+
 
         private static bool IsFinalizedProjectState(List<ProjectState> states, int? projectStateId)
         {
