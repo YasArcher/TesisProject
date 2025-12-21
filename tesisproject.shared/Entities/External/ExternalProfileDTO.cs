@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using tesisproject.shared.Common.Json;
 
 namespace tesisproject.shared.Entities.External
 {
@@ -28,10 +29,11 @@ namespace tesisproject.shared.Entities.External
         [JsonPropertyName("cargo")]
         public string Position { get; set; } = string.Empty;
 
-        [JsonPropertyName("id_facultad_carrera")]
-        public int? FacultyCareerId { get; set; }
-
         [JsonPropertyName("ASP_ID")]
         public int? ASP_ID { get; set; }
+
+        [JsonPropertyName("careers")]
+        [JsonConverter(typeof(JsonStringOrArrayConverter<ExternalFacultyCareerDTO>))]
+        public List<ExternalFacultyCareerDTO> Careers { get; set; } = new();
     }
 }
