@@ -39,7 +39,6 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
         ICatalogRepository<Country> Countries { get; }
         ICatalogRepository<Institution> Institutions { get; }
         IExternalResearcherProjectRepository ExternalResearcherProjects { get; }
-        ICatalogRepository<AcademicPeriod> AcademicPeriods { get; }
         ICatalogRepository<IndexingSource> IndexingSources { get; }
         ICatalogRepository<ProductType> ProductTypes { get; }
         ICatalogRepository<ProductAttribute> ProductAttributes { get; }

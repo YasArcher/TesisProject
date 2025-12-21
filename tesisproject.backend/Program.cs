@@ -173,7 +173,6 @@ static class StartupExtensions
 
     public static void ConfigureHttpClients(this WebApplicationBuilder builder)
     {
-        // Snapshot for initial defaults (non-rooted values are fine)
         var opts = builder.Configuration
             .GetSection(ExternalApiOptions.SectionName)
             .Get<ExternalApiOptions>() ?? new ExternalApiOptions();
@@ -192,6 +191,8 @@ static class StartupExtensions
 
         builder.Services.AddHttpClient<IExternalDirectoryClient, ExternalDirectoryClient>("ExternalApi");
 
+        builder.Services.AddHttpClient<IExternalPeriodsClient, ExternalPeriodsClient>("ExternalApi");
+
         builder.Services.AddScoped<IExternalAcademicsService, ExternalAcademicsService>(sp =>
         {
             var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("ExternalApi");
@@ -200,6 +201,7 @@ static class StartupExtensions
             return new ExternalAcademicsService(http, options, logger);
         });
     }
+
 
     public static void ConfigureDependencyInjection(this WebApplicationBuilder builder)
     {
@@ -286,7 +288,6 @@ static class StartupExtensions
         builder.Services.AddScoped<IInstitutionService, InstitutionService>();
         builder.Services.AddScoped<IExternalResearcherProjectService, ExternalResearcherProjectService>();
         builder.Services.AddScoped<IDwEtlService, DwEtlService>();
-        builder.Services.AddScoped<IAcademicPeriodService, AcademicPeriodService>();
         builder.Services.AddScoped<IIndexingSourceService, IndexingSourceService>();
         builder.Services.AddScoped(typeof(ICatalogCrudService<>), typeof(CatalogCrudService<>));
         builder.Services.AddScoped<IProductAttributeService, ProductAttributeService>();

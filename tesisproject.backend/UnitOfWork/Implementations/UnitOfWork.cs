@@ -41,7 +41,6 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public ICatalogRepository<Country> Countries { get; }
         public ICatalogRepository<Institution> Institutions { get; }
         public IExternalResearcherProjectRepository ExternalResearcherProjects { get; }
-        public ICatalogRepository<AcademicPeriod> AcademicPeriods { get; }
         public ICatalogRepository<IndexingSource> IndexingSources { get; }
         public ICatalogRepository<ProductAttribute> ProductAttributes { get; }
         public IProjectDocumentRepository ProjectDocuments { get; }
@@ -87,7 +86,6 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             ICatalogRepository<Country> countries,
             ICatalogRepository<Institution> institutions,
             IExternalResearcherProjectRepository externalResearcherProjects,
-            ICatalogRepository<AcademicPeriod> academicPeriods,
             ICatalogRepository<IndexingSource> indexingSources,
             ICatalogRepository<ProductAttribute> productAttributes,
             IProjectDocumentRepository projectDocuments,
@@ -131,7 +129,6 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             Countries = countries;
             Institutions = institutions;
             ExternalResearcherProjects = externalResearcherProjects;
-            AcademicPeriods = academicPeriods;
             IndexingSources = indexingSources;
             ProductAttributes = productAttributes;
             ProjectDocuments = projectDocuments;
