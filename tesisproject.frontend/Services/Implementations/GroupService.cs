@@ -1,6 +1,5 @@
-﻿using tesisproject.frontend.Services;
-using tesisproject.frontend.Services.Interfaces;
-using tesisproject.shared.DTOs.External;
+﻿using tesisproject.frontend.Services.Interfaces;
+using tesisproject.shared.DTOs.AppUser;
 using tesisproject.shared.DTOs.Group.Request;
 using tesisproject.shared.DTOs.Group.Response;
 using tesisproject.shared.Responses;
@@ -45,9 +44,9 @@ namespace tesisproject.frontend.Services.Implementations
         //        MEMBERS
         // =========================
 
-        public Task<HttpResponseWrapper<List<ExternalUserDTO>?>> GetMembersByGroupIdAsync(int groupId, CancellationToken ct = default)
+        public Task<HttpResponseWrapper<List<ResolvedUserProfileDTO>?>> GetMembersByGroupIdAsync(int groupId, CancellationToken ct = default)
         {
-            return _api.GetAsync<List<ExternalUserDTO>>($"{_baseUrl}/{groupId}/members", ct);
+            return _api.GetAsync<List<ResolvedUserProfileDTO>>($"{_baseUrl}/{groupId}/members", ct);
         }
 
         public Task<HttpResponseWrapper<GroupMemberResponseDTO?>> AddMemberAsync(AddGroupMemberRequestDTO request, CancellationToken ct = default)

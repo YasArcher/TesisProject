@@ -10,26 +10,27 @@
 <div class="w-full flex flex-col gap-5">
     <!-- Contador y botón agregar -->
     <div class="flex items-center justify-between">
-        <ActionButton Text="Add researcher"
+        <ActionButton Text="Agregar investigador"
                       Size="ButtonSize.Sm"
                       Intent="ButtonIntent.Accept"
                       Variant="ButtonVariant.Filled"
                       Execute="OnAddResearcher" />
 
-        <ActionButton Text="Add external researcher"
+        <ActionButton Text="Agregar investigador externo"
                       Size="ButtonSize.Sm"
                       Intent="ButtonIntent.Neutral"
                       Variant="ButtonVariant.Outline"
                       Execute="OnAddExternalResearcher" />
 
     </div>
+
     <!-- ========================= -->
-    <!-- External Researchers      -->
+    <!-- Investigadores externos   -->
     <!-- ========================= -->
     <section class="flex flex-col gap-3 mt-6">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <span class="text-sm font-medium text-foreground">External researchers</span>
+                <span class="text-sm font-medium text-foreground">Investigadores externos</span>
                 @if (ExternalResearchers?.Any() == true)
                 {
                     <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-secondary text-white">
@@ -47,12 +48,12 @@
                 var external = ExternalResearchers[index];
 
                 <div class="group relative rounded-lg border transition-all duration-200
-                                        border-border bg-background hover:border-primary/50">
+                                                border-border bg-background hover:border-primary/50">
 
                     <!-- Número de investigador externo -->
                     <div class="absolute -left-px -top-px w-7 h-7 rounded-tl-lg rounded-br-lg
-                                                    flex items-center justify-center text-xs font-semibold
-                                                    bg-secondary text-white">
+                                                            flex items-center justify-center text-xs font-semibold
+                                                            bg-secondary text-white">
                         @(index + 1)
                     </div>
 
@@ -76,7 +77,7 @@
 
                             <button type="button"
                                     class="p-1.5 rounded-md text-muted hover:text-error hover:bg-error/10
-                                                           transition-colors opacity-0 group-hover:opacity-100"
+                                                                   transition-colors opacity-0 group-hover:opacity-100"
                                     disabled="@IsBusy"
                                     @onclick="() => HandleRemoveExternalResearcher(external.Id)">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -89,14 +90,14 @@
                         <!-- Institución -->
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <TextInput TValue="string"
-                                       Label="Institution"
+                                       Label="Institución"
                                        InputType="text"
                                        Value="@external.InstitutionName"
                                        For="@(() => external.InstitutionName)"
                                        Disabled="true" />
 
                             <TextInput TValue="string"
-                                       Label="Phone"
+                                       Label="Teléfono"
                                        InputType="text"
                                        Value="@external.PhoneNumber"
                                        For="@(() => external.PhoneNumber)"
@@ -109,10 +110,10 @@
         else
         {
             <div class="flex flex-col items-center justify-center py-6 px-4
-                                    rounded-lg border border-dashed border-border bg-background">
-                <p class="text-sm font-medium text-foreground mb-1">No external researchers yet</p>
+                                        rounded-lg border border-dashed border-border bg-background">
+                <p class="text-sm font-medium text-foreground mb-1">Aún no hay investigadores externos</p>
                 <p class="text-xs text-muted text-center max-w-xs">
-                    External researchers added from the picker will appear in this list.
+                    Los investigadores externos agregados desde el selector aparecerán en esta lista.
                 </p>
             </div>
         }
@@ -121,7 +122,7 @@
     <!-- Lista de investigadores -->
     <section class="flex flex-col gap-3">
         <div class="flex items-center gap-2">
-            <span class="text-sm font-medium text-foreground">Researchers</span>
+            <span class="text-sm font-medium text-foreground">Investigadores</span>
             @if (DideModel.Researchers?.Any() == true)
             {
                 <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-secondary text-white">
@@ -138,14 +139,14 @@
                 var hasConflict = HasRoleConflict(index);
 
                 <div class="group relative rounded-lg border transition-all duration-200
-                                            @(hasConflict
-                                                                          ? "border-error bg-error/5"
-                                                                          : "border-border bg-background hover:border-primary/50")">
+                                                    @(hasConflict
+                                                                                               ? "border-error bg-error/5"
+                                                                                               : "border-border bg-background hover:border-primary/50")">
 
                     <!-- Número de investigador -->
                     <div class="absolute -left-px -top-px w-7 h-7 rounded-tl-lg rounded-br-lg
-                                                flex items-center justify-center text-xs font-semibold
-                                                @(hasConflict ? "bg-error text-white" : "bg-primary text-white")">
+                                                        flex items-center justify-center text-xs font-semibold
+                                                        @(hasConflict ? "bg-error text-white" : "bg-primary text-white")">
                         @(index + 1)
                     </div>
 
@@ -167,7 +168,7 @@
                             </div>
                             <button type="button"
                                     class="p-1.5 rounded-md text-muted hover:text-error hover:bg-error/10
-                                                           transition-colors opacity-0 group-hover:opacity-100"
+                                                                   transition-colors opacity-0 group-hover:opacity-100"
                                     disabled="@IsBusy"
                                     @onclick="() => HandleRemoveResearcher(index)">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -181,15 +182,15 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <!-- Role selector -->
                             <div class="flex flex-col gap-1">
-                                <label class="text-xs font-medium text-foreground">Role</label>
+                                <label class="text-xs font-medium text-foreground">Rol</label>
                                 <select class="w-full h-9 px-3 text-sm rounded-md border transition-colors
-                                                               bg-background text-foreground
-                                                               focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
-                                                               @(hasConflict ? "border-error" : "border-border")"
+                                                                       bg-background text-foreground
+                                                                       focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary
+                                                                       @(hasConflict ? "border-error" : "border-border")"
                                         disabled="@IsBusy"
                                         value="@researcher.Role"
                                         @onchange="e => HandleResearcherRoleChanged(index, e)">
-                                    <option value="0">Select role...</option>
+                                    <option value="0">Seleccionar rol...</option>
                                     @foreach (var item in GetAvailableRolesFor(index))
                                     {
                                         <option value="@item.Id">@item.Name</option>
@@ -202,7 +203,7 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
-                                        Detected: @researcher.RoleName
+                                        Detectado: @researcher.RoleName
                                     </span>
                                 }
                                 @if (hasConflict)
@@ -213,35 +214,35 @@
                                                   d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
                                                   clip-rule="evenodd" />
                                         </svg>
-                                        Role already assigned
+                                        Rol ya asignado
                                     </span>
                                 }
                             </div>
 
                             <!-- Full name (read-only) -->
-                            <TextInput Label="Full name"
+                            <TextInput Label="Nombre completo"
                                        Value="@researcher.FullName"
                                        Disabled="true" />
 
                             <!-- Email (read-only) -->
-                            <TextInput Label="Email"
+                            <TextInput Label="Correo"
                                        Value="@researcher.email"
                                        Disabled="true" />
 
                             <!-- Faculty & Program (read-only) -->
                             <div class="flex flex-col gap-1">
-                                <label class="text-xs font-medium text-foreground">Faculty & Program</label>
+                                <label class="text-xs font-medium text-foreground">Facultad y carrera</label>
 
                                 @{
                                     var facultyProgram = ResolveFacultyAndProgram(researcher.FacultyCareerId);
                                 }
 
                                 <p class="text-xs text-foreground">
-                                    <span class="font-semibold">Faculty:</span>
+                                    <span class="font-semibold">Facultad:</span>
                                     @facultyProgram.FacultyLabel
                                 </p>
                                 <p class="text-xs text-muted mt-0.5">
-                                    <span class="font-semibold text-foreground">Program:</span>
+                                    <span class="font-semibold text-foreground">Carrera:</span>
                                     @facultyProgram.ProgramLabel
                                 </p>
                             </div>
@@ -254,17 +255,17 @@
         {
             <!-- Estado vacío -->
             <div class="flex flex-col items-center justify-center py-8 px-4
-                                rounded-lg border-2 border-dashed border-border bg-background">
+                                    rounded-lg border-2 border-dashed border-border bg-background">
                 <div class="w-12 h-12 rounded-full bg-muted/20 flex items-center justify-center mb-3">
                     <svg class="w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                 </div>
-                <p class="text-sm font-medium text-foreground mb-1">No researchers yet</p>
+                <p class="text-sm font-medium text-foreground mb-1">Aún no hay investigadores</p>
                 <p class="text-xs text-muted text-center max-w-xs">
-                    Researchers will appear here after processing the DIDE PDF,
-                    or you can add them manually.
+                    Los investigadores aparecerán aquí después de procesar el PDF de DIDE,
+                    o también puedes agregarlos manualmente.
                 </p>
             </div>
         }

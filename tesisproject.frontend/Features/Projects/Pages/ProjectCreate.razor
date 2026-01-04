@@ -11,6 +11,7 @@
 @using tesisproject.shared.DTOs.Document.Request
 @using tesisproject.shared.DTOs.Document.Response
 @using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.AppUser
 @using tesisproject.shared.DTOs.Filters
 @using tesisproject.shared.DTOs.Group.Request
 @using tesisproject.shared.DTOs.ObjectiveActivity.Request
@@ -318,7 +319,7 @@
     private int? _coordinatorRoleId;
 
     private bool _showUserPicker;
-    private List<ExternalUserDTO> _researcherCandidates = new();
+    private List<ResolvedUserProfileDTO> _researcherCandidates = new();
     private int? _preselectedUserId;
     private byte[]? _resolutionFileBytes;
 
@@ -1464,7 +1465,7 @@
             {
                 ActivityResult = act.ActivityResult,
                 ActionText = act.ActivityText,
-                IsCompleted = false,
+                ProgressPercentage = 0
             });
         }
 

@@ -714,7 +714,7 @@ namespace tesisproject.backend.Services.Implementations
                                     Objective = objectiveEntity,
                                     ActivityResult = actDto.ActivityResult ?? string.Empty,
                                     ActionText = actDto.ActionText ?? string.Empty,
-                                    IsCompleted = actDto.IsCompleted,
+                                    ProgressPercentage = actDto.ProgressPercentage,
                                     CreatedAt = DateTime.UtcNow
                                 };
 
@@ -929,7 +929,7 @@ namespace tesisproject.backend.Services.Implementations
         private async Task InsertGroupMembersFromDirectoryAsync(
     Group groupEntity,
     ImportedProjectDTO dto,
-    IReadOnlyList<ExternalProfileDTO> directoryCache,
+    IReadOnlyList<ExternalUserProfileModel> directoryCache,
     CancellationToken ct)
         {
             if (groupEntity is null) throw new ArgumentNullException(nameof(groupEntity));
@@ -946,9 +946,9 @@ namespace tesisproject.backend.Services.Implementations
             const double MIN_NAME_SIMILARITY = 80.0;
 
             // ===== Helper local: resuelve personas por similitud contra directorio =====
-            List<ExternalProfileDTO> ResolvePeople(IEnumerable<string> names, List<string> discarded)
+            List<ExternalUserProfileModel> ResolvePeople(IEnumerable<string> names, List<string> discarded)
             {
-                var resolved = new List<ExternalProfileDTO>();
+                var resolved = new List<ExternalUserProfileModel>();
 
                 foreach (var rawName in names ?? Enumerable.Empty<string>())
                 {
@@ -958,7 +958,7 @@ namespace tesisproject.backend.Services.Implementations
                     if (string.IsNullOrWhiteSpace(name))
                         continue;
 
-                    ExternalProfileDTO? best = null;
+                    ExternalUserProfileModel? best = null;
                     double bestScore = 0.0;
 
                     for (int i = 0; i < directoryCache.Count; i++)
@@ -967,7 +967,7 @@ namespace tesisproject.backend.Services.Implementations
                         if (p is null) continue;
 
                         // ASP_ID no puede faltar según tú, igual validamos por seguridad
-                        if (!p.ASP_ID.HasValue || p.ASP_ID.Value <= 0) continue;
+                        if (!p.AspId.HasValue || p.AspId.Value <= 0) continue;
 
                         var score = NameSimilarity.FlexibleFullNameSimilarityPercentage(
                             name,
@@ -988,7 +988,7 @@ namespace tesisproject.backend.Services.Implementations
                     }
 
                     // Evitar duplicados (mismo usuario externo repetido)
-                    if (resolved.Any(x => x.ASP_ID == best.ASP_ID))
+                    if (resolved.Any(x => x.AspId == best.AspId))
                         continue;
 
                     resolved.Add(best);
@@ -1017,7 +1017,7 @@ namespace tesisproject.backend.Services.Implementations
             var allProfiles = matchedCoordinators
                 .Concat(matchedAlternates)
                 //.Concat(matchedInvestigators)
-                .GroupBy(x => x.ASP_ID!.Value)
+                .GroupBy(x => x.AspId!.Value)
                 .Select(g => g.First())
                 .ToList();
 
@@ -1030,7 +1030,7 @@ namespace tesisproject.backend.Services.Implementations
                     Email = p.Email,
                     Username = p.Document,                // tu CreateFull usa Document aquí
                     Password = "aaaaaqqq1231231",         // igual que tu flujo actual
-                    AspUserId = p.ASP_ID!.Value
+                    AspUserId = p.AspId!.Value
                 })
                 .ToList();
 
@@ -1060,7 +1060,7 @@ namespace tesisproject.backend.Services.Implementations
             // ===== 4) Insertar GroupMembers por rol con tu regla de "2+ personas" =====
             var now = DateTime.UtcNow;
 
-            async Task AddRoleMembersAsync(List<ExternalProfileDTO> matched, int roleId)
+            async Task AddRoleMembersAsync(List<ExternalUserProfileModel> matched, int roleId)
             {
                 if (matched is null || matched.Count == 0) return;
 
@@ -1073,7 +1073,7 @@ namespace tesisproject.backend.Services.Implementations
                     ct.ThrowIfCancellationRequested();
 
                     var profile = take[i];
-                    var aspId = profile.ASP_ID!.Value;
+                    var aspId = profile.AspId!.Value;
 
                     if (!appUserIdByAspId.TryGetValue(aspId, out var localUserId))
                         continue;
@@ -1122,7 +1122,7 @@ namespace tesisproject.backend.Services.Implementations
                     // Aquí decides: o fallas, o sigues sin visitas.
                     // Yo lo dejo como "seguir" para no romper import completo:
                 }
-                var academicPeriodsCache = periodsResult.Data?.ToList() ?? new List<ExternalAcademicPeriodDTO>();
+                var academicPeriodsCache = periodsResult.Data?.ToList() ?? new List<ExternalAcademicPeriodModel>();
                 PhaseLog("Init", $"AcademicPeriods loaded (external): {academicPeriodsCache.Count}");
 
                 PhaseLog("Init", $"AcademicPeriods loaded: {academicPeriodsCache.Count}");
@@ -2134,7 +2134,7 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         private static int? ResolveAcademicPeriodId(
-            List<ExternalAcademicPeriodDTO> periods,
+            List<ExternalAcademicPeriodModel> periods,
             string? periodLabel)
         {
             if (periods is null || periods.Count == 0)
@@ -2145,7 +2145,7 @@ namespace tesisproject.backend.Services.Implementations
 
             var target = Levenshtein.NormalizeForComparison(periodLabel);
 
-            ExternalAcademicPeriodDTO? best = null;
+            ExternalAcademicPeriodModel? best = null;
             double bestScore = 0.0;
 
             foreach (var p in periods)

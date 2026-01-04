@@ -212,6 +212,51 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
+        public async Task<ServiceResult<VisitListResponseDTO>> FinalizeAsync(
+    FinalizeVisitRequestDTO request,
+    CancellationToken ct = default)
+        {
+            try
+            {
+                if (request is null || request.VisitId <= 0)
+                    return ServiceResult<VisitListResponseDTO>.Fail("VisitId is required.", ErrorType.Validation);
+
+                if (request.FinalVisitStateId <= 0)
+                    return ServiceResult<VisitListResponseDTO>.Fail("FinalVisitStateId is required.", ErrorType.Validation);
+
+                var entity = await _uow.Visits.GetByIdAsync(new object[] { request.VisitId }, ct);
+                if (entity is null)
+                    return ServiceResult<VisitListResponseDTO>.Fail("Visit not found.", ErrorType.NotFound);
+
+                // (Opcional recomendado) validar que el estado exista
+                var stateExists = await _uow.VisitStates.ExistsAsync(x => x.Id == request.FinalVisitStateId, ct);
+                if (!stateExists)
+                    return ServiceResult<VisitListResponseDTO>.Fail("VisitStateId is invalid.", ErrorType.Validation);
+
+                // setear estado final + fecha realizada
+                entity.VisitStateId = request.FinalVisitStateId;
+                entity.PerformedDate ??= DateTime.UtcNow;
+
+                _uow.Visits.Update(entity);
+                await _uow.SaveChangesAsync(ct);
+
+                var withRefs = await _uow.Visits.GetByIdWithRefsAsync(entity.VisitId, ct);
+                if (withRefs is null)
+                    return ServiceResult<VisitListResponseDTO>.Fail("Visit could not be loaded after finalize.", ErrorType.Unexpected);
+
+                return ServiceResult<VisitListResponseDTO>.Ok(MapToListDTO(withRefs), "Visit finalized");
+            }
+            catch (DbUpdateException dbex)
+            {
+                return ServiceResult<VisitListResponseDTO>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<VisitListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+            }
+        }
+
+
         // =============== MAPPING ===============
 
         private static VisitListResponseDTO MapToListDTO(Visit v) => new()
@@ -232,8 +277,8 @@ namespace tesisproject.backend.Services.Implementations
             ProgressDocumentId = v.ProgressDocumentId,
             ScheduledDate = v.ScheduledDate,
             PerformedDate = v.PerformedDate,
-            VisitState = v.VisitState?.Name ?? string.Empty
+            VisitState = v.VisitState?.Name ?? string.Empty,
+            VisitStateId = v.VisitStateId
         };
-
     }
 }

@@ -1,5 +1,5 @@
 ﻿using tesisproject.frontend.Services.Interfaces;
-using tesisproject.shared.DTOs.External;
+using tesisproject.shared.DTOs.AppUser;
 
 namespace tesisproject.frontend.Services.Implementations
 {
@@ -8,9 +8,9 @@ namespace tesisproject.frontend.Services.Implementations
         private readonly IApiClient _api;
         private readonly string _baseUrl = "api/Groups/external-users";
         public ExternalUserClientService(IApiClient api) => _api = api;
-        public Task<HttpResponseWrapper<List<ExternalUserDTO>?>> GetListAsync(CancellationToken ct = default)
+        public Task<HttpResponseWrapper<List<ResolvedUserProfileDTO>?>> GetListAsync(CancellationToken ct = default)
         {
-            return _api.GetAsync<List<ExternalUserDTO>>($"{_baseUrl}", ct);
+            return _api.GetAsync<List<ResolvedUserProfileDTO>>($"{_baseUrl}", ct);
         }
     }
 }

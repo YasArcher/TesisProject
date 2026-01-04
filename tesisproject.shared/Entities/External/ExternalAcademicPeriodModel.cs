@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace tesisproject.shared.Entities.External
 {
     /// <summary>Neutral academic period as returned by the external periods endpoint.</summary>
-    public sealed class ExternalAcademicPeriodDTO
+    public sealed class ExternalAcademicPeriodModel
     {
         [JsonPropertyName("id_periodo")]
         public int PeriodId { get; set; }

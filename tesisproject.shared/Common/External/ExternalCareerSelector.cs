@@ -19,8 +19,8 @@ namespace tesisproject.shared.Common.External
         /// 5) Prefer actual careers (FacultyId != null) over faculty-level rows (if any)
         /// 6) Fallback: first item
         /// </summary>
-        public static ExternalFacultyCareerDTO? SelectBestCareer(
-            ExternalProfileDTO? profile,
+        public static ExternalTeacherFacultyCareerModel? SelectBestCareer(
+            ExternalUserProfileModel? profile,
             int? preferredTeacherFacultyCareerId = null,
             int? preferredFacultyCareerId = null,
             int? preferredFacultyId = null,

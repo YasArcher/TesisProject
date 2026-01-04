@@ -6,6 +6,7 @@
 @using tesisproject.frontend.SharedUI.Table
 @using tesisproject.frontend.SharedUI.SearchInput
 @using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.AppUser
 @using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
 @using tesisproject.frontend.Utils
 
@@ -30,8 +31,8 @@
                          DebounceMs="10" />
 
             <div class="max-h-[350px] overflow-y-auto pr-1 border border-border rounded-xl">
-                <DataTable TItem="ExternalUserDTO"
-                           Items="FilteredUsers ?? Enumerable.Empty<ExternalUserDTO>()"
+                <DataTable TItem="ResolvedUserProfileDTO"
+                           Items="FilteredUsers ?? Enumerable.Empty<ResolvedUserProfileDTO>()"
                            Columns="@UserColumns"
                            RowTemplate="UserRowTemplate"
                            PageSize="4"
@@ -105,7 +106,7 @@
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
 
     /// <summary>Users to list.</summary>
-    [Parameter] public IEnumerable<ExternalUserDTO>? Users { get; set; }
+    [Parameter] public IEnumerable<ResolvedUserProfileDTO>? Users { get; set; }
 
     /// <summary>Emits the selected UserId when confirming.</summary>
     [Parameter] public EventCallback<int> OnSubmit { get; set; }
@@ -147,21 +148,21 @@
         }
     }
 
-    private static readonly IReadOnlyList<ColumnDef<ExternalUserDTO>> UserColumns =
+    private static readonly IReadOnlyList<ColumnDef<ResolvedUserProfileDTO>> UserColumns =
         new[]
         {
             // Columna de selección (no ordenable)
-            new ColumnDef<ExternalUserDTO>("", u => u.UserId, "3rem", Sortable: false),
+            new ColumnDef<ResolvedUserProfileDTO>("", u => u.UserId, "3rem", Sortable: false),
 
             // Nombre
-            new ColumnDef<ExternalUserDTO>("Nombre", u => u.FullName ?? string.Empty, "16rem"),
+            new ColumnDef<ResolvedUserProfileDTO>("Nombre", u => u.FullName ?? string.Empty, "16rem"),
 
             // Email
-            new ColumnDef<ExternalUserDTO>("Correo", u => u.Email ?? string.Empty, "18rem"),
+            new ColumnDef<ResolvedUserProfileDTO>("Correo", u => u.Email ?? string.Empty, "18rem"),
         };
 
     // Filtro por nombre (puedes ampliar a email si quieres)
-    private IEnumerable<ExternalUserDTO>? FilteredUsers
+    private IEnumerable<ResolvedUserProfileDTO>? FilteredUsers
     {
         get
         {
@@ -185,7 +186,7 @@
     }
 
     // RowTemplate: solo <td>, el <tr> lo genera DataTable
-    private RenderFragment<ExternalUserDTO> UserRowTemplate => user => @<text>
+    private RenderFragment<ResolvedUserProfileDTO> UserRowTemplate => user => @<text>
 @{
     var selected = SelectedUserId == user.UserId;
     var baseCell = "px-4 py-3 text-sm align-middle";

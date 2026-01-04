@@ -5,6 +5,7 @@
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.External
 @using tesisproject.shared.DTOs.Group.Request
+@using tesisproject.shared.DTOs.AppUser
 @using tesisproject.shared.DTOs.Group.Response
 @using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
 
@@ -92,7 +93,7 @@
                              DebounceMs="200" />
 
                 <div class="flex-1 min-h-0 overflow-y-auto">
-                    <Container TItem="ExternalUserDTO"
+                    <Container TItem="ResolvedUserProfileDTO"
                                Items="@FilteredMembers"
                                Title="Integrantes"
                                ShowItemCount="true"
@@ -195,7 +196,7 @@
     [Parameter] public EventCallback<int> OnGroupSelected { get; set; }
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public bool IsLoadingMembers { get; set; }
-    [Parameter] public List<ExternalUserDTO> GroupMembers { get; set; } = new();
+    [Parameter] public List<ResolvedUserProfileDTO> GroupMembers { get; set; } = new();
 
     // NUEVO: roles de miembro (ya filtrados por Flag = 2 en el padre)
     [Parameter] public IEnumerable<MemberRoleTypeDetailDTO>? MemberRoles { get; set; }
@@ -204,7 +205,7 @@
     [Parameter] public EventCallback<AddGroupMemberRequestDTO> OnRequestAddMember { get; set; }
     [Parameter] public EventCallback<UpdateGroupRequestDTO> OnRequestUpdateGroup { get; set; }
     [Parameter] public EventCallback<int> OnRequestRemoveMember { get; set; }
-    [Parameter] public Func<int, Task<List<ExternalUserDTO>>> OnAskCandidates { get; set; } = default!;
+    [Parameter] public Func<int, Task<List<ResolvedUserProfileDTO>>> OnAskCandidates { get; set; } = default!;
 
     /* ===== Estado local UI ===== */
     private string searchTerm = "";
@@ -212,7 +213,7 @@
 
     // Picker state
     private bool _showUserPicker;
-    private List<ExternalUserDTO> _candidates = new();
+    private List<ResolvedUserProfileDTO> _candidates = new();
     private int? _preselectedUserId;
 
     // Group edit modal state
@@ -230,7 +231,7 @@
             ? Groups
             : Groups.Where(g => g.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
 
-    private List<ExternalUserDTO> FilteredMembers =>
+    private List<ResolvedUserProfileDTO> FilteredMembers =>
         string.IsNullOrWhiteSpace(memberSearchTerm)
             ? GroupMembers
             : GroupMembers.Where(m =>

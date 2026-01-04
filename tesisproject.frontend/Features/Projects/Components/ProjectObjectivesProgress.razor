@@ -6,7 +6,7 @@
 @using tesisproject.frontend.SharedUI.ActionButton
 
 <div class="space-y-6">
-    <!-- RESUMEN GLOBAL - Cards de estadísticas -->
+    <!-- RESUMEN GLOBAL -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <StatCard Title="Project completion"
                   Variant="StatCardVariant.Soft"
@@ -113,13 +113,12 @@
             @foreach (var objective in SpecificObjectives)
             {
                 var completion = GetObjectiveCompletion(objective);
-                var completedCount = objective.Activities?.Count(a => a.IsCompleted) ?? 0;
+                var completedCount = objective.Activities?.Count(a => a.ProgressPercentage >= 100) ?? 0;
                 var totalCount = objective.Activities?.Count ?? 0;
 
                 <Card Class="bg-background border border-border shadow-sm hover:shadow-md transition-shadow duration-200">
                     <CardHeader>
                         <div class="space-y-3">
-                            <!-- Encabezado del objetivo -->
                             <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
                                 <div class="flex-1 space-y-2">
                                     <div class="flex items-center gap-2 flex-wrap">
@@ -141,9 +140,7 @@
                                 </div>
 
                                 <div class="flex-shrink-0 text-center lg:text-right space-y-2 lg:min-w-[140px]">
-                                    <span class="text-xs text-muted uppercase tracking-wide block">
-                                        Completion
-                                    </span>
+                                    <span class="text-xs text-muted uppercase tracking-wide block">Completion</span>
                                     <span class="text-xl lg:text-2xl font-bold @(completion >= 100 ? "text-secondary" : "text-primary")">
                                         @completion.ToString("0.##")%
                                     </span>
@@ -173,25 +170,29 @@
                                        EmptyText="No activities defined for this objective.">
                                 <RowTemplate Context="activity">
                                     <td class="px-4 py-3.5 text-sm align-top">
-                                        <div class="font-medium text-foreground">
-                                            @activity.ActionText
-                                        </div>
+                                        <div class="font-medium text-foreground">@activity.ActionText</div>
                                     </td>
 
                                     <td class="px-4 py-3.5 text-xs lg:text-sm text-muted align-top">
-                                        <div class="leading-relaxed">
-                                            @activity.ActivityResult
-                                        </div>
+                                        <div class="leading-relaxed">@activity.ActivityResult</div>
                                     </td>
 
                                     <td class="px-4 py-3.5 text-sm text-right align-top">
-                                        <div class="inline-flex items-center gap-3">
-                                            @if (_lockedActivityIds.Contains(activity.ObjectiveActivityId))
+                                        @{
+                                            var id = activity.ObjectiveActivityId;
+                                            var locked = _lockedActivityIds.Contains(id);
+                                            var saving = IsSavingActivity(id);
+                                            var error = GetActivityError(id);
+                                            var dirty = IsDirty(id, activity.ProgressPercentage);
+                                        }
+
+                                        <div class="inline-flex items-start gap-3">
+                                            @if (locked)
                                             {
-                                                <input type="checkbox"
-                                                       class="h-5 w-5 rounded border-border text-secondary cursor-not-allowed"
-                                                       checked="true"
-                                                       disabled="true" />
+                                                <input type="number"
+                                                       class="w-20 rounded border-border bg-background px-2 py-1 text-sm text-right cursor-not-allowed"
+                                                       value="@GetProgress(activity)"
+                                                       disabled />
 
                                                 <span class="px-3 py-1 rounded-full text-xs font-bold bg-secondary-subtle text-secondary border border-secondary-light whitespace-nowrap">
                                                     ✓ Completed
@@ -199,24 +200,42 @@
                                             }
                                             else
                                             {
-                                                <input type="checkbox"
-                                                       class="h-5 w-5 rounded border-border text-secondary focus:ring-primary-subtle transition-colors duration-200"
-                                                       @bind="activity.IsCompleted"
-                                                       @bind:event="onchange"
-                                                       disabled="@_isSaving" />
+                                                <div class="flex flex-col items-end">
+                                                    <div class="inline-flex items-center gap-2">
+                                                        <input type="number" min="0" max="100" step="1"
+                                                               class="w-20 rounded border-border bg-background px-2 py-1 text-sm text-right"
+                                                               value="@GetProgress(activity)"
+                                                               @oninput="(e) => SetProgress(activity, e.Value?.ToString())"
+                                                               disabled="@saving" />
 
-                                                @if (activity.IsCompleted)
-                                                {
-                                                    <span class="px-3 py-1 rounded-full text-xs font-bold bg-secondary-subtle text-secondary border border-secondary-light whitespace-nowrap">
-                                                        ✓ Completed
-                                                    </span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="px-3 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted border border-muted/30 whitespace-nowrap">
-                                                        Pending
-                                                    </span>
-                                                }
+                                                        @if (saving)
+                                                        {
+                                                            <span class="px-3 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted border border-muted/30 whitespace-nowrap">
+                                                                Saving...
+                                                            </span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="px-3 py-1 rounded-full text-xs font-medium @GetProgressBadgeClass(GetProgress(activity)) whitespace-nowrap">
+                                                                @GetProgressBadgeText(GetProgress(activity))
+                                                            </span>
+                                                        }
+
+                                                        <ActionButton Text="Save"
+                                                                      Intent="ButtonIntent.Warning"
+                                                                      Variant="ButtonVariant.Outline"
+                                                                      Size="ButtonSize.Sm"
+                                                                      Disabled="@(!dirty || saving)"
+                                                                      Execute="@(() => SaveSingleActivityAsync(activity))" />
+                                                    </div>
+
+                                                    @if (!string.IsNullOrWhiteSpace(error))
+                                                    {
+                                                        <div class="mt-1 text-xs text-error text-left self-stretch">
+                                                            @error
+                                                        </div>
+                                                    }
+                                                </div>
                                             }
                                         </div>
                                     </td>
@@ -228,28 +247,6 @@
             }
         }
     </div>
-
-    <!-- BOTÓN GUARDAR PROGRESO -->
-    <div class="flex justify-end pt-4 border-t border-border">
-        <ActionButton Text="Save progress"
-                      Intent="ButtonIntent.Warning"
-                      Variant="ButtonVariant.Filled"
-                      Size="ButtonSize.Md"
-                      Disabled="@(_isSaving || !HasChanges)"
-                      ConfirmBeforeExecute="true"
-                      ConfirmTitle="Confirm activity completion"
-                      ConfirmMessage="Once an activity is marked as completed, it cannot be reverted from this interface. Do you want to continue?"
-                      Execute="OnSaveClicked">
-            <Icon>
-                <svg xmlns="http://www.w3.org/2000/svg"
-                     viewBox="0 0 24 24"
-                     fill="currentColor"
-                     class="w-4 h-4">
-                    <path d="M5 3a2 2 0 0 0-2 2v14.25A1.75 1.75 0 0 0 4.75 21h14.5A1.75 1.75 0 0 0 21 19.25V7.828a2 2 0 0 0-.586-1.414l-2.828-2.828A2 2 0 0 0 16.172 3H5Zm8.25 4a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-1.5 0v-1.5A.75.75 0 0 1 13.25 7ZM7 13.25A.75.75 0 0 1 7.75 12.5h8.5a.75.75 0 0 1 0 1.5h-8.5A.75.75 0 0 1 7 13.25Zm.75 2.75a.75.75 0 0 0 0 1.5h5.5a.75.75 0 0 0 0-1.5h-5.5Z" />
-                </svg>
-            </Icon>
-        </ActionButton>
-    </div>
 </div>
 
 @code {
@@ -258,10 +255,22 @@
         = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
 
     [Parameter]
-    public EventCallback<IEnumerable<ObjectiveActivityListItemDTO>> OnSaveRequested { get; set; }
+    public EventCallback<ObjectiveActivityListItemDTO> OnSaveActivityRequested { get; set; }
 
-    private bool _isSaving;
     private HashSet<int> _lockedActivityIds = new();
+    private Dictionary<int, int> _initialProgress = new();
+
+    private readonly Dictionary<int, bool> _savingByActivityId = new();
+    private readonly Dictionary<int, string?> _errorByActivityId = new();
+
+    private bool IsSavingActivity(int activityId)
+        => _savingByActivityId.TryGetValue(activityId, out var v) && v;
+
+    private string? GetActivityError(int activityId)
+        => _errorByActivityId.TryGetValue(activityId, out var err) ? err : null;
+
+    private bool IsDirty(int activityId, int current)
+        => _initialProgress.TryGetValue(activityId, out var init) && init != current;
 
     private ProjectObjectiveWithActivitiesDTO? GeneralObjective =>
         Objectives.FirstOrDefault(o => o.ObjectiveTypeId == 1);
@@ -272,41 +281,98 @@
     private readonly IReadOnlyList<ColumnDef<ObjectiveActivityListItemDTO>> _activityColumns =
         new[]
         {
-            new ColumnDef<ObjectiveActivityListItemDTO>(
-                Title: "Activity",
-                ValueSelector: _ => null!,
-                Width: "35%",
-                Sortable: false),
-
-            new ColumnDef<ObjectiveActivityListItemDTO>(
-                Title: "Expected Result",
-                ValueSelector: _ => null!,
-                Width: "45%",
-                Sortable: false),
-
-            new ColumnDef<ObjectiveActivityListItemDTO>(
-                Title: "Status",
-                ValueSelector: _ => null!,
-                Width: "20%",
-                Sortable: false)
+            new ColumnDef<ObjectiveActivityListItemDTO>("Activity", _ => null!, "35%", false),
+            new ColumnDef<ObjectiveActivityListItemDTO>("Expected Result", _ => null!, "45%", false),
+            new ColumnDef<ObjectiveActivityListItemDTO>("Progress", _ => null!, "20%", false),
         };
 
     protected override void OnParametersSet()
     {
-        _lockedActivityIds = Objectives
+        _initialProgress = Objectives
             .SelectMany(o => o.Activities)
-            .Where(a => a.IsCompleted)
-            .Select(a => a.ObjectiveActivityId)
+            .ToDictionary(a => a.ObjectiveActivityId, a => a.ProgressPercentage);
+
+        _lockedActivityIds = _initialProgress
+            .Where(kv => kv.Value >= 100)
+            .Select(kv => kv.Key)
             .ToHashSet();
     }
+
+    private int GetProgress(ObjectiveActivityListItemDTO a) => a.ProgressPercentage;
+
+    private void SetProgress(ObjectiveActivityListItemDTO a, string? raw)
+    {
+        _errorByActivityId.Remove(a.ObjectiveActivityId);
+
+        if (!int.TryParse(raw, out var v)) v = 0;
+        if (v < 0) v = 0;
+        if (v > 100) v = 100;
+
+        a.ProgressPercentage = v;
+    }
+
+    private async Task SaveSingleActivityAsync(ObjectiveActivityListItemDTO activity)
+    {
+        if (!OnSaveActivityRequested.HasDelegate)
+            return;
+
+        var id = activity.ObjectiveActivityId;
+
+        if (_lockedActivityIds.Contains(id))
+            return;
+
+        // si no hay cambios, no hagas nada
+        if (!IsDirty(id, activity.ProgressPercentage))
+        {
+            _errorByActivityId.Remove(id);
+            return;
+        }
+
+        _savingByActivityId[id] = true;
+        _errorByActivityId.Remove(id);
+        StateHasChanged();
+
+        try
+        {
+            await OnSaveActivityRequested.InvokeAsync(activity);
+
+            // baseline nuevo
+            _initialProgress[id] = activity.ProgressPercentage;
+
+            // lock si llegó a 100
+            if (activity.ProgressPercentage >= 100)
+                _lockedActivityIds.Add(id);
+        }
+        catch (Exception ex)
+        {
+            _errorByActivityId[id] = string.IsNullOrWhiteSpace(ex.Message)
+                ? "Could not save activity progress."
+                : ex.Message;
+        }
+        finally
+        {
+            _savingByActivityId[id] = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetProgressBadgeText(int pct)
+        => pct >= 100 ? "✓ Completed" : pct > 0 ? "In progress" : "Pending";
+
+    private string GetProgressBadgeClass(int pct)
+        => pct >= 100
+            ? "bg-secondary-subtle text-secondary border border-secondary-light"
+            : pct > 0
+                ? "bg-primary-subtle text-primary border border-primary-light"
+                : "bg-muted/10 text-muted border border-muted/30";
 
     private double GetObjectiveCompletion(ProjectObjectiveWithActivitiesDTO objective)
     {
         var total = objective.Activities?.Count ?? 0;
         if (total == 0) return 0;
 
-        var completed = objective.Activities.Count(a => a.IsCompleted);
-        return (double)completed / total * 100.0;
+        var sum = objective.Activities.Sum(a => (double)a.ProgressPercentage);
+        return sum / total;
     }
 
     private double GetGlobalCompletion()
@@ -327,11 +393,10 @@
 
     private string GlobalCompletionDisplay => $"{GetGlobalCompletion():0.##}%";
 
-    private int TotalActivities =>
-        Objectives.Sum(o => o.Activities?.Count ?? 0);
+    private int TotalActivities => Objectives.Sum(o => o.Activities?.Count ?? 0);
 
     private int TotalCompletedActivities =>
-        Objectives.Sum(o => o.Activities?.Count(a => a.IsCompleted) ?? 0);
+        Objectives.Sum(o => o.Activities?.Count(a => a.ProgressPercentage >= 100) ?? 0);
 
     private string CompletedActivitiesPercentageDisplay
     {
@@ -343,30 +408,5 @@
         }
     }
 
-    private int SpecificTotalWeight =>
-        SpecificObjectives.Sum(o => o.WeightedPercentage);
-
-    private bool HasChanges =>
-        Objectives.SelectMany(o => o.Activities)
-                  .Any(a => !_lockedActivityIds.Contains(a.ObjectiveActivityId) && a.IsCompleted);
-
-    private async Task OnSaveClicked()
-    {
-        if (!OnSaveRequested.HasDelegate)
-            return;
-
-        _isSaving = true;
-        try
-        {
-            var allActivities = Objectives
-                .SelectMany(o => o.Activities)
-                .ToList();
-
-            await OnSaveRequested.InvokeAsync(allActivities);
-        }
-        finally
-        {
-            _isSaving = false;
-        }
-    }
+    private int SpecificTotalWeight => SpecificObjectives.Sum(o => o.WeightedPercentage);
 }

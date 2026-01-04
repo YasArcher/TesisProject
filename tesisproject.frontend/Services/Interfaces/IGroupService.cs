@@ -1,4 +1,4 @@
-﻿using tesisproject.shared.DTOs.External;
+﻿using tesisproject.shared.DTOs.AppUser;
 using tesisproject.shared.DTOs.Group.Request;
 using tesisproject.shared.DTOs.Group.Response;
 using tesisproject.shared.Responses;
@@ -27,7 +27,7 @@ namespace tesisproject.frontend.Services.Interfaces
         //        MEMBERS
         // =========================
         /// <summary>Get external users (members) by group id.</summary>
-        Task<HttpResponseWrapper<List<ExternalUserDTO>?>> GetMembersByGroupIdAsync(int groupId, CancellationToken ct = default);
+        Task<HttpResponseWrapper<List<ResolvedUserProfileDTO>?>> GetMembersByGroupIdAsync(int groupId, CancellationToken ct = default);
 
         /// <summary>Add a member to an existing group.</summary>
         Task<HttpResponseWrapper<GroupMemberResponseDTO?>> AddMemberAsync(AddGroupMemberRequestDTO request, CancellationToken ct = default);

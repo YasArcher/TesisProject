@@ -15,12 +15,12 @@
                     @Title
                 </h3>
                 <p class="text-xs text-muted mt-0.5">
-                    Build your research classification tree
+                    Construye tu árbol de clasificación de investigación
                 </p>
             </div>
         </div>
         <span class="px-3 py-1.5 text-xs font-medium bg-secondary/10 text-secondary rounded-full border border-secondary/20">
-            Multi-level selector
+            Selector multinivel
         </span>
     </div>
 
@@ -39,7 +39,7 @@
                 <select class="w-full rounded-xl border-2 border-border bg-background px-3.5 py-2.5 text-sm font-medium text-foreground transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary hover:border-primary/40 cursor-pointer appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20fill%3D%22none%22%20viewBox%3D%220%200%2020%2020%22%3E%3Cpath%20stroke%3D%22%236b7280%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20stroke-width%3D%221.5%22%20d%3D%22m6%208%204%204%204-4%22%2F%3E%3C%2Fsvg%3E')] bg-[length:1.25rem] bg-[right_0.5rem_center] bg-no-repeat pr-10"
                         value="@GetSelectedValueForType(type.Id)"
                         @onchange="(e) => OnLevelChanged(type.Id, e)">
-                    <option value="" class="text-muted">-- Select @type.Name --</option>
+                    <option value="" class="text-muted">-- Selecciona @type.Name --</option>
                     @foreach (var item in GetItemsForType(type.Id))
                     {
                         <option value="@item.Id" class="text-foreground">
@@ -55,7 +55,7 @@
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
-                    Add @type.Name
+                    Agregar @type.Name
                 </button>
             </div>
         }
@@ -67,11 +67,11 @@
             <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
-            <h4 class="text-sm font-bold text-foreground">Selected Categories Tree</h4>
+            <h4 class="text-sm font-bold text-foreground">Árbol de categorías seleccionadas</h4>
             @if (_selectedRoots.Count > 0)
             {
                 <span class="ml-auto px-2.5 py-1 text-xs font-semibold bg-primary text-white rounded-full">
-                    @_selectedRoots.Count item@(_selectedRoots.Count != 1 ? "s" : "")
+                    @_selectedRoots.Count elemento@(_selectedRoots.Count != 1 ? "s" : "")
                 </span>
             }
         </div>
@@ -85,10 +85,10 @@
                     </svg>
                 </div>
                 <p class="text-sm font-medium text-muted/70 mb-1">
-                    No categories selected yet
+                    Aún no se han seleccionado categorías
                 </p>
                 <p class="text-xs text-muted/50">
-                    Use the selectors above to build your research tree
+                    Usa los selectores de arriba para construir
                 </p>
             </div>
         }
@@ -121,7 +121,7 @@
     public EventCallback<List<ResearchCategoryTreeItemDTO>> OnSelectionChanged { get; set; }
 
     [Parameter]
-    public string Title { get; set; } = "Research Categories";
+    public string Title { get; set; } = "Categorías de investigación";
 
     [Parameter]
     public int? ResearchCategoryGroupId { get; set; }
@@ -458,7 +458,7 @@
         builder.AddAttribute(seq++, "d", "M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16");
         builder.CloseElement();
         builder.CloseElement();
-        builder.AddContent(seq++, "Remove");
+        builder.AddContent(seq++, "Eliminar");
         builder.CloseElement();
 
         builder.CloseElement();

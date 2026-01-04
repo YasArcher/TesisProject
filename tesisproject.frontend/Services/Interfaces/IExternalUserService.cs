@@ -1,11 +1,11 @@
-﻿using tesisproject.shared.DTOs.External;
+﻿using tesisproject.shared.DTOs.AppUser;
 
 namespace tesisproject.frontend.Services.Interfaces
 {
     public interface IExternalUserService
     {
         /// <summary>Get a list of external users.</summary>
-        Task<HttpResponseWrapper<List<ExternalUserDTO>?>> GetListAsync(CancellationToken ct = default);
+        Task<HttpResponseWrapper<List<ResolvedUserProfileDTO>?>> GetListAsync(CancellationToken ct = default);
 
     }
 }

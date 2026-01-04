@@ -1,6 +1,7 @@
 ﻿@using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI.Card
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.AppUser;
 @using tesisproject.shared.DTOs.External
 @inject IGroupService GroupService
 
@@ -45,7 +46,7 @@
 </Card>
 
 @code {
-    [Parameter] public ExternalUserDTO Item { get; set; } = default!;
+    [Parameter] public ResolvedUserProfileDTO Item { get; set; } = default!;
 
     [Parameter] public EventCallback<int> OnRemoved { get; set; }
 

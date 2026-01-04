@@ -53,5 +53,13 @@ namespace tesisproject.backend.Controllers
         [HttpDelete("{id:int}")]
         public async Task<ActionResult<ApiResponse<NoContent>>> Delete(int id, CancellationToken ct)
             => (await _service.DeleteAsync(id, ct)).ToActionResult();
+        // PUT: api/visits/{id}/finalize
+        [HttpPut("{id:int}/finalize")]
+        public async Task<ActionResult<ApiResponse<VisitListResponseDTO>>> Finalize(int id, [FromBody] FinalizeVisitRequestDTO body,
+            CancellationToken ct)
+        {
+            body.VisitId = id; // route id manda
+            return (await _service.FinalizeAsync(body, ct)).ToActionResult();
+        }
     }
 }

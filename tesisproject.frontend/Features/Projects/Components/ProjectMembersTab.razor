@@ -3,6 +3,7 @@
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.StatCard
 @using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.AppUser
 @using tesisproject.shared.DTOs.ExternalResearcherProject.Response
 @using tesisproject.frontend.SharedUI.Table
 @using tesisproject.shared.DTOs.ExternalResearcher.Response
@@ -48,7 +49,7 @@
     else
     {
         <!-- Tabla reutilizable: miembros internos -->
-        <DataTable TItem="ExternalUserDTO"
+        <DataTable TItem="ResolvedUserProfileDTO"
                    Items="filtered"
                    Columns="_columns"
                    PageSize="PageSize"
@@ -181,7 +182,7 @@
     [Parameter] public List<ExternalFacultyDTO>? Faculties { get; set; }
 
     // ===== Miembros internos =====
-    [Parameter] public List<ExternalUserDTO>? Members { get; set; }
+    [Parameter] public List<ResolvedUserProfileDTO>? Members { get; set; }
     [Parameter] public bool IsLoading { get; set; }
 
     // ===== Investigadores externos =====
@@ -215,7 +216,7 @@
     private int withFacultyCareer => Members?.Count(m => m.FacultyCareerId.HasValue) ?? 0;
 
     // Filtro miembros internos
-    private List<ExternalUserDTO> filtered => string.IsNullOrWhiteSpace(searchText)
+    private List<ResolvedUserProfileDTO> filtered => string.IsNullOrWhiteSpace(searchText)
         ? (Members ?? new())
         : (Members ?? new())
             .Where(m =>
@@ -240,21 +241,21 @@
             )
             .ToList();
 
-    private IReadOnlyList<ColumnDef<ExternalUserDTO>> _columns = Array.Empty<ColumnDef<ExternalUserDTO>>();
+    private IReadOnlyList<ColumnDef<ResolvedUserProfileDTO>> _columns = Array.Empty<ColumnDef<ResolvedUserProfileDTO>>();
     private IReadOnlyList<ColumnDef<ExternalResearcherProjectListItemDTO>> _externalColumns = Array.Empty<ColumnDef<ExternalResearcherProjectListItemDTO>>();
 
     protected override void OnInitialized()
     {
         _columns = new[]
         {
-            new ColumnDef<ExternalUserDTO>("Nombre",   m => m.FullName ?? string.Empty,   "12rem", Sortable: true),
-            new ColumnDef<ExternalUserDTO>("Email",    m => m.Email ?? string.Empty,      "14rem", Sortable: true),
-            new ColumnDef<ExternalUserDTO>("Rol",      m => m.Role ?? string.Empty,       "10rem", Sortable: true),
-            new ColumnDef<ExternalUserDTO>("Position", m => m.Position ?? string.Empty,   "10rem", Sortable: true),
-            new ColumnDef<ExternalUserDTO>("Cedula",   m => m.Document ?? string.Empty,   "8rem",  Sortable: true),
-            new ColumnDef<ExternalUserDTO>("Facultad", m => GetFacultyNameFor(m),         "12rem", Sortable: true),
-            new ColumnDef<ExternalUserDTO>("Carrera",  m => GetProgramNameFor(m),         "12rem", Sortable: true),
-            new ColumnDef<ExternalUserDTO>("Acciones", m => string.Empty,                 "11rem", Sortable: false),
+            new ColumnDef<ResolvedUserProfileDTO>("Nombre",   m => m.FullName ?? string.Empty,   "12rem", Sortable: true),
+            new ColumnDef<ResolvedUserProfileDTO>("Email",    m => m.Email ?? string.Empty,      "14rem", Sortable: true),
+            new ColumnDef<ResolvedUserProfileDTO>("Rol",      m => m.Role ?? string.Empty,       "10rem", Sortable: true),
+            new ColumnDef<ResolvedUserProfileDTO>("Position", m => m.Position ?? string.Empty,   "10rem", Sortable: true),
+            new ColumnDef<ResolvedUserProfileDTO>("Cedula",   m => m.Document ?? string.Empty,   "8rem",  Sortable: true),
+            new ColumnDef<ResolvedUserProfileDTO>("Facultad", m => GetFacultyNameFor(m),         "12rem", Sortable: true),
+            new ColumnDef<ResolvedUserProfileDTO>("Carrera",  m => GetProgramNameFor(m),         "12rem", Sortable: true),
+            new ColumnDef<ResolvedUserProfileDTO>("Acciones", m => string.Empty,                 "11rem", Sortable: false),
         };
 
         _externalColumns = new[]
@@ -277,7 +278,7 @@
     }
 
     // GetFacultyNameFor y GetProgramNameFor se quedan igual que ya los tienes
-    private string GetFacultyNameFor(ExternalUserDTO member)
+    private string GetFacultyNameFor(ResolvedUserProfileDTO member)
     {
         if (!member.FacultyCareerId.HasValue || Faculties is null || Faculties.Count == 0)
             return "-";
@@ -303,7 +304,7 @@
         return "-";
     }
 
-    private string GetProgramNameFor(ExternalUserDTO member)
+    private string GetProgramNameFor(ResolvedUserProfileDTO member)
     {
         if (!member.FacultyCareerId.HasValue || Faculties is null || Faculties.Count == 0)
             return "-";
