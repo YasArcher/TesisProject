@@ -13,17 +13,17 @@ namespace tesisproject.backend.Services.Interfaces
         /// Retrieves external profiles by one or more institutional emails.
         /// The endpoint supports both single and comma-separated lists.
         /// </summary>
-        Task<ServiceResult<IReadOnlyList<ExternalProfileDTO>>> GetByEmailsAsync(IEnumerable<string> emails, CancellationToken ct = default);
+        Task<ServiceResult<IReadOnlyList<ExternalUserProfileModel>>> GetByEmailsAsync(IEnumerable<string> emails, CancellationToken ct = default);
 
         /// <summary>
         /// Retrieves external profiles by one or more documents (cedulas).
         /// The endpoint supports both single and comma-separated lists.
         /// </summary>
-        Task<ServiceResult<IReadOnlyList<ExternalProfileDTO>>> GetByDocumentsAsync(IEnumerable<string> documents, CancellationToken ct = default);
+        Task<ServiceResult<IReadOnlyList<ExternalUserProfileModel>>> GetByDocumentsAsync(IEnumerable<string> documents, CancellationToken ct = default);
 
         /// <summary>
         /// Retrieves all external profiles from the directory (if supported).
         /// </summary>
-        Task<ServiceResult<IReadOnlyList<ExternalProfileDTO>>> GetAllAsync(CancellationToken ct = default);
+        Task<ServiceResult<IReadOnlyList<ExternalUserProfileModel>>> GetAllAsync(CancellationToken ct = default);
     }
 }

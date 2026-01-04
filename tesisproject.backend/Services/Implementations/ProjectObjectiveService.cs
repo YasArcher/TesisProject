@@ -244,7 +244,8 @@ namespace tesisproject.backend.Services.Implementations
                             ActivityResult = a.ActivityResult,
                             ActionText = a.ActionText,
                             IsCompleted = a.IsCompleted,
-                            CreatedAt = a.CreatedAt
+                            CreatedAt = a.CreatedAt,
+                            ProgressPercentage = a.ProgressPercentage
                         })
                         .ToList()
                 })

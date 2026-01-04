@@ -221,13 +221,13 @@ namespace tesisproject.backend.Services.Implementations
 
         // ================= PRIVATE HELPERS =================
 
-        private async Task<List<ExternalFacultyCareerApiModel>> FetchRawAsync(CancellationToken ct)
+        private async Task<List<ExternalFacultyCareerFlatModel>> FetchRawAsync(CancellationToken ct)
         {
             // Nota: capturamos errores en los métodos públicos para poder devolver ServiceResult consistente
-            var list = await _http.GetFromJsonAsync<List<ExternalFacultyCareerApiModel>>(
+            var list = await _http.GetFromJsonAsync<List<ExternalFacultyCareerFlatModel>>(
                 _opts.AcademicsEndpoint, _jsonOpts, ct);
 
-            return list ?? new List<ExternalFacultyCareerApiModel>();
+            return list ?? new List<ExternalFacultyCareerFlatModel>();
         }
     }
 }

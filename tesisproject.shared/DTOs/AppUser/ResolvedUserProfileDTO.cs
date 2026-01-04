@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace tesisproject.shared.DTOs.External
+namespace tesisproject.shared.DTOs.AppUser
 {
-    public class ExternalUserDTO
+    public class ResolvedUserProfileDTO
     {
         public int UserId { get; set; }              // id_usuario
         public int UserGroupId { get; set; }       // idusergroup

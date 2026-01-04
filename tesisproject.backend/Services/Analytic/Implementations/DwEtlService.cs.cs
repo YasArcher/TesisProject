@@ -245,7 +245,7 @@ namespace tesisproject.backend.Services.Analytic.Implementations
                 _logger.LogWarning("DW ETL - Cannot retrieve external academic periods. PeriodName will be NULL.");
             }
 
-            var academicPeriods = (periodsResult.Data ?? Array.Empty<ExternalAcademicPeriodDTO>())
+            var academicPeriods = (periodsResult.Data ?? Array.Empty<ExternalAcademicPeriodModel>())
                 .OrderBy(p => p.StartDate)
                 .ToList();
 

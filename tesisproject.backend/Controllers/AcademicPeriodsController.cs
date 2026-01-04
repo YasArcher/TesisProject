@@ -127,7 +127,7 @@ namespace tesisproject.backend.Controllers
                 }));
         }
 
-        private static AcademicPeriodListItemDTO MapToListItem(ExternalAcademicPeriodDTO p) => new()
+        private static AcademicPeriodListItemDTO MapToListItem(ExternalAcademicPeriodModel p) => new()
         {
             Id = p.PeriodId,
             Name = p.Name,

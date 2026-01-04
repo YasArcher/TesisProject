@@ -31,89 +31,89 @@ public sealed class ExternalDirectoryClient : IExternalDirectoryClient
             _http.BaseAddress = new Uri(_opts.BaseUrl);
     }
 
-    public async Task<ServiceResult<IReadOnlyList<ExternalProfileDTO>>> GetByEmailsAsync(
+    public async Task<ServiceResult<IReadOnlyList<ExternalUserProfileModel>>> GetByEmailsAsync(
         IEnumerable<string> emails,
         CancellationToken ct = default)
     {
         var list = NormalizeDistinct(emails);
         if (list.Count == 0)
-            return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Fail("At least one email is required.", ErrorType.Validation);
+            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail("At least one email is required.", ErrorType.Validation);
 
         try
         {
             var url = BuildBatchUrl(_opts.UsersEndpoint, _opts.UsersEmailQueryParam, list);
-            var api = await _http.GetFromJsonAsync<List<ExternalProfileDTO>>(url, _jsonOpts, ct);
+            var api = await _http.GetFromJsonAsync<List<ExternalUserProfileModel>>(url, _jsonOpts, ct);
 
             if (api is null || api.Count == 0)
-                return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Fail("No external profiles found.", ErrorType.NotFound);
+                return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail("No external profiles found.", ErrorType.NotFound);
 
             _logger.LogInformation("Retrieved {Count} profiles by email(s).", api.Count);
-            return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Ok(api, "External profiles retrieved by emails");
+            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Ok(api, "External profiles retrieved by emails");
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             _logger.LogWarning(ex, "Directory 404 for emails query");
-            return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Fail("No external profiles found.", ErrorType.NotFound);
+            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail("No external profiles found.", ErrorType.NotFound);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error querying external profiles by emails");
-            return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Fail("Unexpected error.", ErrorType.Unexpected);
+            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail("Unexpected error.", ErrorType.Unexpected);
         }
     }
 
-    public async Task<ServiceResult<IReadOnlyList<ExternalProfileDTO>>> GetByDocumentsAsync(
+    public async Task<ServiceResult<IReadOnlyList<ExternalUserProfileModel>>> GetByDocumentsAsync(
         IEnumerable<string> documents,
         CancellationToken ct = default)
     {
         var list = NormalizeDistinct(documents);
         if (list.Count == 0)
-            return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Fail("At least one document is required.", ErrorType.Validation);
+            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail("At least one document is required.", ErrorType.Validation);
 
         try
         {
             var url = BuildBatchUrl(_opts.UsersEndpoint, _opts.UsersDocumentQueryParam, list);
-            var api = await _http.GetFromJsonAsync<List<ExternalProfileDTO>>(url, _jsonOpts, ct);
+            var api = await _http.GetFromJsonAsync<List<ExternalUserProfileModel>>(url, _jsonOpts, ct);
 
             if (api is null || api.Count == 0)
-                return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Fail("No external profiles found.", ErrorType.NotFound);
+                return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail("No external profiles found.", ErrorType.NotFound);
 
             _logger.LogInformation("Retrieved {Count} profiles by document(s).", api.Count);
-            return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Ok(api, "External profiles retrieved by documents");
+            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Ok(api, "External profiles retrieved by documents");
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             _logger.LogWarning(ex, "Directory 404 for documents query");
-            return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Fail("No external profiles found.", ErrorType.NotFound);
+            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail("No external profiles found.", ErrorType.NotFound);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error querying external profiles by documents");
-            return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Fail("Unexpected error.", ErrorType.Unexpected);
+            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail("Unexpected error.", ErrorType.Unexpected);
         }
     }
 
-    public async Task<ServiceResult<IReadOnlyList<ExternalProfileDTO>>> GetAllAsync(CancellationToken ct = default)
+    public async Task<ServiceResult<IReadOnlyList<ExternalUserProfileModel>>> GetAllAsync(CancellationToken ct = default)
     {
         try
         {
-            var api = await _http.GetFromJsonAsync<List<ExternalProfileDTO>>(_opts.UsersEndpoint, _jsonOpts, ct);
+            var api = await _http.GetFromJsonAsync<List<ExternalUserProfileModel>>(_opts.UsersEndpoint, _jsonOpts, ct);
 
             if (api is null || api.Count == 0)
-                return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Fail("No external profiles found.", ErrorType.NotFound);
+                return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail("No external profiles found.", ErrorType.NotFound);
 
             _logger.LogInformation("Retrieved {Count} profiles from directory.", api.Count);
-            return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Ok(api, "All external profiles retrieved");
+            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Ok(api, "All external profiles retrieved");
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             _logger.LogWarning(ex, "Directory 404 on GetAll");
-            return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Fail("No external profiles found.", ErrorType.NotFound);
+            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail("No external profiles found.", ErrorType.NotFound);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error retrieving all external profiles");
-            return ServiceResult<IReadOnlyList<ExternalProfileDTO>>.Fail("Unexpected error.", ErrorType.Unexpected);
+            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail("Unexpected error.", ErrorType.Unexpected);
         }
     }
 

@@ -37,7 +37,8 @@ namespace tesisproject.backend.Services.Implementations
                     ActivityResult = a.ActivityResult ?? string.Empty,
                     ActionText = a.ActionText ?? string.Empty,
                     IsCompleted = a.IsCompleted,
-                    CreatedAt = a.CreatedAt
+                    CreatedAt = a.CreatedAt,
+                    ProgressPercentage = a.ProgressPercentage
                 })
                 .ToList();
 
@@ -88,10 +89,11 @@ namespace tesisproject.backend.Services.Implementations
                 ObjectiveId = (int)request.ObjectiveId,
                 ActivityResult = (request.ActivityResult ?? string.Empty).Trim(),
                 ActionText = (request.ActionText ?? string.Empty).Trim(),
-                IsCompleted = request.IsCompleted,
+                ProgressPercentage = Math.Clamp(request.ProgressPercentage, 0, 100),
                 CreatedAt = DateTime.UtcNow,
-                UpdatedAt = null
+                UpdatedAt = null,
             };
+
 
             await _uow.ObjectiveActivities.AddAsync(entity, ct);
             await _uow.SaveChangesAsync(ct);
@@ -115,6 +117,22 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<ObjectiveActivityDetailDTO>
                     .Fail("ObjectiveId is required.", ErrorType.Validation);
 
+            // Validaciones alineadas a tu entidad (StringLength + Range)
+            var activityResult = (request.ActivityResult ?? string.Empty).Trim();
+            if (activityResult.Length > 1000)
+                return ServiceResult<ObjectiveActivityDetailDTO>
+                    .Fail("ActivityResult cannot exceed 1000 characters.", ErrorType.Validation);
+
+            var actionText = (request.ActionText ?? string.Empty).Trim();
+            if (actionText.Length > 1000)
+                return ServiceResult<ObjectiveActivityDetailDTO>
+                    .Fail("ActionText cannot exceed 1000 characters.", ErrorType.Validation);
+
+            if (request.ProgressPercentage < 0 || request.ProgressPercentage > 100)
+                return ServiceResult<ObjectiveActivityDetailDTO>
+                    .Fail("Progress must be between 0 and 100.", ErrorType.Validation);
+
+            // 1) Cargar actividad
             var entity = await _uow.ObjectiveActivities.GetByIdAsync(
                 new object[] { request.ObjectiveActivityId }, ct);
 
@@ -122,7 +140,7 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<ObjectiveActivityDetailDTO>
                     .Fail("ObjectiveActivity not found.", ErrorType.NotFound);
 
-            // Validar que el Objective aún exista
+            // 2) Validar objetivo
             var objective = await _uow.ProjectObjectives.GetByIdAsync(
                 new object[] { request.ObjectiveId }, ct);
 
@@ -130,20 +148,75 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<ObjectiveActivityDetailDTO>
                     .Fail("ProjectObjective not found.", ErrorType.Validation);
 
+            // Regla: no permitir disminuir progreso
+            if (request.ProgressPercentage < entity.ProgressPercentage)
+                return ServiceResult<ObjectiveActivityDetailDTO>
+                    .Fail("Progress cannot be decreased.", ErrorType.Validation);
+
+            // 3) Update actividad
             entity.ObjectiveId = request.ObjectiveId;
-            entity.ActivityResult = (request.ActivityResult ?? string.Empty).Trim();
-            entity.ActionText = (request.ActionText ?? string.Empty).Trim();
-            entity.IsCompleted = request.IsCompleted;
+            entity.ActivityResult = activityResult;
+            entity.ActionText = actionText;
+            entity.ProgressPercentage = request.ProgressPercentage;
             entity.UpdatedAt = DateTime.UtcNow;
 
             _uow.ObjectiveActivities.Update(entity);
+
+            // 4) Recalcular % del proyecto (fuente de verdad: BD)
+            //    Nota: este cálculo NO depende del front.
+            var projectId = objective.ProjectId;
+
+            var objectives = await _uow.ProjectObjectives
+                .ListByProjectWithActivitiesAsync(projectId, ct);
+
+            // Si no hay objetivos, dejamos 0
+            decimal totalWeight = 0m;
+            decimal weightedSum = 0m;
+
+            foreach (var o in objectives)
+            {
+                var weight = (decimal)o.WeightedPercentage;
+
+                decimal objectiveProgress = 0m;
+
+                if (o.Activities is not null && o.Activities.Count > 0)
+                    objectiveProgress = (decimal)o.Activities.Average(a => a.ProgressPercentage);
+
+                totalWeight += weight;
+                weightedSum += weight * objectiveProgress;
+            }
+
+            decimal projectExecution = 0m;
+
+            if (totalWeight > 0m)
+                projectExecution = weightedSum / totalWeight; // normalizado 0..100
+
+            // Clamp defensivo y redondeo
+            if (projectExecution < 0m) projectExecution = 0m;
+            if (projectExecution > 100m) projectExecution = 100m;
+
+            projectExecution = Math.Round(projectExecution, 2);
+
+            // 5) Persistir ExecutionPercentage en Project
+            var project = await _uow.Projects.GetByIdAsync(new object[] { projectId }, ct);
+
+            if (project is null)
+                return ServiceResult<ObjectiveActivityDetailDTO>
+                    .Fail("Project not found.", ErrorType.NotFound);
+
+            project.ExecutionPercentage = projectExecution;
+
+            _uow.Projects.Update(project);
+
+            // 6) Guardar todo en una sola transacción
             await _uow.SaveChangesAsync(ct);
 
+            // 7) Respuesta (con refs si tu repo ya lo soporta)
             var updated = await _uow.ObjectiveActivities.GetByIdWithRefsAsync(entity.ObjectiveActivityId, ct)
                           ?? entity;
 
-            var dto = MapToDetailDto(updated);
-            return ServiceResult<ObjectiveActivityDetailDTO>.Ok(dto);
+            return ServiceResult<ObjectiveActivityDetailDTO>.Ok(MapToDetailDto(updated));
+
         }
 
         public async Task<ServiceResult<bool>> DeleteAsync(
@@ -165,21 +238,23 @@ namespace tesisproject.backend.Services.Implementations
             return ServiceResult<bool>.Ok(true);
         }
 
-        public async Task<ServiceResult<bool>> SetCompletedAsync(
-            int activityId,
-            bool isCompleted,
-            CancellationToken ct = default)
+        public async Task<ServiceResult<bool>> SetProgressAsync(
+    int activityId,
+    int progressPercentage,
+    CancellationToken ct = default)
         {
             if (activityId <= 0)
                 return ServiceResult<bool>.Fail("Invalid id.", ErrorType.Validation);
 
-            var entity = await _uow.ObjectiveActivities.GetByIdAsync(
-                new object[] { activityId }, ct);
+            if (progressPercentage < 0 || progressPercentage > 100)
+                return ServiceResult<bool>.Fail("Progress must be between 0 and 100.", ErrorType.Validation);
+
+            var entity = await _uow.ObjectiveActivities.GetByIdAsync(new object[] { activityId }, ct);
 
             if (entity is null)
                 return ServiceResult<bool>.Fail("ObjectiveActivity not found.", ErrorType.NotFound);
 
-            entity.IsCompleted = isCompleted;
+            entity.ProgressPercentage = progressPercentage;
             entity.UpdatedAt = DateTime.UtcNow;
 
             _uow.ObjectiveActivities.Update(entity);
@@ -187,6 +262,7 @@ namespace tesisproject.backend.Services.Implementations
 
             return ServiceResult<bool>.Ok(true);
         }
+
 
         // ==================== Helpers ====================
 
@@ -199,7 +275,8 @@ namespace tesisproject.backend.Services.Implementations
                 ImprovementAction = entity.ActionText ?? string.Empty,
                 IsCompleted = entity.IsCompleted,
                 CreatedAt = entity.CreatedAt,
-                UpdatedAt = entity.UpdatedAt
+                UpdatedAt = entity.UpdatedAt,
+                ProgressPercentage = entity.ProgressPercentage
             };
     }
 }

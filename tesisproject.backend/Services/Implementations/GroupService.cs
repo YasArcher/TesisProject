@@ -3,7 +3,7 @@ using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.Common.External;
 using tesisproject.shared.DTOs.Auth;
-using tesisproject.shared.DTOs.External;
+using tesisproject.shared.DTOs.AppUser;
 using tesisproject.shared.DTOs.Group.Request;
 using tesisproject.shared.DTOs.Group.Response;
 using tesisproject.shared.Entities.Core;
@@ -109,35 +109,53 @@ namespace tesisproject.backend.Services.Implementations
 
         // ======= External users (unificado aquí) =======
 
-        public async Task<ServiceResult<List<ExternalUserDTO>>> GetExternalUsersByGroupAsync(int groupId, CancellationToken ct = default)
+        public async Task<ServiceResult<List<ResolvedUserProfileDTO>>> GetExternalUsersByGroupAsync(int groupId, CancellationToken ct = default)
         {
             try
             {
                 var exists = await _uow.Groups.ExistsAsync(g => g.GroupId == groupId, ct);
                 if (!exists)
-                    return ServiceResult<List<ExternalUserDTO>>.Fail("Group not found.", ErrorType.NotFound);
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail("Group not found.", ErrorType.NotFound);
 
-                // 1) Miembros del grupo
+                // 1) Miembros del grupo (tabla puente)
                 var members = await _uow.GroupMembers.GetMembersByGroupAsync(groupId, ct);
                 if (members is null || members.Count == 0)
-                    return ServiceResult<List<ExternalUserDTO>>.Fail("No group members found.", ErrorType.NotFound);
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail("No group members found.", ErrorType.NotFound);
 
-                var userIds = members.Select(m => m.UserId).Distinct().ToList();
-                if (userIds.Count == 0)
-                    return ServiceResult<List<ExternalUserDTO>>.Fail("No associated ASP.NET users found.", ErrorType.Validation);
+                // ⚠️ En tu caso: member.UserId = AppUser.IdUser
+                var appUserIds = members.Select(m => m.UserId).Distinct().ToList();
+                if (appUserIds.Count == 0)
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail("No associated app users found.", ErrorType.Validation);
 
-                // 2) Emails institucionales (desde repo de ASP via UoW)
-                var emailByUserId = await _uow.AspNetUsers.GetEmailsByUserIdsAsync(userIds, ct);
-                var allEmails = emailByUserId.Values
+                // 2) Resolver IdLocal (IdentityUser.Id) usando IAppUserRepository (sin inventar métodos)
+                // Mapa: AppUser.IdUser -> AppUser.IdLocal
+                var localIdByAppUserId = new Dictionary<int, int>();
+
+                foreach (var idUser in appUserIds)
+                {
+                    var appUser = await _uow.AppUsers.GetByIdUserAsync(idUser, ct);
+                    if (appUser?.IdLocal is int idLocal && idLocal > 0)
+                        localIdByAppUserId[idUser] = idLocal;
+                }
+
+                if (localIdByAppUserId.Count == 0)
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail("No local identity ids found for group members.", ErrorType.Validation);
+
+                var localIds = localIdByAppUserId.Values.Distinct().ToList();
+
+                // 3) Emails institucionales (ahora sí por IdLocal)
+                var emailByLocalId = await _uow.AspNetUsers.GetEmailsByUserIdsAsync(localIds, ct);
+
+                var allEmails = emailByLocalId.Values
                     .Where(e => !string.IsNullOrWhiteSpace(e))
                     .Select(e => e!.Trim().ToLowerInvariant())
                     .Distinct()
                     .ToList();
 
                 if (allEmails.Count == 0)
-                    return ServiceResult<List<ExternalUserDTO>>.Fail("No valid emails found for users.", ErrorType.Validation);
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail("No valid emails found for users.", ErrorType.Validation);
 
-                // 3) Rehidratar roles si faltan (evitar N+1)
+                // 4) Rehidratar roles si faltan (evitar N+1) - queda igual
                 if (members.Any(m => m.MemberRole == null && m.MemberRoleId != 0))
                 {
                     var roleIds = members.Where(m => m.MemberRoleId != 0)
@@ -157,23 +175,28 @@ namespace tesisproject.backend.Services.Implementations
                             m.MemberRole = role;
                 }
 
-                // 4) Directorio externo en batch
+                // 5) Directorio externo en batch
                 var dirRes = await _directory.GetByEmailsAsync(allEmails, ct);
                 if (!dirRes.Success || dirRes.Data is null || dirRes.Data.Count == 0)
-                    return ServiceResult<List<ExternalUserDTO>>.Fail("No external users found.");
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail("No external users found.");
 
                 var byEmail = dirRes.Data
                     .Where(p => !string.IsNullOrWhiteSpace(p.Email))
                     .ToDictionary(p => p.Email.Trim().ToLowerInvariant());
 
-                // 5) Merge (local + externo) → ExternalUserDTO
-                var result = new List<ExternalUserDTO>();
+                // 6) Merge (local + externo) → ExternalUserDTO
+                var result = new List<ResolvedUserProfileDTO>();
+
                 foreach (var member in members)
                 {
-                    if (!emailByUserId.TryGetValue(member.UserId, out var em) || string.IsNullOrWhiteSpace(em))
+                    // member.UserId = AppUser.IdUser -> resolver localId
+                    if (!localIdByAppUserId.TryGetValue(member.UserId, out var localId))
                         continue;
 
-                    var email = em!.Trim().ToLowerInvariant();
+                    if (!emailByLocalId.TryGetValue(localId, out var em) || string.IsNullOrWhiteSpace(em))
+                        continue;
+
+                    var email = em.Trim().ToLowerInvariant();
 
                     if (!byEmail.TryGetValue(email, out var profile))
                         continue;
@@ -186,70 +209,71 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 if (result.Count == 0)
-                    return ServiceResult<List<ExternalUserDTO>>.Fail("No external users matched the group members.", ErrorType.NotFound);
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail("No external users matched the group members.", ErrorType.NotFound);
 
-                return ServiceResult<List<ExternalUserDTO>>.Ok(result, "External users by group retrieved");
+                return ServiceResult<List<ResolvedUserProfileDTO>>.Ok(result, "External users by group retrieved");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error retrieving external users for group {GroupId}", groupId);
-                return ServiceResult<List<ExternalUserDTO>>.Fail("Unexpected error.", ErrorType.Unexpected);
+                return ServiceResult<List<ResolvedUserProfileDTO>>.Fail("Unexpected error.", ErrorType.Unexpected);
             }
         }
 
-        public async Task<ServiceResult<ExternalUserDTO>> GetExternalUserByAspNetIdAsync(int userId, CancellationToken ct = default)
+
+        public async Task<ServiceResult<ResolvedUserProfileDTO>> GetExternalUserByAspNetIdAsync(int userId, CancellationToken ct = default)
         {
             try
             {
                 var local = await _uow.AspNetUsers.GetEmailByUserIdAsync(userId, ct);
                 if (local is null)
-                    return ServiceResult<ExternalUserDTO>.Fail("ASP.NET user not found.", ErrorType.NotFound);
+                    return ServiceResult<ResolvedUserProfileDTO>.Fail("ASP.NET user not found.", ErrorType.NotFound);
 
                 var email = (local.Value.Email ?? string.Empty).Trim().ToLowerInvariant();
                 if (string.IsNullOrWhiteSpace(email))
-                    return ServiceResult<ExternalUserDTO>.Fail("User has no institutional email.", ErrorType.Validation);
+                    return ServiceResult<ResolvedUserProfileDTO>.Fail("User has no institutional email.", ErrorType.Validation);
 
                 var dirRes = await _directory.GetByEmailsAsync(new[] { email }, ct);
                 var profile = dirRes.Data?.FirstOrDefault();
                 if (profile is null)
-                    return ServiceResult<ExternalUserDTO>.Fail("External user not found for the given email.", ErrorType.NotFound);
+                    return ServiceResult<ResolvedUserProfileDTO>.Fail("External user not found for the given email.", ErrorType.NotFound);
 
                 var dto = ToExternalUserDTO(profile, role: null, groupId: 0, memberId: 0, memberRoleId: 0);
                 dto.UserId = local.Value.Id;
 
-                return ServiceResult<ExternalUserDTO>.Ok(dto, "External user resolved by ASP.NET user id");
+                return ServiceResult<ResolvedUserProfileDTO>.Ok(dto, "External user resolved by ASP.NET user id");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error resolving external user for ASP.NET user {UserId}", userId);
-                return ServiceResult<ExternalUserDTO>.Fail("Unexpected error.", ErrorType.Unexpected);
+                return ServiceResult<ResolvedUserProfileDTO>.Fail("Unexpected error.", ErrorType.Unexpected);
             }
         }
 
-        public async Task<ServiceResult<ExternalUserDTO>> GetExternalUserByEmailAsync(string institutionalEmail, CancellationToken ct = default)
+        public async Task<ServiceResult<ResolvedUserProfileDTO>> GetExternalUserByEmailAsync(string institutionalEmail, CancellationToken ct = default)
         {
             var email = (institutionalEmail ?? string.Empty).Trim().ToLowerInvariant();
             if (string.IsNullOrWhiteSpace(email))
-                return ServiceResult<ExternalUserDTO>.Fail("Email is required.", ErrorType.Validation);
+                return ServiceResult<ResolvedUserProfileDTO>.Fail("Email is required.", ErrorType.Validation);
 
             try
             {
                 var dirRes = await _directory.GetByEmailsAsync(new[] { email }, ct);
                 var profile = dirRes.Data?.FirstOrDefault();
                 if (profile is null)
-                    return ServiceResult<ExternalUserDTO>.Fail("External user not found.", ErrorType.NotFound);
+                    return ServiceResult<ResolvedUserProfileDTO>.Fail("External user not found.", ErrorType.NotFound);
 
                 var dto = ToExternalUserDTO(profile, role: null, groupId: 0, memberId: 0, memberRoleId: 0);
-                return ServiceResult<ExternalUserDTO>.Ok(dto, "External user retrieved by email");
+                return ServiceResult<ResolvedUserProfileDTO>.Ok(dto, "External user retrieved by email");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error retrieving external user by email {Email}", email);
-                return ServiceResult<ExternalUserDTO>.Fail("Unexpected error.", ErrorType.Unexpected);
+                return ServiceResult<ResolvedUserProfileDTO>.Fail("Unexpected error.", ErrorType.Unexpected);
             }
         }
 
-        public async Task<ServiceResult<List<ExternalUserDTO>>> GetAllExternalUsersAsync(CancellationToken ct = default)
+        public async Task<ServiceResult<List<ResolvedUserProfileDTO>>> GetAllExternalUsersAsync(CancellationToken ct = default)
         {
             try
             {
@@ -257,7 +281,7 @@ namespace tesisproject.backend.Services.Implementations
                 var dirRes = await _directory.GetAllAsync(ct);
 
                 if (!dirRes.Success || dirRes.Data is null || dirRes.Data.Count == 0)
-                    return ServiceResult<List<ExternalUserDTO>>.Fail(
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(
                         "No external users found.",
                         ErrorType.NotFound
                     );
@@ -273,12 +297,12 @@ namespace tesisproject.backend.Services.Implementations
                     ))
                     .ToList();
 
-                return ServiceResult<List<ExternalUserDTO>>.Ok(list, "External users retrieved");
+                return ServiceResult<List<ResolvedUserProfileDTO>>.Ok(list, "External users retrieved");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error retrieving all external users");
-                return ServiceResult<List<ExternalUserDTO>>.Fail("Unexpected error.", ErrorType.Unexpected);
+                return ServiceResult<List<ResolvedUserProfileDTO>>.Fail("Unexpected error.", ErrorType.Unexpected);
             }
         }
 
@@ -364,10 +388,10 @@ namespace tesisproject.backend.Services.Implementations
 
                 // 4) Resolver IdLocal (IdentityUser.Id) para GroupMember.UserId
                 var appUser = await _uow.AppUsers.GetByIdAsync(new object[] { appUserId }, ct);
-                if (appUser is null || appUser.IdLocal is null)
+                if (appUser is null)
                     return ServiceResult<GroupMemberResponseDTO>.Fail("Unable to resolve ASP.NET user from app user.", ErrorType.Unexpected);
 
-                var aspNetUserId = appUser.IdLocal.Value;
+                var aspNetUserId = appUser.IdUser;
 
                 // 5) Validar duplicado
                 var duplicated = await _uow.GroupMembers.ExistsAsync(request.GroupId, aspNetUserId, ct);
@@ -483,8 +507,8 @@ namespace tesisproject.backend.Services.Implementations
 
         // ================= Helpers =================
 
-        private static ExternalUserDTO ToExternalUserDTO(
-            ExternalProfileDTO p,
+        private static ResolvedUserProfileDTO ToExternalUserDTO(
+            ExternalUserProfileModel p,
             string? role,
             int groupId,
             int memberId,
@@ -497,7 +521,7 @@ namespace tesisproject.backend.Services.Implementations
                 preferredFacultyId: null,              // idem
                 onlyActivePreferred: true);
 
-            return new ExternalUserDTO
+            return new ResolvedUserProfileDTO
             {
                 UserId = p.ExternalId,
                 GroupId = groupId,
@@ -509,7 +533,7 @@ namespace tesisproject.backend.Services.Implementations
                 Position = p.Position,
                 FacultyCareerId = chosen?.FacultyCareerId,
                 Role = role,
-                AspNetUserId = p.ASP_ID,
+                AspNetUserId = p.AspId,
                 MemberRoleId = memberRoleId,
             };
         }

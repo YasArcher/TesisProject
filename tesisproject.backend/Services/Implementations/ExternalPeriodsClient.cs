@@ -33,48 +33,48 @@ namespace tesisproject.backend.Services.Implementations
                 _http.BaseAddress = new Uri(_opts.BaseUrl);
         }
 
-        public async Task<ServiceResult<IReadOnlyList<ExternalAcademicPeriodDTO>>> GetAllAsync(CancellationToken ct = default)
+        public async Task<ServiceResult<IReadOnlyList<ExternalAcademicPeriodModel>>> GetAllAsync(CancellationToken ct = default)
         {
             try
             {
-                var api = await _http.GetFromJsonAsync<List<ExternalAcademicPeriodDTO>>(
+                var api = await _http.GetFromJsonAsync<List<ExternalAcademicPeriodModel>>(
                     _opts.PeriodsEndpoint,
                     _jsonOpts,
                     ct);
 
                 if (api is null || api.Count == 0)
-                    return ServiceResult<IReadOnlyList<ExternalAcademicPeriodDTO>>.Fail(
+                    return ServiceResult<IReadOnlyList<ExternalAcademicPeriodModel>>.Fail(
                         "No external periods found.",
                         ErrorType.NotFound);
 
                 _logger.LogInformation("Retrieved {Count} periods.", api.Count);
-                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodDTO>>.Ok(
+                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodModel>>.Ok(
                     api,
                     "All external periods retrieved");
             }
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
                 _logger.LogWarning(ex, "Periods endpoint returned 404 on GetAll");
-                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodDTO>>.Fail(
+                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodModel>>.Fail(
                     "No external periods found.",
                     ErrorType.NotFound);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error retrieving all external periods");
-                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodDTO>>.Fail(
+                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodModel>>.Fail(
                     "Unexpected error.",
                     ErrorType.Unexpected);
             }
         }
 
-        public async Task<ServiceResult<IReadOnlyList<ExternalAcademicPeriodDTO>>> GetByNamesAsync(
+        public async Task<ServiceResult<IReadOnlyList<ExternalAcademicPeriodModel>>> GetByNamesAsync(
             IEnumerable<string> names,
             CancellationToken ct = default)
         {
             var list = NormalizeDistinct(names);
             if (list.Count == 0)
-                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodDTO>>.Fail(
+                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodModel>>.Fail(
                     "At least one period name is required.",
                     ErrorType.Validation);
 
@@ -83,67 +83,67 @@ namespace tesisproject.backend.Services.Implementations
                 // Node controller: GET /api/periodos?nombres=a,b,c
                 var url = BuildBatchUrl(_opts.PeriodsEndpoint, _opts.PeriodsNamesQueryParam, list);
 
-                var api = await _http.GetFromJsonAsync<List<ExternalAcademicPeriodDTO>>(url, _jsonOpts, ct);
+                var api = await _http.GetFromJsonAsync<List<ExternalAcademicPeriodModel>>(url, _jsonOpts, ct);
 
                 if (api is null || api.Count == 0)
-                    return ServiceResult<IReadOnlyList<ExternalAcademicPeriodDTO>>.Fail(
+                    return ServiceResult<IReadOnlyList<ExternalAcademicPeriodModel>>.Fail(
                         "No external periods found.",
                         ErrorType.NotFound);
 
                 _logger.LogInformation("Retrieved {Count} periods by names.", api.Count);
-                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodDTO>>.Ok(
+                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodModel>>.Ok(
                     api,
                     "External periods retrieved by names");
             }
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
                 _logger.LogWarning(ex, "Periods endpoint returned 404 for names query");
-                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodDTO>>.Fail(
+                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodModel>>.Fail(
                     "No external periods found.",
                     ErrorType.NotFound);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error querying external periods by names");
-                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodDTO>>.Fail(
+                return ServiceResult<IReadOnlyList<ExternalAcademicPeriodModel>>.Fail(
                     "Unexpected error.",
                     ErrorType.Unexpected);
             }
         }
 
-        public async Task<ServiceResult<ExternalAcademicPeriodDTO>> GetByIdAsync(int id, CancellationToken ct = default)
+        public async Task<ServiceResult<ExternalAcademicPeriodModel>> GetByIdAsync(int id, CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<ExternalAcademicPeriodDTO>.Fail(
+                return ServiceResult<ExternalAcademicPeriodModel>.Fail(
                     "A valid period id is required.",
                     ErrorType.Validation);
 
             try
             {
                 var endpoint = $"{_opts.PeriodsEndpoint.TrimEnd('/')}/{id}";
-                var api = await _http.GetFromJsonAsync<ExternalAcademicPeriodDTO>(endpoint, _jsonOpts, ct);
+                var api = await _http.GetFromJsonAsync<ExternalAcademicPeriodModel>(endpoint, _jsonOpts, ct);
 
                 if (api is null)
-                    return ServiceResult<ExternalAcademicPeriodDTO>.Fail(
+                    return ServiceResult<ExternalAcademicPeriodModel>.Fail(
                         "External period not found.",
                         ErrorType.NotFound);
 
                 _logger.LogInformation("Retrieved period {Id}.", id);
-                return ServiceResult<ExternalAcademicPeriodDTO>.Ok(
+                return ServiceResult<ExternalAcademicPeriodModel>.Ok(
                     api,
                     "External period retrieved by id");
             }
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
                 _logger.LogWarning(ex, "Periods endpoint returned 404 for id {Id}", id);
-                return ServiceResult<ExternalAcademicPeriodDTO>.Fail(
+                return ServiceResult<ExternalAcademicPeriodModel>.Fail(
                     "External period not found.",
                     ErrorType.NotFound);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error retrieving external period by id {Id}", id);
-                return ServiceResult<ExternalAcademicPeriodDTO>.Fail(
+                return ServiceResult<ExternalAcademicPeriodModel>.Fail(
                     "Unexpected error.",
                     ErrorType.Unexpected);
             }

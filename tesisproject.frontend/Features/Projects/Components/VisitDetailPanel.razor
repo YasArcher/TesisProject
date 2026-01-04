@@ -1,6 +1,7 @@
 ﻿@using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.ConfirmDialog
+@using tesisproject.shared.DTOs.Visit.Request
 @using tesisproject.shared.DTOs.Visit.Response
 @using tesisproject.shared.DTOs.VisitIssues.Response
 @using tesisproject.shared.Enums
@@ -14,6 +15,7 @@
 
 @inject NavigationManager Nav
 @inject IToastService Toast
+@inject IVisitClientService VisitService
 @inject IProductClientService ProductService
 @inject IProductTypeClientService ProductTypeService
 @inject IProductTypeDesignClientService ProductTypeDesignService
@@ -22,7 +24,7 @@
     <!-- Header superior: Botón volver + Info visita -->
     <div class="flex items-center justify-between pb-4 border-b border-border px-5">
         <ActionButton Execute="OnBack"
-                      Text="Back to visits"
+                      Text="Volver a visitas"
                       Intent="ButtonIntent.Info"
                       Variant="ButtonVariant.Outline"
                       Size="ButtonSize.Md">
@@ -35,45 +37,63 @@
 
         <div class="text-right">
             <span class="inline-flex items-center px-3 py-1 rounded-full bg-primary-subtle text-primary text-sm font-semibold">
-                Visit #@VisitId
+                Visita #@VisitId
             </span>
         </div>
     </div>
 
-    <!-- Sección de Objetivos del Proyecto -->
-    @if (ProjectObjectives is not null && ProjectObjectives.Any())
+    @if (IsLoading)
     {
-        <div class="bg-background border border-border rounded-xl shadow-sm">
-            <div class="px-5 py-4 border-b border-border">
-                <h3 class="text-lg font-bold text-foreground">
-                    Project Objectives Progress
-                </h3>
-                <p class="text-sm text-muted mt-1">
-                    Track and update the completion status of project objectives and activities
-                </p>
-            </div>
-            <div class="p-5">
-                <ProjectObjectivesProgress Objectives="ProjectObjectives"
-                                           OnSaveRequested="HandleObjectivesSaveAsync" />
-            </div>
+        <div class="flex items-center gap-3 py-10 px-5">
+            <div class="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            <span class="text-sm text-muted">Cargando visita...</span>
         </div>
     }
+    else
+    {
 
+        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <div class="mx-5 rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error">
+                @ErrorMessage
+            </div>
+        }
+
+        <!-- Sección de Objetivos del Proyecto -->
+        @if (ProjectObjectives is not null && ProjectObjectives.Any())
+        {
+            <div class="bg-background border border-border rounded-xl shadow-sm">
+                <div class="px-5 py-4 border-b border-border">
+                    <h3 class="text-lg font-bold text-foreground">
+                        Progreso de objetivos del proyecto
+                    </h3>
+                    <p class="text-sm text-muted mt-1">
+                        Registra y actualiza el estado de cumplimiento de objetivos y actividades del proyecto
+                    </p>
+                </div>
+                <div class="@(_isVisitFinalized ? "pointer-events-none opacity-60" : "")">
+                    <ProjectObjectivesProgress Objectives="ProjectObjectives"
+                                               OnSaveActivityRequested="HandleActivitySaveAsync" />
+                </div>
+            </div>
+        }
+    }
     <!-- Sección de productos (solo de esta visita) -->
     <div class="bg-background border border-border rounded-xl shadow-sm">
         <div class="px-5 py-4 border-b border-border">
             <div class="flex items-center justify-between gap-3">
                 <div>
                     <h3 class="text-lg font-bold text-foreground">
-                        Products
+                        Productos
                     </h3>
                     <p class="text-sm text-muted mt-1">
-                        Products created for this visit
+                        Productos creados para esta visita
                     </p>
                 </div>
 
                 <ActionButton Execute="OpenCreateProductModal"
-                              Text="Add Product"
+                              Text="Agregar producto"
+                              Disabled="@(IsLoading || _isVisitFinalized)"
                               Intent="ButtonIntent.Add"
                               Variant="ButtonVariant.Filled"
                               Size="ButtonSize.Md">
@@ -93,13 +113,14 @@
                     @ProductsError
                 </div>
             }
-            else if (IsLoadingProducts)
+            else if (IsLoading || IsLoadingProducts)
             {
                 <div class="flex items-center gap-3 py-6">
                     <div class="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    <span class="text-sm text-muted">Loading products...</span>
+                    <span class="text-sm text-muted">Cargando productos...</span>
                 </div>
             }
+
             else if (Products is null || Products.Count == 0)
             {
                 <div class="text-center py-12 px-4">
@@ -109,10 +130,10 @@
                         </svg>
                     </div>
                     <p class="text-sm text-muted font-medium">
-                        No products created for this visit yet
+                        Aún no se han creado productos para esta visita
                     </p>
                     <p class="text-xs text-muted mt-1">
-                        Click "Add Product" to create one from templates
+                        Haz clic en "Agregar producto" para crear uno desde plantillas
                     </p>
                 </div>
             }
@@ -133,7 +154,7 @@
                                         </div>
 
                                         <div class="text-xs text-muted mt-1">
-                                            Created: @p.CreatedAt.ToString("MMM dd, yyyy HH:mm")
+                                            Creado: @p.CreatedAt.ToString("MMM dd, yyyy HH:mm")
                                         </div>
 
                                         @if (!string.IsNullOrWhiteSpace(p.Description))
@@ -146,7 +167,8 @@
 
                                     <div class="flex items-start gap-2 flex-shrink-0">
                                         <ActionButton Execute="@(() => OpenEditProductModal(p.Id))"
-                                                      Text="Open"
+                                                      Disabled="@_isVisitFinalized"
+                                                      Text="Abrir"
                                                       Intent="ButtonIntent.Info"
                                                       Variant="ButtonVariant.Outline"
                                                       Size="ButtonSize.Sm" />
@@ -161,7 +183,7 @@
                 <div class="mt-4 pt-4 border-t border-border">
                     <div class="flex items-center justify-between text-xs text-muted">
                         <span>
-                            Total products: <span class="font-semibold text-foreground">@Products.Count</span>
+                            Total de productos: <span class="font-semibold text-foreground">@Products.Count</span>
                         </span>
                     </div>
                 </div>
@@ -176,16 +198,17 @@
             <div class="flex items-center justify-between">
                 <div>
                     <h3 class="text-lg font-bold text-foreground">
-                        Issues and Observations
+                        Problemas y observaciones
                     </h3>
                     <p class="text-sm text-muted mt-1">
-                        Document problems and observations encountered during the visit
+                        Documenta problemas y observaciones encontradas durante la visita
                     </p>
                 </div>
 
                 <ActionButton Execute="OnAddIssue"
-                              Text="Add Issue"
+                              Text="Agregar problema"
                               Intent="ButtonIntent.Add"
+                              Disabled="@(IsLoading || _isVisitFinalized)"
                               Variant="ButtonVariant.Filled"
                               Size="ButtonSize.Md">
                     <Icon>
@@ -208,10 +231,10 @@
                         </svg>
                     </div>
                     <p class="text-sm text-muted font-medium">
-                        No issues recorded for this visit yet
+                        Aún no hay problemas registrados para esta visita
                     </p>
                     <p class="text-xs text-muted mt-1">
-                        Click "Add Issue" to document problems or observations
+                        Haz clic en "Agregar problema" para documentar problemas u observaciones
                     </p>
                 </div>
             }
@@ -238,7 +261,7 @@
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
                                                     <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clip-rule="evenodd" />
                                                 </svg>
-                                                <span>Created: @issue.CreatedAtUtc.ToString("MMM dd, yyyy HH:mm")</span>
+                                                <span>Creado: @issue.CreatedAtUtc.ToString("MMM dd, yyyy HH:mm")</span>
                                             </div>
                                         </div>
                                     </div>
@@ -247,6 +270,7 @@
                                     <div class="flex items-start gap-2 flex-shrink-0">
                                         <ActionButton Execute="() => OnEditIssue.InvokeAsync((issue.VisitIssueId, issue))"
                                                       Intent="ButtonIntent.Info"
+                                                      Disabled="@_isVisitFinalized"
                                                       Variant="ButtonVariant.Ghost"
                                                       Size="ButtonSize.Sm"
                                                       Class="p-2 rounded-lg hover:bg-primary-subtle text-primary transition-colors">
@@ -258,14 +282,15 @@
                                         </ActionButton>
 
                                         <ActionButton Execute="() => OnDeleteIssue.InvokeAsync(issue.VisitIssueId)"
+                                                      Disabled="@_isVisitFinalized"
                                                       Intent="ButtonIntent.Delete"
                                                       Variant="ButtonVariant.Ghost"
                                                       Size="ButtonSize.Sm"
                                                       ConfirmBeforeExecute="true"
-                                                      ConfirmTitle="Confirm deletion"
-                                                      ConfirmMessage="@($"Are you sure you want to delete this issue? This action cannot be undone.\n\nIssue: {(string.IsNullOrEmpty(issue.Description) ? "No description" : (issue.Description.Length > 100 ? issue.Description[..100] + "..." : issue.Description))}")"
-                                                      ConfirmButtonText="Delete"
-                                                      CancelButtonText="Cancel"
+                                                      ConfirmTitle="Confirmar eliminación"
+                                                      ConfirmMessage="@($"¿Estás seguro de que deseas eliminar este problema? Esta acción no se puede deshacer.\n\nProblema: {(string.IsNullOrEmpty(issue.Description) ? "Sin descripción" : (issue.Description.Length > 100 ? issue.Description[..100] + "..." : issue.Description))}")"
+                                                      ConfirmButtonText="Eliminar"
+                                                      CancelButtonText="Cancelar"
                                                       Class="p-2 rounded-lg hover:bg-error/10 text-error transition-colors">
                                             <Icon>
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -284,13 +309,38 @@
                 <div class="mt-4 pt-4 border-t border-border">
                     <div class="flex items-center justify-between text-xs text-muted">
                         <span>
-                            Total issues: <span class="font-semibold text-foreground">@VisitIssues.Count</span>
+                            Total de problemas: <span class="font-semibold text-foreground">@VisitIssues.Count</span>
                         </span>
                     </div>
                 </div>
             }
         </div>
     </div>
+
+    <!-- Footer actions -->
+    <div class="bg-background border border-border rounded-xl shadow-sm">
+        <div class="px-5 py-4 flex items-center justify-between gap-3">
+            <div class="text-sm text-muted">
+                Una vez finalizada, esta visita quedará bloqueada y no podrás editar actividades, productos ni problemas.
+            </div>
+
+            <div class="flex items-center gap-2">
+                <ActionButton Text="@(_finalizingVisit ? "Finalizando..." : "Finalizar visita")"
+                              Intent="ButtonIntent.Add"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Md"
+                              IsDisabled="@(_finalizingVisit || IsLoading || _isVisitFinalized)"
+                              ConfirmBeforeExecute="true"
+                              ConfirmTitle="Finalizar visita"
+                              ConfirmMessage="¿Estás seguro de que deseas finalizar esta visita? Esto bloqueará todas las acciones."
+                              ConfirmButtonText="Finalizar"
+                              CancelButtonText="Cancelar"
+                              Execute="FinalizeVisitAsync" />
+            </div>
+        </div>
+    </div>
+
+
 </div>
 @* ===================== modal editar producto ===================== *@
 @if (_editProductModalOpen)
@@ -302,13 +352,13 @@
             <div class="w-full max-w-3xl rounded-2xl border border-border bg-background shadow-xl overflow-hidden">
                 <div class="p-5 border-b border-border flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <div class="text-lg font-semibold text-foreground">Edit product</div>
+                        <div class="text-lg font-semibold text-foreground">Editar producto</div>
                         <div class="text-sm text-muted">
-                            Project #@ProjectId · Visit #@VisitId · Product #@_editingProductId
+                            Proyecto #@ProjectId · Visita #@VisitId · Producto #@_editingProductId
                         </div>
                     </div>
 
-                    <button class="text-muted hover:text-foreground" @onclick="CloseEditProductModal" title="Close">
+                    <button class="text-muted hover:text-foreground" @onclick="CloseEditProductModal" title="Cerrar">
                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -320,7 +370,7 @@
                     {
                         <div class="flex items-center gap-3 py-6">
                             <div class="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                            <span class="text-sm text-muted">Loading product...</span>
+                            <span class="text-sm text-muted">Cargando producto...</span>
                         </div>
                     }
                     else
@@ -334,7 +384,7 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-sm font-medium text-foreground mb-1">Product type</label>
+                                <label class="block text-sm font-medium text-foreground mb-1">Tipo de producto</label>
                                 <select class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
                                         disabled
                                         value="@_editSelectedProductTypeId">
@@ -344,19 +394,19 @@
                                     }
                                 </select>
                                 <div class="text-xs text-muted mt-1">
-                                    Product type is locked for existing products.
+                                    El tipo de producto está bloqueado para productos existentes.
                                 </div>
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-foreground mb-1">Title</label>
+                                <label class="block text-sm font-medium text-foreground mb-1">Título</label>
                                 <input class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
                                        @bind="_editTitle" />
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-foreground mb-1">Description (optional)</label>
+                            <label class="block text-sm font-medium text-foreground mb-1">Descripción (opcional)</label>
                             <textarea class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm min-h-[90px]"
                                       @bind="_editDescription"></textarea>
                         </div>
@@ -364,7 +414,7 @@
                         @if (_editDesign is not null && _editDesignDefinitions.Count > 0)
                         {
                             <div class="pt-2">
-                                <div class="text-sm font-semibold text-foreground mb-2">Template fields</div>
+                                <div class="text-sm font-semibold text-foreground mb-2">Campos de plantilla</div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     @foreach (var def in _editDesignDefinitions)
@@ -376,7 +426,7 @@
                                                 </div>
                                                 @if (def.IsRequired)
                                                 {
-                                                    <span class="text-xs px-2 py-0.5 rounded-full border border-error/30 bg-error/10 text-error">Required</span>
+                                                    <span class="text-xs px-2 py-0.5 rounded-full border border-error/30 bg-error/10 text-error">Obligatorio</span>
                                                 }
                                             </div>
 
@@ -422,20 +472,20 @@
                         else
                         {
                             <div class="rounded-xl border border-border bg-muted/10 p-3 text-sm text-muted">
-                                No template fields found for this product type.
+                                No se encontraron campos de plantilla para este tipo de producto.
                             </div>
                         }
                     }
                 </div>
 
                 <div class="p-5 border-t border-border flex items-center justify-end gap-2">
-                    <ActionButton Text="Cancel"
+                    <ActionButton Text="Cancelar"
                                   Intent="ButtonIntent.Neutral"
                                   Variant="ButtonVariant.Outline"
                                   Size="ButtonSize.Sm"
                                   Execute="CloseEditProductModal" />
 
-                    <ActionButton Text="@(_savingEditProduct ? "Saving..." : "Save changes")"
+                    <ActionButton Text="@(_savingEditProduct ? "Guardando..." : "Guardar cambios")"
                                   Intent="ButtonIntent.Add"
                                   Variant="ButtonVariant.Outline"
                                   Size="ButtonSize.Sm"
@@ -457,13 +507,13 @@
             <div class="w-full max-w-3xl rounded-2xl border border-border bg-background shadow-xl overflow-hidden">
                 <div class="p-5 border-b border-border flex items-start justify-between gap-3">
                     <div class="min-w-0">
-                        <div class="text-lg font-semibold text-foreground">Create product</div>
+                        <div class="text-lg font-semibold text-foreground">Crear producto</div>
                         <div class="text-sm text-muted">
-                            Project #@ProjectId · Visit #@VisitId
+                            Proyecto #@ProjectId · Visita #@VisitId
                         </div>
                     </div>
 
-                    <button class="text-muted hover:text-foreground" @onclick="CloseCreateProductModal" title="Close">
+                    <button class="text-muted hover:text-foreground" @onclick="CloseCreateProductModal" title="Cerrar">
                         <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
@@ -475,7 +525,7 @@
                     {
                         <div class="flex items-center gap-3 py-6">
                             <div class="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                            <span class="text-sm text-muted">Loading template...</span>
+                            <span class="text-sm text-muted">Cargando plantilla...</span>
                         </div>
                     }
                     else
@@ -489,11 +539,11 @@
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
-                                <label class="block text-sm font-medium text-foreground mb-1">Product type</label>
+                                <label class="block text-sm font-medium text-foreground mb-1">Tipo de producto</label>
                                 <select class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
                                         @onchange="OnProductTypeChanged"
                                         value="@_selectedProductTypeId">
-                                    <option value="0">-- Select --</option>
+                                    <option value="0">-- Seleccionar --</option>
                                     @foreach (var t in _productTypes)
                                     {
                                         <option value="@t.Id">@t.Name</option>
@@ -502,24 +552,24 @@
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-foreground mb-1">Title</label>
+                                <label class="block text-sm font-medium text-foreground mb-1">Título</label>
                                 <input class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                                       placeholder="e.g. Article, paper, chapter..."
+                                       placeholder="p. ej. Artículo, paper, capítulo..."
                                        @bind="_title" />
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-foreground mb-1">Description (optional)</label>
+                            <label class="block text-sm font-medium text-foreground mb-1">Descripción (opcional)</label>
                             <textarea class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm min-h-[90px]"
-                                      placeholder="Short description..."
+                                      placeholder="Descripción corta..."
                                       @bind="_description"></textarea>
                         </div>
 
                         @if (_design is not null && _designDefinitions.Count > 0)
                         {
                             <div class="pt-2">
-                                <div class="text-sm font-semibold text-foreground mb-2">Template fields</div>
+                                <div class="text-sm font-semibold text-foreground mb-2">Campos de plantilla</div>
 
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                     @foreach (var def in _designDefinitions)
@@ -531,7 +581,7 @@
                                                 </div>
                                                 @if (def.IsRequired)
                                                 {
-                                                    <span class="text-xs px-2 py-0.5 rounded-full border border-error/30 bg-error/10 text-error">Required</span>
+                                                    <span class="text-xs px-2 py-0.5 rounded-full border border-error/30 bg-error/10 text-error">Obligatorio</span>
                                                 }
                                             </div>
 
@@ -578,20 +628,20 @@
                         else if (_selectedProductTypeId > 0)
                         {
                             <div class="rounded-xl border border-border bg-muted/10 p-3 text-sm text-muted">
-                                This type has no template fields (or template returned no definitions).
+                                Este tipo no tiene campos de plantilla (o la plantilla no devolvió definiciones).
                             </div>
                         }
                     }
                 </div>
 
                 <div class="p-5 border-t border-border flex items-center justify-end gap-2">
-                    <ActionButton Text="Cancel"
+                    <ActionButton Text="Cancelar"
                                   Intent="ButtonIntent.Neutral"
                                   Variant="ButtonVariant.Outline"
                                   Size="ButtonSize.Sm"
                                   Execute="CloseCreateProductModal" />
 
-                    <ActionButton Text="@(_savingProduct ? "Saving..." : "Save product")"
+                    <ActionButton Text="@(_savingProduct ? "Guardando..." : "Guardar producto")"
                                   Intent="ButtonIntent.Add"
                                   Variant="ButtonVariant.Outline"
                                   Size="ButtonSize.Sm"
@@ -622,19 +672,71 @@
     public IReadOnlyList<ProjectObjectiveWithActivitiesDTO> ProjectObjectives { get; set; }
         = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
 
-    [Parameter] public EventCallback<IEnumerable<ObjectiveActivityListItemDTO>> OnSaveObjectivesRequested { get; set; }
+    [Parameter] public EventCallback<ObjectiveActivityListItemDTO> OnSaveActivityRequested { get; set; }
 
     // ===== Productos (solo del detalle) =====
     [Parameter] public IReadOnlyList<ProductListItemResponseDTO> Products { get; set; } = Array.Empty<ProductListItemResponseDTO>();
     [Parameter] public bool IsLoadingProducts { get; set; }
     [Parameter] public string? ProductsError { get; set; }
     [Parameter] public EventCallback<int> OnProductCreated { get; set; } // visitId
+                                                                         // ===== Finalize visit =====
+    private bool _finalizingVisit;
+    private bool _isVisitFinalized;
 
-    private async Task HandleObjectivesSaveAsync(IEnumerable<ObjectiveActivityListItemDTO> activities)
+    protected override void OnParametersSet()
     {
-        if (OnSaveObjectivesRequested.HasDelegate)
+        _isVisitFinalized = Value?.VisitStateId == 3;
+    }
+
+
+    private async Task FinalizeVisitAsync()
+    {
+        if (_isVisitFinalized)
+            return;
+
+        if (VisitId <= 0)
         {
-            await OnSaveObjectivesRequested.InvokeAsync(activities);
+            Toast.ShowError("VisitId inválido.");
+            return;
+        }
+
+        _finalizingVisit = true;
+
+        try
+        {
+            var req = new FinalizeVisitRequestDTO
+            {
+                VisitId = VisitId,
+                FinalVisitStateId = 3 // ✅ tu estado final
+            };
+
+            var res = await VisitService.FinalizeAsync(VisitId, req, CancellationToken.None);
+
+            if (!res.Success || res.Response is null)
+            {
+                Toast.ShowError(res.Error ?? "No se pudo finalizar la visita.");
+                return;
+            }
+
+            _isVisitFinalized = true; // lock UI
+            Toast.ShowSuccess("Visita finalizada.");
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al finalizar la visita: {ex.Message}");
+        }
+        finally
+        {
+            _finalizingVisit = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleActivitySaveAsync(ObjectiveActivityListItemDTO activity)
+    {
+        if (OnSaveActivityRequested.HasDelegate)
+        {
+            await OnSaveActivityRequested.InvokeAsync(activity);
         }
     }
 
@@ -654,9 +756,9 @@
     {
         return status switch
         {
-            IssueStatus.Open => "Pending",
-            IssueStatus.InProgress => "In Progress",
-            IssueStatus.Resolved => "Resolved",
+            IssueStatus.Open => "Pendiente",
+            IssueStatus.InProgress => "En progreso",
+            IssueStatus.Resolved => "Resuelto",
             _ => status.ToString()
         };
     }
@@ -727,7 +829,7 @@
                 var typesRes = await ProductTypeService.GetListAsync(CancellationToken.None);
                 if (!typesRes.Success || typesRes.Response is null)
                 {
-                    _editModalError = typesRes.Error ?? "Could not load product types.";
+                    _editModalError = typesRes.Error ?? "No se pudieron cargar los tipos de producto.";
                     return;
                 }
 
@@ -740,7 +842,7 @@
             var prodRes = await ProductService.GetByIdAsync(productId, CancellationToken.None);
             if (!prodRes.Success || prodRes.Response is null)
             {
-                _editModalError = prodRes.Error ?? "Could not load product.";
+                _editModalError = prodRes.Error ?? "No se pudo cargar el producto.";
                 return;
             }
 
@@ -757,7 +859,7 @@
 
             if (!designRes.Success || designRes.Response is null)
             {
-                _editModalError = designRes.Error ?? "Could not load product type template.";
+                _editModalError = designRes.Error ?? "No se pudo cargar la plantilla del tipo de producto.";
                 return;
             }
 
@@ -778,10 +880,10 @@
                         Unit = def.Unit,
                         DataTypeLabel = def.DataType switch
                         {
-                            ProductAttributeDataType.Number => "Number",
-                            ProductAttributeDataType.Date => "Date",
-                            ProductAttributeDataType.Url => "Url",
-                            _ => "Text"
+                            ProductAttributeDataType.Number => "Número",
+                            ProductAttributeDataType.Date => "Fecha",
+                            ProductAttributeDataType.Url => "URL",
+                            _ => "Texto"
                         }
                     });
 
@@ -796,7 +898,7 @@
         }
         catch (Exception ex)
         {
-            _editModalError = $"Error opening edit modal: {ex.Message}";
+            _editModalError = $"Error al abrir el modal de edición: {ex.Message}";
         }
         finally
         {
@@ -829,13 +931,13 @@
 
         if (_editingProductId <= 0)
         {
-            _editModalError = "Invalid ProductId.";
+            _editModalError = "ProductId inválido.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_editTitle))
         {
-            _editModalError = "Title is required.";
+            _editModalError = "El título es obligatorio.";
             return;
         }
 
@@ -844,7 +946,7 @@
             var v = GetEditFieldValue(req.AttributeDefinitionId);
             if (string.IsNullOrWhiteSpace(v))
             {
-                _editModalError = $"Complete required field: {req.Label}.";
+                _editModalError = $"Completa el campo obligatorio: {req.Label}.";
                 return;
             }
         }
@@ -889,11 +991,11 @@
 
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Could not update product.");
+                Toast.ShowError(res.Error ?? "No se pudo actualizar el producto.");
                 return;
             }
 
-            Toast.ShowSuccess("Product updated successfully.");
+            Toast.ShowSuccess("Producto actualizado correctamente.");
             CloseEditProductModal();
 
             // Para refrescar lista en el padre (si ya lo usas así)
@@ -902,7 +1004,7 @@
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Error updating product: {ex.Message}");
+            Toast.ShowError($"Error al actualizar el producto: {ex.Message}");
         }
         finally
         {
@@ -952,7 +1054,7 @@
         public int DisplayOrder { get; set; }
         public ProductAttributeDataType DataType { get; set; } = ProductAttributeDataType.Text;
         public string? Unit { get; set; }
-        public string DataTypeLabel { get; set; } = "Text";
+        public string DataTypeLabel { get; set; } = "Texto";
     }
 
     private async Task OpenCreateProductModal()
@@ -976,7 +1078,7 @@
             if (!typesRes.Success || typesRes.Response is null)
             {
                 _productTypes = new();
-                _modalError = typesRes.Error ?? "Could not load product types.";
+                _modalError = typesRes.Error ?? "No se pudieron cargar los tipos de producto.";
                 return;
             }
 
@@ -986,7 +1088,7 @@
         }
         catch (Exception ex)
         {
-            _modalError = $"Error opening modal: {ex.Message}";
+            _modalError = $"Error al abrir el modal: {ex.Message}";
         }
         finally
         {
@@ -1032,7 +1134,7 @@
             if (!designRes.Success || designRes.Response is null)
             {
                 _design = null;
-                _modalError = designRes.Error ?? "Could not load product type template.";
+                _modalError = designRes.Error ?? "No se pudo cargar la plantilla del tipo de producto.";
                 return;
             }
 
@@ -1052,10 +1154,10 @@
                         Unit = def.Unit,
                         DataTypeLabel = def.DataType switch
                         {
-                            ProductAttributeDataType.Number => "Number",
-                            ProductAttributeDataType.Date => "Date",
-                            ProductAttributeDataType.Url => "Url",
-                            _ => "Text"
+                            ProductAttributeDataType.Number => "Número",
+                            ProductAttributeDataType.Date => "Fecha",
+                            ProductAttributeDataType.Url => "URL",
+                            _ => "Texto"
                         }
                     });
 
@@ -1066,7 +1168,7 @@
         }
         catch (Exception ex)
         {
-            _modalError = $"Error loading template: {ex.Message}";
+            _modalError = $"Error al cargar la plantilla: {ex.Message}";
         }
         finally
         {
@@ -1087,25 +1189,25 @@
 
         if (ProjectId <= 0)
         {
-            _modalError = "Invalid ProjectId.";
+            _modalError = "ProjectId inválido.";
             return;
         }
 
         if (VisitId <= 0)
         {
-            _modalError = "Invalid VisitId.";
+            _modalError = "VisitId inválido.";
             return;
         }
 
         if (_selectedProductTypeId <= 0)
         {
-            _modalError = "Select product type.";
+            _modalError = "Selecciona un tipo de producto.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_title))
         {
-            _modalError = "Title is required.";
+            _modalError = "El título es obligatorio.";
             return;
         }
 
@@ -1114,7 +1216,7 @@
             var v = GetFieldValue(req.AttributeDefinitionId);
             if (string.IsNullOrWhiteSpace(v))
             {
-                _modalError = $"Complete required field: {req.Label}.";
+                _modalError = $"Completa el campo obligatorio: {req.Label}.";
                 return;
             }
         }
@@ -1152,11 +1254,11 @@
 
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Could not create product.");
+                Toast.ShowError(res.Error ?? "No se pudo crear el producto.");
                 return;
             }
 
-            Toast.ShowSuccess("Product created successfully.");
+            Toast.ShowSuccess("Producto creado correctamente.");
             CloseCreateProductModal();
 
             if (OnProductCreated.HasDelegate)
@@ -1164,7 +1266,7 @@
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Error creating product: {ex.Message}");
+            Toast.ShowError($"Error al crear el producto: {ex.Message}");
         }
         finally
         {

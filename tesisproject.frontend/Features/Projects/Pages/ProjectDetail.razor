@@ -8,6 +8,7 @@
 @using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
 @using tesisproject.shared.DTOs.Group.Request
+@using tesisproject.shared.DTOs.ObjectiveActivity.Request
 @using tesisproject.shared.DTOs.Project.Response
 @using tesisproject.frontend.Features.Projects.Components
 @using tesisproject.shared.DTOs.Budgets.Request
@@ -15,6 +16,7 @@
 @using tesisproject.shared.DTOs.Visit.Request
 @using tesisproject.shared.DTOs.Visit.Response
 @using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.AppUser
 @using tesisproject.shared.DTOs.VisitIssues.Request
 @using tesisproject.shared.DTOs.VisitIssues.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
@@ -38,6 +40,7 @@
 @inject IGroupService GroupService
 @inject NavigationManager Nav
 @inject IToastService Toast
+@inject IObjectiveActivityClientService ObjectiveActivityService
 @inject IExternalUserService ExternalUserService
 @inject IVisitIssueClientService VisitIssueService
 @inject IMemberRoleTypeClientService MemberRoleTypeService
@@ -151,7 +154,8 @@
                 <ChildContent>
                     @if (_openVisitId is int vid)
                     {
-                        <VisitDetailPanel ProjectId="@ProjectId"
+                        <VisitDetailPanel @key="vid"
+                                          ProjectId="@ProjectId"
                                           VisitId="@vid"
                                           Value="@_visitDetail"
                                           VisitIssues="@_visitIssues"
@@ -162,7 +166,7 @@
                                           IsLoadingProducts="@_loadingProducts"
                                           ProductsError="@_productsError"
                                           OnProductCreated="HandleProductCreated"
-                                          OnSaveObjectivesRequested="HandleSaveObjectivesAsync"
+                                          OnSaveActivityRequested="HandleSaveSingleActivityAsync"
                                           OnBack="HandleCloseVisit"
                                           OnAddIssue="HandleAddIssue"
                                           OnEditIssue="HandleEditIssue"
@@ -301,7 +305,7 @@
 
 
     // ======= Miembros =======
-    private List<ExternalUserDTO>? _members;
+    private List<ResolvedUserProfileDTO>? _members;
     private bool _loadingMembers;
     private string? _membersError;
 
@@ -360,7 +364,7 @@
 
     // ====== User Picker (miembros) ======
     private bool _showUserPicker;
-    private List<ExternalUserDTO> _memberCandidates = new();
+    private List<ResolvedUserProfileDTO> _memberCandidates = new();
     private int? _preselectedUserId;
 
     // ======= Facultades / Programas externos =======
@@ -958,9 +962,9 @@
         }
     }
 
-    private async Task EnsureProjectObjectivesAsync()
+    private async Task EnsureProjectObjectivesAsync(bool forceRefresh = false)
     {
-        if (_projectObjectives is { Count: > 0 })
+        if (!forceRefresh && _projectObjectives is { Count: > 0 })
             return;
 
         try
@@ -971,9 +975,7 @@
             var res = await ProjectObjectiveService.GetByProjectWithActivitiesAsync(ProjectId);
 
             if (res.Success && res.Response is not null)
-            {
                 _projectObjectives = res.Response;
-            }
             else
             {
                 _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
@@ -990,6 +992,74 @@
             _loadingObjectives = false;
         }
     }
+
+    private async Task HandleSaveSingleActivityAsync(ObjectiveActivityListItemDTO a)
+    {
+        try
+        {
+            var dto = new UpdateObjectiveActivityRequestDTO
+            {
+                ObjectiveActivityId = a.ObjectiveActivityId,
+                ObjectiveId = a.ObjectiveId,
+                ActionText = a.ActionText ?? string.Empty,
+                ActivityResult = a.ActivityResult,
+                ProgressPercentage = a.ProgressPercentage // ✅ % (0..100)
+            };
+
+            var res = await ObjectiveActivityService.UpdateAsync(a.ObjectiveActivityId, dto, CancellationToken.None);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "No se pudo guardar la actividad.");
+                return;
+            }
+
+            Toast.ShowSuccess("Actividad guardada.");
+
+            // ✅ Refresca solo visitas (objetivos + header)
+            await RefreshVisitsTabAsync(refreshVisitList: false, refreshVisitDetail: false);
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al guardar actividad: {ex.Message}");
+        }
+    }
+
+
+    private async Task RefreshVisitsTabAsync(bool refreshVisitList = false, bool refreshVisitDetail = false)
+    {
+        // 1) Refrescar objetivos + actividades (trae % y estados recalculados)
+        await EnsureProjectObjectivesAsync(forceRefresh: true);
+
+        // 2) Refrescar header del proyecto (si cambia ExecutionPercentage/State)
+        await RefreshProjectHeaderAsync();
+
+        // 3) Opcional: refrescar la lista de visitas
+        if (refreshVisitList)
+        {
+            var res = await VisitService.GetByProjectAsync(ProjectId);
+            if (res.Success)
+                _visits = res.Response?.ToList() ?? new();
+        }
+
+        // 4) Opcional: refrescar detalle de visita si está abierto
+        if (refreshVisitDetail && _openVisitId is int vid)
+        {
+            var detailRes = await VisitService.GetVisitDetailAsync(vid);
+            if (detailRes.Success)
+                _visitDetail = detailRes.Response;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task RefreshProjectHeaderAsync()
+    {
+        var detail = await ProjectService.GetDetailAsync(ProjectId);
+        if (detail.Success)
+            _project = detail.Response;
+    }
+
 
     // ===== Acciones miembros =====
     private async Task HandleInviteMember()
@@ -1273,8 +1343,9 @@
         _openVisitId = visitId;
         _loadingVisitDetail = true;
         _visitDetailError = null;
+        _productsError = null;
 
-        await EnsureProjectObjectivesAsync();
+        await EnsureProjectObjectivesAsync(); // o EnsureProjectObjectivesAsync(forceRefresh: false)
 
         try
         {
@@ -1288,16 +1359,22 @@
             var issuesRes = await issuesTask;
             var productsRes = await productsTask;
 
+            // ===== Detalle =====
             if (detailRes.Success)
                 _visitDetail = detailRes.Response;
             else
+            {
+                _visitDetail = null;
                 _visitDetailError = detailRes.Error ?? "No se pudo cargar el detalle de la visita.";
+            }
 
+            // ===== Issues =====
             if (issuesRes.Success)
                 _visitIssues = issuesRes.Response?.ToList() ?? new();
             else
-                _visitIssues = new();
+                _visitIssues = new(); // si quieres, aquí también podrías guardar un error
 
+            // ===== Productos (filtrados por visita) =====
             if (productsRes.Success && productsRes.Response is not null)
             {
                 _projectProducts = productsRes.Response.ToList();
@@ -1313,23 +1390,13 @@
                 _visitProducts = new();
                 _productsError = productsRes.Error ?? "No se pudieron cargar los productos del proyecto.";
             }
-
-            await Task.WhenAll(detailTask, issuesTask);
-
-            if (detailRes.Success)
-                _visitDetail = detailRes.Response;
-            else
-                _visitDetailError = detailRes.Error ?? "No se pudo cargar el detalle de la visita.";
-
-            if (issuesRes.Success)
-                _visitIssues = issuesRes.Response?.ToList() ?? new();
-            else
-                _visitIssues = new();
         }
         catch (Exception ex)
         {
             _visitDetail = null;
             _visitIssues = new();
+            _projectProducts = new();
+            _visitProducts = new();
             _visitDetailError = $"Error de conexión: {ex.Message}";
         }
         finally
@@ -1353,19 +1420,51 @@
 
     private async Task HandleSaveObjectivesAsync(IEnumerable<ObjectiveActivityListItemDTO> activities)
     {
-        // Aquí llegarán TODAS las actividades (de todos los objetivos) con su estado actual.
-        var list = activities.ToList();
+        var list = activities?.ToList() ?? new();
+        if (list.Count == 0)
+        {
+            Toast.ShowInfo("No hay actividades para guardar.");
+            return;
+        }
 
-        // TODO: cuando tengas el endpoint de backend, llamarlo aquí.
-        // Ejemplo (inventado, solo para referencia):
-        // var res = await ProjectObjectiveService.UpdateActivitiesProgressAsync(ProjectId, list, ct);
-        // if (!res.Success) { Toast.ShowError(res.Error ?? "No se pudo guardar el avance."); return; }
+        try
+        {
+            // Actualiza cada actividad (ProgressPercentage 0..100)
+            var tasks = list.Select(a =>
+            {
+                var dto = new UpdateObjectiveActivityRequestDTO
+                {
+                    // ✅ Mapea estos campos con los nombres reales de tu DTO de UI
+                    ObjectiveActivityId = a.ObjectiveActivityId,
+                    ObjectiveId = a.ObjectiveId,
+                    ActionText = a.ActionText ?? string.Empty,
+                    ActivityResult = a.ActivityResult,
+                    ProgressPercentage = a.ProgressPercentage
+                };
 
-        // De momento solo mostramos algo para comprobar que el flujo está bien conectado.
-        Toast.ShowInfo($"Avance de objetivos recibido: {list.Count} actividades (pendiente implementar guardado en backend).");
+                return ObjectiveActivityService.UpdateAsync(a.ObjectiveActivityId, dto, CancellationToken.None);
+            }).ToList();
 
-        await Task.CompletedTask;
+            var results = await Task.WhenAll(tasks);
+
+            var firstFail = results.FirstOrDefault(r => !r.Success);
+            if (firstFail is not null)
+            {
+                Toast.ShowError(firstFail.Error ?? "No se pudieron guardar algunos cambios.");
+                return;
+            }
+
+            Toast.ShowSuccess("Avance guardado correctamente.");
+
+            // ✅ Refresh parcial del tab visits (no recarga toda la página)
+            await RefreshVisitsTabAsync(refreshVisitList: false, refreshVisitDetail: false);
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al guardar actividades: {ex.Message}");
+        }
     }
+
 
 
     // <<<< AGREGAR: Handlers para VisitIssues

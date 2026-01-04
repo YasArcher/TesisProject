@@ -5,7 +5,7 @@ namespace tesisproject.shared.Entities.External
     /// <summary>
     /// Mirrors the external API payload for faculties and careers in a single list.
     /// </summary>
-    public sealed class ExternalFacultyCareerApiModel
+    public sealed class ExternalFacultyCareerFlatModel
     {
         [JsonPropertyName("id_facultad_carrera")]
         public int Id { get; set; }

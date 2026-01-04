@@ -244,8 +244,8 @@ namespace tesisproject.backend.Services.Implementations
                 if (profile.Document != null)
                     r.Document = profile.Document;
                 //ASP externo
-                if (profile.ASP_ID != null)
-                    r.AspNetUserId = profile.ASP_ID;
+                if (profile.AspId != null)
+                    r.AspNetUserId = profile.AspId;
             }
         }
 

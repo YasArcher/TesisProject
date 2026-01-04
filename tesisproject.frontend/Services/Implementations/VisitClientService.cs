@@ -69,5 +69,26 @@ namespace tesisproject.frontend.Services.Implementations
                 ct
             );
         }
+        public Task<HttpResponseWrapper<VisitListResponseDTO?>> FinalizeAsync(
+            int visitId,
+            FinalizeVisitRequestDTO request,
+            CancellationToken ct = default)
+        {
+            if (visitId <= 0)
+                throw new ArgumentException("visitId must be a positive value.", nameof(visitId));
+
+            if (request is null)
+                throw new ArgumentNullException(nameof(request));
+
+
+            request.VisitId = visitId;
+
+            // PUT: api/visits/{id}/finalize
+            return _api.PutAsync<FinalizeVisitRequestDTO, VisitListResponseDTO>(
+                $"{_baseUrl}/{visitId}/finalize",
+                request,
+                ct
+            );
+        }
     }
 }

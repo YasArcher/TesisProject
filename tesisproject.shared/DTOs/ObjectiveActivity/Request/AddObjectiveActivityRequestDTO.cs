@@ -22,8 +22,9 @@ namespace tesisproject.shared.DTOs.ObjectiveActivity.Request
         public string? ActionText { get; set; }
 
         /// <summary>
-        /// Optional initial completion state (defaults to false in entity).
+        /// Optional initial progress (0..100). Defaults to 0.
         /// </summary>
-        public bool IsCompleted { get; set; } = false;
+        [Range(0, 100)]
+        public int ProgressPercentage { get; set; } = 0;
     }
 }

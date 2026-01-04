@@ -17,5 +17,6 @@
         public DateTime? PerformedDate { get; set; }
 
         public string VisitState { get; set; } = null!;
+        public int VisitStateId { get; set; }
     }
 }

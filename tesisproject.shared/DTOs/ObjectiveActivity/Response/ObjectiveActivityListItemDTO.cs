@@ -25,5 +25,6 @@ namespace tesisproject.shared.DTOs.ObjectiveActivity.Response
         public bool IsCompleted { get; set; }
 
         public DateTime CreatedAt { get; set; }
+        public int ProgressPercentage { get; set; }
     }
 }

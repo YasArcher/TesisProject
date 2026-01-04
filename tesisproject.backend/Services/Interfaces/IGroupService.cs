@@ -1,4 +1,4 @@
-﻿using tesisproject.shared.DTOs.External;
+﻿using tesisproject.shared.DTOs.AppUser;
 using tesisproject.shared.DTOs.Group.Request;
 using tesisproject.shared.DTOs.Group.Response;
 using tesisproject.shared.Responses;
@@ -25,22 +25,22 @@ namespace tesisproject.backend.Services.Interfaces
         /// Retrieves external users for a given group by resolving local members (emails/roles)
         /// and querying the external directory in batch.
         /// </summary>
-        Task<ServiceResult<List<ExternalUserDTO>>> GetExternalUsersByGroupAsync(int groupId, CancellationToken ct = default);
+        Task<ServiceResult<List<ResolvedUserProfileDTO>>> GetExternalUsersByGroupAsync(int groupId, CancellationToken ct = default);
 
         /// <summary>
         /// Resolves an external user profile for a given ASP.NET user id
         /// by reading the local email and querying the external directory.
         /// </summary>
-        Task<ServiceResult<ExternalUserDTO>> GetExternalUserByAspNetIdAsync(int userId, CancellationToken ct = default);
+        Task<ServiceResult<ResolvedUserProfileDTO>> GetExternalUserByAspNetIdAsync(int userId, CancellationToken ct = default);
 
         /// <summary>
         /// Retrieves an external user profile directly by institutional email.
         /// </summary>
-        Task<ServiceResult<ExternalUserDTO>> GetExternalUserByEmailAsync(string institutionalEmail, CancellationToken ct = default);
+        Task<ServiceResult<ResolvedUserProfileDTO>> GetExternalUserByEmailAsync(string institutionalEmail, CancellationToken ct = default);
 
         /// <summary>
         /// Retrieves all external users from the external directory (if supported).
         /// </summary>
-        Task<ServiceResult<List<ExternalUserDTO>>> GetAllExternalUsersAsync(CancellationToken ct = default);
+        Task<ServiceResult<List<ResolvedUserProfileDTO>>> GetAllExternalUsersAsync(CancellationToken ct = default);
     }
 }

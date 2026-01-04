@@ -21,5 +21,6 @@ namespace tesisproject.frontend.Services.Interfaces
 
         // UPDATE (plano)
         Task<HttpResponseWrapper<VisitListResponseDTO?>> UpdateAsync(UpdateVisitRequestDTO request, CancellationToken ct = default);
+        Task<HttpResponseWrapper<VisitListResponseDTO?>> FinalizeAsync(int visitId, FinalizeVisitRequestDTO request, CancellationToken ct = default);
     }
 }

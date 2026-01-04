@@ -6,6 +6,7 @@
 @using tesisproject.shared.DTOs.Group.Request
 @using tesisproject.shared.DTOs.Group.Response
 @using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.AppUser
 @using tesisproject.shared.Enums
 @using tesisproject.shared.Responses
 @using tesisproject.frontend.Services
@@ -71,7 +72,7 @@
     // ====== Estado de datos ======
     private List<GroupResponseDTO> groups = new();
     private int? selectedGroupId;
-    private List<ExternalUserDTO> members = new();
+    private List<ResolvedUserProfileDTO> members = new();
 
     private bool isLoading;
     private bool isLoadingMembers;
@@ -204,7 +205,7 @@
         await Task.CompletedTask;
     }
 
-    private async Task<List<ExternalUserDTO>> HandleAskCandidates(int groupId)
+    private async Task<List<ResolvedUserProfileDTO>> HandleAskCandidates(int groupId)
     {
         var all = await ExternalUserService.GetListAsync();
         if (!all.Success)

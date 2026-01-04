@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace tesisproject.shared.Entities.External
 {
-    public sealed class ExternalFacultyCareerDTO
+    public sealed class ExternalTeacherFacultyCareerModel
     {
         [JsonPropertyName("teacher_faculty_career_id")]
         public int TeacherFacultyCareerId { get; set; }

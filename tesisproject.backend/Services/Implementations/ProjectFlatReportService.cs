@@ -143,7 +143,7 @@ namespace tesisproject.backend.Services.Implementations
             //   DIRECTORIO EXTERNO
             // =========================
             // Se indexa por ASP_ID (IdAsp)
-            var profileByAspId = new Dictionary<int, ExternalProfileDTO>();
+            var profileByAspId = new Dictionary<int, ExternalUserProfileModel>();
 
             try
             {
@@ -151,7 +151,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (profilesRes.Success && profilesRes.Data is not null)
                 {
                     profileByAspId = profilesRes.Data
-                        .Where(p => p.ASP_ID.HasValue)
+                        .Where(p => p.AspId.HasValue)
                         .GroupBy(p => GetProfileKey(p))
                         .ToDictionary(g => g.Key, g => g.First());
 
@@ -200,7 +200,7 @@ namespace tesisproject.backend.Services.Implementations
                             // IdUser (interno) que viene en GroupMember
                             var userId = m.UserId;
 
-                            ExternalProfileDTO? profile = null;
+                            ExternalUserProfileModel? profile = null;
 
                             // Buscar AppUser para obtener IdAsp
                             if (appUserByIdUser.TryGetValue(userId, out var appUser) &&
@@ -406,19 +406,19 @@ namespace tesisproject.backend.Services.Implementations
         /// <summary>
         /// Devuelve la clave (ASP_ID) del perfil externo.
         /// </summary>
-        private static int GetProfileKey(ExternalProfileDTO profile)
+        private static int GetProfileKey(ExternalUserProfileModel profile)
         {
             // ASP_ID viene como long? / int? en tu DTO
-            return (int)profile.ASP_ID!;
+            return (int)profile.AspId!;
         }
 
-        private static string? GetProfileName(ExternalProfileDTO profile)
+        private static string? GetProfileName(ExternalUserProfileModel profile)
             => profile.FullName;
 
-        private static string? GetProfileEmail(ExternalProfileDTO profile)
+        private static string? GetProfileEmail(ExternalUserProfileModel profile)
             => profile.Email;
 
-        private static string? GetProfilePhone(ExternalProfileDTO profile)
+        private static string? GetProfilePhone(ExternalUserProfileModel profile)
             => profile.Phone;
     }
 }
