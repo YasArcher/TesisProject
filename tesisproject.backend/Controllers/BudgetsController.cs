@@ -69,7 +69,7 @@ namespace tesisproject.backend.Controllers
 
         // DELETE: api/Budgets/{id}
         [HttpDelete("{id:int}")]
-        public async Task<ActionResult<ApiResponse<bool>>> Delete(
+        public async Task<ActionResult<ApiResponse<NoContent>>> Delete(
             int id,
             CancellationToken ct)
             => (await _service.DeleteAsync(id, ct)).ToActionResult();
@@ -122,5 +122,20 @@ namespace tesisproject.backend.Controllers
             CancellationToken ct)
             => (await _service.CancelTransactionAsync(transactionId, ct))
                 .ToActionResult();
+
+        // PUT: api/Budgets/transactions/{transactionId}
+        [HttpPut("transactions/{transactionId:int}")]
+        public async Task<ActionResult<ApiResponse<BudgetTransactionDTO>>> UpdateTransaction(
+            int transactionId,
+            [FromBody] UpdateBudgetTransactionRequestDTO request,
+            CancellationToken ct)
+        {
+            var userId = User.GetUserId();
+            if (userId is null)
+                return Unauthorized(ApiResponse<BudgetTransactionDTO>.Fail("User not authenticated."));
+
+            return (await _service.UpdateTransactionAsync(transactionId, request, userId.Value, ct))
+                .ToActionResult();
+        }
     }
 }

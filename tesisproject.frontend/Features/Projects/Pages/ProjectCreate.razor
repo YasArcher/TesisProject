@@ -270,7 +270,12 @@
                                   Intent="ButtonIntent.Accept"
                                   Variant="ButtonVariant.Filled"
                                   Size="ButtonSize.Md"
-                                  Disabled="@IsSaving" />
+                                  Disabled="@IsSaving"
+                                  ConfirmBeforeExecute="true"
+                                  ConfirmTitle="Confirmar creación"
+                                  ConfirmMessage="¿Seguro que deseas crear el proyecto con la información mostrada en el resumen?"
+                                  ConfirmButtonText="Crear"
+                                  CancelButtonText="Revisar" />
                 }
             </footer>
         </div>

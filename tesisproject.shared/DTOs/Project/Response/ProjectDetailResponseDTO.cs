@@ -13,6 +13,7 @@ namespace tesisproject.shared.DTOs.Project.Response
 
         // 🔹 Convocatoria asociada al proyecto
         public int ConvocationId { get; set; }
+        public int DurationInMonths { get; set; }
 
         public ICollection<ProjectObjectiveListItemDTO>? ProjectObjectives { get; set; }
 

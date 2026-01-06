@@ -269,12 +269,6 @@ namespace tesisproject.backend.Services.Implementations
                 if (current is null)
                     return ServiceResult<NoContent>.Fail("Project not found.", ErrorType.NotFound);
 
-                if (dto.ExecutionPercentage.HasValue && current.ExecutionPercentage.HasValue &&
-                    dto.ExecutionPercentage.Value < current.ExecutionPercentage.Value)
-                {
-                    return ServiceResult<NoContent>.Fail("Execution percentage cannot decrease.", ErrorType.Validation);
-                }
-
                 ApplyUpdate(current, dto);
                 _uow.Projects.Update(current);
                 await _uow.SaveChangesAsync(ct);
@@ -344,6 +338,7 @@ namespace tesisproject.backend.Services.Implementations
                        ProjectTypeId = p.ProjectTypeId,
                        ProjectTypeName = p.ProjectType.Name ?? string.Empty,
                        ConvocationId = p.ConvocationId ?? 0,
+                       DurationInMonths = p.DurationInMonths,
                        ProjectStateId = p.ProjectStateId,
                        ProjectStateName = p.ProjectState.Name ?? string.Empty,
 
@@ -2230,11 +2225,10 @@ namespace tesisproject.backend.Services.Implementations
             target.ProjectName = dto.ProjectName;
             target.ProjectTypeId = dto.ProjectTypeId;
             target.ProjectStateId = dto.ProjectStateId;
-            target.ProjectGroupId = dto.ProjectGroupId;
             target.StartDate = dto.StartDate;
+            target.DurationInMonths = dto.DurationInMonths;
             target.TentativeEndDate = dto.TentativeEndDate;
             target.RealEndDate = dto.RealEndDate;
-            target.ExecutionPercentage = dto.ExecutionPercentage;
             target.ConvocationId = dto.ConvocationId;
         }
     }

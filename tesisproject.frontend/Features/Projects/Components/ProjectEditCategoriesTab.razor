@@ -1,0 +1,234 @@
+﻿@using Microsoft.AspNetCore.Components
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.Project.Response
+@using tesisproject.shared.DTOs.Project.Request
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+
+<section class="space-y-6 bg-background border-2 border-border rounded-3xl p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-4 pb-4 border-b-2 border-border">
+        <div class="flex items-center gap-3">
+            <div class="w-1 h-6 bg-primary rounded-full"></div>
+            <h3 class="text-base font-bold text-foreground tracking-tight">Categorías de investigación</h3>
+        </div>
+
+        <ActionButton Execute="OnSaveClicked"
+                      Text="Guardar"
+                      Variant="ButtonVariant.Filled"
+                      Intent="ButtonIntent.Success"
+                      Disabled="@(IsLoading || IsSaving || Project is null || _selectedLeafIds.Count == 0)"
+                      ConfirmBeforeExecute="true"
+                      ConfirmTitle="Guardar categorías"
+                      ConfirmMessage="¿Confirmas guardar los cambios de categorías de investigación?"
+                      ConfirmButtonText="Guardar"
+                      CancelButtonText="Cancelar" />
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="text-sm text-muted">Cargando catálogos...</div>
+    }
+    else if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="text-sm text-error">@ErrorMessage</div>
+    }
+    else if (Project is null)
+    {
+        <div class="text-sm text-muted">No se encontró el proyecto.</div>
+    }
+    else
+    {
+        <div class="rounded-lg border border-border bg-background p-4">
+            <p class="text-xs text-muted mb-3">
+                Selecciona categorías por grupo. Abajo se guardarán los IDs (normalmente hojas).
+            </p>
+
+            <!-- ✅ Render dinámico por grupo (como el ejemplo) -->
+            <div class="space-y-4">
+                @if (ResearchCategoryGroups is not null && ResearchCategoryGroups.Any())
+                {
+                    @foreach (var group in ResearchCategoryGroups)
+                    {
+                        <div class="border border-border rounded-2xl p-3 bg-background/60">
+                            <ResearchCategoryMultiLevelSelector Title="@group.Name"
+                                                                ResearchCategoryGroupId="@group.Id"
+                                                                Categories="@ResearchCategoryTree"
+                                                                CategoryTypes="@ResearchCategoryTypes"
+                                                                SelectedCategoryIds="@((IReadOnlyCollection<int>)GetSelectedIdsForGroup(group.Id).ToArray())"
+                                                                OnSelectionChanged="(selection) => HandleGroupSelectionChanged(group.Id, selection)" />
+                        </div>
+                    }
+                }
+                else
+                {
+                    <!-- fallback: un único selector -->
+                    <ResearchCategoryMultiLevelSelector Categories="@ResearchCategoryTree"
+                                                        CategoryTypes="@ResearchCategoryTypes"
+                                                        SelectedCategoryIds="@((IReadOnlyCollection<int>)(Project.ResearchCategoryIds?.ToArray() ?? Array.Empty<int>()))"
+                                                        OnSelectionChanged="HandleGlobalSelectionChanged"
+                                                        Title="Categorías de investigación" />
+                }
+            </div>
+        </div>
+
+        <div class="p-4 rounded-2xl border border-border bg-background">
+            <div class="text-sm font-semibold text-foreground">IDs a guardar</div>
+            <div class="text-xs text-muted">
+                @(_selectedLeafIds.Count == 0 ? "—" : string.Join(", ", _selectedLeafIds))
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public ProjectDetailResponseDTO? Project { get; set; }
+
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+
+    [Parameter] public IReadOnlyList<ResearchCategoryTreeItemDTO> ResearchCategoryTree { get; set; } = Array.Empty<ResearchCategoryTreeItemDTO>();
+    [Parameter] public IReadOnlyList<ResearchCategoryTypeListItemDTO> ResearchCategoryTypes { get; set; } = Array.Empty<ResearchCategoryTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> ResearchCategoryGroups { get; set; } = Array.Empty<CatalogListItemDTO>();
+
+    [Parameter] public EventCallback<UpdateProjectResearchCategoriesRequestDTO> OnSaveRequested { get; set; }
+
+    // ===== selección final a guardar (hojas) =====
+    private List<int> _selectedLeafIds = new();
+
+    // ===== selección interna por grupo (groupId -> árbol seleccionado) =====
+    private readonly Dictionary<int, List<ResearchCategoryTreeItemDTO>> _selectionByGroup = new();
+
+    // ===== índices para preselección por grupo =====
+    private readonly Dictionary<int, ResearchCategoryTreeItemDTO> _categoryById = new();
+    private readonly Dictionary<int, int> _typeToGroup = new(); // typeId -> groupId
+    private readonly Dictionary<int, List<int>> _selectedIdsByGroup = new(); // groupId -> ids
+
+    protected override void OnParametersSet()
+    {
+        if (Project is null) return;
+
+        BuildIndexes();
+
+        // Inicial: en la BD normalmente ya guardas hojas, así que esto es válido.
+        _selectedLeafIds = (Project.ResearchCategoryIds ?? new List<int>())
+            .Distinct()
+            .ToList();
+
+        // Construye el mapeo ids -> grupo para pasar SelectedCategoryIds por cada selector
+        BuildSelectedIdsByGroupFromProject();
+    }
+
+    private Task OnSaveClicked()
+        => OnSaveRequested.InvokeAsync(new UpdateProjectResearchCategoriesRequestDTO
+        {
+            ResearchCategoryIds = _selectedLeafIds.Distinct().ToList()
+        });
+
+    // ========= HANDLERS (como el ejemplo) =========
+
+    private async Task HandleGlobalSelectionChanged(List<ResearchCategoryTreeItemDTO> selection)
+    {
+        _selectionByGroup.Clear();
+        _selectedLeafIds = GetLeafIds(selection ?? new()).Distinct().ToList();
+        await Task.CompletedTask;
+    }
+
+    private async Task HandleGroupSelectionChanged(int groupId, List<ResearchCategoryTreeItemDTO> selection)
+    {
+        _selectionByGroup[groupId] = selection ?? new();
+
+        // combinar y recalcular hojas (IDs a guardar)
+        var combined = _selectionByGroup.Values.SelectMany(x => x).ToList();
+        _selectedLeafIds = GetLeafIds(combined).Distinct().ToList();
+
+        await Task.CompletedTask;
+    }
+
+    // ========= PRESELECCIÓN POR GRUPO =========
+
+    private IEnumerable<int> GetSelectedIdsForGroup(int groupId)
+    {
+        if (_selectedIdsByGroup.TryGetValue(groupId, out var ids))
+            return ids;
+
+        return Array.Empty<int>();
+    }
+
+    private void BuildSelectedIdsByGroupFromProject()
+    {
+        _selectedIdsByGroup.Clear();
+
+        var ids = Project?.ResearchCategoryIds ?? new List<int>();
+        foreach (var id in ids)
+        {
+            if (!_categoryById.TryGetValue(id, out var node))
+                continue;
+
+            if (!_typeToGroup.TryGetValue(node.ResearchCategoryTypeId, out var groupId))
+                continue;
+
+            if (!_selectedIdsByGroup.TryGetValue(groupId, out var list))
+            {
+                list = new List<int>();
+                _selectedIdsByGroup[groupId] = list;
+            }
+
+            if (!list.Contains(id))
+                list.Add(id);
+        }
+    }
+
+    private void BuildIndexes()
+    {
+        _categoryById.Clear();
+        _typeToGroup.Clear();
+
+        // typeId -> groupId (depende de tu DTO ResearchCategoryTypeListItemDTO)
+        foreach (var t in ResearchCategoryTypes)
+        {
+            // si tu DTO usa otro nombre, ajusta aquí:
+            _typeToGroup[t.Id] = t.ResearchCategoryGroupId;
+        }
+
+        foreach (var root in ResearchCategoryTree)
+            IndexTree(root);
+    }
+
+    private void IndexTree(ResearchCategoryTreeItemDTO node)
+    {
+        if (!_categoryById.ContainsKey(node.Id))
+            _categoryById[node.Id] = node;
+
+        foreach (var child in node.Children)
+            IndexTree(child);
+    }
+
+    // ========= LEAF IDS =========
+
+    private static IEnumerable<int> GetLeafIds(IEnumerable<ResearchCategoryTreeItemDTO> roots)
+    {
+        foreach (var r in roots)
+        {
+            foreach (var id in GetLeafIdsRecursive(r))
+                yield return id;
+        }
+    }
+
+    private static IEnumerable<int> GetLeafIdsRecursive(ResearchCategoryTreeItemDTO node)
+    {
+        if (node.Children is null || node.Children.Count == 0)
+        {
+            yield return node.Id;
+            yield break;
+        }
+
+        foreach (var child in node.Children)
+        {
+            foreach (var id in GetLeafIdsRecursive(child))
+                yield return id;
+        }
+    }
+}

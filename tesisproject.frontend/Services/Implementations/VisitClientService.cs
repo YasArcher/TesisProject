@@ -17,6 +17,19 @@ namespace tesisproject.frontend.Services.Implementations
 
         public VisitClientService(IApiClient api) => _api = api;
 
+        public Task<HttpResponseWrapper<VisitListResponseDTO?>> CreateAsync(AddVisitRequestDTO request, CancellationToken ct = default)
+        {
+            if (request is null)
+                throw new ArgumentNullException(nameof(request));
+
+            // POST: api/visits
+            return _api.PostAsync<AddVisitRequestDTO, VisitListResponseDTO>(
+                _baseUrl,
+                request,
+                ct
+            );
+        }
+
         // =========================
         //           LIST
         // =========================
@@ -90,5 +103,23 @@ namespace tesisproject.frontend.Services.Implementations
                 ct
             );
         }
+        // =========================
+        //          DELETE
+        // =========================
+
+        public Task<HttpResponseWrapper<NoContent?>> DeleteAsync(
+            int id,
+            CancellationToken ct = default)
+        {
+            if (id <= 0)
+                throw new ArgumentException("id must be a positive value.", nameof(id));
+
+            // DELETE: api/visits/{id}
+            return _api.DeleteAsync(
+                $"{_baseUrl}/{id}",
+                ct
+            );
+        }
+
     }
 }

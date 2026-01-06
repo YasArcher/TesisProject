@@ -87,9 +87,17 @@
             </div>
 
             <!-- Derecha -->
-            <div class="lg:text-right space-y-2 shrink-0">
+            <div class="lg:text-right space-y-3 shrink-0">
+                <div class="flex lg:justify-end">
+                    <ActionButton Execute="GoToEdit"
+                                  Text="Editar"
+                                  Intent="ButtonIntent.Info"
+                                  Variant="ButtonVariant.Filled"
+                                  Size="ButtonSize.Md" />
+                </div>
+
                 <div class="text-sm font-medium text-muted">Progreso del Proyecto</div>
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-4 lg:justify-end">
                     <div class="w-32 bg-border rounded-full h-3 relative overflow-hidden">
                         <div class="bg-secondary h-3 rounded-full transition-all duration-500"
                              style="width:@((_project?.ExecutionPercentage ?? 0).ToString("F1"))%"></div>
@@ -99,6 +107,7 @@
                     </span>
                 </div>
             </div>
+
         </div>
     </div>
 
@@ -393,6 +402,13 @@
     private List<ExternalResearcherListItemDTO> _externalResearcherCandidates = new();
     private List<InstitutionListItemDTO> _institutionSuggestions = new();
     private List<InstitutionListItemDTO> _allInstitutions = new();
+
+    private Task GoToEdit()
+    {
+        Nav.NavigateTo($"/projects/{ProjectId}/edit");
+        return Task.CompletedTask;
+    }
+
 
     private async Task HandleOpenExternalResearcherPicker()
     {

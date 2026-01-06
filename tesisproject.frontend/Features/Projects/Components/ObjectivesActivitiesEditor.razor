@@ -159,22 +159,40 @@
                         </h3>
                     </div>
 
-                    <button type="button"
-                            class="ml-2 p-2 rounded-lg border border-border hover:bg-muted/10 transition-all flex-shrink-0"
-                            @onclick="ToggleObjectiveExpanded">
-                        @if (_isObjectiveExpanded)
-                        {
-                            <svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
-                            </svg>
-                        }
-                        else
-                        {
-                            <svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                        }
-                    </button>
+                    <!-- ✅ NUEVO: Acciones (Eliminar objetivo específico + Colapsar/Expandir) -->
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <ActionButton Text="Eliminar objetivo"
+                                      Intent="ButtonIntent.Delete"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Xs"
+                                      ConfirmBeforeExecute="true"
+                                      ConfirmTitle="Eliminar objetivo"
+                                      ConfirmMessage="¿Está seguro de que desea eliminar este objetivo específico? Se eliminarán también sus actividades."
+                                      Execute="RemoveSelectedObjective">
+                            <Icon>
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </Icon>
+                        </ActionButton>
+
+                        <button type="button"
+                                class="p-2 rounded-lg border border-border hover:bg-muted/10 transition-all"
+                                @onclick="ToggleObjectiveExpanded">
+                            @if (_isObjectiveExpanded)
+                            {
+                                <svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                                </svg>
+                            }
+                            else
+                            {
+                                <svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            }
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Mostrar vista previa SOLO cuando está colapsado -->
@@ -499,6 +517,25 @@
             return;
 
         _selectedObjective.Activities.Remove(activity);
+        await NotifyObjectivesChanged();
+    }
+
+    private async void RemoveSelectedObjective()
+    {
+        if (_selectedObjective is null)
+            return;
+
+        // Seguridad extra: nunca eliminar el objetivo general
+        if (_selectedObjective.ObjectiveType == 1)
+            return;
+
+        var toRemove = _selectedObjective;
+
+        Objectives.Remove(toRemove);
+
+        _selectedObjective = SpecificObjectives.FirstOrDefault();
+        _isObjectiveExpanded = false;
+
         await NotifyObjectivesChanged();
     }
 

@@ -1,0 +1,162 @@
+﻿@using Microsoft.AspNetCore.Components
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.ViewModels
+@using tesisproject.shared.DTOs.ProjectObjective.Response
+@using tesisproject.shared.Responses
+
+<section class="space-y-6 bg-background border-2 border-border rounded-3xl p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-4 pb-4 border-b-2 border-border">
+        <div class="flex items-center gap-3">
+            <div class="w-1 h-6 bg-primary rounded-full"></div>
+            <h3 class="text-base font-bold text-foreground tracking-tight">Objetivos</h3>
+        </div>
+
+        <ActionButton Execute="OnSaveClicked"
+                      Text="Guardar"
+                      Variant="ButtonVariant.Filled"
+                      Intent="ButtonIntent.Success"
+                      Disabled="@(IsLoading || IsSaving || _vmObjectives.Count == 0)"
+                      ConfirmBeforeExecute="true"
+                      ConfirmTitle="Guardar objetivos"
+                      ConfirmMessage="¿Confirmas guardar los cambios de objetivos y actividades?"
+                      ConfirmButtonText="Guardar"
+                      CancelButtonText="Cancelar" />
+    </div>
+
+    @if (IsLoading)
+    {
+        <div class="text-sm text-muted">Cargando objetivos...</div>
+    }
+    else if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="text-sm text-error">@ErrorMessage</div>
+    }
+    else
+    {
+        <ObjectivesActivitiesEditorVM Objectives="_vmObjectives"
+                                      ObjectivesChanged="HandleObjectivesChanged" />
+
+        <!-- Debug opcional -->
+        <div class="p-4 rounded-2xl border border-border bg-background">
+            <div class="text-sm font-semibold text-foreground">Estado</div>
+            <div class="text-xs text-muted">
+                Objetivos cargados: @_vmObjectives.Count
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    // ========= PARAMS desde el padre =========
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public EventCallback<ProjectObjectivesSavePayloadVM> OnSaveRequested { get; set; }
+
+    // ========= SERVICES =========
+    [Inject] public IProjectObjectiveClientService ProjectObjectiveService { get; set; } = default!;
+
+    // ========= STATE =========
+    private bool _localLoaded;
+    private List<ProjectObjectiveEditVM> _vmObjectives = new();
+    private List<ProjectObjectiveEditVM> _originalObjectives = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Cargar una sola vez cuando ya tengas ProjectId válido
+        if (_localLoaded) return;
+        if (ProjectId <= 0) return;
+        if (IsLoading) return;
+        if (!string.IsNullOrEmpty(ErrorMessage)) return;
+
+        await LoadObjectivesAsync();
+        _localLoaded = true;
+    }
+
+    private async Task LoadObjectivesAsync()
+    {
+        var res = await ProjectObjectiveService.GetByProjectWithActivitiesAsync(ProjectId);
+
+        if (!res.Success || res.Response is null)
+            return;
+
+        _vmObjectives = MapToVM(res.Response);
+
+        // Snapshot para diff
+        _originalObjectives = DeepClone(_vmObjectives);
+    }
+
+    private static List<ProjectObjectiveEditVM> DeepClone(List<ProjectObjectiveEditVM> source)
+        => source.Select(o => new ProjectObjectiveEditVM
+        {
+            ObjectiveId = o.ObjectiveId,
+            ProjectId = o.ProjectId,
+            ObjectiveTypeId = o.ObjectiveTypeId,
+            ObjectiveText = o.ObjectiveText,
+            Result = o.Result,
+            Percentage = o.Percentage,
+            Activities = (o.Activities ?? new List<ObjectiveActivityEditVM>())
+                .Select(a => new ObjectiveActivityEditVM
+                {
+                    ActivityId = a.ActivityId,
+                    ObjectiveId = a.ObjectiveId,
+                    ActionText = a.ActionText,
+                    ActivityResult = a.ActivityResult,
+                    ProgressPercentage = a.ProgressPercentage
+                }).ToList()
+        }).ToList();
+
+
+
+    private static List<ProjectObjectiveEditVM> MapToVM(List<ProjectObjectiveWithActivitiesDTO> data)
+    {
+        // ⚠️ AQUÍ falta tu DTO real de objetivos con actividades.
+        // En cuanto me lo pegues, te lo dejo 100% mapeado.
+
+        // Por ahora, estructura vacía para compilar si ya tienes el DTO importado.
+        var list = new List<ProjectObjectiveEditVM>();
+
+        foreach (var o in data)
+        {
+            var vm = new ProjectObjectiveEditVM
+            {
+                ObjectiveId = o.Id,
+                ProjectId = o.ProjectId,
+                ObjectiveTypeId = o.ObjectiveTypeId,
+                ObjectiveText = o.Objective,
+                Result = o.Result,
+                Percentage = o.WeightedPercentage,
+                Activities = o.Activities?.Select(a => new ObjectiveActivityEditVM
+                {
+                    ActivityId = a.ObjectiveActivityId,
+                    ObjectiveId = a.ObjectiveId,
+                    ActionText = a.ActionText,
+                    ActivityResult = a.ActivityResult,
+                    ProgressPercentage = a.ProgressPercentage
+                }).ToList() ?? new List<ObjectiveActivityEditVM>()
+            };
+
+            list.Add(vm);
+        }
+
+        return list;
+    }
+
+    private Task HandleObjectivesChanged()
+    {
+        // aquí solo reaccionas a cambios del editor (ya muta la lista)
+        return Task.CompletedTask;
+    }
+
+    private Task OnSaveClicked()
+        => OnSaveRequested.InvokeAsync(new ProjectObjectivesSavePayloadVM
+        {
+            Current = _vmObjectives,
+            Original = _originalObjectives
+        });
+
+    // ========= VIEW MODELS =========
+
+}

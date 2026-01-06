@@ -8,7 +8,7 @@
 <div class="space-y-6">
     <!-- RESUMEN GLOBAL -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <StatCard Title="Project completion"
+        <StatCard Title="Finalización del proyecto"
                   Variant="StatCardVariant.Soft"
                   Emphasis="StatCardEmphasis.Strong"
                   Size="StatCardSize.Md">
@@ -17,28 +17,28 @@
             </ChildContent>
             <Footer>
                 <span class="text-xs text-muted">
-                    Based on weighted specific objectives and their activities
+                    Basado en los objetivos específicos ponderados y sus actividades
                 </span>
             </Footer>
         </StatCard>
 
-        <StatCard Title="Specific objectives"
+        <StatCard Title="Objetivos específicos"
                   Variant="StatCardVariant.Outlined"
                   Size="StatCardSize.Md">
             <ChildContent>
                 <div class="flex items-baseline gap-2">
                     <span class="text-2xl font-bold">@SpecificObjectives.Count()</span>
-                    <span class="text-sm text-muted">objectives</span>
+                    <span class="text-sm text-muted">objetivos</span>
                 </div>
             </ChildContent>
             <Footer>
                 <span class="text-xs text-muted">
-                    Total weight: @SpecificTotalWeight%
+                    Peso total: @SpecificTotalWeight%
                 </span>
             </Footer>
         </StatCard>
 
-        <StatCard Title="Activities progress"
+        <StatCard Title="Progreso de actividades"
                   Variant="StatCardVariant.Outlined"
                   Size="StatCardSize.Md">
             <ChildContent>
@@ -49,7 +49,7 @@
             </ChildContent>
             <Footer>
                 <span class="text-xs text-muted">
-                    @CompletedActivitiesPercentageDisplay completed
+                    @CompletedActivitiesPercentageDisplay completado
                 </span>
             </Footer>
         </StatCard>
@@ -66,9 +66,6 @@
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-primary-subtle text-primary text-xs font-semibold uppercase tracking-wider">
                                 @GeneralObjective.ObjectiveTypeName
                             </span>
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full border-2 border-border text-xs font-semibold text-muted">
-                                Weight: @GeneralObjective.WeightedPercentage%
-                            </span>
                         </div>
                         <h3 class="text-base lg:text-lg font-bold text-foreground leading-snug">
                             @GeneralObjective.Objective
@@ -77,7 +74,7 @@
 
                     <div class="flex-shrink-0 text-center lg:text-right space-y-2">
                         <div>
-                            <span class="text-xs text-muted uppercase tracking-wide block mb-1">Overall completion</span>
+                            <span class="text-xs text-muted uppercase tracking-wide block mb-1">Finalización total</span>
                             <span class="text-2xl lg:text-3xl font-bold text-primary">
                                 @GlobalCompletionDisplay
                             </span>
@@ -105,7 +102,7 @@
         @if (!SpecificObjectives.Any())
         {
             <div class="text-center py-8 px-4 bg-muted/5 border border-border rounded-xl">
-                <p class="text-sm text-muted">No specific objectives found for this project.</p>
+                <p class="text-sm text-muted">No se encontraron objetivos específicos para este proyecto.</p>
             </div>
         }
         else
@@ -126,7 +123,7 @@
                                             @objective.ObjectiveTypeName
                                         </span>
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full border border-border text-xs font-medium text-muted">
-                                            Weight: <span class="ml-1 font-bold">@objective.WeightedPercentage%</span>
+                                            Peso: <span class="ml-1 font-bold">@objective.WeightedPercentage%</span>
                                         </span>
                                     </div>
 
@@ -140,12 +137,12 @@
                                 </div>
 
                                 <div class="flex-shrink-0 text-center lg:text-right space-y-2 lg:min-w-[140px]">
-                                    <span class="text-xs text-muted uppercase tracking-wide block">Completion</span>
+                                    <span class="text-xs text-muted uppercase tracking-wide block">Finalización</span>
                                     <span class="text-xl lg:text-2xl font-bold @(completion >= 100 ? "text-secondary" : "text-primary")">
                                         @completion.ToString("0.##")%
                                     </span>
                                     <div class="text-xs text-muted">
-                                        @completedCount / @totalCount activities
+                                        @completedCount / @totalCount actividades
                                     </div>
                                     <div class="w-full lg:w-32 h-2 rounded-full bg-muted/20 overflow-hidden">
                                         <div class="h-full @(completion >= 100 ? "bg-secondary" : "bg-primary") transition-all duration-500"
@@ -160,14 +157,14 @@
                         <div class="space-y-3">
                             <div class="flex items-center justify-between pt-2 border-t border-border">
                                 <h5 class="text-xs font-bold text-muted uppercase tracking-wider">
-                                    Activities (@totalCount)
+                                    Actividades (@totalCount)
                                 </h5>
                             </div>
 
                             <DataTable TItem="ObjectiveActivityListItemDTO"
                                        Items="objective.Activities"
                                        Columns="@_activityColumns"
-                                       EmptyText="No activities defined for this objective.">
+                                       EmptyText="No hay actividades definidas para este objetivo.">
                                 <RowTemplate Context="activity">
                                     <td class="px-4 py-3.5 text-sm align-top">
                                         <div class="font-medium text-foreground">@activity.ActionText</div>
@@ -195,7 +192,7 @@
                                                        disabled />
 
                                                 <span class="px-3 py-1 rounded-full text-xs font-bold bg-secondary-subtle text-secondary border border-secondary-light whitespace-nowrap">
-                                                    ✓ Completed
+                                                    ✓ Completada
                                                 </span>
                                             }
                                             else
@@ -211,7 +208,7 @@
                                                         @if (saving)
                                                         {
                                                             <span class="px-3 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted border border-muted/30 whitespace-nowrap">
-                                                                Saving...
+                                                                Guardando...
                                                             </span>
                                                         }
                                                         else
@@ -221,7 +218,7 @@
                                                             </span>
                                                         }
 
-                                                        <ActionButton Text="Save"
+                                                        <ActionButton Text="Guardar"
                                                                       Intent="ButtonIntent.Warning"
                                                                       Variant="ButtonVariant.Outline"
                                                                       Size="ButtonSize.Sm"
@@ -281,9 +278,9 @@
     private readonly IReadOnlyList<ColumnDef<ObjectiveActivityListItemDTO>> _activityColumns =
         new[]
         {
-            new ColumnDef<ObjectiveActivityListItemDTO>("Activity", _ => null!, "35%", false),
-            new ColumnDef<ObjectiveActivityListItemDTO>("Expected Result", _ => null!, "45%", false),
-            new ColumnDef<ObjectiveActivityListItemDTO>("Progress", _ => null!, "20%", false),
+            new ColumnDef<ObjectiveActivityListItemDTO>("Actividad", _ => null!, "35%", false),
+            new ColumnDef<ObjectiveActivityListItemDTO>("Resultado esperado", _ => null!, "45%", false),
+            new ColumnDef<ObjectiveActivityListItemDTO>("Progreso", _ => null!, "20%", false),
         };
 
     protected override void OnParametersSet()
@@ -346,7 +343,7 @@
         catch (Exception ex)
         {
             _errorByActivityId[id] = string.IsNullOrWhiteSpace(ex.Message)
-                ? "Could not save activity progress."
+                ? "No se pudo guardar el progreso de la actividad."
                 : ex.Message;
         }
         finally
@@ -357,7 +354,7 @@
     }
 
     private string GetProgressBadgeText(int pct)
-        => pct >= 100 ? "✓ Completed" : pct > 0 ? "In progress" : "Pending";
+        => pct >= 100 ? "✓ Completada" : pct > 0 ? "En progreso" : "Pendiente";
 
     private string GetProgressBadgeClass(int pct)
         => pct >= 100

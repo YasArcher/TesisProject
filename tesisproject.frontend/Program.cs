@@ -99,6 +99,9 @@ builder.Services.AddScoped<IProductAttributeDefinitionClientService, ProductAttr
 builder.Services.AddScoped<IProjectMatrixClientService, ProjectMatrixClientService>();
 builder.Services.AddScoped<IExportTemplateClientService, ExportTemplateClientService>();
 builder.Services.AddScoped<IObjectiveActivityClientService, ObjectiveActivityClientService>();
+builder.Services.AddScoped<IProjectStateClientService, ProjectStateClientService>();
+builder.Services.AddScoped<IExternalPeriodsClientService, ExternalPeriodsClientService>();
+builder.Services.AddScoped<IVisitStateClientService, VisitStateClientService>();
 
 // External
 builder.Services.AddScoped<IExternalAcademicsClientService, ExternalAcademicsClientService>();
