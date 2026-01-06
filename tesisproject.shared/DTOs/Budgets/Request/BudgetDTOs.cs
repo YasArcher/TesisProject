@@ -48,8 +48,8 @@ namespace tesisproject.shared.DTOs.Budgets.Request
 
     public class UpdateBudgetRequestDTO
     {
-        [Required]
-        public int ApprovedByUserId { get; set; }
+        [Range(1, int.MaxValue)]
+        public int FundingTypeId { get; set; }
 
         [Range(0, double.MaxValue)]
         public decimal InitialAmount { get; set; }

@@ -58,7 +58,7 @@ namespace tesisproject.backend.Controllers
         public async Task<ActionResult<ApiResponse<VisitListResponseDTO>>> Finalize(int id, [FromBody] FinalizeVisitRequestDTO body,
             CancellationToken ct)
         {
-            body.VisitId = id; // route id manda
+            body.VisitId = id;
             return (await _service.FinalizeAsync(body, ct)).ToActionResult();
         }
     }

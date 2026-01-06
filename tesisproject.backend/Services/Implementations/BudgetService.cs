@@ -182,12 +182,6 @@ namespace tesisproject.backend.Services.Implementations
                 var e = await _uow.Budgets.GetByIdAsync(new object[] { budgetId }, ct);
                 if (e is null)
                     return ServiceResult<BudgetDTO>.Fail("Budget not found.", ErrorType.NotFound);
-
-                if (request.CertifiedAmount > request.InitialAmount)
-                    return ServiceResult<BudgetDTO>.Fail("Certified amount cannot exceed initial amount.", ErrorType.Validation);
-
-                if (request.ExecutedAmount > request.CertifiedAmount)
-                    return ServiceResult<BudgetDTO>.Fail("Executed amount cannot exceed certified amount.", ErrorType.Validation);
                 var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
                 if (user is null)
                 {
@@ -201,6 +195,7 @@ namespace tesisproject.backend.Services.Implementations
                 e.CertifiedAmount = request.CertifiedAmount;
                 e.ExecutedAmount = request.ExecutedAmount;
                 e.ApprovedAt = request.ApprovedAt;
+                e.FundingTypeId = request.FundingTypeId;
 
                 _uow.Budgets.Update(e);
                 await _uow.SaveChangesAsync(ct);
@@ -217,26 +212,28 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-        public async Task<ServiceResult<bool>> DeleteAsync(int budgetId, CancellationToken ct = default)
+        public async Task<ServiceResult<NoContent>> DeleteAsync(int budgetId, CancellationToken ct = default)
         {
             try
             {
                 var e = await _uow.Budgets.GetByIdAsync(new object[] { budgetId }, ct);
                 if (e is null)
-                    return ServiceResult<bool>.Fail("Budget not found.", ErrorType.NotFound);
+                    return ServiceResult<NoContent>.Fail("Budget not found.", ErrorType.NotFound);
 
                 _uow.Budgets.Remove(e);
                 await _uow.SaveChangesAsync(ct);
 
-                return ServiceResult<bool>.Ok(true, "Budget deleted");
+                return ServiceResult<NoContent>.Ok(new NoContent(), "Budget deleted.");
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<bool>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return ServiceResult<NoContent>.Fail(
+                    dbex.InnerException?.Message ?? dbex.Message,
+                    ErrorType.Conflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<bool>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
 
@@ -350,7 +347,7 @@ namespace tesisproject.backend.Services.Implementations
 
                 // 3) Validar que aún no esté devengada
                 //    Usamos ExecutedAt como indicador
-                if (tx.ExecutedAt != null)
+                if (tx.TransactionTypeId != 1)
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
                         "This transaction has already been executed.",
@@ -446,7 +443,7 @@ namespace tesisproject.backend.Services.Implementations
                 var dto = list.Select(Map).ToList();
 
                 if (dto.Count == 0)
-                    return ServiceResult<List<BudgetTransactionDTO>>.Fail("No transactions found.", ErrorType.NotFound);
+                    return ServiceResult<List<BudgetTransactionDTO>>.Ok(dto, "Transactions retrieved");
 
                 return ServiceResult<List<BudgetTransactionDTO>>.Ok(dto, "Transactions retrieved");
             }
@@ -542,7 +539,166 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
+        public async Task<ServiceResult<BudgetTransactionDTO>> UpdateTransactionAsync(
+    int budgetTransactionId,
+    UpdateBudgetTransactionRequestDTO request,
+    int currentUserId,
+    CancellationToken ct = default)
+        {
+            try
+            {
+                // (Opcional, pero consistente con tus writes)
+                var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+                if (user is null)
+                {
+                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                        "User not found.",
+                        ErrorType.NotFound);
+                }
 
+                var tx = await _uow.Budgets.GetTransactionByIdAsync(budgetTransactionId, ct);
+                if (tx is null)
+                {
+                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                        "Budget transaction not found.",
+                        ErrorType.NotFound);
+                }
+
+                // Regla segura: si está cancelada, no se edita (usa tu endpoint de cancelación)
+                if (tx.TransactionTypeId == 3)
+                {
+                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                        "Cancelled transactions cannot be updated.",
+                        ErrorType.Validation);
+                }
+
+                // ====== Aplicar cambios permitidos ======
+                tx.TransactionTypeId = request.TransactionTypeId;
+                tx.Name = request.Name;
+                tx.CertifiedAmount = request.CertifiedAmount;
+                tx.ExecutedAmount = request.ExecutedAmount;
+                tx.BudgetItem = request.BudgetItem;
+                tx.CURNumber = request.CURNumber;
+                tx.CertificationDescription = request.CertificationDescription;
+                tx.ExecutionDescription = request.ExecutionDescription;
+
+                // ====== Validaciones por transacción ======
+                var executedValue = tx.ExecutedAmount ?? 0m;
+                if (executedValue > tx.CertifiedAmount)
+                {
+                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                        "Executed amount cannot exceed certified amount.",
+                        ErrorType.Validation);
+                }
+
+                // Si el tipo es "Executed" (2), forzamos coherencia mínima (sin tocar fechas)
+                if (tx.TransactionTypeId == 2)
+                {
+                    // Ejecutado debería tener executed amount (permitimos 0, pero no null)
+                    if (tx.ExecutedAmount is null)
+                    {
+                        return ServiceResult<BudgetTransactionDTO>.Fail(
+                            "ExecutedAmount is required for executed transactions.",
+                            ErrorType.Validation);
+                    }
+
+                    // Si no tiene ExecutedAt, igual NO la seteamos (por tu regla),
+                    // pero sí evitamos que quede "ejecutada" sin fecha si eso te molesta:
+                    // (si NO quieres esta regla, bórrala)
+                    if (tx.ExecutedAt is null)
+                    {
+                        return ServiceResult<BudgetTransactionDTO>.Fail(
+                            "Executed transactions cannot be updated to type Executed without ExecutedAt set.",
+                            ErrorType.Validation);
+                    }
+                }
+
+                // ====== Recalcular agregados del Budget (Certified/Executed) ======
+                var budget = await _uow.Budgets.GetByIdAsync(new object[] { tx.BudgetId }, ct);
+                if (budget is null)
+                {
+                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                        "Budget not found.",
+                        ErrorType.NotFound);
+                }
+
+                var all = await _uow.Budgets.GetTransactionsAsync(budget.BudgetId, ct);
+
+                // Reflejar cambios actuales en la lista (porque GetTransactionsAsync es NoTracking)
+                for (int i = 0; i < all.Count; i++)
+                {
+                    if (all[i].BudgetTransactionId == tx.BudgetTransactionId)
+                    {
+                        all[i].TransactionTypeId = tx.TransactionTypeId;
+                        all[i].Name = tx.Name;
+                        all[i].CertifiedAmount = tx.CertifiedAmount;
+                        all[i].ExecutedAmount = tx.ExecutedAmount;
+                        all[i].BudgetItem = tx.BudgetItem;
+                        all[i].CURNumber = tx.CURNumber;
+                        all[i].CertificationDescription = tx.CertificationDescription;
+                        all[i].ExecutionDescription = tx.ExecutionDescription;
+                        // fechas y users se mantienen (regla tuya)
+                        break;
+                    }
+                }
+
+                // Certified actual = suma de certificaciones activas (tipo 1)
+                var certifiedCurrentTotal = all
+                    .Where(t => t.TransactionTypeId == 1)
+                    .Sum(t => t.CertifiedAmount);
+
+                // Ejecutado total = suma de ejecutados (tipo 2) por su executed amount
+                var executedTotal = all
+                    .Where(t => t.TransactionTypeId == 2)
+                    .Sum(t => t.ExecutedAmount ?? 0m);
+
+                // Certified histórico (para no pasarte del InitialAmount):
+                // suma de certificados de tipo 1 + tipo 2 (cancelados tipo 3 excluidos)
+                var certifiedEverTotal = all
+                    .Where(t => t.TransactionTypeId == 1 || t.TransactionTypeId == 2)
+                    .Sum(t => t.CertifiedAmount);
+
+                if (certifiedEverTotal > budget.InitialAmount)
+                {
+                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                        "Total certified amount exceeds the budget initial amount.",
+                        ErrorType.Validation);
+                }
+
+                if (executedTotal > certifiedEverTotal)
+                {
+                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                        "Total executed amount cannot exceed the total certified amount.",
+                        ErrorType.Validation);
+                }
+
+                budget.CertifiedAmount = certifiedCurrentTotal;
+                budget.ExecutedAmount = executedTotal;
+
+                _uow.Budgets.Update(budget);
+
+                // (Opcional) si quieres explícito en repo:
+                // _uow.Budgets.UpdateTransaction(tx);
+
+                await _uow.SaveChangesAsync(ct);
+
+                return ServiceResult<BudgetTransactionDTO>.Ok(
+                    Map(tx),
+                    "Transaction updated.");
+            }
+            catch (DbUpdateException dbex)
+            {
+                return ServiceResult<BudgetTransactionDTO>.Fail(
+                    dbex.InnerException?.Message ?? dbex.Message,
+                    ErrorType.Conflict);
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<BudgetTransactionDTO>.Fail(
+                    ex.Message,
+                    ErrorType.Unexpected);
+            }
+        }
 
         // Mapper local
         private static BudgetTransactionDTO Map(BudgetTransaction t) => new()

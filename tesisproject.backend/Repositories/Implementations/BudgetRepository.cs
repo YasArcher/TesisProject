@@ -97,5 +97,7 @@ namespace tesisproject.backend.Repositories.Implementations
                         .Where(t => t.BudgetId == budgetId)
                         .OrderByDescending(t => t.BudgetTransactionId)
                         .ToListAsync(ct);
+        public void UpdateTransaction(BudgetTransaction tx)
+    => _ctx.Set<BudgetTransaction>().Update(tx);
     }
 }

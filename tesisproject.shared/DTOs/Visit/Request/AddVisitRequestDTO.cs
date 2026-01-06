@@ -12,11 +12,7 @@ namespace tesisproject.shared.DTOs.Visit.Request
         [Required]
         public int ProjectId { get; set; }
 
-        [Required]
-        public int VisitStateId { get; set; }
-
         // Fecha programada de la visita (no ejecutada aún)
-        [Required]
-        public DateTime ScheduledDate { get; set; }
+        public DateTime? ScheduledDate { get; set; }
     }
 }

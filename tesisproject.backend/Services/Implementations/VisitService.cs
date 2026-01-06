@@ -27,13 +27,10 @@ namespace tesisproject.backend.Services.Implementations
                 if (request.ProjectId <= 0)
                     return ServiceResult<VisitListResponseDTO>.Fail("ProjectId is required.", ErrorType.Validation);
 
-                if (request.VisitStateId <= 0)
-                    return ServiceResult<VisitListResponseDTO>.Fail("VisitStateId is required.", ErrorType.Validation);
-
                 var entity = new Visit
                 {
                     ProjectId = request.ProjectId,
-                    VisitStateId = request.VisitStateId,
+                    VisitStateId = 1,
                     ScheduledDate = request.ScheduledDate,
                 };
 

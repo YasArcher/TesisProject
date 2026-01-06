@@ -13,5 +13,6 @@ namespace tesisproject.backend.Repositories.Interfaces
         Task<BudgetTransaction?> GetTransactionByIdAsync(int txId, CancellationToken ct = default);
         Task<int?> FindBudgetIdByTransactionAsync(int txId, CancellationToken ct = default);
         Task<List<BudgetTransaction>> GetTransactionsAsync(int budgetId, CancellationToken ct = default);
+        void UpdateTransaction(BudgetTransaction tx);
     }
 }

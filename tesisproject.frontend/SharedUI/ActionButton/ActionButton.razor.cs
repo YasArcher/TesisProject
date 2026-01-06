@@ -38,7 +38,6 @@ namespace tesisproject.frontend.SharedUI.ActionButton
         protected bool CanShowConfirmDialog()
         {
             return ConfirmBeforeExecute &&
-                   IsDestructive(Intent) &&
                    (_showConfirmDialog || _hasBeenUsedForConfirmation);
         }
 
@@ -47,7 +46,7 @@ namespace tesisproject.frontend.SharedUI.ActionButton
         {
             if (_isBusy || Disabled) return;
 
-            if (ConfirmBeforeExecute && IsDestructive(Intent))
+            if (ConfirmBeforeExecute)
             {
                 _hasBeenUsedForConfirmation = true;
                 var confirmed = await ShowConfirmationAsync();

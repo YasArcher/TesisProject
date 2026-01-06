@@ -1,6 +1,7 @@
 ﻿@using tesisproject.frontend.SharedUI.ConfirmDialog
 
-<button class="@BuildClass()"
+<button type="button"
+        class="@BuildClass()"
         disabled="@(_isBusy || Disabled)"
         @attributes="AdditionalAttributes"
         @onclick="OnClickInternal">

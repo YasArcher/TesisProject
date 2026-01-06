@@ -126,6 +126,8 @@
     [Parameter]
     public int? ResearchCategoryGroupId { get; set; }
 
+    [Parameter]
+    public IEnumerable<int> SelectedCategoryIds { get; set; } = Array.Empty<int>();
 
     // ============================
     // Estado interno
@@ -136,11 +138,14 @@
     private readonly Dictionary<int, List<ResearchCategoryTreeItemDTO>> _itemsByType = new();
     private readonly Dictionary<int, int?> _activeSelections = new();
     private readonly List<ResearchCategoryTreeItemDTO> _selectedRoots = new();
+    private HashSet<int> _lastSelectedIds = new();
+
 
     protected override void OnParametersSet()
     {
         base.OnParametersSet();
         BuildIndexes();
+
         _orderedTypes = CategoryTypes
             .Where(t => _itemsByType.ContainsKey(t.Id))
             .Where(t => !ResearchCategoryGroupId.HasValue || t.ResearchCategoryGroupId == ResearchCategoryGroupId.Value)
@@ -152,7 +157,10 @@
             if (!_activeSelections.ContainsKey(t.Id))
                 _activeSelections[t.Id] = null;
         }
+
+        HydrateSelectedTreeFromIds();
     }
+
 
     private void BuildIndexes()
     {
@@ -316,6 +324,25 @@
             parentSelected.Children.Add(CloneWithoutChildren(item));
         }
     }
+
+    private void HydrateSelectedTreeFromIds()
+    {
+        var incoming = SelectedCategoryIds?.Where(id => id > 0).ToHashSet() ?? new HashSet<int>();
+
+        if (_lastSelectedIds.SetEquals(incoming))
+            return;
+
+        _lastSelectedIds = incoming;
+
+        _selectedRoots.Clear();
+
+        foreach (var id in incoming)
+        {
+            if (_allItems.TryGetValue(id, out var item))
+                InsertIntoSelectedTree(item);
+        }
+    }
+
 
     private ResearchCategoryTreeItemDTO? FindNodeById(List<ResearchCategoryTreeItemDTO> roots, int id)
     {
