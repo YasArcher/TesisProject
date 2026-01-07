@@ -6,6 +6,7 @@
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.ViewModels
 @using tesisproject.shared.DTOs.Convocation.Response
+@using tesisproject.shared.DTOs.Document.Response
 @using tesisproject.shared.DTOs.ObjectiveActivity.Request
 @using tesisproject.shared.DTOs.Project.Response
 @using tesisproject.shared.DTOs.Project.Request
@@ -44,8 +45,7 @@
 @inject IConvocationClientService ConvocationService
 @inject IVisitStateClientService VisitStateService
 @inject IFundingTypeClientService FundingTypeService
-
-
+@inject IProjectOriginTypeClientService ProjectOriginTypeService
 @inject IProjectTypeClientService ProjectTypeService
 @inject IProjectStateClientService ProjectStateService
 @inject IExternalPeriodsClientService ExternalPeriodsService
@@ -150,7 +150,9 @@
                                                    IsLoading="@_loadingGeneral"
                                                    IsSaving="@_savingGeneral"
                                                    ErrorMessage="@_generalError"
-                                                   OnSaveRequested="HandleSaveGeneralAsync" />
+                                                   ProjectOriginTypes="@_projectOriginTypes"
+                                                   OnSaveRequested="HandleSaveGeneralAsync"
+                                                   OnEditDocument="HandleEditDocument" />
                         </ChildContent>
                     </Tab>
 
@@ -217,7 +219,14 @@
         }
     </div>
 </div>
-
+<DocumentEditModal Id="document-edit-modal"
+                   Title="Editar documento inicial del Proyecto"
+                   DocumentId="@_editingDocumentId"
+                   IsOpen="@_docEditOpen"
+                   IsOpenChanged="v => _docEditOpen = v"
+                   ErrorMessage="@_docEditError"
+                   ErrorMessageChanged="v => _docEditError = v"
+                   OnSaved="HandleDocumentSaved" />
 @code {
     [Parameter] public int ProjectId { get; set; }
 
@@ -242,6 +251,10 @@
     private bool _loadingVisits;
     private string? _visitsError;
 
+    private bool _docEditOpen;
+    private int _editingDocumentId;
+    private string? _docEditError;
+
     private List<VisitListResponseDTO> _visits = new();
     private IReadOnlyList<CatalogListItemDTO> _visitStates = Array.Empty<CatalogListItemDTO>();
 
@@ -252,7 +265,7 @@
     // lock crear
     private bool _creatingVisit;
 
-
+    private IReadOnlyList<CatalogListItemDTO> _projectOriginTypes = Array.Empty<CatalogListItemDTO>();
 
     private UpdateProjectRequestDTO _generalDto = new();
 
@@ -277,7 +290,21 @@
     private HashSet<int> _cancelingTransactionIds = new();
     private HashSet<int> _updatingTransactionIds = new();
 
+    private Task HandleEditDocument(int documentId)
+    {
+        _editingDocumentId = documentId;
+        _docEditError = null;
+        _docEditOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
 
+    private async Task HandleDocumentSaved(DocumentResponseDTO updated)
+    {
+        // Refrescar overview para que Item.Documents tenga lo último
+        await EnsureTabDataAsync("general");
+        StateHasChanged();
+    }
 
     private List<BudgetDTO> _budgets = new();
     private Dictionary<int, List<BudgetTransactionDTO>> _budgetTransactions = new();
@@ -902,7 +929,20 @@
                 RealEndDate = _project?.RealEndDate,
                 ConvocationId = _project?.ConvocationId ?? 0,
                 DurationInMonths = _project?.DurationInMonths ?? 0,
+                ProjectOriginTypeId = _project?.ProjectOriginTypeId ?? 0,
+
             };
+            var originTypesTask = ProjectOriginTypeService.GetListAsync(onlyActives: true, CancellationToken.None);
+
+            await Task.WhenAll(detailTask, typesTask, statesTask, convocationsTask, originTypesTask);
+
+            var originTypes = await originTypesTask;
+
+            if (originTypes.Success && originTypes.Response is not null)
+                _projectOriginTypes = originTypes.Response;
+            else
+                _generalError ??= originTypes.Error ?? "No se pudieron cargar los tipos de origen del proyecto.";
+
         }
         catch (Exception ex)
         {

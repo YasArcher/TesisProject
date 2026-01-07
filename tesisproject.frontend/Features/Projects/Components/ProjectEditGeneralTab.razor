@@ -63,6 +63,14 @@
                            Disabled="@(IsSaving)"
                            Required="true" />
 
+                <ActionButton Text="Editar documento inicial"
+                              Intent="ButtonIntent.Warning"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Md"
+                              Execute="EditMainDocumentAsync"
+                              Disabled="@(!CanEditMainDocument)" />
+
+
                 <!-- ProjectDuration-->
                 <TextInput TValue="int"
                            Label="Numero de meses del proyecto"
@@ -89,6 +97,25 @@
 
                     <ValidationMessage For="() => Dto.ConvocationId" />
                 </div>
+
+                <!-- Project Origin Type -->
+                <div class="space-y-2">
+                    <label class="text-sm font-semibold text-foreground">Tipo de origen</label>
+
+                    <SelectInput TItem="CatalogListItemDTO"
+                                 Items="ProjectOriginTypes"
+                                 Value="_selectedProjectOriginType"
+                                 ValueChanged="OnProjectOriginTypeChanged"
+                                 GetText="@(x => x.Name)"
+                                 GetKey="@(x => x.Id.ToString())"
+                                 Placeholder="Seleccione un tipo de origen"
+                                 Disabled="@(IsSaving)"
+                                 AllowClear="false"
+                                 Size="SelectSize.Md" />
+
+                    <ValidationMessage For="() => Dto.ProjectOriginTypeId" />
+                </div>
+
 
                 <!-- ProjectType -->
                 <div class="space-y-2">
@@ -158,58 +185,142 @@
     [Parameter] public int ProjectId { get; set; }
     [Parameter] public ProjectDetailResponseDTO? Project { get; set; }
     [Parameter] public UpdateProjectRequestDTO? Dto { get; set; }
+
     [Parameter] public IReadOnlyList<CatalogListItemDTO> ProjectTypes { get; set; } = Array.Empty<CatalogListItemDTO>();
     [Parameter] public IReadOnlyList<CatalogListItemDTO> ProjectStates { get; set; } = Array.Empty<CatalogListItemDTO>();
     [Parameter] public IReadOnlyList<ConvocationListItemResponseDTO> Convocations { get; set; } = Array.Empty<ConvocationListItemResponseDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> ProjectOriginTypes { get; set; } = Array.Empty<CatalogListItemDTO>();
+
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public bool IsSaving { get; set; }
     [Parameter] public string? ErrorMessage { get; set; }
 
+    [Parameter] public EventCallback<int> OnEditDocument { get; set; }
     [Parameter] public EventCallback OnSaveRequested { get; set; }
 
+    private CatalogListItemDTO? _selectedProjectOriginType;
     private CatalogListItemDTO? _selectedProjectType;
     private CatalogListItemDTO? _selectedProjectState;
     private ConvocationListItemResponseDTO? _selectedConvocation;
+
+    // Para que "Edit" se comporte como "Create" (no resetear selección en cada render)
+    private int _lastTypeId;
+    private int _lastStateId;
+    private int _lastConvocationId;
+    private int _lastOriginTypeId;
+
+    private const int DOC_MEMORANDO_INICIAL = 1;
+    private const int DOC_CONTRATO_AUSPICIO = 5;
+    private const int DOC_RESOLUCION_PRORROGA = 3;
+    private const int DOC_RESOLUCION_FINAL = 4;
+
+    protected override void OnInitialized()
+    {
+        _lastTypeId = int.MinValue;
+        _lastStateId = int.MinValue;
+        _lastConvocationId = int.MinValue;
+        _lastOriginTypeId = int.MinValue;
+    }
 
     protected override void OnParametersSet()
     {
         if (Dto is null) return;
 
-        _selectedProjectType = ProjectTypes.FirstOrDefault(x => x.Id == Dto.ProjectTypeId);
-        _selectedProjectState = ProjectStates.FirstOrDefault(x => x.Id == Dto.ProjectStateId);
-        _selectedConvocation = Convocations.FirstOrDefault(x => x.Id == Dto.ConvocationId);
+        // Solo resincroniza si cambió el id (o si aún no hay selección)
+        if (_selectedProjectType is null || _lastTypeId != Dto.ProjectTypeId)
+        {
+            _selectedProjectType = ProjectTypes.FirstOrDefault(x => x.Id == Dto.ProjectTypeId);
+            _lastTypeId = Dto.ProjectTypeId;
+        }
+
+        if (_selectedProjectState is null || _lastStateId != Dto.ProjectStateId)
+        {
+            _selectedProjectState = ProjectStates.FirstOrDefault(x => x.Id == Dto.ProjectStateId);
+            _lastStateId = Dto.ProjectStateId;
+        }
+
+        if (_selectedConvocation is null || _lastConvocationId != Dto.ConvocationId)
+        {
+            _selectedConvocation = Convocations.FirstOrDefault(x => x.Id == Dto.ConvocationId);
+            _lastConvocationId = Dto.ConvocationId;
+        }
+
+        if (_selectedProjectOriginType is null || _lastOriginTypeId != Dto.ProjectOriginTypeId)
+        {
+            _selectedProjectOriginType = ProjectOriginTypes.FirstOrDefault(x => x.Id == Dto.ProjectOriginTypeId);
+            _lastOriginTypeId = Dto.ProjectOriginTypeId;
+        }
     }
 
     private Task OnSaveClicked() => OnSaveRequested.InvokeAsync();
 
+    private async Task EditMainDocumentAsync()
+    {
+        // ✅ era Item, pero tu parámetro es Project
+        if (Project?.Documents is null || Project.Documents.Count == 0)
+            return;
+
+        var doc = Project.Documents
+            .OrderBy(d => d.DocumentTypeId switch
+            {
+                DOC_MEMORANDO_INICIAL => 0,
+                DOC_CONTRATO_AUSPICIO => 1,
+                DOC_RESOLUCION_PRORROGA => 2,
+                DOC_RESOLUCION_FINAL => 3,
+                _ => 99
+            })
+            .FirstOrDefault();
+
+        if (doc is null || doc.DocumentId <= 0)
+            return;
+
+        await OnEditDocument.InvokeAsync(doc.DocumentId);
+    }
+
+    private bool CanEditMainDocument =>
+        Project?.Documents?.Any(d => d.DocumentTypeId == DOC_MEMORANDO_INICIAL && d.DocumentId > 0) == true;
+
     private Task OnProjectTypeChanged(CatalogListItemDTO? item)
     {
         _selectedProjectType = item;
-
-        // Como el DTO requiere int, si AllowClear=false nunca será null en uso normal.
         if (Dto is not null && item is not null)
+        {
             Dto.ProjectTypeId = item.Id;
-
+            _lastTypeId = item.Id; // clave para evitar "rebote"
+        }
         return Task.CompletedTask;
     }
 
     private Task OnProjectStateChanged(CatalogListItemDTO? item)
     {
         _selectedProjectState = item;
-
         if (Dto is not null && item is not null)
+        {
             Dto.ProjectStateId = item.Id;
+            _lastStateId = item.Id;
+        }
+        return Task.CompletedTask;
+    }
 
+    private Task OnProjectOriginTypeChanged(CatalogListItemDTO? item)
+    {
+        _selectedProjectOriginType = item;
+        if (Dto is not null && item is not null)
+        {
+            Dto.ProjectOriginTypeId = item.Id;
+            _lastOriginTypeId = item.Id;
+        }
         return Task.CompletedTask;
     }
 
     private Task OnConvocationChanged(ConvocationListItemResponseDTO? item)
     {
         _selectedConvocation = item;
-
         if (Dto is not null && item is not null)
+        {
             Dto.ConvocationId = item.Id;
-
+            _lastConvocationId = item.Id;
+        }
         return Task.CompletedTask;
     }
 }

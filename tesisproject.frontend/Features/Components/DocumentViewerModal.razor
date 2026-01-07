@@ -1,0 +1,82 @@
+﻿@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Services.Interfaces
+@using Microsoft.JSInterop
+
+@inject IDocumentClientService DocumentService
+@inject IModalService ModalService
+@inject IJSRuntime JS
+
+<Modal Id="@Id"
+       Title="@Title"
+       Size="ModalSize.Xl"
+       IsOpen="@IsOpen"
+       IsOpenChanged="@IsOpenChanged"
+       CloseOnBackdrop="true"
+       CloseOnEscape="true">
+
+    <ChildContent>
+        <!-- Contenedor del body del modal: SIN scroll -->
+        <div class="flex flex-col h-[68vh] overflow-hidden">
+            @if (DocumentId <= 0)
+            {
+                <div class="text-sm text-muted">
+                    No hay ningún documento seleccionado.
+                </div>
+            }
+            else
+            {
+                <!-- Visor: es el único que debe "ocupar" el espacio -->
+                <div class="flex-1 min-h-0 border border-border rounded-2xl overflow-hidden bg-background">
+                    <iframe src="@ViewUrl"
+                            class="w-full h-full"
+                            title="Vista previa del documento">
+                    </iframe>
+                </div>
+
+                <!-- Footer fijo: NO debe empujar el scroll del modal -->
+                <div class="shrink-0 mt-3 pt-3 border-t border-border bg-background">
+                    <div class="flex justify-end gap-2">
+                        <ActionButton Text="Abrir"
+                                      Intent="ButtonIntent.Info"
+                                      Variant="ButtonVariant.Ghost"
+                                      Size="ButtonSize.Md"
+                                      Execute="OpenAsync" />
+
+                        <ActionButton Text="Descargar"
+                                      Intent="ButtonIntent.Info"
+                                      Variant="ButtonVariant.Filled"
+                                      Size="ButtonSize.Md"
+                                      Execute="DownloadAsync" />
+                    </div>
+                </div>
+            }
+        </div>
+    </ChildContent>
+
+</Modal>
+
+@code
+{
+    [Parameter] public string Id { get; set; } = "document-viewer-modal";
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter] public int DocumentId { get; set; }
+    [Parameter] public string Title { get; set; } = "Documento";
+
+    private string ViewUrl => DocumentId > 0 ? DocumentService.GetViewUrl(DocumentId) : string.Empty;
+    private string DownloadUrl => DocumentId > 0 ? DocumentService.GetDownloadUrl(DocumentId) : string.Empty;
+
+    private async Task OpenAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ViewUrl)) return;
+        await JS.InvokeVoidAsync("open", ViewUrl, "_blank");
+    }
+
+    private async Task DownloadAsync()
+    {
+        if (string.IsNullOrWhiteSpace(DownloadUrl)) return;
+        await JS.InvokeVoidAsync("open", DownloadUrl, "_blank");
+    }
+}
