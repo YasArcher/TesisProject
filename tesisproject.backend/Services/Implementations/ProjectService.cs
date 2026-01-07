@@ -313,68 +313,82 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         public async Task<ServiceResult<ProjectDetailResponseDTO>> GetProjectDetailAsync(
-           int projectId,
-           CancellationToken ct = default)
+            int projectId,
+            CancellationToken ct = default)
         {
             try
             {
+                // 1) Traer el detalle base del proyecto
                 var dto = await _uow.Projects
-                   .Query()
-                   .Include(p => p.ProjectResearchCategories)
-                   .Where(p => p.ProjectId == projectId)
-                   .Select(p => new ProjectDetailResponseDTO
-                   {
-                       ProjectId = p.ProjectId,
-                       ProjectCode = p.ProjectCode ?? string.Empty,
-                       ProjectName = p.ProjectName ?? string.Empty,
+                    .Query()
+                    .Include(p => p.ProjectResearchCategories)
+                    .Where(p => p.ProjectId == projectId)
+                    .Select(p => new ProjectDetailResponseDTO
+                    {
+                        ProjectId = p.ProjectId,
+                        ProjectCode = p.ProjectCode ?? string.Empty,
+                        ProjectName = p.ProjectName ?? string.Empty,
 
-                       ProjectObjectives = MapToDTO(p.ProjectObjectives),
+                        ProjectObjectives = MapToDTO(p.ProjectObjectives),
 
-                       ResearchCategoryIds = p.ProjectResearchCategories
-                           .Select(prc => prc.ResearchCategoryId)
-                           .Distinct()
-                           .ToList(),
+                        ResearchCategoryIds = p.ProjectResearchCategories
+                            .Select(prc => prc.ResearchCategoryId)
+                            .Distinct()
+                            .ToList(),
 
-                       ProjectTypeId = p.ProjectTypeId,
-                       ProjectTypeName = p.ProjectType.Name ?? string.Empty,
-                       ConvocationId = p.ConvocationId ?? 0,
-                       DurationInMonths = p.DurationInMonths,
-                       ProjectStateId = p.ProjectStateId,
-                       ProjectStateName = p.ProjectState.Name ?? string.Empty,
+                        ProjectTypeId = p.ProjectTypeId,
+                        ProjectTypeName = p.ProjectType.Name ?? string.Empty,
+                        ConvocationId = p.ConvocationId ?? 0,
+                        DurationInMonths = p.DurationInMonths,
+                        ProjectStateId = p.ProjectStateId,
+                        ProjectStateName = p.ProjectState.Name ?? string.Empty,
 
-                       StartDate = p.StartDate,
-                       TentativeEndDate = p.TentativeEndDate,
-                       RealEndDate = p.RealEndDate,
-                       ExecutionPercentage = p.ExecutionPercentage ?? 0,
+                        StartDate = p.StartDate,
+                        TentativeEndDate = p.TentativeEndDate,
+                        RealEndDate = p.RealEndDate,
+                        ExecutionPercentage = p.ExecutionPercentage ?? 0,
 
-                       ProjectGroupId = p.ProjectGroupId,
-                       ProjectGroupName = p.ProjectGroup.Name ?? string.Empty,
+                        ProjectGroupId = p.ProjectGroupId,
+                        ProjectGroupName = p.ProjectGroup.Name ?? string.Empty,
+                        ProjectOriginTypeId = p.ProjectOriginTypeId,
+                        Budgets = p.Budgets
+                            .OrderBy(b => b.BudgetId)
+                            .Select(b => new ProjectBudgetDetailDTO
+                            {
+                                BudgetId = b.BudgetId,
+                                InitialAmount = b.InitialAmount,
+                                CertifiedAmount = b.CertifiedAmount,
+                                ExecutedAmount = b.ExecutedAmount,
+                                ApprovedAt = b.ApprovedAt,
+                                FundingTypeId = b.FundingTypeId,
+                                FundingTypeName = b.FundingType.Name
+                            })
+                            .ToList()
+                    })
+                    .FirstOrDefaultAsync(ct);
 
-                       Budgets = p.Budgets
-                           .OrderBy(b => b.BudgetId)
-                           .Select(b => new ProjectBudgetDetailDTO
-                           {
-                               BudgetId = b.BudgetId,
-                               InitialAmount = b.InitialAmount,
-                               CertifiedAmount = b.CertifiedAmount,
-                               ExecutedAmount = b.ExecutedAmount,
-                               ApprovedAt = b.ApprovedAt,
-                               FundingTypeId = b.FundingTypeId,
-                               FundingTypeName = b.FundingType.Name
-                           })
-                           .ToList()
-                   })
-                   .FirstOrDefaultAsync(ct);
+                if (dto is null)
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Project not found.", ErrorType.NotFound);
 
-                return dto is null
-                    ? ServiceResult<ProjectDetailResponseDTO>.Fail("Project not found.", ErrorType.NotFound)
-                    : ServiceResult<ProjectDetailResponseDTO>.Ok(dto, "Project detail retrieved");
+                // 2) Traer SOLO referencias de documentos (DocumentId + DocumentTypeId)
+                dto.Documents = await _uow.ProjectDocuments
+                    .Query(asNoTracking: true)
+                    .Where(pd => pd.ProjectId == projectId)
+                    .Select(pd => new ProjectDocumentRefDTO
+                    {
+                        DocumentId = pd.DocumentId,
+                        DocumentTypeId = pd.Document.DocumentTypeId
+                    })
+                    .ToListAsync(ct);
+
+                return ServiceResult<ProjectDetailResponseDTO>.Ok(dto, "Project detail retrieved");
             }
             catch (Exception ex)
             {
                 return ServiceResult<ProjectDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
+
 
         public async Task<ServiceResult<ProjectDetailResponseDTO>> CreateFullAsync(
             AddProjectFullRequestDTO request,
@@ -514,14 +528,14 @@ namespace tesisproject.backend.Services.Implementations
                     CreatedByUserId = user.IdUser,
                     ProjectTypeId = p.ProjectTypeId,
                     ProjectNumber = nextNumber,
-                    ProjectStateId = p.ProjectStateId,
+                    ProjectStateId = 6,
                     ProjectName = p.ProjectName ?? string.Empty,
                     ApprovalDate = p.ApprovalDate,
                     StartDate = p.StartDate,
                     DurationInMonths = p.DurationInMonths,
                     TentativeEndDate = p.StartDate?.AddMonths(p.DurationInMonths),
                     RealEndDate = null,
-                    ProjectOriginTypeId = 1,
+                    ProjectOriginTypeId = p.ProjectOriginTypeId,
                     ExecutionPercentage = 0,
                     FacultyId = p.FacultyId,
                     ConvocationId = p.ConvocationId

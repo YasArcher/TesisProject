@@ -1,4 +1,5 @@
-﻿@using tesisproject.shared.DTOs.Catalog.Common.Response
+﻿@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.DTOs.Project.Response
 @using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
@@ -96,7 +97,15 @@
                         </div>
                     </div>
                 </div>
+                <div class="mt-6 pt-6 border-t border-border">
+                    <ActionButton Text="Ver documento inicial"
+                                  Intent="ButtonIntent.Info"
+                                  Variant="ButtonVariant.Filled"
+                                  Size="ButtonSize.Md"
+                                  Execute="ViewMainDocumentAsync"
+                                  Disabled="@(!CanViewMainDocument)" />
 
+                </div>
                 <!-- Descripción -->
                 <div class="bg-background border border-border rounded-xl p-6 shadow-sm">
                     <div class="flex items-center gap-3 mb-6">
@@ -108,7 +117,7 @@
                             </svg>
                         </div>
                         <h3 class="text-lg font-semibold text-foreground">Descripción del Proyecto</h3>
-                    </div>
+                  </div>
 
                     <div class="space-y-6">
                         <!-- Objetivo -->
@@ -279,6 +288,13 @@
     [Parameter] public IReadOnlyList<ResearchCategoryTypeListItemDTO>? ResearchCategoryTypes { get; set; }
     [Parameter] public IReadOnlyList<CatalogListItemDTO>? ResearchCategoryGroups { get; set; }
 
+    [Parameter] public EventCallback<int> OnViewDocument { get; set; }
+
+    private const int DOC_MEMORANDO_INICIAL = 1;
+    private const int DOC_CONTRATO_AUSPICIO = 5;
+    private const int DOC_RESOLUCION_PRORROGA = 3;
+    private const int DOC_RESOLUCION_FINAL = 4;
+
     // ✅ NUEVO: tracking para evitar flash de error
     private bool _wasLoading;
     private bool _loadFinishedOnce;
@@ -322,6 +338,30 @@
             }
         }
     }
+
+    private async Task ViewMainDocumentAsync()
+    {
+        if (Item?.Documents is null || Item.Documents.Count == 0)
+            return;
+
+        // Prioridad: el “principal” primero
+        var doc = Item.Documents
+            .OrderBy(d => d.DocumentTypeId switch
+            {
+                DOC_MEMORANDO_INICIAL => 0,
+                DOC_CONTRATO_AUSPICIO => 1,
+                DOC_RESOLUCION_PRORROGA => 2,
+                DOC_RESOLUCION_FINAL => 3,
+                _ => 99
+            })
+            .FirstOrDefault();
+
+        if (doc is null || doc.DocumentId <= 0)
+            return;
+
+        await OnViewDocument.InvokeAsync(doc.DocumentId);
+    }
+
 
     private bool ContainsTypeInGroup(ResearchCategoryTreeItemDTO node, HashSet<int> typeIdsInGroup)
     {
@@ -397,6 +437,13 @@
         }
         return null;
     }
+
+    private bool CanViewMainDocument =>
+    Item?.Documents?.Any(d =>
+        d.DocumentTypeId == DOC_MEMORANDO_INICIAL &&
+        d.DocumentId > 0
+    ) == true;
+
 
     private ResearchCategoryTreeItemDTO CloneWithoutChildren(ResearchCategoryTreeItemDTO src)
     {

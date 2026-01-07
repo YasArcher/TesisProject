@@ -51,6 +51,7 @@
 @inject IConvocationClientService ConvocationClient
 @inject IExternalResearcherClientService ExternalResearcherClient
 @inject IInstitutionClientService InstitutionClient
+@inject IProjectOriginTypeClientService ProjectOriginTypeClient
 
 
 <div class="w-full h-full flex flex-col bg-page-bg">
@@ -140,7 +141,13 @@
                                                             FundingTypeOptions="@_fundingTypeOptions"
                                                             Budgets="@_budgets"
                                                             BudgetsChanged="@OnBudgetsChanged"
-                                                            ConvocationName="@_activeConvocation?.Name" />
+                                                            Convocations="@_convocations"
+                                                            ConvocationId="@_selectedConvocationId"
+                                                            ConvocationIdChanged="id => _selectedConvocationId = id"
+                                                            ProjectOriginTypes="@_projectOriginTypes"
+                                                            ProjectOriginTypeId="@_selectedProjectOriginTypeId"
+                                                            ProjectOriginTypeIdChanged="id => _selectedProjectOriginTypeId = id" />
+
                     </div>
 
                     <!-- STEP 3: Proyecto + miembros -->
@@ -306,6 +313,9 @@
     private bool _showExternalResearcherPicker;
     private bool _showExternalResearcherCreateModal;
 
+    private List<CatalogListItemDTO> _projectOriginTypes = new();
+    private int _selectedProjectOriginTypeId = 0;
+
     private List<ExternalResearcherListItemDTO> _externalResearcherCandidates = new();
     private List<InstitutionListItemDTO> _institutionSuggestions = new();
     private List<InstitutionListItemDTO> _allInstitutions = new();
@@ -327,6 +337,7 @@
     private List<ResolvedUserProfileDTO> _researcherCandidates = new();
     private int? _preselectedUserId;
     private byte[]? _resolutionFileBytes;
+    private int? _selectedConvocationId;
 
     private DocumentResponseDTO? _projectDocument;
     private bool IsStep5Valid => AreObjectivesAndActivitiesValid();
@@ -488,6 +499,22 @@
                 onlyActives: true,
                 ct: CancellationToken.None
             );
+            var originTypesResult = await ProjectOriginTypeClient.GetListAsync(
+    onlyActives: true,
+    ct: CancellationToken.None);
+
+            if (originTypesResult.Success && originTypesResult.Response is not null)
+            {
+                _projectOriginTypes = originTypesResult.Response;
+
+                if (_selectedProjectOriginTypeId <= 0)
+                    _selectedProjectOriginTypeId = _projectOriginTypes.FirstOrDefault()?.Id ?? 0;
+            }
+            else if (!originTypesResult.Success)
+            {
+                Toast.ShowWarning(originTypesResult.Error ?? "No se pudieron cargar los tipos de origen del proyecto.");
+            }
+
 
             if (memberRoleTypeResult.Success && memberRoleTypeResult.Response is not null)
             {
@@ -530,6 +557,7 @@
                         .Where(c => c.IsActive)
                         .OrderBy(c => c.Id)
                         .LastOrDefault();
+                    _selectedConvocationId = _activeConvocation?.Id;
 
                     if (_activeConvocation is null)
                     {
@@ -1104,6 +1132,13 @@
                 return;
             }
 
+            if (_selectedProjectOriginTypeId <= 0)
+            {
+                Toast.ShowWarning("Seleccione el tipo de origen del proyecto.");
+                return;
+            }
+
+
             if (_budgets is null || !_budgets.Any(b => b.FundingTypeId > 0 && b.InitialAmount > 0))
             {
                 //Console.WriteLine("❌ Budgets no válidos");
@@ -1128,12 +1163,11 @@
                 return;
             }
 
-            if (_activeConvocation is null || _activeConvocation.Id <= 0)
+            if (!_selectedConvocationId.HasValue || _selectedConvocationId.Value <= 0)
             {
-                Toast.ShowWarning("No se pudo determinar la convocatoria activa para el proyecto.");
+                Toast.ShowWarning("Seleccione una convocatoria para el proyecto.");
                 return;
             }
-
 
             // ===============================
             // UPLOAD DOCUMENTO
@@ -1173,7 +1207,7 @@
                 );
 
                 //Console.WriteLine("→ Subiendo documento...");
-                var uploadResponse = await DocumentClient.UploadAsync(content);
+                var uploadResponse = await DocumentClient.CreateAsync(content);
 
                 //Console.WriteLine($"← Respuesta Upload: Success={uploadResponse.Success}, Error={uploadResponse.Error}");
 
@@ -1214,7 +1248,9 @@
                 ProjectStateId = 3,
                 DurationInMonths = ResolutionData.Duration > 0 ? ResolutionData.Duration : 12,
                 FacultyId = facultyId,
-                ConvocationId = _activeConvocation.Id
+                ConvocationId = _selectedConvocationId.Value,
+                ProjectOriginTypeId = _selectedProjectOriginTypeId,
+
             };
 
             //Console.WriteLine($"→ ProjectDto listo: Name={projectDto.ProjectName}, Code={projectDto.ProjectCode}, Type={projectDto.ProjectTypeId}, FacultyId={projectDto.FacultyId}");

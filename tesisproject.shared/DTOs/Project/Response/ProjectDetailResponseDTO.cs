@@ -11,14 +11,15 @@ namespace tesisproject.shared.DTOs.Project.Response
         public string ProjectCode { get; set; } = string.Empty;
         public string ProjectName { get; set; } = string.Empty;
 
-        // 🔹 Convocatoria asociada al proyecto
+        public ICollection<ProjectDocumentRefDTO> Documents { get; set; }
+            = new List<ProjectDocumentRefDTO>();
+
+        // --- Convocatoria ---
         public int ConvocationId { get; set; }
         public int DurationInMonths { get; set; }
 
         public ICollection<ProjectObjectiveListItemDTO>? ProjectObjectives { get; set; }
 
-        // IDs de categorías de investigación asociadas al proyecto
-        // (son exactamente los ResearchCategoryId de ProjectResearchCategory)
         public ICollection<int> ResearchCategoryIds { get; set; } = new List<int>();
 
         public int ProjectTypeId { get; set; }
@@ -31,13 +32,17 @@ namespace tesisproject.shared.DTOs.Project.Response
         public DateTime? TentativeEndDate { get; set; }
         public DateTime? RealEndDate { get; set; }
         public decimal ExecutionPercentage { get; set; }
-
-        // --- Groups (main + optional SENESCYT) ---
+        public int ProjectOriginTypeId { get; set; }
         public int ProjectGroupId { get; set; }
         public string ProjectGroupName { get; set; } = string.Empty;
 
-        // --- Budget ---
         public ICollection<ProjectBudgetDetailDTO> Budgets { get; set; } = new List<ProjectBudgetDetailDTO>();
+    }
+
+    public class ProjectDocumentRefDTO
+    {
+        public int DocumentId { get; set; }
+        public int DocumentTypeId { get; set; }
     }
 
     public class ProjectBudgetDetailDTO

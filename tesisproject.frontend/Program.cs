@@ -1,6 +1,6 @@
 ﻿using Blazored.LocalStorage;
 using Blazored.Toast;
-using Microsoft.AspNetCore.Authorization; // ✅ NUEVO
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
@@ -102,6 +102,7 @@ builder.Services.AddScoped<IObjectiveActivityClientService, ObjectiveActivityCli
 builder.Services.AddScoped<IProjectStateClientService, ProjectStateClientService>();
 builder.Services.AddScoped<IExternalPeriodsClientService, ExternalPeriodsClientService>();
 builder.Services.AddScoped<IVisitStateClientService, VisitStateClientService>();
+builder.Services.AddScoped<IProjectOriginTypeClientService, ProjectOriginTypeClientService>();
 
 // External
 builder.Services.AddScoped<IExternalAcademicsClientService, ExternalAcademicsClientService>();

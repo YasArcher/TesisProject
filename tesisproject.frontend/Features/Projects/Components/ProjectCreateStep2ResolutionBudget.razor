@@ -6,6 +6,9 @@
 @using tesisproject.frontend.SharedUI.TextInput
 @using tesisproject.frontend.SharedUI.DateInput
 @using tesisproject.frontend.SharedUI.SelectInput
+@using tesisproject.shared.DTOs.Convocation.Response
+
+
 
 <div class="w-full flex flex-col gap-4">
     <!-- Layout principal: datos de resolución + proyecto + presupuesto -->
@@ -59,15 +62,38 @@
                         </span>
                     </div>
 
-                    <!-- Convocatoria (solo lectura) -->
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs font-medium text-foreground">Convocatoria</label>
-                        <span class="text-sm text-foreground">
-                            @(string.IsNullOrWhiteSpace(ConvocationName)
-                                                        ? "Sin convocatoria activa"
-                                                        : ConvocationName)
-                        </span>
+                    <!-- Convocatoria -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-semibold text-foreground">Convocatoria</label>
+
+                        <SelectInput TItem="ConvocationListItemResponseDTO"
+                                     Items="Convocations"
+                                     Value="_selectedConvocation"
+                                     ValueChanged="OnConvocationChanged"
+                                     GetText="@(x => string.IsNullOrWhiteSpace(x.Code) ? x.Name : $"{x.Code} - {x.Name}")"
+                                     GetKey="@(x => x.Id.ToString())"
+                                     Placeholder="Seleccione una convocatoria"
+                                     Disabled="@(IsBusy)"
+                                     AllowClear="true"
+                                     Size="SelectSize.Md" />
                     </div>
+
+                    <!-- Tipo de origen del proyecto -->
+                    <div class="space-y-2">
+                        <label class="text-sm font-semibold text-foreground">Tipo de origen</label>
+
+                        <SelectInput TItem="CatalogListItemDTO"
+                                     Items="ProjectOriginTypes"
+                                     Value="_selectedProjectOriginType"
+                                     ValueChanged="OnProjectOriginTypeChanged"
+                                     GetText="@(x => x.Name)"
+                                     GetKey="@(x => x.Id.ToString())"
+                                     Placeholder="Seleccione un tipo de origen"
+                                     Disabled="@(IsBusy)"
+                                     AllowClear="true"
+                                     Size="SelectSize.Md" />
+                    </div>
+
 
                     <!-- Duration (months) -->
                     <TextInput TValue="int"
@@ -164,7 +190,7 @@
                                                  GetKey="ft => ft.Id.ToString()"
                                                  Placeholder="Seleccionar tipo de financiamiento..."
                                                  Disabled="@IsBusy"
-                                                 AllowClear="false"
+                                                 AllowClear="true"
                                                  Size="SelectSize.Md" />
 
                                     <span class="text-[11px] text-muted">
@@ -253,22 +279,29 @@
 
     [Parameter] public string? ConvocationName { get; set; }
 
+    [Parameter]
+    public IReadOnlyList<ConvocationListItemResponseDTO> Convocations { get; set; }
+    = Array.Empty<ConvocationListItemResponseDTO>();
 
-    // ==========================
-    // Estado interno
-    // ==========================
+    [Parameter] public int? ConvocationId { get; set; }
+    [Parameter] public EventCallback<int?> ConvocationIdChanged { get; set; }
 
-    private DateOnly? _headerDate;
-    private DateOnly? _meetingDate;
-    private DateOnly? _executionStartDate;
+    private ConvocationListItemResponseDTO? _selectedConvocation;
 
-    private CatalogListItemDTO? _selectedFundingType;
-    private CatalogListItemDTO? _selectedResearchType;
+    [Parameter]
+    public IReadOnlyList<CatalogListItemDTO> ProjectOriginTypes { get; set; }
+       = Array.Empty<CatalogListItemDTO>();
 
+    [Parameter] public int ProjectOriginTypeId { get; set; }
+    [Parameter] public EventCallback<int> ProjectOriginTypeIdChanged { get; set; }
+
+    private CatalogListItemDTO? _selectedProjectOriginType;
 
     protected override void OnParametersSet()
     {
-        // Mapear DateTime? -> DateOnly? para el DateInput
+        // ==========================
+        // Dates: DateTime? -> DateOnly?
+        // ==========================
         _headerDate = ResolutionModel.ResolutionHeaderDate.HasValue
             ? DateOnly.FromDateTime(ResolutionModel.ResolutionHeaderDate.Value)
             : null;
@@ -281,11 +314,13 @@
             ? DateOnly.FromDateTime(ResolutionModel.ExecutionStartDate.Value)
             : null;
 
-        // Mapear ResearchTypeId (en DideModel) -> item seleccionado
-        if (ResearchTypeOptions is not null &&
-            ResearchTypeOptions.Count > 0 &&
-            DideModel.ResearchTypeId.HasValue &&
-            DideModel.ResearchTypeId.Value > 0)
+        // ==========================
+        // ResearchType: DideModel.ResearchTypeId -> selected item
+        // ==========================
+        if (ResearchTypeOptions is not null
+            && ResearchTypeOptions.Count > 0
+            && DideModel.ResearchTypeId.HasValue
+            && DideModel.ResearchTypeId.Value > 0)
         {
             _selectedResearchType = ResearchTypeOptions
                 .FirstOrDefault(rt => rt.Id == DideModel.ResearchTypeId.Value);
@@ -294,7 +329,73 @@
         {
             _selectedResearchType = null;
         }
+
+        // ==========================
+        // ConvocationId -> selected convocation
+        // ==========================
+        if (Convocations is not null
+            && Convocations.Count > 0
+            && ConvocationId.HasValue
+            && ConvocationId.Value > 0)
+        {
+            _selectedConvocation = Convocations
+                .FirstOrDefault(c => c.Id == ConvocationId.Value);
+        }
+        else
+        {
+            _selectedConvocation = null;
+        }
+
+        // ==========================
+        // ProjectOriginTypeId -> selected origin type
+        // ==========================
+        if (ProjectOriginTypes is not null
+            && ProjectOriginTypes.Count > 0
+            && ProjectOriginTypeId > 0)
+        {
+            _selectedProjectOriginType = ProjectOriginTypes
+                .FirstOrDefault(x => x.Id == ProjectOriginTypeId);
+        }
+        else
+        {
+            _selectedProjectOriginType = null;
+        }
     }
+
+
+    private async Task OnProjectOriginTypeChanged(CatalogListItemDTO? item)
+    {
+        _selectedProjectOriginType = item;
+
+        var id = item?.Id ?? 0;
+        ProjectOriginTypeId = id;
+
+        if (ProjectOriginTypeIdChanged.HasDelegate)
+            await ProjectOriginTypeIdChanged.InvokeAsync(id);
+    }
+
+
+    private async Task OnConvocationChanged(ConvocationListItemResponseDTO? item)
+    {
+        _selectedConvocation = item;
+
+        var id = item?.Id;
+        ConvocationId = id;
+
+        if (ConvocationIdChanged.HasDelegate)
+            await ConvocationIdChanged.InvokeAsync(id);
+    }
+
+    // ==========================
+    // Estado interno
+    // ==========================
+
+    private DateOnly? _headerDate;
+    private DateOnly? _meetingDate;
+    private DateOnly? _executionStartDate;
+
+    private CatalogListItemDTO? _selectedFundingType;
+    private CatalogListItemDTO? _selectedResearchType;
 
     // ==========================
     // Handlers DateInput

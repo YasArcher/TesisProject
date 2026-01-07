@@ -128,7 +128,8 @@
                                         IsLoading="@_loadingOverview"
                                         ResearchCategoryTree="_researchCategoryTree"
                                         ResearchCategoryTypes="_researchCategoryTypes"
-                                        ResearchCategoryGroups="_researchCategoryGroups" />
+                                        ResearchCategoryGroups="_researchCategoryGroups"
+                                        OnViewDocument="HandleViewDocument" />
                 </ChildContent>
             </Tab>
 
@@ -285,9 +286,16 @@
                                InstitutionSuggestions="@_institutionSuggestions"
                                OnInstitutionSearchRequested="HandleInstitutionSearchAsync" />
 
-
+<DocumentViewerModal Id="document-viewer-modal"
+                     Title="Documento inicial del Proyecto"
+                     DocumentId="@_selectedDocumentId"
+                     IsOpen="@_docViewerOpen"
+                     IsOpenChanged="v => _docViewerOpen = v" />
 
 @code {
+    private bool _docViewerOpen;
+    private int _selectedDocumentId;
+
 
     // ======= products (para visitas/detail) =======
     private List<ProductListItemResponseDTO> _projectProducts = new();
@@ -773,6 +781,13 @@
         }
     }
 
+    private Task HandleViewDocument(int documentId)
+    {
+        _selectedDocumentId = documentId;
+        _docViewerOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
 
 
     /// Lazy-load / Refresh por tab

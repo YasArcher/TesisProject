@@ -17,7 +17,7 @@
                       Text="Guardar"
                       Variant="ButtonVariant.Filled"
                       Intent="ButtonIntent.Success"
-                      Disabled="@(IsLoading || IsSaving || Project is null || _selectedLeafIds.Count == 0)"
+                      Disabled="@(IsLoading || IsSaving || Project is null || _selectedIds.Count == 0)"
                       ConfirmBeforeExecute="true"
                       ConfirmTitle="Guardar categorías"
                       ConfirmMessage="¿Confirmas guardar los cambios de categorías de investigación?"
@@ -41,10 +41,9 @@
     {
         <div class="rounded-lg border border-border bg-background p-4">
             <p class="text-xs text-muted mb-3">
-                Selecciona categorías por grupo. Abajo se guardarán los IDs (normalmente hojas).
+                Selecciona categorías por grupo. Se guardarán exactamente los IDs seleccionados.
             </p>
 
-            <!-- ✅ Render dinámico por grupo (como el ejemplo) -->
             <div class="space-y-4">
                 @if (ResearchCategoryGroups is not null && ResearchCategoryGroups.Any())
                 {
@@ -62,20 +61,12 @@
                 }
                 else
                 {
-                    <!-- fallback: un único selector -->
                     <ResearchCategoryMultiLevelSelector Categories="@ResearchCategoryTree"
                                                         CategoryTypes="@ResearchCategoryTypes"
                                                         SelectedCategoryIds="@((IReadOnlyCollection<int>)(Project.ResearchCategoryIds?.ToArray() ?? Array.Empty<int>()))"
                                                         OnSelectionChanged="HandleGlobalSelectionChanged"
                                                         Title="Categorías de investigación" />
                 }
-            </div>
-        </div>
-
-        <div class="p-4 rounded-2xl border border-border bg-background">
-            <div class="text-sm font-semibold text-foreground">IDs a guardar</div>
-            <div class="text-xs text-muted">
-                @(_selectedLeafIds.Count == 0 ? "—" : string.Join(", ", _selectedLeafIds))
             </div>
         </div>
     }
@@ -95,13 +86,13 @@
 
     [Parameter] public EventCallback<UpdateProjectResearchCategoriesRequestDTO> OnSaveRequested { get; set; }
 
-    // ===== selección final a guardar (hojas) =====
-    private List<int> _selectedLeafIds = new();
+    // ✅ selección final a guardar (exactamente lo seleccionado)
+    private List<int> _selectedIds = new();
 
-    // ===== selección interna por grupo (groupId -> árbol seleccionado) =====
+    // selección interna por grupo (groupId -> selección devuelta por el selector)
     private readonly Dictionary<int, List<ResearchCategoryTreeItemDTO>> _selectionByGroup = new();
 
-    // ===== índices para preselección por grupo =====
+    // índices para preselección por grupo
     private readonly Dictionary<int, ResearchCategoryTreeItemDTO> _categoryById = new();
     private readonly Dictionary<int, int> _typeToGroup = new(); // typeId -> groupId
     private readonly Dictionary<int, List<int>> _selectedIdsByGroup = new(); // groupId -> ids
@@ -112,27 +103,32 @@
 
         BuildIndexes();
 
-        // Inicial: en la BD normalmente ya guardas hojas, así que esto es válido.
-        _selectedLeafIds = (Project.ResearchCategoryIds ?? new List<int>())
+        // ✅ Inicial: lo que venga desde BD se toma tal cual (pueden ser hojas o no)
+        _selectedIds = (Project.ResearchCategoryIds ?? new List<int>())
             .Distinct()
             .ToList();
 
-        // Construye el mapeo ids -> grupo para pasar SelectedCategoryIds por cada selector
+        // para preselección por grupo
         BuildSelectedIdsByGroupFromProject();
     }
 
     private Task OnSaveClicked()
         => OnSaveRequested.InvokeAsync(new UpdateProjectResearchCategoriesRequestDTO
         {
-            ResearchCategoryIds = _selectedLeafIds.Distinct().ToList()
+            ResearchCategoryIds = _selectedIds.Distinct().ToList()
         });
 
-    // ========= HANDLERS (como el ejemplo) =========
+    // ========= HANDLERS =========
 
     private async Task HandleGlobalSelectionChanged(List<ResearchCategoryTreeItemDTO> selection)
     {
         _selectionByGroup.Clear();
-        _selectedLeafIds = GetLeafIds(selection ?? new()).Distinct().ToList();
+
+        _selectedIds = (selection ?? new())
+            .Select(x => x.Id)
+            .Distinct()
+            .ToList();
+
         await Task.CompletedTask;
     }
 
@@ -140,9 +136,11 @@
     {
         _selectionByGroup[groupId] = selection ?? new();
 
-        // combinar y recalcular hojas (IDs a guardar)
-        var combined = _selectionByGroup.Values.SelectMany(x => x).ToList();
-        _selectedLeafIds = GetLeafIds(combined).Distinct().ToList();
+        _selectedIds = _selectionByGroup.Values
+            .SelectMany(x => x)
+            .Select(x => x.Id)
+            .Distinct()
+            .ToList();
 
         await Task.CompletedTask;
     }
@@ -186,10 +184,8 @@
         _categoryById.Clear();
         _typeToGroup.Clear();
 
-        // typeId -> groupId (depende de tu DTO ResearchCategoryTypeListItemDTO)
         foreach (var t in ResearchCategoryTypes)
         {
-            // si tu DTO usa otro nombre, ajusta aquí:
             _typeToGroup[t.Id] = t.ResearchCategoryGroupId;
         }
 
@@ -204,31 +200,5 @@
 
         foreach (var child in node.Children)
             IndexTree(child);
-    }
-
-    // ========= LEAF IDS =========
-
-    private static IEnumerable<int> GetLeafIds(IEnumerable<ResearchCategoryTreeItemDTO> roots)
-    {
-        foreach (var r in roots)
-        {
-            foreach (var id in GetLeafIdsRecursive(r))
-                yield return id;
-        }
-    }
-
-    private static IEnumerable<int> GetLeafIdsRecursive(ResearchCategoryTreeItemDTO node)
-    {
-        if (node.Children is null || node.Children.Count == 0)
-        {
-            yield return node.Id;
-            yield break;
-        }
-
-        foreach (var child in node.Children)
-        {
-            foreach (var id in GetLeafIdsRecursive(child))
-                yield return id;
-        }
     }
 }

@@ -45,6 +45,7 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
         IProjectDocumentRepository ProjectDocuments { get; }
         ICatalogRepository<ProjectState> ProjectStates { get; }
         ICatalogRepository<VisitState> VisitStates { get; }
+        ICatalogRepository<ProjectOriginType> ProjectOriginTypes { get; }
         IExportTemplateColumnRepository ExportTemplateColumns { get; }
         IExportTemplateRepository ExportTemplates { get; }
         IExportFieldRepository ExportFields { get; }

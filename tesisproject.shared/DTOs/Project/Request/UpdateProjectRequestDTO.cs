@@ -31,5 +31,7 @@ namespace tesisproject.shared.DTOs.Project.Request
 
         [Required]
         public int ConvocationId { get; set; }
-    }
+
+        public int ProjectOriginTypeId { get; set; }
+        }
 }
