@@ -1,10 +1,18 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using Blazored.Toast.Services;
+using Microsoft.AspNetCore.Components;
+using tesisproject.frontend.Services.Interfaces;
 
 namespace tesisproject.frontend.SharedUI;
 
 public partial class SideBar
 {
     private record MenuItem(string Text, string Href, bool Exact = false, string? Section = null, string? Icon = null);
+    [Inject] private IDwEtlClientService DwEtlClientService { get; set; } = default!;
+    [Inject] private IToastService Toast { get; set; } = default!;
+
+    private bool _etlBusy;
+    private string? _etlStatus;
+    private string? _etlError;
 
     private readonly MenuItem[] _items =
     [
@@ -56,4 +64,36 @@ public partial class SideBar
 
     private IEnumerable<IGrouping<string?, MenuItem>> GroupedItems =>
         _items.GroupBy(i => i.Section);
+    private async Task RunDwEtlAsync()
+    {
+        if (_etlBusy) return;
+
+        _etlBusy = true;
+        StateHasChanged();
+
+        // Mensaje amigable (inicio)
+        Toast.ShowInfo("Actualizando la información para Power BI...");
+
+        try
+        {
+            var result = await DwEtlClientService.RunFullAsync();
+
+            if (!string.IsNullOrWhiteSpace(result.Error))
+            {
+                Toast.ShowError(result.Error ?? "No se pudo completar la actualización.");
+                return;
+            }
+
+            Toast.ShowSuccess("Actualización completada. Power BI ya tiene los datos más recientes.");
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Ocurrió un problema al actualizar: {ex.Message}");
+        }
+        finally
+        {
+            _etlBusy = false;
+            StateHasChanged();
+        }
+    }
 }

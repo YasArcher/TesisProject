@@ -605,9 +605,6 @@
   .h-40 {
     height: calc(var(--spacing) * 40);
   }
-  .h-\[6vh\] {
-    height: 6vh;
-  }
   .h-\[18px\] {
     height: 18px;
   }
@@ -620,20 +617,8 @@
   .h-\[60px\] {
     height: 60px;
   }
-  .h-\[65vh\] {
-    height: 65vh;
-  }
   .h-\[68vh\] {
     height: 68vh;
-  }
-  .h-\[69vh\] {
-    height: 69vh;
-  }
-  .h-\[70vh\] {
-    height: 70vh;
-  }
-  .h-\[78vh\] {
-    height: 78vh;
   }
   .h-\[85px\] {
     height: 85px;
@@ -1980,6 +1965,9 @@
   }
   .pb-4 {
     padding-bottom: calc(var(--spacing) * 4);
+  }
+  .pb-6 {
+    padding-bottom: calc(var(--spacing) * 6);
   }
   .pl-3 {
     padding-left: calc(var(--spacing) * 3);

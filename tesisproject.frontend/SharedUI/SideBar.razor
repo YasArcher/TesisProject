@@ -1,33 +1,81 @@
 ﻿@using Microsoft.AspNetCore.Components.Routing
+@using tesisproject.frontend.SharedUI.ActionButton
+@* si luego quieres ocultarlo por rol/claims, aquí podrías envolver el bloque con AuthorizeView *@
 
-<!-- Navegación -->
-<nav class="px-4 py-6 space-y-2 overflow-y-auto">
-    @foreach (var group in GroupedItems)
-    {
-        if (!string.IsNullOrWhiteSpace(group.Key))
+<div class="h-full flex flex-col">
+    <!-- Navegación -->
+    <nav class="px-4 py-6 space-y-2 overflow-y-auto flex-1">
+        @foreach (var group in GroupedItems)
         {
-            <div class="mt-6 mb-3 px-3 flex items-center gap-2">
-                <div class="h-px flex-1 bg-white-60 opacity-30"></div>
-                <span class="text-sm font-bold uppercase tracking-widest text-white-60 whitespace-nowrap">
-                    @group.Key
-                </span>
-                <div class="h-px flex-1 bg-white-60 opacity-30"></div>
+            if (!string.IsNullOrWhiteSpace(group.Key))
+            {
+                <div class="mt-6 mb-3 px-3 flex items-center gap-2">
+                    <div class="h-px flex-1 bg-white-60 opacity-30"></div>
+                    <span class="text-sm font-bold uppercase tracking-widest text-white-60 whitespace-nowrap">
+                        @group.Key
+                    </span>
+                    <div class="h-px flex-1 bg-white-60 opacity-30"></div>
+                </div>
+            }
+
+            @foreach (var item in group)
+            {
+                <NavLink class="group flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium text-white-75 nav-link-hover transition-all duration-200 hover:translate-x-1"
+                         ActiveClass="nav-link-active"
+                         href="@item.Href"
+                         Match="@(item.Exact ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+                    @if (!string.IsNullOrWhiteSpace(item.Icon))
+                    {
+                        <span class="w-5 h-5 flex-shrink-0">
+                            @((MarkupString)item.Icon)
+                        </span>
+                    }
+                    <span class="flex-1">@item.Text</span>
+                </NavLink>
+            }
+        }
+    </nav>
+
+    <!-- Footer / Maintenance -->
+    <div class="px-4 pb-6 pt-4 border-t border-white-60/20">
+        <div class="text-xs font-semibold uppercase tracking-widest text-white-60 mb-3">
+            Power BI
+        </div>
+
+        <ActionButton Text="Actualizar Power BI"
+                      Intent="ButtonIntent.Warning"
+                      Variant="ButtonVariant.Ghost"
+                      Size="ButtonSize.Md"
+                      Execute="RunDwEtlAsync"
+                      Disabled="@_etlBusy"
+                      ConfirmBeforeExecute="true"
+                      ConfirmTitle="Actualizar Power BI"
+                      ConfirmMessage="Vamos a actualizar la información para que Power BI muestre los datos más recientes. ¿Deseas continuar?"
+                      ConfirmButtonText="Actualizar"
+                      CancelButtonText="Cancelar"
+                      Class="w-full justify-center">
+            <Icon>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                    <path fill-rule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875ZM9.75 17.25a.75.75 0 0 0-1.5 0V18a.75.75 0 0 0 1.5 0v-.75Zm2.25-3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3a.75.75 0 0 1 .75-.75Zm3.75-1.5a.75.75 0 0 0-1.5 0V18a.75.75 0 0 0 1.5 0v-5.25Z" clip-rule="evenodd" />
+                    <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
+                </svg>
+
+            </Icon>
+        </ActionButton>
+
+
+        @if (!string.IsNullOrWhiteSpace(_etlStatus))
+        {
+            <div class="mt-3 text-xs text-white-60">
+                @_etlStatus
             </div>
         }
-        @foreach (var item in group)
+
+        @if (!string.IsNullOrWhiteSpace(_etlError))
         {
-            <NavLink class="group flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium text-white-75 nav-link-hover transition-all duration-200 hover:translate-x-1"
-                     ActiveClass="nav-link-active"
-                     href="@item.Href"
-                     Match="@(item.Exact ? NavLinkMatch.All : NavLinkMatch.Prefix)">
-                @if (!string.IsNullOrWhiteSpace(item.Icon))
-                {
-                    <span class="w-5 h-5 flex-shrink-0">
-                        @((MarkupString)item.Icon)
-                    </span>
-                }
-                <span class="flex-1">@item.Text</span>
-            </NavLink>
+            <div class="mt-3 text-xs bg-error/10 border border-error/20 text-error rounded-xl p-3">
+                @_etlError
+            </div>
         }
-    }
-</nav>
+    </div>
+</div>
