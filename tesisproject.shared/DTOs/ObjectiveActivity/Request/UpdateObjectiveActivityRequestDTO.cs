@@ -23,8 +23,5 @@ namespace tesisproject.shared.DTOs.ObjectiveActivity.Request
 
         [StringLength(1000)]
         public string ActionText { get; set; } = string.Empty;
-
-        [Range(0, 100)]
-        public int ProgressPercentage { get; set; }
     }
 }

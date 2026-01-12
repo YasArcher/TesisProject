@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using tesisproject.backend.Data;
 
@@ -11,9 +12,11 @@ using tesisproject.backend.Data;
 namespace tesisproject.backend.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260107105418_Fix_Product_Visit_Navigation10")]
+    partial class Fix_Product_Visit_Navigation10
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1222,6 +1225,9 @@ namespace tesisproject.backend.Migrations
                     b.Property<int>("ObjectiveId")
                         .HasColumnType("int");
 
+                    b.Property<int>("ProgressPercentage")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -1646,7 +1652,7 @@ namespace tesisproject.backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("VisitId"));
 
-                    b.Property<int?>("AcademicPeriodId")
+                    b.Property<int>("AcademicPeriodId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
@@ -1724,38 +1730,6 @@ namespace tesisproject.backend.Migrations
                     b.HasIndex("VisitId");
 
                     b.ToTable("VisitIssues");
-                });
-
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.VisitObjectiveActivityProgress", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("ObjectiveActivityId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("ProgressPercentage")
-                        .HasColumnType("int");
-
-                    b.Property<int>("VisitId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ObjectiveActivityId");
-
-                    b.HasIndex("VisitId");
-
-                    b.HasIndex("VisitId", "ObjectiveActivityId")
-                        .IsUnique();
-
-                    b.ToTable("VisitObjectiveActivityProgresses");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Export.ExportField", b =>
@@ -2490,25 +2464,6 @@ namespace tesisproject.backend.Migrations
                     b.Navigation("Visit");
                 });
 
-            modelBuilder.Entity("tesisproject.shared.Entities.Core.VisitObjectiveActivityProgress", b =>
-                {
-                    b.HasOne("tesisproject.shared.Entities.Core.ObjectiveActivity", "ObjectiveActivity")
-                        .WithMany("VisitProgresses")
-                        .HasForeignKey("ObjectiveActivityId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.HasOne("tesisproject.shared.Entities.Core.Visit", "Visit")
-                        .WithMany("ActivityProgresses")
-                        .HasForeignKey("VisitId")
-                        .OnDelete(DeleteBehavior.NoAction)
-                        .IsRequired();
-
-                    b.Navigation("ObjectiveActivity");
-
-                    b.Navigation("Visit");
-                });
-
             modelBuilder.Entity("tesisproject.shared.Entities.Export.ExportTemplateColumn", b =>
                 {
                     b.HasOne("tesisproject.shared.Entities.Export.ExportField", "ExportField")
@@ -2597,8 +2552,6 @@ namespace tesisproject.backend.Migrations
             modelBuilder.Entity("tesisproject.shared.Entities.Core.ObjectiveActivity", b =>
                 {
                     b.Navigation("ResponsibleUsers");
-
-                    b.Navigation("VisitProgresses");
                 });
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Products.Product", b =>
@@ -2639,8 +2592,6 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("tesisproject.shared.Entities.Core.Visit", b =>
                 {
-                    b.Navigation("ActivityProgresses");
-
                     b.Navigation("Issues");
 
                     b.Navigation("Products");

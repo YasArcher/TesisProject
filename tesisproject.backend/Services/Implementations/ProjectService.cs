@@ -446,12 +446,6 @@ namespace tesisproject.backend.Services.Implementations
                     return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid FacultyId.");
                 }
 
-                if (request.ScheduledDate == default)
-                {
-                    PhaseLog("Fase 1 - Validación", "ScheduledDate is default");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid scheduled date.");
-                }
-
                 // ============================================
                 // 1.5) Generar ProjectNumber + ProjectCode real
                 // ============================================
@@ -723,7 +717,6 @@ namespace tesisproject.backend.Services.Implementations
                                     Objective = objectiveEntity,
                                     ActivityResult = actDto.ActivityResult ?? string.Empty,
                                     ActionText = actDto.ActionText ?? string.Empty,
-                                    ProgressPercentage = actDto.ProgressPercentage,
                                     CreatedAt = DateTime.UtcNow
                                 };
 
@@ -778,40 +771,41 @@ namespace tesisproject.backend.Services.Implementations
                 // 9) Visitas (nuevos proyectos)
                 // ============================================
 
-                PhaseLog("Fase 9 - Visitas", "Generando visitas...");
+                PhaseLog("Fase 9 - Visitas", "Generando visitas (planned, without dates/period)...");
 
-                var periodsResult = await _externalPeriods.GetAllAsync(ct);
-                if (!periodsResult.Success || periodsResult.Data is null || periodsResult.Data.Count == 0)
+                if (projectEntity.DurationInMonths <= 0)
                 {
-                    PhaseLog("Fase 9 - Visitas", "No external academic periods available. Skipping visits creation.");
+                    PhaseLog("Fase 9 - Visitas", "DurationInMonths <= 0. Skipping visits creation.");
                 }
                 else
                 {
-                    var latest = periodsResult.Data
-                        .OrderByDescending(p => p.PeriodId)   // o EndDate si prefieres
-                        .FirstOrDefault();
+                    // Visitas cada 6 meses (misma lógica que ya tenías)
+                    var totalVisits = projectEntity.DurationInMonths / 6;
 
-                    if (latest is not null &&
-                        projectEntity.StartDate is not null &&
-                        projectEntity.DurationInMonths > 0)
+                    if (totalVisits <= 0)
                     {
-                        var totalVisits = projectEntity.DurationInMonths / 6;
-
+                        PhaseLog("Fase 9 - Visitas", "totalVisits <= 0. Skipping visits creation.");
+                    }
+                    else
+                    {
                         var visits = Enumerable.Range(0, totalVisits)
                             .Select(_ => new Visit
                             {
                                 Project = projectEntity,
                                 VisitStateId = 1,
-                                AcademicPeriodId = latest.PeriodId, // ✅ ahora viene de API
-                                ScheduledDate = request.ScheduledDate,
+                                AcademicPeriodId = null, 
+                                ScheduledDate = null,
                                 PerformedDate = null,
                                 CreatedAt = DateTime.UtcNow
                             })
                             .ToList();
 
                         await _uow.Visits.AddRangeAsync(visits, ct);
+
+                        PhaseLog("Fase 9 - Visitas", $"Inserted visits: {visits.Count}");
                     }
                 }
+
 
 
                 // ============================================
@@ -1662,6 +1656,7 @@ namespace tesisproject.backend.Services.Implementations
                             {
                                 Project = projectEntity,
                                 Document = extensionDocument,
+                                ProjectExtensionTypeId = null,
                                 ExtensionDate = ext.NewEndDate
                                                 ?? projectEntity.TentativeEndDate
                                                 ?? nowUtc,

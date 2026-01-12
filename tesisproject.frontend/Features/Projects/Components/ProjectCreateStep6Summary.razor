@@ -358,18 +358,6 @@
                           d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
             </div>
-            <div class="flex-1">
-                <label class="text-xs font-semibold text-foreground block mb-1">
-                    Programación de la primera visita <span class="text-error">*</span>
-                </label>
-                <p class="text-[10px] text-muted mb-2">Elige la fecha programada para la primera visita del proyecto</p>
-                <input type="date"
-                       class="h-9 px-3 text-sm rounded-md border border-border bg-background text-foreground
-                              focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                       value="@GetScheduledDateInputValue()"
-                       @onchange="HandleScheduledDateChanged"
-                       disabled="@IsSaving" />
-            </div>
         </div>
     </section>
 </div>
@@ -391,9 +379,6 @@
     [Parameter] public IReadOnlyList<CreateBudgetRequestDTO> Budgets { get; set; } = Array.Empty<CreateBudgetRequestDTO>();
 
     [Parameter] public IReadOnlyList<ResearchCategoryTreeItemDTO> SelectedResearchCategories { get; set; } = Array.Empty<ResearchCategoryTreeItemDTO>();
-
-    [Parameter] public DateTime? ScheduledDate { get; set; }
-    [Parameter] public EventCallback<DateTime?> ScheduledDateChanged { get; set; }
 
     [Parameter] public EventCallback OnPrevious { get; set; }
     [Parameter] public EventCallback OnSave { get; set; }
@@ -476,16 +461,6 @@
                 foreach (var child in FlattenCategories(node.Children))
                     yield return child;
         }
-    }
-
-    private string GetScheduledDateInputValue() => ScheduledDate.HasValue ? ScheduledDate.Value.ToString("yyyy-MM-dd") : string.Empty;
-
-    private async Task HandleScheduledDateChanged(ChangeEventArgs e)
-    {
-        var value = e.Value?.ToString();
-        ScheduledDate = DateTime.TryParse(value, out var parsed) ? parsed.Date : null;
-        if (ScheduledDateChanged.HasDelegate)
-            await ScheduledDateChanged.InvokeAsync(ScheduledDate);
     }
 
     private (string FacultyLabel, string ProgramLabel) ResolveFacultyAndProgram(int facultyCareerId)

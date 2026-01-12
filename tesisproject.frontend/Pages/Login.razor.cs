@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using Blazored.Toast.Services;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using System.ComponentModel.DataAnnotations;
 using tesisproject.frontend.Services.Auth;
@@ -14,6 +15,8 @@ namespace tesisproject.frontend.Pages
         [Inject] public IAuthClientService AuthClient { get; set; } = null!;
         [Inject] public CustomAuthStateProvider AuthStateProvider { get; set; } = null!;
         [Inject] public NavigationManager Navigation { get; set; } = null!;
+        [Inject] public IToastService Toast { get; set; } = null!;
+
 
         // ✅ BLOQUE CORRECTO: dentro de la clase
         protected override async Task OnInitializedAsync()
@@ -41,12 +44,19 @@ namespace tesisproject.frontend.Pages
             {
                 await AuthStateProvider.SetTokenAsync(result.Response.AccessToken);
 
-                // ✅ replace:true evita volver al login con "atrás"
+                // Show success message via Toast
+                Toast.ShowSuccess("Acceso Correcto");
+
+                // Navigate to home page after successful login
                 Navigation.NavigateTo("/", replace: true);
             }
             else
             {
-                var errorMessage = result.Error ?? "Invalid credentials.";
+                var errorMessage =  "Credenciales no validas";
+
+                // Show error message via Toast
+                Toast.ShowError(errorMessage);
+
                 Console.WriteLine(errorMessage);
             }
         }

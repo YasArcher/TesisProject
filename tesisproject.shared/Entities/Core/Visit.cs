@@ -22,8 +22,7 @@ namespace tesisproject.shared.Entities.Core
         [Required]
         public int VisitStateId { get; set; }            // id_estado_visita (FK -> VisitState catálogo)
 
-        [Required]
-        public int AcademicPeriodId { get; set; }        // id_periodo_academico (FK -> AcademicPeriod catálogo)
+        public int? AcademicPeriodId { get; set; }        // id_periodo_academico (FK -> AcademicPeriod catálogo)
 
         // 1) Informe económico
         public int? FundingDocumentId { get; set; }      // id_documento_financiamiento (FK -> Document)
@@ -57,5 +56,8 @@ namespace tesisproject.shared.Entities.Core
         public Document? ProgressDocument { get; set; }          // Informe de avance
         public ICollection<VisitIssue> Issues { get; set; } = new List<VisitIssue>();
         public ICollection<Product> Products { get; set; } = new List<Product>();
+        public ICollection<VisitObjectiveActivityProgress> ActivityProgresses { get; set; }
+    = new List<VisitObjectiveActivityProgress>();
+
     }
 }

@@ -20,7 +20,7 @@ namespace tesisproject.shared.Entities.Core
         // ================================
         [Required]
         public int ProjectId { get; set; }                // id_proyecto (FK -> Project)
-
+        public int? ProjectExtensionTypeId { get; set; }
         public int? DocumentId { get; set; }              // id_documento (respaldo, opcional)
 
         // ================================
@@ -33,7 +33,8 @@ namespace tesisproject.shared.Entities.Core
         // ================================
         //      Navigation Properties
         // ================================
-        public Project Project { get; set; } = null!;                     // Navegación a Project
+        public Project Project { get; set; } = null!;                     
         public Document? Document { get; set; }
+        public ProjectExtensionType? ProjectExtensionType { get; set; }
     }
 }

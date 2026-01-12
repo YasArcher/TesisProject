@@ -256,9 +256,7 @@ namespace tesisproject.frontend.SharedUI.Header
         {
             return new List<UserMenuItem>
             {
-                new("profile", "Your Profile"),
-                new("settings", "Settings"),
-                new("logout", "Sign out", true)
+                new("logout", "Salir", true)
             };
         }
 
