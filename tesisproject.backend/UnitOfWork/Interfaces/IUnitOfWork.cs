@@ -46,9 +46,12 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
         ICatalogRepository<ProjectState> ProjectStates { get; }
         ICatalogRepository<VisitState> VisitStates { get; }
         ICatalogRepository<ProjectOriginType> ProjectOriginTypes { get; }
+        ICatalogRepository<ProjectExtensionType> ProjectExtensionTypes { get; }
         IExportTemplateColumnRepository ExportTemplateColumns { get; }
         IExportTemplateRepository ExportTemplates { get; }
         IExportFieldRepository ExportFields { get; }
+        IVisitObjectiveActivityProgressRepository VisitObjectiveActivityProgresses { get; }
+
 
         // 🔹 Nuevo repositorio agregado:
         IAspNetUserRepository AspNetUsers { get; }

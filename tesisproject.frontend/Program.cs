@@ -104,6 +104,7 @@ builder.Services.AddScoped<IExternalPeriodsClientService, ExternalPeriodsClientS
 builder.Services.AddScoped<IVisitStateClientService, VisitStateClientService>();
 builder.Services.AddScoped<IProjectOriginTypeClientService, ProjectOriginTypeClientService>();
 builder.Services.AddScoped<IDwEtlClientService, DwEtlClientService>();
+builder.Services.AddScoped<IProjectExtensionTypeClientService, ProjectExtensionTypeClientService>();
 
 // External
 builder.Services.AddScoped<IExternalAcademicsClientService, ExternalAcademicsClientService>();

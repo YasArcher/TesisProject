@@ -18,7 +18,9 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         // ===== CREATE =====
-        public async Task<ServiceResult<ProjectExtensionListResponseDTO>> CreateAsync(AddProjectExtensionRequestDTO request, CancellationToken ct = default)
+        public async Task<ServiceResult<ProjectExtensionListResponseDTO>> CreateAsync(
+            AddProjectExtensionRequestDTO request,
+            CancellationToken ct = default)
         {
             try
             {
@@ -28,20 +30,67 @@ namespace tesisproject.backend.Services.Implementations
                 if (request.ProjectExtensionTypeId <= 0)
                     return ServiceResult<ProjectExtensionListResponseDTO>.Fail("ProjectExtensionTypeId is required.", ErrorType.Validation);
 
-                var entity = new ProjectExtension
+                // 1) Load project (needed to update TentativeEndDate)
+                var project = await _uow.Projects.GetByIdAsync(new object[] { request.ProjectId }, ct);
+                if (project is null)
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail("Project not found.", ErrorType.NotFound);
+
+                // 2) Validate ProjectExtensionType exists (optional but recommended)
+                var extType = await _uow.ProjectExtensionTypes.GetByIdAsync(new object[] { request.ProjectExtensionTypeId }, ct);
+                if (extType is null)
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail("ProjectExtensionType not found.", ErrorType.NotFound);
+
+                // 3) Update project tentative end date (+ 6 months)
+                if (!project.TentativeEndDate.HasValue)
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(
+                        "Project TentativeEndDate is null. It must be set before applying an extension.",
+                        ErrorType.Validation);
+
+                project.TentativeEndDate = project.TentativeEndDate.Value.AddMonths(6);
+                _uow.Projects.Update(project);
+
+                // 4) Create ProjectExtension
+                var extension = new ProjectExtension
                 {
                     ProjectId = request.ProjectId,
+                    ProjectExtensionTypeId = request.ProjectExtensionTypeId, // ✅ nuevo FK
                     DocumentId = request.DocumentId,
+
+                    ExtensionDate = DateTime.UtcNow, // ✅ requerido en tu Entity (no-null)
+
                     RequestedAt = request.RequestedAt,
                     ApprovedAt = request.ApprovedAt
                 };
 
-                await _uow.ProjectExtensions.AddAsync(entity, ct);
+                await _uow.ProjectExtensions.AddAsync(extension, ct);
+
+                // 5) Create Visit (planned, no date)
+                var visit = new Visit
+                {
+                    ProjectId = request.ProjectId,
+                    VisitStateId = 1,
+                    AcademicPeriodId = null,
+
+                    ScheduledDate = null,
+                    PerformedDate = null,
+
+                    FundingDocumentId = null,
+                    DocumentId = null,
+                    ProgressDocumentId = null,
+                    PerformedByUserId = null
+                };
+
+                await _uow.Visits.AddAsync(visit, ct);
+
+                // 6) Single commit
                 await _uow.SaveChangesAsync(ct);
 
-                var withRefs = await _uow.ProjectExtensions.GetByIdWithRefsAsync(entity.ProjectExtensionId, ct);
+                // 7) Reload with refs for response
+                var withRefs = await _uow.ProjectExtensions.GetByIdWithRefsAsync(extension.ProjectExtensionId, ct);
                 if (withRefs is null)
-                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail("ProjectExtension could not be loaded after creation.", ErrorType.Unexpected);
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(
+                        "ProjectExtension could not be loaded after creation.",
+                        ErrorType.Unexpected);
 
                 return ServiceResult<ProjectExtensionListResponseDTO>.Ok(MapToListDTO(withRefs), "ProjectExtension created");
             }
@@ -54,6 +103,7 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
+
 
         // ===== READ ONE =====
         public async Task<ServiceResult<ProjectExtensionListResponseDTO>> GetByIdAsync(int projectExtensionId, CancellationToken ct = default)

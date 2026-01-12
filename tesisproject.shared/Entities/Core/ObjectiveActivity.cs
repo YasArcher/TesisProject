@@ -19,16 +19,13 @@ namespace tesisproject.shared.Entities.Core
 
         // Progreso 0..100 (parcial)
         [Range(0, 100, ErrorMessage = "El progreso debe estar entre 0 y 100")]
-        public int ProgressPercentage { get; set; } = 0;
-
-        // Opcional: propiedad derivada (no se guarda en BD)
-        [NotMapped]
-        public bool IsCompleted => ProgressPercentage >= 100;
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
 
         public ProjectObjective Objective { get; set; } = null!;
         public ICollection<ObjectiveActivityUser> ResponsibleUsers { get; set; } = new List<ObjectiveActivityUser>();
+        public ICollection<VisitObjectiveActivityProgress> VisitProgresses { get; set; }
+    = new List<VisitObjectiveActivityProgress>();
     }
 }

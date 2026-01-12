@@ -85,9 +85,11 @@ namespace tesisproject.shared.Entities.Core
         public Convocation Convocation { get; set; } = null!;
         public ICollection<ProjectResearchCategory> ProjectResearchCategories { get; set; } = new List<ProjectResearchCategory>();
 
-        // 🔹 Nueva colección de vínculos a documentos (aprobación, informe final, prórrogas, etc.)
         public ProjectOriginType ProjectOriginType { get; set; } = null!;
         public ICollection<ProjectDocument> ProjectDocuments { get; set; } = new List<ProjectDocument>();
+        public ICollection<ProjectExtension> ProjectExtensions { get; set; }
+    = new List<ProjectExtension>();
+
 
     }
 }

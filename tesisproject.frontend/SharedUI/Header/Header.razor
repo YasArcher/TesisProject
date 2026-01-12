@@ -249,16 +249,18 @@
                                             <button type="button"
                                                     class="w-full text-left px-3 py-2 text-sm rounded-xl bg-primary-subtle-hover focus:outline-none focus:ring-2 focus:ring-primary transition-colors text-error"
                                                     @onclick="async () => await OnLogout.InvokeAsync()">
-                                                Logout
+                                                Salir
                                             </button>
-
                                         }
-                                        <button type="button"
-                                                role="menuitem"
-                                                class="w-full text-left px-3 py-2 text-sm rounded-xl bg-primary-subtle-hover focus:outline-none focus:ring-2 focus:ring-primary transition-colors @(item.Dangerous ? "text-error" : "text-foreground")"
-                                                @onclick="@(async () => await HandleUserMenuClick(item))">
-                                            @item.Text
-                                        </button>
+                                        else  // ← AGREGA ESTO
+                                        {
+                                            <button type="button"
+                                                    role="menuitem"
+                                                    class="w-full text-left px-3 py-2 text-sm rounded-xl bg-primary-subtle-hover focus:outline-none focus:ring-2 focus:ring-primary transition-colors @(item.Dangerous ? "text-error" : "text-foreground")"
+                                                    @onclick="@(async () => await HandleUserMenuClick(item))">
+                                                @item.Text
+                                            </button>
+                                        }
                                     }
                                 </div>
                             </div>

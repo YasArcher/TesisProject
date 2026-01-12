@@ -47,9 +47,11 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public ICatalogRepository<ProjectState> ProjectStates { get; }
         public ICatalogRepository<VisitState> VisitStates { get; }
         public ICatalogRepository<ProjectOriginType> ProjectOriginTypes { get; }
+        public ICatalogRepository<ProjectExtensionType> ProjectExtensionTypes { get; }
         public IExportTemplateColumnRepository ExportTemplateColumns { get; }
         public IExportTemplateRepository ExportTemplates { get; }
         public IExportFieldRepository ExportFields { get; }
+        public IVisitObjectiveActivityProgressRepository VisitObjectiveActivityProgresses { get; set; }
 
 
         public UnitOfWork(
@@ -95,7 +97,9 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             IExportTemplateColumnRepository exportTemplateColumns,
             IExportTemplateRepository exportTemplates,
             IExportFieldRepository exportFields,
-            ICatalogRepository<ProjectOriginType> projectOriginTypes)
+            ICatalogRepository<ProjectOriginType> projectOriginTypes,
+            ICatalogRepository<ProjectExtensionType> projectExtensionTypes,
+            IVisitObjectiveActivityProgressRepository visitObjectiveActivityProgresses)
         {
             _ctx = ctx;
             Projects = projectRepository;
@@ -140,6 +144,8 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             ExportTemplates = exportTemplates;
             ExportFields = exportFields;
             ProjectOriginTypes = projectOriginTypes;
+            ProjectExtensionTypes = projectExtensionTypes;
+            VisitObjectiveActivityProgresses = visitObjectiveActivityProgresses;
         }
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)

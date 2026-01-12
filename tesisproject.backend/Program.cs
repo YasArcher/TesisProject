@@ -247,7 +247,7 @@ static class StartupExtensions
         builder.Services.AddScoped<IExportFieldRepository, ExportFieldRepository>();
         builder.Services.AddScoped<IMatrixExcelExportService, MatrixExcelExportService>();
         builder.Services.AddScoped<IMatrixTemplateExcelExportService, MatrixTemplateExcelExportService>();
-
+        builder.Services.AddScoped<IVisitObjectiveActivityProgressRepository, VisitObjectiveActivityProgressRepository>();
 
 
         // =========================

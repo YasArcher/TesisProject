@@ -1,0 +1,211 @@
+﻿@inherits ModalBase
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+@using tesisproject.shared.DTOs.ProjectExtensions.Request
+@using tesisproject.frontend.SharedUI.SelectInput
+@using tesisproject.frontend.SharedUI.DateInput
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Modal
+
+@inject IProjectExtensionClientService ProjectExtensionService
+@inject IToastService Toast
+
+@if (IsOpen)
+{
+    <div class="fixed inset-0 z-50" tabindex="0" @ref="_keyTarget" @onkeydown="HandleKeyDown">
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" @onclick="OnBackdropClick"></div>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-background rounded-2xl shadow-2xl border border-border w-full overflow-hidden max-w-2xl"
+                 style="max-height: 90vh;">
+                <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-foreground">Nueva Prórroga</h3>
+                    @if (ShowCloseButton)
+                    {
+                        <ActionButton Execute="Close"
+                                      Variant="ButtonVariant.Ghost"
+                                      Size="ButtonSize.Sm"
+                                      Class="btn-primary-ghost inline-flex items-center justify-center rounded-xl px-2 py-2">
+                            <Icon>
+                                <span class="sr-only">Close</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                     fill="currentColor" class="size-5">
+                                    <path fill-rule="evenodd"
+                                          d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 11-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z"
+                                          clip-rule="evenodd" />
+                                </svg>
+                            </Icon>
+                        </ActionButton>
+                    }
+                </div>
+
+                <div class="px-6 py-5 overflow-auto" style="max-height: calc(90vh - 7.5rem);">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="extensionType" class="block text-sm font-medium mb-2">
+                                Tipo de prórroga <span class="text-error">*</span>
+                            </label>
+                            <SelectInput TItem="CatalogListItemDTO"
+                                         Items="ExtensionTypes"
+                                         @bind-Value="SelectedExtensionType"
+                                         GetText="@(ext => ext.Name)"
+                                         GetKey="@(ext => ext.Id.ToString())"
+                                         Placeholder="Seleccione el tipo de prórroga"
+                                         Size="SelectSize.Md" />
+                        </div>
+
+                        <div>
+                            <DateInput @bind-Value="RequestedAt"
+                                       Label="Fecha solicitada"
+                                       Required="true" />
+                        </div>
+
+                        <div>
+                            <label for="document" class="block text-sm font-medium mb-2">
+                                Documento (opcional)
+                            </label>
+                            <input type="file"
+                                   class="w-full px-3 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                                   @onchange="OnDocumentChanged"
+                                   accept=".pdf,.doc,.docx"
+                                   disabled="@IsProcessing" />
+                            @if (!string.IsNullOrEmpty(_selectedFileName))
+                            {
+                                <p class="mt-1 text-sm text-muted">Archivo seleccionado: @_selectedFileName</p>
+                            }
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(_errorMessage))
+                        {
+                            <div class="rounded-lg bg-error/10 border border-error/20 p-3">
+                                <p class="text-sm text-error">@_errorMessage</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="px-6 py-4 border-t border-border bg-primary-subtle">
+                    <div class="flex gap-2 justify-end">
+                        <ActionButton Text="Cancelar"
+                                      Intent="ButtonIntent.Neutral"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Md"
+                                      Execute="Close"
+                                      Disabled="@IsProcessing" />
+
+                        <ActionButton Text="@(IsProcessing ? "Creando..." : "Crear prórroga")"
+                                      Intent="ButtonIntent.Add"
+                                      Variant="ButtonVariant.Filled"
+                                      Size="ButtonSize.Md"
+                                      Execute="OnCreateExtension"
+                                      Disabled="@(IsProcessing || !IsFormValid)">
+                            <Icon>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5">
+                                    <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clip-rule="evenodd" />
+                                </svg>
+                            </Icon>
+                        </ActionButton>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public List<CatalogListItemDTO> ExtensionTypes { get; set; } = new();
+    [Parameter] public EventCallback OnExtensionCreated { get; set; }
+
+    private CatalogListItemDTO? SelectedExtensionType { get; set; }
+    private DateOnly? RequestedAt { get; set; }
+    private int? DocumentId { get; set; }
+    private string? _selectedFileName;
+    private bool IsProcessing { get; set; }
+    private string? _errorMessage;
+
+    private bool IsFormValid =>
+        SelectedExtensionType != null &&
+        RequestedAt.HasValue;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        if (IsOpen && !IsProcessing)
+        {
+            ResetForm();
+        }
+    }
+
+    private void ResetForm()
+    {
+        SelectedExtensionType = null;
+        RequestedAt = null;
+        DocumentId = null;
+        _selectedFileName = null;
+        _errorMessage = null;
+    }
+
+    private async Task OnCreateExtension()
+    {
+        if (!IsFormValid || IsProcessing)
+            return;
+
+        _errorMessage = null;
+
+        var request = new AddProjectExtensionRequestDTO
+        {
+            ProjectId = ProjectId,
+            ProjectExtensionTypeId = SelectedExtensionType!.Id,
+            RequestedAt = RequestedAt!.Value.ToDateTime(TimeOnly.MinValue),
+            DocumentId = DocumentId
+        };
+
+        try
+        {
+            IsProcessing = true;
+            StateHasChanged();
+
+            var response = await ProjectExtensionService.CreateAsync(request);
+
+            if (response.Success)
+            {
+                Toast.ShowSuccess("Prórroga creada correctamente");
+                await OnExtensionCreated.InvokeAsync();
+                await Close();
+            }
+            else
+            {
+                _errorMessage = response.Error ?? "Error al crear la prórroga";
+                Toast.ShowError(_errorMessage);
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error inesperado: {ex.Message}";
+            Toast.ShowError(_errorMessage);
+        }
+        finally
+        {
+            IsProcessing = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnDocumentChanged(ChangeEventArgs e)
+    {
+        // TODO: Implementar la lógica de carga de archivo
+        var files = e.Value as string;
+        if (!string.IsNullOrEmpty(files))
+        {
+            _selectedFileName = Path.GetFileName(files);
+            // Aquí deberías implementar la lógica para subir el archivo
+            // y obtener el DocumentId del backend
+        }
+        else
+        {
+            _selectedFileName = null;
+            DocumentId = null;
+        }
+    }
+}

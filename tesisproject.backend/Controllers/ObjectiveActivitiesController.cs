@@ -51,12 +51,14 @@ namespace tesisproject.backend.Controllers
             CancellationToken ct = default)
             => (await _service.DeleteAsync(id, ct)).ToActionResult();
 
-        // PUT: api/objectiveactivities/{id}/progress?value=50
+        // PUT: api/objectiveactivities/{id}/progress?visitId=123&value=50&observation=...
         [HttpPut("{id:int}/progress")]
         public async Task<ActionResult<ApiResponse<bool>>> SetProgress(
             int id,
+            [FromQuery] int visitId,
             [FromQuery] int value,
             CancellationToken ct = default)
-            => (await _service.SetProgressAsync(id, value, ct)).ToActionResult();
+            => (await _service.SetProgressAsync(visitId, id, value, ct)).ToActionResult();
+
     }
 }

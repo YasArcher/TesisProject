@@ -35,11 +35,6 @@ namespace tesisproject.shared.DTOs.Project.Request
         public List<ProjectObjectiveWithActivitiesRequestDTO> Objectives { get; set; } = new();
 
         // ===================================
-        //   4) Fecha programada de la primera visita
-        // ===================================
-        public DateTime ScheduledDate { get; set; }
-
-        // ===================================
         //   5) Investigadores externos
         // ===================================
         /// <summary>

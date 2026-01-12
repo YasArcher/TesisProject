@@ -7,14 +7,14 @@ namespace tesisproject.frontend.SharedUI.DateInput
 {
     public partial class DateInput : ComponentBase
     {
-        private const string DateFormat = "yyyy-MM-dd"; // native <input type="date"> expects this
+        private const string DateFormat = "yyyy-MM-dd"; // el <input type="date"> nativo espera este formato
         protected string _stringValue = string.Empty;
         protected string? _minString;
         protected string? _maxString;
 
         [CascadingParameter] private EditContext? EditContext { get; set; }
 
-        /// <summary>Optional expression to bind validation messages (for EditForm integration).</summary>
+        /// <summary>Expresión opcional para enlazar mensajes de validación (para integración con EditForm).</summary>
         [Parameter] public Expression<Func<DateOnly?>>? For { get; set; }
 
         [Parameter] public string? Label { get; set; }
@@ -50,7 +50,7 @@ namespace tesisproject.frontend.SharedUI.DateInput
             }
             else
             {
-                // If parsing fails, keep previous Value and surface an error state
+                // Si el parseo falla, mantener el Value anterior y mostrar un estado de error
                 await ValueChanged.InvokeAsync(Value);
             }
 
@@ -87,11 +87,11 @@ namespace tesisproject.frontend.SharedUI.DateInput
             get
             {
                 if (Required && Value is null)
-                    return "This field is required.";
+                    return "Este campo es obligatorio.";
                 if (Value is not null && Min is not null && Value < Min)
-                    return $"Date must be on or after {ToDateString(Min)}.";
+                    return $"La fecha debe ser igual o posterior a {ToDateString(Min)}.";
                 if (Value is not null && Max is not null && Value > Max)
-                    return $"Date must be on or before {ToDateString(Max)}.";
+                    return $"La fecha debe ser igual o anterior a {ToDateString(Max)}.";
                 return string.Empty;
             }
         }

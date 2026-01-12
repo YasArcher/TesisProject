@@ -50,6 +50,7 @@
 @inject ITransactionTypeClientService TransactionTypeService
 @inject IProjectObjectiveClientService ProjectObjectiveService
 @inject IExternalResearcherProjectClientService ExternalResearcherProjectService
+@inject IProjectExtensionTypeClientService ProjectExtensionTypeService
 
 
 <div class="flex flex-col h-full">
@@ -215,7 +216,6 @@
 
                 </ChildContent>
             </Tab>
-
             <Tab Key="extensions" Title="Prórrogas">
                 <Icon>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
@@ -224,12 +224,12 @@
                 </Icon>
                 <ChildContent>
                     <ProjectExtensionsTab Items="_extensions"
+                                          ExtensionTypes="_extensionTypes"
                                           IsLoading="_loadingExtensions"
                                           OnRequestNew="HandleRequestExtension"
                                           OnOpen="HandleOpenExtension" />
                 </ChildContent>
             </Tab>
-
         </Tabs>
     </div>
 </div>
@@ -291,6 +291,13 @@
                      DocumentId="@_selectedDocumentId"
                      IsOpen="@_docViewerOpen"
                      IsOpenChanged="v => _docViewerOpen = v" />
+
+<!-- Al final del archivo, después de los otros modales -->
+
+<CreateProjectExtensionModal @bind-IsOpen="_showCreateExtensionModal"
+                             ProjectId="@ProjectId"
+                             ExtensionTypes="@(_extensionTypes ?? new())"
+                             OnExtensionCreated="HandleExtensionCreated" />
 
 @code {
     private bool _docViewerOpen;
@@ -374,6 +381,28 @@
     private List<ProjectExtensionListResponseDTO>? _extensions;
     private bool _loadingExtensions;
     private string? _extensionsError;
+    // Agregar esta variable al inicio del @code
+    private bool _showCreateExtensionModal;
+
+    // Reemplazar los handlers existentes:
+    private Task HandleRequestExtension()
+    {
+        _showCreateExtensionModal = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleExtensionCreated()
+    {
+        _showCreateExtensionModal = false;
+        await LoadProjectExtensions();
+        StateHasChanged();
+    }
+
+
+    private List<CatalogListItemDTO>? _extensionTypes;  // Lista de tipos de prórroga
+    private bool _loadingExtensionTypes;
+    private string? _extensionTypesError;
 
     private bool _accrualModalOpen;
     private bool _savingAccrual;
@@ -452,6 +481,64 @@
         catch (Exception ex)
         {
             Toast.ShowError($"Error al cargar investigadores externos: {ex.Message}");
+        }
+    }
+
+    private async Task LoadExtensionTypes()
+    {
+        _loadingExtensionTypes = true;
+        _extensionTypesError = null;
+
+        try
+        {
+            var res = await ProjectExtensionTypeService.GetListAsync(onlyActives: true, CancellationToken.None);
+            if (res.Success && res.Response is not null)
+            {
+                _extensionTypes = res.Response;  // Asigna la lista de tipos de prórroga
+            }
+            else
+            {
+                _extensionTypes = new List<CatalogListItemDTO>();
+                _extensionTypesError = res.Error ?? "No se pudieron cargar los tipos de prórroga.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _extensionTypes = new List<CatalogListItemDTO>();
+            _extensionTypesError = $"Error al cargar los tipos de prórroga: {ex.Message}";
+        }
+        finally
+        {
+            _loadingExtensionTypes = false;
+        }
+    }
+
+    private async Task LoadProjectExtensions()
+    {
+        _loadingExtensions = true;
+        _extensionsError = null;
+
+        try
+        {
+            var res = await ProjectExtensionService.ListByProjectAsync(ProjectId, CancellationToken.None);
+            if (res.Success && res.Response is not null)
+            {
+                _extensions = res.Response;
+            }
+            else
+            {
+                _extensions = new List<ProjectExtensionListResponseDTO>();
+                _extensionsError = res.Error ?? "No se pudieron cargar las prórrogas.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _extensions = new List<ProjectExtensionListResponseDTO>();
+            _extensionsError = $"Error al cargar las prórrogas: {ex.Message}";
+        }
+        finally
+        {
+            _loadingExtensions = false;
         }
     }
 
@@ -673,6 +760,8 @@
         await EnsureResearchCategoryTreeAsync();
         await EnsureTabDataAsync(_activeTab);
         await EnsureTransactionTypesAsync();
+        await LoadProjectExtensions();
+        await LoadExtensionTypes();
     }
 
     private async Task OnTabChanged(string newKey)
@@ -1034,7 +1123,6 @@
                 ObjectiveId = a.ObjectiveId,
                 ActionText = a.ActionText ?? string.Empty,
                 ActivityResult = a.ActivityResult,
-                ProgressPercentage = a.ProgressPercentage // ✅ % (0..100)
             };
 
             var res = await ObjectiveActivityService.UpdateAsync(a.ObjectiveActivityId, dto, CancellationToken.None);
@@ -1470,7 +1558,6 @@
                     ObjectiveId = a.ObjectiveId,
                     ActionText = a.ActionText ?? string.Empty,
                     ActivityResult = a.ActivityResult,
-                    ProgressPercentage = a.ProgressPercentage
                 };
 
                 return ObjectiveActivityService.UpdateAsync(a.ObjectiveActivityId, dto, CancellationToken.None);
@@ -1656,7 +1743,6 @@
         }
     }
     // ===== Acciones prórrogas =====
-    private Task HandleRequestExtension() => Task.CompletedTask;
     private Task HandleOpenExtension(int projectExtensionId) => Task.CompletedTask;
 
     // ===== Util miembros =====

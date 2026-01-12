@@ -44,6 +44,7 @@ namespace tesisproject.backend.Data
         public DbSet<ExportField> ExportFields { get; set; }
         public DbSet<ExportTemplate> ExportTemplates { get; set; }
         public DbSet<ExportTemplateColumn> ExportTemplateColumns { get; set; }
+        public DbSet<VisitObjectiveActivityProgress> VisitObjectiveActivityProgresses => Set<VisitObjectiveActivityProgress>();
 
 
         // =========================================================
@@ -67,7 +68,7 @@ namespace tesisproject.backend.Data
         public DbSet<ResearchCategoryGroup> ResearchCategoryGroups => Set<ResearchCategoryGroup>();
         public DbSet<ProductAttribute> ProductAttributes => Set<ProductAttribute>();
         public DbSet<ProjectOriginType> ProjectOriginTypes => Set<ProjectOriginType>();
-
+        public DbSet<ProjectExtensionType> ProjectExtensionTypes => Set<ProjectExtensionType>();
 
         // =========================================================
         // DbSets - Auth
@@ -99,6 +100,8 @@ namespace tesisproject.backend.Data
             ConfigureProjectResearchCategory(builder);
             ConfigureResearchCategories(builder);
             ConfigureProjectDocuments(builder);
+            ConfigureProjectExtensions(builder);
+            ConfigureVisitObjectiveActivityProgress(builder);
 
             // 4) Visit (dos FKs hacia Documents, sin cascada)
             ConfigureVisit(builder);
@@ -159,6 +162,74 @@ namespace tesisproject.backend.Data
              .OnDelete(delete);
         }
 
+        private static void ConfigureProjectExtensions(ModelBuilder builder)
+        {
+            // ============== ProjectExtensionType (Catalog) ==============
+            builder.Entity<ProjectExtensionType>(b =>
+            {
+                b.Property(x => x.Name)
+                 .HasMaxLength(200)
+                 .IsRequired();
+
+                // Opcional: evitar duplicados en catálogo
+                b.HasIndex(x => x.Name).IsUnique();
+            });
+
+            // =================== ProjectExtension (Core) ===================
+            builder.Entity<ProjectExtension>(b =>
+            {
+                b.HasKey(x => x.ProjectExtensionId);
+
+                // Índices útiles
+                b.HasIndex(x => x.ProjectId);
+                b.HasIndex(x => x.ProjectExtensionTypeId);
+                b.HasIndex(x => x.DocumentId);
+
+                // FK -> Project
+                b.HasOne(x => x.Project)
+                 .WithMany(p => p.ProjectExtensions)
+                 .HasForeignKey(x => x.ProjectId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // FK -> ProjectExtensionType (Catalog)
+                b.HasOne(x => x.ProjectExtensionType)
+                 .WithMany(t => t.ProjectExtensions)
+                 .HasForeignKey(x => x.ProjectExtensionTypeId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // FK -> Document (opcional)
+                b.HasOne(x => x.Document)
+                 .WithMany()
+                 .HasForeignKey(x => x.DocumentId)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
+        }
+
+        private static void ConfigureVisitObjectiveActivityProgress(ModelBuilder builder)
+        {
+            builder.Entity<VisitObjectiveActivityProgress>(b =>
+            {
+                b.HasKey(x => x.Id);
+
+                b.HasIndex(x => x.VisitId);
+                b.HasIndex(x => x.ObjectiveActivityId);
+
+                // 1 registro por actividad por visita
+                b.HasIndex(x => new { x.VisitId, x.ObjectiveActivityId }).IsUnique();
+
+                // FK -> ObjectiveActivity
+                b.HasOne(x => x.ObjectiveActivity)
+                 .WithMany(a => a.VisitProgresses)
+                 .HasForeignKey(x => x.ObjectiveActivityId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // FK -> Visit
+                b.HasOne(x => x.Visit)
+                 .WithMany(v => v.ActivityProgresses)
+                 .HasForeignKey(x => x.VisitId)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
+        }
 
         private static void ConfigureAppUser(ModelBuilder builder)
         {
@@ -534,13 +605,13 @@ namespace tesisproject.backend.Data
 
                 // FK → Project (1 Proyecto tiene muchos ProjectDocuments)
                 b.HasOne(x => x.Project)
-                 .WithMany(p => p.ProjectDocuments) 
+                 .WithMany(p => p.ProjectDocuments)
                  .HasForeignKey(x => x.ProjectId)
                  .OnDelete(DeleteBehavior.NoAction);
 
                 // FK → Document (1 Document puede ser usado por muchos ProjectDocuments)
                 b.HasOne(x => x.Document)
-                 .WithMany(d => d.ProjectDocuments) 
+                 .WithMany(d => d.ProjectDocuments)
                  .HasForeignKey(x => x.DocumentId)
                  .OnDelete(DeleteBehavior.NoAction);
 

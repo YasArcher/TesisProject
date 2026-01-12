@@ -595,8 +595,7 @@
                         {
                             ObjectiveId = obj.ObjectiveId,
                             ActionText = act.ActionText,
-                            ActivityResult = act.ActivityResult,
-                            ProgressPercentage = act.ProgressPercentage
+                            ActivityResult = act.ActivityResult
                         };
 
                         var actCreated = await ObjectiveActivityService.CreateAsync(actReq);
@@ -612,7 +611,6 @@
                         act.ObjectiveId = actCreated.Response.ObjectiveId;
                         act.ActionText = actCreated.Response.ImprovementAction;
                         act.ActivityResult = actCreated.Response.ActivityResult;
-                        act.ProgressPercentage = actCreated.Response.ProgressPercentage;
                     }
                 }
             }
@@ -654,8 +652,7 @@
                     {
                         ObjectiveId = obj.ObjectiveId,
                         ActionText = act.ActionText,
-                        ActivityResult = act.ActivityResult,
-                        ProgressPercentage = act.ProgressPercentage
+                        ActivityResult = act.ActivityResult
                     };
 
                     var created = await ObjectiveActivityService.CreateAsync(actReq);
@@ -671,7 +668,6 @@
                     act.ObjectiveId = created.Response.ObjectiveId;
                     act.ActionText = created.Response.ImprovementAction;
                     act.ActivityResult = created.Response.ActivityResult;
-                    act.ProgressPercentage = created.Response.ProgressPercentage;
                 }
             }
 
@@ -689,8 +685,7 @@
                         ObjectiveActivityId = act.ActivityId,
                         ObjectiveId = obj.ObjectiveId,
                         ActionText = act.ActionText,
-                        ActivityResult = act.ActivityResult,
-                        ProgressPercentage = act.ProgressPercentage
+                        ActivityResult = act.ActivityResult
                     };
 
                     var upd = await ObjectiveActivityService.UpdateAsync(act.ActivityId, req);

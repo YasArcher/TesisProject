@@ -24,7 +24,5 @@ namespace tesisproject.shared.DTOs.ObjectiveActivity.Request
         /// <summary>
         /// Optional initial progress (0..100). Defaults to 0.
         /// </summary>
-        [Range(0, 100)]
-        public int ProgressPercentage { get; set; } = 0;
     }
 }

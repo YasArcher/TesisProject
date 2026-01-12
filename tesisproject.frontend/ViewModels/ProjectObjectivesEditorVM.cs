@@ -21,7 +21,5 @@
 
         public string ActionText { get; set; } = string.Empty;
         public string? ActivityResult { get; set; }
-
-        public int ProgressPercentage { get; set; } = 0;
     }
 }

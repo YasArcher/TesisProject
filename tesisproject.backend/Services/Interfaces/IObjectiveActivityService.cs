@@ -30,6 +30,7 @@ namespace tesisproject.backend.Services.Interfaces
         /// Set progress percentage for an activity (0..100).
         /// </summary>
         Task<ServiceResult<bool>> SetProgressAsync(
+            int visitId,
             int activityId,
             int progressPercentage,
             CancellationToken ct = default);

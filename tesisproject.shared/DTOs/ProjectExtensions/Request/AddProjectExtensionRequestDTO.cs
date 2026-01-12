@@ -13,6 +13,7 @@ namespace tesisproject.shared.DTOs.ProjectExtensions.Request
         public int ProjectId { get; set; }
 
         [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "Se debe seleccionar un tipo de extension")]
         public int ProjectExtensionTypeId { get; set; }
 
         public int? DocumentId { get; set; }

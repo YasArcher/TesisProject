@@ -225,7 +225,18 @@ namespace tesisproject.backend.Services.Implementations
             var objectives = await _uow.ProjectObjectives
                 .ListByProjectWithActivitiesAsync(projectId, ct);
 
-            // 2) Mapear a DTO
+            // 1) Reunir todos los IDs de actividades del proyecto
+            var activityIds = objectives
+                .SelectMany(o => o.Activities ?? new List<ObjectiveActivity>())
+                .Select(a => a.ObjectiveActivityId)
+                .Distinct()
+                .ToList();
+
+            // 2) Mapa: ObjectiveActivityId -> último progreso
+            var progressMap = await _uow.VisitObjectiveActivityProgresses
+                .GetLatestProgressByActivityIdsAsync(activityIds, ct);
+
+            // 3) Mapear a DTO usando el progreso desde snapshots
             var dtoList = objectives
                 .Select(o => new ProjectObjectiveWithActivitiesDTO
                 {
@@ -236,23 +247,29 @@ namespace tesisproject.backend.Services.Implementations
                     ObjectiveTypeName = o.ObjectiveType.Name,
                     Objective = o.Objetive,
                     Result = o.Result,
-                    Activities = o.Activities
-                        .Select(a => new ObjectiveActivityListItemDTO
+                    Activities = (o.Activities ?? new List<ObjectiveActivity>())
+                        .Select(a =>
                         {
-                            ObjectiveActivityId = a.ObjectiveActivityId,
-                            ObjectiveId = a.ObjectiveId,
-                            ActivityResult = a.ActivityResult,
-                            ActionText = a.ActionText,
-                            IsCompleted = a.IsCompleted,
-                            CreatedAt = a.CreatedAt,
-                            ProgressPercentage = a.ProgressPercentage
+                            var progress = progressMap.TryGetValue(a.ObjectiveActivityId, out var p) ? p : 0;
+
+                            return new ObjectiveActivityListItemDTO
+                            {
+                                ObjectiveActivityId = a.ObjectiveActivityId,
+                                ObjectiveId = a.ObjectiveId,
+                                ActivityResult = a.ActivityResult,
+                                ActionText = a.ActionText,
+                                CreatedAt = a.CreatedAt,
+
+                                ProgressPercentage = progress,
+                                IsCompleted = progress >= 100
+                            };
                         })
                         .ToList()
                 })
                 .ToList();
 
-            // 3) Devolver envuelto en tu ServiceResult
             return ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>.Ok(dtoList);
         }
+
     }
 }
