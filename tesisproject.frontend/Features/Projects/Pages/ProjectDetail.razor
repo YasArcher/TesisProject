@@ -321,6 +321,7 @@
     private string _activeTab = "overview";
     private bool _loadingOverview;
     private string? _error;
+    private int? _objectivesLoadedForVisitId;
 
     // ======= Objetivos del proyecto (para avance en visitas) =======
     private IReadOnlyList<ProjectObjectiveWithActivitiesDTO> _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
@@ -1084,7 +1085,18 @@
 
     private async Task EnsureProjectObjectivesAsync(bool forceRefresh = false)
     {
-        if (!forceRefresh && _projectObjectives is { Count: > 0 })
+        // si no hay visita abierta, no hay nada que cargar “por visita”
+        if (!_openVisitId.HasValue || _openVisitId.Value <= 0)
+        {
+            _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
+            _objectivesLoadedForVisitId = null;
+            return;
+        }
+
+        // cache: si ya cargaste para ESTA visita y no piden refresh, no repitas
+        if (!forceRefresh
+            && _objectivesLoadedForVisitId == _openVisitId.Value
+            && _projectObjectives is { Count: > 0 })
             return;
 
         try
@@ -1092,19 +1104,27 @@
             _loadingObjectives = true;
             _objectivesError = null;
 
-            var res = await ProjectObjectiveService.GetByProjectWithActivitiesAsync(ProjectId);
+            var res = await ProjectObjectiveService.GetByVisitWithActivitiesAsync(
+                ProjectId,
+                _openVisitId.Value,
+                ct: CancellationToken.None);
 
             if (res.Success && res.Response is not null)
+            {
                 _projectObjectives = res.Response;
+                _objectivesLoadedForVisitId = _openVisitId.Value;
+            }
             else
             {
                 _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
-                _objectivesError = res.Error ?? "No se pudieron cargar los objetivos del proyecto.";
+                _objectivesLoadedForVisitId = null;
+                _objectivesError = res.Error ?? "No se pudieron cargar los objetivos/actividades de la visita.";
             }
         }
         catch (Exception ex)
         {
             _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
+            _objectivesLoadedForVisitId = null;
             _objectivesError = $"Error al cargar objetivos: {ex.Message}";
         }
         finally
@@ -1117,6 +1137,14 @@
     {
         try
         {
+            // 0) Debes tener una visita abierta para guardar progreso por visita
+            if (!_openVisitId.HasValue || _openVisitId.Value <= 0)
+            {
+                Toast.ShowError("No hay una visita abierta para guardar el progreso.");
+                return;
+            }
+
+            // 1) Guardar datos de la actividad (texto/resultado)
             var dto = new UpdateObjectiveActivityRequestDTO
             {
                 ObjectiveActivityId = a.ObjectiveActivityId,
@@ -1125,17 +1153,35 @@
                 ActivityResult = a.ActivityResult,
             };
 
-            var res = await ObjectiveActivityService.UpdateAsync(a.ObjectiveActivityId, dto, CancellationToken.None);
+            var updateRes = await ObjectiveActivityService.UpdateAsync(
+                a.ObjectiveActivityId,
+                dto,
+                CancellationToken.None);
 
-            if (!res.Success)
+            if (!updateRes.Success)
             {
-                Toast.ShowError(res.Error ?? "No se pudo guardar la actividad.");
+                Toast.ShowError(updateRes.Error ?? "No se pudo guardar la actividad.");
                 return;
             }
 
-            Toast.ShowSuccess("Actividad guardada.");
+            // 2) Guardar progreso (por visita)
+            var progress = Math.Min(100, Math.Max(0, a.ProgressPercentage)); // ajusta si el nombre difiere
 
-            // ✅ Refresca solo visitas (objetivos + header)
+            var progressRes = await ObjectiveActivityService.SetProgressAsync(
+                a.ObjectiveActivityId,
+                _openVisitId.Value,
+                progress,
+                CancellationToken.None);
+
+            if (!progressRes.Success)
+            {
+                Toast.ShowError(progressRes.Error ?? "Se guardó la actividad, pero no se pudo guardar el progreso.");
+                return;
+            }
+
+            Toast.ShowSuccess("Actividad y progreso guardados.");
+
+            // 3) Refrescar (trae % recalculados)
             await RefreshVisitsTabAsync(refreshVisitList: false, refreshVisitDetail: false);
         }
         catch (Exception ex)
@@ -1143,7 +1189,6 @@
             Toast.ShowError($"Error al guardar actividad: {ex.Message}");
         }
     }
-
 
     private async Task RefreshVisitsTabAsync(bool refreshVisitList = false, bool refreshVisitDetail = false)
     {
@@ -1464,7 +1509,7 @@
         _visitDetailError = null;
         _productsError = null;
 
-        await EnsureProjectObjectivesAsync(); // o EnsureProjectObjectivesAsync(forceRefresh: false)
+        await EnsureProjectObjectivesAsync(forceRefresh: true); // o EnsureProjectObjectivesAsync(forceRefresh: false)
 
         try
         {
@@ -1977,5 +2022,4 @@
             Toast.ShowError($"Error al cancelar la transacción: {ex.Message}");
         }
     }
-
 }

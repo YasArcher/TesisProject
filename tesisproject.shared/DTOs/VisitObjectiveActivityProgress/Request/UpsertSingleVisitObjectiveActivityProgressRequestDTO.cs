@@ -5,21 +5,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace tesisproject.shared.Entities.Core
+namespace tesisproject.shared.DTOs.VisitObjectiveActivityProgress.Request
 {
-    public class VisitObjectiveActivityProgress
+    public class UpsertSingleVisitObjectiveActivityProgressRequestDTO
     {
-        public int Id { get; set; }
-
+        [Required]
         public int VisitId { get; set; }
+
+        [Required]
         public int ObjectiveActivityId { get; set; }
 
         [Range(0, 100)]
         public int ProgressPercentage { get; set; }
-
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-        public Visit Visit { get; set; } = null!;
-        public ObjectiveActivity ObjectiveActivity { get; set; } = null!;
     }
 }

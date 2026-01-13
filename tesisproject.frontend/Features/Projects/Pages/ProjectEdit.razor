@@ -620,12 +620,14 @@
             // =========================================
             foreach (var obj in current.Where(o => o.ObjectiveId > 0))
             {
-                var updReq = new tesisproject.shared.DTOs.ProjectObjective.Request.UpdateProjectObjectiveRequestDTO
+                Console.WriteLine($"Updating objective #{obj.ObjectiveId}...#{obj.Percentage}");
+                var updReq = new UpdateProjectObjectiveRequestDTO
                 {
                     Id = obj.ObjectiveId,
                     ProjectId = ProjectId,
                     ObjectiveTypeId = obj.ObjectiveTypeId,
                     Objective = obj.ObjectiveText ?? string.Empty,
+                    WeightedPercentage = obj.Percentage,
                     Result = obj.Result ?? string.Empty
                 };
 

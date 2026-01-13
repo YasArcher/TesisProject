@@ -177,63 +177,48 @@
                                     <td class="px-4 py-3.5 text-sm text-right align-top">
                                         @{
                                             var id = activity.ObjectiveActivityId;
-                                            var locked = _lockedActivityIds.Contains(id);
                                             var saving = IsSavingActivity(id);
                                             var error = GetActivityError(id);
                                             var dirty = IsDirty(id, activity.ProgressPercentage);
                                         }
 
                                         <div class="inline-flex items-start gap-3">
-                                            @if (locked)
-                                            {
-                                                <input type="number"
-                                                       class="w-20 rounded border-border bg-background px-2 py-1 text-sm text-right cursor-not-allowed"
-                                                       value="@GetProgress(activity)"
-                                                       disabled />
+                                            <div class="flex flex-col items-end">
+                                                <div class="inline-flex items-center gap-2">
+                                                    <input type="number" min="0" max="100" step="1"
+                                                           class="w-20 rounded border-border bg-background px-2 py-1 text-sm text-right"
+                                                           value="@GetProgress(activity)"
+                                                           @oninput="(e) => SetProgress(activity, e.Value?.ToString())"
+                                                           disabled="@saving" />
 
-                                                <span class="px-3 py-1 rounded-full text-xs font-bold bg-secondary-subtle text-secondary border border-secondary-light whitespace-nowrap">
-                                                    ✓ Completada
-                                                </span>
-                                            }
-                                            else
-                                            {
-                                                <div class="flex flex-col items-end">
-                                                    <div class="inline-flex items-center gap-2">
-                                                        <input type="number" min="0" max="100" step="1"
-                                                               class="w-20 rounded border-border bg-background px-2 py-1 text-sm text-right"
-                                                               value="@GetProgress(activity)"
-                                                               @oninput="(e) => SetProgress(activity, e.Value?.ToString())"
-                                                               disabled="@saving" />
-
-                                                        @if (saving)
-                                                        {
-                                                            <span class="px-3 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted border border-muted/30 whitespace-nowrap">
-                                                                Guardando...
-                                                            </span>
-                                                        }
-                                                        else
-                                                        {
-                                                            <span class="px-3 py-1 rounded-full text-xs font-medium @GetProgressBadgeClass(GetProgress(activity)) whitespace-nowrap">
-                                                                @GetProgressBadgeText(GetProgress(activity))
-                                                            </span>
-                                                        }
-
-                                                        <ActionButton Text="Guardar"
-                                                                      Intent="ButtonIntent.Warning"
-                                                                      Variant="ButtonVariant.Outline"
-                                                                      Size="ButtonSize.Sm"
-                                                                      Disabled="@(!dirty || saving)"
-                                                                      Execute="@(() => SaveSingleActivityAsync(activity))" />
-                                                    </div>
-
-                                                    @if (!string.IsNullOrWhiteSpace(error))
+                                                    @if (saving)
                                                     {
-                                                        <div class="mt-1 text-xs text-error text-left self-stretch">
-                                                            @error
-                                                        </div>
+                                                        <span class="px-3 py-1 rounded-full text-xs font-medium bg-muted/10 text-muted border border-muted/30 whitespace-nowrap">
+                                                            Guardando...
+                                                        </span>
                                                     }
+                                                    else
+                                                    {
+                                                        <span class="px-3 py-1 rounded-full text-xs font-medium @GetProgressBadgeClass(GetProgress(activity)) whitespace-nowrap">
+                                                            @GetProgressBadgeText(GetProgress(activity))
+                                                        </span>
+                                                    }
+
+                                                    <ActionButton Text="Guardar"
+                                                                  Intent="ButtonIntent.Warning"
+                                                                  Variant="ButtonVariant.Outline"
+                                                                  Size="ButtonSize.Sm"
+                                                                  Disabled="@(!dirty || saving)"
+                                                                  Execute="@(() => SaveSingleActivityAsync(activity))" />
                                                 </div>
-                                            }
+
+                                                @if (!string.IsNullOrWhiteSpace(error))
+                                                {
+                                                    <div class="mt-1 text-xs text-error text-left self-stretch">
+                                                        @error
+                                                    </div>
+                                                }
+                                            </div>
                                         </div>
                                     </td>
                                 </RowTemplate>
@@ -254,7 +239,6 @@
     [Parameter]
     public EventCallback<ObjectiveActivityListItemDTO> OnSaveActivityRequested { get; set; }
 
-    private HashSet<int> _lockedActivityIds = new();
     private Dictionary<int, int> _initialProgress = new();
 
     private readonly Dictionary<int, bool> _savingByActivityId = new();
@@ -288,11 +272,6 @@
         _initialProgress = Objectives
             .SelectMany(o => o.Activities)
             .ToDictionary(a => a.ObjectiveActivityId, a => a.ProgressPercentage);
-
-        _lockedActivityIds = _initialProgress
-            .Where(kv => kv.Value >= 100)
-            .Select(kv => kv.Key)
-            .ToHashSet();
     }
 
     private int GetProgress(ObjectiveActivityListItemDTO a) => a.ProgressPercentage;
@@ -315,9 +294,6 @@
 
         var id = activity.ObjectiveActivityId;
 
-        if (_lockedActivityIds.Contains(id))
-            return;
-
         // si no hay cambios, no hagas nada
         if (!IsDirty(id, activity.ProgressPercentage))
         {
@@ -333,12 +309,8 @@
         {
             await OnSaveActivityRequested.InvokeAsync(activity);
 
-            // baseline nuevo
+            // baseline nuevo (aunque sea 100, queda editable para futuros ajustes)
             _initialProgress[id] = activity.ProgressPercentage;
-
-            // lock si llegó a 100
-            if (activity.ProgressPercentage >= 100)
-                _lockedActivityIds.Add(id);
         }
         catch (Exception ex)
         {

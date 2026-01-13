@@ -16,7 +16,7 @@
                       Text="Guardar"
                       Variant="ButtonVariant.Filled"
                       Intent="ButtonIntent.Success"
-                      Disabled="@(IsLoading || IsSaving || _vmObjectives.Count == 0)"
+                      Disabled="@IsSaveDisabled"
                       ConfirmBeforeExecute="true"
                       ConfirmTitle="Guardar objetivos"
                       ConfirmMessage="¿Confirmas guardar los cambios de objetivos y actividades?"
@@ -36,6 +36,13 @@
     {
         <ObjectivesActivitiesEditorVM Objectives="_vmObjectives"
                                       ObjectivesChanged="HandleObjectivesChanged" />
+
+        @if (!string.IsNullOrWhiteSpace(_validationMessage))
+        {
+            <div class="text-xs text-error">
+                @_validationMessage
+            </div>
+        }
 
         <!-- Debug opcional -->
         <div class="p-4 rounded-2xl border border-border bg-background">
@@ -63,9 +70,28 @@
     private List<ProjectObjectiveEditVM> _vmObjectives = new();
     private List<ProjectObjectiveEditVM> _originalObjectives = new();
 
+    private string? _validationMessage;
+
+    // Ajusta si tu “Objetivo general” no es 1
+    private const int GeneralObjectiveTypeId = 1;
+
+    // ======= Botón =======
+    private bool IsSaveDisabled
+    {
+        get
+        {
+            // recalcula mensaje cada render
+            var ok = AreObjectivesAndActivitiesValid(out _validationMessage);
+
+            return IsLoading
+                || IsSaving
+                || _vmObjectives.Count == 0
+                || !ok;
+        }
+    }
+
     protected override async Task OnParametersSetAsync()
     {
-        // Cargar una sola vez cuando ya tengas ProjectId válido
         if (_localLoaded) return;
         if (ProjectId <= 0) return;
         if (IsLoading) return;
@@ -73,6 +99,10 @@
 
         await LoadObjectivesAsync();
         _localLoaded = true;
+
+        // Fuerza cálculo inicial del mensaje
+        _ = AreObjectivesAndActivitiesValid(out _validationMessage);
+        StateHasChanged();
     }
 
     private async Task LoadObjectivesAsync()
@@ -83,8 +113,6 @@
             return;
 
         _vmObjectives = MapToVM(res.Response);
-
-        // Snapshot para diff
         _originalObjectives = DeepClone(_vmObjectives);
     }
 
@@ -107,14 +135,8 @@
                 }).ToList()
         }).ToList();
 
-
-
     private static List<ProjectObjectiveEditVM> MapToVM(List<ProjectObjectiveWithActivitiesDTO> data)
     {
-        // ⚠️ AQUÍ falta tu DTO real de objetivos con actividades.
-        // En cuanto me lo pegues, te lo dejo 100% mapeado.
-
-        // Por ahora, estructura vacía para compilar si ya tienes el DTO importado.
         var list = new List<ProjectObjectiveEditVM>();
 
         foreach (var o in data)
@@ -144,14 +166,108 @@
 
     private Task HandleObjectivesChanged()
     {
-        // aquí solo reaccionas a cambios del editor (ya muta la lista)
+        // Recalcular validación y refrescar UI para bloquear/desbloquear botón
+        _ = AreObjectivesAndActivitiesValid(out _validationMessage);
+        StateHasChanged();
         return Task.CompletedTask;
     }
 
-    private Task OnSaveClicked()
-        => OnSaveRequested.InvokeAsync(new ProjectObjectivesSavePayloadVM
+    private async Task OnSaveClicked()
+    {
+        // Defensa: si alguien fuerza click, igual no guardes si es inválido
+        if (!AreObjectivesAndActivitiesValid(out _validationMessage))
+        {
+            StateHasChanged();
+            return;
+        }
+
+        await OnSaveRequested.InvokeAsync(new ProjectObjectivesSavePayloadVM
         {
             Current = _vmObjectives,
             Original = _originalObjectives
         });
+    }
+
+    // ========= VALIDACIONES =========
+    private bool AreObjectivesAndActivitiesValid(out string? error)
+    {
+        error = null;
+
+        if (_vmObjectives is null || _vmObjectives.Count == 0)
+        {
+            error = "Debe existir al menos un objetivo.";
+            return false;
+        }
+
+        foreach (var obj in _vmObjectives)
+        {
+            // 1) Objetivo debe tener texto y resultado
+            if (string.IsNullOrWhiteSpace(obj.ObjectiveText))
+            {
+                error = $"El objetivo #{obj.ObjectiveId} no tiene texto.";
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(obj.Result))
+            {
+                error = $"El objetivo #{obj.ObjectiveId} no tiene resultado.";
+                return false;
+            }
+
+            // 2) Validación de porcentaje:
+            //    - Objetivo general: puede ir con 0, pero no negativo.
+            //    - Objetivos específicos: % obligatorio > 0.
+            if (obj.ObjectiveTypeId == GeneralObjectiveTypeId)
+            {
+                if (obj.Percentage < 0)
+                {
+                    error = "El objetivo general no puede tener porcentaje negativo.";
+                    return false;
+                }
+            }
+            else
+            {
+                if (obj.Percentage <= 0)
+                {
+                    error = "Todos los objetivos específicos deben tener porcentaje mayor a 0.";
+                    return false;
+                }
+
+                // 3) Para objetivos específicos, exigir actividades
+                if (obj.Activities is null || obj.Activities.Count == 0)
+                {
+                    error = $"El objetivo específico #{obj.ObjectiveId} debe tener al menos una actividad.";
+                    return false;
+                }
+
+                foreach (var act in obj.Activities)
+                {
+                    if (string.IsNullOrWhiteSpace(act.ActionText))
+                    {
+                        error = $"Hay actividades sin acción (objetivo #{obj.ObjectiveId}).";
+                        return false;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(act.ActivityResult))
+                    {
+                        error = $"Hay actividades sin resultado (objetivo #{obj.ObjectiveId}).";
+                        return false;
+                    }
+                }
+            }
+        }
+
+        // 4) La suma de % de objetivos específicos debe ser exactamente 100
+        var totalSpecific = _vmObjectives
+            .Where(o => o.ObjectiveTypeId != GeneralObjectiveTypeId)
+            .Sum(o => o.Percentage);
+
+        if (totalSpecific != 100)
+        {
+            error = $"La suma de porcentajes de objetivos específicos debe ser 100 (actual: {totalSpecific}).";
+            return false;
+        }
+
+        return true;
+    }
 }

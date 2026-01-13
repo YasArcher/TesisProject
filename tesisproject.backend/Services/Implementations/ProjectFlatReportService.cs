@@ -334,7 +334,7 @@ namespace tesisproject.backend.Services.Implementations
                                 ObjectiveId = o.Id,
                                 ObjectiveTypeId = o.ObjectiveTypeId,
                                 ObjectiveTypeName = objectiveTypes.FirstOrDefault(ot => ot.Id == o.ObjectiveTypeId)?.Name,
-                                Objective = o.Objetive,
+                                Objective = o.Objective,
                                 Result = o.Result,
                                 WeightedPercentage = o.WeightedPercentage,
                                 // Activities NO se proyectan

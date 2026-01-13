@@ -1,4 +1,5 @@
-﻿using tesisproject.backend.Services.Interfaces;
+﻿using Microsoft.EntityFrameworkCore;
+using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.ObjectiveActivity.Request;
 using tesisproject.shared.DTOs.ObjectiveActivity.Response;
@@ -18,45 +19,45 @@ namespace tesisproject.backend.Services.Implementations
 
         // ==================== READS ====================
 
-public async Task<ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>> ListByObjectiveAsync(
-    int objectiveId,
-    CancellationToken ct = default)
-{
-    if (objectiveId <= 0)
-        return ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>
-            .Fail("ObjectiveId is required.", ErrorType.Validation);
-
-    var entities = await _uow.ObjectiveActivities.GetByObjectiveAsync(objectiveId, ct);
-
-    // 1) IDs de actividades para consultar últimos snapshots
-    var activityIds = entities.Select(a => a.ObjectiveActivityId).ToList();
-
-    // 2) Mapa: ObjectiveActivityId -> ProgressPercentage (último snapshot)
-    var latestProgressMap = await _uow.VisitObjectiveActivityProgresses.GetLatestProgressByActivityIdsAsync(activityIds, ct);
-
-    // 3) Construir DTO sin depender de campos eliminados en ObjectiveActivity
-    var dto = entities
-        .OrderBy(a => a.ObjectiveActivityId)
-        .Select(a =>
+        public async Task<ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>> ListByObjectiveAsync(
+            int objectiveId,
+            CancellationToken ct = default)
         {
-            var progress = latestProgressMap.TryGetValue(a.ObjectiveActivityId, out var p) ? p : 0;
+            if (objectiveId <= 0)
+                return ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>
+                    .Fail("ObjectiveId is required.", ErrorType.Validation);
 
-            return new ObjectiveActivityListItemDTO
-            {
-                ObjectiveActivityId = a.ObjectiveActivityId,
-                ObjectiveId = a.ObjectiveId,
-                ActivityResult = a.ActivityResult ?? string.Empty,
-                ActionText = a.ActionText ?? string.Empty,
-                CreatedAt = a.CreatedAt,
+            var entities = await _uow.ObjectiveActivities.GetByObjectiveAsync(objectiveId, ct);
 
-                ProgressPercentage = progress,
-                IsCompleted = progress >= 100
-            };
-        })
-        .ToList();
+            // 1) IDs de actividades para consultar últimos snapshots
+            var activityIds = entities.Select(a => a.ObjectiveActivityId).ToList();
 
-    return ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>.Ok(dto);
-}
+            // 2) Mapa: ObjectiveActivityId -> ProgressPercentage (último snapshot)
+            var latestProgressMap = await _uow.VisitObjectiveActivityProgresses.GetTotalProgressByActivityIdsAsync(activityIds, ct);
+
+            // 3) Construir DTO sin depender de campos eliminados en ObjectiveActivity
+            var dto = entities
+                .OrderBy(a => a.ObjectiveActivityId)
+                .Select(a =>
+                {
+                    var progress = latestProgressMap.TryGetValue(a.ObjectiveActivityId, out var p) ? p : 0;
+
+                    return new ObjectiveActivityListItemDTO
+                    {
+                        ObjectiveActivityId = a.ObjectiveActivityId,
+                        ObjectiveId = a.ObjectiveId,
+                        ActivityResult = a.ActivityResult ?? string.Empty,
+                        ActionText = a.ActionText ?? string.Empty,
+                        CreatedAt = a.CreatedAt,
+
+                        ProgressPercentage = progress,
+                        IsCompleted = progress >= 100
+                    };
+                })
+                .ToList();
+
+            return ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>.Ok(dto);
+        }
 
 
         public async Task<ServiceResult<ObjectiveActivityDetailDTO>> GetByIdAsync(
@@ -73,9 +74,10 @@ public async Task<ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>> Li
                     .Fail("ObjectiveActivity not found.", ErrorType.NotFound);
 
             var map = await _uow.VisitObjectiveActivityProgresses
-                .GetLatestProgressByActivityIdsAsync(new[] { entity.ObjectiveActivityId }, ct);
+                .GetTotalProgressByActivityIdsAsync(new[] { entity.ObjectiveActivityId }, ct);
 
             var progress = map.TryGetValue(entity.ObjectiveActivityId, out var p) ? p : 0;
+
 
             var dto = MapToDetailDto(entity, progress);
             return ServiceResult<ObjectiveActivityDetailDTO>.Ok(dto);
@@ -210,7 +212,7 @@ public async Task<ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>> Li
         public async Task<ServiceResult<bool>> SetProgressAsync(
             int visitId,
             int activityId,
-            int progressPercentage,
+            int progressPercentage, // TOTAL ACUMULADO deseado (0..100)
             CancellationToken ct = default)
         {
             if (visitId <= 0)
@@ -222,45 +224,79 @@ public async Task<ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>> Li
             if (progressPercentage < 0 || progressPercentage > 100)
                 return ServiceResult<bool>.Fail("Progress must be between 0 and 100.", ErrorType.Validation);
 
-            // 1) Validar existencia de Visit
+            // 1) Validar Visit
             var visit = await _uow.Visits.GetByIdAsync(new object[] { visitId }, ct);
             if (visit is null)
                 return ServiceResult<bool>.Fail("Visit not found.", ErrorType.NotFound);
 
-            // 2) Validar existencia de Activity
+            // 2) Validar Activity
             var activity = await _uow.ObjectiveActivities.GetByIdAsync(new object[] { activityId }, ct);
             if (activity is null)
                 return ServiceResult<bool>.Fail("ObjectiveActivity not found.", ErrorType.NotFound);
 
-            // 3) Buscar si ya existe registro en esa visita (upsert)
-            var existing = await _uow.VisitObjectiveActivityProgresses.FirstOrDefaultAsync(
-                x => x.VisitId == visitId && x.ObjectiveActivityId == activityId,
-                ct);
+            // 3) Calcular progreso acumulado ANTES de esta visita (VisitId < visitId)
+            //    Nota: aquí asumimos que VisitId es incremental y define el orden temporal.
+            //    Además: por cada (VisitId, ActivityId) tomamos el ÚLTIMO registro (por CreatedAt).
+            var totalBeforeDict = await _uow.VisitObjectiveActivityProgresses
+                .GetCumulativeProgressByProjectUpToVisitAndActivityIdsAsync(
+                    projectId: visit.ProjectId,
+                    visitId: visitId - 1,               // <- "hasta la anterior" por ID
+                    activityIds: new[] { activityId },
+                    ct: ct);
 
+            var totalBeforeThisVisit = totalBeforeDict.TryGetValue(activityId, out var before) ? before : 0; // 0..100 clamped
+
+            // 4) REGLA: permitir disminuir, pero NO por debajo de lo ya avanzado antes de esta visita
+            if (progressPercentage < totalBeforeThisVisit)
+            {
+                return ServiceResult<bool>.Fail(
+                    $"You cannot set progress below {totalBeforeThisVisit}% because that was achieved before this visit.",
+                    ErrorType.Validation);
+            }
+
+            // 5) Nuevo delta de ESTA visita (lo que aporta esta visita para llegar al total deseado)
+            var newDelta = progressPercentage - totalBeforeThisVisit; // 0..(100-totalBefore)
+
+            // 6) Buscar el registro existente "más reciente" en esta visita (si existe)
+            //    OJO: tu GenericRepository.FirstOrDefaultAsync no permite ordenar.
+            //    Solución: usa Query() y ordena.
+            var existing = await _uow.VisitObjectiveActivityProgresses
+                .Query(asNoTracking: false)
+                .Where(x => x.VisitId == visitId && x.ObjectiveActivityId == activityId)
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync(ct);
+
+            // 7) Upsert del delta
             if (existing is null)
             {
-                var snapshot = new VisitObjectiveActivityProgress
+                // Si no hay cambio real, omite insertar (opcional)
+                if (newDelta == 0)
+                    return ServiceResult<bool>.Ok(true);
+
+                var entity = new VisitObjectiveActivityProgress
                 {
                     VisitId = visitId,
                     ObjectiveActivityId = activityId,
-                    ProgressPercentage = progressPercentage,
+                    ProgressPercentage = newDelta,
                     CreatedAt = DateTime.UtcNow
                 };
 
-                await _uow.VisitObjectiveActivityProgresses.AddAsync(snapshot, ct);
+                await _uow.VisitObjectiveActivityProgresses.AddAsync(entity, ct);
             }
             else
             {
-                existing.ProgressPercentage = progressPercentage;
-                existing.CreatedAt = DateTime.UtcNow; // o agrega UpdatedAt si prefieres
+                existing.ProgressPercentage = newDelta;
+                existing.CreatedAt = DateTime.UtcNow; // ideal: UpdatedAt
                 _uow.VisitObjectiveActivityProgresses.Update(existing);
             }
 
             await _uow.SaveChangesAsync(ct);
 
+            // 8) Recalcular ExecutionPercentage del proyecto
+            await RecalculateProjectExecutionPercentageAsync(visit.ProjectId, ct);
+
             return ServiceResult<bool>.Ok(true);
         }
-
 
 
         // ==================== Helpers ====================
@@ -278,5 +314,73 @@ public async Task<ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>> Li
                 IsCompleted = progressPercentage >= 100
             };
 
+        private async Task RecalculateProjectExecutionPercentageAsync(int projectId, CancellationToken ct)
+        {
+            // 1) Traer objetivos con actividades (ya incluye Activities)
+            var objectives = await _uow.ProjectObjectives.GetByProjectAsync(projectId, ct);
+
+            // 2) Excluir objetivo general
+            var scopedObjectives = objectives
+                .Where(o => o.ObjectiveTypeId != 1)
+                .ToList();
+
+            if (scopedObjectives.Count == 0)
+            {
+                await SetProjectExecutionAsync(projectId, 0m, ct);
+                return;
+            }
+
+            // 3) Sacar todas las actividades de esos objetivos
+            var activities = scopedObjectives
+                .SelectMany(o => o.Activities)
+                .ToList();
+
+            if (activities.Count == 0)
+            {
+                // Por tu regla no debería pasar, pero dejamos seguro
+                await SetProjectExecutionAsync(projectId, 0m, ct);
+                return;
+            }
+
+            var activityIds = activities.Select(a => a.ObjectiveActivityId).Distinct().ToList();
+
+            // 4) Total acumulado por actividad (SUM de deltas)
+            var totalsByActivity = await _uow.VisitObjectiveActivityProgresses
+                .GetTotalProgressByActivityIdsAsync(activityIds, ct);
+
+            // 5) Calcular ponderado por objetivo
+            decimal weightedSum = 0m;
+
+            foreach (var obj in scopedObjectives)
+            {
+                var objActs = obj.Activities;
+                if (objActs is null || objActs.Count == 0)
+                    continue;
+
+                decimal objAvg = (decimal)objActs
+                    .Select(a => totalsByActivity.TryGetValue(a.ObjectiveActivityId, out var p) ? p : 0)
+                    .Average(); // 0..100
+
+                weightedSum += objAvg * obj.WeightedPercentage;
+            }
+
+            // Pesos (sin objetivo general) deben sumar 100 según tu regla
+            var execution = weightedSum / 100m;
+
+            // clamp y persistir
+            execution = Math.Min(100m, Math.Max(0m, execution));
+            await SetProjectExecutionAsync(projectId, Math.Round(execution, 2), ct);
+        }
+
+
+        private async Task SetProjectExecutionAsync(int projectId, decimal execution, CancellationToken ct)
+        {
+            var project = await _uow.Projects.GetByIdAsync(new object[] { projectId }, ct);
+            if (project is null) return;
+
+            project.ExecutionPercentage = Math.Min(100m, Math.Max(0m, execution));
+            _uow.Projects.Update(project);
+            await _uow.SaveChangesAsync(ct);
+        }
     }
 }

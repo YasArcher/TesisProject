@@ -29,7 +29,8 @@ namespace tesisproject.frontend.Services.Interfaces
             CancellationToken ct = default);
 
         Task<HttpResponseWrapper<bool>> SetProgressAsync(
-            int id,
+            int objectiveActivityId,
+            int visitId,
             int value,
             CancellationToken ct = default);
     }

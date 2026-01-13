@@ -37,13 +37,80 @@ namespace tesisproject.backend.Services.Implementations
                     ProjectId = o.ProjectId,
                     ObjectiveTypeId = o.ObjectiveTypeId,
                     ObjectiveTypeName = o.ObjectiveType?.Name ?? string.Empty,
-                    Objective = o.Objetive,          // propiedad de la entidad
+                    Objective = o.Objective,          // propiedad de la entidad
                     Result = o.Result,
                     ActivitiesCount = o.Activities?.Count ?? 0
                 })
                 .ToList();
 
             return ServiceResult<IReadOnlyList<ProjectObjectiveListItemDTO>>.Ok(dto);
+        }
+
+        public async Task<ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>> GetByProjectWithActivitiesAsync(
+    int projectId,
+    CancellationToken ct = default)
+        {
+            if (projectId <= 0)
+                return ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>
+                    .Fail("ProjectId is required.", ErrorType.Validation);
+
+            // 1) Objetivos + Activities
+            var objectives = await _uow.ProjectObjectives.GetByProjectWithActivitiesAsync(projectId, ct);
+
+            if (objectives is null || objectives.Count == 0)
+                return ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>.Ok(new List<ProjectObjectiveWithActivitiesDTO>());
+
+            // 2) Todas las actividades del proyecto (para calcular progreso una sola vez)
+            var activityIds = objectives
+                .SelectMany(o => o.Activities ?? new List<ObjectiveActivity>())
+                .Select(a => a.ObjectiveActivityId)
+                .Distinct()
+                .ToList();
+
+            // 3) Total acumulado por actividad (lo correcto para tu modelo actual)
+            var totalsMap = activityIds.Count == 0
+                ? new Dictionary<int, int>()
+                : await _uow.VisitObjectiveActivityProgresses.GetTotalProgressByActivityIdsAsync(activityIds, ct);
+
+            // 4) Map a DTO
+            var dto = objectives
+    .Select(o => new ProjectObjectiveWithActivitiesDTO
+    {
+        // ======= CAMPOS DE ProjectObjectiveDetailDTO =======
+        Id = o.Id,                 // Ajusta si tu PK se llama distinto
+        ProjectId = o.ProjectId,
+        ObjectiveTypeId = o.ObjectiveTypeId,
+        ObjectiveTypeName = o.ObjectiveType?.Name ?? string.Empty,  // requiere Include ObjectiveType
+        Objective = o.Objective ?? string.Empty,   // o el campo real en entidad (ej: ObjectiveText/Title)
+        Result = o.Result ?? string.Empty,         // o el campo real en entidad (ej: ExpectedResult)
+        WeightedPercentage = o.WeightedPercentage,
+
+        // ======= Activities =======
+        Activities = (o.Activities ?? new List<ObjectiveActivity>())
+            .OrderBy(a => a.ObjectiveActivityId)
+            .Select(a =>
+            {
+                var progress = totalsMap.TryGetValue(a.ObjectiveActivityId, out var p) ? p : 0;
+
+                return new ObjectiveActivityListItemDTO
+                {
+                    ObjectiveActivityId = a.ObjectiveActivityId,
+                    ObjectiveId = a.ObjectiveId,
+                    ActivityResult = a.ActivityResult ?? string.Empty,
+                    ActionText = a.ActionText ?? string.Empty,
+                    CreatedAt = a.CreatedAt,
+
+                    // derivado desde snapshots
+                    ProgressPercentage = progress,
+                    IsCompleted = progress >= 100
+                };
+            })
+            .ToList()
+    })
+    .ToList();
+
+
+            return ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>.Ok(dto);
         }
 
         public async Task<ServiceResult<ProjectObjectiveDetailDTO>> GetByIdAsync(
@@ -65,7 +132,7 @@ namespace tesisproject.backend.Services.Implementations
                 ProjectId = entity.ProjectId,
                 ObjectiveTypeId = entity.ObjectiveTypeId,
                 ObjectiveTypeName = entity.ObjectiveType?.Name ?? string.Empty,
-                Objective = entity.Objetive,
+                Objective = entity.Objective,
                 Result = entity.Result
             };
 
@@ -113,7 +180,8 @@ namespace tesisproject.backend.Services.Implementations
             {
                 ProjectId = request.ProjectId,
                 ObjectiveTypeId = request.ObjectiveTypeId,
-                Objetive = objectiveText,
+                Objective = objectiveText,
+                WeightedPercentage = request.WeightedPercentage,
                 Result = resultText
             };
 
@@ -129,7 +197,7 @@ namespace tesisproject.backend.Services.Implementations
                 ProjectId = created.ProjectId,
                 ObjectiveTypeId = created.ObjectiveTypeId,
                 ObjectiveTypeName = created.ObjectiveType?.Name ?? objectiveType.Name,
-                Objective = created.Objetive,
+                Objective = created.Objective,
                 Result = created.Result
             };
 
@@ -180,8 +248,9 @@ namespace tesisproject.backend.Services.Implementations
 
             entity.ProjectId = request.ProjectId;
             entity.ObjectiveTypeId = request.ObjectiveTypeId;
-            entity.Objetive = objectiveText;
+            entity.Objective = objectiveText;
             entity.Result = resultText;
+            entity.WeightedPercentage = request.WeightedPercentage;
 
             _uow.ProjectObjectives.Update(entity);
             await _uow.SaveChangesAsync(ct);
@@ -195,7 +264,7 @@ namespace tesisproject.backend.Services.Implementations
                 ProjectId = updated.ProjectId,
                 ObjectiveTypeId = updated.ObjectiveTypeId,
                 ObjectiveTypeName = updated.ObjectiveType?.Name ?? objectiveType.Name,
-                Objective = updated.Objetive,
+                Objective = updated.Objective,
                 Result = updated.Result
             };
 
@@ -218,58 +287,49 @@ namespace tesisproject.backend.Services.Implementations
 
             return ServiceResult<bool>.Ok(true);
         }
-
         public async Task<ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>>
-        ListByProjectWithActivitiesAsync(int projectId, CancellationToken ct = default)
+        ListByProjectWithActivitiesAsync(int projectId, int visitId, CancellationToken ct = default)
         {
             var objectives = await _uow.ProjectObjectives
                 .ListByProjectWithActivitiesAsync(projectId, ct);
 
-            // 1) Reunir todos los IDs de actividades del proyecto
             var activityIds = objectives
                 .SelectMany(o => o.Activities ?? new List<ObjectiveActivity>())
                 .Select(a => a.ObjectiveActivityId)
                 .Distinct()
                 .ToList();
 
-            // 2) Mapa: ObjectiveActivityId -> último progreso
-            var progressMap = await _uow.VisitObjectiveActivityProgresses
-                .GetLatestProgressByActivityIdsAsync(activityIds, ct);
+            var progressMap = await _uow.VisitObjectiveActivityProgresses.GetCumulativeProgressByProjectUpToVisitAndActivityIdsAsync(projectId, visitId, activityIds, ct);
 
-            // 3) Mapear a DTO usando el progreso desde snapshots
-            var dtoList = objectives
-                .Select(o => new ProjectObjectiveWithActivitiesDTO
-                {
-                    Id = o.Id,
-                    ProjectId = o.ProjectId,
-                    ObjectiveTypeId = o.ObjectiveTypeId,
-                    WeightedPercentage = o.WeightedPercentage,
-                    ObjectiveTypeName = o.ObjectiveType.Name,
-                    Objective = o.Objetive,
-                    Result = o.Result,
-                    Activities = (o.Activities ?? new List<ObjectiveActivity>())
-                        .Select(a =>
+
+            var dtoList = objectives.Select(o => new ProjectObjectiveWithActivitiesDTO
+            {
+                Id = o.Id,
+                ProjectId = o.ProjectId,
+                ObjectiveTypeId = o.ObjectiveTypeId,
+                WeightedPercentage = o.WeightedPercentage,
+                ObjectiveTypeName = o.ObjectiveType.Name,
+                Objective = o.Objective,
+                Result = o.Result,
+                Activities = (o.Activities ?? new List<ObjectiveActivity>())
+                    .Select(a =>
+                    {
+                        var progress = progressMap.TryGetValue(a.ObjectiveActivityId, out var p) ? p : 0;
+                        return new ObjectiveActivityListItemDTO
                         {
-                            var progress = progressMap.TryGetValue(a.ObjectiveActivityId, out var p) ? p : 0;
-
-                            return new ObjectiveActivityListItemDTO
-                            {
-                                ObjectiveActivityId = a.ObjectiveActivityId,
-                                ObjectiveId = a.ObjectiveId,
-                                ActivityResult = a.ActivityResult,
-                                ActionText = a.ActionText,
-                                CreatedAt = a.CreatedAt,
-
-                                ProgressPercentage = progress,
-                                IsCompleted = progress >= 100
-                            };
-                        })
-                        .ToList()
-                })
-                .ToList();
+                            ObjectiveActivityId = a.ObjectiveActivityId,
+                            ObjectiveId = a.ObjectiveId,
+                            ActivityResult = a.ActivityResult,
+                            ActionText = a.ActionText,
+                            CreatedAt = a.CreatedAt,
+                            ProgressPercentage = progress,
+                            IsCompleted = progress >= 100
+                        };
+                    })
+                    .ToList()
+            }).ToList();
 
             return ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>.Ok(dtoList);
         }
-
     }
 }
