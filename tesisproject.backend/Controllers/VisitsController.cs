@@ -8,7 +8,7 @@ using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Controllers
 {
-    //[Authorize(Roles = "Admin")]
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class VisitsController : ControllerBase
@@ -36,6 +36,13 @@ namespace tesisproject.backend.Controllers
         public async Task<ActionResult<ApiResponse<IReadOnlyList<VisitListResponseDTO>>>> GetByProject(int projectId, CancellationToken ct)
             => (await _service.ListByProjectAsync(projectId, ct)).ToActionResult();
 
+        // GET: api/visits/by-state/{visitStateId}
+        [HttpGet("by-state/{visitStateId:int}")]
+        public async Task<ActionResult<ApiResponse<IReadOnlyList<VisitPlannedForExecutionListDTO>>>> GetByState(
+            int visitStateId,
+            CancellationToken ct)
+            => (await _service.ListByStateAsync(visitStateId, ct)).ToActionResult();
+
         // POST: api/visits
         [HttpPost]
         public async Task<ActionResult<ApiResponse<VisitListResponseDTO>>> Create(AddVisitRequestDTO body, CancellationToken ct)
@@ -53,13 +60,30 @@ namespace tesisproject.backend.Controllers
         [HttpDelete("{id:int}")]
         public async Task<ActionResult<ApiResponse<NoContent>>> Delete(int id, CancellationToken ct)
             => (await _service.DeleteAsync(id, ct)).ToActionResult();
+
         // PUT: api/visits/{id}/finalize
         [HttpPut("{id:int}/finalize")]
-        public async Task<ActionResult<ApiResponse<VisitListResponseDTO>>> Finalize(int id, [FromBody] FinalizeVisitRequestDTO body,
+        public async Task<ActionResult<ApiResponse<VisitListResponseDTO>>> Finalize(
+            int id,
+            [FromBody] FinalizeVisitRequestDTO body,
             CancellationToken ct)
         {
             body.VisitId = id;
             return (await _service.FinalizeAsync(body, ct)).ToActionResult();
         }
+
+        // PUT: api/visits/bulk/schedule
+        [HttpPut("bulk/schedule")]
+        public async Task<ActionResult<ApiResponse<NoContent>>> BulkSchedule(
+            [FromBody] BulkScheduleVisitsRequestDTO request,
+            CancellationToken ct)
+            => (await _service.BulkScheduleAsync(request, ct)).ToActionResult();
+
+        // GET: api/visits/planned-for-execution?isFirstVisit=true
+        [HttpGet("planned-for-execution")]
+        public async Task<ActionResult<ApiResponse<IReadOnlyList<VisitPlannedForExecutionListDTO>>>> GetPlannedForExecution(
+            [FromQuery] bool isFirstVisit,
+            CancellationToken ct)
+            => (await _service.ListPlannedForExecutionAsync(isFirstVisit, ct)).ToActionResult();
     }
 }

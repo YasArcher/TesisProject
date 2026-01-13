@@ -120,6 +120,44 @@ namespace tesisproject.frontend.Services.Implementations
                 ct
             );
         }
+        public Task<HttpResponseWrapper<List<VisitPlannedForExecutionListDTO>?>> GetPlannedForExecutionAsync(
+    bool isFirstVisit,
+    CancellationToken ct = default)
+        {
+            var url = $"{_baseUrl}/planned-for-execution?isFirstVisit={isFirstVisit.ToString().ToLowerInvariant()}";
+            return _api.GetAsync<List<VisitPlannedForExecutionListDTO>>(url, ct);
+        }
 
+        public Task<HttpResponseWrapper<NoContent>> BulkScheduleAsync(
+    BulkScheduleVisitsRequestDTO request,
+    CancellationToken ct = default)
+        {
+            if (request is null)
+                throw new ArgumentNullException(nameof(request));
+
+            if (request.VisitIds is null || request.VisitIds.Count == 0)
+                throw new ArgumentException("VisitIds must contain at least one id.", nameof(request.VisitIds));
+
+            // PUT: api/visits/bulk/schedule
+            return _api.PutAsync<BulkScheduleVisitsRequestDTO, NoContent>(
+                $"{_baseUrl}/bulk/schedule",
+                request,
+                ct
+            );
+        }
+
+        public Task<HttpResponseWrapper<List<VisitPlannedForExecutionListDTO>?>> GetByStateAsync(
+    int visitStateId,
+    CancellationToken ct = default)
+        {
+            if (visitStateId <= 0)
+                throw new ArgumentException("visitStateId must be a positive value.", nameof(visitStateId));
+
+            // GET: api/visits/by-state/{visitStateId}
+            return _api.GetAsync<List<VisitPlannedForExecutionListDTO>>(
+                $"{_baseUrl}/by-state/{visitStateId}",
+                ct
+            );
+        }
     }
 }

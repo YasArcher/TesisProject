@@ -44,5 +44,34 @@ namespace tesisproject.backend.Repositories.Implementations
 
             return asNoTracking ? q.AsNoTracking() : q;
         }
+
+        public async Task<(bool Success, string? Error)> BulkScheduleAsync(
+    IReadOnlyList<int> visitIds,
+    DateTime scheduledDate,
+    int visitStateId,
+    CancellationToken ct = default)
+        {
+            var ids = visitIds.Distinct().ToList();
+
+            var existingIds = await _ctx.Visits
+                .Where(v => ids.Contains(v.VisitId))
+                .Select(v => v.VisitId)
+                .ToListAsync(ct);
+
+            var missing = ids.Except(existingIds).ToList();
+            if (missing.Count > 0)
+                return (false, $"No existen las visitas: {string.Join(", ", missing)}");
+
+            // Actualización masiva (no tracking)
+            await _ctx.Visits
+                .Where(v => ids.Contains(v.VisitId))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(v => v.ScheduledDate, scheduledDate)
+                    .SetProperty(v => v.VisitStateId, visitStateId),
+                    ct);
+
+            return (true, null);
+        }
+
     }
 }

@@ -19,6 +19,13 @@ namespace tesisproject.backend.Repositories.Interfaces
         /// </summary>
         Task<List<Visit>> GetByProjectAsync(int projectId, CancellationToken ct = default);
 
+        Task<(bool Success, string? Error)> BulkScheduleAsync(
+    IReadOnlyList<int> visitIds,
+    DateTime scheduledDate,
+    int visitStateId,
+    CancellationToken ct = default);
+
+
         /// <summary>
         /// Exposes a queryable including navigations for advanced filtering in Services.
         /// </summary>
