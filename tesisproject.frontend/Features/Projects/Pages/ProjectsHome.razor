@@ -199,6 +199,16 @@
     private bool isExportTemplatesLoading = false;
     private bool isExporting = false;
 
+    // 👇 Solo estas se marcarán por defecto
+    private static readonly HashSet<string> _defaultSelectedKeys =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+        "PROJECT_CODE",
+        "PROJECT_NAME",
+        "PROJECT_STATE_NAME",
+        };
+
+
     private async Task OnTemplateChanged(ChangeEventArgs e)
     {
         availableColumns.Clear();
@@ -265,12 +275,13 @@
                 })
                 .ToList();
 
-
-            // marcar todas por defecto
+            // marcar solo las de la whitelist
             selectedFieldKeys = availableColumns
                 .Select(c => c.FieldKey)
                 .Where(k => !string.IsNullOrWhiteSpace(k))
-                .ToHashSet();
+                .Where(k => _defaultSelectedKeys.Contains(k))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         }
         catch (Exception ex)
         {
