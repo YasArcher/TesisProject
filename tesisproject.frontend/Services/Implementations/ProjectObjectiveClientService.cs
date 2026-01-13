@@ -34,15 +34,22 @@ namespace tesisproject.frontend.Services.Implementations
         }
 
         /// <summary>
-        /// GET: api/projectobjectives/by-project/{projectId}/with-activities
-        /// Listado de objetivos con sus actividades.
+        /// GET: api/projectobjectives/by-visit/{projectId}/{visitId}/with-activities
+        /// Objetivos con actividades + progreso PARA ESA VISITA.
         /// </summary>
-        public Task<HttpResponseWrapper<List<ProjectObjectiveWithActivitiesDTO>?>> GetByProjectWithActivitiesAsync(
+        public Task<HttpResponseWrapper<List<ProjectObjectiveWithActivitiesDTO>?>> GetByVisitWithActivitiesAsync(
             int projectId,
+            int visitId,
             CancellationToken ct = default)
         {
+            if (projectId <= 0)
+                throw new ArgumentException("projectId must be a positive value.", nameof(projectId));
+
+            if (visitId <= 0)
+                throw new ArgumentException("visitId must be a positive value.", nameof(visitId));
+
             return _api.GetAsync<List<ProjectObjectiveWithActivitiesDTO>>(
-                $"{_baseUrl}/by-project/{projectId}/with-activities",
+                $"{_baseUrl}/by-visit/{projectId}/{visitId}/with-activities",
                 ct
             );
         }
@@ -59,6 +66,9 @@ namespace tesisproject.frontend.Services.Implementations
             int id,
             CancellationToken ct = default)
         {
+            if (id <= 0)
+                throw new ArgumentException("Id must be a positive value.", nameof(id));
+
             return _api.GetAsync<ProjectObjectiveDetailDTO>(
                 $"{_baseUrl}/{id}",
                 ct
@@ -69,10 +79,6 @@ namespace tesisproject.frontend.Services.Implementations
         //          CREATE
         // =========================
 
-        /// <summary>
-        /// POST: api/projectobjectives
-        /// Crea un nuevo objetivo.
-        /// </summary>
         public Task<HttpResponseWrapper<ProjectObjectiveDetailDTO?>> CreateAsync(
             AddProjectObjectiveRequestDTO request,
             CancellationToken ct = default)
@@ -91,10 +97,6 @@ namespace tesisproject.frontend.Services.Implementations
         //          UPDATE
         // =========================
 
-        /// <summary>
-        /// PUT: api/projectobjectives/{id}
-        /// Actualiza un objetivo existente.
-        /// </summary>
         public Task<HttpResponseWrapper<ProjectObjectiveDetailDTO?>> UpdateAsync(
             UpdateProjectObjectiveRequestDTO request,
             CancellationToken ct = default)
@@ -116,10 +118,6 @@ namespace tesisproject.frontend.Services.Implementations
         //          DELETE
         // =========================
 
-        /// <summary>
-        /// DELETE: api/projectobjectives/{id}
-        /// Elimina un objetivo.
-        /// </summary>
         public Task<HttpResponseWrapper<NoContent?>> DeleteAsync(
             int id,
             CancellationToken ct = default)
@@ -129,6 +127,19 @@ namespace tesisproject.frontend.Services.Implementations
 
             return _api.DeleteAsync(
                 $"{_baseUrl}/{id}",
+                ct
+            );
+        }
+
+        public Task<HttpResponseWrapper<List<ProjectObjectiveWithActivitiesDTO>?>> GetByProjectWithActivitiesAsync(
+    int projectId,
+    CancellationToken ct = default)
+        {
+            if (projectId <= 0)
+                throw new ArgumentException("projectId must be a positive value.", nameof(projectId));
+
+            return _api.GetAsync<List<ProjectObjectiveWithActivitiesDTO>>(
+                $"{_baseUrl}/by-project/{projectId}/with-activities",
                 ct
             );
         }

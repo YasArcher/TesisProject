@@ -22,6 +22,18 @@ namespace tesisproject.backend.Repositories.Implementations
                 .FirstOrDefaultAsync(o => o.Id == id, ct);
         }
 
+        public async Task<List<ProjectObjective>> GetByProjectWithActivitiesAsync(
+    int projectId,
+    CancellationToken ct = default)
+        {
+            return await _ctx.ProjectObjectives
+                .AsNoTracking()
+                .Where(o => o.ProjectId == projectId)
+                .Include(o => o.Activities)
+                .OrderBy(o => o.Id)
+                .ToListAsync(ct);
+        }
+
         public async Task<List<ProjectObjective>> GetByProjectAsync(
             int projectId,
             CancellationToken ct = default)
@@ -57,6 +69,27 @@ namespace tesisproject.backend.Repositories.Implementations
                 .Include(o => o.Activities);
 
             return asNoTracking ? q.AsNoTracking() : q;
+        }
+
+        public async Task<Dictionary<int, int>> GetLatestProgressByVisitAndActivityIdsAsync(
+    int visitId,
+    IEnumerable<int> activityIds,
+    CancellationToken ct = default)
+        {
+            var ids = activityIds.Distinct().ToList();
+
+            var rows = await _ctx.VisitObjectiveActivityProgresses
+                .Where(x => x.VisitId == visitId && ids.Contains(x.ObjectiveActivityId))
+                .GroupBy(x => x.ObjectiveActivityId)
+                .Select(g => g
+                    .OrderByDescending(x => x.CreatedAt) // o x.Id si es autoincremental
+                    .Select(x => new { ActivityId = g.Key, x.ProgressPercentage })
+                    .FirstOrDefault())
+                .ToListAsync(ct);
+
+            return rows
+                .Where(x => x is not null)
+                .ToDictionary(x => x!.ActivityId, x => Math.Min(100, Math.Max(0, x!.ProgressPercentage)));
         }
     }
 }

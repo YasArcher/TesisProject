@@ -26,11 +26,22 @@ namespace tesisproject.backend.Controllers
             => (await _service.ListByProjectAsync(projectId, ct)).ToActionResult();
 
         // GET: api/projectobjectives/by-project/{projectId}/with-activities
+        // 👉 Listado general (con actividades) - SIN visita
         [HttpGet("by-project/{projectId:int}/with-activities")]
         public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>>> GetByProjectWithActivities(
             int projectId,
             CancellationToken ct = default)
-            => (await _service.ListByProjectWithActivitiesAsync(projectId, ct)).ToActionResult();
+            => (await _service.GetByProjectWithActivitiesAsync(projectId, ct)).ToActionResult();
+        // o: (await _service.ListByProjectWithActivitiesAsync(projectId, ct)) según el nombre real
+
+        // GET: api/projectobjectives/by-visit/{projectId}/{visitId}/with-activities
+        // 👉 Listado con actividades en contexto de visita (si lo sigues usando)
+        [HttpGet("by-visit/{projectId:int}/{visitId:int}/with-activities")]
+        public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>>> GetByProjectWithActivitiesByVisit(
+            int projectId,
+            int visitId,
+            CancellationToken ct = default)
+            => (await _service.ListByProjectWithActivitiesAsync(projectId, visitId, ct)).ToActionResult();
 
         // GET: api/projectobjectives/{id}
         [HttpGet("{id:int}")]

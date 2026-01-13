@@ -23,5 +23,8 @@ namespace tesisproject.shared.DTOs.ProjectObjective.Request
 
         [Required, StringLength(500)]
         public string Result { get; set; } = string.Empty;
+
+        [Required, Range(1, 100)]
+        public int WeightedPercentage { get; set; }
     }
 }

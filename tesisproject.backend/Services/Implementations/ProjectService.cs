@@ -701,7 +701,7 @@ namespace tesisproject.backend.Services.Implementations
                         {
                             Project = projectEntity,
                             ObjectiveTypeId = objDto.ObjectiveTypeId,
-                            Objetive = objDto.Objective,
+                            Objective = objDto.Objective,
                             Result = objDto.Result,
                             WeightedPercentage = objDto.WeightedPercentage,
                         };
@@ -861,7 +861,7 @@ namespace tesisproject.backend.Services.Implementations
                     ProjectId = e.ProjectId,
                     ObjectiveTypeId = e.ObjectiveTypeId,
                     ObjectiveTypeName = e.ObjectiveType?.Name ?? string.Empty,
-                    Objective = e.Objetive,
+                    Objective = e.Objective,
                     Result = e.Result,
                     ActivitiesCount = e.Activities?.Count ?? 0
                 })
@@ -1798,7 +1798,7 @@ namespace tesisproject.backend.Services.Implementations
                         {
                             Project = projectEntity,
                             ObjectiveTypeId = 1,
-                            Objetive = dto.GeneralObjective ?? string.Empty,
+                            Objective = dto.GeneralObjective ?? string.Empty,
                             Result = string.Empty
                         };
 

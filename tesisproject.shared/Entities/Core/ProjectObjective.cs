@@ -25,7 +25,7 @@ namespace tesisproject.shared.Entities.Core
         //        Core Information
         // ================================
         [Required, StringLength(500)]
-        public string Objetive { get; set; } = string.Empty;  // descripcion_objetivo
+        public string Objective { get; set; } = string.Empty;  // descripcion_objetivo
 
         [Required, StringLength(500)]
         public string Result { get; set; } = string.Empty;    // resultado_esperado

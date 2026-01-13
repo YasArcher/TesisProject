@@ -2,6 +2,7 @@
 using tesisproject.shared.DTOs.ObjectiveActivity.Request;
 using tesisproject.shared.DTOs.ObjectiveActivity.Response;
 using tesisproject.shared.Responses;
+using static System.Net.WebRequestMethods;
 
 namespace tesisproject.frontend.Services.Implementations
 {
@@ -119,21 +120,14 @@ namespace tesisproject.frontend.Services.Implementations
         // =========================
 
         public Task<HttpResponseWrapper<bool>> SetProgressAsync(
-            int id,
+            int objectiveActivityId,
+            int visitId,
             int value,
             CancellationToken ct = default)
         {
-            if (id <= 0)
-                throw new ArgumentException("Id must be a positive value.", nameof(id));
-
-            if (value is < 0 or > 100)
-                throw new ArgumentOutOfRangeException(nameof(value), "Progress value must be between 0 and 100.");
-
-            return _api.PutAsync<object, bool>(
-                $"{_baseUrl}/{id}/progress?value={value}",
-                new { },
-                ct
-            );
+            value = Math.Min(100, Math.Max(0, value));
+            var url = $"{_baseUrl}/{objectiveActivityId}/progress?visitId={visitId}&value={value}";
+            return _api.PutAsync<object, bool>(url, body: new { }, ct);
         }
     }
 }

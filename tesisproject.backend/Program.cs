@@ -297,6 +297,7 @@ static class StartupExtensions
         builder.Services.AddScoped<IProjectFlatReportService, ProjectFlatReportService>();
         builder.Services.AddScoped<IExportTemplateService, ExportTemplateService>();
         builder.Services.AddScoped<IExportTemplateExcelService, ExportTemplateExcelService>();
+        builder.Services.AddScoped<IVisitObjectiveActivityProgressService, VisitObjectiveActivityProgressService>();
     }
 
 
