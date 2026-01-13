@@ -14,5 +14,9 @@ namespace tesisproject.backend.Services.Interfaces
         Task<ServiceResult<NoContent>> DeleteAsync(int visitId, CancellationToken ct = default);
         Task<ServiceResult<VisitDetailResponseDTO>> GetVisitDetailAsync(int visitId, CancellationToken ct = default);
         Task<ServiceResult<VisitListResponseDTO>> FinalizeAsync(FinalizeVisitRequestDTO request, CancellationToken ct = default);
+        Task<ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>> ListPlannedForExecutionAsync(bool isFirstVisit, CancellationToken ct = default);
+        Task<ServiceResult<NoContent>> BulkScheduleAsync(BulkScheduleVisitsRequestDTO request, CancellationToken ct = default);
+        Task<ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>> ListByStateAsync(int visitStateId, CancellationToken ct = default);
+
     }
 }

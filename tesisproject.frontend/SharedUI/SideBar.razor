@@ -1,6 +1,6 @@
-﻿@using Microsoft.AspNetCore.Components.Routing
+﻿@* SideBar.razor *@
+@using Microsoft.AspNetCore.Components.Routing
 @using tesisproject.frontend.SharedUI.ActionButton
-@* si luego quieres ocultarlo por rol/claims, aquí podrías envolver el bloque con AuthorizeView *@
 
 <div class="h-full flex flex-col">
     <!-- Navegación -->
@@ -20,18 +20,78 @@
 
             @foreach (var item in group)
             {
-                <NavLink class="group flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium text-white-75 nav-link-hover transition-all duration-200 hover:translate-x-1"
-                         ActiveClass="nav-link-active"
-                         href="@item.Href"
-                         Match="@(item.Exact ? NavLinkMatch.All : NavLinkMatch.Prefix)">
-                    @if (!string.IsNullOrWhiteSpace(item.Icon))
-                    {
-                        <span class="w-5 h-5 flex-shrink-0">
-                            @((MarkupString)item.Icon)
-                        </span>
-                    }
-                    <span class="flex-1">@item.Text</span>
-                </NavLink>
+                // Key más estable (incluye Href cuando exista)
+                var key = $"{group.Key ?? "root"}::{item.Text}::{item.Href ?? "nohref"}";
+
+                // Padre "activo" si algún hijo coincide con la ruta actual
+                var parentActive = item.HasChildren && IsChildActive(item);
+
+                // Auto-open si un hijo está activo, o si el usuario lo expandió manualmente
+                var expanded = item.HasChildren && (IsExpanded(key) || parentActive);
+
+                if (item.HasChildren)
+                {
+                    <div class="space-y-1">
+                        <!-- Padre (no navega, solo expande) -->
+                        <button type="button"
+                                class="group w-full flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium text-white-75 nav-link-hover transition-all duration-200 hover:translate-x-1 @(parentActive ? "nav-link-active" : "")"
+                                @onclick="() => Toggle(key)"
+                                aria-expanded="@expanded">
+                            @if (!string.IsNullOrWhiteSpace(item.Icon))
+                            {
+                                <span class="w-5 h-5 flex-shrink-0">
+                                    @((MarkupString)item.Icon)
+                                </span>
+                            }
+
+                            <span class="flex-1 text-left">@item.Text</span>
+
+                            <!-- Chevron -->
+                            <span class="transition-transform duration-200 @(expanded ? "rotate-90" : "")">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                                    <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L10.94 10 7.23 6.29a.75.75 0 1 1 1.06-1.06l4.24 4.24c.3.3.3.77 0 1.06l-4.24 4.24a.75.75 0 0 1-1.06.02Z" clip-rule="evenodd" />
+                                </svg>
+                            </span>
+                        </button>
+
+                        <!-- Hijos -->
+                        @if (expanded)
+                        {
+                            <div class="pl-6 space-y-1">
+                                @foreach (var child in item.Children!)
+                                {
+                                    <NavLink class="group flex items-center gap-3 rounded-xl px-4 py-2 text-sm font-medium text-white-75 nav-link-hover transition-all duration-200 hover:translate-x-1"
+                                             ActiveClass="nav-link-active"
+                                             href="@(child.Href!)"
+                                             Match="@(child.Exact ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+                                        @if (!string.IsNullOrWhiteSpace(child.Icon))
+                                        {
+                                            <span class="w-5 h-5 flex-shrink-0">
+                                                @((MarkupString)child.Icon)
+                                            </span>
+                                        }
+                                        <span class="flex-1">@child.Text</span>
+                                    </NavLink>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <NavLink class="group flex items-center gap-3 rounded-xl px-4 py-3 text-base font-medium text-white-75 nav-link-hover transition-all duration-200 hover:translate-x-1"
+                             ActiveClass="nav-link-active"
+                             href="@(item.Href!)"
+                             Match="@(item.Exact ? NavLinkMatch.All : NavLinkMatch.Prefix)">
+                        @if (!string.IsNullOrWhiteSpace(item.Icon))
+                        {
+                            <span class="w-5 h-5 flex-shrink-0">
+                                @((MarkupString)item.Icon)
+                            </span>
+                        }
+                        <span class="flex-1">@item.Text</span>
+                    </NavLink>
+                }
             }
         }
     </nav>
@@ -59,10 +119,8 @@
                     <path fill-rule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875ZM9.75 17.25a.75.75 0 0 0-1.5 0V18a.75.75 0 0 0 1.5 0v-.75Zm2.25-3a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3a.75.75 0 0 1 .75-.75Zm3.75-1.5a.75.75 0 0 0-1.5 0V18a.75.75 0 0 0 1.5 0v-5.25Z" clip-rule="evenodd" />
                     <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
                 </svg>
-
             </Icon>
         </ActionButton>
-
 
         @if (!string.IsNullOrWhiteSpace(_etlStatus))
         {

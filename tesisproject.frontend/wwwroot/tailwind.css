@@ -806,6 +806,9 @@
   .min-w-\[220px\] {
     min-width: 220px;
   }
+  .min-w-\[280px\] {
+    min-width: 280px;
+  }
   .min-w-\[320px\] {
     min-width: 320px;
   }
@@ -1975,6 +1978,9 @@
   .pl-4 {
     padding-left: calc(var(--spacing) * 4);
   }
+  .pl-6 {
+    padding-left: calc(var(--spacing) * 6);
+  }
   .pl-10 {
     padding-left: calc(var(--spacing) * 10);
   }
@@ -2104,6 +2110,9 @@
   }
   .whitespace-nowrap {
     white-space: nowrap;
+  }
+  .whitespace-pre-line {
+    white-space: pre-line;
   }
   .whitespace-pre-wrap {
     white-space: pre-wrap;

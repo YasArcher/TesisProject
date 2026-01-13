@@ -21,7 +21,11 @@
                 <h2 id="confirm-title" class="text-lg font-semibold text-foreground">@Title</h2>
                 @if (!string.IsNullOrWhiteSpace(Message))
                 {
-                    <p id="confirm-message" class="mt-2 text-sm text-muted">@Message</p>
+                    <p id="confirm-message"
+                       class="mt-2 text-sm text-muted whitespace-pre-line overflow-y-auto pr-1"
+                       style="max-height: 40vh;">
+                        @Message
+                    </p>
                 }
             </div>
 

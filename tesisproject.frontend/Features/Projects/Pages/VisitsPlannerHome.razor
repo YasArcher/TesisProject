@@ -1,0 +1,733 @@
+﻿@page "/visits/planner"
+@page "/visits/planner/{Mode}"
+
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.SharedUI.FilterBar
+@using tesisproject.frontend.SharedUI.SelectInput
+@using tesisproject.frontend.SharedUI.Table
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.DateInput
+@using tesisproject.shared.DTOs.Filters
+@using tesisproject.shared.DTOs.Visit.Request
+@using tesisproject.shared.DTOs.Visit.Response
+@using tesisproject.shared.DTOs.External
+
+@inject IVisitClientService VisitService
+@inject IExternalAcademicsClientService ExternalAcademics
+@inject IToastService Toast
+
+<div class="space-y-4 p-4 planner-table">
+
+    <!-- Filtros + Selector (solo plan) / Label (pending) + Acciones -->
+    <section class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div class="flex-1 min-w-[280px]">
+            <FilterBar Config="@_filterConfig"
+                       OnApply="@HandleApplyFilters"
+                       OnClear="@HandleClearFilters"
+                       OnSearchInstant="@HandleSearchInstant" />
+        </div>
+
+        <div class="shrink-0 flex flex-wrap items-center gap-2">
+            @if (IsPlanMode)
+            {
+                <label class="text-xs font-semibold text-muted whitespace-nowrap">Tipo</label>
+
+                <SelectInput TItem="VisitTypeOption"
+                             Items="@_visitTypeOptions"
+                             Value="@_selectedVisitType"
+                             ValueChanged="@OnVisitTypeOptionChanged"
+                             GetText="@(o => o.Text)"
+                             GetKey="@(o => o.Key)"
+                             Disabled="@isLoading"
+                             AllowClear="false"
+                             Size="SelectSize.Sm" />
+            }
+            else
+            {
+                <span class="text-xs font-semibold text-muted whitespace-nowrap">Estado: Pendiente</span>
+            }
+
+            <div class="text-xs text-muted whitespace-nowrap">
+                Sel: <span class="font-semibold text-foreground">@_selectedVisitIds.Count</span>
+            </div>
+
+            <ActionButton Text="Planificar"
+                          Execute="@OpenPlanModal"
+                          Intent="ButtonIntent.Accept"
+                          Variant="ButtonVariant.Filled"
+                          Size="ButtonSize.Sm"
+                          Disabled="@(isLoading || _selectedVisitIds.Count == 0)" />
+
+            <ActionButton Text="Limpiar"
+                          Execute="@ClearSelection"
+                          Intent="ButtonIntent.Accept"
+                          Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Sm"
+                          Disabled="@(isLoading || _selectedVisitIds.Count == 0)" />
+        </div>
+    </section>
+
+    <!-- Tabla -->
+    <div class="rounded-lg border border-border bg-background overflow-x-auto">
+        <DataTable TItem="VisitPlannedForExecutionListDTO"
+                   Items="filteredItems"
+                   Columns="columns"
+                   PageSize="_pageSize"
+                   Total="filteredItems.Count"
+                   CurrentPage="_page"
+                   OnPageChanged="OnPageChanged"
+                   EmptyText="@GetEmptyStateDescription()">
+
+            <RowTemplate Context="v">
+                @{
+                    var selected = _selectedVisitIds.Contains(v.VisitId);
+                    var selCls = selected ? "row-selected" : "";
+                }
+
+                <!-- Sel -->
+                <td class="cell cell-sel @selCls">
+                    <input type="checkbox"
+                           checked="@selected"
+                           @onclick:stopPropagation="true"
+                           @onchange="@(_ => ToggleSelected(v.VisitId))" />
+                </td>
+
+                <!-- # -->
+                <td class="cell cell-num @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
+                    @GetRowNumberForCurrentPage(v)
+                </td>
+
+                <!-- Código -->
+                <td class="cell cell-code @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
+                    @v.ProjectCode
+                </td>
+
+                <!-- Proyecto -->
+                <td class="cell cell-proj @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
+                    <span class="truncate block" title="@v.ProjectName">
+                        @v.ProjectName
+                    </span>
+                </td>
+
+                <!-- N° visita -->
+                <td class="cell cell-visit @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
+                    @v.VisitNumber
+                </td>
+
+                <!-- Facultad -->
+                <td class="cell cell-fac @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
+                    <span class="truncate block" title="@GetFacultyName(v.FacultyId)">
+                        @GetFacultyName(v.FacultyId)
+                    </span>
+                </td>
+
+                <!-- Fecha -->
+                <td class="cell cell-date @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
+                    @(v.VisitDate?.ToString("yyyy-MM-dd") ?? "-")
+                </td>
+
+                <!-- Estado -->
+                <td class="cell cell-state @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
+                    <span class="truncate block" title="@v.VisitStateName">
+                        @v.VisitStateName
+                    </span>
+                </td>
+            </RowTemplate>
+
+        </DataTable>
+    </div>
+</div>
+
+<!-- Modal Planificar -->
+<Modal Id="@_planModalId"
+       Title="Planificar visitas"
+       IsOpen="@_isPlanModalOpen"
+       IsOpenChanged="@OnPlanModalOpenChanged"
+       Size="ModalSize.Md"
+       CloseOnBackdrop="true"
+       CloseOnEscape="true">
+
+    <ChildContent>
+        <div class="space-y-4">
+            <div class="text-sm text-muted">
+                Se planificarán <span class="font-semibold text-foreground">@_selectedVisitIds.Count</span> visitas.
+            </div>
+
+            <DateInput Label="Fecha de ejecución"
+                       Value="@_plannedDate"
+                       ValueChanged="@((DateOnly? v) => _plannedDate = v)"
+                       Required="true" />
+
+            @if (!string.IsNullOrWhiteSpace(_planValidationError))
+            {
+                <div class="text-sm text-error">@_planValidationError</div>
+            }
+        </div>
+    </ChildContent>
+
+    <Footer>
+        <div class="flex items-center justify-end gap-2">
+            <ActionButton Text="Cancelar"
+                          Execute="@ClosePlanModal"
+                          Intent="ButtonIntent.Accept"
+                          Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Sm" />
+
+            <ActionButton Text="Guardar"
+                          Execute="@SubmitPlanAsync"
+                          Intent="ButtonIntent.Add"
+                          Variant="ButtonVariant.Filled"
+                          Size="ButtonSize.Sm"
+                          Disabled="@(_isSubmittingPlan || _selectedVisitIds.Count == 0 || _plannedDate is null)"
+                          ConfirmBeforeExecute="true"
+                          ConfirmTitle="Confirmar planificación"
+                          ConfirmMessage="@BuildConfirmMessage()"
+                          ConfirmButtonText="Sí, guardar"
+                          CancelButtonText="Cancelar" />
+        </div>
+    </Footer>
+</Modal>
+
+@code {
+    // =========================
+    //   ROUTE MODE
+    // =========================
+    [Parameter] public string? Mode { get; set; }
+
+    private string _mode = "plan"; // "plan" | "pending"
+    private bool _initialized;
+
+    private const int PendingStateId = 2;
+
+    private bool IsPendingMode => string.Equals(_mode, "pending", StringComparison.OrdinalIgnoreCase);
+    private bool IsPlanMode => !IsPendingMode;
+
+    private string NormalizeMode(string? mode)
+    {
+        var m = (mode ?? "plan").Trim().ToLowerInvariant();
+        return (m == "pending" || m == "plan") ? m : "plan";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // default UI state
+        _selectedVisitType = _visitTypeOptions.First(x => x.IsFirst == _isFirstVisit);
+
+        BuildColumns();
+        await LoadFacultiesAsync();
+        BuildFilterConfig();
+
+        // initial load according to Mode (if provided)
+        _mode = NormalizeMode(Mode);
+
+        await LoadVisitsAsync();
+        _initialized = true;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var next = NormalizeMode(Mode);
+        if (string.Equals(next, _mode, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _mode = next;
+
+        // reset selection + pagination
+        _selectedVisitIds.Clear();
+        _page = 1;
+
+        // if mode changes to plan, keep default selector consistent
+        if (IsPlanMode)
+        {
+            _selectedVisitType = _visitTypeOptions.First(x => x.IsFirst == _isFirstVisit);
+        }
+
+        // avoid reloading before initialized
+        if (_initialized)
+            await LoadVisitsAsync();
+    }
+
+    // =========================
+    //   Paging
+    // =========================
+    private int _page = 1;
+    private int _pageSize = 13;
+    private bool isLoading = true;
+
+    // =========================
+    //   Plan mode selector
+    // =========================
+    private bool _isFirstVisit = true;
+
+    private sealed record VisitTypeOption(string Key, string Text, bool IsFirst);
+
+    private readonly List<VisitTypeOption> _visitTypeOptions = new()
+    {
+        new VisitTypeOption("true",  "Primera Visita",  true),
+        new VisitTypeOption("false", "Siguiente Visita", false)
+    };
+
+    private VisitTypeOption? _selectedVisitType;
+
+    private async Task OnVisitTypeOptionChanged(VisitTypeOption? opt)
+    {
+        if (!IsPlanMode) return; // en pending no aplica
+
+        if (opt is null) return;
+
+        var newIsFirst = opt.IsFirst;
+        if (newIsFirst == _isFirstVisit)
+            return;
+
+        _selectedVisitType = opt;
+        _isFirstVisit = newIsFirst;
+
+        _selectedVisitIds.Clear();
+        _page = 1;
+
+        await LoadVisitsAsync();
+    }
+
+    // =========================
+    //   Selection
+    // =========================
+    private readonly HashSet<int> _selectedVisitIds = new();
+
+    private void ToggleSelected(int visitId)
+    {
+        if (_selectedVisitIds.Contains(visitId)) _selectedVisitIds.Remove(visitId);
+        else _selectedVisitIds.Add(visitId);
+
+        StateHasChanged();
+    }
+
+    private Task ClearSelection()
+    {
+        _selectedVisitIds.Clear();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    // =========================
+    //   Modal Planificar
+    // =========================
+    private readonly string _planModalId = "plan-visits-modal";
+    private bool _isPlanModalOpen = false;
+    private bool _isSubmittingPlan = false;
+
+    private DateOnly? _plannedDate;
+    private string? _planValidationError;
+
+    private Task OnPlanModalOpenChanged(bool isOpen)
+    {
+        _isPlanModalOpen = isOpen;
+
+        if (!isOpen)
+        {
+            _planValidationError = null;
+            _plannedDate = null;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OpenPlanModal()
+    {
+        _planValidationError = null;
+        _isPlanModalOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task ClosePlanModal()
+    {
+        _isPlanModalOpen = false;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    // =========================
+    //   Data
+    // =========================
+    private List<VisitPlannedForExecutionListDTO> allItems = new();
+    private List<VisitPlannedForExecutionListDTO> filteredItems = new();
+
+    // Facultades externas
+    private List<ExternalFacultyDTO> _faculties = new();
+    private Dictionary<int, string> _facultyNameById = new();
+
+    // Filtros/búsqueda
+    private FilterQuery? currentFilters;
+    private string? currentSearch;
+
+    private FilterBarConfig _filterConfig = new()
+    {
+        SearchPlaceholder = "Buscar por nombre o código de proyecto...",
+        DebounceMs = 400,
+        ShowChips = true,
+        Items = new List<FilterItemDescriptor>()
+    };
+
+    private IReadOnlyList<ColumnDef<VisitPlannedForExecutionListDTO>> columns
+        = Array.Empty<ColumnDef<VisitPlannedForExecutionListDTO>>();
+
+    private async Task LoadFacultiesAsync()
+    {
+        try
+        {
+            var resp = await ExternalAcademics.GetFacultiesWithProgramsAsync();
+
+            _faculties = (resp.Success && resp.Response != null)
+                ? resp.Response
+                : new List<ExternalFacultyDTO>();
+
+            _facultyNameById = _faculties
+                .GroupBy(f => f.FacultyId)
+                .ToDictionary(g => g.Key, g => g.First().Name);
+        }
+        catch
+        {
+            _faculties = new();
+            _facultyNameById = new();
+        }
+    }
+
+    private async Task LoadVisitsAsync()
+    {
+        isLoading = true;
+
+        try
+        {
+            if (IsPendingMode)
+            {
+                var resp = await VisitService.GetByStateAsync(PendingStateId);
+
+                allItems = (resp.Success && resp.Response != null)
+                    ? resp.Response
+                    : new List<VisitPlannedForExecutionListDTO>();
+            }
+            else
+            {
+                var resp = await VisitService.GetPlannedForExecutionAsync(_isFirstVisit);
+
+                allItems = (resp.Success && resp.Response != null)
+                    ? resp.Response
+                    : new List<VisitPlannedForExecutionListDTO>();
+            }
+
+            _page = 1;
+            ApplyFilters();
+        }
+        catch
+        {
+            allItems = new();
+            filteredItems = new();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // =========================
+    //   FilterBar handlers
+    // =========================
+    private Task HandleApplyFilters(FilterQuery query)
+    {
+        currentFilters = query;
+        currentFilters.Search = null;
+        _page = 1;
+
+        ApplyFilters();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task HandleClearFilters()
+    {
+        currentFilters = null;
+        _page = 1;
+
+        ApplyFilters();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task HandleSearchInstant(string? text)
+    {
+        currentSearch = string.IsNullOrWhiteSpace(text) ? null : text;
+        _page = 1;
+
+        ApplyFilters();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void ApplyFilters()
+    {
+        var query = (allItems ?? new List<VisitPlannedForExecutionListDTO>()).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(currentSearch))
+        {
+            var term = currentSearch.Trim().ToLowerInvariant();
+            query = query.Where(x =>
+                (x.ProjectName ?? string.Empty).ToLowerInvariant().Contains(term) ||
+                (x.ProjectCode ?? string.Empty).ToLowerInvariant().Contains(term));
+        }
+
+        foreach (var filter in currentFilters?.Filters ?? new())
+        {
+            if (filter.Field == "FacultyId"
+                && filter.Value is string facultyStr
+                && int.TryParse(facultyStr, out var facultyId))
+            {
+                query = query.Where(x => x.FacultyId == facultyId);
+            }
+        }
+
+        filteredItems = query.ToList();
+    }
+
+    private Task OnPageChanged(int page)
+    {
+        _page = page;
+        return Task.CompletedTask;
+    }
+
+    // =========================
+    //   Columns / Helpers
+    // =========================
+    private void BuildColumns()
+    {
+        columns = new[]
+        {
+            new ColumnDef<VisitPlannedForExecutionListDTO>("Sel", _ => string.Empty, "3rem",  Sortable: false),
+            new ColumnDef<VisitPlannedForExecutionListDTO>("#",   _ => string.Empty, "2.5rem", Sortable: false),
+            new ColumnDef<VisitPlannedForExecutionListDTO>("Cod", _ => string.Empty, "5.5rem", Sortable: true),
+            new ColumnDef<VisitPlannedForExecutionListDTO>("Proyecto", _ => string.Empty, "14rem", Sortable: true),
+            new ColumnDef<VisitPlannedForExecutionListDTO>("# Vis", _ => string.Empty, "3.5rem", Sortable: true),
+            new ColumnDef<VisitPlannedForExecutionListDTO>("Facultad", _ => string.Empty, "9rem", Sortable: true),
+            new ColumnDef<VisitPlannedForExecutionListDTO>("Fecha", _ => string.Empty, "6.2rem", Sortable: true),
+            new ColumnDef<VisitPlannedForExecutionListDTO>("Estado", _ => string.Empty, "7.5rem", Sortable: true),
+        };
+    }
+
+    private int GetRowNumberForCurrentPage(VisitPlannedForExecutionListDTO item)
+    {
+        var idx = filteredItems.IndexOf(item);
+        if (idx < 0) return 0;
+        return idx + 1;
+    }
+
+    private string GetFacultyName(int facultyId)
+        => _facultyNameById.TryGetValue(facultyId, out var name) ? name : $"Facultad {facultyId}";
+
+    private void BuildFilterConfig()
+    {
+        _filterConfig.Items = new List<FilterItemDescriptor>();
+
+        if (_faculties?.Any() == true)
+        {
+            _filterConfig.Items.Add(new()
+            {
+                Key = "faculty",
+                Label = "Facultad",
+                Type = "select",
+                EntityField = "FacultyId",
+                Placeholder = "Todas las facultades",
+                Options = _faculties
+                    .OrderBy(f => f.Name)
+                    .Select(f => new OptionItem
+                    {
+                        Value = f.FacultyId.ToString(),
+                        Label = f.Name
+                    })
+                    .ToList()
+            });
+        }
+    }
+
+    private string GetEmptyStateDescription()
+    {
+        var hasFilters = currentFilters?.Filters?.Any() == true;
+        var hasSearch = !string.IsNullOrWhiteSpace(currentSearch);
+
+        if (hasFilters || hasSearch)
+            return "No se encontraron registros que coincidan con la búsqueda o filtros.";
+
+        if (IsPendingMode)
+            return "No hay visitas pendientes para planificar.";
+
+        return _isFirstVisit
+            ? "No hay primeras visitas planificadas para ejecución."
+            : "No hay siguientes visitas planificadas para ejecución.";
+    }
+
+    // =========================
+    //   Confirm message
+    // =========================
+    private string BuildConfirmMessage()
+    {
+        if (_plannedDate is null)
+            return "Seleccione una fecha para continuar.";
+
+        var selected = GetSelectedItemsSnapshot();
+        if (selected.Count == 0)
+            return "No hay visitas seleccionadas.";
+
+        var grouped = selected
+            .GroupBy(x => x.ProjectId)
+            .Select(g => new
+            {
+                ProjectCode = g.First().ProjectCode,
+                ProjectName = g.First().ProjectName,
+                Count = g.Count()
+            })
+            .OrderBy(x => x.ProjectCode)
+            .ThenBy(x => x.ProjectName)
+            .ToList();
+
+        var lines = grouped
+            .Select(p => $"• {p.ProjectCode} - {p.ProjectName} ({p.Count})")
+            .ToList();
+
+        var dateStr = _plannedDate.Value.ToString("yyyy-MM-dd");
+
+        return
+            $"Se planificarán {selected.Count} visita(s) con fecha {dateStr} para:\n\n" +
+            string.Join("\n", lines);
+    }
+
+    private List<VisitPlannedForExecutionListDTO> GetSelectedItemsSnapshot()
+    {
+        if (allItems is null || allItems.Count == 0) return new();
+        return allItems.Where(x => _selectedVisitIds.Contains(x.VisitId)).ToList();
+    }
+
+    // =========================
+    //   Submit Plan
+    // =========================
+    private async Task SubmitPlanAsync()
+    {
+        _planValidationError = null;
+
+        if (_selectedVisitIds.Count == 0)
+        {
+            _planValidationError = "Seleccione al menos una visita.";
+            return;
+        }
+
+        if (_plannedDate is null)
+        {
+            _planValidationError = "Seleccione una fecha.";
+            return;
+        }
+
+        var ids = _selectedVisitIds.ToList();
+        var scheduledDate = _plannedDate.Value.ToDateTime(TimeOnly.MinValue);
+
+        try
+        {
+            _isSubmittingPlan = true;
+
+            var request = new BulkScheduleVisitsRequestDTO
+            {
+                ScheduledDate = scheduledDate,
+                VisitIds = ids
+            };
+
+            var resp = await VisitService.BulkScheduleAsync(request);
+
+            if (!resp.Success)
+            {
+                Toast.ShowError(resp.Error ?? "No se pudo planificar las visitas.");
+                return;
+            }
+
+            Toast.ShowSuccess("Planificación guardada correctamente.");
+
+            _selectedVisitIds.Clear();
+            await ClosePlanModal();
+
+            await LoadVisitsAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error al planificar: " + ex.Message);
+        }
+        finally
+        {
+            _isSubmittingPlan = false;
+            StateHasChanged();
+        }
+    }
+}
+
+<style>
+    .planner-table table th {
+        padding: .35rem .45rem !important;
+        font-size: .70rem !important;
+    }
+
+    .planner-table table td {
+        padding: .35rem .45rem !important;
+        font-size: .78rem !important;
+    }
+
+    .planner-table table {
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .planner-table .cell {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: pointer;
+    }
+
+    .planner-table .cell-sel {
+        width: 3rem;
+        cursor: default;
+    }
+
+    .planner-table .cell-num {
+        width: 2.5rem;
+        text-align: center;
+    }
+
+    .planner-table .cell-code {
+        width: 5.5rem;
+    }
+
+    .planner-table .cell-proj {
+        width: 14rem;
+    }
+
+    .planner-table .cell-visit {
+        width: 3.5rem;
+        text-align: center;
+    }
+
+    .planner-table .cell-fac {
+        width: 9rem;
+    }
+
+    .planner-table .cell-date {
+        width: 6.2rem;
+    }
+
+    .planner-table .cell-state {
+        width: 7.5rem;
+    }
+
+    .planner-table .row-selected {
+        background-color: rgba(99, 102, 241, 0.10) !important;
+    }
+
+    .confirm-dialog-message {
+        white-space: pre-line;
+    }
+</style>
