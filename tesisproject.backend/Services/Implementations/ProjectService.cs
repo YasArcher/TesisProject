@@ -2,6 +2,7 @@
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.Common.External;
 using tesisproject.shared.Common.Utils;
 using tesisproject.shared.DTOs.Auth;
 using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response;
@@ -27,11 +28,11 @@ namespace tesisproject.backend.Services.Implementations
         private readonly IResearchCategoryService _researchCategoryService;
         private readonly ILogger<ProjectService> _logger;
         private readonly IExternalDirectoryClient _externalDirectory;
+        private readonly IExternalDistributivosService _externalDistributivosRaw;
 
         // 🔹 ResearchCategoryType fijos
         private const int CAT_TYPE_DOMINIO = 1;
         private const int CAT_TYPE_LINEA = 2;
-        private const int CAT_TYPE_SUBLINEA = 3;
         private const int CAT_TYPE_CAMPO_AMPLO = 4;
         private const int CAT_TYPE_CAMPO_ESPECIFICO = 5;
         private const int CAT_TYPE_CAMPO_DETALLADO = 6;
@@ -39,10 +40,8 @@ namespace tesisproject.backend.Services.Implementations
         private const int CAT_TYPE_IMPACTO_ESPERADO = 8;
 
         // 🔹 VisitStates: Realizada
-        private const int PLANNED_VISIT_STATE_ID = 1;   // Planificada
-        private const int PENDING_VISIT_STATE_ID = 2;   // Pendiente
-        private const int REALIZED_VISIT_STATE_ID = 3;  // Realizada
-        private const int WAITING_VISIT_STATE_ID = 4;   // En Espera
+        private const int PLANNED_VISIT_STATE_ID = 1;
+        private const int REALIZED_VISIT_STATE_ID = 3;
 
         // 🔹 DocumentTypes (catálogo fijo)
         // 1 = Memorando inicial
@@ -65,7 +64,8 @@ namespace tesisproject.backend.Services.Implementations
             IResearchCategoryService researchCategoryService,
             ILogger<ProjectService> logger,
             IExternalDirectoryClient externalDirectory,
-            IExternalPeriodsClient externalPeriods)
+            IExternalPeriodsClient externalPeriods,
+            IExternalDistributivosService externalDistributivosRaw)
         {
             _uow = uow;
             _appUsers = appUsers;
@@ -74,6 +74,7 @@ namespace tesisproject.backend.Services.Implementations
             _logger = logger;
             _externalDirectory = externalDirectory;
             _externalPeriods = externalPeriods;
+            _externalDistributivosRaw = externalDistributivosRaw;
         }
 
         // ================= READS =================
@@ -407,7 +408,84 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 var p = request.Project;
+                var principalCoordinatorEmail = request.GroupMembers.FirstOrDefault(m => m.MemberRole == 1)?.Email;
                 var d = request.ProjectDocumentData;
+                var projectStartDate = p.StartDate;
+
+                // Precarga de datos necesarios
+                // 1) Perfil externo por correo
+                var profRes = await _externalDirectory.GetByEmailsAsync(new[] { principalCoordinatorEmail.Trim() }, ct);
+                if (!profRes.Success || profRes.Data is null || profRes.Data.Count == 0)
+                {
+                    PhaseLog("Fase 1.2 - External Faculty Resolve",
+                        $"External profile not found for email={principalCoordinatorEmail}. Error={profRes.Error}, Msg={profRes.Message}");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
+                        "Principal coordinator external profile not found.",
+                        ErrorType.NotFound);
+                }
+
+                var profile = profRes.Data[0];
+
+                // 2) Periodos externos
+                var periodsRes = await _externalPeriods.GetAllAsync(ct);
+                if (!periodsRes.Success || periodsRes.Data is null || periodsRes.Data.Count == 0)
+                {
+                    PhaseLog("Fase 1.2 - External Faculty Resolve",
+                        $"External periods not available. Error={periodsRes.Error}, Msg={periodsRes.Message}");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
+                        "External academic periods not available.",
+                        ErrorType.Unexpected);
+                }
+
+                var periods = periodsRes.Data;
+
+                var distRawRes = await _externalDistributivosRaw.GetDistributivosByCorreosAsync(
+                    new[] { principalCoordinatorEmail.Trim() },
+                    ct);
+
+                if (!distRawRes.Success || distRawRes.Data is null || distRawRes.Data.Count == 0)
+                {
+                    PhaseLog("Fase 1.2 - External Faculty Resolve",
+                        $"No distributivos found for email={principalCoordinatorEmail}. Error={distRawRes.Error}, Msg={distRawRes.Message}");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
+                        "No distributivo found for principal coordinator in external system.",
+                        ErrorType.NotFound);
+                }
+
+                var distributivos = distRawRes.Data;
+
+                // 4) Selección determinística de carrera/facultad del proyecto (sin fallback a "primero")
+                var selected = ExternalCareerSelector.SelectProjectCareer(
+                    profile,
+                    distributivos,
+                    (DateTime)projectStartDate,
+                    periods,
+                    onlyActivePreferred: true);
+
+                if (selected is null)
+                {
+                    PhaseLog("Fase 1.2 - External Faculty Resolve",
+                        $"SelectProjectCareer returned null for email={principalCoordinatorEmail}, start={projectStartDate:O}");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
+                        "Unable to resolve faculty/career for project start date from external data.",
+                        ErrorType.Validation);
+                }
+
+                var resolvedFacultyId = selected.FacultyId ?? selected.FacultyCareerId;
+
+                PhaseLog("Fase 1.2 - External Faculty Resolve",
+                    $"Resolved FacultyId={resolvedFacultyId} from selected FacultyCareerId={selected.FacultyCareerId}, FacultyId(parent)={selected.FacultyId}");
+
+                p.FacultyId = resolvedFacultyId;
+
+                // ============================================
+                // 1.3) Validación FacultyId ya resuelto
+                // ============================================
+                if (p.FacultyId <= 0)
+                {
+                    PhaseLog("Fase 1.3 - Validación", "Resolved FacultyId <= 0");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid FacultyId.");
+                }
 
                 // ============================================
                 // 1) Validación mínima

@@ -148,7 +148,6 @@
                                        ExternalResearchersProjects="_externalResearchers"
                                        IsLoadingExternalResearchers="@_loadingExternalResearchers"
                                        OnInviteMember="HandleInviteMember"
-                                       OnChangeRole="HandleChangeRole"
                                        OnRemoveMember="HandleRemoveMember"
                                        OnAddExternalResearcher="HandleOpenExternalResearcherPicker"
                                        OnRemoveExternalResearcher="HandleRemoveExternalResearcher" />
@@ -230,6 +229,33 @@
                                           OnOpen="HandleOpenExtension" />
                 </ChildContent>
             </Tab>
+
+            @* ... al final de tus tabs, después de "extensions" *@
+
+@if (CanShowFinalizationTab)
+{
+    <Tab Key="finalization" Title="Finalización">
+        <Icon>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                <path fill-rule="evenodd" d="M2.25 12a9.75 9.75 0 1 1 19.5 0 9.75 9.75 0 0 1-19.5 0Zm14.03-2.47a.75.75 0 0 0-1.06-1.06l-4.97 4.97-1.97-1.97a.75.75 0 1 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5.5-5.5Z" clip-rule="evenodd" />
+            </svg>
+        </Icon>
+
+        <ChildContent>
+            <ProjectFinalizationTab Project="_project"
+                                   Members="_members"
+                                   ExternalResearchersProjects="_externalResearchers"
+                                   Visits="_visits"
+                                   Budgets="_budgets"
+                                   BudgetTransactionsByBudgetId="_budgetTransactions"
+                                   Products="_projectProducts"
+                                   IsLoading="@_loadingFinalization"
+                                   ErrorMessage="@_finalizationError"
+                                   OnRefresh="HandleRefreshFinalization" />
+        </ChildContent>
+    </Tab>
+}
+
         </Tabs>
     </div>
 </div>
@@ -385,6 +411,10 @@
     // Agregar esta variable al inicio del @code
     private bool _showCreateExtensionModal;
 
+    // ======= Finalización =======
+    private bool _loadingFinalization;
+    private string? _finalizationError;
+
     // Reemplazar los handlers existentes:
     private Task HandleRequestExtension()
     {
@@ -400,6 +430,14 @@
         StateHasChanged();
     }
 
+    private bool CanShowFinalizationTab
+    {
+        get
+        {
+            var p = _project?.ExecutionPercentage ?? 0;
+            return p == 100;
+        }
+    }
 
     private List<CatalogListItemDTO>? _extensionTypes;  // Lista de tipos de prórroga
     private bool _loadingExtensionTypes;
@@ -1080,7 +1118,70 @@
                     _loadingBudget = false;
                 }
                 break;
+
+            case "finalization":
+                _loadingFinalization = true;
+                _finalizationError = null;
+
+                try
+                {
+                    // Asegura que exista el proyecto (y por tanto el %)
+                    await EnsureProjectDetailIfNeeded();
+
+                    // Si por alguna razón el usuario fuerza el tab (ej: URL state), protege:
+                    if (!CanShowFinalizationTab)
+                    {
+                        _finalizationError = "Este proyecto aún no está al 100% de avance.";
+                        break;
+                    }
+
+                    // Reusar datos existentes, pero asegurar que estén cargados:
+                    // - miembros
+                    if (_members is null)
+                        await EnsureTabDataAsync("members");
+
+                    // - visitas + objetivos (tu case visits ya trae objetivos por visita; aquí queremos al menos visitas)
+                    if (_visits is null)
+                        await EnsureTabDataAsync("visits");
+
+                    // - presupuesto
+                    if (_budgets.Count == 0)
+                        await EnsureTabDataAsync("financial");
+
+                    // - productos del proyecto (si no están cargados)
+                    if (_projectProducts.Count == 0)
+                    {
+                        var productsRes = await ProductService.ListByProjectAsync(ProjectId, CancellationToken.None);
+                        if (productsRes.Success && productsRes.Response is not null)
+                            _projectProducts = productsRes.Response.ToList();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _finalizationError = $"Error al cargar la finalización: {ex.Message}";
+                }
+                finally
+                {
+                    _loadingFinalization = false;
+                }
+                break;
         }
+    }
+
+    private async Task HandleRefreshFinalization()
+    {
+        // Esto fuerza a que se refresquen datos relevantes
+        await EnsureTabDataAsync("overview");
+        await EnsureTabDataAsync("members");
+        await EnsureTabDataAsync("visits");
+        await EnsureTabDataAsync("financial");
+
+        // productos
+        var productsRes = await ProductService.ListByProjectAsync(ProjectId, CancellationToken.None);
+        if (productsRes.Success && productsRes.Response is not null)
+            _projectProducts = productsRes.Response.ToList();
+
+        StateHasChanged();
     }
 
     private async Task EnsureProjectObjectivesAsync(bool forceRefresh = false)
@@ -1261,8 +1362,6 @@
         _showUserPicker = true;
         StateHasChanged();
     }
-
-    private Task HandleChangeRole(int userId) => Task.CompletedTask;
 
     private async Task HandleRemoveMember(int userGroupId)
     {
@@ -1848,7 +1947,8 @@
             MemberRole = _selectedRoleIdForProject.Value,
             Email = selected.Email,
             Document = selected.Document,
-            AspUserId = selected.AspNetUserId
+            AspUserId = selected.AspNetUserId,
+            FacultyId = selected.FacultyCareerId
         };
 
         var res = await GroupService.AddMemberAsync(req);

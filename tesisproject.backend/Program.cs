@@ -37,6 +37,8 @@ builder.ConfigureApiDocumentation();
 ExcelPackage.License.SetNonCommercialOrganization("Universidad Técnica de Ambato");
 var app = builder.Build();
 
+await EnsureIdentityRolesAsync(app, "admin", "financial", "technical", "superadmin");
+
 // ===== Configure pipeline =====
 app.ConfigurePipeline();
 
@@ -46,6 +48,32 @@ app.Run();
 // ============================================================================
 // ================      EXTENSION METHODS FOR STARTUP      ===================
 // ============================================================================
+
+static async Task EnsureIdentityRolesAsync(WebApplication app, params string[] roles)
+{
+    if (roles is null || roles.Length == 0)
+        return;
+
+    using var scope = app.Services.CreateScope();
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
+
+    foreach (var role in roles.Distinct(StringComparer.OrdinalIgnoreCase))
+    {
+        if (string.IsNullOrWhiteSpace(role))
+            continue;
+
+        if (!await roleManager.RoleExistsAsync(role))
+        {
+            var result = await roleManager.CreateAsync(new IdentityRole<int>(role));
+            if (!result.Succeeded)
+            {
+                var errors = string.Join("; ", result.Errors.Select(e => $"{e.Code}:{e.Description}"));
+                throw new InvalidOperationException($"Failed to create role '{role}'. Errors: {errors}");
+            }
+        }
+    }
+}
 
 static class StartupExtensions
 {
@@ -173,10 +201,12 @@ static class StartupExtensions
 
     public static void ConfigureHttpClients(this WebApplicationBuilder builder)
     {
+        // Cargar options una sola vez para configurar el HttpClient nombrado
         var opts = builder.Configuration
             .GetSection(ExternalApiOptions.SectionName)
             .Get<ExternalApiOptions>() ?? new ExternalApiOptions();
 
+        // HttpClient nombrado base para todo el "External API"
         builder.Services.AddHttpClient("ExternalApi", client =>
         {
             if (!string.IsNullOrWhiteSpace(opts.BaseUrl))
@@ -190,16 +220,9 @@ static class StartupExtensions
         });
 
         builder.Services.AddHttpClient<IExternalDirectoryClient, ExternalDirectoryClient>("ExternalApi");
-
         builder.Services.AddHttpClient<IExternalPeriodsClient, ExternalPeriodsClient>("ExternalApi");
-
-        builder.Services.AddScoped<IExternalAcademicsService, ExternalAcademicsService>(sp =>
-        {
-            var http = sp.GetRequiredService<IHttpClientFactory>().CreateClient("ExternalApi");
-            var options = sp.GetRequiredService<IOptions<ExternalApiOptions>>();
-            var logger = sp.GetRequiredService<ILogger<ExternalAcademicsService>>();
-            return new ExternalAcademicsService(http, options, logger);
-        });
+        builder.Services.AddHttpClient<IExternalAcademicsService, ExternalAcademicsService>("ExternalApi");
+        builder.Services.AddHttpClient<IExternalDistributivosService, ExternalDistributivosService>("ExternalApi");
     }
 
 

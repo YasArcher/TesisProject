@@ -1,0 +1,922 @@
+﻿@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.Products.Product.Request
+@using tesisproject.shared.DTOs.Products.Product.Response
+@using tesisproject.shared.DTOs.Products.ProductTypeDesign.Response
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+@using tesisproject.shared.Enums
+
+@inject IToastService Toast
+@inject IProductClientService ProductService
+@inject IProductTypeClientService ProductTypeService
+@inject IProductTypeDesignClientService ProductTypeDesignService
+
+<div class="bg-background border border-border rounded-2xl shadow-sm">
+    <div class="px-5 py-4 border-b border-border">
+        <div class="flex items-center justify-between gap-3">
+            <div>
+                <h3 class="text-base font-bold text-foreground">Productos</h3>
+                <p class="text-sm text-muted mt-1">Gestiona productos del proyecto (crear, editar, eliminar)</p>
+            </div>
+
+            <ActionButton Execute="OpenCreateProductModal"
+                          Text="Agregar producto"
+                          Disabled="@(Disabled)"
+                          Intent="ButtonIntent.Add"
+                          Variant="ButtonVariant.Filled"
+                          Size="ButtonSize.Md">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
+                        <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+                    </svg>
+                </Icon>
+            </ActionButton>
+        </div>
+    </div>
+
+    <div class="p-5">
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <div class="rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error">
+                @Error
+            </div>
+        }
+        else if (Loading)
+        {
+            <div class="flex items-center gap-3 py-6">
+                <div class="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                <span class="text-sm text-muted">Cargando productos...</span>
+            </div>
+        }
+        else if (Products is null || Products.Count == 0)
+        {
+            <div class="text-center py-10 px-4">
+                <div class="text-sm text-muted font-medium">No hay productos registrados.</div>
+                <div class="text-xs text-muted mt-1">Haz clic en “Agregar producto” para crear uno desde plantillas.</div>
+            </div>
+        }
+        else
+        {
+            <div class="space-y-3">
+                @foreach (var p in Products.OrderByDescending(x => x.CreatedAt))
+                {
+                    <div class="border border-border rounded-xl bg-background hover:border-primary-light hover:shadow-sm transition-all duration-200">
+                        <div class="p-4">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2">
+                                        <div class="font-semibold text-foreground truncate">@p.Title</div>
+                                        <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full bg-primary-subtle text-primary border border-primary/20">
+                                            @p.ProductTypeName
+                                        </span>
+                                    </div>
+
+                                    <div class="text-xs text-muted mt-1">
+                                        Creado: @p.CreatedAt.ToString("MMM dd, yyyy HH:mm")
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(p.Description))
+                                    {
+                                        <div class="text-sm text-foreground/90 mt-2 whitespace-pre-wrap">
+                                            @p.Description
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="flex items-start gap-2 flex-shrink-0">
+                                    <ActionButton Execute="@(() => OpenEditProductModal(p.Id))"
+                                                  Disabled="@(Disabled)"
+                                                  Text="Abrir"
+                                                  Intent="ButtonIntent.Info"
+                                                  Variant="ButtonVariant.Outline"
+                                                  Size="ButtonSize.Sm" />
+
+                                    <ActionButton Execute="@(() => DeleteProductAsync(p.Id))"
+                                                  Disabled="@(Disabled)"
+                                                  Text="Eliminar"
+                                                  Intent="ButtonIntent.Delete"
+                                                  Variant="ButtonVariant.Ghost"
+                                                  Size="ButtonSize.Sm"
+                                                  ConfirmBeforeExecute="true"
+                                                  ConfirmTitle="Eliminar producto"
+                                                  ConfirmMessage="@($"¿Seguro que deseas eliminar el producto \"{p.Title}\"? Esta acción no se puede deshacer.")"
+                                                  ConfirmButtonText="Eliminar"
+                                                  CancelButtonText="Cancelar" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-border">
+                <div class="flex items-center justify-between text-xs text-muted">
+                    <span>Total de productos: <span class="font-semibold text-foreground">@Products.Count</span></span>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@* ===================== modal editar producto ===================== *@
+@if (_editProductModalOpen)
+{
+    <div class="fixed inset-0 z-50">
+        <div class="absolute inset-0 bg-black/50" @onclick="CloseEditProductModal"></div>
+
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="w-full max-w-3xl rounded-2xl border border-border bg-background shadow-xl overflow-hidden">
+                <div class="p-5 border-b border-border flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-lg font-semibold text-foreground">Editar producto</div>
+                        <div class="text-sm text-muted">Proyecto #@ProjectId · Producto #@_editingProductId</div>
+                    </div>
+
+                    <button class="text-muted hover:text-foreground" @onclick="CloseEditProductModal" title="Cerrar">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                    @if (_loadingEditModal)
+                    {
+                        <div class="flex items-center gap-3 py-6">
+                            <div class="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                            <span class="text-sm text-muted">Cargando producto...</span>
+                        </div>
+                    }
+                    else
+                    {
+                        @if (!string.IsNullOrWhiteSpace(_editModalError))
+                        {
+                            <div class="rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error">
+                                @_editModalError
+                            </div>
+                        }
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-1">Tipo de producto</label>
+                                <select class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                                        disabled
+                                        value="@_editSelectedProductTypeId">
+                                    @foreach (var t in _productTypes)
+                                    {
+                                        <option value="@t.Id">@t.Name</option>
+                                    }
+                                </select>
+                                <div class="text-xs text-muted mt-1">El tipo de producto está bloqueado para productos existentes.</div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-1">Título</label>
+                                <input class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                                       @bind="_editTitle" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-1">Descripción (opcional)</label>
+                            <textarea class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm min-h-[90px]"
+                                      @bind="_editDescription"></textarea>
+                        </div>
+
+                        @if (_editDesign is not null && _editDesignDefinitions.Count > 0)
+                        {
+                            <div class="pt-2">
+                                <div class="text-sm font-semibold text-foreground mb-2">Campos de plantilla</div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    @foreach (var def in _editDesignDefinitions)
+                                    {
+                                        <div class="rounded-xl border border-border p-3">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <div class="text-sm font-medium text-foreground truncate" title="@def.Label">@def.Label</div>
+                                                @if (def.IsRequired)
+                                                {
+                                                    <span class="text-xs px-2 py-0.5 rounded-full border border-error/30 bg-error/10 text-error">Obligatorio</span>
+                                                }
+                                            </div>
+
+                                            <div class="text-xs text-muted mt-1">@def.DataTypeLabel</div>
+
+                                            <div class="mt-2">
+                                                @if (def.DataType == ProductAttributeDataType.Date)
+                                                {
+                                                    <input type="date"
+                                                           class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                                                           value="@GetEditFieldValue(def.AttributeDefinitionId)"
+                                                           @onchange="(e) => SetEditFieldValue(def.AttributeDefinitionId, e.Value?.ToString())" />
+                                                }
+                                                else if (def.DataType == ProductAttributeDataType.Number)
+                                                {
+                                                    <input type="number" step="any"
+                                                           class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                                                           value="@GetEditFieldValue(def.AttributeDefinitionId)"
+                                                           @onchange="(e) => SetEditFieldValue(def.AttributeDefinitionId, e.Value?.ToString())" />
+                                                }
+                                                else if (def.DataType == ProductAttributeDataType.Url)
+                                                {
+                                                    <input type="url"
+                                                           class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                                                           value="@GetEditFieldValue(def.AttributeDefinitionId)"
+                                                           @onchange="(e) => SetEditFieldValue(def.AttributeDefinitionId, e.Value?.ToString())" />
+                                                }
+                                                else
+                                                {
+                                                    <input type="text"
+                                                           class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                                                           value="@GetEditFieldValue(def.AttributeDefinitionId)"
+                                                           @onchange="(e) => SetEditFieldValue(def.AttributeDefinitionId, e.Value?.ToString())" />
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="rounded-xl border border-border bg-muted/10 p-3 text-sm text-muted">
+                                No se encontraron campos de plantilla para este tipo de producto.
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div class="p-5 border-t border-border flex items-center justify-end gap-2">
+                    <ActionButton Text="Cancelar"
+                                  Intent="ButtonIntent.Neutral"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm"
+                                  Execute="CloseEditProductModal" />
+
+                    <ActionButton Text="@(_savingEditProduct ? "Guardando..." : "Guardar cambios")"
+                                  Intent="ButtonIntent.Add"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm"
+                                  IsDisabled="@_savingEditProduct"
+                                  Execute="SaveEditedProductAsync" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ===================== modal crear producto ===================== *@
+@if (_productModalOpen)
+{
+    <div class="fixed inset-0 z-50">
+        <div class="absolute inset-0 bg-black/50" @onclick="CloseCreateProductModal"></div>
+
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="w-full max-w-3xl rounded-2xl border border-border bg-background shadow-xl overflow-hidden">
+                <div class="p-5 border-b border-border flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                        <div class="text-lg font-semibold text-foreground">Crear producto</div>
+                        <div class="text-sm text-muted">Proyecto #@ProjectId</div>
+                    </div>
+
+                    <button class="text-muted hover:text-foreground" @onclick="CloseCreateProductModal" title="Cerrar">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+                    @if (_loadingModal)
+                    {
+                        <div class="flex items-center gap-3 py-6">
+                            <div class="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                            <span class="text-sm text-muted">Cargando plantilla...</span>
+                        </div>
+                    }
+                    else
+                    {
+                        @if (!string.IsNullOrWhiteSpace(_modalError))
+                        {
+                            <div class="rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error">
+                                @_modalError
+                            </div>
+                        }
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-1">Tipo de producto</label>
+                                <select class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                                        @onchange="OnProductTypeChanged"
+                                        value="@_selectedProductTypeId">
+                                    <option value="0">-- Seleccionar --</option>
+                                    @foreach (var t in _productTypes)
+                                    {
+                                        <option value="@t.Id">@t.Name</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-1">Título</label>
+                                <input class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                                       placeholder="p. ej. Artículo, paper, capítulo..."
+                                       @bind="_title" />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-foreground mb-1">Descripción (opcional)</label>
+                            <textarea class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm min-h-[90px]"
+                                      placeholder="Descripción corta..."
+                                      @bind="_description"></textarea>
+                        </div>
+
+                        @if (_design is not null && _designDefinitions.Count > 0)
+                        {
+                            <div class="pt-2">
+                                <div class="text-sm font-semibold text-foreground mb-2">Campos de plantilla</div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    @foreach (var def in _designDefinitions)
+                                    {
+                                        <div class="rounded-xl border border-border p-3">
+                                            <div class="flex items-center justify-between gap-2">
+                                                <div class="text-sm font-medium text-foreground truncate" title="@def.Label">@def.Label</div>
+                                                @if (def.IsRequired)
+                                                {
+                                                    <span class="text-xs px-2 py-0.5 rounded-full border border-error/30 bg-error/10 text-error">Obligatorio</span>
+                                                }
+                                            </div>
+
+                                            <div class="text-xs text-muted mt-1">@def.DataTypeLabel</div>
+
+                                            <div class="mt-2">
+                                                @if (def.DataType == ProductAttributeDataType.Date)
+                                                {
+                                                    <input type="date"
+                                                           class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                                                           value="@GetFieldValue(def.AttributeDefinitionId)"
+                                                           @onchange="(e) => SetFieldValue(def.AttributeDefinitionId, e.Value?.ToString())" />
+                                                }
+                                                else if (def.DataType == ProductAttributeDataType.Number)
+                                                {
+                                                    <input type="number" step="any"
+                                                           class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                                                           value="@GetFieldValue(def.AttributeDefinitionId)"
+                                                           @onchange="(e) => SetFieldValue(def.AttributeDefinitionId, e.Value?.ToString())" />
+                                                }
+                                                else if (def.DataType == ProductAttributeDataType.Url)
+                                                {
+                                                    <input type="url"
+                                                           class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                                                           placeholder="https://..."
+                                                           value="@GetFieldValue(def.AttributeDefinitionId)"
+                                                           @onchange="(e) => SetFieldValue(def.AttributeDefinitionId, e.Value?.ToString())" />
+                                                }
+                                                else
+                                                {
+                                                    <input type="text"
+                                                           class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                                                           value="@GetFieldValue(def.AttributeDefinitionId)"
+                                                           @onchange="(e) => SetFieldValue(def.AttributeDefinitionId, e.Value?.ToString())" />
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                        else if (_selectedProductTypeId > 0)
+                        {
+                            <div class="rounded-xl border border-border bg-muted/10 p-3 text-sm text-muted">
+                                Este tipo no tiene campos de plantilla (o la plantilla no devolvió definiciones).
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div class="p-5 border-t border-border flex items-center justify-end gap-2">
+                    <ActionButton Text="Cancelar"
+                                  Intent="ButtonIntent.Neutral"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm"
+                                  Execute="CloseCreateProductModal" />
+
+                    <ActionButton Text="@(_savingProduct ? "Guardando..." : "Guardar producto")"
+                                  Intent="ButtonIntent.Add"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm"
+                                  IsDisabled="@_savingProduct"
+                                  Execute="SaveProductAsync" />
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    // ===== Inputs del padre =====
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public int VisitId { get; set; } = 0; // si tu backend exige VisitId para crear
+    [Parameter] public IReadOnlyList<ProductListItemResponseDTO> Products { get; set; } = Array.Empty<ProductListItemResponseDTO>();
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string? Error { get; set; }
+
+    // Evento para refrescar lista desde el padre
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    // =====================
+    // modal create product
+    // =====================
+    private bool _productModalOpen;
+    private bool _loadingModal;
+    private bool _savingProduct;
+    private string? _modalError;
+
+    private int _selectedProductTypeId;
+    private string _title = string.Empty;
+    private string? _description;
+
+    private List<CatalogListItemDTO> _productTypes = new();
+    private ProductTypeDesignDetailDTO? _design;
+
+    private readonly Dictionary<int, string?> _fieldValues = new();
+    private readonly List<UiDesignField> _designDefinitions = new();
+
+    // =====================
+    // modal edit product
+    // =====================
+    private bool _editProductModalOpen;
+    private bool _loadingEditModal;
+    private bool _savingEditProduct;
+    private string? _editModalError;
+
+    private int _editingProductId;
+
+    private int _editSelectedProductTypeId;
+    private string _editTitle = string.Empty;
+    private string? _editDescription;
+
+    private ProductTypeDesignDetailDTO? _editDesign;
+    private readonly Dictionary<int, string?> _editFieldValues = new();
+    private readonly List<UiDesignField> _editDesignDefinitions = new();
+
+    // ===== UI field model =====
+    private sealed class UiDesignField
+    {
+        public int AttributeDefinitionId { get; set; }
+        public string Label { get; set; } = string.Empty;
+        public bool IsRequired { get; set; }
+        public int DisplayOrder { get; set; }
+        public ProductAttributeDataType DataType { get; set; } = ProductAttributeDataType.Text;
+        public string? Unit { get; set; }
+        public string DataTypeLabel { get; set; } = "Texto";
+    }
+
+    private static string MapDataTypeLabel(ProductAttributeDataType dt) => dt switch
+    {
+        ProductAttributeDataType.Number => "Número",
+        ProductAttributeDataType.Date => "Fecha",
+        ProductAttributeDataType.Url => "URL",
+        _ => "Texto"
+    };
+
+    // =====================
+    // Create
+    // =====================
+    private async Task OpenCreateProductModal()
+    {
+        _productModalOpen = true;
+        _loadingModal = true;
+        _savingProduct = false;
+        _modalError = null;
+
+        _selectedProductTypeId = 0;
+        _title = string.Empty;
+        _description = null;
+
+        _design = null;
+        _fieldValues.Clear();
+        _designDefinitions.Clear();
+
+        try
+        {
+            var typesRes = await ProductTypeService.GetListAsync(CancellationToken.None);
+            if (!typesRes.Success || typesRes.Response is null)
+            {
+                _productTypes = new();
+                _modalError = typesRes.Error ?? "No se pudieron cargar los tipos de producto.";
+                return;
+            }
+
+            _productTypes = typesRes.Response.OrderBy(x => x.Name).ToList();
+        }
+        catch (Exception ex)
+        {
+            _modalError = $"Error al abrir el modal: {ex.Message}";
+        }
+        finally
+        {
+            _loadingModal = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseCreateProductModal()
+    {
+        _productModalOpen = false;
+        _modalError = null;
+        _savingProduct = false;
+        _loadingModal = false;
+
+        _design = null;
+        _fieldValues.Clear();
+        _designDefinitions.Clear();
+    }
+
+    private async Task OnProductTypeChanged(ChangeEventArgs e)
+    {
+        _modalError = null;
+        _design = null;
+        _fieldValues.Clear();
+        _designDefinitions.Clear();
+
+        if (!int.TryParse(e.Value?.ToString(), out var typeId))
+        {
+            _selectedProductTypeId = 0;
+            return;
+        }
+
+        _selectedProductTypeId = typeId;
+
+        if (_selectedProductTypeId <= 0)
+            return;
+
+        _loadingModal = true;
+        try
+        {
+            var designRes = await ProductTypeDesignService.GetByProductTypeIdAsync(_selectedProductTypeId, CancellationToken.None);
+            if (!designRes.Success || designRes.Response is null)
+            {
+                _design = null;
+                _modalError = designRes.Error ?? "No se pudo cargar la plantilla del tipo de producto.";
+                return;
+            }
+
+            _design = designRes.Response;
+
+            if (_design.Definitions is not null && _design.Definitions.Count > 0)
+            {
+                foreach (var def in _design.Definitions.OrderBy(x => x.DisplayOrder))
+                {
+                    _designDefinitions.Add(new UiDesignField
+                    {
+                        AttributeDefinitionId = def.Id,
+                        Label = def.ProductAttributeName,
+                        IsRequired = def.IsRequired,
+                        DisplayOrder = def.DisplayOrder,
+                        DataType = def.DataType,
+                        Unit = def.Unit,
+                        DataTypeLabel = MapDataTypeLabel(def.DataType)
+                    });
+
+                    if (!_fieldValues.ContainsKey(def.Id))
+                        _fieldValues[def.Id] = null;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _modalError = $"Error al cargar la plantilla: {ex.Message}";
+        }
+        finally
+        {
+            _loadingModal = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetFieldValue(int attributeDefinitionId)
+        => _fieldValues.TryGetValue(attributeDefinitionId, out var v) ? (v ?? string.Empty) : string.Empty;
+
+    private void SetFieldValue(int attributeDefinitionId, string? value)
+        => _fieldValues[attributeDefinitionId] = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private async Task SaveProductAsync()
+    {
+        _modalError = null;
+
+        if (ProjectId <= 0)
+        {
+            _modalError = "ProjectId inválido.";
+            return;
+        }
+
+        // Si tu backend exige VisitId para crear productos, aquí se valida.
+        if (VisitId <= 0)
+        {
+            _modalError = "No hay VisitId asociado para crear el producto (tu endpoint lo requiere).";
+            return;
+        }
+
+        if (_selectedProductTypeId <= 0)
+        {
+            _modalError = "Selecciona un tipo de producto.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_title))
+        {
+            _modalError = "El título es obligatorio.";
+            return;
+        }
+
+        foreach (var req in _designDefinitions.Where(x => x.IsRequired))
+        {
+            var v = GetFieldValue(req.AttributeDefinitionId);
+            if (string.IsNullOrWhiteSpace(v))
+            {
+                _modalError = $"Completa el campo obligatorio: {req.Label}.";
+                return;
+            }
+        }
+
+        _savingProduct = true;
+        try
+        {
+            var values = new List<ProductValueUpsertDTO>();
+
+            foreach (var f in _designDefinitions.OrderBy(x => x.DisplayOrder))
+            {
+                var val = GetFieldValue(f.AttributeDefinitionId);
+                if (string.IsNullOrWhiteSpace(val))
+                    continue;
+
+                values.Add(new ProductValueUpsertDTO
+                {
+                    AttributeDefinitionId = f.AttributeDefinitionId,
+                    Value = val
+                });
+            }
+
+            var req = new ProductCreateRequestDTO
+            {
+                ProjectId = ProjectId,
+                VisitId = VisitId,
+                ProductTypeId = _selectedProductTypeId,
+                Title = _title.Trim(),
+                Description = string.IsNullOrWhiteSpace(_description) ? null : _description.Trim(),
+                Values = values,
+                AuthorUserIds = new List<int>()
+            };
+
+            var res = await ProductService.CreateAsync(req, CancellationToken.None);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "No se pudo crear el producto.");
+                return;
+            }
+
+            Toast.ShowSuccess("Producto creado correctamente.");
+            CloseCreateProductModal();
+
+            if (OnChanged.HasDelegate)
+                await OnChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al crear el producto: {ex.Message}");
+        }
+        finally
+        {
+            _savingProduct = false;
+            StateHasChanged();
+        }
+    }
+
+    // =====================
+    // Edit
+    // =====================
+    private string GetEditFieldValue(int attributeDefinitionId)
+        => _editFieldValues.TryGetValue(attributeDefinitionId, out var v) ? (v ?? string.Empty) : string.Empty;
+
+    private void SetEditFieldValue(int attributeDefinitionId, string? value)
+        => _editFieldValues[attributeDefinitionId] = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private async Task OpenEditProductModal(int productId)
+    {
+        _editProductModalOpen = true;
+        _loadingEditModal = true;
+        _savingEditProduct = false;
+        _editModalError = null;
+
+        _editingProductId = productId;
+
+        _editSelectedProductTypeId = 0;
+        _editTitle = string.Empty;
+        _editDescription = null;
+
+        _editDesign = null;
+        _editFieldValues.Clear();
+        _editDesignDefinitions.Clear();
+
+        try
+        {
+            // catálogo de tipos (para mostrar label)
+            if (_productTypes.Count == 0)
+            {
+                var typesRes = await ProductTypeService.GetListAsync(CancellationToken.None);
+                if (!typesRes.Success || typesRes.Response is null)
+                {
+                    _editModalError = typesRes.Error ?? "No se pudieron cargar los tipos de producto.";
+                    return;
+                }
+
+                _productTypes = typesRes.Response.OrderBy(x => x.Name).ToList();
+            }
+
+            // detalle del producto (con Values)
+            var prodRes = await ProductService.GetByIdAsync(productId, CancellationToken.None);
+            if (!prodRes.Success || prodRes.Response is null)
+            {
+                _editModalError = prodRes.Error ?? "No se pudo cargar el producto.";
+                return;
+            }
+
+            var product = prodRes.Response;
+
+            _editSelectedProductTypeId = product.ProductTypeId;
+            _editTitle = product.Title ?? string.Empty;
+            _editDescription = product.Description;
+
+            // plantilla del tipo
+            var designRes = await ProductTypeDesignService.GetByProductTypeIdAsync(
+                _editSelectedProductTypeId,
+                CancellationToken.None);
+
+            if (!designRes.Success || designRes.Response is null)
+            {
+                _editModalError = designRes.Error ?? "No se pudo cargar la plantilla del tipo de producto.";
+                return;
+            }
+
+            _editDesign = designRes.Response;
+
+            // fields UI + prefill desde product.Values
+            if (_editDesign.Definitions is not null && _editDesign.Definitions.Count > 0)
+            {
+                foreach (var def in _editDesign.Definitions.OrderBy(x => x.DisplayOrder))
+                {
+                    _editDesignDefinitions.Add(new UiDesignField
+                    {
+                        AttributeDefinitionId = def.Id,
+                        Label = def.ProductAttributeName,
+                        IsRequired = def.IsRequired,
+                        DisplayOrder = def.DisplayOrder,
+                        DataType = def.DataType,
+                        Unit = def.Unit,
+                        DataTypeLabel = MapDataTypeLabel(def.DataType)
+                    });
+
+                    var existing = product.Values
+                        .FirstOrDefault(v => v.AttributeDefinitionId == def.Id)
+                        ?.Value;
+
+                    _editFieldValues[def.Id] = string.IsNullOrWhiteSpace(existing) ? null : existing;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _editModalError = $"Error al abrir el modal de edición: {ex.Message}";
+        }
+        finally
+        {
+            _loadingEditModal = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseEditProductModal()
+    {
+        _editProductModalOpen = false;
+        _editModalError = null;
+        _savingEditProduct = false;
+        _loadingEditModal = false;
+
+        _editingProductId = 0;
+        _editSelectedProductTypeId = 0;
+        _editTitle = string.Empty;
+        _editDescription = null;
+
+        _editDesign = null;
+        _editFieldValues.Clear();
+        _editDesignDefinitions.Clear();
+    }
+
+    private async Task SaveEditedProductAsync()
+    {
+        _editModalError = null;
+
+        if (_editingProductId <= 0)
+        {
+            _editModalError = "ProductId inválido.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_editTitle))
+        {
+            _editModalError = "El título es obligatorio.";
+            return;
+        }
+
+        foreach (var req in _editDesignDefinitions.Where(x => x.IsRequired))
+        {
+            var v = GetEditFieldValue(req.AttributeDefinitionId);
+            if (string.IsNullOrWhiteSpace(v))
+            {
+                _editModalError = $"Completa el campo obligatorio: {req.Label}.";
+                return;
+            }
+        }
+
+        _savingEditProduct = true;
+
+        try
+        {
+            var values = new List<ProductValueUpsertDTO>();
+
+            foreach (var f in _editDesignDefinitions.OrderBy(x => x.DisplayOrder))
+            {
+                var val = GetEditFieldValue(f.AttributeDefinitionId);
+                if (string.IsNullOrWhiteSpace(val))
+                    continue;
+
+                values.Add(new ProductValueUpsertDTO
+                {
+                    AttributeDefinitionId = f.AttributeDefinitionId,
+                    Value = val
+                });
+            }
+
+            var updateReq = new ProductUpdateRequestDTO
+            {
+                Id = _editingProductId,
+                Title = _editTitle.Trim(),
+                Description = string.IsNullOrWhiteSpace(_editDescription) ? null : _editDescription.Trim(),
+                AuthorUserIds = null, // no tocar autores desde aquí
+                Values = _editDesignDefinitions.Count == 0 ? null : values
+            };
+
+            var res = await ProductService.UpdateAsync(updateReq, CancellationToken.None);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "No se pudo actualizar el producto.");
+                return;
+            }
+
+            Toast.ShowSuccess("Producto actualizado correctamente.");
+            CloseEditProductModal();
+
+            if (OnChanged.HasDelegate)
+                await OnChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al actualizar el producto: {ex.Message}");
+        }
+        finally
+        {
+            _savingEditProduct = false;
+            StateHasChanged();
+        }
+    }
+
+    // =====================
+    // Delete
+    // =====================
+    private async Task DeleteProductAsync(int productId)
+    {
+        try
+        {
+            var res = await ProductService.DeleteAsync(productId, CancellationToken.None);
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "No se pudo eliminar el producto.");
+                return;
+            }
+
+            Toast.ShowSuccess("Producto eliminado.");
+            if (OnChanged.HasDelegate)
+                await OnChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al eliminar el producto: {ex.Message}");
+        }
+    }
+}

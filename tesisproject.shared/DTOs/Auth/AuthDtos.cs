@@ -13,6 +13,7 @@ namespace tesisproject.shared.DTOs.Auth
         [Required, MinLength(6)] public string Password { get; set; } = string.Empty;
         [Required, StringLength(10)] public string Username { get; set; } = string.Empty;
         public string? FullName { get; set; }
+        public string? Role { get; set; }
         [Required] public int? AspUserId { get; set; }
     }
 

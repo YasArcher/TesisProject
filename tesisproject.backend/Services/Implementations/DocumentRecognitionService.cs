@@ -1,10 +1,12 @@
-﻿using tesisproject.backend.Services.Interfaces;
+﻿using DocumentFormat.OpenXml.Drawing.Charts;
+using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.Services.Parsers;
 using tesisproject.backend.Utils;
 using tesisproject.shared.Common.External;
 using tesisproject.shared.Common.Utils;
 using tesisproject.shared.DTOs.Algorithms.Response;
 using tesisproject.shared.Entities.Catalogs;
+using tesisproject.shared.Entities.External;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -15,17 +17,24 @@ namespace tesisproject.backend.Services.Implementations
         private readonly IExternalDirectoryClient _externalDirectory;
         private readonly IMemberRoleTypeService _memberRoleTypeService;
         private readonly ICatalogCrudService<ProjectType> _projectTypeService;
+        private readonly IExternalPeriodsClient _periods;
+        private readonly IExternalDistributivosService _distributivos;
+
 
         public DocumentRecognitionService(
             ILogger<IDocumentRecognitionService> logger,
             IExternalDirectoryClient externalDirectory,
             IMemberRoleTypeService memberRoleTypeService,
-            ICatalogCrudService<ProjectType> projectTypeService)
+            ICatalogCrudService<ProjectType> projectTypeService,
+            IExternalPeriodsClient periods,
+            IExternalDistributivosService distributivos)
         {
             _logger = logger;
             _externalDirectory = externalDirectory;
             _memberRoleTypeService = memberRoleTypeService;
             _projectTypeService = projectTypeService;
+            _periods = periods;
+            _distributivos = distributivos;
         }
         // ========================================
         //  MÉTODO 1: Reconocimiento de Resolución
@@ -180,39 +189,69 @@ namespace tesisproject.backend.Services.Implementations
 
             return data;
         }
-
-
         private async Task EnrichResearchersWithExternalDirectoryAsync(
-    IList<ResearcherInfo> researchers,
-    CancellationToken ct)
+            IList<ResearcherInfo> researchers,
+            CancellationToken ct)
         {
             // 1) Correos únicos y limpios
             var emails = researchers
                 .Select(r => r.email)
                 .Where(e => !string.IsNullOrWhiteSpace(e))
-                .Select(e => e.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Select(e => e.Trim().ToLowerInvariant())
+                .Distinct()
                 .ToList();
 
             if (emails.Count == 0)
                 return;
 
+            // 2) Traer perfiles del directorio externo (batch)
             var externalResult = await _externalDirectory.GetByEmailsAsync(emails, ct);
-            if (!externalResult.Success|| externalResult.Data is null || externalResult.Data.Count == 0)
+            if (!externalResult.Success || externalResult.Data is null || externalResult.Data.Count == 0)
             {
                 _logger.LogWarning("No external profiles matched the detected emails.");
                 return;
             }
 
-            // 2) Diccionario email → perfil externo
+            // 3) Periodos académicos (una sola vez, antes del loop)
+            var periodsRes = await _periods.GetAllAsync(ct);
+            var periods = (periodsRes.Success && periodsRes.Data is not null)
+                ? periodsRes.Data
+                    .Where(p => p is not null)
+                    .Where(p => p.StartDate <= p.EndDate)
+                    .OrderBy(p => p.StartDate)
+                    .ToList()
+                : new List<ExternalAcademicPeriodModel>();
+
+            if (periods.Count == 0)
+                _logger.LogWarning("Academic periods not available; ProjectCareer selection may fallback to BestCareer.");
+
+            // 4) Distributivos (solo los necesarios por correos, una sola vez, antes del loop)
+            var distRes = await _distributivos.GetDistributivosByCorreosAsync(emails, ct);
+            var distributivos = (distRes.Success && distRes.Data is not null)
+                ? distRes.Data
+                    .Where(d => !string.IsNullOrWhiteSpace(d.Email))
+                    // Dedup por (Email, PeriodId) para evitar ruido; determinista por Max(Hours)
+                    .GroupBy(d => new { Email = d.Email!.Trim().ToLowerInvariant(), d.PeriodId })
+                    .Select(g => g.OrderByDescending(x => x.Hours).First())
+                    .ToList()
+                : new List<ExternalTeacherDistributivoModel>();
+
+            if (distributivos.Count == 0)
+                _logger.LogWarning("Distributivos not available/empty; ProjectCareer selection may fallback to BestCareer.");
+
+            // 5) Diccionario email → perfil externo
             var profilesByEmail = externalResult.Data
                 .Where(p => !string.IsNullOrWhiteSpace(p.Email))
+                .GroupBy(p => p.Email!.Trim().ToLowerInvariant())
                 .ToDictionary(
-                    p => p.Email.Trim().ToLowerInvariant(),
-                    p => p,
+                    g => g.Key,
+                    g => g.First(),
                     StringComparer.OrdinalIgnoreCase);
 
-            // 3) Enriquecer cada investigador
+            // 6) Fecha "de ese momento" (no la del proyecto)
+            var now = DateTime.UtcNow;
+
+            // 7) Enriquecer cada investigador
             foreach (var r in researchers)
             {
                 if (string.IsNullOrWhiteSpace(r.email))
@@ -222,30 +261,36 @@ namespace tesisproject.backend.Services.Implementations
                 if (!profilesByEmail.TryGetValue(key, out var profile))
                     continue;
 
-                // Nombre tomado del directorio externo
+                // Nombre
                 if (!string.IsNullOrWhiteSpace(profile.FullName))
                     r.FullName = profile.FullName;
 
-                // id_facultad_carrera del directorio
+                // Cédula
+                if (!string.IsNullOrWhiteSpace(profile.Document))
+                    r.Document = profile.Document;
+
+                // ASP externo
+                if (profile.AspId is not null)
+                    r.AspNetUserId = profile.AspId;
+
+                // Carrera: primero por horas/periodo en "este momento", si no, fallback a BestCareer
                 if (profile.Careers is { Count: > 0 })
                 {
-                    //De momento escojere el primero
+                    var chosen = ExternalCareerSelector.SelectProjectCareer(
+                        profile: profile,
+                        distributivos: distributivos,
+                        projectStartDate: now,   // "fecha de ese momento"
+                        periods: periods,
+                        onlyActivePreferred: true);
 
-                    var chosen = ExternalCareerSelector.SelectBestCareer(
+                    // Fallback: si no hay carrera por ProjectCareer, usar BestCareer
+                    chosen ??= ExternalCareerSelector.SelectBestCareer(
                         profile: profile,
                         onlyActivePreferred: true);
 
                     if (chosen is not null)
-                    {
                         r.FacultyCareerId = chosen.FacultyCareerId;
-                    }
                 }
-                //cedula
-                if (profile.Document != null)
-                    r.Document = profile.Document;
-                //ASP externo
-                if (profile.AspId != null)
-                    r.AspNetUserId = profile.AspId;
             }
         }
 
