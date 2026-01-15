@@ -372,13 +372,13 @@ namespace tesisproject.backend.Services.Implementations
             await SetProjectExecutionAsync(projectId, Math.Round(execution, 2), ct);
         }
 
-
         private async Task SetProjectExecutionAsync(int projectId, decimal execution, CancellationToken ct)
         {
             var project = await _uow.Projects.GetByIdAsync(new object[] { projectId }, ct);
             if (project is null) return;
-
-            project.ExecutionPercentage = Math.Min(100m, Math.Max(0m, execution));
+            var clamped = Math.Min(100m, Math.Max(0m, execution));
+            project.ExecutionPercentage = clamped;
+            project.ProjectStateId = (project.ExecutionPercentage >= 100m) ? 2 : 3;
             _uow.Projects.Update(project);
             await _uow.SaveChangesAsync(ct);
         }

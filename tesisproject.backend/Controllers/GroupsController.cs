@@ -75,6 +75,14 @@ namespace tesisproject.backend.Controllers
             CancellationToken ct)
             => (await _service.GetByProjectAsync(projectId, ct)).ToActionResult();
 
+        // ================== NUEVO: Reporte de integrantes del proyecto ==================
+        // GET: api/Groups/project-members-report/{projectId}
+        [HttpGet("project-members-report/{projectId:int}")]
+        public async Task<ActionResult<ApiResponse<ProjectMembersReportDTO>>> GetProjectMembersReport(
+            int projectId,
+            CancellationToken ct)
+            => (await _service.GetProjectMembersReportAsync(projectId, ct)).ToActionResult();
+
         // ================== External users (persona-centrado) ==================
 
         // GET: api/Groups/external-users     (todos desde el directorio)

@@ -1,0 +1,89 @@
+﻿@using tesisproject.shared.DTOs.Group.Response
+
+@if (Report is null || Report.Sections is null || Report.Sections.Count == 0)
+{
+    <div class="text-sm text-muted">No hay datos de reporte de integrantes.</div>
+}
+else
+{
+    <div class="space-y-8">
+        @foreach (var sec in Report.Sections)
+        {
+            <div class="rounded-2xl border border-border overflow-hidden">
+                <!-- Título de bloque -->
+                <div class="px-4 py-3 bg-red-700 text-white font-bold text-sm tracking-wide">
+                    @(sec.Title)
+                </div>
+
+                <!-- Tabla -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="bg-red-700 text-white">
+                                <th class="px-3 py-3 text-center font-bold uppercase border-r border-red-900" rowspan="2" style="min-width: 280px;">
+                                    Nombre
+                                </th>
+                                <th class="px-3 py-3 text-center font-bold uppercase border-r border-red-900" rowspan="2" style="min-width: 220px;">
+                                    Designación en el proyecto
+                                </th>
+                                <th class="px-3 py-3 text-center font-bold uppercase border-r border-red-900" rowspan="2" style="min-width: 220px;">
+                                    Período de participación
+                                </th>
+                                <th class="px-3 py-3 text-center font-bold uppercase" colspan="2" style="min-width: 220px;">
+                                    Número de meses de participación en el proyecto
+                                </th>
+                            </tr>
+
+                            <tr class="bg-red-700 text-white">
+                                <th class="px-3 py-2 text-center font-bold border-r border-red-900">
+                                    Meses
+                                </th>
+                                <th class="px-3 py-2 text-center font-bold">
+                                    Días
+                                </th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            @if (sec.Rows is null || sec.Rows.Count == 0)
+                            {
+                                <tr>
+                                    <td class="px-3 py-3 text-center text-muted" colspan="5">
+                                        Sin registros para este bloque.
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var row in sec.Rows)
+                                {
+                                    <tr class="border-t border-border">
+                                        <td class="px-3 py-2 border-r border-border">
+                                            @(row.FullName)
+                                        </td>
+                                        <td class="px-3 py-2 border-r border-border text-center">
+                                            @(row.DesignationInProject)
+                                        </td>
+                                        <td class="px-3 py-2 border-r border-border text-center">
+                                            @(row.ParticipationPeriod)
+                                        </td>
+                                        <td class="px-3 py-2 border-r border-border text-center">
+                                            @(row.Months)
+                                        </td>
+                                        <td class="px-3 py-2 text-center">
+                                            @(row.Days)
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public ProjectMembersReportDTO? Report { get; set; }
+}

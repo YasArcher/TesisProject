@@ -42,5 +42,8 @@ namespace tesisproject.backend.Services.Interfaces
         /// Retrieves all external users from the external directory (if supported).
         /// </summary>
         Task<ServiceResult<List<ResolvedUserProfileDTO>>> GetAllExternalUsersAsync(CancellationToken ct = default);
+        Task<ServiceResult<ProjectMembersReportDTO>> GetProjectMembersReportAsync(
+            int projectId,
+            CancellationToken ct = default);
     }
 }

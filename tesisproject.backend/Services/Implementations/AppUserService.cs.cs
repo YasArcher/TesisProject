@@ -18,15 +18,18 @@ namespace tesisproject.backend.Services.Implementations
         private readonly UserManager<IdentityUser<int>> _userManager;
         private readonly IAppUserRepository _appUsers;
         private readonly IUnitOfWork _uow;
+        private readonly RoleManager<IdentityRole<int>> _roleManager;
 
         public AppUserService(
             UserManager<IdentityUser<int>> userManager,
             IAppUserRepository appUsers,
-            IUnitOfWork uow)
+            IUnitOfWork uow,
+            RoleManager<IdentityRole<int>> roleManager)
         {
             _userManager = userManager;
             _appUsers = appUsers;
             _uow = uow;
+            _roleManager = roleManager;
         }
 
         // =============== SINGLE ===============
@@ -97,16 +100,15 @@ namespace tesisproject.backend.Services.Implementations
         /// - Busca o crea AppUser por AspUserId / IdLocal.
         /// - Devuelve IdUser (PK de APP_USER).
         /// </summary>
-        private async Task<int> EnsureSingleInternalAsync(
-            RegisterRequest dto,
-            CancellationToken ct)
+        private async Task<int> EnsureSingleInternalAsync(RegisterRequest dto, CancellationToken ct)
         {
             // 1) Buscar IdentityUser por email
             var user = await _userManager.FindByEmailAsync(dto.Email);
 
+            var userWasCreated = false;
+
             if (user is null)
             {
-                // No existe en ASP local → crearlo
                 user = new IdentityUser<int>
                 {
                     Email = dto.Email,
@@ -120,26 +122,55 @@ namespace tesisproject.backend.Services.Implementations
                     var msg = string.Join("; ", create.Errors.Select(e => $"{e.Code}:{e.Description}"));
                     throw new InvalidOperationException(msg);
                 }
+
+                userWasCreated = true;
+            }
+
+            // 1.1) ASIGNAR ROL (AQUÍ)
+            // - Si NO quieres tocar DTO: deja roleToAssign = "technical"
+            // - Si agregaste dto.Role: permite solo financial/technical
+            var roleToAssign = string.IsNullOrWhiteSpace(dto.Role) ? "technical" : dto.Role.Trim();
+
+            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "technical",
+        "financial"
+        // NO incluyas admin/superadmin en registro público
+    };
+
+            if (!allowed.Contains(roleToAssign))
+                roleToAssign = "technical"; // o lanza error si quieres ser estricto
+
+            if (!await _roleManager.RoleExistsAsync(roleToAssign))
+                throw new InvalidOperationException($"Role '{roleToAssign}' does not exist.");
+
+            // Evita duplicar asignación
+            if (!await _userManager.IsInRoleAsync(user, roleToAssign))
+            {
+                var addRole = await _userManager.AddToRoleAsync(user, roleToAssign);
+                if (!addRole.Succeeded)
+                {
+                    var msg = string.Join("; ", addRole.Errors.Select(e => $"{e.Code}:{e.Description}"));
+
+                    // rollback si el usuario se creó recién
+                    if (userWasCreated)
+                        await _userManager.DeleteAsync(user);
+
+                    throw new InvalidOperationException(msg);
+                }
             }
 
             // 2) Buscar AppUser existente por AspUserId o IdLocal
             AppUser? appUser = null;
 
-            // 2.a Si viene AspUserId, buscar primero por IdAsp
             if (dto.AspUserId.HasValue)
-            {
                 appUser = await _appUsers.GetByAspIdAsync(dto.AspUserId.Value, ct);
-            }
 
-            // 2.b Si no hay por IdAsp, buscar por IdLocal (IdentityUser.Id)
             if (appUser is null)
-            {
                 appUser = await _appUsers.GetByLocalIdAsync(user.Id, ct);
-            }
 
             if (appUser is null)
             {
-                // 2.c No existe AppUser → crearlo
                 appUser = new AppUser
                 {
                     IdLocal = user.Id,
@@ -150,7 +181,6 @@ namespace tesisproject.backend.Services.Implementations
             }
             else
             {
-                // 2.d Ya existe AppUser → solo completar datos faltantes
                 var modified = false;
 
                 if (appUser.IdLocal is null)
@@ -166,16 +196,12 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 if (modified)
-                {
                     _appUsers.Update(appUser);
-                }
             }
 
-            // Guardar cambios para que IdUser se genere y quede persistido
             await _uow.SaveChangesAsync(ct);
-
-            // En este punto appUser.IdUser ya debe estar asignado por EF/DB
             return appUser.IdUser;
         }
+
     }
 }

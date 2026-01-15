@@ -29,12 +29,16 @@ namespace tesisproject.frontend.Services.Implementations
 
         public Task<HttpResponseWrapper<GroupResponseDTO?>> CreateAsync(AddGroupRequestDTO request, CancellationToken ct = default)
         {
+            if (request is null) throw new ArgumentNullException(nameof(request));
             return _api.PostAsync<AddGroupRequestDTO, GroupResponseDTO>($"{_baseUrl}", request, ct);
         }
+
         public Task<HttpResponseWrapper<GroupResponseDTO?>> UpdateAsync(UpdateGroupRequestDTO request, CancellationToken ct = default)
         {
+            if (request is null) throw new ArgumentNullException(nameof(request));
             return _api.PutAsync<UpdateGroupRequestDTO, GroupResponseDTO>($"{_baseUrl}", request, ct);
         }
+
         public Task<HttpResponseWrapper<NoContent>> DeleteAsync(int id, CancellationToken ct = default)
         {
             throw new NotImplementedException();
@@ -51,12 +55,22 @@ namespace tesisproject.frontend.Services.Implementations
 
         public Task<HttpResponseWrapper<GroupMemberResponseDTO?>> AddMemberAsync(AddGroupMemberRequestDTO request, CancellationToken ct = default)
         {
+            if (request is null) throw new ArgumentNullException(nameof(request));
             return _api.PostAsync<AddGroupMemberRequestDTO, GroupMemberResponseDTO>($"{_baseUrl}/members", request, ct);
         }
 
         public Task<HttpResponseWrapper<NoContent?>> RemoveMemberAsync(int groupId, int memberId, CancellationToken ct = default)
         {
             return _api.DeleteAsync($"{_baseUrl}/{groupId}/members/{memberId}", ct);
+        }
+
+        // =========================
+        //   PROJECT MEMBERS REPORT
+        // =========================
+
+        public Task<HttpResponseWrapper<ProjectMembersReportDTO?>> GetProjectMembersReportAsync(int projectId, CancellationToken ct = default)
+        {
+            return _api.GetAsync<ProjectMembersReportDTO>($"{_baseUrl}/project-members-report/{projectId}", ct);
         }
     }
 }
