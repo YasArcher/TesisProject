@@ -8,7 +8,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ResearchCategoryTypeClientService : IResearchCategoryTypeClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/catalog/research-category-types";
+        private readonly string _baseUrl = "catalog/research-category-types";
 
         public ResearchCategoryTypeClientService(IApiClient api) => _api = api;
 

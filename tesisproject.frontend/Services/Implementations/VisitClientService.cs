@@ -13,7 +13,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class VisitClientService : IVisitClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/visits";
+        private readonly string _baseUrl = "visits";
 
         public VisitClientService(IApiClient api) => _api = api;
 

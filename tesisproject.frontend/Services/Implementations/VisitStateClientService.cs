@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     public sealed class VisitStateClientService : IVisitStateClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/visitstates";
+        private readonly string _baseUrl = "visitstates";
 
         public VisitStateClientService(IApiClient api)
             => _api = api;

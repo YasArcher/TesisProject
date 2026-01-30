@@ -7,7 +7,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ProjectMatrixClientService : IProjectMatrixClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/matrix/projects";
+        private readonly string _baseUrl = "matrix/projects";
 
         public ProjectMatrixClientService(IApiClient api)
         {

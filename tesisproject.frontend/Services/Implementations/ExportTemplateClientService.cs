@@ -8,10 +8,7 @@ namespace tesisproject.frontend.Services.Implementations
     {
         private readonly IApiClient _api;
 
-        // 👀 Si tu controller es [Route("api/[controller]")] con ExportTemplatesController,
-        // el endpoint es: "api/ExportTemplates"
-        // Si lo dejaste como [Route("api/export/templates")], cambia este string.
-        private readonly string _baseUrl = "api/ExportTemplates";
+        private readonly string _baseUrl = "exporttemplates";
 
         public ExportTemplateClientService(IApiClient api)
         {
@@ -131,9 +128,6 @@ namespace tesisproject.frontend.Services.Implementations
         {
             if (request is null)
                 throw new ArgumentNullException(nameof(request));
-
-            // ⚠️ Aquí asumo que tu IApiClient tiene algo tipo PostRawAsync<T>
-            // que devuelve HttpResponseMessage SIN intentar deserializar JSON.
             return _api.PostRawAsync(
                 $"{_baseUrl}/matrix-excel",
                 request,

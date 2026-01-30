@@ -8,7 +8,7 @@ namespace tesisproject.frontend.Services.Implementations
     public sealed class ProjectOriginTypeClientService : IProjectOriginTypeClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/projectorigintypes";
+        private readonly string _baseUrl = "projectorigintypes";
 
         public ProjectOriginTypeClientService(IApiClient api)
             => _api = api;

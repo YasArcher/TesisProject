@@ -8,7 +8,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class VisitObjectiveActivityProgressClientService : IVisitObjectiveActivityProgressClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/visitobjectiveactivityprogresses";
+        private readonly string _baseUrl = "visitobjectiveactivityprogresses";
 
         public VisitObjectiveActivityProgressClientService(IApiClient api) => _api = api;
 

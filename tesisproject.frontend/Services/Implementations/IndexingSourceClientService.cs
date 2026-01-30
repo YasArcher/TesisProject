@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class IndexingSourceClientService : IIndexingSourceClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/indexingsources";
+        private readonly string _baseUrl = "indexingsources";
 
         public IndexingSourceClientService(IApiClient api)
         {

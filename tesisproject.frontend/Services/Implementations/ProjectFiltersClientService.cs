@@ -7,7 +7,7 @@ namespace tesisproject.frontend.Services.Implementations
     {
         private readonly IApiClient _api;
         public ProjectFiltersClientService(IApiClient api) => _api = api;
-        private const string BaseUrl = "api/projects/filters";
+        private const string BaseUrl = "projects/filters";
 
         public Task<HttpResponseWrapper<ProjectsFilterBootstrapDTO?>> GetBootstrapAsync(CancellationToken ct = default)
         {

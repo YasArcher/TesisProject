@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ObjectiveActivityClientService : IObjectiveActivityClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/ObjectiveActivities";
+        private readonly string _baseUrl = "objectiveactivities";
 
         public ObjectiveActivityClientService(IApiClient api)
         {

@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class InstitutionClientService : IInstitutionClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/institutions";
+        private readonly string _baseUrl = "institutions";
 
         public InstitutionClientService(IApiClient api)
         {

@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ResearchCategoryGroupClientService : IResearchCategoryGroupClientService
     {
         private readonly IApiClient _api;
-        private const string BaseUrl = "api/ResearchCategoryGroups";
+        private const string BaseUrl = "researchcategorygroups";
 
         public ResearchCategoryGroupClientService(IApiClient api)
         {

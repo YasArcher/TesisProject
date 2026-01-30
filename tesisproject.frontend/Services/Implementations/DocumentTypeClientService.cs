@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class DocumentTypeClientService : IDocumentTypeClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/documenttypes";
+        private readonly string _baseUrl = "documenttypes";
 
         public DocumentTypeClientService(IApiClient api)
             => _api = api;

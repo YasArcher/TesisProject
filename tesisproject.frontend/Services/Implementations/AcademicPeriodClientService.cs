@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class AcademicPeriodClientService : IAcademicPeriodClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/academicperiods";
+        private readonly string _baseUrl = "academicperiods";
 
         public AcademicPeriodClientService(IApiClient api)
         {

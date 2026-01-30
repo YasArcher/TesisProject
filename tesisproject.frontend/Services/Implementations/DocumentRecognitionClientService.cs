@@ -10,7 +10,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class DocumentRecognitionClientService : IDocumentRecognitionClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/documentrecognition";
+        private readonly string _baseUrl = "documentrecognition";
 
         public DocumentRecognitionClientService(IApiClient api)
         {

@@ -19,7 +19,7 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 // 2) Servicios base
 builder.Services.AddOptions();
 
-// ✅ CAMBIO: autorización global (por defecto TODO requiere usuario autenticado)
+// ✅ autorización global (por defecto TODO requiere usuario autenticado)
 builder.Services.AddAuthorizationCore(options =>
 {
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
@@ -28,26 +28,30 @@ builder.Services.AddAuthorizationCore(options =>
 });
 
 builder.Services.AddBlazoredLocalStorage();
-
-// Componentes de UI de librería
 builder.Services.AddBlazoredToast();
 builder.Services.AddScoped<IModalService, ModalService>();
 
 // 3) Cargar appsettings.json (+ Environment)
-var bootHttp = new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
-using (var s = await bootHttp.GetStreamAsync("appsettings.json"))
-    builder.Configuration.AddJsonStream(s);
+await LoadConfigurationAsync(builder);
 
-var envFile = $"appsettings.{builder.HostEnvironment.Environment}.json";
-try
+// 4) Resolver ApiBaseUrl (obligatorio) + normalización
+var apiBaseRaw = builder.Configuration["ApiBaseUrl"]
+    ?? throw new InvalidOperationException("Missing configuration key: ApiBaseUrl");
+
+apiBaseRaw = apiBaseRaw.Trim();
+
+// Si es relativo (/api), combínalo con la URL del sitio (http://localhost:8090/)
+string apiBase;
+if (apiBaseRaw.StartsWith("/"))
 {
-    using var s2 = await bootHttp.GetStreamAsync(envFile);
-    builder.Configuration.AddJsonStream(s2);
+    apiBase = new Uri(new Uri(builder.HostEnvironment.BaseAddress), apiBaseRaw).ToString();
 }
-catch { /* Luego veo que pongo :v */ }
+else
+{
+    apiBase = apiBaseRaw;
+}
 
-// 4) BaseAddress del backend
-var apiBase = builder.Configuration["ApiBaseUrl"] ?? builder.HostEnvironment.BaseAddress;
+apiBase = NormalizeBaseUrl(apiBase);
 
 // 5) Auth + HttpClient con token
 builder.Services.AddScoped<ITokenStore, LocalTokenStore>();
@@ -62,7 +66,7 @@ builder.Services.AddHttpClient("Backend", c =>
 
 builder.Services.AddScoped(sp => sp.GetRequiredService<IHttpClientFactory>().CreateClient("Backend"));
 
-// 6) Wrapper API
+// 6) Wrapper API + servicios
 builder.Services.AddScoped<IApiClient, ApiClient>();
 builder.Services.AddScoped<IProjectClientService, ProjectClientService>();
 builder.Services.AddScoped<IGroupService, GroupService>();
@@ -117,3 +121,49 @@ builder.Services.AddScoped<AuthenticationStateProvider>(sp =>
     sp.GetRequiredService<CustomAuthStateProvider>());
 
 await builder.Build().RunAsync();
+
+
+// ==============================
+// Helpers
+// ==============================
+
+static async Task LoadConfigurationAsync(WebAssemblyHostBuilder builder)
+{
+    var bootHttp = new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) };
+
+    // Base appsettings.json (obligatorio)
+    await using (var s = await bootHttp.GetStreamAsync("appsettings.json"))
+        builder.Configuration.AddJsonStream(s);
+
+    // appsettings.{Environment}.json (opcional)
+    var envFile = $"appsettings.{builder.HostEnvironment.Environment}.json";
+
+    // Si no existe, que NO reviente, pero tampoco “silenciar” otros errores raros:
+    try
+    {
+        await using var s2 = await bootHttp.GetStreamAsync(envFile);
+        builder.Configuration.AddJsonStream(s2);
+    }
+    catch (HttpRequestException)
+    {
+        // No existe el archivo o 404: ok, es opcional
+    }
+}
+
+static string NormalizeBaseUrl(string baseUrl)
+{
+    baseUrl = baseUrl.Trim();
+
+    // Si NO es URL absoluta (http/https), tratamos como path relativo y forzamos "/" inicial
+    if (!baseUrl.StartsWith("http://", StringComparison.OrdinalIgnoreCase) &&
+        !baseUrl.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+    {
+        if (!baseUrl.StartsWith("/"))
+            baseUrl = "/" + baseUrl;
+    }
+
+    // Asegurar "/" final
+    baseUrl = baseUrl.TrimEnd('/') + "/";
+
+    return baseUrl;
+}
