@@ -7,7 +7,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class BudgetClientService : IBudgetClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/Budgets";
+        private readonly string _baseUrl = "budgets";
 
         public BudgetClientService(IApiClient api) => _api = api;
 

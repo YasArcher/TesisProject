@@ -1,10 +1,10 @@
-using DocumentFormat.OpenXml.Office2016.Drawing.ChartDrawing;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpLogging;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using OfficeOpenXml;
 using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using System.Text.Json;
@@ -19,7 +19,8 @@ using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Implementations;
 using tesisproject.backend.UnitOfWork.Interfaces;
-using OfficeOpenXml;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
+using Microsoft.AspNetCore.Routing;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,8 +36,13 @@ builder.ConfigureDependencyInjection();
 builder.ConfigureApiDocumentation();
 
 ExcelPackage.License.SetNonCommercialOrganization("Universidad Técnica de Ambato");
+
 var app = builder.Build();
 
+// 1) Migraciones primero (para que existan tablas, incluyendo Identity)
+await ApplyMigrationsAsync(app);
+
+// 2) Seed de roles después de migrar
 await EnsureIdentityRolesAsync(app, "admin", "financial", "technical", "superadmin");
 
 // ===== Configure pipeline =====
@@ -46,8 +52,28 @@ app.Run();
 
 
 // ============================================================================
-// ================      EXTENSION METHODS FOR STARTUP      ===================
+// ============================   BOOTSTRAP TASKS   ===========================
 // ============================================================================
+
+static async Task ApplyMigrationsAsync(WebApplication app)
+{
+    using var scope = app.Services.CreateScope();
+
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+        .CreateLogger("Migrations");
+
+    // AppDbContext
+    var appDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    logger.LogInformation("Applying migrations for AppDbContext...");
+    await appDb.Database.MigrateAsync();
+
+    // DwContext
+    var dwDb = scope.ServiceProvider.GetRequiredService<DwContext>();
+    logger.LogInformation("Applying migrations for DwContext...");
+    await dwDb.Database.MigrateAsync();
+
+    logger.LogInformation("Migrations applied successfully.");
+}
 
 static async Task EnsureIdentityRolesAsync(WebApplication app, params string[] roles)
 {
@@ -75,6 +101,11 @@ static async Task EnsureIdentityRolesAsync(WebApplication app, params string[] r
     }
 }
 
+
+// ============================================================================
+// ================      EXTENSION METHODS FOR STARTUP      ===================
+// ============================================================================
+
 static class StartupExtensions
 {
     public static void ConfigureLogging(this WebApplicationBuilder builder)
@@ -100,18 +131,15 @@ static class StartupExtensions
 
     public static void ConfigureDatabase(this WebApplicationBuilder builder)
     {
-        var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
+        var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection missing");
 
-        // BD operativa
         builder.Services.AddDbContext<AppDbContext>(options =>
             options.UseSqlServer(defaultConnection));
-
-        // BD de DW (puede ser otra conexión o la misma)
 
         builder.Services.AddDbContext<DwContext>(options =>
             options.UseSqlServer(defaultConnection));
     }
-
 
     public static void ConfigureIdentity(this WebApplicationBuilder builder)
     {
@@ -140,7 +168,6 @@ static class StartupExtensions
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyRaw));
 
-        // Do not remap inbound claims automatically
         JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 
         builder.Services
@@ -194,30 +221,30 @@ static class StartupExtensions
 
     public static void ConfigureOptions(this WebApplicationBuilder builder)
     {
-        // Bind strongly-typed options once
-        builder.Services.Configure<ExternalApiOptions>(
-            builder.Configuration.GetSection(ExternalApiOptions.SectionName));
+        builder.Services.AddOptions<ExternalApiOptions>()
+            .Bind(builder.Configuration.GetSection(ExternalApiOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        builder.Services.AddOptions<StorageOptions>()
+            .Bind(builder.Configuration.GetSection(StorageOptions.SectionName))
+            .Validate(o => !string.IsNullOrWhiteSpace(o.RootPath), "Storage:RootPath is required")
+            .ValidateOnStart();
     }
 
     public static void ConfigureHttpClients(this WebApplicationBuilder builder)
     {
-        // Cargar options una sola vez para configurar el HttpClient nombrado
-        var opts = builder.Configuration
-            .GetSection(ExternalApiOptions.SectionName)
-            .Get<ExternalApiOptions>() ?? new ExternalApiOptions();
+        builder.Services.AddHttpClient("ExternalApi")
+            .ConfigureHttpClient((sp, client) =>
+            {
+                var opts = sp.GetRequiredService<IOptions<ExternalApiOptions>>().Value;
 
-        // HttpClient nombrado base para todo el "External API"
-        builder.Services.AddHttpClient("ExternalApi", client =>
-        {
-            if (!string.IsNullOrWhiteSpace(opts.BaseUrl))
                 client.BaseAddress = new Uri(opts.BaseUrl);
-
-            if (opts.TimeoutSeconds > 0)
                 client.Timeout = TimeSpan.FromSeconds(opts.TimeoutSeconds);
 
-            if (!string.IsNullOrWhiteSpace(opts.UserAgent))
-                client.DefaultRequestHeaders.Add("User-Agent", opts.UserAgent);
-        });
+                if (!string.IsNullOrWhiteSpace(opts.UserAgent))
+                    client.DefaultRequestHeaders.Add("User-Agent", opts.UserAgent);
+            });
 
         builder.Services.AddHttpClient<IExternalDirectoryClient, ExternalDirectoryClient>("ExternalApi");
         builder.Services.AddHttpClient<IExternalPeriodsClient, ExternalPeriodsClient>("ExternalApi");
@@ -225,23 +252,22 @@ static class StartupExtensions
         builder.Services.AddHttpClient<IExternalDistributivosService, ExternalDistributivosService>("ExternalApi");
     }
 
-
     public static void ConfigureDependencyInjection(this WebApplicationBuilder builder)
     {
-        // Controllers + JSON
-        builder.Services.AddControllers()
+        builder.Services.AddControllers(options =>
+        {
+            options.Conventions.Add(new RouteTokenTransformerConvention(
+                new LowercaseRouteTokenTransformer()));
+        })
             .AddJsonOptions(options =>
             {
                 options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                 options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
             });
 
-        // UoW
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
-        // =========================
-        // Repositorios concretos de dominio (no catálogos genéricos)
-        // =========================
+        // Repos concretos
         builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
         builder.Services.AddScoped<IGroupRepository, GroupRepository>();
         builder.Services.AddScoped<IGroupMemberRepository, GroupMemberRepository>();
@@ -261,7 +287,7 @@ static class StartupExtensions
         builder.Services.AddScoped<IDocumentRepository, DocumentRepository>();
         builder.Services.AddScoped<IProjectResearchCategoryRepository, ProjectResearchCategoryRepository>();
         builder.Services.AddScoped<IResearchCategoryRepository, ResearchCategoryRepository>();
-        builder.Services.AddScoped<IAppUserRepository, AppUserRepository>(); 
+        builder.Services.AddScoped<IAppUserRepository, AppUserRepository>();
         builder.Services.AddScoped<IExternalResearcherRepository, ExternalResearcherRepository>();
         builder.Services.AddScoped<IExternalResearcherProjectRepository, ExternalResearcherProjectRepository>();
         builder.Services.AddScoped<IProjectDocumentRepository, ProjectDocumentRepository>();
@@ -272,16 +298,11 @@ static class StartupExtensions
         builder.Services.AddScoped<IMatrixTemplateExcelExportService, MatrixTemplateExcelExportService>();
         builder.Services.AddScoped<IVisitObjectiveActivityProgressRepository, VisitObjectiveActivityProgressRepository>();
 
-
-        // =========================
-        // Repositorios genéricos
-        // =========================
+        // Genéricos
         builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
         builder.Services.AddScoped(typeof(ICatalogRepository<>), typeof(CatalogRepository<>));
 
-        // =========================
-        // Servicios de aplicación
-        // =========================
+        // Servicios
         builder.Services.AddMemoryCache();
         builder.Services.AddScoped<ICatalogQueryService, CatalogQueryService>();
         builder.Services.AddScoped<IProjectsFiltersService, ProjectsFiltersService>();
@@ -323,7 +344,6 @@ static class StartupExtensions
         builder.Services.AddScoped<IVisitObjectiveActivityProgressService, VisitObjectiveActivityProgressService>();
     }
 
-
     public static void ConfigureApiDocumentation(this WebApplicationBuilder builder)
     {
         builder.Services.AddEndpointsApiExplorer();
@@ -363,6 +383,12 @@ static class StartupExtensions
         });
     }
 
+    sealed class LowercaseRouteTokenTransformer : IOutboundParameterTransformer
+    {
+        public string? TransformOutbound(object? value)
+            => value?.ToString()?.ToLowerInvariant();
+    }
+
     public static void ConfigurePipeline(this WebApplication app)
     {
         if (app.Environment.IsDevelopment())
@@ -383,7 +409,10 @@ static class StartupExtensions
             app.UseHsts();
         }
 
-        app.UseHttpsRedirection();
+        if (app.Environment.IsDevelopment())
+        {
+            app.UseHttpsRedirection();
+        }
         app.UseCors("AllowFrontend");
 
         app.UseAuthentication();

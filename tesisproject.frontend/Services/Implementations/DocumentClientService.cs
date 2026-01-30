@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     {
         private readonly IApiClient _api;
         private readonly IHttpClientFactory _httpClientFactory;
-        private const string BaseUrl = "api/documents";
+        private const string BaseUrl = "documents";
 
         public DocumentClientService(IApiClient api, IHttpClientFactory httpClientFactory)
         {

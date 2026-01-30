@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ObjectiveTypeClientService : IObjectiveTypeClientService
     {
         private readonly IApiClient _api;
-        private const string BaseUrl = "api/objectivetypes";
+        private const string BaseUrl = "objectivetypes";
 
         public ObjectiveTypeClientService(IApiClient api)
         {

@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class CountryClientService : ICountryClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/countries";
+        private readonly string _baseUrl = "countries";
 
         public CountryClientService(IApiClient api)
         {

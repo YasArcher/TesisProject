@@ -8,7 +8,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ProjectStateClientService : IProjectStateClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/projectstates";
+        private readonly string _baseUrl = "projectstates";
 
         public ProjectStateClientService(IApiClient api)
             => _api = api;

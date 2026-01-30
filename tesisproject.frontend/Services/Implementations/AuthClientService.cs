@@ -6,7 +6,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class AuthClientService : IAuthClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/auth"; // coincide con [Route("api/[controller]")]
+        private readonly string _baseUrl = "auth"; // coincide con [Route("api/[controller]")]
 
         public AuthClientService(IApiClient api)
         {

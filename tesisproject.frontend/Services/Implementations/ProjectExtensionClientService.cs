@@ -8,7 +8,7 @@ namespace tesisproject.frontend.Services.Implementations
     public sealed class ProjectExtensionClientService : IProjectExtensionClientService
     {
         private readonly IApiClient _api;
-        private const string BaseUrl = "api/projectextensions";
+        private const string BaseUrl = "projectextensions";
 
         public ProjectExtensionClientService(IApiClient api) => _api = api;
 

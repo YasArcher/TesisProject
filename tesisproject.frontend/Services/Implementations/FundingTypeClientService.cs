@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class FundingTypeClientService : IFundingTypeClientService
     {
         private readonly IApiClient _api;
-        private const string BaseUrl = "api/FundingTypes";
+        private const string BaseUrl = "fundingtypes";
 
         public FundingTypeClientService(IApiClient api)
         {

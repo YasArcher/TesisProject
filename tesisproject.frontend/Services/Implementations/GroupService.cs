@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class GroupService : IGroupService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/groups";
+        private readonly string _baseUrl = "groups";
 
         public GroupService(IApiClient api) => _api = api;
 

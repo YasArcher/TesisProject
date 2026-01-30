@@ -8,7 +8,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class MemberRoleTypeClientService : IMemberRoleTypeClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/memberroletypes";
+        private readonly string _baseUrl = "memberroletypes";
 
         public MemberRoleTypeClientService(IApiClient api)
             => _api = api;

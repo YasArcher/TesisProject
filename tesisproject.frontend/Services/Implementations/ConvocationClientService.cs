@@ -13,6 +13,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ConvocationClientService : IConvocationClientService
     {
         private readonly IApiClient _api;
+        private const string BaseUrl = "convocations";
 
         public ConvocationClientService(IApiClient api)
         {
@@ -25,7 +26,7 @@ namespace tesisproject.frontend.Services.Implementations
             CancellationToken ct = default)
         {
             return _api.GetAsync<List<ConvocationListItemResponseDTO>?>(
-                "api/convocations",
+                BaseUrl,
                 ct);
         }
 
@@ -34,7 +35,7 @@ namespace tesisproject.frontend.Services.Implementations
             CancellationToken ct = default)
         {
             return _api.GetAsync<ConvocationDetailResponseDTO?>(
-                $"api/convocations/{id}",
+                $"{BaseUrl}/{id}",
                 ct);
         }
 
@@ -42,9 +43,8 @@ namespace tesisproject.frontend.Services.Implementations
             ConvocationCreateRequestDTO request,
             CancellationToken ct = default)
         {
-            // TRequest = ConvocationCreateRequestDTO, TResponse = ConvocationDetailResponseDTO
             return _api.PostAsync<ConvocationCreateRequestDTO, ConvocationDetailResponseDTO>(
-                "api/convocations",
+                BaseUrl,
                 request,
                 ct);
         }
@@ -54,9 +54,8 @@ namespace tesisproject.frontend.Services.Implementations
             ConvocationUpdateRequestDTO request,
             CancellationToken ct = default)
         {
-            // TRequest = ConvocationUpdateRequestDTO, TResponse = ConvocationDetailResponseDTO
             return _api.PutAsync<ConvocationUpdateRequestDTO, ConvocationDetailResponseDTO>(
-                $"api/convocations/{id}",
+                $"{BaseUrl}/{id}",
                 request,
                 ct);
         }
@@ -65,10 +64,9 @@ namespace tesisproject.frontend.Services.Implementations
             int id,
             CancellationToken ct = default)
         {
-            // POST: api/convocations/{id}/activate
-            // TRequest = object, TResponse = NoContent
+            // POST: convocations/{id}/activate
             return _api.PostAsync<object, NoContent?>(
-                $"api/convocations/{id}/activate",
+                $"{BaseUrl}/{id}/activate",
                 new { },
                 ct);
         }
@@ -80,9 +78,9 @@ namespace tesisproject.frontend.Services.Implementations
             ConvocationRuleCreateRequestDTO request,
             CancellationToken ct = default)
         {
-            // TRequest = ConvocationRuleCreateRequestDTO, TResponse = ConvocationRuleResponseDTO
+            // POST: convocations/{convocationId}/rules
             return _api.PostAsync<ConvocationRuleCreateRequestDTO, ConvocationRuleResponseDTO>(
-                $"api/convocations/{convocationId}/rules",
+                $"{BaseUrl}/{convocationId}/rules",
                 request,
                 ct);
         }
@@ -93,9 +91,9 @@ namespace tesisproject.frontend.Services.Implementations
             ConvocationRuleUpdateRequestDTO request,
             CancellationToken ct = default)
         {
-            // TRequest = ConvocationRuleUpdateRequestDTO, TResponse = ConvocationRuleResponseDTO
+            // PUT: convocations/{convocationId}/rules/{ruleId}
             return _api.PutAsync<ConvocationRuleUpdateRequestDTO, ConvocationRuleResponseDTO>(
-                $"api/convocations/{convocationId}/rules/{ruleId}",
+                $"{BaseUrl}/{convocationId}/rules/{ruleId}",
                 request,
                 ct);
         }
@@ -105,8 +103,9 @@ namespace tesisproject.frontend.Services.Implementations
             int ruleId,
             CancellationToken ct = default)
         {
+            // DELETE: convocations/{convocationId}/rules/{ruleId}
             return _api.DeleteAsync(
-                $"api/convocations/{convocationId}/rules/{ruleId}",
+                $"{BaseUrl}/{convocationId}/rules/{ruleId}",
                 ct);
         }
     }

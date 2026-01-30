@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class TransactionTypeClientService : ITransactionTypeClientService
     {
         private readonly IApiClient _api;
-        private const string BaseUrl = "api/TransactionTypes";
+        private const string BaseUrl = "transactiontypes";
 
         public TransactionTypeClientService(IApiClient api)
         {

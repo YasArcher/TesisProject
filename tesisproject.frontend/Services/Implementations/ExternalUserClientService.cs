@@ -6,7 +6,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ExternalUserClientService : IExternalUserService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/Groups/external-users";
+        private readonly string _baseUrl = "groups/external-users";
         public ExternalUserClientService(IApiClient api) => _api = api;
         public Task<HttpResponseWrapper<List<ResolvedUserProfileDTO>?>> GetListAsync(CancellationToken ct = default)
         {

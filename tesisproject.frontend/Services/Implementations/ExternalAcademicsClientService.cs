@@ -6,8 +6,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ExternalAcademicsClientService : IExternalAcademicsClientService
     {
         private readonly IApiClient _api;
-        // Coincide con [Route("api/external/[controller]")] => "api/external/ExternalAcademics"
-        private readonly string _baseUrl = "api/external/ExternalAcademics";
+        private readonly string _baseUrl = "external/externalacademics";
 
         public ExternalAcademicsClientService(IApiClient api)
             => _api = api;

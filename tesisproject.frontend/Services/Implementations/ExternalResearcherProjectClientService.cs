@@ -7,7 +7,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ExternalResearcherProjectClientService : IExternalResearcherProjectClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/externalresearcherprojects";
+        private readonly string _baseUrl = "externalresearcherprojects";
 
         public ExternalResearcherProjectClientService(IApiClient api)
         {

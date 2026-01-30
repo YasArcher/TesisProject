@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.Options;
+using tesisproject.backend.Options;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
-using tesisproject.shared.DTOs.Budgets.Request;
 using tesisproject.shared.DTOs.Document.Request;
 using tesisproject.shared.DTOs.Document.Response;
 using tesisproject.shared.Entities.Core;
@@ -12,15 +13,35 @@ namespace tesisproject.backend.Services.Implementations
     public class DocumentService : IDocumentService
     {
         private readonly IUnitOfWork _uow;
-        private readonly IWebHostEnvironment _env;
+        private readonly IWebHostEnvironment _env; // se mantiene por compatibilidad, pero ya no se usa para rutas
         private readonly FileExtensionContentTypeProvider _contentTypeProvider = new();
 
+        // Se mantiene como carpeta relativa que va a BD
         private const string DocumentsFolder = "uploads/documents";
 
-        public DocumentService(IUnitOfWork uow, IWebHostEnvironment env)
+        // Root físico configurado (Storage:RootPath)
+        private readonly string _storageRootFullPath;
+
+        public DocumentService(
+            IUnitOfWork uow,
+            IWebHostEnvironment env,
+            IOptions<StorageOptions> storageOptions)
         {
             _uow = uow;
             _env = env;
+
+            var root = storageOptions.Value.RootPath;
+
+            // Fallback defensivo si no está configurado
+            if (string.IsNullOrWhiteSpace(root))
+            {
+                // Por defecto, una carpeta "files" al lado del binario
+                root = Path.Combine(_env.ContentRootPath, "files");
+            }
+
+            // Asegura existencia y normaliza
+            Directory.CreateDirectory(root);
+            _storageRootFullPath = Path.GetFullPath(root);
         }
 
         public async Task<ServiceResult<DocumentResponseDTO>> GetByIdAsync(int documentId, CancellationToken ct = default)
@@ -83,29 +104,50 @@ namespace tesisproject.backend.Services.Implementations
 
             var (newRelativePath, newPhysicalPath) = BuildNewFilePath(request.File.FileName);
 
-            using (var stream = new FileStream(newPhysicalPath, FileMode.Create))
-            {
-                await request.File.CopyToAsync(stream, ct);
-            }
-
-            e.DocumentPath = newRelativePath;
-            e.UpdatedAt = DateTime.UtcNow;
-            e.UpdatedByUserId = user.IdUser;
-
-            await _uow.SaveChangesAsync(ct);
-
             try
             {
-                if (File.Exists(oldPhysicalPath))
-                    File.Delete(oldPhysicalPath);
-            }
-            catch
-            {
-                // Best-effort delete
-            }
+                Directory.CreateDirectory(Path.GetDirectoryName(newPhysicalPath)!);
 
-            var refreshed = await _uow.Documents.GetByIdWithRefsAsync(documentId, ct);
-            return ServiceResult<DocumentResponseDTO>.Ok(Map(refreshed!));
+                await using (var stream = new FileStream(
+                    newPhysicalPath,
+                    FileMode.Create,
+                    FileAccess.Write,
+                    FileShare.None,
+                    bufferSize: 81920,
+                    useAsync: true))
+                {
+                    await request.File.CopyToAsync(stream, ct);
+                }
+
+                e.DocumentPath = newRelativePath;
+                e.UpdatedAt = DateTime.UtcNow;
+                e.UpdatedByUserId = user.IdUser;
+
+                await _uow.SaveChangesAsync(ct);
+
+                // Best-effort delete del archivo anterior
+                try
+                {
+                    if (File.Exists(oldPhysicalPath))
+                        File.Delete(oldPhysicalPath);
+                }
+                catch { /* best-effort */ }
+
+                var refreshed = await _uow.Documents.GetByIdWithRefsAsync(documentId, ct);
+                return ServiceResult<DocumentResponseDTO>.Ok(Map(refreshed!));
+            }
+            catch (Exception ex)
+            {
+                // Best-effort cleanup del nuevo archivo si falló algo
+                try
+                {
+                    if (File.Exists(newPhysicalPath))
+                        File.Delete(newPhysicalPath);
+                }
+                catch { /* best-effort */ }
+
+                return ServiceResult<DocumentResponseDTO>.Fail(ex.Message, ErrorType.Conflict);
+            }
         }
 
         public async Task<ServiceResult<bool>> DeleteAsync(int documentId, CancellationToken ct = default)
@@ -158,24 +200,22 @@ namespace tesisproject.backend.Services.Implementations
             int currentUserId,
             CancellationToken ct = default)
         {
-            // ===== Validaciones básicas =====
             if (request.File is null || request.File.Length == 0)
                 return ServiceResult<DocumentResponseDTO>.Fail("File is empty.", ErrorType.Validation);
 
             if (request.DocumentTypeId <= 0)
                 return ServiceResult<DocumentResponseDTO>.Fail("DocumentTypeId is required.", ErrorType.Validation);
 
-            // ===== Validar usuario =====
             var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
             if (user is null)
                 return ServiceResult<DocumentResponseDTO>.Fail("User not found.", ErrorType.NotFound);
 
-            // ===== Construir rutas con tu helper nuevo =====
             var (relativePath, physicalPath) = BuildNewFilePath(request.File.FileName);
 
             try
             {
-                // 1) Guardar archivo
+                Directory.CreateDirectory(Path.GetDirectoryName(physicalPath)!);
+
                 await using (var stream = new FileStream(
                     physicalPath,
                     FileMode.Create,
@@ -187,7 +227,6 @@ namespace tesisproject.backend.Services.Implementations
                     await request.File.CopyToAsync(stream, ct);
                 }
 
-                // 2) Crear entidad
                 var nowUtc = DateTime.UtcNow;
 
                 var entity = new Document
@@ -203,12 +242,10 @@ namespace tesisproject.backend.Services.Implementations
                 await _uow.Documents.AddAsync(entity, ct);
                 await _uow.SaveChangesAsync(ct);
 
-                // 3) Respuesta
                 return ServiceResult<DocumentResponseDTO>.Ok(Map(entity));
             }
             catch (Exception ex)
             {
-                // Best-effort cleanup del archivo si falló algo luego de crearlo
                 try
                 {
                     if (File.Exists(physicalPath))
@@ -237,38 +274,40 @@ namespace tesisproject.backend.Services.Implementations
             };
         }
 
+        /// <summary>
+        /// Convierte un path relativo guardado en BD (ej. uploads/documents/x.pdf)
+        /// a path físico dentro del StorageRoot, bloqueando path traversal.
+        /// </summary>
         private string ResolvePhysicalPath(string storedRelativePath)
         {
-            var webRoot = _env.WebRootPath;
-            if (string.IsNullOrWhiteSpace(webRoot))
-            {
-                webRoot = Path.Combine(_env.ContentRootPath, "wwwroot");
-                if (!Directory.Exists(webRoot))
-                    Directory.CreateDirectory(webRoot);
-            }
+            if (string.IsNullOrWhiteSpace(storedRelativePath))
+                throw new InvalidOperationException("Stored relative path is empty.");
 
-            return Path.Combine(webRoot, storedRelativePath.Replace("/", Path.DirectorySeparatorChar.ToString()));
+            // Normaliza separadores
+            var relative = storedRelativePath.Replace("/", Path.DirectorySeparatorChar.ToString());
+
+            var combined = Path.Combine(_storageRootFullPath, relative);
+            var full = Path.GetFullPath(combined);
+
+            // Seguridad: evita que salgan de la raíz
+            var rootPrefix = _storageRootFullPath.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+
+            if (!full.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Invalid document path (path traversal).");
+
+            return full;
         }
 
         private (string RelativePath, string PhysicalPath) BuildNewFilePath(string originalFileName)
         {
-            var webRoot = _env.WebRootPath;
-            if (string.IsNullOrWhiteSpace(webRoot))
-            {
-                webRoot = Path.Combine(_env.ContentRootPath, "wwwroot");
-                if (!Directory.Exists(webRoot))
-                    Directory.CreateDirectory(webRoot);
-            }
-
-            var documentsRoot = Path.Combine(webRoot, DocumentsFolder);
-            if (!Directory.Exists(documentsRoot))
-                Directory.CreateDirectory(documentsRoot);
-
             var extension = Path.GetExtension(originalFileName);
             var fileName = $"{Guid.NewGuid():N}{extension}";
 
-            var physicalPath = Path.Combine(documentsRoot, fileName);
+            // Path relativo que se guarda en BD
             var relativePath = Path.Combine(DocumentsFolder, fileName).Replace("\\", "/");
+
+            // Path físico real dentro del root configurado
+            var physicalPath = ResolvePhysicalPath(relativePath);
 
             return (relativePath, physicalPath);
         }

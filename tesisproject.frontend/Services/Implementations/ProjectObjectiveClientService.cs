@@ -8,7 +8,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ProjectObjectiveClientService : IProjectObjectiveClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/projectobjectives";
+        private readonly string _baseUrl = "projectobjectives";
 
         public ProjectObjectiveClientService(IApiClient api)
         {

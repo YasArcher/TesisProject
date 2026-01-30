@@ -8,7 +8,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ProductAttributeDefinitionClientService : IProductAttributeDefinitionClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/productattributedefinitions";
+        private readonly string _baseUrl = "productattributedefinitions";
 
         public ProductAttributeDefinitionClientService(IApiClient api)
             => _api = api;

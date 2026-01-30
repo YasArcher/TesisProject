@@ -8,7 +8,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ProductClientService : IProductClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/products";
+        private readonly string _baseUrl = "products";
 
         public ProductClientService(IApiClient api)
         {

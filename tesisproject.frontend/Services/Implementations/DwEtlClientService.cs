@@ -6,7 +6,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class DwEtlClientService : IDwEtlClientService
     {
         private readonly IApiClient _api;
-        private const string BaseUrl = "api/analytics/etl";
+        private const string BaseUrl = "analytics/etl";
 
         public DwEtlClientService(IApiClient api)
             => _api = api;

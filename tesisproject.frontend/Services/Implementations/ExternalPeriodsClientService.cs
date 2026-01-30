@@ -6,7 +6,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ExternalPeriodsClientService : IExternalPeriodsClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/external/externalperiods";
+        private readonly string _baseUrl = "external/externalperiods";
 
         public ExternalPeriodsClientService(IApiClient api)
             => _api = api;

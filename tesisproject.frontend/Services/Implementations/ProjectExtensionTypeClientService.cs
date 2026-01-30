@@ -9,7 +9,7 @@ namespace tesisproject.frontend.Services.Implementations
     public class ProjectExtensionTypeClientService : IProjectExtensionTypeClientService
     {
         private readonly IApiClient _api;
-        private readonly string _baseUrl = "api/projectextensiontypes";
+        private readonly string _baseUrl = "projectextensiontypes";
 
         public ProjectExtensionTypeClientService(IApiClient api)
             => _api = api;
