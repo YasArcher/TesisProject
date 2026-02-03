@@ -121,10 +121,17 @@ namespace tesisproject.frontend.Services.Implementations
             );
         }
         public Task<HttpResponseWrapper<List<VisitPlannedForExecutionListDTO>?>> GetPlannedForExecutionAsync(
-    bool isFirstVisit,
-    CancellationToken ct = default)
+            DateOnly? executionDate = null,
+            CancellationToken ct = default)
         {
-            var url = $"{_baseUrl}/planned-for-execution?isFirstVisit={isFirstVisit.ToString().ToLowerInvariant()}";
+            var url = $"{_baseUrl}/planned-for-execution";
+
+            if (executionDate is not null)
+            {
+                // formato estable para APIs
+                url += $"?executionDate={executionDate.Value:yyyy-MM-dd}";
+            }
+
             return _api.GetAsync<List<VisitPlannedForExecutionListDTO>>(url, ct);
         }
 
@@ -135,8 +142,8 @@ namespace tesisproject.frontend.Services.Implementations
             if (request is null)
                 throw new ArgumentNullException(nameof(request));
 
-            if (request.VisitIds is null || request.VisitIds.Count == 0)
-                throw new ArgumentException("VisitIds must contain at least one id.", nameof(request.VisitIds));
+            if (request.ProjectIds is null || request.ProjectIds.Count == 0)
+                throw new ArgumentException("VisitIds must contain at least one id.", nameof(request.ProjectIds));
 
             // PUT: api/visits/bulk/schedule
             return _api.PutAsync<BulkScheduleVisitsRequestDTO, NoContent>(

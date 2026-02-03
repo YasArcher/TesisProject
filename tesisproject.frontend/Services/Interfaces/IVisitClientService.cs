@@ -25,8 +25,9 @@ namespace tesisproject.frontend.Services.Interfaces
         Task<HttpResponseWrapper<NoContent?>> DeleteAsync(int id, CancellationToken ct = default);
         Task<HttpResponseWrapper<VisitListResponseDTO?>> CreateAsync(AddVisitRequestDTO request, CancellationToken ct = default);
         Task<HttpResponseWrapper<List<VisitPlannedForExecutionListDTO>?>> GetPlannedForExecutionAsync(
-    bool isFirstVisit,
-    CancellationToken ct = default);
+            DateOnly? executionDate = null,
+            CancellationToken ct = default);
+
         Task<HttpResponseWrapper<NoContent>> BulkScheduleAsync(
 BulkScheduleVisitsRequestDTO request,
 CancellationToken ct = default);

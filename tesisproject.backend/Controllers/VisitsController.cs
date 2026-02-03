@@ -79,11 +79,13 @@ namespace tesisproject.backend.Controllers
             CancellationToken ct)
             => (await _service.BulkScheduleAsync(request, ct)).ToActionResult();
 
-        // GET: api/visits/planned-for-execution?isFirstVisit=true
+        // GET: api/visits/planned-for-execution?executionDate=2026-02-03
         [HttpGet("planned-for-execution")]
         public async Task<ActionResult<ApiResponse<IReadOnlyList<VisitPlannedForExecutionListDTO>>>> GetPlannedForExecution(
-            [FromQuery] bool isFirstVisit,
+            [FromQuery] DateOnly? executionDate,
             CancellationToken ct)
-            => (await _service.ListPlannedForExecutionAsync(isFirstVisit, ct)).ToActionResult();
+            => (await _service.ListPlannedForExecutionAsync(executionDate, ct)).ToActionResult();
+
+
     }
 }

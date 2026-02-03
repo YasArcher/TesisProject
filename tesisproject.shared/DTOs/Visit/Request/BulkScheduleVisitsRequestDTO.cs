@@ -14,6 +14,6 @@ namespace tesisproject.shared.DTOs.Visit.Request
 
         [Required]
         [MinLength(1)]
-        public IReadOnlyList<int> VisitIds { get; set; } = Array.Empty<int>();
+        public IReadOnlyList<int> ProjectIds { get; set; } = Array.Empty<int>();
     }
 }
