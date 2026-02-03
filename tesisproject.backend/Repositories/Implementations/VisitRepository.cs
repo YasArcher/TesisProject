@@ -7,6 +7,7 @@ using tesisproject.backend.Data;
 using tesisproject.backend.Repositories.Implementations;
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Enums;
 
 namespace tesisproject.backend.Repositories.Implementations
 {
@@ -46,32 +47,50 @@ namespace tesisproject.backend.Repositories.Implementations
         }
 
         public async Task<(bool Success, string? Error)> BulkScheduleAsync(
-    IReadOnlyList<int> visitIds,
-    DateTime scheduledDate,
-    int visitStateId,
-    CancellationToken ct = default)
+            IReadOnlyList<int> projectIds,
+            DateTime scheduledDate,
+            int visitStateId,
+            CancellationToken ct = default)
         {
-            var ids = visitIds.Distinct().ToList();
+            var ids = projectIds
+                .Where(x => x > 0)
+                .Distinct()
+                .ToList();
 
-            var existingIds = await _ctx.Visits
-                .Where(v => ids.Contains(v.VisitId))
-                .Select(v => v.VisitId)
+            if (ids.Count == 0)
+                return (false, "Debes enviar al menos un ProjectId válido.");
+
+            // 1) Validar que existan los proyectos
+            var existingProjectIds = await _ctx.Set<Project>()
+                .Where(p => ids.Contains(p.ProjectId))
+                .Select(p => p.ProjectId)
                 .ToListAsync(ct);
 
-            var missing = ids.Except(existingIds).ToList();
+            var missing = ids.Except(existingProjectIds).ToList();
             if (missing.Count > 0)
-                return (false, $"No existen las visitas: {string.Join(", ", missing)}");
+                return (false, $"No existen los proyectos: {string.Join(", ", missing)}");
 
-            // Actualización masiva (no tracking)
-            await _ctx.Visits
-                .Where(v => ids.Contains(v.VisitId))
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(v => v.ScheduledDate, scheduledDate)
-                    .SetProperty(v => v.VisitStateId, visitStateId),
-                    ct);
+            // 2) Bloquear si ya hay visita abierta (Planned/Pending/OnHold)
+            var blocked = await _ctx.Set<Visit>()
+                .Where(v => ids.Contains(v.ProjectId) && VisitStateIds.OpenStates.Contains(v.VisitStateId))
+                .Select(v => v.ProjectId)
+                .Distinct()
+                .ToListAsync(ct);
+
+            if (blocked.Count > 0)
+                return (false, $"No se puede planificar porque ya existe una visita abierta para los proyectos: {string.Join(", ", blocked)}");
+
+            // 3) Crear visitas nuevas (bulk insert)
+            var entities = ids.Select(pid => new Visit
+            {
+                ProjectId = pid,
+                VisitStateId = visitStateId,
+                ScheduledDate = scheduledDate
+            }).ToList();
+
+            await _ctx.Set<Visit>().AddRangeAsync(entities, ct);
 
             return (true, null);
         }
-
     }
 }

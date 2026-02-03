@@ -11,6 +11,7 @@
 @using tesisproject.shared.DTOs.Filters
 @using tesisproject.shared.DTOs.Visit.Request
 @using tesisproject.shared.DTOs.Visit.Response
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.External
 
 @inject IVisitClientService VisitService
@@ -29,42 +30,42 @@
         </div>
 
         <div class="shrink-0 flex flex-wrap items-center gap-2">
-            @if (IsPlanMode)
+            @if (IsPendingMode)
             {
-                <label class="text-xs font-semibold text-muted whitespace-nowrap">Tipo</label>
-
-                <SelectInput TItem="VisitTypeOption"
-                             Items="@_visitTypeOptions"
-                             Value="@_selectedVisitType"
-                             ValueChanged="@OnVisitTypeOptionChanged"
-                             GetText="@(o => o.Text)"
-                             GetKey="@(o => o.Key)"
-                             Disabled="@isLoading"
-                             AllowClear="false"
-                             Size="SelectSize.Sm" />
+                <span class="text-xs font-semibold text-muted whitespace-nowrap">Modo: Editor</span>
             }
             else
             {
-                <span class="text-xs font-semibold text-muted whitespace-nowrap">Estado: Pendiente</span>
+                <div class="w-[220px]">
+                    <DateInput Label="Hasta la fecha"
+                               Value="@_filterExecutionDate"
+                               ValueChanged="@OnFilterExecutionDateChanged"
+                               Required="false" />
+                </div>
+                <span class="text-xs text-muted whitespace-nowrap">
+                    @(_filterExecutionDate is null
+                                    ? "Mostrando hasta hoy"
+                                    : "")
+                </span>
             }
 
             <div class="text-xs text-muted whitespace-nowrap">
-                Sel: <span class="font-semibold text-foreground">@_selectedVisitIds.Count</span>
+                Sel: <span class="font-semibold text-foreground">@_selectedProjectIds.Count</span>
             </div>
 
-            <ActionButton Text="Planificar"
+            <ActionButton Text="@(IsPendingMode ? "Replanificar": "Planificar")"
                           Execute="@OpenPlanModal"
                           Intent="ButtonIntent.Accept"
                           Variant="ButtonVariant.Filled"
                           Size="ButtonSize.Sm"
-                          Disabled="@(isLoading || _selectedVisitIds.Count == 0)" />
+                          Disabled="@(isLoading ||_selectedProjectIds.Count == 0)" />
 
             <ActionButton Text="Limpiar"
                           Execute="@ClearSelection"
                           Intent="ButtonIntent.Accept"
                           Variant="ButtonVariant.Outline"
                           Size="ButtonSize.Sm"
-                          Disabled="@(isLoading || _selectedVisitIds.Count == 0)" />
+                          Disabled="@(isLoading || _selectedProjectIds.Count == 0)" />
         </div>
     </section>
 
@@ -81,7 +82,7 @@
 
             <RowTemplate Context="v">
                 @{
-                    var selected = _selectedVisitIds.Contains(v.VisitId);
+                    var selected = _selectedProjectIds.Contains(v.ProjectId);
                     var selCls = selected ? "row-selected" : "";
                 }
 
@@ -90,49 +91,52 @@
                     <input type="checkbox"
                            checked="@selected"
                            @onclick:stopPropagation="true"
-                           @onchange="@(_ => ToggleSelected(v.VisitId))" />
+                           @onchange="@(_ => ToggleSelected(v.ProjectId))" />
                 </td>
 
                 <!-- # -->
-                <td class="cell cell-num @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
+                <td class="cell cell-num @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
                     @GetRowNumberForCurrentPage(v)
                 </td>
 
                 <!-- Código -->
-                <td class="cell cell-code @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
+                <td class="cell cell-code @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
                     @v.ProjectCode
                 </td>
 
                 <!-- Proyecto -->
-                <td class="cell cell-proj @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
+                <td class="cell cell-proj @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
                     <span class="truncate block" title="@v.ProjectName">
                         @v.ProjectName
                     </span>
                 </td>
 
                 <!-- N° visita -->
-                <td class="cell cell-visit @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
+                <td class="cell cell-visit @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
                     @v.VisitNumber
                 </td>
 
                 <!-- Facultad -->
-                <td class="cell cell-fac @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
+                <td class="cell cell-fac @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
                     <span class="truncate block" title="@GetFacultyName(v.FacultyId)">
                         @GetFacultyName(v.FacultyId)
                     </span>
                 </td>
 
-                <!-- Fecha -->
-                <td class="cell cell-date @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
-                    @(v.VisitDate?.ToString("yyyy-MM-dd") ?? "-")
-                </td>
+                @if (IsPendingMode)
+                {
+                    <!-- Fecha (solo editor) -->
+                    <td class="cell cell-date @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                        @(v.VisitDate?.ToString("yyyy-MM-dd") ?? "-")
+                    </td>
 
-                <!-- Estado -->
-                <td class="cell cell-state @selCls" @onclick="@(() => ToggleSelected(v.VisitId))">
-                    <span class="truncate block" title="@v.VisitStateName">
-                        @v.VisitStateName
-                    </span>
-                </td>
+                    <!-- Estado (solo editor) -->
+                    <td class="cell cell-state @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                        <span class="truncate block" title="@v.VisitStateName">
+                            @v.VisitStateName
+                        </span>
+                    </td>
+                }
             </RowTemplate>
 
         </DataTable>
@@ -151,7 +155,7 @@
     <ChildContent>
         <div class="space-y-4">
             <div class="text-sm text-muted">
-                Se planificarán <span class="font-semibold text-foreground">@_selectedVisitIds.Count</span> visitas.
+                Se planificarán <span class="font-semibold text-foreground">@_selectedProjectIds.Count</span> visitas.
             </div>
 
             <DateInput Label="Fecha de ejecución"
@@ -179,7 +183,7 @@
                           Intent="ButtonIntent.Add"
                           Variant="ButtonVariant.Filled"
                           Size="ButtonSize.Sm"
-                          Disabled="@(_isSubmittingPlan || _selectedVisitIds.Count == 0 || _plannedDate is null)"
+                          Disabled="@(_isSubmittingPlan ||  _selectedProjectIds.Count == 0 || _plannedDate is null)"
                           ConfirmBeforeExecute="true"
                           ConfirmTitle="Confirmar planificación"
                           ConfirmMessage="@BuildConfirmMessage()"
@@ -211,8 +215,6 @@
 
     protected override async Task OnInitializedAsync()
     {
-        // default UI state
-        _selectedVisitType = _visitTypeOptions.First(x => x.IsFirst == _isFirstVisit);
 
         BuildColumns();
         await LoadFacultiesAsync();
@@ -232,16 +234,10 @@
             return;
 
         _mode = next;
-
+        BuildColumns();
         // reset selection + pagination
-        _selectedVisitIds.Clear();
+        _selectedProjectIds.Clear();
         _page = 1;
-
-        // if mode changes to plan, keep default selector consistent
-        if (IsPlanMode)
-        {
-            _selectedVisitType = _visitTypeOptions.First(x => x.IsFirst == _isFirstVisit);
-        }
 
         // avoid reloading before initialized
         if (_initialized)
@@ -256,55 +252,37 @@
     private bool isLoading = true;
 
     // =========================
-    //   Plan mode selector
+    //   Selection
     // =========================
-    private bool _isFirstVisit = true;
+    private readonly HashSet<int> _selectedProjectIds = new();
 
-    private sealed record VisitTypeOption(string Key, string Text, bool IsFirst);
+    private DateOnly? _filterExecutionDate;
 
-    private readonly List<VisitTypeOption> _visitTypeOptions = new()
+    private async Task OnFilterExecutionDateChanged(DateOnly? value)
     {
-        new VisitTypeOption("true",  "Primera Visita",  true),
-        new VisitTypeOption("false", "Siguiente Visita", false)
-    };
+        _filterExecutionDate = value;
 
-    private VisitTypeOption? _selectedVisitType;
-
-    private async Task OnVisitTypeOptionChanged(VisitTypeOption? opt)
-    {
-        if (!IsPlanMode) return; // en pending no aplica
-
-        if (opt is null) return;
-
-        var newIsFirst = opt.IsFirst;
-        if (newIsFirst == _isFirstVisit)
-            return;
-
-        _selectedVisitType = opt;
-        _isFirstVisit = newIsFirst;
-
-        _selectedVisitIds.Clear();
+        // reset selección + paginación
+        _selectedProjectIds.Clear();
         _page = 1;
 
         await LoadVisitsAsync();
     }
 
-    // =========================
-    //   Selection
-    // =========================
-    private readonly HashSet<int> _selectedVisitIds = new();
 
-    private void ToggleSelected(int visitId)
+    private void ToggleSelected(int projectId)
     {
-        if (_selectedVisitIds.Contains(visitId)) _selectedVisitIds.Remove(visitId);
-        else _selectedVisitIds.Add(visitId);
+        if (projectId <= 0) return;
+
+        if (_selectedProjectIds.Contains(projectId)) _selectedProjectIds.Remove(projectId);
+        else _selectedProjectIds.Add(projectId);
 
         StateHasChanged();
     }
 
     private Task ClearSelection()
     {
-        _selectedVisitIds.Clear();
+        _selectedProjectIds.Clear();
         StateHasChanged();
         return Task.CompletedTask;
     }
@@ -409,7 +387,7 @@
             }
             else
             {
-                var resp = await VisitService.GetPlannedForExecutionAsync(_isFirstVisit);
+                var resp = await VisitService.GetPlannedForExecutionAsync(_filterExecutionDate);
 
                 allItems = (resp.Success && resp.Response != null)
                     ? resp.Response
@@ -501,17 +479,25 @@
     // =========================
     private void BuildColumns()
     {
-        columns = new[]
-        {
-            new ColumnDef<VisitPlannedForExecutionListDTO>("Sel", _ => string.Empty, "3rem",  Sortable: false),
-            new ColumnDef<VisitPlannedForExecutionListDTO>("#",   _ => string.Empty, "2.5rem", Sortable: false),
-            new ColumnDef<VisitPlannedForExecutionListDTO>("Cod", _ => string.Empty, "5.5rem", Sortable: true),
-            new ColumnDef<VisitPlannedForExecutionListDTO>("Proyecto", _ => string.Empty, "14rem", Sortable: true),
-            new ColumnDef<VisitPlannedForExecutionListDTO>("# Vis", _ => string.Empty, "3.5rem", Sortable: true),
-            new ColumnDef<VisitPlannedForExecutionListDTO>("Facultad", _ => string.Empty, "9rem", Sortable: true),
-            new ColumnDef<VisitPlannedForExecutionListDTO>("Fecha", _ => string.Empty, "6.2rem", Sortable: true),
-            new ColumnDef<VisitPlannedForExecutionListDTO>("Estado", _ => string.Empty, "7.5rem", Sortable: true),
-        };
+        var cols = new List<ColumnDef<VisitPlannedForExecutionListDTO>>
+    {
+        new("Sel", _ => string.Empty, "3rem",  Sortable: false),
+        new("#",   _ => string.Empty, "2.5rem", Sortable: false),
+        new("Cod", _ => string.Empty, "5.5rem", Sortable: true),
+        new("Proyecto", _ => string.Empty, "14rem", Sortable: true),
+        new("# Vis", _ => string.Empty, "3.5rem", Sortable: true),
+        new("Facultad", _ => string.Empty, "9rem", Sortable: true),
+    };
+
+        AddIf(cols, IsPendingMode, new("Fecha", _ => string.Empty, "6.2rem", Sortable: true));
+        AddIf(cols, IsPendingMode, new("Estado", _ => string.Empty, "7.5rem", Sortable: true));
+
+        columns = cols;
+    }
+
+    private static void AddIf<T>(List<T> list, bool condition, T item)
+    {
+        if (condition) list.Add(item);
     }
 
     private int GetRowNumberForCurrentPage(VisitPlannedForExecutionListDTO item)
@@ -560,9 +546,7 @@
         if (IsPendingMode)
             return "No hay visitas pendientes para planificar.";
 
-        return _isFirstVisit
-            ? "No hay primeras visitas planificadas para ejecución."
-            : "No hay siguientes visitas planificadas para ejecución.";
+        return "No hay visitas planificables para ejecución.";
     }
 
     // =========================
@@ -603,7 +587,7 @@
     private List<VisitPlannedForExecutionListDTO> GetSelectedItemsSnapshot()
     {
         if (allItems is null || allItems.Count == 0) return new();
-        return allItems.Where(x => _selectedVisitIds.Contains(x.VisitId)).ToList();
+        return allItems.Where(x => _selectedProjectIds.Contains(x.ProjectId)).ToList();
     }
 
     // =========================
@@ -613,7 +597,7 @@
     {
         _planValidationError = null;
 
-        if (_selectedVisitIds.Count == 0)
+        if (_selectedProjectIds.Count == 0)
         {
             _planValidationError = "Seleccione al menos una visita.";
             return;
@@ -625,7 +609,7 @@
             return;
         }
 
-        var ids = _selectedVisitIds.ToList();
+        var ids = _selectedProjectIds.ToList();
         var scheduledDate = _plannedDate.Value.ToDateTime(TimeOnly.MinValue);
 
         try
@@ -635,7 +619,7 @@
             var request = new BulkScheduleVisitsRequestDTO
             {
                 ScheduledDate = scheduledDate,
-                VisitIds = ids
+                ProjectIds = ids
             };
 
             var resp = await VisitService.BulkScheduleAsync(request);
@@ -648,7 +632,7 @@
 
             Toast.ShowSuccess("Planificación guardada correctamente.");
 
-            _selectedVisitIds.Clear();
+            _selectedProjectIds.Clear();
             await ClosePlanModal();
 
             await LoadVisitsAsync();

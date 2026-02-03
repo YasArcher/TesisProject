@@ -1,11 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.Visit.Request;
 using tesisproject.shared.DTOs.Visit.Response;
 using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Enums; // VisitStateIds
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -24,27 +24,24 @@ namespace tesisproject.backend.Services.Implementations
         {
             try
             {
-                // Validaciones mínimas (alineado a tu patrón)
                 if (request.ProjectId <= 0)
                     return ServiceResult<VisitListResponseDTO>.Fail("ProjectId is required.", ErrorType.Validation);
 
                 var entity = new Visit
                 {
                     ProjectId = request.ProjectId,
-                    VisitStateId = 1,
+                    VisitStateId = VisitStateIds.Planned,
                     ScheduledDate = request.ScheduledDate,
                 };
 
                 await _uow.Visits.AddAsync(entity, ct);
                 await _uow.SaveChangesAsync(ct);
 
-                // Traemos con refs para mapear textos
                 var withRefs = await _uow.Visits.GetByIdWithRefsAsync(entity.VisitId, ct);
                 if (withRefs is null)
                     return ServiceResult<VisitListResponseDTO>.Fail("Visit could not be loaded after creation.", ErrorType.Unexpected);
 
-                var dto = MapToListDTO(withRefs);
-                return ServiceResult<VisitListResponseDTO>.Ok(dto, "Visit created");
+                return ServiceResult<VisitListResponseDTO>.Ok(MapToListDTO(withRefs), "Visit created");
             }
             catch (DbUpdateException dbex)
             {
@@ -80,9 +77,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             try
             {
-                // Usamos QueryWithRefs para preparar proyección directa
-                var q = _uow.Visits.QueryWithRefs();
-                var items = await q
+                var items = await _uow.Visits.QueryWithRefs()
                     .OrderBy(v => v.ScheduledDate ?? DateTime.MaxValue)
                     .Select(v => new VisitListResponseDTO
                     {
@@ -191,6 +186,7 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
+
         // =============== DETAIL ===============
 
         public async Task<ServiceResult<VisitDetailResponseDTO>> GetVisitDetailAsync(int visitId, CancellationToken ct = default)
@@ -201,8 +197,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (visit is null)
                     return ServiceResult<VisitDetailResponseDTO>.Fail("Visit not found.", ErrorType.NotFound);
 
-                var dto = MapToDetailDTO(visit);
-                return ServiceResult<VisitDetailResponseDTO>.Ok(dto, "Visit detail retrieved");
+                return ServiceResult<VisitDetailResponseDTO>.Ok(MapToDetailDTO(visit), "Visit detail retrieved");
             }
             catch (Exception ex)
             {
@@ -210,9 +205,7 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-        public async Task<ServiceResult<VisitListResponseDTO>> FinalizeAsync(
-    FinalizeVisitRequestDTO request,
-    CancellationToken ct = default)
+        public async Task<ServiceResult<VisitListResponseDTO>> FinalizeAsync(FinalizeVisitRequestDTO request, CancellationToken ct = default)
         {
             try
             {
@@ -226,12 +219,10 @@ namespace tesisproject.backend.Services.Implementations
                 if (entity is null)
                     return ServiceResult<VisitListResponseDTO>.Fail("Visit not found.", ErrorType.NotFound);
 
-                // (Opcional recomendado) validar que el estado exista
                 var stateExists = await _uow.VisitStates.ExistsAsync(x => x.Id == request.FinalVisitStateId, ct);
                 if (!stateExists)
                     return ServiceResult<VisitListResponseDTO>.Fail("VisitStateId is invalid.", ErrorType.Validation);
 
-                // setear estado final + fecha realizada
                 entity.VisitStateId = request.FinalVisitStateId;
                 entity.PerformedDate ??= DateTime.UtcNow;
 
@@ -254,93 +245,96 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
+        // =============== PLANNING LIST (CANDIDATES TO CREATE) ===============
+
         public async Task<ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>> ListPlannedForExecutionAsync(
-    bool isFirstVisit,
+    DateOnly? executionDate = null,
     CancellationToken ct = default)
         {
             try
             {
-                var cutoff = CutoffByMonthsBack(DateTime.UtcNow, minMonths: 4);
+                const int minMonths = 1;
 
-                var baseQuery = _uow.Visits
-                    .QueryWithRefs()
-                    .AsNoTracking()
-                    .Where(ProjectHasMinAge(cutoff))
-                    .Where(v => v.VisitStateId != 2);
+                // Fecha de referencia: si el cliente manda una fecha, se usa; si no, se usa hoy (UTC).
+                var today = (executionDate?.ToDateTime(TimeOnly.MinValue) ?? DateTime.UtcNow.Date).Date;
 
-                IQueryable<int> selectedVisitIds;
+                // Regla: "cumple el periodo configurado" hasta la fecha => baseDate + minMonths <= today
+                // Equivalente en query: baseDate <= today - minMonths
+                var cutoff = today.AddMonths(-minMonths);
 
-                if (isFirstVisit)
-                {
-                    baseQuery = baseQuery.Where(EligibleForFirstVisitSelector());
-                    selectedVisitIds = FirstVisitIdsPerProject(baseQuery);
-                }
-                else
-                {
-                    selectedVisitIds = NextVisitIdsAfterLastRealizedPerProject(baseQuery);
-                }
-
-                // 1) Traer la lista base (sin VisitNumber)
-                var list = await _uow.Visits
-                    .QueryWithRefs()
-                    .AsNoTracking()
-                    .Where(v => selectedVisitIds.Contains(v.VisitId))
-                    .Select(v => new VisitPlannedForExecutionListDTO
+                var rows = await _uow.Projects
+                    .Query(asNoTracking: true)
+                    .Where(p => p.StartDate != null)
+                    .Where(p => p.ProjectStateId == 6 || p.ProjectStateId == 3)
+                    .Select(p => new
                     {
-                        VisitId = v.VisitId,
-                        VisitDate = v.ScheduledDate,
+                        p.ProjectId,
+                        p.ProjectName,
+                        p.ProjectCode,
+                        p.FacultyId,
+                        p.StartDate,
 
-                        VisitStateId = v.VisitStateId,
-                        VisitStateName = v.VisitState != null ? v.VisitState.Name : string.Empty,
+                        LastRealizedDate = p.Visits
+                            .Where(v => v.VisitStateId == VisitStateIds.Realized)
+                            .Select(v => (DateTime?)(v.PerformedDate ?? v.ScheduledDate ?? v.CreatedAt))
+                            .Max(),
 
-                        ProjectId = v.ProjectId,
-                        ProjectName = v.Project.ProjectName,
-                        ProjectCode = v.Project.ProjectCode,
-                        FacultyId = v.Project.FacultyId,
+                        RealizedCount = p.Visits.Count(v => v.VisitStateId == VisitStateIds.Realized),
 
-                        VisitNumber = 0 // se llena abajo
+                        // Bloquea si existe una visita abierta (Planned/Pending/OnHold)
+                        HasOpenVisit = p.Visits.Any(v => VisitStateIds.OpenStates.Contains(v.VisitStateId))
                     })
-                    .OrderBy(v => v.VisitDate ?? DateTime.MaxValue)
-                    .ThenBy(v => v.VisitId)
+                    .Where(x => !x.HasOpenVisit)
+                    // "hasta la fecha": si baseDate <= cutoff entonces dueDate (=baseDate+1mes) <= today
+                    .Where(x => (x.LastRealizedDate ?? x.StartDate) <= cutoff)
+                    .OrderBy(x => (x.LastRealizedDate ?? x.StartDate))
                     .ToListAsync(ct);
 
-                // 2) Llenar VisitNumber
-                if (isFirstVisit)
+                if (rows.Count == 0)
                 {
-                    foreach (var item in list)
-                        item.VisitNumber = 1;
+                    return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
+                        .Ok(Array.Empty<VisitPlannedForExecutionListDTO>(), "No planned visits found.");
                 }
-                else
+
+                var list = rows.Select(x =>
                 {
-                    const int realizedStateId = 3; // <-- AJUSTA según tu seed final
+                    var baseDate = (x.LastRealizedDate ?? x.StartDate)!.Value.Date;
+                    var dueDate = baseDate.AddMonths(minMonths);
 
-                    var projectIds = list.Select(x => x.ProjectId).Distinct().ToList();
-
-                    var realizedCounts = await _uow.Visits
-                        .Query() // OJO: aquí ya NO estás en expression tree del Select, así que no hay CS0854
-                        .AsNoTracking()
-                        .Where(x => projectIds.Contains(x.ProjectId) && x.VisitStateId == realizedStateId)
-                        .GroupBy(x => x.ProjectId)
-                        .Select(g => new { ProjectId = g.Key, Count = g.Count() })
-                        .ToDictionaryAsync(x => x.ProjectId, x => x.Count, ct);
-
-                    foreach (var item in list)
+                    return new VisitPlannedForExecutionListDTO
                     {
-                        var realized = realizedCounts.TryGetValue(item.ProjectId, out var c) ? c : 0;
-                        item.VisitNumber = realized + 1;
-                    }
-                }
+                        VisitId = 0,
+                        VisitDate = dueDate,
 
-                return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>.Ok(list, "Planned visits retrieved");
+                        VisitStateId = VisitStateIds.Planned,
+                        VisitStateName = "Planificable",
+
+                        ProjectId = x.ProjectId,
+                        ProjectName = x.ProjectName,
+                        ProjectCode = x.ProjectCode,
+                        FacultyId = x.FacultyId,
+
+                        VisitNumber = x.RealizedCount + 1
+                    };
+                }).ToList();
+
+                list = list.Where(x => x.VisitDate.HasValue && x.VisitDate.Value.Date <= today).ToList();
+
+                return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
+                    .Ok(list, "Planned visits retrieved");
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
+                    .Fail(ex.Message, ErrorType.Unexpected);
             }
         }
+
+        // =============== LIST BY STATE ===============
+
         public async Task<ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>> ListByStateAsync(
-    int visitStateId,
-    CancellationToken ct = default)
+            int visitStateId,
+            CancellationToken ct = default)
         {
             try
             {
@@ -348,9 +342,6 @@ namespace tesisproject.backend.Services.Implementations
                     return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
                         .Fail("visitStateId is required.", ErrorType.Validation);
 
-                const int realizedStateId = 3; // AJUSTA según tu seed (VISITA REALIZADA)
-
-                // 1) Traer lista (mismo DTO)
                 var list = await _uow.Visits
                     .QueryWithRefs()
                     .AsNoTracking()
@@ -378,13 +369,12 @@ namespace tesisproject.backend.Services.Implementations
                     return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
                         .Fail("No visits found for this state.", ErrorType.NotFound);
 
-                // 2) Llenar VisitNumber (misma lógica que ya aplicabas)
                 var projectIds = list.Select(x => x.ProjectId).Distinct().ToList();
 
                 var realizedCounts = await _uow.Visits
                     .Query()
                     .AsNoTracking()
-                    .Where(x => projectIds.Contains(x.ProjectId) && x.VisitStateId == realizedStateId)
+                    .Where(x => projectIds.Contains(x.ProjectId) && x.VisitStateId == VisitStateIds.Realized)
                     .GroupBy(x => x.ProjectId)
                     .Select(g => new { ProjectId = g.Key, Count = g.Count() })
                     .ToDictionaryAsync(x => x.ProjectId, x => x.Count, ct);
@@ -405,101 +395,36 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-
+        // =============== BULK SCHEDULE ===============
 
         public async Task<ServiceResult<NoContent>> BulkScheduleAsync(BulkScheduleVisitsRequestDTO request, CancellationToken ct = default)
         {
             if (request is null)
                 return ServiceResult<NoContent>.Fail("Request inválido.");
 
-            var ids = request.VisitIds?
+            var projectIds = request.ProjectIds?
                 .Where(x => x > 0)
                 .Distinct()
                 .ToList() ?? new List<int>();
 
-            if (ids.Count == 0)
-                return ServiceResult<NoContent>.Fail("Debes enviar al menos un ID de visita válido.");
+            if (projectIds.Count == 0)
+                return ServiceResult<NoContent>.Fail("Debes enviar al menos un ProjectId válido.");
 
             if (request.ScheduledDate == default)
                 return ServiceResult<NoContent>.Fail("ScheduledDate es requerido.");
 
-            // Si tú trabajas con fechas sin hora, opcional:
-            // var scheduled = request.ScheduledDate.Date;
             var scheduled = request.ScheduledDate;
 
-            // Repo: validar existencia y actualizar
-            var repoResult = await _uow.Visits.BulkScheduleAsync(ids, scheduled, visitStateId: 2, ct);
+            // Reutilizas el mismo método repo, pero ahora su primer parámetro serán ProjectIds
+            var repoResult = await _uow.Visits.BulkScheduleAsync(projectIds, scheduled, visitStateId: VisitStateIds.Pending, ct);
 
             if (!repoResult.Success)
-                return ServiceResult<NoContent>.Fail(repoResult.Error ?? "No se pudo actualizar las visitas.");
+                return ServiceResult<NoContent>.Fail(repoResult.Error ?? "No se pudo planificar las visitas.");
 
             await _uow.SaveChangesAsync(ct);
 
-            return ServiceResult<NoContent>.Ok( new NoContent());
+            return ServiceResult<NoContent>.Ok(new NoContent());
         }
-
-        // =============== HELPER METHODS ===============
-
-        public static DateTime CutoffByMonthsBack(DateTime today, int minMonths)
-            => today.Date.AddMonths(-minMonths);
-
-        // Proyectos con StartDate y que ya cumplieron mínimo X meses
-        public static Expression<Func<Visit, bool>> ProjectHasMinAge(DateTime cutoff)
-            => v => v.Project.StartDate != null && v.Project.StartDate.Value <= cutoff;
-
-        // Filtra por estado del proyecto (para “primera visita”, usar Planificado)
-        public static Expression<Func<Visit, bool>> ProjectInState(int projectStateId)
-            => v => v.Project.ProjectStateId == projectStateId;
-
-        // Devuelve 1 visita por proyecto: la “primera” (por VisitDate y desempate por VisitId)
-        public static IQueryable<int> FirstVisitIdsPerProject(IQueryable<Visit> q)
-            => q.GroupBy(v => v.ProjectId)
-                .Select(g => g
-                    .OrderBy(v => v.ScheduledDate ?? DateTime.MaxValue)
-                    .ThenBy(v => v.VisitId)
-                    .Select(v => v.VisitId)
-                    .First());
-
-        public static Expression<Func<Visit, bool>> EligibleForFirstVisitSelector()
-            => v =>
-                v.Project.ProjectStateId == 6 // PLANIFICADO
-                || (v.Project.ProjectStateId == 3 // EN EJECUCION
-                    && !v.Project.Visits.Any(x => x.VisitStateId == 3)); // VISITA REALIZADA
-
-        // Devuelve 1 visita por proyecto (EN EJECUCIÓN), la siguiente a la última REALIZADA.
-        // Selección por VisitId para evitar problemas cuando ScheduledDate es null.
-        public static IQueryable<int> NextVisitIdsAfterLastRealizedPerProject(IQueryable<Visit> q)
-        {
-            // Última visita realizada por proyecto
-            var lastRealized = q
-                .Where(v => v.Project.ProjectStateId == 3 && v.VisitStateId == 3) // Proyecto en ejecución + visita realizada
-                .GroupBy(v => v.ProjectId)
-                .Select(g => new
-                {
-                    ProjectId = g.Key,
-                    LastRealizedVisitId = g.Max(x => x.VisitId)
-                });
-
-            // Candidatas: visitas NO realizadas que vengan después de la última realizada
-            var nextIds = q
-                .Where(v => v.Project.ProjectStateId == 3 && v.VisitStateId != 3) // aún no realizada
-                .Join(
-                    lastRealized,
-                    v => v.ProjectId,
-                    lr => lr.ProjectId,
-                    (v, lr) => new { v, lr.LastRealizedVisitId }
-                )
-                .Where(x => x.v.VisitId > x.LastRealizedVisitId)
-                .GroupBy(x => x.v.ProjectId)
-                .Select(g => g
-                    .OrderBy(x => x.v.VisitId)
-                    .Select(x => x.v.VisitId)
-                    .First()
-                );
-
-            return nextIds;
-        }
-
 
         // =============== MAPPING ===============
 
