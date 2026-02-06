@@ -2,6 +2,7 @@
 using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.Enums;
 using tesisproject.shared.Common.External;
 using tesisproject.shared.Common.Utils;
 using tesisproject.shared.DTOs.Auth;
@@ -29,29 +30,6 @@ namespace tesisproject.backend.Services.Implementations
         private readonly ILogger<ProjectService> _logger;
         private readonly IExternalDirectoryClient _externalDirectory;
         private readonly IExternalDistributivosService _externalDistributivosRaw;
-
-        // 🔹 ResearchCategoryType fijos
-        private const int CAT_TYPE_DOMINIO = 1;
-        private const int CAT_TYPE_LINEA = 2;
-        private const int CAT_TYPE_CAMPO_AMPLO = 4;
-        private const int CAT_TYPE_CAMPO_ESPECIFICO = 5;
-        private const int CAT_TYPE_CAMPO_DETALLADO = 6;
-        private const int CAT_TYPE_ALCANCE_TERRITORIAL = 7;
-        private const int CAT_TYPE_IMPACTO_ESPERADO = 8;
-
-        // 🔹 VisitStates: Realizada
-        private const int PLANNED_VISIT_STATE_ID = 1;
-        private const int REALIZED_VISIT_STATE_ID = 3;
-
-        // 🔹 DocumentTypes (catálogo fijo)
-        // 1 = Memorando inicial
-        // 2 = Memorando Informe Final
-        // 3 = Resolucion Prorroga
-        // 4 = Resolucion Informe Final
-        // 5 = Contrato Auspicio
-        private const int DOCUMENT_TYPE_RESOLUCION_PRORROGA = 3;
-        private const int DOCUMENT_TYPE_VISIT_RESOLUTION = 6; // para visitas históricas con resolución
-        private const int DOCUMENT_TYPE_FINAL_PROJECT_RESOLUTION = 4; // para visitas históricas con resolución
 
         // 🔹 Convocatoria por defecto (para registros sin CallCode o sin match)
         private const int DEFAULT_CONVOCATION_ID = 1;
@@ -408,7 +386,9 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 var p = request.Project;
-                var principalCoordinatorEmail = request.GroupMembers.FirstOrDefault(m => m.MemberRole == 1)?.Email;
+                var principalCoordinatorEmail = request.GroupMembers
+                    .FirstOrDefault(m => m.MemberRole == MemberRoleTypeIds.Coordinador)
+                    ?.Email;
                 var d = request.ProjectDocumentData;
                 var projectStartDate = p.StartDate;
 
@@ -565,7 +545,7 @@ namespace tesisproject.backend.Services.Implementations
 
                 var groupEntity = new Group
                 {
-                    GroupTypeId = 1,
+                    GroupTypeId = GroupTypeIds.Integrantes,
                     Name = generatedCode
                 };
 
@@ -600,7 +580,7 @@ namespace tesisproject.backend.Services.Implementations
                     CreatedByUserId = user.IdUser,
                     ProjectTypeId = p.ProjectTypeId,
                     ProjectNumber = nextNumber,
-                    ProjectStateId = 6,
+                    ProjectStateId = ProjectStateIds.EnEjecucion,
                     ProjectName = p.ProjectName ?? string.Empty,
                     ApprovalDate = p.ApprovalDate,
                     StartDate = p.StartDate,
@@ -976,12 +956,6 @@ namespace tesisproject.backend.Services.Implementations
             if (dto is null) throw new ArgumentNullException(nameof(dto));
             if (directoryCache is null) throw new ArgumentNullException(nameof(directoryCache));
 
-            // Roles (ajusta a tus IDs reales de MemberRoleType)
-            // Ejemplo: 1=Coordinador, 2=Subrogante, 3=Investigador
-            const int ROLE_COORDINATOR = 1;
-            const int ROLE_ALTERNATE_COORDINATOR = 2;
-            const int ROLE_INVESTIGATOR = 3; // si luego lo agregas al DTO
-
             // Threshold recomendado para evitar matches basura
             const double MIN_NAME_SIMILARITY = 80.0;
 
@@ -1064,16 +1038,39 @@ namespace tesisproject.backend.Services.Implementations
             if (allProfiles.Count == 0)
                 return;
 
+            // ===== NUEVO: set de ASP_ID que deben ir con rol "Coordinator" en ASP =====
+            var coordinatorAspIds = matchedCoordinators
+                .Concat(matchedAlternates)
+                .Select(x => x.AspId!.Value)
+                .ToHashSet();
+
+            // Ajusta estos strings a los nombres reales en AspNetRoles
+            const string ASP_ROLE_COORDINATOR = "coordinator";
+            const string ASP_ROLE_USER = "user";
+
+            // ===== 2.1) Construir RegisterRequest con rol según pertenencia a coordinadores =====
             var registerDtos = allProfiles
-                .Select(p => new RegisterRequest
+                .Select(p =>
                 {
-                    Email = p.Email,
-                    Username = p.Document,                // tu CreateFull usa Document aquí
-                    Password = "aaaaaqqq1231231",         // igual que tu flujo actual
-                    AspUserId = p.AspId!.Value
+                    var aspId = p.AspId!.Value;
+                    var roleForAsp = coordinatorAspIds.Contains(aspId)
+                        ? ASP_ROLE_COORDINATOR
+                        : ASP_ROLE_USER;
+
+                    return new RegisterRequest
+                    {
+                        Email = p.Email,
+                        Username = p.Document,                // tu CreateFull usa Document aquí
+                        Password = "aaaaaqqq1231231",         // tu flujo actual
+                        AspUserId = aspId,
+                        Role = roleForAsp
+                    };
                 })
                 .ToList();
 
+
+            if (allProfiles.Count == 0)
+                return;
             // Misma lógica de CreateFull: EnsureAppUsersAsync
             var ensure = await _appUsers.EnsureAppUsersAsync(registerDtos, ct);
 
@@ -1132,9 +1129,9 @@ namespace tesisproject.backend.Services.Implementations
                 }
             }
 
-            await AddRoleMembersAsync(matchedCoordinators, ROLE_COORDINATOR);
-            await AddRoleMembersAsync(matchedAlternates, ROLE_ALTERNATE_COORDINATOR);
-            // await AddRoleMembersAsync(matchedInvestigators, ROLE_INVESTIGATOR);
+            await AddRoleMembersAsync(matchedCoordinators, MemberRoleTypeIds.Coordinador);
+            await AddRoleMembersAsync(matchedAlternates, MemberRoleTypeIds.Subrogante);
+            //await AddRoleMembersAsync(matchedInvestigators, MemberRoleTypeIds.Investigador);
         }
 
 
@@ -1315,7 +1312,7 @@ namespace tesisproject.backend.Services.Implementations
 
                     if (dto.StartDate.HasValue && dto.StartDate.Value.Date > DateTime.UtcNow.Date)
                     {
-                        projectStateId = 6;
+                        projectStateId = ProjectStateIds.EnEjecucion;
                         PhaseLog("Row",
                             $"StartDate is in the future → Forcing ProjectStateId=6 for {dto.ProjectCode} (StartDate={dto.StartDate:yyyy-MM-dd}).");
                     }
@@ -1344,7 +1341,7 @@ namespace tesisproject.backend.Services.Implementations
 
                     var groupEntity = new Group
                     {
-                        GroupTypeId = 1,
+                        GroupTypeId = GroupTypeIds.Integrantes,
                         Name = dto.ProjectCode!
                     };
 
@@ -1383,32 +1380,58 @@ namespace tesisproject.backend.Services.Implementations
                     {
                         tentativeEndDate = dto.StartDate.Value.AddMonths(durationMonths);
                     }
-                    // Regla: si el código empieza con "PE" => External (2); caso contrario Internal (1)
-                    var originTypeId = (dto.ProjectCode ?? string.Empty)
-                        .Trim()
-                        .StartsWith("PE", StringComparison.OrdinalIgnoreCase)
-                            ? 2
-                            : 1;
+                    // Regla: si el código empieza con "PE" => Externo; caso contrario Interno
+                    var originTypeId = ((dto.ProjectCode ?? string.Empty).Trim()
+                            .StartsWith("PE", StringComparison.OrdinalIgnoreCase))
+                        ? ProjectOriginTypeIds.Externo
+                        : ProjectOriginTypeIds.Interno;
 
+                    if (!facultyId.HasValue || facultyId.Value <= 0)
+                    {
+                        PhaseLog("Row", $"Skipping {dto.ProjectCode}: FacultyId unresolved.");
+                        skippedCount++;
+                        continue;
+                    }
+
+                    if (!projectStateId.HasValue || projectStateId.Value <= 0)
+                    {
+                        PhaseLog("Row", $"Skipping {dto.ProjectCode}: ProjectStateId unresolved.");
+                        skippedCount++;
+                        continue;
+                    }
+
+                    // Si ExecutionProgress es decimal?
+                    var executionPct = (dto.ExecutionProgress ?? 0m) * 100m;
+
+                    // Si ExecutionProgress fuera double? usa esta en vez de la de arriba:
+                    // var executionPct = (decimal)(dto.ExecutionProgress ?? 0d) * 100m;
 
                     var projectEntity = new Project
                     {
-                        ProjectCode = $"{dto.ProjectCode}-{dto.Number!.Value}",
-                        ProjectNumber = dto.Number!.Value,
+                        ProjectCode = $"{dto.ProjectCode}-{dto.Number.Value}",
+                        ProjectNumber = dto.Number.Value,
                         ProjectName = dto.ProjectName ?? string.Empty,
                         CreatedByUserId = user.IdUser,
-                        ProjectTypeId = 1,
-                        FacultyId = facultyId ?? 0,
+                        ProjectTypeId = ProjectTypeIds.Aplicada,
+
+                        FacultyId = facultyId.Value,
                         ConvocationId = convocationId,
-                        ProjectStateId = projectStateId ?? 0,
+                        ProjectStateId = projectStateId.Value,
                         ProjectOriginTypeId = originTypeId,
+
                         ApprovalDate = approvalDate,
                         StartDate = dto.StartDate,
                         DurationInMonths = durationMonths,
                         TentativeEndDate = tentativeEndDate,
                         RealEndDate = realEndDate,
-                        ExecutionPercentage = dto.ExecutionProgress * 100 ?? 0m,
+
+                        ExecutionPercentage = executionPct,
                     };
+
+                    projectEntity.ProjectGroup = groupEntity;
+
+                    await _uow.Projects.AddAsync(projectEntity, ct);
+
 
                     projectEntity.ProjectGroup = groupEntity;
 
@@ -1429,19 +1452,19 @@ namespace tesisproject.backend.Services.Implementations
                         await _uow.ExternalResearcherProjects.AddAsync(projectExternalResearchers, ct);
                     }
 
-                        // ============================================
-                        // 4.1) Documento de RESOLUCION INFORME FINAL HCU (si existe)
-                        //      → debe usar el tipo de doc "final de proyecto" (p.ej. Id = 4)
-                        // ============================================
+                    // ============================================
+                    // 4.1) Documento de RESOLUCION INFORME FINAL HCU (si existe)
+                    //      → debe usar el tipo de doc "final de proyecto" (p.ej. Id = 4)
+                    // ============================================
 
-                        if (finalResolutionDoc is not null)
+                    if (finalResolutionDoc is not null)
                     {
                         int? finalDocTypeId = ResolveDocumentTypeId(documentTypes, finalResolutionDoc.DocumentType);
 
                         if (!finalDocTypeId.HasValue)
                         {
                             // Fallback al tipo fijo de "resolución final de proyecto"
-                            finalDocTypeId = DOCUMENT_TYPE_FINAL_PROJECT_RESOLUTION;
+                            finalDocTypeId = DocumentTypeIds.ResolucionInformeFinal;
                         }
 
                         var finalDocument = new Document
@@ -1476,7 +1499,7 @@ namespace tesisproject.backend.Services.Implementations
                         {
                             Project = projectEntity,
                             ApprovedByUserId = user.IdUser,
-                            FundingTypeId = 2, // fijo según tu catálogo
+                            FundingTypeId = FundingTypeIds.Interno,
                             InitialAmount = dto.AssignedValue.Value,
                             CertifiedAmount = 0,
                             ExecutedAmount = dto.ExecutedValue ?? 0,
@@ -1493,16 +1516,14 @@ namespace tesisproject.backend.Services.Implementations
                     // ============================================
                     // 6) Categorías de investigación 
                     // ============================================
-
                     if (allCategories is not null && allCategories.Count > 0)
                     {
-                        // Primero solo IDs, sin crear entidades todavía
                         var candidateIds = new List<int>();
 
                         var lineId = ResolveResearchCategoryId(
                             allCategories,
                             dto.ResearchLine,
-                            CAT_TYPE_LINEA);
+                            ResearchCategoryTypeIds.LineaInvestigacion);
 
                         if (lineId.HasValue)
                             candidateIds.Add(lineId.Value);
@@ -1510,7 +1531,7 @@ namespace tesisproject.backend.Services.Implementations
                         var broadFieldId = ResolveResearchCategoryId(
                             allCategories,
                             dto.BroadField,
-                            CAT_TYPE_CAMPO_AMPLO);
+                            ResearchCategoryTypeIds.CampoAmplio);
 
                         if (broadFieldId.HasValue)
                             candidateIds.Add(broadFieldId.Value);
@@ -1518,7 +1539,7 @@ namespace tesisproject.backend.Services.Implementations
                         var specificId = ResolveResearchCategoryId(
                             allCategories,
                             dto.SpecificField,
-                            CAT_TYPE_CAMPO_ESPECIFICO);
+                            ResearchCategoryTypeIds.CampoEspecifico);
 
                         if (specificId.HasValue)
                             candidateIds.Add(specificId.Value);
@@ -1526,7 +1547,7 @@ namespace tesisproject.backend.Services.Implementations
                         var detailedId = ResolveResearchCategoryId(
                             allCategories,
                             dto.DetailedField,
-                            CAT_TYPE_CAMPO_DETALLADO);
+                            ResearchCategoryTypeIds.CampoDetallado);
 
                         if (detailedId.HasValue)
                             candidateIds.Add(detailedId.Value);
@@ -1534,7 +1555,7 @@ namespace tesisproject.backend.Services.Implementations
                         var scopeId = ResolveResearchCategoryId(
                             allCategories,
                             dto.TerritorialScope,
-                            CAT_TYPE_ALCANCE_TERRITORIAL);
+                            ResearchCategoryTypeIds.AlcanceTerritorial);
 
                         if (scopeId.HasValue)
                             candidateIds.Add(scopeId.Value);
@@ -1542,29 +1563,27 @@ namespace tesisproject.backend.Services.Implementations
                         var impactId = ResolveResearchCategoryId(
                             allCategories,
                             dto.ExpectedImpact,
-                            CAT_TYPE_IMPACTO_ESPERADO);
+                            ResearchCategoryTypeIds.ImpactoEsperado);
 
                         if (impactId.HasValue)
                             candidateIds.Add(impactId.Value);
 
-                        // 🔹 Dominio (NUEVO)
+                        // Dominio
                         var domainId = ResolveResearchCategoryId(
                             allCategories,
                             dto.Domain,
-                            CAT_TYPE_DOMINIO);
+                            ResearchCategoryTypeIds.Dominio);
 
                         if (domainId.HasValue)
                             candidateIds.Add(domainId.Value);
 
-                        // Quitamos duplicados por si acaso
-                        candidateIds = candidateIds
-                            .Distinct()
-                            .ToList();
+                        // (Opcional) Si luego usas Sub-línea:
+                        // var subLineId = ResolveResearchCategoryId(allCategories, dto.SubResearchLine, ResearchCategoryTypeIds.SubLineaInvestigacion);
+
+                        candidateIds = candidateIds.Distinct().ToList();
 
                         if (candidateIds.Count > 0)
                         {
-                            // 🔍 Aquí aplicamos la lógica jerárquica:
-                            // si una categoría es ancestro de otra, se elimina el ancestro.
                             var leafIds = FilterToLeafCategories(candidateIds, allCategories);
 
                             var researchCategoryLinks = leafIds
@@ -1576,10 +1595,7 @@ namespace tesisproject.backend.Services.Implementations
                                 .ToList();
 
                             if (researchCategoryLinks.Count > 0)
-                            {
-                                await _uow.ProjectResearchCategories
-                                    .AddRangeAsync(researchCategoryLinks, ct);
-                            }
+                                await _uow.ProjectResearchCategories.AddRangeAsync(researchCategoryLinks, ct);
                         }
                     }
                     else
@@ -1659,7 +1675,7 @@ namespace tesisproject.backend.Services.Implementations
 
                             var extensionDocument = new Document
                             {
-                                DocumentTypeId = DOCUMENT_TYPE_RESOLUCION_PRORROGA,
+                                DocumentTypeId = DocumentTypeIds.ResolucionProrroga,
                                 DocumentPath = "legacy-matrix",
                                 ResolutionCode = ext.ResolutionCode,
                                 ResolutionDate = ext.NewEndDate,
@@ -1728,7 +1744,7 @@ namespace tesisproject.backend.Services.Implementations
                                 // Documento de la visita (resolución/reporte)
                                 var visitDocument = new Document
                                 {
-                                    DocumentTypeId = DOCUMENT_TYPE_VISIT_RESOLUTION,
+                                    DocumentTypeId = DocumentTypeIds.ResolucionVisita,
                                     DocumentPath = "legacy-matrix",
                                     ResolutionCode = x.raw,
                                     ResolutionDate = null,
@@ -1741,7 +1757,7 @@ namespace tesisproject.backend.Services.Implementations
                                 visitsToInsert.Add(new Visit
                                 {
                                     Project = projectEntity,
-                                    VisitStateId = REALIZED_VISIT_STATE_ID,     // ejecutada
+                                    VisitStateId = VisitStateIds.Realized,     // ejecutada
                                     AcademicPeriodId = academicPeriodId,
                                     Document = visitDocument,
                                     FundingDocument = null,
@@ -1766,7 +1782,7 @@ namespace tesisproject.backend.Services.Implementations
                         var objetive = new ProjectObjective
                         {
                             Project = projectEntity,
-                            ObjectiveTypeId = 1,
+                            ObjectiveTypeId = ObjectiveTypeIds.General,
                             Objective = dto.GeneralObjective ?? string.Empty,
                             Result = string.Empty
                         };
@@ -2138,64 +2154,6 @@ namespace tesisproject.backend.Services.Implementations
 
             Console.WriteLine($"[IMPORT][Period] '{periodLabel}' -> '{best.Name}' ({bestScore:F2}%)");
             return best.PeriodId;
-        }
-
-
-        private static bool IsFinalizedProjectState(List<ProjectState> states, int? projectStateId)
-        {
-            if (!projectStateId.HasValue || projectStateId.Value <= 0) return false;
-            if (states is null || states.Count == 0) return false;
-
-            var state = states.FirstOrDefault(s => s.Id == projectStateId.Value);
-            if (state is null || string.IsNullOrWhiteSpace(state.Name)) return false;
-
-            var norm = Levenshtein.NormalizeForComparison(state.Name);
-            return norm == "finalizado";
-        }
-
-        private static int CalculateBaseVisitCount(int durationInMonths)
-        {
-            if (durationInMonths <= 0) return 0;
-
-            // MISMA REGLA QUE CreateFullAsync: división entera
-            // (12 meses => 2 visitas, 11 meses => 1 visita)
-            return durationInMonths / 6;
-        }
-
-        private static int CountValidItems<T>(IEnumerable<T>? items, Func<T, bool> isValid)
-        {
-            if (items is null) return 0;
-
-            var count = 0;
-            foreach (var item in items)
-            {
-                if (isValid(item)) count++;
-            }
-            return count;
-        }
-
-        private static List<Visit> BuildPlannedVisits(Project projectEntity, int totalVisits, DateTime createdAtUtc)
-        {
-            var list = new List<Visit>(Math.Max(0, totalVisits));
-
-            for (int i = 0; i < totalVisits; i++)
-            {
-                list.Add(new Visit
-                {
-                    Project = projectEntity,
-                    VisitStateId = 1,           // mismo estado que CreateFullAsync para "planificada"
-                    AcademicPeriodId = 0,       // se asigna DESPUÉS (obligatorio antes de AddRange)
-                    FundingDocument = null,
-                    Document = null,
-                    ProgressDocument = null,
-                    PerformedByUserId = null,
-                    ScheduledDate = null,
-                    PerformedDate = null,
-                    CreatedAt = createdAtUtc
-                });
-            }
-
-            return list;
         }
 
         private static void ApplyUpdate(Project target, UpdateProjectRequestDTO dto)

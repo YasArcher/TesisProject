@@ -6,6 +6,7 @@ using tesisproject.shared.Common.Utils;
 using tesisproject.shared.DTOs.Catalog.Common.Request;
 using tesisproject.shared.DTOs.Catalog.Common.Response;
 using tesisproject.shared.Entities.Base;
+using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -19,9 +20,14 @@ namespace tesisproject.backend.Services.Implementations
         private readonly IUnitOfWork _uow;
         private readonly ICatalogRepository<TCatalog> _repo;
 
-        public CatalogCrudService(
-            IUnitOfWork uow,
-            ICatalogRepository<TCatalog> repo)
+        // Levenshtein config from enum
+        private static double SimilarityThresholdPercent =>
+            (double)(int)CatalogLevenshteinConfig.SimilarityThresholdPercent;
+
+        private static int SimilarityMaxCandidates =>
+            (int)CatalogLevenshteinConfig.MaxCandidates;
+
+        public CatalogCrudService(IUnitOfWork uow, ICatalogRepository<TCatalog> repo)
         {
             _uow = uow;
             _repo = repo;
@@ -34,7 +40,6 @@ namespace tesisproject.backend.Services.Implementations
         {
             try
             {
-                // Si quieres solo activos, puedes pasar onlyActives: true
                 var items = await _repo.ListAsync(
                     onlyActives: false,
                     ct: ct);
@@ -49,8 +54,7 @@ namespace tesisproject.backend.Services.Implementations
                     ? "No items found for this catalog."
                     : "Catalog items retrieved.";
 
-                return ServiceResult<IReadOnlyList<CatalogListItemDTO>>
-                    .Ok(dto, message);
+                return ServiceResult<IReadOnlyList<CatalogListItemDTO>>.Ok(dto, message);
             }
             catch (Exception ex)
             {
@@ -58,7 +62,6 @@ namespace tesisproject.backend.Services.Implementations
                     .Fail(ex.Message, ErrorType.Unexpected);
             }
         }
-
 
         // =============== READ ONE ===============
 
@@ -135,8 +138,8 @@ namespace tesisproject.backend.Services.Implementations
         // =============== UPDATE ===============
 
         public async Task<ServiceResult<CatalogDetailDTO>> UpdateAsync(
-           UpdateCatalogRequestDTO request,
-           CancellationToken ct = default)
+            UpdateCatalogRequestDTO request,
+            CancellationToken ct = default)
         {
             try
             {
@@ -163,87 +166,78 @@ namespace tesisproject.backend.Services.Implementations
                     newName,
                     StringComparison.OrdinalIgnoreCase);
 
-                if (nameChanged)
+                // ====== Si NO cambió el nombre -> solo IsActive ======
+                if (!nameChanged)
                 {
-                    // 1) Duplicado exacto (bloquear)
-                    var duplicated = await _repo.NameExistsAsync(newName, excludeId: request.Id, ct);
-                    if (duplicated)
-                        return ServiceResult<CatalogDetailDTO>
-                            .Fail("Name already exists. Please review the catalog to avoid duplicates.", ErrorType.Validation);
-
-                    // 2) Posible duplicado (Levenshtein) -> bloquear y sugerir
-                    const double SIMILARITY_THRESHOLD = 90.0;
-
-                    var allItems = await _repo.ListAsync(onlyActives: false, ct: ct);
-
-                    var suggestions = allItems
-                        .Where(x => x.Id != entity.Id)
-                        .Select(x => new
-                        {
-                            x.Id,
-                            x.Name,
-                            x.IsActive,
-                            Similarity = Levenshtein.SimilarityPercentage(newName, x.Name)
-                        })
-                        .Where(x => x.Similarity >= SIMILARITY_THRESHOLD)
-                        .OrderByDescending(x => x.Similarity)
-                        .Take(5)
-                        .ToList();
-
-                    if (suggestions.Count > 0)
-                    {
-                        var hint = string.Join(" | ", suggestions.Select(s =>
-                            $"{s.Name} (Id: {s.Id}, Similarity: {s.Similarity:0.0}%, Active: {s.IsActive})"));
-
-                        return ServiceResult<CatalogDetailDTO>.Fail(
-                            $"This name looks very similar to existing items. Please review before saving. Candidates: {hint}",
-                            ErrorType.Validation);
-                    }
-
-                    // 3) Regla: si tiene referencias -> crear nuevo + desactivar actual
-                    var hasReferences = await _repo.HasReferencesAsync(entity.Id, ct);
-
-                    if (hasReferences)
-                    {
-                        var newEntity = new TCatalog
-                        {
-                            Name = newName,
-                            IsActive = true, // si quieres respetar el toggle: request.IsActive
-                        };
-
-                        await _repo.AddAsync(newEntity, ct);
-
-                        entity.IsActive = false;
-                        _repo.Update(entity);
-
-                        await _uow.SaveChangesAsync(ct);
-
-                        return ServiceResult<CatalogDetailDTO>.Ok(
-                            MapToDetail(newEntity),
-                            "Catalog item renamed by creating a new item and deactivating the previous one.");
-                    }
-
-                    // 4) Si NO tiene referencias -> update in-place
-                    entity.Name = newName;
                     entity.IsActive = request.IsActive;
+                    return await SaveAndOkAsync(entity, "Catalog item updated.", ct);
+                }
 
+                // ====== Si cambió el nombre ======
+
+                // 1) Duplicado exacto (bloquear)
+                var duplicated = await _repo.NameExistsAsync(newName, excludeId: request.Id, ct);
+                if (duplicated)
+                {
+                    return ServiceResult<CatalogDetailDTO>
+                        .Fail("Name already exists. Please review the catalog to avoid duplicates.", ErrorType.Validation);
+                }
+
+                // 2) Posible duplicado (Levenshtein) -> bloquear y sugerir
+                var allItems = await _repo.ListAsync(onlyActives: false, ct: ct);
+
+                var suggestions = allItems
+                    .Where(x => x.Id != entity.Id)
+                    .Select(x => new
+                    {
+                        x.Id,
+                        x.Name,
+                        x.IsActive,
+                        Similarity = Levenshtein.SimilarityPercentage(newName, x.Name)
+                    })
+                    .Where(x => x.Similarity >= SimilarityThresholdPercent)
+                    .OrderByDescending(x => x.Similarity)
+                    .Take(SimilarityMaxCandidates)
+                    .ToList();
+
+                if (suggestions.Count > 0)
+                {
+                    var hint = string.Join(" | ", suggestions.Select(s =>
+                        $"{s.Name} (Id: {s.Id}, Similarity: {s.Similarity:0.0}%, Active: {s.IsActive})"));
+
+                    return ServiceResult<CatalogDetailDTO>.Fail(
+                        $"This name looks very similar to existing items. Please review before saving. Candidates: {hint}",
+                        ErrorType.Validation);
+                }
+
+                // 3) Regla: si tiene referencias -> crear nuevo + desactivar actual
+                var hasReferences = await _repo.HasReferencesAsync(entity.Id, ct);
+
+                if (hasReferences)
+                {
+                    var newEntity = new TCatalog
+                    {
+                        Name = newName,
+                        IsActive = request.IsActive, // ✅ respeta el toggle del request
+                    };
+
+                    await _repo.AddAsync(newEntity, ct);
+
+                    entity.IsActive = false;
                     _repo.Update(entity);
+
                     await _uow.SaveChangesAsync(ct);
 
                     return ServiceResult<CatalogDetailDTO>.Ok(
-                        MapToDetail(entity),
-                        "Catalog item updated.");
+                        MapToDetail(newEntity),
+                        "Catalog item renamed by creating a new item and deactivating the previous one.");
                 }
 
-                // Si NO cambió el nombre -> update normal (solo IsActive)
+                // 4) Si NO tiene referencias -> update in-place
+                entity.Name = newName;
                 entity.IsActive = request.IsActive;
 
-                _repo.Update(entity);
-                await _uow.SaveChangesAsync(ct);
-
-                return ServiceResult<CatalogDetailDTO>.Ok(
-                    MapToDetail(entity),
-                    "Catalog item updated.");
+                return await SaveAndOkAsync(entity, "Catalog item updated.", ct);
             }
             catch (DbUpdateException dbex)
             {
@@ -294,6 +288,21 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<NoContent>
                     .Fail(ex.Message, ErrorType.Unexpected);
             }
+        }
+
+        // =============== PRIVATE HELPERS ===============
+
+        private async Task<ServiceResult<CatalogDetailDTO>> SaveAndOkAsync(
+            TCatalog entity,
+            string message,
+            CancellationToken ct)
+        {
+            _repo.Update(entity);
+            await _uow.SaveChangesAsync(ct);
+
+            return ServiceResult<CatalogDetailDTO>.Ok(
+                MapToDetail(entity),
+                message);
         }
 
         // =============== MAPPING HELPERS ===============

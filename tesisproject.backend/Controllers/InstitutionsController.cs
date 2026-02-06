@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.Controllers.Extensions;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Filters;
@@ -8,7 +9,7 @@ using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Controllers
 {
-    //[Authorize(Roles = "Admin")]
+    [Authorize(Roles = "superadmin")]
     [ApiController]
     [Route("api/[controller]")]
     public class InstitutionsController : ControllerBase
