@@ -43,7 +43,7 @@ var app = builder.Build();
 await ApplyMigrationsAsync(app);
 
 // 2) Seed de roles después de migrar
-await EnsureIdentityRolesAsync(app, "admin", "financial", "technical", "superadmin");
+await EnsureIdentityRolesAsync(app, "admin", "financial", "technical", "superadmin", "coordinador", "user");
 
 // ===== Configure pipeline =====
 app.ConfigurePipeline();

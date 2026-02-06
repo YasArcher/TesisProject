@@ -5,6 +5,7 @@ using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.Budgets.Request;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -284,7 +285,7 @@ namespace tesisproject.backend.Services.Implementations
                 var tx = new BudgetTransaction
                 {
                     BudgetId = request.BudgetId,
-                    TransactionTypeId = 1,
+                    TransactionTypeId = BudgetTransactionTypeIds.Certification,
                     Name = request.Name,
                     CertifiedAmount = request.CertifiedAmount,
                     BudgetItem = request.BudgetItem,
@@ -390,7 +391,7 @@ namespace tesisproject.backend.Services.Implementations
                 tx.ExecutionDescription = request.ExecutionDescription;
                 tx.ExecutedByUserId = user.IdUser;
                 tx.ExecutedAt = (request.ExecutedAt ?? DateTime.UtcNow).Date;
-                tx.TransactionTypeId = 2;
+                tx.TransactionTypeId = BudgetTransactionTypeIds.Executed;
 
                 // 8) Actualizar agregados del presupuesto
                 budget.ExecutedAmount = newExecutedTotal;
@@ -471,7 +472,7 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 // 2) Validar que no sea un devengado (no se puede cancelar)
-                if (tx.TransactionTypeId == 2 || tx.ExecutedAt != null)
+                if (tx.TransactionTypeId == BudgetTransactionTypeIds.Executed || tx.ExecutedAt != null)
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
                         "Executed transactions cannot be cancelled.",
@@ -480,7 +481,7 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 // 3) Validar si ya está cancelada
-                if (tx.TransactionTypeId == 3)
+                if (tx.TransactionTypeId == BudgetTransactionTypeIds.Cancelled)
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
                         "This transaction is already cancelled.",
@@ -499,7 +500,7 @@ namespace tesisproject.backend.Services.Implementations
                     );
                 }
 
-                if (tx.TransactionTypeId == 1)
+                if (tx.TransactionTypeId == BudgetTransactionTypeIds.Certification)
                 {
                     // Restar del acumulado certificado el valor de ESTA transacción
                     var newCertifiedTotal = budget.CertifiedAmount - tx.CertifiedAmount;
@@ -513,7 +514,7 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 // 5) Marcar la transacción como cancelada
-                tx.TransactionTypeId = 3;
+                tx.TransactionTypeId = BudgetTransactionTypeIds.Cancelled;
 
                 // 6) Guardar cambios
                 await _uow.SaveChangesAsync(ct);
@@ -565,7 +566,7 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 // Regla segura: si está cancelada, no se edita (usa tu endpoint de cancelación)
-                if (tx.TransactionTypeId == 3)
+                if (tx.TransactionTypeId == BudgetTransactionTypeIds.Cancelled)
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
                         "Cancelled transactions cannot be updated.",
@@ -592,7 +593,7 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 // Si el tipo es "Executed" (2), forzamos coherencia mínima (sin tocar fechas)
-                if (tx.TransactionTypeId == 2)
+                if (tx.TransactionTypeId == BudgetTransactionTypeIds.Executed)
                 {
                     // Ejecutado debería tener executed amount (permitimos 0, pero no null)
                     if (tx.ExecutedAmount is null)
@@ -644,18 +645,18 @@ namespace tesisproject.backend.Services.Implementations
 
                 // Certified actual = suma de certificaciones activas (tipo 1)
                 var certifiedCurrentTotal = all
-                    .Where(t => t.TransactionTypeId == 1)
+                    .Where(t => t.TransactionTypeId == BudgetTransactionTypeIds.Certification)
                     .Sum(t => t.CertifiedAmount);
 
                 // Ejecutado total = suma de ejecutados (tipo 2) por su executed amount
                 var executedTotal = all
-                    .Where(t => t.TransactionTypeId == 2)
+                    .Where(t => t.TransactionTypeId == BudgetTransactionTypeIds.Executed)
                     .Sum(t => t.ExecutedAmount ?? 0m);
 
                 // Certified histórico (para no pasarte del InitialAmount):
                 // suma de certificados de tipo 1 + tipo 2 (cancelados tipo 3 excluidos)
                 var certifiedEverTotal = all
-                    .Where(t => t.TransactionTypeId == 1 || t.TransactionTypeId == 2)
+                    .Where(t => t.TransactionTypeId == BudgetTransactionTypeIds.Certification || t.TransactionTypeId == BudgetTransactionTypeIds.Executed)
                     .Sum(t => t.CertifiedAmount);
 
                 if (certifiedEverTotal > budget.InitialAmount)

@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.Controllers.Extensions;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Filters;
@@ -6,6 +7,7 @@ using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/projects/filters")]
     [Produces("application/json")]

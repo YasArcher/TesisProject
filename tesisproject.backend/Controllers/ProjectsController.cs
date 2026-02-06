@@ -9,7 +9,7 @@ using tesisproject.backend.Utils;
 
 namespace tesisproject.backend.Controllers
 {
-    //[Authorize(Roles = "Admin")]
+    [Authorize(Roles = "superadmin")]
     [ApiController]
     [Route("api/[controller]")]
     public class ProjectsController : ControllerBase

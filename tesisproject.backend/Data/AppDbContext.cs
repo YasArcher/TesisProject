@@ -123,25 +123,6 @@ namespace tesisproject.backend.Data
             return Expression.Lambda<Func<TEntity, object?>>(body, param);
         }
 
-        // Aplica índice + FK hacia IdentityUser<int> con DeleteBehavior configurable
-        //private static void MapUserFK<TEntity, TProp>(
-        //    ModelBuilder mb,
-        //    Expression<Func<TEntity, TProp>> fkExpr,
-        //    DeleteBehavior delete = DeleteBehavior.NoAction)
-        //    where TEntity : class
-        //{
-        //    var e = mb.Entity<TEntity>();
-        //    var objExpr = ToObjectExpr(fkExpr);
-
-        //    e.HasIndex(objExpr);
-
-        //    e.HasOne<IdentityUser<int>>()
-        //     .WithMany()
-        //     .HasForeignKey(objExpr)
-        //     .HasPrincipalKey(u => u.Id)
-        //     .OnDelete(delete);
-        //}
-        // Aplica índice + FK hacia AppUser (ID_USER) con DeleteBehavior configurable
         private static void MapUserFK<TEntity, TProp>(
             ModelBuilder mb,
             Expression<Func<TEntity, TProp>> fkExpr,
@@ -547,9 +528,6 @@ namespace tesisproject.backend.Data
             {
                 // Un mismo usuario no puede repetirse en el mismo producto
                 b.HasIndex(x => new { x.ProductId, x.UserId }).IsUnique();
-
-                // Si manejas orden de autor y quieres que no se repita por producto:
-                // b.HasIndex(x => new { x.ProductId, x.AuthorOrder }).IsUnique();
 
                 b.HasOne(x => x.Product)
                  .WithMany(p => p.Authors!)

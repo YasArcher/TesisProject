@@ -6,6 +6,7 @@ using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Controllers
 {
+    [Authorize(Roles = "superadmin")]
     [ApiController]
     [Route("api/analytics/etl")]
     //[Authorize(Roles = "Admin")] // o el rol que tú uses

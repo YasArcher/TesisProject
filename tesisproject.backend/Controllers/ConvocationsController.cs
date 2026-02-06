@@ -10,7 +10,7 @@ using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Controllers
 {
-    //[Authorize(Roles = "Admin")]
+    [Authorize(Roles = "superadmin")]
     [ApiController]
     [Route("api/[controller]")]
     public class ConvocationsController : ControllerBase

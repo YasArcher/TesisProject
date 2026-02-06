@@ -8,7 +8,7 @@ using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Controllers
 {
-    [Authorize]
+    [Authorize(Roles = "superadmin")]
     [ApiController]
     [Route("api/[controller]")]
     public class VisitsController : ControllerBase

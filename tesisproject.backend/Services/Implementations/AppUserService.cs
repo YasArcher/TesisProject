@@ -134,7 +134,8 @@ namespace tesisproject.backend.Services.Implementations
             var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "technical",
-        "financial"
+        "financial",
+        "coordinador",
         // NO incluyas admin/superadmin en registro público
     };
 
