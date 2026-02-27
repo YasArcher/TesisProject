@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using tesisproject.frontend.Services.Interfaces;
+using tesisproject.shared.DTOs.Document.Response;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.frontend.Services.Implementations
@@ -12,7 +13,7 @@ namespace tesisproject.frontend.Services.Implementations
     public sealed class ApiClient : IApiClient
     {
         private readonly HttpClient _http;
-        private readonly ITokenStore _tokenStore; // 👈 NUEVO
+        private readonly ITokenStore _tokenStore;
 
         private static readonly JsonSerializerOptions _jsonOptions = new()
         {
@@ -20,7 +21,7 @@ namespace tesisproject.frontend.Services.Implementations
             PropertyNameCaseInsensitive = true
         };
 
-        public ApiClient(HttpClient http, ITokenStore tokenStore) // 👈 INYECTAR
+        public ApiClient(HttpClient http, ITokenStore tokenStore)
         {
             _http = http;
             _tokenStore = tokenStore;
@@ -31,18 +32,13 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
-                await AttachAuthHeaderAsync(ct); // 👈 aquí
-
-                using var resp = await _http.GetAsync(url, ct);
-                return await ParseResponseAsync<T>(resp, ct);
+                using var req = await CreateRequestAsync(HttpMethod.Get, url, content: null, ct);
+                using var resp = await _http.SendAsync(req, ct);
+                return await ParseApiResponseAsync<T>(resp, ct);
             }
             catch (Exception ex)
             {
-                return new HttpResponseWrapper<T?>(
-                    success: false,
-                    response: default,
-                    error: ex.Message,
-                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
+                return Fail<T>(ex);
             }
         }
 
@@ -54,23 +50,14 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
-                await AttachAuthHeaderAsync(ct); // 👈 aquí
-
-                var json = new StringContent(
-                    JsonSerializer.Serialize(body, _jsonOptions),
-                    Encoding.UTF8,
-                    "application/json");
-
-                using var resp = await _http.PostAsync(url, json, ct);
-                return await ParseResponseAsync<TResponse>(resp, ct);
+                using var content = JsonContent(body);
+                using var req = await CreateRequestAsync(HttpMethod.Post, url, content, ct);
+                using var resp = await _http.SendAsync(req, ct);
+                return await ParseApiResponseAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
-                return new HttpResponseWrapper<TResponse?>(
-                    success: false,
-                    response: default,
-                    error: ex.Message,
-                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
+                return Fail<TResponse>(ex);
             }
         }
 
@@ -82,23 +69,14 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
-                await AttachAuthHeaderAsync(ct); // 👈 aquí
-
-                var json = new StringContent(
-                    JsonSerializer.Serialize(body, _jsonOptions),
-                    Encoding.UTF8,
-                    "application/json");
-
-                using var resp = await _http.PutAsync(url, json, ct);
-                return await ParseResponseAsync<TResponse>(resp, ct);
+                using var content = JsonContent(body);
+                using var req = await CreateRequestAsync(HttpMethod.Put, url, content, ct);
+                using var resp = await _http.SendAsync(req, ct);
+                return await ParseApiResponseAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
-                return new HttpResponseWrapper<TResponse?>(
-                    success: false,
-                    response: default,
-                    error: ex.Message,
-                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
+                return Fail<TResponse>(ex);
             }
         }
 
@@ -110,146 +88,29 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
-                await AttachAuthHeaderAsync(ct); // 👈 aquí
-
-                var json = new StringContent(
-                    JsonSerializer.Serialize(body, _jsonOptions),
-                    Encoding.UTF8,
-                    "application/json");
-
-                using var request = new HttpRequestMessage(HttpMethod.Patch, url)
-                {
-                    Content = json
-                };
-
-                using var resp = await _http.SendAsync(request, ct);
-                return await ParseResponseAsync<TResponse>(resp, ct);
+                using var content = JsonContent(body);
+                using var req = await CreateRequestAsync(HttpMethod.Patch, url, content, ct);
+                using var resp = await _http.SendAsync(req, ct);
+                return await ParseApiResponseAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
-                return new HttpResponseWrapper<TResponse?>(
-                    success: false,
-                    response: default,
-                    error: ex.Message,
-                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
+                return Fail<TResponse>(ex);
             }
         }
 
         // ==================== DELETE ====================
-        public async Task<HttpResponseWrapper<NoContent?>> DeleteAsync(
-            string url,
-            CancellationToken ct = default)
+        public async Task<HttpResponseWrapper<NoContent?>> DeleteAsync(string url, CancellationToken ct = default)
         {
             try
             {
-                await AttachAuthHeaderAsync(ct); // 👈 aquí
-
-                using var resp = await _http.DeleteAsync(url, ct);
-                return await ParseResponseAsync<NoContent?>(resp, ct);
+                using var req = await CreateRequestAsync(HttpMethod.Delete, url, content: null, ct);
+                using var resp = await _http.SendAsync(req, ct);
+                return await ParseApiResponseAsync<NoContent?>(resp, ct);
             }
             catch (Exception ex)
             {
-                return new HttpResponseWrapper<NoContent?>(
-                    success: false,
-                    response: default,
-                    error: ex.Message,
-                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
-            }
-        }
-
-        // ==================== CORE PARSER ====================
-        private static async Task<HttpResponseWrapper<T?>> ParseResponseAsync<T>(
-            HttpResponseMessage resp,
-            CancellationToken ct)
-        {
-            var raw = await resp.Content.ReadAsStringAsync(ct);
-
-            ApiResponse<T>? apiResponse = null;
-
-            // 1) Intentar deserializar como ApiResponse<T>
-            try
-            {
-                apiResponse = JsonSerializer.Deserialize<ApiResponse<T>>(raw, _jsonOptions);
-            }
-            catch
-            {
-                // 2) Si falla, intentar deserializar como ApiResponse<object>
-                try
-                {
-                    var generic = JsonSerializer.Deserialize<ApiResponse<object>>(raw, _jsonOptions);
-
-                    if (generic is not null)
-                    {
-                        // Si el servidor indica éxito y el HTTP también, marcamos Success=true,
-                        // aunque no tengamos Data tipado (T) en este camino fallback.
-                        if (resp.IsSuccessStatusCode && generic.Success)
-                        {
-                            return new HttpResponseWrapper<T?>(
-                                success: true,
-                                response: default,
-                                error: generic.Message,
-                                httpResponse: resp);
-                        }
-
-                        return new HttpResponseWrapper<T?>(
-                            success: false,
-                            response: default,
-                            error: generic.Message ?? $"HTTP {(int)resp.StatusCode}",
-                            httpResponse: resp);
-                    }
-                }
-                catch
-                {
-                    // 3) Si tampoco encaja ApiResponse<object>, devolvemos el raw
-                    return new HttpResponseWrapper<T?>(
-                        success: false,
-                        response: default,
-                        error: $"Invalid server response: {raw}",
-                        httpResponse: resp);
-                }
-            }
-
-            // Si no se pudo deserializar ni siquiera a ApiResponse<T>
-            if (apiResponse is null)
-            {
-                return new HttpResponseWrapper<T?>(
-                    success: false,
-                    response: default,
-                    error: "Empty server response.",
-                    httpResponse: resp);
-            }
-
-            // Caso éxito normal: HTTP 2xx y Success = true
-            if (resp.IsSuccessStatusCode && apiResponse.Success)
-            {
-                return new HttpResponseWrapper<T?>(
-                    success: true,
-                    response: apiResponse.Data,
-                    error: apiResponse.Message,
-                    httpResponse: resp);
-            }
-
-            // Caso error: devolvemos siempre el mensaje del servidor si existe
-            return new HttpResponseWrapper<T?>(
-                success: false,
-                response: default,
-                error: apiResponse.Message ?? $"HTTP {(int)resp.StatusCode}",
-                httpResponse: resp);
-        }
-
-        // 👇 Método auxiliar para adjuntar el Bearer token
-        private async Task AttachAuthHeaderAsync(CancellationToken ct)
-        {
-            // el mismo token que usa tu CustomAuthStateProvider
-            var token = await _tokenStore.GetAsync();
-
-            // limpiamos siempre antes
-            _http.DefaultRequestHeaders.Authorization = null;
-
-            if (!string.IsNullOrWhiteSpace(token))
-            {
-                _http.DefaultRequestHeaders.Authorization =
-                    new AuthenticationHeaderValue("Bearer", token);
+                return Fail<NoContent?>(ex);
             }
         }
 
@@ -261,47 +122,267 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
-                await AttachAuthHeaderAsync(ct); // 👈 aquí
-
-                using var resp = await _http.PostAsync(url, content, ct);
-                return await ParseResponseAsync<TResponse>(resp, ct);
+                // content lo administra el caller normalmente; NO lo disponemos aquí
+                using var req = await CreateRequestAsync(HttpMethod.Post, url, content, ct);
+                using var resp = await _http.SendAsync(req, ct);
+                return await ParseApiResponseAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
-                return new HttpResponseWrapper<TResponse?>(
-                    success: false,
-                    response: default,
-                    error: ex.Message,
-                    httpResponse: new HttpResponseMessage(System.Net.HttpStatusCode.InternalServerError));
+                return Fail<TResponse>(ex);
             }
         }
 
-        public async Task<HttpResponseMessage> PostRawAsync<TRequest>(
-        string url,
-        TRequest body,
-        CancellationToken ct = default)
+        // ==================== GET FILE (BLOB) ====================
+        public async Task<HttpResponseWrapper<FilePayloadDTO?>> GetFileAsync(string url, CancellationToken ct = default)
         {
             try
             {
-                await AttachAuthHeaderAsync(ct); // 👈 incluye el Bearer
+                using var req = await CreateRequestAsync(HttpMethod.Get, url, content: null, ct);
 
-                var json = new StringContent(
+                using var resp = await _http.SendAsync(
+                    req,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    ct);
+
+                // Error: intenta leer JSON ApiResponse<object> si viene
+                if (!resp.IsSuccessStatusCode)
+                {
+                    var err = await TryReadApiErrorMessage(resp, ct)
+                              ?? $"HTTP {(int)resp.StatusCode}";
+                    return new HttpResponseWrapper<FilePayloadDTO?>(
+                        success: false,
+                        response: null,
+                        error: err,
+                        httpResponse: Snapshot(resp));
+                }
+
+                var bytes = await resp.Content.ReadAsByteArrayAsync(ct);
+                var contentType = resp.Content.Headers.ContentType?.ToString()
+                                  ?? "application/octet-stream";
+
+                var fileName = TryGetFileName(resp) ?? "document";
+
+                return new HttpResponseWrapper<FilePayloadDTO?>(
+                    success: true,
+                    response: new FilePayloadDTO(bytes, contentType, fileName),
+                    error: null,
+                    httpResponse: Snapshot(resp));
+            }
+            catch (Exception ex)
+            {
+                return Fail<FilePayloadDTO>(ex);
+            }
+        }
+
+        // ==================== CORE JSON PARSER ====================
+        private static async Task<HttpResponseWrapper<T?>> ParseApiResponseAsync<T>(
+            HttpResponseMessage resp,
+            CancellationToken ct)
+        {
+            string raw = string.Empty;
+            try
+            {
+                raw = await resp.Content.ReadAsStringAsync(ct);
+            }
+            catch
+            {
+                // si no se puede leer, igual devolvemos status
+            }
+
+            ApiResponse<T>? api = null;
+
+            // 1) ApiResponse<T>
+            if (!string.IsNullOrWhiteSpace(raw))
+            {
+                try
+                {
+                    api = JsonSerializer.Deserialize<ApiResponse<T>>(raw, _jsonOptions);
+                }
+                catch { /* ignore */ }
+            }
+
+            if (api is not null)
+            {
+                if (resp.IsSuccessStatusCode && api.Success)
+                {
+                    return new HttpResponseWrapper<T?>(
+                        success: true,
+                        response: api.Data,
+                        error: api.Message,
+                        httpResponse: Snapshot(resp));
+                }
+
+                return new HttpResponseWrapper<T?>(
+                    success: false,
+                    response: default,
+                    error: api.Message ?? $"HTTP {(int)resp.StatusCode}",
+                    httpResponse: Snapshot(resp));
+            }
+
+            // 2) fallback ApiResponse<object> para sacar Message
+            if (!string.IsNullOrWhiteSpace(raw))
+            {
+                try
+                {
+                    var generic = JsonSerializer.Deserialize<ApiResponse<object>>(raw, _jsonOptions);
+                    if (generic is not null)
+                    {
+                        var ok = resp.IsSuccessStatusCode && generic.Success;
+                        return new HttpResponseWrapper<T?>(
+                            success: ok,
+                            response: default,
+                            error: generic.Message ?? $"HTTP {(int)resp.StatusCode}",
+                            httpResponse: Snapshot(resp));
+                    }
+                }
+                catch { /* ignore */ }
+            }
+
+            // 3) fallback final (texto crudo)
+            var msg = string.IsNullOrWhiteSpace(raw)
+                ? $"HTTP {(int)resp.StatusCode}"
+                : raw;
+
+            return new HttpResponseWrapper<T?>(
+                success: resp.IsSuccessStatusCode,
+                response: default,
+                error: msg,
+                httpResponse: Snapshot(resp));
+        }
+
+        private async Task<HttpRequestMessage> CreateRequestAsync(
+            HttpMethod method,
+            string url,
+            HttpContent? content,
+            CancellationToken ct)
+        {
+            var req = new HttpRequestMessage(method, url)
+            {
+                Content = content
+            };
+
+            var token = await _tokenStore.GetAsync();
+            if (!string.IsNullOrWhiteSpace(token))
+                req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            return req;
+        }
+
+        private static StringContent JsonContent<T>(T body)
+            => new(
+                JsonSerializer.Serialize(body, _jsonOptions),
+                Encoding.UTF8,
+                "application/json");
+
+        private static HttpResponseWrapper<T?> Fail<T>(Exception ex)
+            => new(
+                success: false,
+                response: default,
+                error: ex.Message,
+                httpResponse: new HttpResponseMessage(HttpStatusCode.InternalServerError)
+                {
+                    ReasonPhrase = ex.Message
+                });
+
+        private static HttpResponseMessage Snapshot(HttpResponseMessage resp)
+            => new(resp.StatusCode)
+            {
+                ReasonPhrase = resp.ReasonPhrase
+            };
+
+        private static async Task<string?> TryReadApiErrorMessage(HttpResponseMessage resp, CancellationToken ct)
+        {
+            try
+            {
+                var raw = await resp.Content.ReadAsStringAsync(ct);
+                if (string.IsNullOrWhiteSpace(raw)) return null;
+
+                // intenta ApiResponse<object>
+                try
+                {
+                    var generic = JsonSerializer.Deserialize<ApiResponse<object>>(raw, _jsonOptions);
+                    return generic?.Message ?? raw;
+                }
+                catch
+                {
+                    return raw;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private static string? TryGetFileName(HttpResponseMessage resp)
+        {
+            // 1) Content.Headers.ContentDisposition
+            var cd = resp.Content.Headers.ContentDisposition;
+            var fromContent = cd?.FileNameStar ?? cd?.FileName;
+            if (!string.IsNullOrWhiteSpace(fromContent))
+                return fromContent.Trim('"');
+
+            // 2) Resp.Headers o Content.Headers por si viene como header normal
+            if (resp.Headers.TryGetValues("Content-Disposition", out var values) ||
+                resp.Content.Headers.TryGetValues("Content-Disposition", out values))
+            {
+                var raw = values.FirstOrDefault();
+                if (!string.IsNullOrWhiteSpace(raw) &&
+                    ContentDispositionHeaderValue.TryParse(raw, out var parsed))
+                {
+                    var name = parsed.FileNameStar ?? parsed.FileName;
+                    if (!string.IsNullOrWhiteSpace(name))
+                        return name.Trim('"');
+                }
+            }
+
+            return null;
+        }
+
+        public async Task<HttpResponseWrapper<FilePayloadDTO?>> PostFileAsync<TRequest>(
+    string url,
+    TRequest body,
+    CancellationToken ct = default)
+        {
+            try
+            {
+                using var content = new StringContent(
                     JsonSerializer.Serialize(body, _jsonOptions),
                     Encoding.UTF8,
                     "application/json");
 
-                // ⚠️ OJO: NO usamos using, porque devolvemos el HttpResponseMessage
-                var resp = await _http.PostAsync(url, json, ct);
-                return resp;
+                using var req = await CreateRequestAsync(HttpMethod.Post, url, content, ct);
+
+                using var resp = await _http.SendAsync(
+                    req,
+                    HttpCompletionOption.ResponseHeadersRead,
+                    ct);
+
+                if (!resp.IsSuccessStatusCode)
+                {
+                    // intenta leer mensaje ApiResponse<object>
+                    var err = await TryReadApiErrorMessage(resp, ct) ?? $"HTTP {(int)resp.StatusCode}";
+                    return new HttpResponseWrapper<FilePayloadDTO?>(
+                        success: false,
+                        response: null,
+                        error: err,
+                        httpResponse: Snapshot(resp));
+                }
+
+                var bytes = await resp.Content.ReadAsByteArrayAsync(ct);
+                var contentType = resp.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+                var fileName = TryGetFileName(resp) ?? "export.xlsx";
+
+                return new HttpResponseWrapper<FilePayloadDTO?>(
+                    success: true,
+                    response: new FilePayloadDTO(bytes, contentType, fileName),
+                    error: null,
+                    httpResponse: Snapshot(resp));
             }
             catch (Exception ex)
             {
-                // En caso de error fuerte, devolvemos un HttpResponseMessage de error
-                var errorResponse = new HttpResponseMessage(HttpStatusCode.InternalServerError)
-                {
-                    ReasonPhrase = ex.Message
-                };
-                return errorResponse;
+                return Fail<FilePayloadDTO?>(ex);
             }
         }
     }

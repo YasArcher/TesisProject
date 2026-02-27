@@ -399,18 +399,14 @@
                 Columns = new List<ExportColumnDTO>()
             };
 
-            foreach (var col in EditModel.Columns
-                         .OrderBy(c => c.OrderIndex))
+            foreach (var col in EditModel.Columns.OrderBy(c => c.OrderIndex))
             {
-                // Buscar metadata del campo
                 var field = Fields.FirstOrDefault(f => f.Id == col.FieldId);
-                if (field is null)
-                    continue; // campo inválido, lo saltamos
+                if (field is null) continue;
 
                 // 2) Resolver FieldKey (con mapeos especiales)
                 var fieldKey = field.Key;
 
-                // 🔹 Mapeo a las claves “super” para expansión dinámica
                 if (fieldKey == "CASES_OBJETIVOS")
                     fieldKey = "MATRIX_DYNAMIC_OBJECTIVES";
                 else if (fieldKey == "CASES_RESEARCH_CATEGORIES")
@@ -418,7 +414,7 @@
 
                 // 3) Resolver header final
                 var header = string.IsNullOrWhiteSpace(col.TargetHeader)
-                    ? field.DefaultHeader ?? field.Key // fallback por si acaso
+                    ? field.DefaultHeader ?? field.Key
                     : col.TargetHeader;
 
                 request.Columns.Add(new ExportColumnDTO
@@ -435,25 +431,30 @@
                 return;
             }
 
-            // 4) Llamar al backend para generar el Excel
-            var httpResp = await ExportTemplates.ExportMatrixExcelAsync(request);
+            // 4) Llamar al backend (AHORA VIENE EN WRAPPER)
+            var r = await ExportTemplates.ExportMatrixExcelAsync(request);
 
-            if (!httpResp.IsSuccessStatusCode)
+            if (!r.Success || r.Response is null)
             {
-                var msg = httpResp.ReasonPhrase ?? "Error al generar el archivo Excel.";
-                Toast.ShowError(msg);
+                Toast.ShowError(r.Error ?? "Error al generar el archivo Excel.");
                 return;
             }
 
-            // 5) Descargar el archivo en el navegador
-            var bytes = await httpResp.Content.ReadAsByteArrayAsync();
-            var base64 = Convert.ToBase64String(bytes);
+            var file = r.Response; // FilePayload(Bytes, ContentType, FileName)
 
-            var fileName = string.IsNullOrWhiteSpace(request.Name)
-                ? "matriz_proyectos.xlsx"
-                : $"{request.Name}.xlsx";
+            // 5) Descargar en navegador usando Blob (recomendado)
+            var url = await JS.InvokeAsync<string>(
+                "docViewer.bytesToBlobUrl",
+                file.Bytes,
+                file.ContentType);
 
-            await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, base64);
+            // Si el backend no manda filename, usamos fallback
+            var fileName = string.IsNullOrWhiteSpace(file.FileName)
+                ? (string.IsNullOrWhiteSpace(request.Name) ? "matriz_proyectos.xlsx" : $"{request.Name}.xlsx")
+                : file.FileName;
+
+            await JS.InvokeVoidAsync("docViewer.downloadUrl", url, fileName);
+            await JS.InvokeVoidAsync("docViewer.revoke", url);
 
             Toast.ShowSuccess("Exportación realizada correctamente.");
         }
@@ -466,6 +467,7 @@
             IsBusy = false;
         }
     }
+
 
 
     // =========================

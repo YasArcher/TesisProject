@@ -13,6 +13,12 @@ namespace tesisproject.backend.Services.Implementations
     {
         private readonly IUnitOfWork _uow;
 
+        private const string InvalidIdMessage = "Invalid id.";
+        private const string InvalidRequestMessage = "Invalid request.";
+        private const string NameRequiredMessage = "Name is required.";
+        private const string NameAlreadyExistsMessage = "Name already exists.";
+        private const string InstitutionNotFoundMessage = "Institution not found.";
+
         public InstitutionService(IUnitOfWork uow)
         {
             _uow = uow;
@@ -31,14 +37,7 @@ namespace tesisproject.backend.Services.Implementations
                 include: q => q.Include(i => i.Country),
                 ct: ct);
 
-            var dto = items.Select(x => new InstitutionListItemDTO
-            {
-                Id = x.Id,
-                Name = x.Name,
-                IsActive = x.IsActive,
-                CountryId = x.CountryId,
-                CountryName = x.Country != null ? x.Country.Name : null
-            }).ToList();
+            var dto = items.Select(ToListItemDTO).ToList();
 
             return ServiceResult<IReadOnlyList<InstitutionListItemDTO>>.Ok(dto);
         }
@@ -48,32 +47,17 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<InstitutionDetailDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
 
             // Para detalle, podemos usar GetByIdAsync + rehidratado manual
             var entity = await _uow.Institutions.GetByIdAsync(new object[] { id }, ct);
             if (entity is null)
-                return ServiceResult<InstitutionDetailDTO>.Fail("Institution not found.", ErrorType.NotFound);
+                return ServiceResult<InstitutionDetailDTO>.Fail(InstitutionNotFoundMessage, ErrorType.NotFound);
 
             // Si necesitas CountryName aquí, puedes cargarlo con Countries.GetByIdAsync
-            string? countryName = null;
-            if (entity.CountryId.HasValue)
-            {
-                var country = await _uow.Countries.GetByIdAsync(
-                    new object[] { entity.CountryId.Value }, ct);
-                countryName = country?.Name;
-            }
+            var countryName = await ResolveCountryNameAsync(entity.CountryId, ct);
 
-            var dto = new InstitutionDetailDTO
-            {
-                Id = entity.Id,
-                Name = entity.Name,
-                IsActive = entity.IsActive,
-                CountryId = entity.CountryId,
-                CountryName = countryName
-            };
-
-            return ServiceResult<InstitutionDetailDTO>.Ok(dto);
+            return ServiceResult<InstitutionDetailDTO>.Ok(ToDetailDTO(entity, countryName));
         }
 
         public async Task<ServiceResult<List<KeyValueItemDTO>>> GetKeyValuesAsync(
@@ -92,17 +76,17 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null)
-                return ServiceResult<InstitutionDetailDTO>.Fail("Invalid request.", ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(InvalidRequestMessage, ErrorType.Validation);
 
             var name = (request.Name ?? string.Empty).Trim();
 
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<InstitutionDetailDTO>.Fail("Name is required.", ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(NameRequiredMessage, ErrorType.Validation);
 
             // Valida nombre único usando NameExistsAsync del ICatalogRepository
             var nameExists = await _uow.Institutions.NameExistsAsync(name, excludeId: null, ct);
             if (nameExists)
-                return ServiceResult<InstitutionDetailDTO>.Fail("Name already exists.", ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation);
 
             var entity = new Institution
             {
@@ -114,24 +98,9 @@ namespace tesisproject.backend.Services.Implementations
             await _uow.Institutions.AddAsync(entity, ct);
             await _uow.SaveChangesAsync(ct);
 
-            string? countryName = null;
-            if (entity.CountryId.HasValue)
-            {
-                var country = await _uow.Countries.GetByIdAsync(
-                    new object[] { entity.CountryId.Value }, ct);
-                countryName = country?.Name;
-            }
+            var countryName = await ResolveCountryNameAsync(entity.CountryId, ct);
 
-            var dto = new InstitutionDetailDTO
-            {
-                Id = entity.Id,
-                Name = entity.Name,
-                IsActive = entity.IsActive,
-                CountryId = entity.CountryId,
-                CountryName = countryName
-            };
-
-            return ServiceResult<InstitutionDetailDTO>.Ok(dto);
+            return ServiceResult<InstitutionDetailDTO>.Ok(ToDetailDTO(entity, countryName));
         }
 
         public async Task<ServiceResult<InstitutionDetailDTO>> UpdateAsync(
@@ -139,20 +108,20 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null || request.Id <= 0)
-                return ServiceResult<InstitutionDetailDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
 
             var name = (request.Name ?? string.Empty).Trim();
 
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<InstitutionDetailDTO>.Fail("Name is required.", ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(NameRequiredMessage, ErrorType.Validation);
 
             var entity = await _uow.Institutions.GetByIdAsync(new object[] { request.Id }, ct);
             if (entity is null)
-                return ServiceResult<InstitutionDetailDTO>.Fail("Institution not found.", ErrorType.NotFound);
+                return ServiceResult<InstitutionDetailDTO>.Fail(InstitutionNotFoundMessage, ErrorType.NotFound);
 
             var nameExists = await _uow.Institutions.NameExistsAsync(name, excludeId: request.Id, ct);
             if (nameExists)
-                return ServiceResult<InstitutionDetailDTO>.Fail("Name already exists.", ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation);
 
             entity.Name = name;
             entity.CountryId = request.CountryId;
@@ -161,15 +130,28 @@ namespace tesisproject.backend.Services.Implementations
             _uow.Institutions.Update(entity);
             await _uow.SaveChangesAsync(ct);
 
-            string? countryName = null;
-            if (entity.CountryId.HasValue)
-            {
-                var country = await _uow.Countries.GetByIdAsync(
-                    new object[] { entity.CountryId.Value }, ct);
-                countryName = country?.Name;
-            }
+            var countryName = await ResolveCountryNameAsync(entity.CountryId, ct);
 
-            var dto = new InstitutionDetailDTO
+            return ServiceResult<InstitutionDetailDTO>.Ok(ToDetailDTO(entity, countryName));
+        }
+
+        // ================ HELPERS ================
+
+        private static InstitutionListItemDTO ToListItemDTO(Institution entity)
+        {
+            return new InstitutionListItemDTO
+            {
+                Id = entity.Id,
+                Name = entity.Name,
+                IsActive = entity.IsActive,
+                CountryId = entity.CountryId,
+                CountryName = entity.Country != null ? entity.Country.Name : null
+            };
+        }
+
+        private static InstitutionDetailDTO ToDetailDTO(Institution entity, string? countryName)
+        {
+            return new InstitutionDetailDTO
             {
                 Id = entity.Id,
                 Name = entity.Name,
@@ -177,8 +159,15 @@ namespace tesisproject.backend.Services.Implementations
                 CountryId = entity.CountryId,
                 CountryName = countryName
             };
+        }
 
-            return ServiceResult<InstitutionDetailDTO>.Ok(dto);
+        private async Task<string?> ResolveCountryNameAsync(int? countryId, CancellationToken ct)
+        {
+            if (!countryId.HasValue)
+                return null;
+
+            var country = await _uow.Countries.GetByIdAsync(new object[] { countryId.Value }, ct);
+            return country?.Name;
         }
     }
 }

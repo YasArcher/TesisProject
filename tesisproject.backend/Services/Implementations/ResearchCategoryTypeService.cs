@@ -10,6 +10,9 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class ResearchCategoryTypeService : IResearchCategoryTypeService
     {
+        private const string MsgItemNotFound = "Item not found";
+        private const string MsgNameAlreadyExists = "Name already exists";
+
         private readonly IUnitOfWork _uow;
 
         public ResearchCategoryTypeService(IUnitOfWork uow)
@@ -31,16 +34,9 @@ namespace tesisproject.backend.Services.Implementations
                 ct: ct
             );
 
-
-            var dto = items.Select(x => new ResearchCategoryTypeListItemDTO
-            {
-                Id = x.Id,
-                Name = x.Name,
-                IsActive = x.IsActive,
-                ResearchCategoryGroupId = x.ResearchCategoryGroupId,
-                CategoriesCount = x.ResearchCategories.Count
-            })
-            .ToList();
+            var dto = items
+                .Select(ToListItemDto)
+                .ToList();
 
             return ServiceResult<IReadOnlyList<ResearchCategoryTypeListItemDTO>>.Ok(dto);
         }
@@ -60,24 +56,11 @@ namespace tesisproject.backend.Services.Implementations
 
             if (entity == null)
                 return ServiceResult<ResearchCategoryTypeDetailDTO>.Fail(
-                    "Item not found",
+                    MsgItemNotFound,
                     ErrorType.NotFound
                 );
 
-            var dto = new ResearchCategoryTypeDetailDTO
-            {
-                Id = entity.Id,
-                Name = entity.Name,
-                IsActive = entity.IsActive,
-                ResearchCategoryGroupId = entity.ResearchCategoryGroupId,
-                Categories = entity.ResearchCategories
-                    .Select(c => new ResearchCategoryTypeDetailDTO.ResearchCategoryItem
-                    {
-                        Id = c.Id,
-                        Name = c.Name
-                    })
-                    .ToList()
-            };
+            var dto = ToDetailDto(entity);
 
             return ServiceResult<ResearchCategoryTypeDetailDTO>.Ok(dto);
         }
@@ -90,10 +73,10 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             // Validate name exists
-            bool exists = await _uow.ResearchCategoryTypes.NameExistsAsync(dto.Name, null, ct);
-            if (exists)
+            var nameExists = await _uow.ResearchCategoryTypes.NameExistsAsync(dto.Name, null, ct);
+            if (nameExists)
                 return ServiceResult<int>.Fail(
-                    "Name already exists",
+                    MsgNameAlreadyExists,
                     ErrorType.Conflict
                 );
 
@@ -121,12 +104,12 @@ namespace tesisproject.backend.Services.Implementations
         {
             var entity = await _uow.ResearchCategoryTypes.GetByIdAsync(new object[] { id }, ct);
             if (entity == null)
-                return ServiceResult<bool>.Fail("Item not found", ErrorType.NotFound);
+                return ServiceResult<bool>.Fail(MsgItemNotFound, ErrorType.NotFound);
 
             // Validate name
-            bool exists = await _uow.ResearchCategoryTypes.NameExistsAsync(dto.Name, id, ct);
-            if (exists)
-                return ServiceResult<bool>.Fail("Name already exists", ErrorType.Conflict);
+            var nameExists = await _uow.ResearchCategoryTypes.NameExistsAsync(dto.Name, id, ct);
+            if (nameExists)
+                return ServiceResult<bool>.Fail(MsgNameAlreadyExists, ErrorType.Conflict);
 
             entity.Name = dto.Name;
             entity.IsActive = dto.IsActive;
@@ -148,12 +131,47 @@ namespace tesisproject.backend.Services.Implementations
             var entity = await _uow.ResearchCategoryTypes.GetByIdAsync(new object[] { id }, ct);
 
             if (entity == null)
-                return ServiceResult<bool>.Fail("Item not found", ErrorType.NotFound);
+                return ServiceResult<bool>.Fail(MsgItemNotFound, ErrorType.NotFound);
 
             _uow.ResearchCategoryTypes.Remove(entity);
             await _uow.SaveChangesAsync(ct);
 
             return ServiceResult<bool>.Ok(true);
+        }
+
+        private static ResearchCategoryTypeListItemDTO ToListItemDto(ResearchCategoryType x)
+        {
+            return new ResearchCategoryTypeListItemDTO
+            {
+                Id = x.Id,
+                Name = x.Name,
+                IsActive = x.IsActive,
+                ResearchCategoryGroupId = x.ResearchCategoryGroupId,
+                CategoriesCount = x.ResearchCategories.Count
+            };
+        }
+
+        private static ResearchCategoryTypeDetailDTO ToDetailDto(ResearchCategoryType entity)
+        {
+            return new ResearchCategoryTypeDetailDTO
+            {
+                Id = entity.Id,
+                Name = entity.Name,
+                IsActive = entity.IsActive,
+                ResearchCategoryGroupId = entity.ResearchCategoryGroupId,
+                Categories = entity.ResearchCategories
+                    .Select(ToDetailItemDto)
+                    .ToList()
+            };
+        }
+
+        private static ResearchCategoryTypeDetailDTO.ResearchCategoryItem ToDetailItemDto(ResearchCategory c)
+        {
+            return new ResearchCategoryTypeDetailDTO.ResearchCategoryItem
+            {
+                Id = c.Id,
+                Name = c.Name
+            };
         }
     }
 }

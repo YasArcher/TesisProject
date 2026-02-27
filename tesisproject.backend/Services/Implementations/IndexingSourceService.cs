@@ -12,6 +12,12 @@ namespace tesisproject.backend.Services.Implementations
     {
         private readonly IUnitOfWork _uow;
 
+        private const string InvalidIdMessage = "Invalid id.";
+        private const string InvalidRequestMessage = "Invalid request.";
+        private const string NameRequiredMessage = "Name is required.";
+        private const string NameAlreadyExistsMessage = "Name already exists.";
+        private const string IndexingSourceNotFoundMessage = "Indexing source not found.";
+
         public IndexingSourceService(IUnitOfWork uow)
         {
             _uow = uow;
@@ -29,14 +35,7 @@ namespace tesisproject.backend.Services.Implementations
                 include: null,
                 ct: ct);
 
-            var dto = items.Select(x => new IndexingSourceListItemDTO
-            {
-                Id = x.Id,
-                Name = x.Name,
-                Abbreviation = x.Abbreviation,
-                ReferenceUrl = x.ReferenceUrl,
-                IsActive = x.IsActive
-            }).ToList();
+            var dto = items.Select(ToListItemDTO).ToList();
 
             return ServiceResult<IReadOnlyList<IndexingSourceListItemDTO>>.Ok(dto);
         }
@@ -46,22 +45,13 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<IndexingSourceListItemDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return ServiceResult<IndexingSourceListItemDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
 
             var entity = await _uow.IndexingSources.GetByIdAsync(new object[] { id }, ct);
             if (entity is null)
-                return ServiceResult<IndexingSourceListItemDTO>.Fail("Indexing source not found.", ErrorType.NotFound);
+                return ServiceResult<IndexingSourceListItemDTO>.Fail(IndexingSourceNotFoundMessage, ErrorType.NotFound);
 
-            var dto = new IndexingSourceListItemDTO
-            {
-                Id = entity.Id,
-                Name = entity.Name,
-                Abbreviation = entity.Abbreviation,
-                ReferenceUrl = entity.ReferenceUrl,
-                IsActive = entity.IsActive
-            };
-
-            return ServiceResult<IndexingSourceListItemDTO>.Ok(dto);
+            return ServiceResult<IndexingSourceListItemDTO>.Ok(ToListItemDTO(entity));
         }
 
         public async Task<ServiceResult<List<KeyValueItemDTO>>> GetKeyValuesAsync(
@@ -80,22 +70,18 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null)
-                return ServiceResult<IndexingSourceListItemDTO>.Fail("Invalid request.", ErrorType.Validation);
+                return ServiceResult<IndexingSourceListItemDTO>.Fail(InvalidRequestMessage, ErrorType.Validation);
 
-            var name = (request.Name ?? string.Empty).Trim();
-            var abbr = string.IsNullOrWhiteSpace(request.Abbreviation)
-                ? null
-                : request.Abbreviation!.Trim();
-            var url = string.IsNullOrWhiteSpace(request.ReferenceUrl)
-                ? null
-                : request.ReferenceUrl!.Trim();
+            var name = NormalizeRequired(request.Name);
+            var abbr = NormalizeOptional(request.Abbreviation);
+            var url = NormalizeOptional(request.ReferenceUrl);
 
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<IndexingSourceListItemDTO>.Fail("Name is required.", ErrorType.Validation);
+                return ServiceResult<IndexingSourceListItemDTO>.Fail(NameRequiredMessage, ErrorType.Validation);
 
             var nameExists = await _uow.IndexingSources.NameExistsAsync(name, excludeId: null, ct);
             if (nameExists)
-                return ServiceResult<IndexingSourceListItemDTO>.Fail("Name already exists.", ErrorType.Validation);
+                return ServiceResult<IndexingSourceListItemDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation);
 
             var entity = new IndexingSource
             {
@@ -108,16 +94,7 @@ namespace tesisproject.backend.Services.Implementations
             await _uow.IndexingSources.AddAsync(entity, ct);
             await _uow.SaveChangesAsync(ct);
 
-            var dto = new IndexingSourceListItemDTO
-            {
-                Id = entity.Id,
-                Name = entity.Name,
-                Abbreviation = entity.Abbreviation,
-                ReferenceUrl = entity.ReferenceUrl,
-                IsActive = entity.IsActive
-            };
-
-            return ServiceResult<IndexingSourceListItemDTO>.Ok(dto);
+            return ServiceResult<IndexingSourceListItemDTO>.Ok(ToListItemDTO(entity));
         }
 
         public async Task<ServiceResult<IndexingSourceListItemDTO>> UpdateAsync(
@@ -125,26 +102,22 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null || request.Id <= 0)
-                return ServiceResult<IndexingSourceListItemDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return ServiceResult<IndexingSourceListItemDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
 
-            var name = (request.Name ?? string.Empty).Trim();
-            var abbr = string.IsNullOrWhiteSpace(request.Abbreviation)
-                ? null
-                : request.Abbreviation!.Trim();
-            var url = string.IsNullOrWhiteSpace(request.ReferenceUrl)
-                ? null
-                : request.ReferenceUrl!.Trim();
+            var name = NormalizeRequired(request.Name);
+            var abbr = NormalizeOptional(request.Abbreviation);
+            var url = NormalizeOptional(request.ReferenceUrl);
 
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<IndexingSourceListItemDTO>.Fail("Name is required.", ErrorType.Validation);
+                return ServiceResult<IndexingSourceListItemDTO>.Fail(NameRequiredMessage, ErrorType.Validation);
 
             var entity = await _uow.IndexingSources.GetByIdAsync(new object[] { request.Id }, ct);
             if (entity is null)
-                return ServiceResult<IndexingSourceListItemDTO>.Fail("Indexing source not found.", ErrorType.NotFound);
+                return ServiceResult<IndexingSourceListItemDTO>.Fail(IndexingSourceNotFoundMessage, ErrorType.NotFound);
 
             var nameExists = await _uow.IndexingSources.NameExistsAsync(name, excludeId: request.Id, ct);
             if (nameExists)
-                return ServiceResult<IndexingSourceListItemDTO>.Fail("Name already exists.", ErrorType.Validation);
+                return ServiceResult<IndexingSourceListItemDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation);
 
             entity.Name = name;
             entity.Abbreviation = abbr;
@@ -154,7 +127,14 @@ namespace tesisproject.backend.Services.Implementations
             _uow.IndexingSources.Update(entity);
             await _uow.SaveChangesAsync(ct);
 
-            var dto = new IndexingSourceListItemDTO
+            return ServiceResult<IndexingSourceListItemDTO>.Ok(ToListItemDTO(entity));
+        }
+
+        // ================ HELPERS ================
+
+        private static IndexingSourceListItemDTO ToListItemDTO(IndexingSource entity)
+        {
+            return new IndexingSourceListItemDTO
             {
                 Id = entity.Id,
                 Name = entity.Name,
@@ -162,8 +142,12 @@ namespace tesisproject.backend.Services.Implementations
                 ReferenceUrl = entity.ReferenceUrl,
                 IsActive = entity.IsActive
             };
-
-            return ServiceResult<IndexingSourceListItemDTO>.Ok(dto);
         }
+
+        private static string NormalizeRequired(string? value)
+            => (value ?? string.Empty).Trim();
+
+        private static string? NormalizeOptional(string? value)
+            => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

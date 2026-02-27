@@ -1,11 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using System.Linq.Expressions;
 using tesisproject.backend.Data;
 using tesisproject.backend.Repositories.Interfaces;
-using tesisproject.shared.DTOs.Convocation.Response;
-using tesisproject.shared.DTOs.ConvocationRule.Request;
-using tesisproject.shared.DTOs.ConvocationRule.Response;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Enums;
 
 namespace tesisproject.backend.Repositories.Implementations
 {
@@ -28,6 +25,7 @@ namespace tesisproject.backend.Repositories.Implementations
         public async Task<Convocation?> GetByIdAsync(int id, bool includeRules = false, CancellationToken ct = default)
         {
             IQueryable<Convocation> q = _db;
+
             if (includeRules)
             {
                 q = q
@@ -35,6 +33,7 @@ namespace tesisproject.backend.Repositories.Implementations
                         .ThenInclude(r => r.AllowedIndexings!)
                             .ThenInclude(ai => ai.IndexingSource);
             }
+
             return await q.AsNoTracking().FirstOrDefaultAsync(c => c.Id == id, ct);
         }
 
@@ -56,13 +55,20 @@ namespace tesisproject.backend.Repositories.Implementations
         /// </summary>
         public async Task SetActiveExclusiveAsync(int convocationId, CancellationToken ct = default)
         {
-            // Deactivate all
-            var all = await _db.Where(c => c.IsActive || c.Id == convocationId).ToListAsync(ct);
-            foreach (var c in all) c.IsActive = (c.Id == convocationId);
+            // Tracking query (intencional): queremos modificar y que UoW persista.
+            var all = await _db
+                .Where(c => c.IsActive || c.Id == convocationId)
+                .ToListAsync(ct);
+
+            foreach (var c in all)
+                c.IsActive = (c.Id == convocationId);
+
+            // Nota: si quisieras optimizar con ExecuteUpdateAsync (EF Core 7+),
+            // se puede, pero depende de versión/provider.
         }
 
         /// <summary>
-        /// Returns list filtered by optional text and active flag (without dates – your model no longer uses date ranges).
+        /// Returns list filtered by optional text and active flag.
         /// </summary>
         public async Task<List<Convocation>> SearchAsync(string? text, bool? onlyActive, CancellationToken ct = default)
         {
@@ -80,13 +86,20 @@ namespace tesisproject.backend.Repositories.Implementations
         }
 
         /// <summary>
-        /// Returns paged convocations (no date logic).
+        /// Returns paged convocations.
         /// </summary>
         public async Task<(List<Convocation> items, int total)> GetPagedAsync(
             int page, int pageSize, string? search = null, CancellationToken ct = default)
         {
-            if (page <= 0) page = 1;
-            if (pageSize <= 0) pageSize = 10;
+            // Defaults + clamp desde enum (evita números quemados)
+            var defaultPage = (int)ConvocationQueryConfig.DefaultPage;
+            var defaultPageSize = (int)ConvocationQueryConfig.DefaultPageSize;
+            var maxPageSize = (int)ConvocationQueryConfig.MaxPageSize;
+
+            if (page <= 0) page = defaultPage;
+
+            if (pageSize <= 0) pageSize = defaultPageSize;
+            if (pageSize > maxPageSize) pageSize = maxPageSize;
 
             var q = _db.AsNoTracking();
 
@@ -112,6 +125,7 @@ namespace tesisproject.backend.Repositories.Implementations
         {
             var conv = await _db.Include(c => c.Rules)
                                 .FirstOrDefaultAsync(c => c.Id == convocationId, ct);
+
             if (conv is null) throw new InvalidOperationException("Convocation not found.");
 
             conv.Rules ??= new List<ConvocationRule>();
@@ -135,6 +149,7 @@ namespace tesisproject.backend.Repositories.Implementations
                 .FirstOrDefaultAsync(r => r.Id == ruleId && r.ConvocationId == convocationId, ct);
 
             if (existing is null) return;
+
             _ctx.Remove(existing);
         }
 
@@ -145,17 +160,24 @@ namespace tesisproject.backend.Repositories.Implementations
         {
             var dbSet = _ctx.Set<ConvocationRuleIndexing>();
 
-            // Current
-            var current = await dbSet.Where(x => x.ConvocationRuleId == ruleId).ToListAsync(ct);
+            var current = await dbSet
+                .Where(x => x.ConvocationRuleId == ruleId)
+                .ToListAsync(ct);
 
             var desired = indexingSourceIds.Distinct().ToHashSet();
-            var toRemove = current.Where(c => !desired.Contains(c.IndexingSourceId)).ToList();
-            var toAdd = desired.Except(current.Select(c => c.IndexingSourceId))
-                               .Select(id => new ConvocationRuleIndexing
-                               {
-                                   ConvocationRuleId = ruleId,
-                                   IndexingSourceId = id
-                               }).ToList();
+
+            var toRemove = current
+                .Where(c => !desired.Contains(c.IndexingSourceId))
+                .ToList();
+
+            var toAdd = desired
+                .Except(current.Select(c => c.IndexingSourceId))
+                .Select(id => new ConvocationRuleIndexing
+                {
+                    ConvocationRuleId = ruleId,
+                    IndexingSourceId = id
+                })
+                .ToList();
 
             if (toRemove.Any()) dbSet.RemoveRange(toRemove);
             if (toAdd.Any()) await dbSet.AddRangeAsync(toAdd, ct);

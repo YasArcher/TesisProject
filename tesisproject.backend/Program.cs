@@ -218,7 +218,6 @@ static class StartupExtensions
             });
         });
     }
-
     public static void ConfigureOptions(this WebApplicationBuilder builder)
     {
         builder.Services.AddOptions<ExternalApiOptions>()
@@ -228,7 +227,13 @@ static class StartupExtensions
 
         builder.Services.AddOptions<StorageOptions>()
             .Bind(builder.Configuration.GetSection(StorageOptions.SectionName))
+            .ValidateDataAnnotations()
             .Validate(o => !string.IsNullOrWhiteSpace(o.RootPath), "Storage:RootPath is required")
+            .ValidateOnStart();
+
+        builder.Services.AddOptions<DocumentRecognitionOptions>()
+            .Bind(builder.Configuration.GetSection(DocumentRecognitionOptions.SectionName))
+            .ValidateDataAnnotations()
             .ValidateOnStart();
     }
 

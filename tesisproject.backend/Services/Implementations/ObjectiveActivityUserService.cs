@@ -9,6 +9,17 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class ObjectiveActivityUserService : IObjectiveActivityUserService
     {
+        private const string RequestRequiredMessage = "Request is required.";
+        private const string ObjectiveActivityIdRequiredMessage = "ObjectiveActivityId is required.";
+        private const string UserIdRequiredMessage = "UserId is required.";
+        private const string VisitIdRequiredMessage = "VisitId is required.";
+
+        private const string InvalidIdMessage = "Invalid id.";
+        private const string ObjectiveActivityNotFoundMessage = "ObjectiveActivity not found.";
+        private const string VisitNotFoundMessage = "Visit not found.";
+        private const string AssignmentNotFoundMessage = "Assignment not found.";
+        private const string AssignmentAlreadyExistsMessage = "Assignment already exists for this activity, user and visit.";
+
         private readonly IUnitOfWork _uow;
 
         public ObjectiveActivityUserService(IUnitOfWork uow)
@@ -24,11 +35,11 @@ namespace tesisproject.backend.Services.Implementations
         {
             if (objectiveActivityId <= 0)
                 return ServiceResult<IReadOnlyList<ObjectiveActivityUserDTO>>
-                    .Fail("ObjectiveActivityId is required.", ErrorType.Validation);
+                    .Fail(ObjectiveActivityIdRequiredMessage, ErrorType.Validation);
 
-            var entities = await _uow.ObjectiveActivityUsers.GetByActivityAsync(objectiveActivityId, ct);
+            var assignments = await _uow.ObjectiveActivityUsers.GetByActivityAsync(objectiveActivityId, ct);
 
-            var dto = entities
+            var dto = assignments
                 .OrderBy(x => x.Id)
                 .Select(MapToDto)
                 .ToList();
@@ -44,35 +55,35 @@ namespace tesisproject.backend.Services.Implementations
         {
             if (request is null)
                 return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail("Request is required.", ErrorType.Validation);
+                    .Fail(RequestRequiredMessage, ErrorType.Validation);
 
             if (request.ObjectiveActivityId <= 0)
                 return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail("ObjectiveActivityId is required.", ErrorType.Validation);
+                    .Fail(ObjectiveActivityIdRequiredMessage, ErrorType.Validation);
 
             if (request.UserId <= 0)
                 return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail("UserId is required.", ErrorType.Validation);
+                    .Fail(UserIdRequiredMessage, ErrorType.Validation);
 
             if (request.VisitId <= 0)
                 return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail("VisitId is required.", ErrorType.Validation);
+                    .Fail(VisitIdRequiredMessage, ErrorType.Validation);
 
             // Validar que la actividad exista
             var activity = await _uow.ObjectiveActivities.GetByIdAsync(
-                new object[] { request.ObjectiveActivityId }, ct);
+                Key(request.ObjectiveActivityId), ct);
 
             if (activity is null)
                 return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail("ObjectiveActivity not found.", ErrorType.Validation);
+                    .Fail(ObjectiveActivityNotFoundMessage, ErrorType.Validation);
 
             // Validar que la visita exista
             var visit = await _uow.Visits.GetByIdAsync(
-                new object[] { request.VisitId }, ct);
+                Key(request.VisitId), ct);
 
             if (visit is null)
                 return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail("Visit not found.", ErrorType.Validation);
+                    .Fail(VisitNotFoundMessage, ErrorType.Validation);
 
             // Evitar duplicados actividad-usuario-visita
             var exists = await _uow.ObjectiveActivityUsers.ExistsAssignmentAsync(
@@ -83,7 +94,7 @@ namespace tesisproject.backend.Services.Implementations
 
             if (exists)
                 return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail("Assignment already exists for this activity, user and visit.", ErrorType.Validation);
+                    .Fail(AssignmentAlreadyExistsMessage, ErrorType.Validation);
 
             var entity = new ObjectiveActivityUser
             {
@@ -91,8 +102,8 @@ namespace tesisproject.backend.Services.Implementations
                 UserId = request.UserId,
                 VisitId = request.VisitId,
                 WeeklyHours = request.WeeklyHours,
-                RoleDescription = (request.RoleDescription ?? string.Empty).Trim(),
-                ReportNotes = (request.ReportNotes ?? string.Empty).Trim()
+                RoleDescription = NormalizeText(request.RoleDescription),
+                ReportNotes = NormalizeText(request.ReportNotes)
             };
 
             await _uow.ObjectiveActivityUsers.AddAsync(entity, ct);
@@ -108,18 +119,18 @@ namespace tesisproject.backend.Services.Implementations
         {
             if (request is null || request.Id <= 0)
                 return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail("Invalid id.", ErrorType.Validation);
+                    .Fail(InvalidIdMessage, ErrorType.Validation);
 
             var entity = await _uow.ObjectiveActivityUsers.GetByIdAsync(
-                new object[] { request.Id }, ct);
+                Key(request.Id), ct);
 
             if (entity is null)
                 return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail("Assignment not found.", ErrorType.NotFound);
+                    .Fail(AssignmentNotFoundMessage, ErrorType.NotFound);
 
             entity.WeeklyHours = request.WeeklyHours;
-            entity.RoleDescription = (request.RoleDescription ?? string.Empty).Trim();
-            entity.ReportNotes = (request.ReportNotes ?? string.Empty).Trim();
+            entity.RoleDescription = NormalizeText(request.RoleDescription);
+            entity.ReportNotes = NormalizeText(request.ReportNotes);
 
             _uow.ObjectiveActivityUsers.Update(entity);
             await _uow.SaveChangesAsync(ct);
@@ -134,14 +145,14 @@ namespace tesisproject.backend.Services.Implementations
         {
             if (id <= 0)
                 return ServiceResult<bool>
-                    .Fail("Invalid id.", ErrorType.Validation);
+                    .Fail(InvalidIdMessage, ErrorType.Validation);
 
             var entity = await _uow.ObjectiveActivityUsers.GetByIdAsync(
-                new object[] { id }, ct);
+                Key(id), ct);
 
             if (entity is null)
                 return ServiceResult<bool>
-                    .Fail("Assignment not found.", ErrorType.NotFound);
+                    .Fail(AssignmentNotFoundMessage, ErrorType.NotFound);
 
             _uow.ObjectiveActivityUsers.Remove(entity);
             await _uow.SaveChangesAsync(ct);
@@ -150,6 +161,11 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         // =============== Helpers ===============
+
+        private static object[] Key(int id) => new object[] { id };
+
+        private static string NormalizeText(string? value)
+            => (value ?? string.Empty).Trim();
 
         private static ObjectiveActivityUserDTO MapToDto(ObjectiveActivityUser entity)
             => new ObjectiveActivityUserDTO

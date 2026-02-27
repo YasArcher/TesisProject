@@ -17,6 +17,16 @@ namespace tesisproject.backend.Services.Implementations
 {
     public sealed class ProductTypeDesignService : IProductTypeDesignService
     {
+        private const string NewTemplateMessage = "New product type design template.";
+        private const string ProductTypeNotFoundMessage = "ProductType not found.";
+        private const string DesignLoadedMessage = "Product type design loaded.";
+        private const string RequestOrProductTypeNullMessage = "Request or ProductType is null.";
+        private const string ErrorSavingProductTypeFallbackMessage = "Error saving ProductType.";
+        private const string ErrorSavingProductAttributeMessageTemplate = "Error saving ProductAttribute '{0}'.";
+        private const string ProductTypeNameRequiredMessage = "ProductType name is required.";
+        private const string ProductTypeNameAlreadyExistsMessage = "ProductType name already exists.";
+        private const string ProductTypeLockedMessage = "ProductType is locked and cannot be modified.";
+
         private readonly IUnitOfWork _uow;
         private readonly IProductAttributeService _productAttributeService;
 
@@ -49,42 +59,28 @@ namespace tesisproject.backend.Services.Implementations
                 // 2) si no hay productTypeId => template para creación
                 if (productTypeId is null || productTypeId <= 0)
                 {
-                    var newType = new CatalogDetailDTO
-                    {
-                        Id = 0,
-                        Name = string.Empty,
-                        IsActive = true,
-                        IsLocked = false
-                    };
-
                     var dtoNew = new ProductTypeDesignDetailDTO
                     {
-                        ProductType = newType,
+                        ProductType = CreateNewProductTypeCatalogTemplate(),
                         Attributes = attributeDtos,
                         Definitions = Array.Empty<ProductAttributeDefinitionDetailDTO>()
                     };
 
                     return ServiceResult<ProductTypeDesignDetailDTO>
-                        .Ok(dtoNew, "New product type design template.");
+                        .Ok(dtoNew, NewTemplateMessage);
                 }
 
                 // 3) edición: cargar ProductType
                 var typeEntity = await _uow.ProductTypes
-                    .GetByIdAsync(new object[] { productTypeId.Value }, ct);
+                    .GetByIdAsync(Key(productTypeId.Value), ct);
 
                 if (typeEntity is null)
                 {
                     return ServiceResult<ProductTypeDesignDetailDTO>
-                        .Fail("ProductType not found.", ErrorType.NotFound);
+                        .Fail(ProductTypeNotFoundMessage, ErrorType.NotFound);
                 }
 
-                var typeDto = new CatalogDetailDTO
-                {
-                    Id = typeEntity.Id,
-                    Name = typeEntity.Name,
-                    IsActive = typeEntity.IsActive,
-                    IsLocked = typeEntity.IsLocked
-                };
+                var typeDto = MapProductTypeToCatalogDetail(typeEntity);
 
                 // 4) cargar definiciones + nombre de atributo
                 var defsQuery = _uow.ProductAttributeDefinitions
@@ -108,7 +104,7 @@ namespace tesisproject.backend.Services.Implementations
                 };
 
                 return ServiceResult<ProductTypeDesignDetailDTO>
-                    .Ok(dto, "Product type design loaded.");
+                    .Ok(dto, DesignLoadedMessage);
             }
             catch (Exception ex)
             {
@@ -128,7 +124,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (request is null || request.ProductType is null)
                 {
                     return ServiceResult<ProductTypeDesignDetailDTO>
-                        .Fail("Request or ProductType is null.", ErrorType.Validation);
+                        .Fail(RequestOrProductTypeNullMessage, ErrorType.Validation);
                 }
 
                 // 1) Upsert ProductType
@@ -136,7 +132,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (!productTypeIdResult.Success || productTypeIdResult.Data <= 0)
                 {
                     return ServiceResult<ProductTypeDesignDetailDTO>
-                        .Fail(productTypeIdResult.Message ?? "Error saving ProductType.", ErrorType.Validation);
+                        .Fail(productTypeIdResult.Message ?? ErrorSavingProductTypeFallbackMessage, ErrorType.Validation);
                 }
 
                 var productTypeId = productTypeIdResult.Data;
@@ -150,18 +146,11 @@ namespace tesisproject.backend.Services.Implementations
                     if (mappedId <= 0)
                     {
                         return ServiceResult<ProductTypeDesignDetailDTO>
-                            .Fail($"Error saving ProductAttribute '{attrDto.Name}'.", ErrorType.Validation);
+                            .Fail(string.Format(ErrorSavingProductAttributeMessageTemplate, attrDto.Name), ErrorType.Validation);
                     }
 
-                    if (attrDto.Id == 0)
-                    {
-                        // si era nuevo, mapear Id temporal 0 (o negativo si usas eso) al real
-                        attributeIdMap[attrDto.Id] = mappedId;
-                    }
-                    else
-                    {
-                        attributeIdMap[attrDto.Id] = mappedId;
-                    }
+                    // Nota: se mantiene el comportamiento original (incluye el caso Id == 0)
+                    attributeIdMap[attrDto.Id] = mappedId;
                 }
 
                 // 3) Sincronizar definiciones
@@ -186,11 +175,11 @@ namespace tesisproject.backend.Services.Implementations
             ProductTypeUpsertDTO dto,
             CancellationToken ct)
         {
-            var name = (dto.Name ?? string.Empty).Trim();
+            var name = NormalizeName(dto.Name);
             if (string.IsNullOrWhiteSpace(name))
             {
                 return ServiceResult<int>
-                    .Fail("ProductType name is required.", ErrorType.Validation);
+                    .Fail(ProductTypeNameRequiredMessage, ErrorType.Validation);
             }
 
             if (dto.Id == 0)
@@ -200,7 +189,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (exists)
                 {
                     return ServiceResult<int>
-                        .Fail("ProductType name already exists.", ErrorType.Validation);
+                        .Fail(ProductTypeNameAlreadyExistsMessage, ErrorType.Validation);
                 }
 
                 var entity = new ProductType
@@ -218,24 +207,24 @@ namespace tesisproject.backend.Services.Implementations
             else
             {
                 // Actualizar ProductType existente
-                var entity = await _uow.ProductTypes.GetByIdAsync(new object[] { dto.Id }, ct);
+                var entity = await _uow.ProductTypes.GetByIdAsync(Key(dto.Id), ct);
                 if (entity is null)
                 {
                     return ServiceResult<int>
-                        .Fail("ProductType not found.", ErrorType.NotFound);
+                        .Fail(ProductTypeNotFoundMessage, ErrorType.NotFound);
                 }
 
                 if (entity.IsLocked)
                 {
                     return ServiceResult<int>
-                        .Fail("ProductType is locked and cannot be modified.", ErrorType.Conflict);
+                        .Fail(ProductTypeLockedMessage, ErrorType.Conflict);
                 }
 
                 var duplicated = await _uow.ProductTypes.NameExistsAsync(name, excludeId: dto.Id, ct);
                 if (duplicated)
                 {
                     return ServiceResult<int>
-                        .Fail("ProductType name already exists.", ErrorType.Validation);
+                        .Fail(ProductTypeNameAlreadyExistsMessage, ErrorType.Validation);
                 }
 
                 entity.Name = name;
@@ -252,7 +241,7 @@ namespace tesisproject.backend.Services.Implementations
             ProductAttributeUpsertDTO dto,
             CancellationToken ct)
         {
-            var name = (dto.Name ?? string.Empty).Trim();
+            var name = NormalizeName(dto.Name);
             if (string.IsNullOrWhiteSpace(name))
                 return 0;
 
@@ -370,6 +359,29 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         // ==================== MAPPERS ====================
+
+        private static object[] Key(int id) => new object[] { id };
+
+        private static string NormalizeName(string? value)
+            => (value ?? string.Empty).Trim();
+
+        private static CatalogDetailDTO CreateNewProductTypeCatalogTemplate()
+            => new CatalogDetailDTO
+            {
+                Id = 0,
+                Name = string.Empty,
+                IsActive = true,
+                IsLocked = false
+            };
+
+        private static CatalogDetailDTO MapProductTypeToCatalogDetail(ProductType typeEntity)
+            => new CatalogDetailDTO
+            {
+                Id = typeEntity.Id,
+                Name = typeEntity.Name,
+                IsActive = typeEntity.IsActive,
+                IsLocked = typeEntity.IsLocked
+            };
 
         private static ProductAttributeDetailDTO MapAttributeToDetail(ProductAttribute x)
             => new()

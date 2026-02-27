@@ -9,6 +9,13 @@ namespace tesisproject.backend.Services.Implementations
 {
     public sealed class ProductAttributeService : IProductAttributeService
     {
+        private const string InvalidIdMessage = "Invalid id.";
+        private const string NotFoundMessage = "ProductAttribute not found.";
+        private const string NameRequiredMessage = "Name is required.";
+        private const string NameAlreadyExistsMessage = "Name already exists.";
+        private const string LockedCannotModifyMessage = "This attribute is locked and cannot be modified.";
+        private const string LockedCannotDeleteMessage = "This attribute is locked and cannot be deleted.";
+
         private readonly IUnitOfWork _uow;
 
         public ProductAttributeService(IUnitOfWork uow)
@@ -27,15 +34,7 @@ namespace tesisproject.backend.Services.Implementations
                 ct: ct);
 
             var dto = items
-                .Select(x => new ProductAttributeListItemDTO
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    IsActive = x.IsActive,
-                    IsLocked = x.IsLocked,
-                    DataType = x.DataType,
-                    Unit = x.Unit
-                })
+                .Select(ToListItemDto)
                 .ToList();
 
             return ServiceResult<IReadOnlyList<ProductAttributeListItemDTO>>.Ok(dto);
@@ -46,22 +45,13 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
 
-            var entity = await _uow.ProductAttributes.GetByIdAsync(new object[] { id }, ct);
+            var entity = await _uow.ProductAttributes.GetByIdAsync(Key(id), ct);
             if (entity is null)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail("ProductAttribute not found.", ErrorType.NotFound);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(NotFoundMessage, ErrorType.NotFound);
 
-            var dto = new ProductAttributeDetailDTO
-            {
-                Id = entity.Id,
-                Name = entity.Name,
-                IsActive = entity.IsActive,
-                IsLocked = entity.IsLocked,
-                DataType = entity.DataType,
-                Unit = entity.Unit
-            };
-
+            var dto = ToDetailDto(entity);
             return ServiceResult<ProductAttributeDetailDTO>.Ok(dto);
         }
 
@@ -71,15 +61,15 @@ namespace tesisproject.backend.Services.Implementations
             AddProductAttributeRequestDTO request,
             CancellationToken ct = default)
         {
-            var name = (request?.Name ?? string.Empty).Trim();
+            var name = NormalizeName(request?.Name);
 
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<ProductAttributeDetailDTO>.Fail("Name is required.", ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(NameRequiredMessage, ErrorType.Validation);
 
             // Evitar duplicados por Name
             var exists = await _uow.ProductAttributes.NameExistsAsync(name, excludeId: null, ct);
             if (exists)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail("Name already exists.", ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation);
 
             var entity = new ProductAttribute
             {
@@ -93,16 +83,7 @@ namespace tesisproject.backend.Services.Implementations
             await _uow.ProductAttributes.AddAsync(entity, ct);
             await _uow.SaveChangesAsync(ct);
 
-            var dto = new ProductAttributeDetailDTO
-            {
-                Id = entity.Id,
-                Name = entity.Name,
-                IsActive = entity.IsActive,
-                IsLocked = entity.IsLocked,
-                DataType = entity.DataType,
-                Unit = entity.Unit
-            };
-
+            var dto = ToDetailDto(entity);
             return ServiceResult<ProductAttributeDetailDTO>.Ok(dto);
         }
 
@@ -111,23 +92,23 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null || request.Id <= 0)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
 
-            var name = (request.Name ?? string.Empty).Trim();
+            var name = NormalizeName(request.Name);
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<ProductAttributeDetailDTO>.Fail("Name is required.", ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(NameRequiredMessage, ErrorType.Validation);
 
-            var entity = await _uow.ProductAttributes.GetByIdAsync(new object[] { request.Id }, ct);
+            var entity = await _uow.ProductAttributes.GetByIdAsync(Key(request.Id), ct);
             if (entity is null)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail("ProductAttribute not found.", ErrorType.NotFound);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(NotFoundMessage, ErrorType.NotFound);
 
             if (entity.IsLocked)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail("This attribute is locked and cannot be modified.", ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(LockedCannotModifyMessage, ErrorType.Validation);
 
             // Validar duplicado por Name, excluyendo el propio Id
             var duplicated = await _uow.ProductAttributes.NameExistsAsync(name, excludeId: request.Id, ct);
             if (duplicated)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail("Name already exists.", ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation);
 
             entity.Name = name;
             entity.IsActive = request.IsActive;
@@ -138,7 +119,41 @@ namespace tesisproject.backend.Services.Implementations
             _uow.ProductAttributes.Update(entity);
             await _uow.SaveChangesAsync(ct);
 
-            var dto = new ProductAttributeDetailDTO
+            var dto = ToDetailDto(entity);
+            return ServiceResult<ProductAttributeDetailDTO>.Ok(dto);
+        }
+
+        public async Task<ServiceResult<NoContent>> DeleteAsync(
+            int id,
+            CancellationToken ct = default)
+        {
+            if (id <= 0)
+                return ServiceResult<NoContent>.Fail(InvalidIdMessage, ErrorType.Validation);
+
+            var entity = await _uow.ProductAttributes.GetByIdAsync(Key(id), ct);
+            if (entity is null)
+                return ServiceResult<NoContent>.Fail(NotFoundMessage, ErrorType.NotFound);
+
+            if (entity.IsLocked)
+                return ServiceResult<NoContent>.Fail(
+                    LockedCannotDeleteMessage,
+                    ErrorType.Validation);
+
+            _uow.ProductAttributes.Remove(entity);
+            await _uow.SaveChangesAsync(ct);
+
+            return ServiceResult<NoContent>.Ok(new NoContent());
+        }
+
+        // ================= Helpers =================
+
+        private static object[] Key(int id) => new object[] { id };
+
+        private static string NormalizeName(string? value)
+            => (value ?? string.Empty).Trim();
+
+        private static ProductAttributeListItemDTO ToListItemDto(ProductAttribute entity)
+            => new ProductAttributeListItemDTO
             {
                 Id = entity.Id,
                 Name = entity.Name,
@@ -148,31 +163,15 @@ namespace tesisproject.backend.Services.Implementations
                 Unit = entity.Unit
             };
 
-            return ServiceResult<ProductAttributeDetailDTO>.Ok(dto);
-        }
-
-        public async Task<ServiceResult<NoContent>> DeleteAsync(
-            int id,
-            CancellationToken ct = default)
-        {
-            if (id <= 0)
-                return ServiceResult<NoContent>.Fail("Invalid id.", ErrorType.Validation);
-
-            var entity = await _uow.ProductAttributes.GetByIdAsync(new object[] { id }, ct);
-            if (entity is null)
-                return ServiceResult<NoContent>.Fail("ProductAttribute not found.", ErrorType.NotFound);
-
-            if (entity.IsLocked)
-                return ServiceResult<NoContent>.Fail(
-                    "This attribute is locked and cannot be deleted.",
-                    ErrorType.Validation);
-
-            _uow.ProductAttributes.Remove(entity);
-            await _uow.SaveChangesAsync(ct);
-
-            return ServiceResult<NoContent>.Ok(new NoContent());
-        }
-
-
+        private static ProductAttributeDetailDTO ToDetailDto(ProductAttribute entity)
+            => new ProductAttributeDetailDTO
+            {
+                Id = entity.Id,
+                Name = entity.Name,
+                IsActive = entity.IsActive,
+                IsLocked = entity.IsLocked,
+                DataType = entity.DataType,
+                Unit = entity.Unit
+            };
     }
 }

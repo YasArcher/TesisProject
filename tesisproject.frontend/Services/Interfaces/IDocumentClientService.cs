@@ -28,7 +28,8 @@ namespace tesisproject.frontend.Services.Interfaces
             int documentId,
             CancellationToken ct = default);
 
-        string GetViewUrl(int documentId);
-        string GetDownloadUrl(int documentId);
+        Task<HttpResponseWrapper<FilePayloadDTO?>> GetContentAsync(int documentId, CancellationToken ct = default);
+        Task<HttpResponseWrapper<FilePayloadDTO?>> GetDownloadAsync(int documentId, CancellationToken ct = default);
+
     }
 }

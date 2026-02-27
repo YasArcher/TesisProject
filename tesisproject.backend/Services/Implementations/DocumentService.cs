@@ -32,13 +32,6 @@ namespace tesisproject.backend.Services.Implementations
 
             var root = storageOptions.Value.RootPath;
 
-            // Fallback defensivo si no está configurado
-            if (string.IsNullOrWhiteSpace(root))
-            {
-                // Por defecto, una carpeta "files" al lado del binario
-                root = Path.Combine(_env.ContentRootPath, "files");
-            }
-
             // Asegura existencia y normaliza
             Directory.CreateDirectory(root);
             _storageRootFullPath = Path.GetFullPath(root);

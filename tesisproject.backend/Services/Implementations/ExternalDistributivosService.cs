@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using System.Net;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using tesisproject.backend.Options;
@@ -20,6 +21,12 @@ namespace tesisproject.backend.Services.Implementations
             PropertyNameCaseInsensitive = true
         };
 
+        private const string MsgNoDistributivos = "No distributivos found.";
+        private const string MsgUnexpected = "Unexpected error.";
+        private const string MsgRetrieved = "Distributivos retrieved.";
+        private const string MsgConfigEndpointMissing = "External API misconfiguration: DistributivosEndpoint is missing.";
+        private const string MsgConfigParamMissing = "External API misconfiguration: query parameter name is missing.";
+
         public ExternalDistributivosService(
             HttpClient http,
             IOptions<ExternalApiOptions> opts,
@@ -37,148 +44,63 @@ namespace tesisproject.backend.Services.Implementations
 
         public async Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> GetDistributivosAsync(CancellationToken ct = default)
         {
-            try
-            {
-                var raw = await FetchRawAsync(endpoint: _opts.DistributivosEndpoint, query: null, ct);
+            var cfgFail = ValidateConfig(out var endpoint);
+            if (cfgFail is not null) return cfgFail;
 
-                return raw.Count == 0
-                    ? ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("No distributivos found.", ErrorType.NotFound)
-                    : ServiceResult<List<ExternalTeacherDistributivoModel>>.Ok(raw, "Distributivos retrieved.");
-            }
-            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-            {
-                _logger.LogWarning(ex, "External endpoint {Endpoint} returned 404", _opts.DistributivosEndpoint);
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Distributivos not found.", ErrorType.NotFound);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error retrieving distributivos");
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Unexpected error.", ErrorType.Unexpected);
-            }
+            return await FetchAsync(
+                url: endpoint,
+                successMessage: MsgRetrieved,
+                logContext: "GetAll",
+                ct: ct);
         }
 
-        public async Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> GetDistributivosByCedulasAsync(IEnumerable<string> cedulas, CancellationToken ct = default)
-        {
-            var list = NormalizeList(cedulas);
-            if (list.Count == 0)
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Cedulas are required.", ErrorType.Validation);
+        public Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> GetDistributivosByCedulasAsync(
+            IEnumerable<string> cedulas,
+            CancellationToken ct = default)
+            => QueryByAsync(
+                values: cedulas,
+                queryParamName: _opts.DistributivosCedulasQueryParam,
+                requiredMessage: "Cedulas are required.",
+                notFoundMessage: "No distributivos found for the specified cedulas.",
+                logContext: "ByCedulas",
+                normalize: s => s, // tal cual
+                ct: ct);
 
-            try
-            {
-                var query = new Dictionary<string, string>
-                {
-                    [_opts.DistributivosCedulasQueryParam] = string.Join(',', list)
-                };
+        public Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> GetDistributivosByCorreosAsync(
+            IEnumerable<string> correos,
+            CancellationToken ct = default)
+            => QueryByAsync(
+                values: correos,
+                queryParamName: _opts.DistributivosCorreosQueryParam,
+                requiredMessage: "Correos are required.",
+                notFoundMessage: "No distributivos found for the specified correos.",
+                logContext: "ByCorreos",
+                normalize: s => s.ToLowerInvariant(), // si el API lo requiere
+                ct: ct);
 
-                var raw = await FetchRawAsync(_opts.DistributivosEndpoint, query, ct);
+        public Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> GetDistributivosByPeriodosAsync(
+            IEnumerable<string> periodos,
+            CancellationToken ct = default)
+            => QueryByAsync(
+                values: periodos,
+                queryParamName: _opts.DistributivosPeriodosQueryParam,
+                requiredMessage: "Periodos are required.",
+                notFoundMessage: "No distributivos found for the specified periodos.",
+                logContext: "ByPeriodos",
+                normalize: s => s,
+                ct: ct);
 
-                return raw.Count == 0
-                    ? ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("No distributivos found for the specified cedulas.", ErrorType.NotFound)
-                    : ServiceResult<List<ExternalTeacherDistributivoModel>>.Ok(raw, "Distributivos retrieved.");
-            }
-            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-            {
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("No distributivos found.", ErrorType.NotFound);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error retrieving distributivos by cedulas");
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Unexpected error.", ErrorType.Unexpected);
-            }
-        }
-
-        public async Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> GetDistributivosByCorreosAsync(IEnumerable<string> correos, CancellationToken ct = default)
-        {
-            var list = NormalizeList(correos)
-                .Select(x => x.ToLowerInvariant())
-                .ToList();
-
-            if (list.Count == 0)
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Correos are required.", ErrorType.Validation);
-
-            try
-            {
-                var query = new Dictionary<string, string>
-                {
-                    [_opts.DistributivosCorreosQueryParam] = string.Join(',', list)
-                };
-
-                var raw = await FetchRawAsync(_opts.DistributivosEndpoint, query, ct);
-
-                return raw.Count == 0
-                    ? ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("No distributivos found for the specified correos.", ErrorType.NotFound)
-                    : ServiceResult<List<ExternalTeacherDistributivoModel>>.Ok(raw, "Distributivos retrieved.");
-            }
-            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-            {
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("No distributivos found.", ErrorType.NotFound);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error retrieving distributivos by correos");
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Unexpected error.", ErrorType.Unexpected);
-            }
-        }
-
-        public async Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> GetDistributivosByPeriodosAsync(IEnumerable<string> periodos, CancellationToken ct = default)
-        {
-            var list = NormalizeList(periodos);
-            if (list.Count == 0)
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Periodos are required.", ErrorType.Validation);
-
-            try
-            {
-                var query = new Dictionary<string, string>
-                {
-                    [_opts.DistributivosPeriodosQueryParam] = string.Join(',', list)
-                };
-
-                var raw = await FetchRawAsync(_opts.DistributivosEndpoint, query, ct);
-
-                return raw.Count == 0
-                    ? ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("No distributivos found for the specified periodos.", ErrorType.NotFound)
-                    : ServiceResult<List<ExternalTeacherDistributivoModel>>.Ok(raw, "Distributivos retrieved.");
-            }
-            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-            {
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("No distributivos found.", ErrorType.NotFound);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error retrieving distributivos by periodos");
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Unexpected error.", ErrorType.Unexpected);
-            }
-        }
-
-        public async Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> GetDistributivosByFacultadesAsync(IEnumerable<string> facultades, CancellationToken ct = default)
-        {
-            var list = NormalizeList(facultades);
-            if (list.Count == 0)
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Facultades are required.", ErrorType.Validation);
-
-            try
-            {
-                var query = new Dictionary<string, string>
-                {
-                    [_opts.DistributivosFacultadesQueryParam] = string.Join(',', list)
-                };
-
-                var raw = await FetchRawAsync(_opts.DistributivosEndpoint, query, ct);
-
-                return raw.Count == 0
-                    ? ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("No distributivos found for the specified facultades.", ErrorType.NotFound)
-                    : ServiceResult<List<ExternalTeacherDistributivoModel>>.Ok(raw, "Distributivos retrieved.");
-            }
-            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
-            {
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("No distributivos found.", ErrorType.NotFound);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Unexpected error retrieving distributivos by facultades");
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Unexpected error.", ErrorType.Unexpected);
-            }
-        }
+        public Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> GetDistributivosByFacultadesAsync(
+            IEnumerable<string> facultades,
+            CancellationToken ct = default)
+            => QueryByAsync(
+                values: facultades,
+                queryParamName: _opts.DistributivosFacultadesQueryParam,
+                requiredMessage: "Facultades are required.",
+                notFoundMessage: "No distributivos found for the specified facultades.",
+                logContext: "ByFacultades",
+                normalize: s => s,
+                ct: ct);
 
         public async Task<ServiceResult<ExternalTeacherDistributivoModel>> GetDistributivoByIdAsync(int distributivoId, CancellationToken ct = default)
         {
@@ -190,7 +112,7 @@ namespace tesisproject.backend.Services.Implementations
                 // Fallback mientras Node no tenga /api/distributivos/:id
                 var all = await GetDistributivosAsync(ct);
                 if (!all.Success || all.Data is null)
-                    return ServiceResult<ExternalTeacherDistributivoModel>.Fail("API error.", ErrorType.Unexpected);
+                    return ServiceResult<ExternalTeacherDistributivoModel>.Fail(all.Message ?? "External API error.", all.Error);
 
                 var item = all.Data.FirstOrDefault(x => x.DistributivoId == distributivoId);
 
@@ -201,31 +123,111 @@ namespace tesisproject.backend.Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error retrieving distributivo {DistributivoId}", distributivoId);
-                return ServiceResult<ExternalTeacherDistributivoModel>.Fail("Unexpected error.", ErrorType.Unexpected);
+                return ServiceResult<ExternalTeacherDistributivoModel>.Fail(MsgUnexpected, ErrorType.Unexpected);
             }
         }
 
-        // ================= PRIVATE HELPERS =================
+        // ================= CORE (DRY) =================
 
-        private async Task<List<ExternalTeacherDistributivoModel>> FetchRawAsync(
-            string endpoint,
-            IReadOnlyDictionary<string, string>? query,
+        private async Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> QueryByAsync(
+            IEnumerable<string> values,
+            string queryParamName,
+            string requiredMessage,
+            string notFoundMessage,
+            string logContext,
+            Func<string, string> normalize,
             CancellationToken ct)
         {
+            var list = NormalizeList(values, normalize);
+            if (list.Count == 0)
+                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(requiredMessage, ErrorType.Validation);
+
+            var cfgFail = ValidateConfig(out var endpoint, queryParamName);
+            if (cfgFail is not null) return cfgFail;
+
+            // IMPORTANTE: este valor va como CSV. BuildUrl preserva comas para no convertirlas en %2C.
+            var query = new Dictionary<string, string>
+            {
+                [queryParamName] = string.Join(',', list)
+            };
+
             var url = BuildUrl(endpoint, query);
 
-            var list = await _http.GetFromJsonAsync<List<ExternalTeacherDistributivoModel>>(url, _jsonOpts, ct);
-            return list ?? new List<ExternalTeacherDistributivoModel>();
+            var res = await FetchAsync(
+                url: url,
+                successMessage: MsgRetrieved,
+                logContext: logContext,
+                ct: ct);
+
+            // Personaliza el mensaje de NotFound para cada filtro
+            if (!res.Success && res.Error == ErrorType.NotFound)
+                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(notFoundMessage, ErrorType.NotFound);
+
+            return res;
         }
+
+        private async Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> FetchAsync(
+            string url,
+            string successMessage,
+            string logContext,
+            CancellationToken ct)
+        {
+            try
+            {
+                var list = await _http.GetFromJsonAsync<List<ExternalTeacherDistributivoModel>>(url, _jsonOpts, ct);
+
+                if (list is null || list.Count == 0)
+                    return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgNoDistributivos, ErrorType.NotFound);
+
+                _logger.LogInformation("Distributivos {Context}: retrieved {Count}.", logContext, list.Count);
+                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Ok(list, successMessage);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                _logger.LogWarning(ex, "Distributivos {Context}: 404", logContext);
+                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgNoDistributivos, ErrorType.NotFound);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                _logger.LogWarning(ex, "Distributivos {Context}: 401", logContext);
+                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Unauthorized external API.", ErrorType.Unauthorized);
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Forbidden)
+            {
+                _logger.LogWarning(ex, "Distributivos {Context}: 403", logContext);
+                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Forbidden external API.", ErrorType.Forbidden);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Distributivos {Context}: unexpected error", logContext);
+                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgUnexpected, ErrorType.Unexpected);
+            }
+        }
+
+        private ServiceResult<List<ExternalTeacherDistributivoModel>>? ValidateConfig(out string endpoint, string? queryParamName = null)
+        {
+            endpoint = _opts.DistributivosEndpoint ?? string.Empty;
+
+            if (string.IsNullOrWhiteSpace(endpoint))
+                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgConfigEndpointMissing, ErrorType.Unexpected);
+
+            if (queryParamName is not null && string.IsNullOrWhiteSpace(queryParamName))
+                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgConfigParamMissing, ErrorType.Unexpected);
+
+            return null;
+        }
+
+        // ================= HELPERS =================
 
         private static string BuildUrl(string endpoint, IReadOnlyDictionary<string, string>? query)
         {
             if (query is null || query.Count == 0)
                 return endpoint;
 
-            var sb = new StringBuilder();
-            sb.Append(endpoint);
-            sb.Append('?');
+            var sb = new StringBuilder(endpoint);
+
+            // Si el endpoint ya trae querystring, agrega con '&'
+            sb.Append(endpoint.Contains('?') ? '&' : '?');
 
             var first = true;
             foreach (var kv in query)
@@ -235,16 +237,27 @@ namespace tesisproject.backend.Services.Implementations
 
                 sb.Append(Uri.EscapeDataString(kv.Key));
                 sb.Append('=');
-                sb.Append(Uri.EscapeDataString(kv.Value));
+
+                // CLAVE: preserva comas en valores CSV (evita %2C)
+                sb.Append(EscapeValuePreserveCommas(kv.Value));
             }
 
             return sb.ToString();
         }
 
-        private static List<string> NormalizeList(IEnumerable<string>? input)
+        private static string EscapeValuePreserveCommas(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+
+            // Escape normal, pero vuelve a dejar comas como comas (para CSV)
+            return Uri.EscapeDataString(value).Replace("%2C", ",");
+        }
+
+        private static List<string> NormalizeList(IEnumerable<string>? input, Func<string, string> normalize)
         {
             return input?
-                .Select(x => (x ?? string.Empty).Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => normalize(x.Trim()))
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList()

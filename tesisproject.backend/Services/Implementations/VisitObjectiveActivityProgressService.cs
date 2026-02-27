@@ -10,6 +10,20 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class VisitObjectiveActivityProgressService : IVisitObjectiveActivityProgressService
     {
+        private const int MaxProgressPercentage = 100;
+
+        private const string MsgRequestRequired = "Request is required.";
+        private const string MsgVisitIdRequired = "VisitId is required.";
+        private const string MsgObjectiveActivityIdRequired = "ObjectiveActivityId is required.";
+        private const string MsgProgressPercentageRange = "ProgressPercentage must be between 0 and 100.";
+        private const string MsgVisitNotFound = "Visit not found.";
+        private const string MsgObjectiveActivityInvalidForProjectVisit = "ObjectiveActivityId is invalid for this project/visit.";
+        private const string MsgActivityProgressSaved = "Activity progress saved";
+
+        private const string MsgIdRequired = "id is required.";
+        private const string MsgProgressRecordNotFound = "Progress record not found.";
+        private const string MsgActivityProgressDeleted = "Activity progress deleted";
+
         private readonly IUnitOfWork _uow;
 
         public VisitObjectiveActivityProgressService(IUnitOfWork uow)
@@ -24,55 +38,50 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request is null)
-                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail("Request is required.", ErrorType.Validation);
+                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgRequestRequired, ErrorType.Validation);
 
                 if (request.VisitId <= 0)
-                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail("VisitId is required.", ErrorType.Validation);
+                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgVisitIdRequired, ErrorType.Validation);
 
                 if (request.ObjectiveActivityId <= 0)
-                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail("ObjectiveActivityId is required.", ErrorType.Validation);
+                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgObjectiveActivityIdRequired, ErrorType.Validation);
 
-                if (request.ProgressPercentage < 0 || request.ProgressPercentage > 100)
-                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail("ProgressPercentage must be between 0 and 100.", ErrorType.Validation);
+                if (IsProgressOutOfRange(request.ProgressPercentage))
+                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgProgressPercentageRange, ErrorType.Validation);
 
                 // 1) Validar visita
                 var visit = await _uow.Visits.GetByIdAsync(new object[] { request.VisitId }, ct);
                 if (visit is null)
-                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail("Visit not found.", ErrorType.NotFound);
+                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound);
 
                 // 2) Validar que la actividad exista Y pertenezca al proyecto de la visita
                 // ObjectiveActivity.ObjectiveId -> ProjectObjective.Id -> ProjectObjective.ProjectId == visit.ProjectId
-                var activityBelongsToProject = await (
-                    from a in _uow.ObjectiveActivities.Query(asNoTracking: true)
-                    join o in _uow.ProjectObjectives.Query(asNoTracking: true) on a.ObjectiveId equals o.Id
-                    where a.ObjectiveActivityId == request.ObjectiveActivityId
-                          && o.ProjectId == visit.ProjectId
-                    select a.ObjectiveActivityId
-                ).AnyAsync(ct);
+                var activityBelongsToProject = await ActivityBelongsToProjectAsync(
+                    request.ObjectiveActivityId,
+                    visit.ProjectId,
+                    ct);
 
                 if (!activityBelongsToProject)
                 {
                     return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(
-                        "ObjectiveActivityId is invalid for this project/visit.",
+                        MsgObjectiveActivityInvalidForProjectVisit,
                         ErrorType.Validation);
                 }
+
                 // 3) Validación adicional:
                 // La suma de avances (por visita) de esta actividad dentro del proyecto no debe pasar 100%.
                 //
                 // sumOther = suma en el proyecto para ObjectiveActivityId, excluyendo la visita actual.
                 // (Usamos join para no depender de navegación p.Visit.ProjectId)
-                var sumOther = await (
-                    from p in _uow.VisitObjectiveActivityProgresses.Query(asNoTracking: true)
-                    join v in _uow.Visits.Query(asNoTracking: true) on p.VisitId equals v.VisitId
-                    where v.ProjectId == visit.ProjectId
-                          && p.ObjectiveActivityId == request.ObjectiveActivityId
-                          && p.VisitId != request.VisitId
-                    select (int?)p.ProgressPercentage
-                ).SumAsync(ct) ?? 0;
+                var sumOther = await SumOtherProgressAsync(
+                    visit.ProjectId,
+                    request.ObjectiveActivityId,
+                    request.VisitId,
+                    ct);
 
-                if (sumOther + request.ProgressPercentage > 100)
+                if (sumOther + request.ProgressPercentage > MaxProgressPercentage)
                 {
-                    var remaining = 100 - sumOther;
+                    var remaining = MaxProgressPercentage - sumOther;
                     return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(
                         $"Progress exceeds 100%. Remaining allowed for this activity in this project is {remaining}%.",
                         ErrorType.Validation);
@@ -120,25 +129,17 @@ namespace tesisproject.backend.Services.Implementations
                 var currentProjectProgress =
                     await _uow.VisitObjectiveActivityProgresses.GetCurrentProjectProgressAsync(visit.ProjectId, ct);
 
-                var dto = new VisitObjectiveActivityProgressSingleResponseDTO
-                {
-                    Id = entity.Id,
-                    VisitId = entity.VisitId,
-                    ProjectId = visit.ProjectId,
-                    ObjectiveActivityId = entity.ObjectiveActivityId,
-                    ProgressPercentage = entity.ProgressPercentage,
-                    CreatedAt = entity.CreatedAt,
-                    ProjectProgressInVisit = projectProgressInVisit,
-                    CurrentProjectProgress = currentProjectProgress
-                };
+                var dto = BuildSingleResponseDto(
+                    entity,
+                    visit.ProjectId,
+                    projectProgressInVisit,
+                    currentProjectProgress);
 
-                return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Ok(dto, "Activity progress saved");
+                return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Ok(dto, MsgActivityProgressSaved);
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(
-                    dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                return FailConflict<VisitObjectiveActivityProgressSingleResponseDTO>(dbex);
             }
             catch (Exception ex)
             {
@@ -151,22 +152,20 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (id <= 0)
-                    return ServiceResult<NoContent>.Fail("id is required.", ErrorType.Validation);
+                    return ServiceResult<NoContent>.Fail(MsgIdRequired, ErrorType.Validation);
 
                 var entity = await _uow.VisitObjectiveActivityProgresses.GetByIdAsync(new object[] { id }, ct);
                 if (entity is null)
-                    return ServiceResult<NoContent>.Fail("Progress record not found.", ErrorType.NotFound);
+                    return ServiceResult<NoContent>.Fail(MsgProgressRecordNotFound, ErrorType.NotFound);
 
                 _uow.VisitObjectiveActivityProgresses.Remove(entity);
                 await _uow.SaveChangesAsync(ct);
 
-                return ServiceResult<NoContent>.Ok(new NoContent(), "Activity progress deleted");
+                return ServiceResult<NoContent>.Ok(new NoContent(), MsgActivityProgressDeleted);
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<NoContent>.Fail(
-                    dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                return FailConflict<NoContent>(dbex);
             }
             catch (Exception ex)
             {
@@ -174,5 +173,65 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
+        private static bool IsProgressOutOfRange(int progressPercentage)
+            => progressPercentage < 0 || progressPercentage > MaxProgressPercentage;
+
+        private Task<bool> ActivityBelongsToProjectAsync(
+            int objectiveActivityId,
+            int projectId,
+            CancellationToken ct)
+        {
+            return (
+                from a in _uow.ObjectiveActivities.Query(asNoTracking: true)
+                join o in _uow.ProjectObjectives.Query(asNoTracking: true) on a.ObjectiveId equals o.Id
+                where a.ObjectiveActivityId == objectiveActivityId
+                      && o.ProjectId == projectId
+                select a.ObjectiveActivityId
+            ).AnyAsync(ct);
+        }
+
+        private async Task<int> SumOtherProgressAsync(
+            int projectId,
+            int objectiveActivityId,
+            int visitId,
+            CancellationToken ct)
+        {
+            var sumOther = await (
+                from p in _uow.VisitObjectiveActivityProgresses.Query(asNoTracking: true)
+                join v in _uow.Visits.Query(asNoTracking: true) on p.VisitId equals v.VisitId
+                where v.ProjectId == projectId
+                      && p.ObjectiveActivityId == objectiveActivityId
+                      && p.VisitId != visitId
+                select (int?)p.ProgressPercentage
+            ).SumAsync(ct) ?? 0;
+
+            return sumOther;
+        }
+
+        private static VisitObjectiveActivityProgressSingleResponseDTO BuildSingleResponseDto(
+            VisitObjectiveActivityProgress entity,
+            int projectId,
+            decimal? projectProgressInVisit,
+            decimal? currentProjectProgress)
+        {
+            return new VisitObjectiveActivityProgressSingleResponseDTO
+            {
+                Id = entity.Id,
+                VisitId = entity.VisitId,
+                ProjectId = projectId,
+                ObjectiveActivityId = entity.ObjectiveActivityId,
+                ProgressPercentage = entity.ProgressPercentage,
+                CreatedAt = entity.CreatedAt,
+                ProjectProgressInVisit = projectProgressInVisit,
+                CurrentProjectProgress = currentProjectProgress
+            };
+        }
+
+        private static ServiceResult<T> FailConflict<T>(DbUpdateException dbex)
+        {
+            return ServiceResult<T>.Fail(
+                dbex.InnerException?.Message ?? dbex.Message,
+                ErrorType.Conflict);
+        }
     }
 }

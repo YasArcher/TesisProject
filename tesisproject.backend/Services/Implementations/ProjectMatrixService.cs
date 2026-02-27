@@ -16,6 +16,22 @@ namespace tesisproject.backend.Services.Implementations
         private readonly IProjectService _projectService;
         private readonly ILogger<ProjectMatrixService> _logger;
 
+        private const string FileStreamRequiredMessage = "File stream is required.";
+        private const string WorkbookMissingThirdWorksheetMessage = "Workbook does not contain the expected third worksheet.";
+        private const string WorksheetNoDataMessage = "Worksheet does not contain data.";
+        private const string MatrixFileProcessedMessage = "Matrix file processed.";
+        private const string ErrorImportingProjectsIntoDatabaseMessage = "Error importing projects into database.";
+        private const string DefaultObjectiveHeader = "OBJETIVO";
+
+        private static readonly string[] DateFormats = new[]
+        {
+            "yyyy",
+            "yyyy-MM-dd","yyyy/MM/dd","yyyy-M-d","yyyy/M/d",
+            "dd/MM/yyyy","d/M/yyyy","dd-MM-yyyy","d-M-yyyy","dd.MM.yyyy","d.M.yyyy",
+            "dd/MM/yy","d/M/yy","dd-MM-yy","d-M-yy",
+            "yyyy-MM-dd HH:mm:ss","dd/MM/yyyy HH:mm:ss","dd-MM-yyyy HH:mm:ss"
+        };
+
         public ProjectMatrixService(
             IProjectService projectService,
             ILogger<ProjectMatrixService> logger)
@@ -36,7 +52,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (fileStream is null)
                 {
                     return ServiceResult<ProjectMatrixUploadSummaryDTO>.Fail(
-                        "File stream is required.",
+                        FileStreamRequiredMessage,
                         ErrorType.Validation);
                 }
 
@@ -54,15 +70,11 @@ namespace tesisproject.backend.Services.Implementations
                     // Tomar directamente la 3ra hoja
                     if (workbook.Worksheets.Count < 3)
                     {
-                        summary.Errors.Add(new ProjectMatrixUploadErrorDTO
-                        {
-                            RowNumber = 0,
-                            Message = "Workbook does not contain the expected third worksheet."
-                        });
+                        AddSummaryError(summary, 0, WorkbookMissingThirdWorksheetMessage);
 
                         return ServiceResult<ProjectMatrixUploadSummaryDTO>.Ok(
                             summary,
-                            "Workbook does not contain the expected third worksheet.");
+                            WorkbookMissingThirdWorksheetMessage);
                     }
 
                     var worksheet = workbook.Worksheet(3); // 3ra hoja (1-based)
@@ -70,15 +82,11 @@ namespace tesisproject.backend.Services.Implementations
                     var usedRange = worksheet.RangeUsed();
                     if (usedRange is null)
                     {
-                        summary.Errors.Add(new ProjectMatrixUploadErrorDTO
-                        {
-                            RowNumber = 0,
-                            Message = "Worksheet does not contain data."
-                        });
+                        AddSummaryError(summary, 0, WorksheetNoDataMessage);
 
                         return ServiceResult<ProjectMatrixUploadSummaryDTO>.Ok(
                             summary,
-                            "Worksheet does not contain data.");
+                            WorksheetNoDataMessage);
                     }
 
                     // Primera fila usada = encabezados
@@ -105,8 +113,7 @@ namespace tesisproject.backend.Services.Implementations
                     var estadoIndex = normalizedHeaderList
                         .FindIndex(h => h == NormalizeHeader("ESTADO"));
 
-                    // Contador simple de proyectos (1,2,3,...) solo para filas con datos
-                    var projectIndex = 1;
+                    var transferredNormalized = NormalizeHeader("TRANSFERIDO");
 
                     // Filas de datos = todas las filas después del header
                     for (var r = headerRowNumber + 1; r <= lastRow; r++)
@@ -118,31 +125,14 @@ namespace tesisproject.backend.Services.Implementations
                             .Select(c => c.GetString())
                             .ToList();
 
-                        var allEmpty = values.All(v => string.IsNullOrWhiteSpace(v));
-                        if (allEmpty)
+                        if (IsAllEmpty(values))
                         {
                             summary.SkippedRows++;
                             continue;
                         }
 
                         // ⛔ Filtrar proyectos marcados como TRANSFERIDOS
-                        var isTransferred = false;
-                        if (estadoIndex >= 0 && estadoIndex < values.Count)
-                        {
-                            var estadoRaw = values[estadoIndex];
-                            if (!string.IsNullOrWhiteSpace(estadoRaw))
-                            {
-                                var estadoNormalized = NormalizeHeader(estadoRaw);
-                                var transferredNormalized = NormalizeHeader("TRANSFERIDO");
-
-                                if (estadoNormalized == transferredNormalized)
-                                {
-                                    isTransferred = true;
-                                }
-                            }
-                        }
-
-                        if (isTransferred)
+                        if (IsTransferredRow(values, estadoIndex, transferredNormalized))
                         {
                             summary.SkippedRows++;
                             continue;
@@ -150,8 +140,6 @@ namespace tesisproject.backend.Services.Implementations
 
                         summary.TotalRows++;
                         summary.DataRows++;
-
-                        projectIndex++;
 
                         dataMatrix.Add(values);
                     }
@@ -164,13 +152,10 @@ namespace tesisproject.backend.Services.Implementations
                         summary.ColumnMap,
                         dataMatrix);
 
-                    var projectHeaders = summary.ColumnMap.ProjectColumns
-                        .Select(i => i >= 0 && i < summary.Headers.Count
-                            ? summary.Headers[i]
-                            : $"COL{i}")
-                        .ToList();
+                    var projectHeaders = GetHeadersByIndexes(summary.Headers, summary.ColumnMap.ProjectColumns);
 
-                    var projectPreview = PrintMatrixPreview(projectHeaders, projectSection, 30);
+                    // Preview solo de debug (sin uso funcional)
+                    _ = PrintMatrixPreview(projectHeaders, projectSection, 30);
 
                     // ============================
                     //  MATRIZ FINANCIERA
@@ -180,13 +165,10 @@ namespace tesisproject.backend.Services.Implementations
                         summary.ColumnMap,
                         dataMatrix);
 
-                    var financialHeaders = summary.ColumnMap.FinancialColumns
-                        .Select(i => i >= 0 && i < summary.Headers.Count
-                            ? summary.Headers[i]
-                            : $"COL{i}")
-                        .ToList();
+                    var financialHeaders = GetHeadersByIndexes(summary.Headers, summary.ColumnMap.FinancialColumns);
 
-                    var financialPreview = PrintMatrixPreview(financialHeaders, financialSection, 30);
+                    // Preview solo de debug (sin uso funcional)
+                    _ = PrintMatrixPreview(financialHeaders, financialSection, 30);
 
                     // ============================
                     //  MATRIZ DE OBJETIVO (MAYÚSCULAS)
@@ -196,21 +178,10 @@ namespace tesisproject.backend.Services.Implementations
                         summary.ColumnMap,
                         dataMatrix);
 
-                    var objectiveHeaders = new List<string>();
-                    var objectiveCol = summary.ColumnMap.ObjectiveColumn;
+                    var objectiveHeaders = BuildObjectiveHeaders(summary.Headers, summary.ColumnMap.ObjectiveColumn);
 
-                    if (objectiveCol.HasValue &&
-                        objectiveCol.Value >= 0 &&
-                        objectiveCol.Value < summary.Headers.Count)
-                    {
-                        objectiveHeaders.Add(summary.Headers[objectiveCol.Value]);
-                    }
-                    else
-                    {
-                        objectiveHeaders.Add("OBJETIVO");
-                    }
-
-                    var objectivePreview = PrintMatrixPreview(objectiveHeaders, objectiveSection, 30);
+                    // Preview solo de debug (sin uso funcional)
+                    _ = PrintMatrixPreview(objectiveHeaders, objectiveSection, 30);
 
                     // ============================
                     //  MATRIZ DE COLABORADORES EXTERNOS (FLAGS)
@@ -228,13 +199,10 @@ namespace tesisproject.backend.Services.Implementations
                         dataMatrix,
                         out var fullColumnIndexes);
 
-                    var fullHeaders = fullColumnIndexes
-                        .Select(i => i >= 0 && i < summary.Headers.Count
-                            ? summary.Headers[i]
-                            : $"COL{i}")
-                        .ToList();
+                    var fullHeaders = GetHeadersByIndexes(summary.Headers, fullColumnIndexes);
 
-                    var fullPreview = PrintMatrixPreview(fullHeaders, fullMatrix, 30);
+                    // Preview solo de debug (sin uso funcional)
+                    _ = PrintMatrixPreview(fullHeaders, fullMatrix, 30);
 
                     // ============================
                     //  MAPEO A IMPORTED PROJECTS
@@ -314,23 +282,19 @@ namespace tesisproject.backend.Services.Implementations
                         {
                             RowNumber = 0,
                             Message = importResult.Message
-                                      ?? "Error importing projects into database."
+                                      ?? ErrorImportingProjectsIntoDatabaseMessage
                         });
                     }
 
                     return ServiceResult<ProjectMatrixUploadSummaryDTO>.Ok(
                         summary,
-                        "Matrix file processed.");
+                        MatrixFileProcessedMessage);
                 }
 
                 var notSupportedMessage =
                     $"File extension '{extension}' is not supported. Please upload an .xlsx file.";
 
-                summary.Errors.Add(new ProjectMatrixUploadErrorDTO
-                {
-                    RowNumber = 0,
-                    Message = notSupportedMessage
-                });
+                AddSummaryError(summary, 0, notSupportedMessage);
 
                 return ServiceResult<ProjectMatrixUploadSummaryDTO>.Ok(
                     summary,
@@ -342,6 +306,60 @@ namespace tesisproject.backend.Services.Implementations
                     ex.Message,
                     ErrorType.Unexpected);
             }
+        }
+
+        private static void AddSummaryError(ProjectMatrixUploadSummaryDTO summary, int rowNumber, string message)
+        {
+            summary.Errors.Add(new ProjectMatrixUploadErrorDTO
+            {
+                RowNumber = rowNumber,
+                Message = message
+            });
+        }
+
+        private static bool IsAllEmpty(IReadOnlyList<string> values)
+        {
+            return values.All(v => string.IsNullOrWhiteSpace(v));
+        }
+
+        private static bool IsTransferredRow(IReadOnlyList<string> values, int estadoIndex, string transferredNormalized)
+        {
+            if (estadoIndex < 0 || estadoIndex >= values.Count)
+                return false;
+
+            var estadoRaw = values[estadoIndex];
+            if (string.IsNullOrWhiteSpace(estadoRaw))
+                return false;
+
+            var estadoNormalized = NormalizeHeader(estadoRaw);
+            return estadoNormalized == transferredNormalized;
+        }
+
+        private static List<string> GetHeadersByIndexes(IReadOnlyList<string> headers, IReadOnlyList<int> indexes)
+        {
+            return indexes
+                .Select(i => i >= 0 && i < headers.Count
+                    ? headers[i]
+                    : $"COL{i}")
+                .ToList();
+        }
+
+        private static List<string> BuildObjectiveHeaders(IReadOnlyList<string> headers, int? objectiveCol)
+        {
+            var objectiveHeaders = new List<string>();
+
+            if (objectiveCol.HasValue &&
+                objectiveCol.Value >= 0 &&
+                objectiveCol.Value < headers.Count)
+            {
+                objectiveHeaders.Add(headers[objectiveCol.Value]);
+            }
+            else
+            {
+                objectiveHeaders.Add(DefaultObjectiveHeader);
+            }
+
+            return objectiveHeaders;
         }
 
         // =====================================================
@@ -375,17 +393,7 @@ namespace tesisproject.backend.Services.Implementations
 
             if (projectNameIndex >= 0)
             {
-                foreach (var row in dataMatrix)
-                {
-                    if (projectNameIndex < 0 || projectNameIndex >= row.Count)
-                        continue;
-
-                    var value = row[projectNameIndex];
-                    if (string.IsNullOrWhiteSpace(value))
-                        continue;
-
-                    row[projectNameIndex] = value.ToUpperInvariant();
-                }
+                UppercaseColumn(dataMatrix, projectNameIndex);
             }
 
             // NORMALIZAR ESTADO A MAYÚSCULAS
@@ -394,22 +402,27 @@ namespace tesisproject.backend.Services.Implementations
 
             if (estadoIndex >= 0)
             {
-                foreach (var row in dataMatrix)
-                {
-                    if (estadoIndex < 0 || estadoIndex >= row.Count)
-                        continue;
-
-                    var value = row[estadoIndex];
-                    if (string.IsNullOrWhiteSpace(value))
-                        continue;
-
-                    row[estadoIndex] = value.ToUpperInvariant();
-                }
+                UppercaseColumn(dataMatrix, estadoIndex);
             }
 
             // EXTRAER SECCIÓN DE PROYECTO
             var projectSection = ExtractColumnsSection(dataMatrix, map.ProjectColumns);
             return projectSection;
+        }
+
+        private static void UppercaseColumn(List<List<string>> matrix, int columnIndex)
+        {
+            foreach (var row in matrix)
+            {
+                if (columnIndex < 0 || columnIndex >= row.Count)
+                    continue;
+
+                var value = row[columnIndex];
+                if (string.IsNullOrWhiteSpace(value))
+                    continue;
+
+                row[columnIndex] = value.ToUpperInvariant();
+            }
         }
 
         // =====================================================
@@ -478,10 +491,10 @@ namespace tesisproject.backend.Services.Implementations
             if (extCols.Count == 0)
                 return result;
 
-            int natInstIdx = extCols.Count > 0 ? extCols[0] : -1;
-            int natColIdx = extCols.Count > 1 ? extCols[1] : -1;
-            int intInstIdx = extCols.Count > 2 ? extCols[2] : -1;
-            int intColIdx = extCols.Count > 3 ? extCols[3] : -1;
+            int natInstIdx = GetIndexOrDefault(extCols, 0, -1);
+            int natColIdx = GetIndexOrDefault(extCols, 1, -1);
+            int intInstIdx = GetIndexOrDefault(extCols, 2, -1);
+            int intColIdx = GetIndexOrDefault(extCols, 3, -1);
 
             foreach (var row in dataMatrix)
             {
@@ -498,6 +511,16 @@ namespace tesisproject.backend.Services.Implementations
             }
 
             return result;
+        }
+
+        private static int GetIndexOrDefault(IReadOnlyList<int> list, int position, int defaultValue)
+        {
+            if (list is null)
+                return defaultValue;
+
+            return position >= 0 && position < list.Count
+                ? list[position]
+                : defaultValue;
         }
 
         // =====================================================
@@ -517,11 +540,8 @@ namespace tesisproject.backend.Services.Implementations
 
             var indexSet = new HashSet<int>();
 
-            foreach (var idx in map.ProjectColumns ?? new List<int>())
-                indexSet.Add(idx);
-
-            foreach (var idx in map.FinancialColumns ?? new List<int>())
-                indexSet.Add(idx);
+            AddIndexes(indexSet, map.ProjectColumns);
+            AddIndexes(indexSet, map.FinancialColumns);
 
             AddRangeIfPresent(map.ExtensionRange, indexSet);
             AddRangeIfPresent(map.VisitRange, indexSet);
@@ -530,14 +550,10 @@ namespace tesisproject.backend.Services.Implementations
             if (map.ObjectiveColumn.HasValue)
                 indexSet.Add(map.ObjectiveColumn.Value);
 
-            foreach (var idx in map.DocumentColumns ?? new List<int>())
-                indexSet.Add(idx);
+            AddIndexes(indexSet, map.DocumentColumns);
 
-            foreach (var idx in map.InternalMemberColumns ?? new List<int>())
-                indexSet.Remove(idx);
-
-            foreach (var idx in map.ExternalMemberColumns ?? new List<int>())
-                indexSet.Remove(idx);
+            RemoveIndexes(indexSet, map.InternalMemberColumns);
+            RemoveIndexes(indexSet, map.ExternalMemberColumns);
 
             fullColumnIndexes = indexSet
                 .Where(i => i >= 0 && i < headers.Count)
@@ -545,6 +561,24 @@ namespace tesisproject.backend.Services.Implementations
                 .ToList();
 
             return ExtractColumnsSection(dataMatrix, fullColumnIndexes);
+        }
+
+        private static void AddIndexes(HashSet<int> target, IEnumerable<int>? indexes)
+        {
+            if (indexes is null)
+                return;
+
+            foreach (var idx in indexes)
+                target.Add(idx);
+        }
+
+        private static void RemoveIndexes(HashSet<int> target, IEnumerable<int>? indexes)
+        {
+            if (indexes is null)
+                return;
+
+            foreach (var idx in indexes)
+                target.Remove(idx);
         }
 
         private static bool HasPositiveValue(List<string> row, int index)
@@ -609,7 +643,6 @@ namespace tesisproject.backend.Services.Implementations
             }
 
             var idxCodigo = IndexOf("CODIGO");
-            if (idxCodigo < 0) idxCodigo = IndexOf("CÓDIGO");
             if (idxCodigo >= 0)
             {
                 map.ProjectColumns.Add(idxCodigo);
@@ -670,8 +703,6 @@ namespace tesisproject.backend.Services.Implementations
             AddIfFound(map.ExternalMemberColumns, IndexOf("COLABORADORES EXTERNOS INTERNACIONALES"));
 
             var idxResPrimera = IndexOf("RESOLUCIÓN PRIMERA PRORROGA");
-            if (idxResPrimera < 0) idxResPrimera = IndexOf("RESOLUCION PRIMERA PRORROGA");
-
             var idxAvances = IndexOf("AVANCES AÑOS 2013/2014");
             if (idxAvances < 0) idxAvances = IndexOf("AVANCES AÑOS 2013 / 2014");
 
@@ -697,8 +728,6 @@ namespace tesisproject.backend.Services.Implementations
             }
 
             var idxLinea = IndexOf("LÍNEA DE INVESTIGACIÓN");
-            if (idxLinea < 0) idxLinea = IndexOf("LINEA DE INVESTIGACION");
-
             var idxObjetivo = IndexOf("OBJETIVO GENERAL");
 
             if (idxLinea >= 0 && idxObjetivo > idxLinea)
@@ -912,6 +941,10 @@ namespace tesisproject.backend.Services.Implementations
                 convocationColumnIndex = map.NaturalKeyColumns[0];
             }
 
+            var normalizedHeaders = headers
+                .Select(NormalizeHeader)
+                .ToList();
+
             for (int rowIndex = 0; rowIndex < dataMatrix.Count; rowIndex++)
             {
                 var row = dataMatrix[rowIndex];
@@ -920,45 +953,45 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     CallCode = convocationColumnIndex.HasValue
                         ? SafeGet(row, convocationColumnIndex.Value)
-                        : GetByHeader(headers, row, "CONVOCATORIA"),
+                        : GetByHeader(normalizedHeaders, row, "CONVOCATORIA"),
 
-                    ProjectCode = GetByHeader(headers, row, "CODIGO", "CÓDIGO"),
-                    Number = ParseInt(GetByHeader(headers, row, "NRO.", "NRO")),
-                    ProjectName = GetByHeader(headers, row, "PROYECTO"),
-                    Faculty = GetByHeader(headers, row, "FACULTAD"),
-                    State = GetByHeader(headers, row, "ESTADO"),
-                    TermMonths = ParseInt(GetByHeader(headers, row, "PLAZO")),
-                    StartDate = ParseDate(GetByHeader(headers, row, "FECHA DE INICIO")),
-                    EstimatedEndDate = ParseDate(GetByHeader(headers, row,
+                    ProjectCode = GetByHeader(normalizedHeaders, row, "CODIGO", "CÓDIGO"),
+                    Number = ParseInt(GetByHeader(normalizedHeaders, row, "NRO.", "NRO")),
+                    ProjectName = GetByHeader(normalizedHeaders, row, "PROYECTO"),
+                    Faculty = GetByHeader(normalizedHeaders, row, "FACULTAD"),
+                    State = GetByHeader(normalizedHeaders, row, "ESTADO"),
+                    TermMonths = ParseInt(GetByHeader(normalizedHeaders, row, "PLAZO")),
+                    StartDate = ParseDate(GetByHeader(normalizedHeaders, row, "FECHA DE INICIO")),
+                    EstimatedEndDate = ParseDate(GetByHeader(normalizedHeaders, row,
                         "FECHA DE FINALIZACION ESTIMADA",
                         "FECHA DE FINALIZACIÓN ESTIMADA")),
 
-                    AssignedValue = ParseDecimal(GetByHeader(headers, row, "VALOR ASIGNADO")),
-                    ExecutedValue = ParseDecimal(GetByHeader(headers, row, "VALOR EJECUTADO")),
-                    RemainingValue = ParseDecimal(GetByHeader(headers, row, "VALOR POR EJECUTAR")),
-                    ExecutionPercentage = ParseDecimal(GetByHeader(headers, row,
+                    AssignedValue = ParseDecimal(GetByHeader(normalizedHeaders, row, "VALOR ASIGNADO")),
+                    ExecutedValue = ParseDecimal(GetByHeader(normalizedHeaders, row, "VALOR EJECUTADO")),
+                    RemainingValue = ParseDecimal(GetByHeader(normalizedHeaders, row, "VALOR POR EJECUTAR")),
+                    ExecutionPercentage = ParseDecimal(GetByHeader(normalizedHeaders, row,
                         "% EJECUTADO PRESUPUESTARIA",
                         "% EJECUTADO PRESUPUESTARIA ")),
-                    ExecutionProgress = ParseDecimal(GetByHeader(headers, row,
+                    ExecutionProgress = ParseDecimal(GetByHeader(normalizedHeaders, row,
                         "PORCENTAJE DE EJECUCION",
                         "PORCENTAJE DE EJECUCIÓN",
                         "PORCENTAJE DE EJECUTACION")),
                 };
 
-                project.ResearchLine = GetByHeader(headers, row,
+                project.ResearchLine = GetByHeader(normalizedHeaders, row,
                     "LÍNEA DE INVESTIGACIÓN",
                     "LINEA DE INVESTIGACION");
-                project.Domain = GetByHeader(headers, row, "DOMINIO");
-                project.BroadField = GetByHeader(headers, row, "CAMPO AMPLIO");
-                project.SpecificField = GetByHeader(headers, row, "CAMPO ESPECIFICO");
-                project.DetailedField = GetByHeader(headers, row, "CAMPO DETALLADO");
-                project.TerritorialScope = GetByHeader(headers, row, "ALCANCE TERRITORIAL");
-                project.ExpectedImpact = GetByHeader(headers, row, "IMPACTO ESPERADO");
-                project.GeneralObjective = GetByHeader(headers, row, "OBJETIVO GENERAL");
+                project.Domain = GetByHeader(normalizedHeaders, row, "DOMINIO");
+                project.BroadField = GetByHeader(normalizedHeaders, row, "CAMPO AMPLIO");
+                project.SpecificField = GetByHeader(normalizedHeaders, row, "CAMPO ESPECIFICO");
+                project.DetailedField = GetByHeader(normalizedHeaders, row, "CAMPO DETALLADO");
+                project.TerritorialScope = GetByHeader(normalizedHeaders, row, "ALCANCE TERRITORIAL");
+                project.ExpectedImpact = GetByHeader(normalizedHeaders, row, "IMPACTO ESPERADO");
+                project.GeneralObjective = GetByHeader(normalizedHeaders, row, "OBJETIVO GENERAL");
 
                 // ✅ COORDINADOR / COORDINADOR SUBROGANTE
-                var coordinatorRaw = GetByHeader(headers, row, "COORDINADOR");
-                var alternateCoordinatorRaw = GetByHeader(headers, row, "COORDINADOR SUBROGANTE");
+                var coordinatorRaw = GetByHeader(normalizedHeaders, row, "COORDINADOR");
+                var alternateCoordinatorRaw = GetByHeader(normalizedHeaders, row, "COORDINADOR SUBROGANTE");
 
                 var coordinators = ParsePeopleFromCell(coordinatorRaw, out var coordinatorDiscarded);
                 var alternates = ParsePeopleFromCell(alternateCoordinatorRaw, out var alternateDiscarded);
@@ -1402,6 +1435,32 @@ namespace tesisproject.backend.Services.Implementations
             return null;
         }
 
+        private static string? GetByHeader(
+            IReadOnlyList<string> normalizedHeaders,
+            List<string> row,
+            params string[] candidates)
+        {
+            foreach (var candidate in candidates)
+            {
+                var norm = NormalizeHeader(candidate);
+                var idx = IndexOfFirst(normalizedHeaders, norm);
+                if (idx >= 0 && idx < row.Count)
+                    return SafeGet(row, idx);
+            }
+
+            return null;
+        }
+
+        private static int IndexOfFirst(IReadOnlyList<string> list, string value)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i] == value)
+                    return i;
+            }
+            return -1;
+        }
+
         private static string SafeGet(List<string> row, int index)
         {
             if (index < 0 || index >= row.Count)
@@ -1483,18 +1542,9 @@ namespace tesisproject.backend.Services.Implementations
             // ==========================================
             // 2) Formatos explícitos
             // ==========================================
-            var formats = new[]
-            {
-        "yyyy",
-        "yyyy-MM-dd","yyyy/MM/dd","yyyy-M-d","yyyy/M/d",
-        "dd/MM/yyyy","d/M/yyyy","dd-MM-yyyy","d-M-yyyy","dd.MM.yyyy","d.M.yyyy",
-        "dd/MM/yy","d/M/yy","dd-MM-yy","d-M-yy",
-        "yyyy-MM-dd HH:mm:ss","dd/MM/yyyy HH:mm:ss","dd-MM-yyyy HH:mm:ss"
-    };
-
             if (DateTime.TryParseExact(
                     value,
-                    formats,
+                    DateFormats,
                     CultureInfo.InvariantCulture,
                     DateTimeStyles.AllowWhiteSpaces,
                     out var dtExact))

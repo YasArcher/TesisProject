@@ -1,6 +1,5 @@
 ﻿using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
-using tesisproject.shared.DTOs.Document.Response;
 using tesisproject.shared.DTOs.ExternalResearcherProject.Request;
 using tesisproject.shared.DTOs.ExternalResearcherProject.Response;
 using tesisproject.shared.Entities.Core;
@@ -11,6 +10,20 @@ namespace tesisproject.backend.Services.Implementations
     public class ExternalResearcherProjectService : IExternalResearcherProjectService
     {
         private readonly IUnitOfWork _uow;
+
+        // ===== Messages (mismo texto exacto) =====
+        private const string MsgInvalidProjectId = "Invalid project id.";
+        private const string MsgInvalidId = "Invalid id.";
+        private const string MsgRecordNotFound = "Record not found.";
+        private const string MsgUserNotFound = "User not found.";
+        private const string MsgInvalidRequest = "Invalid request.";
+        private const string MsgExternalResearcherIdRequired = "ExternalResearcherId is required.";
+        private const string MsgProjectIdRequired = "ProjectId is required.";
+        private const string MsgRoleRequired = "Role is required.";
+        private const string MsgExternalResearcherNotFound = "External researcher not found.";
+        private const string MsgProjectNotFound = "Project not found.";
+        private const string MsgApiError = "API error.";
+        private const string MsgExternalResearcherAlreadyAssigned ="External researcher is already assigned to this project.";
 
         public ExternalResearcherProjectService(IUnitOfWork uow)
         {
@@ -25,7 +38,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             if (projectId <= 0)
                 return ServiceResult<IReadOnlyList<ExternalResearcherProjectListItemDTO>>
-                    .Fail("Invalid project id.", ErrorType.Validation);
+                    .Fail(MsgInvalidProjectId, ErrorType.Validation);
 
             var items = await _uow.ExternalResearcherProjects
                 .ListByProjectAsync(projectId, ct);
@@ -40,11 +53,11 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgInvalidId, ErrorType.Validation);
 
             var entity = await _uow.ExternalResearcherProjects.GetByIdWithRefsAsync(id, ct);
             if (entity is null)
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("Record not found.", ErrorType.NotFound);
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgRecordNotFound, ErrorType.NotFound);
 
             var dto = ToDetailDTO(entity);
             return ServiceResult<ExternalResearcherProjectDetailDTO>.Ok(dto);
@@ -57,38 +70,50 @@ namespace tesisproject.backend.Services.Implementations
             int currentUserId,
             CancellationToken ct = default)
         {
+            // EFECTIVO: validar request/IDs/Role antes de ir a BD por el usuario
+            if (request is null)
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgInvalidRequest, ErrorType.Validation);
+
+            if (request.ExternalResearcherId <= 0)
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgExternalResearcherIdRequired, ErrorType.Validation);
+
+            if (request.ProjectId <= 0)
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgProjectIdRequired, ErrorType.Validation);
+
+            var role = (request.Role ?? string.Empty).Trim();
+            if (string.IsNullOrWhiteSpace(role))
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgRoleRequired, ErrorType.Validation);
 
             var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
             if (user is null)
             {
                 return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(
-                    "User not found.",
+                    MsgUserNotFound,
                     ErrorType.NotFound
                 );
             }
-            if (request is null)
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("Invalid request.", ErrorType.Validation);
 
-            if (request.ExternalResearcherId <= 0)
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("ExternalResearcherId is required.", ErrorType.Validation);
-
-            if (request.ProjectId <= 0)
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("ProjectId is required.", ErrorType.Validation);
-
-            var role = (request.Role ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(role))
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("Role is required.", ErrorType.Validation);
-
-            // Validar existencia de ExternalResearcher y Project
+            // EFECTIVO: ahora es NotFound (antes Validation)
             var extRes = await _uow.ExternalResearchers.GetByIdAsync(
                 new object[] { request.ExternalResearcherId }, ct);
             if (extRes is null)
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("External researcher not found.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgExternalResearcherNotFound, ErrorType.NotFound);
 
             var project = await _uow.Projects.GetByIdAsync(
                 new object[] { request.ProjectId }, ct);
             if (project is null)
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("Project not found.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgProjectNotFound, ErrorType.NotFound);
+
+            // Antes de crear entity (luego de validar IDs y antes de AddAsync)
+            var exists = await _uow.ExternalResearcherProjects.ExistsAsync(
+                x => x.ExternalResearcherId == request.ExternalResearcherId
+                  && x.ProjectId == request.ProjectId,
+                ct);
+
+            if (exists)
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(
+                    MsgExternalResearcherAlreadyAssigned,
+                    ErrorType.Conflict);
 
             var entity = new ExternalResearcherProject
             {
@@ -97,17 +122,15 @@ namespace tesisproject.backend.Services.Implementations
                 Role = role,
                 CreatedByUserId = user.IdUser,
                 ExitDate = request.ExitDate
-                // CreatedAtUtc se setea por default en la entidad
             };
 
             await _uow.ExternalResearcherProjects.AddAsync(entity, ct);
             await _uow.SaveChangesAsync(ct);
 
-            // Recargar con refs si quieres datos completos
-            var reloaded = await _uow.ExternalResearcherProjects.GetByIdWithRefsAsync(
-                entity.ExternalResearcherProjectId, ct);
+            // EFECTIVO: eliminamos reload; seteamos navegación para mantener FullName/Email en el DTO
+            entity.ExternalResearcher = extRes;
 
-            var dto = ToDetailDTO(reloaded ?? entity);
+            var dto = ToDetailDTO(entity);
             return ServiceResult<ExternalResearcherProjectDetailDTO>.Ok(dto);
         }
 
@@ -116,33 +139,45 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null || request.Id <= 0)
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgInvalidId, ErrorType.Validation);
 
             if (request.ExternalResearcherId <= 0)
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("ExternalResearcherId is required.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgExternalResearcherIdRequired, ErrorType.Validation);
 
             if (request.ProjectId <= 0)
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("ProjectId is required.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgProjectIdRequired, ErrorType.Validation);
 
             var role = (request.Role ?? string.Empty).Trim();
             if (string.IsNullOrWhiteSpace(role))
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("Role is required.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgRoleRequired, ErrorType.Validation);
 
             var entity = await _uow.ExternalResearcherProjects.GetByIdAsync(
                 new object[] { request.Id }, ct);
             if (entity is null)
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("Record not found.", ErrorType.NotFound);
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgRecordNotFound, ErrorType.NotFound);
 
-            // Validar existencia de claves FK
+            // EFECTIVO: ahora es NotFound (antes Validation)
             var extRes = await _uow.ExternalResearchers.GetByIdAsync(
                 new object[] { request.ExternalResearcherId }, ct);
             if (extRes is null)
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("External researcher not found.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgExternalResearcherNotFound, ErrorType.NotFound);
 
+            // EFECTIVO: ahora es NotFound (antes Validation)
             var project = await _uow.Projects.GetByIdAsync(
                 new object[] { request.ProjectId }, ct);
             if (project is null)
-                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail("Project not found.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(MsgProjectNotFound, ErrorType.NotFound);
+
+            var exists = await _uow.ExternalResearcherProjects.ExistsAsync(
+                x => x.ExternalResearcherId == request.ExternalResearcherId
+                  && x.ProjectId == request.ProjectId
+                  && x.ExternalResearcherProjectId != request.Id,
+                ct);
+
+            if (exists)
+                return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(
+                    MsgExternalResearcherAlreadyAssigned,
+                    ErrorType.Conflict);
 
             entity.ExternalResearcherId = request.ExternalResearcherId;
             entity.ProjectId = request.ProjectId;
@@ -151,11 +186,9 @@ namespace tesisproject.backend.Services.Implementations
 
             _uow.ExternalResearcherProjects.Update(entity);
             await _uow.SaveChangesAsync(ct);
+            entity.ExternalResearcher = extRes;
 
-            var reloaded = await _uow.ExternalResearcherProjects.GetByIdWithRefsAsync(
-                entity.ExternalResearcherProjectId, ct);
-
-            var dto = ToDetailDTO(reloaded ?? entity);
+            var dto = ToDetailDTO(entity);
             return ServiceResult<ExternalResearcherProjectDetailDTO>.Ok(dto);
         }
 

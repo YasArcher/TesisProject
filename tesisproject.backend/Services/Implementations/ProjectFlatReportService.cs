@@ -1,9 +1,16 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using tesisproject.backend.Data;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.External;
 using tesisproject.shared.DTOs.Matrices.Response;
+using tesisproject.shared.Entities.Core.Products;
 using tesisproject.shared.Entities.External;
+using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -34,32 +41,7 @@ namespace tesisproject.backend.Services.Implementations
             // =========================
             //   EXTERNAL FACULTIES
             // =========================
-            var facultyDict = new Dictionary<int, ExternalFacultyDTO>();
-
-            try
-            {
-                var facultiesRes = await _externalAcademics.GetFacultiesAsync(ct);
-                if (facultiesRes.Success && facultiesRes.Data is not null)
-                {
-                    facultyDict = facultiesRes.Data
-                        .GroupBy(f => f.FacultyId) // por si acaso
-                        .ToDictionary(g => g.Key, g => g.First());
-
-                    _logger.LogInformation(
-                        "Loaded {Count} faculties from external API for flat report.",
-                        facultyDict.Count);
-                }
-                else
-                {
-                    _logger.LogWarning(
-                        "Could not load faculties from external API. Report will not include FacultyName.");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex,
-                    "Error loading faculties from external API. FacultyName will be empty.");
-            }
+            var facultyDict = await LoadExternalFacultiesAsync(ct);
 
             // =========================
             //      CATALOG TABLES
@@ -79,15 +61,19 @@ namespace tesisproject.backend.Services.Implementations
             // =========================
             //      OPERATIONAL TABLES
             // =========================
-
             var projectQuery = _db.Projects.AsNoTracking().AsQueryable();
 
             if (projectIds != null && projectIds.Any())
             {
                 projectQuery = projectQuery.Where(p => projectIds.Contains(p.ProjectId));
             }
-            _logger.LogInformation("Generating flat report for {Count} projects.",projectIds?.Count() ?? await _db.Projects.CountAsync(ct));
+
+            _logger.LogInformation(
+                "Generating flat report for {Count} projects.",
+                projectIds?.Count() ?? await _db.Projects.CountAsync(ct));
+
             var projects = await projectQuery.ToListAsync(ct);
+
             var budgets = await _db.Budgets.AsNoTracking().ToListAsync(ct);
             var products = await _db.Products.AsNoTracking().ToListAsync(ct);
             var productValues = await _db.ProductValues.AsNoTracking().ToListAsync(ct);
@@ -107,18 +93,25 @@ namespace tesisproject.backend.Services.Implementations
             // =========================
             //   LOOKUPS AUXILIARES
             // =========================
+            var projectTypeById = ToFirstByKey(projectTypes, x => x.Id);
+            var projectStateById = ToFirstByKey(projectStates, x => x.Id);
+            var convocationById = ToFirstByKey(convocationList, x => x.Id);
+            var groupById = ToFirstByKey(groups, x => x.GroupId);
+            var groupTypeById = ToFirstByKey(groupTypes, x => x.Id);
+            var fundingTypeById = ToFirstByKey(fundingTypes, x => x.Id);
+            var productTypeById = ToFirstByKey(productTypes, x => x.Id);
+            var objectiveTypeById = ToFirstByKey(objectiveTypes, x => x.Id);
+            var institutionById = ToFirstByKey(institutions, x => x.Id);
 
-            // Diccionario rápido de roles
-            var memberRoleDict = memberRoleTypes.ToDictionary(r => r.Id, r => r);
+            var productAttributeById = ToFirstByKey(productAttributes, x => x.Id);
+            var attributeDefById = ToFirstByKey(attributeDefs, x => x.Id);
 
-            // Grupos tipo 1 = integrantes de proyecto
-            const int PROJECT_MEMBER_GROUP_TYPE_ID = 1;
+            // Diccionario rápido de roles (seguro ante duplicados)
+            var memberRoleDict = ToFirstByKey(memberRoleTypes, r => r.Id);
 
             // Grupos tipo 2 = grupos de investigación (acreditados SENESCYT)
-            const int RESEARCH_GROUP_GROUP_TYPE_ID = 2;
-
             var researchGroupIds = groups
-                .Where(g => g.GroupTypeId == RESEARCH_GROUP_GROUP_TYPE_ID)
+                .Where(g => g.GroupTypeId == GroupTypeIds.Investigadores)
                 .Select(g => g.GroupId)
                 .ToHashSet();
 
@@ -139,36 +132,36 @@ namespace tesisproject.backend.Services.Implementations
                 .GroupBy(a => a.IdUser)
                 .ToDictionary(g => g.Key, g => g.First());
 
+            // Agrupaciones por ProjectId/ProductId para evitar filtros repetidos
+            var budgetsByProjectId = budgets
+                .GroupBy(b => b.ProjectId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var productsByProjectId = products
+                .GroupBy(p => p.ProjectId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var valuesByProductId = productValues
+                .GroupBy(v => v.ProductId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var objectivesByProjectId = projectObjectives
+                .GroupBy(o => o.ProjectId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var researchCatsByProjectId = projectResearchCats
+                .GroupBy(rc => rc.ProjectId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
+            var externalResearcherProjectsByProjectId = externalResearcherProj
+                .GroupBy(er => er.ProjectId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
             // =========================
             //   DIRECTORIO EXTERNO
             // =========================
             // Se indexa por ASP_ID (IdAsp)
-            var profileByAspId = new Dictionary<int, ExternalUserProfileModel>();
-
-            try
-            {
-                var profilesRes = await _externalDirectory.GetAllAsync(ct);
-                if (profilesRes.Success && profilesRes.Data is not null)
-                {
-                    profileByAspId = profilesRes.Data
-                        .Where(p => p.AspId.HasValue)
-                        .GroupBy(p => GetProfileKey(p))
-                        .ToDictionary(g => g.Key, g => g.First());
-
-                    _logger.LogInformation(
-                        "Loaded {Count} external profiles from directory.",
-                        profileByAspId.Count);
-                }
-                else
-                {
-                    _logger.LogWarning(
-                        "Could not load external profiles from directory. Members will not be enriched.");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error loading external profiles from directory.");
-            }
+            var profileByAspId = await LoadExternalProfilesAsync(ct);
 
             // =========================
             //          PROJECTION
@@ -176,8 +169,8 @@ namespace tesisproject.backend.Services.Implementations
             var report = projects
                 .Select(p =>
                 {
-                    var group = groups.FirstOrDefault(g => g.GroupId == p.ProjectGroupId);
-                    var groupType = groupTypes.FirstOrDefault(gt => gt.Id == (group?.GroupTypeId ?? 0));
+                    groupById.TryGetValue(p.ProjectGroupId, out var group);
+                    groupTypeById.TryGetValue(group?.GroupTypeId ?? 0, out var groupType);
 
                     // Resolver facultad (externa)
                     facultyDict.TryGetValue(p.FacultyId, out var facultyDto);
@@ -186,23 +179,18 @@ namespace tesisproject.backend.Services.Implementations
                     // =========================
                     //      PROJECT MEMBERS
                     // =========================
-
-                    // Miembros del grupo asociado al proyecto (ProjectGroupId)
                     membersByGroupId.TryGetValue(p.ProjectGroupId, out var rawMembers);
                     rawMembers ??= new List<shared.Entities.Core.GroupMember>();
 
-                    // Mapear a DTO enriquecido con directorio externo
                     var internalMembers = rawMembers
                         .Select(m =>
                         {
                             memberRoleDict.TryGetValue(m.MemberRoleId, out var role);
 
-                            // IdUser (interno) que viene en GroupMember
                             var userId = m.UserId;
 
                             ExternalUserProfileModel? profile = null;
 
-                            // Buscar AppUser para obtener IdAsp
                             if (appUserByIdUser.TryGetValue(userId, out var appUser) &&
                                 appUser.IdAsp is int aspId &&
                                 profileByAspId.TryGetValue(aspId, out var foundProfile))
@@ -222,19 +210,12 @@ namespace tesisproject.backend.Services.Implementations
                         })
                         .ToList();
 
-                    // Coordinador y Subrogante separados (sin fallback)
-                    const int ROLE_COORDINADOR_PRINCIPAL_ID = 1;
-                    const int ROLE_COORDINADOR_SUBROGANTE_ID = 2;
-
                     var coordinatorPrincipal = internalMembers
-                        .FirstOrDefault(m => m.MemberRoleId == ROLE_COORDINADOR_PRINCIPAL_ID);
+                        .FirstOrDefault(m => m.MemberRoleId == MemberRoleTypeIds.Coordinador);
 
                     var coordinatorSubrogant = internalMembers
-                        .FirstOrDefault(m => m.MemberRoleId == ROLE_COORDINADOR_SUBROGANTE_ID);
+                        .FirstOrDefault(m => m.MemberRoleId == MemberRoleTypeIds.Subrogante);
 
-
-                    // Investigadores SENESCYT = integrantes del proyecto cuyo IdUser
-                    // pertenece a algún grupo tipo 2 (researchGroupIds)
                     var senescytMembers = internalMembers
                         .Where(m => senescytUserIds.Contains(m.UserId))
                         .ToList();
@@ -242,6 +223,30 @@ namespace tesisproject.backend.Services.Implementations
                     // =========================
                     //        PROJECT DTO
                     // =========================
+                    projectTypeById.TryGetValue(p.ProjectTypeId, out var projectType);
+                    projectStateById.TryGetValue(p.ProjectStateId, out var projectState);
+                    convocationById.TryGetValue(p.ConvocationId.GetValueOrDefault(), out var convocation);
+
+                    var projectBudgets = budgetsByProjectId.TryGetValue(p.ProjectId, out var bList)
+                        ? bList
+                        : new List<shared.Entities.Core.Budget>();
+
+                    var projectProducts = productsByProjectId.TryGetValue(p.ProjectId, out var prList)
+                        ? prList
+                        : new List<Product>();
+
+                    var projectObjectivesList = objectivesByProjectId.TryGetValue(p.ProjectId, out var objList)
+                        ? objList
+                        : new List<shared.Entities.Core.ProjectObjective>();
+
+                    var projectResearchCategories = researchCatsByProjectId.TryGetValue(p.ProjectId, out var rcList)
+                        ? rcList
+                        : new List<shared.Entities.Core.ProjectResearchCategory>();
+
+                    var projectExternalResearchers = externalResearcherProjectsByProjectId.TryGetValue(p.ProjectId, out var erList)
+                        ? erList
+                        : new List<shared.Entities.Core.ExternalResearcherProject>();
+
                     return new ProjectFlatReportDTO
                     {
                         // =========================
@@ -252,14 +257,14 @@ namespace tesisproject.backend.Services.Implementations
                         ProjectName = p.ProjectName,
                         ProjectNumber = p.ProjectNumber,
                         ProjectTypeId = p.ProjectTypeId,
-                        ProjectTypeName = projectTypes.FirstOrDefault(t => t.Id == p.ProjectTypeId)?.Name,
+                        ProjectTypeName = projectType?.Name,
                         ProjectStateId = p.ProjectStateId,
-                        ProjectStateName = projectStates.FirstOrDefault(s => s.Id == p.ProjectStateId)?.Name,
+                        ProjectStateName = projectState?.Name,
                         ProjectGroupId = p.ProjectGroupId,
                         GroupName = group?.Name,
                         GroupTypeName = groupType?.Name,
                         ConvocationId = (int)p.ConvocationId,
-                        ConvocationName = convocationList.FirstOrDefault(c => c.Id == p.ConvocationId)?.Name,
+                        ConvocationName = convocation?.Name,
                         ApprovalDate = p.ApprovalDate,
                         StartDate = p.StartDate,
                         DurationInMonths = p.DurationInMonths,
@@ -272,80 +277,95 @@ namespace tesisproject.backend.Services.Implementations
                         // =========================
                         //          BUDGETS
                         // =========================
-                        Budgets = budgets
-                            .Where(b => b.ProjectId == p.ProjectId)
-                            .Select(b => new ProjectBudgetReportDTO
+                        Budgets = projectBudgets
+                            .Select(b =>
                             {
-                                BudgetId = b.BudgetId,
-                                FundingTypeId = b.FundingTypeId,
-                                FundingTypeName = fundingTypes.FirstOrDefault(ft => ft.Id == b.FundingTypeId)?.Name,
-                                InitialAmount = b.InitialAmount,
-                                CertifiedAmount = b.CertifiedAmount,
-                                ExecutedAmount = b.ExecutedAmount,
-                                ApprovedAt = b.ApprovedAt,
-                                // Transactions NO se proyectan
+                                fundingTypeById.TryGetValue(b.FundingTypeId, out var fundingType);
+
+                                return new ProjectBudgetReportDTO
+                                {
+                                    BudgetId = b.BudgetId,
+                                    FundingTypeId = b.FundingTypeId,
+                                    FundingTypeName = fundingType?.Name,
+                                    InitialAmount = b.InitialAmount,
+                                    CertifiedAmount = b.CertifiedAmount,
+                                    ExecutedAmount = b.ExecutedAmount,
+                                    ApprovedAt = b.ApprovedAt,
+                                };
                             })
                             .ToList(),
 
                         // =========================
                         //          PRODUCTS
                         // =========================
-                        Products = products
-                            .Where(pr => pr.ProjectId == p.ProjectId)
-                            .Select(pr => new ProjectProductReportDTO
+                        Products = projectProducts
+                            .Select(pr =>
                             {
-                                ProductId = pr.Id,
-                                Title = pr.Title,
-                                Description = pr.Description,
-                                ProductTypeId = pr.ProductTypeId,
-                                ProductTypeName = productTypes.FirstOrDefault(pt => pt.Id == pr.ProductTypeId)?.Name,
-                                CreatedAt = pr.CreatedAt,
-                                UpdatedAt = pr.UpdatedAt,
-                                Attributes = productValues
-                                    .Where(v => v.ProductId == pr.Id)
-                                    .Select(v =>
-                                    {
-                                        var def = attributeDefs.FirstOrDefault(d => d.Id == v.AttributeDefinitionId);
-                                        var attr = def is null
-                                            ? null
-                                            : productAttributes.FirstOrDefault(a => a.Id == def.ProductAttributeId);
+                                productTypeById.TryGetValue(pr.ProductTypeId, out var prodType);
 
-                                        return new ProductAttributeValueDTO
+                                var valuesForProduct = valuesByProductId.TryGetValue(pr.Id, out var vList)
+                                    ? vList
+                                    : new List<ProductValue>();
+
+                                return new ProjectProductReportDTO
+                                {
+                                    ProductId = pr.Id,
+                                    Title = pr.Title,
+                                    Description = pr.Description,
+                                    ProductTypeId = pr.ProductTypeId,
+                                    ProductTypeName = prodType?.Name,
+                                    CreatedAt = pr.CreatedAt,
+                                    UpdatedAt = pr.UpdatedAt,
+                                    Attributes = valuesForProduct
+                                        .Select(v =>
                                         {
-                                            AttributeDefinitionId = v.AttributeDefinitionId,
-                                            ProductAttributeId = def?.ProductAttributeId ?? 0,
-                                            AttributeName = attr?.Name,
-                                            Value = v.Value,
-                                            Unit = attr?.Unit,
-                                            DataType = attr?.DataType.ToString()
-                                        };
-                                    })
-                                    .ToList()
+                                            attributeDefById.TryGetValue(v.AttributeDefinitionId, out var def);
+
+                                            var attr = def is null
+                                                ? null
+                                                : productAttributeById.TryGetValue(def.ProductAttributeId, out var foundAttr)
+                                                    ? foundAttr
+                                                    : null;
+
+                                            return new ProductAttributeValueDTO
+                                            {
+                                                AttributeDefinitionId = v.AttributeDefinitionId,
+                                                ProductAttributeId = def?.ProductAttributeId ?? 0,
+                                                AttributeName = attr?.Name,
+                                                Value = v.Value,
+                                                Unit = attr?.Unit,
+                                                DataType = attr?.DataType.ToString()
+                                            };
+                                        })
+                                        .ToList()
+                                };
                             })
                             .ToList(),
 
                         // =========================
                         //        OBJECTIVES
                         // =========================
-                        Objectives = projectObjectives
-                            .Where(o => o.ProjectId == p.ProjectId)
-                            .Select(o => new ProjectObjectiveReportDTO
+                        Objectives = projectObjectivesList
+                            .Select(o =>
                             {
-                                ObjectiveId = o.Id,
-                                ObjectiveTypeId = o.ObjectiveTypeId,
-                                ObjectiveTypeName = objectiveTypes.FirstOrDefault(ot => ot.Id == o.ObjectiveTypeId)?.Name,
-                                Objective = o.Objective,
-                                Result = o.Result,
-                                WeightedPercentage = o.WeightedPercentage,
-                                // Activities NO se proyectan
+                                objectiveTypeById.TryGetValue(o.ObjectiveTypeId, out var objType);
+
+                                return new ProjectObjectiveReportDTO
+                                {
+                                    ObjectiveId = o.Id,
+                                    ObjectiveTypeId = o.ObjectiveTypeId,
+                                    ObjectiveTypeName = objType?.Name,
+                                    Objective = o.Objective,
+                                    Result = o.Result,
+                                    WeightedPercentage = o.WeightedPercentage,
+                                };
                             })
                             .ToList(),
 
                         // =========================
                         //    RESEARCH CATEGORIES
                         // =========================
-                        ResearchCategories = projectResearchCats
-                            .Where(rc => rc.ProjectId == p.ProjectId)
+                        ResearchCategories = projectResearchCategories
                             .Select(rc => new ProjectResearchCategoryReportDTO
                             {
                                 ResearchCategoryId = rc.ResearchCategoryId
@@ -355,14 +375,15 @@ namespace tesisproject.backend.Services.Implementations
                         // =========================
                         //    EXTERNAL RESEARCHERS
                         // =========================
-                        ExternalResearchers = externalResearcherProj
-                            .Where(er => er.ProjectId == p.ProjectId)
+                        ExternalResearchers = projectExternalResearchers
                             .Select(er =>
                             {
                                 var person = externalResearchers
                                     .FirstOrDefault(x => x.ExternalResearcherId == er.ExternalResearcherId);
-                                var inst = institutions
-                                    .FirstOrDefault(i => i.Id == (person?.InstitutionId ?? 0));
+
+                                var inst = institutionById.TryGetValue(person?.InstitutionId ?? 0, out var foundInst)
+                                    ? foundInst
+                                    : null;
 
                                 return new ProjectExternalResearcherReportDTO
                                 {
@@ -391,12 +412,79 @@ namespace tesisproject.backend.Services.Implementations
                         SubrogantName = coordinatorSubrogant?.FullName,
                         SubrogantEmail = coordinatorSubrogant?.Email,
                         SubrogantPhone = coordinatorSubrogant?.PhoneNumber
-
                     };
                 })
                 .ToList();
 
             return ServiceResult<IReadOnlyList<ProjectFlatReportDTO>>.Ok(report);
+        }
+
+        // ======================================================
+        //      Cargas externas (mantener logging EXACTO)
+        // ======================================================
+
+        private async Task<Dictionary<int, ExternalFacultyDTO>> LoadExternalFacultiesAsync(CancellationToken ct)
+        {
+            var facultyDict = new Dictionary<int, ExternalFacultyDTO>();
+
+            try
+            {
+                var facultiesRes = await _externalAcademics.GetFacultiesAsync(ct);
+                if (facultiesRes.Success && facultiesRes.Data is not null)
+                {
+                    facultyDict = facultiesRes.Data
+                        .GroupBy(f => f.FacultyId) // por si acaso
+                        .ToDictionary(g => g.Key, g => g.First());
+
+                    _logger.LogInformation(
+                        "Loaded {Count} faculties from external API for flat report.",
+                        facultyDict.Count);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Could not load faculties from external API. Report will not include FacultyName.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "Error loading faculties from external API. FacultyName will be empty.");
+            }
+
+            return facultyDict;
+        }
+
+        private async Task<Dictionary<int, ExternalUserProfileModel>> LoadExternalProfilesAsync(CancellationToken ct)
+        {
+            var profileByAspId = new Dictionary<int, ExternalUserProfileModel>();
+
+            try
+            {
+                var profilesRes = await _externalDirectory.GetAllAsync(ct);
+                if (profilesRes.Success && profilesRes.Data is not null)
+                {
+                    profileByAspId = profilesRes.Data
+                        .Where(p => p.AspId.HasValue)
+                        .GroupBy(p => GetProfileKey(p))
+                        .ToDictionary(g => g.Key, g => g.First());
+
+                    _logger.LogInformation(
+                        "Loaded {Count} external profiles from directory.",
+                        profileByAspId.Count);
+                }
+                else
+                {
+                    _logger.LogWarning(
+                        "Could not load external profiles from directory. Members will not be enriched.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading external profiles from directory.");
+            }
+
+            return profileByAspId;
         }
 
         // ======================================================
@@ -420,5 +508,19 @@ namespace tesisproject.backend.Services.Implementations
 
         private static string? GetProfilePhone(ExternalUserProfileModel profile)
             => profile.Phone;
+
+        // ======================================================
+        //      Helpers de diccionarios (preservan "First")
+        // ======================================================
+
+        private static Dictionary<TKey, TSource> ToFirstByKey<TSource, TKey>(
+            IEnumerable<TSource> source,
+            Func<TSource, TKey> keySelector)
+            where TKey : notnull
+        {
+            return source
+                .GroupBy(keySelector)
+                .ToDictionary(g => g.Key, g => g.First());
+        }
     }
 }

@@ -13,6 +13,13 @@ namespace tesisproject.backend.Services.Implementations
     {
         private readonly IUnitOfWork _uow;
 
+        private const string InvalidIdMessage = "Invalid id.";
+        private const string InvalidRequestMessage = "Invalid request.";
+        private const string FullNameRequiredMessage = "Full name is required.";
+        private const string EmailRequiredMessage = "Email is required.";
+        private const string EmailAlreadyExistsMessage = "Email already exists.";
+        private const string ExternalResearcherNotFoundMessage = "External researcher not found.";
+
         public ExternalResearcherService(IUnitOfWork uow)
         {
             _uow = uow;
@@ -28,18 +35,7 @@ namespace tesisproject.backend.Services.Implementations
             var query = _uow.ExternalResearchers
                 .QueryWithRefs(asNoTracking: true);
 
-            if (!string.IsNullOrWhiteSpace(term))
-            {
-                term = term.Trim();
-                query = query.Where(er =>
-                    er.FullName.Contains(term) ||
-                    er.Email.Contains(term));
-            }
-
-            if (institutionId.HasValue)
-            {
-                query = query.Where(er => er.InstitutionId == institutionId.Value);
-            }
+            query = ApplyTermAndInstitutionFilters(query, term, institutionId);
 
             var data = await query
                 .OrderBy(er => er.FullName)
@@ -55,12 +51,12 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
 
             var entity = await _uow.ExternalResearchers.GetByIdWithRefsAsync(id, ct);
 
             if (entity is null)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail("External researcher not found.", ErrorType.NotFound);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(ExternalResearcherNotFoundMessage, ErrorType.NotFound);
 
             var dto = ToDetailDTO(entity);
             return ServiceResult<ExternalResearcherDetailDTO>.Ok(dto);
@@ -74,18 +70,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             var query = _uow.ExternalResearchers.Query(asNoTracking: true);
 
-            if (!string.IsNullOrWhiteSpace(term))
-            {
-                term = term.Trim();
-                query = query.Where(er =>
-                    er.FullName.Contains(term) ||
-                    er.Email.Contains(term));
-            }
-
-            if (institutionId.HasValue)
-            {
-                query = query.Where(er => er.InstitutionId == institutionId.Value);
-            }
+            query = ApplyTermAndInstitutionFilters(query, term, institutionId);
 
             if (take.HasValue && take.Value > 0)
             {
@@ -111,30 +96,30 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail("Invalid request.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(InvalidRequestMessage, ErrorType.Validation);
 
-            var fullName = (request.FullName ?? string.Empty).Trim();
-            var email = (request.Email ?? string.Empty).Trim();
-            var phone = request.PhoneNumber?.Trim();
+            var fullName = NormalizeRequired(request.FullName);
+            var email = NormalizeRequired(request.Email);
+            var phone = NormalizePhone(request.PhoneNumber);
 
             if (string.IsNullOrWhiteSpace(fullName))
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail("Full name is required.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(FullNameRequiredMessage, ErrorType.Validation);
 
             if (string.IsNullOrWhiteSpace(email))
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail("Email is required.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(EmailRequiredMessage, ErrorType.Validation);
 
             var emailExists = await _uow.ExternalResearchers.ExistsAsync(
                 er => er.Email == email,
                 ct);
 
             if (emailExists)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail("Email already exists.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(EmailAlreadyExistsMessage, ErrorType.Validation);
 
             var entity = new ExternalResearcher
             {
                 FullName = fullName,
                 Email = email,
-                PhoneNumber = string.IsNullOrWhiteSpace(phone) ? null : phone,
+                PhoneNumber = phone,
                 InstitutionId = request.InstitutionId
             };
 
@@ -151,32 +136,32 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null || request.Id <= 0)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
 
-            var fullName = (request.FullName ?? string.Empty).Trim();
-            var email = (request.Email ?? string.Empty).Trim();
-            var phone = request.PhoneNumber?.Trim();
+            var fullName = NormalizeRequired(request.FullName);
+            var email = NormalizeRequired(request.Email);
+            var phone = NormalizePhone(request.PhoneNumber);
 
             if (string.IsNullOrWhiteSpace(fullName))
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail("Full name is required.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(FullNameRequiredMessage, ErrorType.Validation);
 
             if (string.IsNullOrWhiteSpace(email))
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail("Email is required.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(EmailRequiredMessage, ErrorType.Validation);
 
             var entity = await _uow.ExternalResearchers.GetByIdAsync(new object[] { request.Id }, ct);
             if (entity is null)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail("External researcher not found.", ErrorType.NotFound);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(ExternalResearcherNotFoundMessage, ErrorType.NotFound);
 
             var duplicatedEmail = await _uow.ExternalResearchers.ExistsAsync(
                 er => er.Email == email && er.ExternalResearcherId != request.Id,
                 ct);
 
             if (duplicatedEmail)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail("Email already exists.", ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(EmailAlreadyExistsMessage, ErrorType.Validation);
 
             entity.FullName = fullName;
             entity.Email = email;
-            entity.PhoneNumber = string.IsNullOrWhiteSpace(phone) ? null : phone;
+            entity.PhoneNumber = phone;
             entity.InstitutionId = request.InstitutionId;
 
             _uow.ExternalResearchers.Update(entity);
@@ -184,6 +169,38 @@ namespace tesisproject.backend.Services.Implementations
 
             var dto = ToDetailDTO(entity);
             return ServiceResult<ExternalResearcherDetailDTO>.Ok(dto);
+        }
+
+        // ================ HELPERS ================
+
+        private static IQueryable<ExternalResearcher> ApplyTermAndInstitutionFilters(
+            IQueryable<ExternalResearcher> query,
+            string? term,
+            int? institutionId)
+        {
+            if (!string.IsNullOrWhiteSpace(term))
+            {
+                term = term.Trim();
+                query = query.Where(er =>
+                    er.FullName.Contains(term) ||
+                    er.Email.Contains(term));
+            }
+
+            if (institutionId.HasValue)
+            {
+                query = query.Where(er => er.InstitutionId == institutionId.Value);
+            }
+
+            return query;
+        }
+
+        private static string NormalizeRequired(string? value)
+            => (value ?? string.Empty).Trim();
+
+        private static string? NormalizePhone(string? phoneNumber)
+        {
+            var phone = phoneNumber?.Trim();
+            return string.IsNullOrWhiteSpace(phone) ? null : phone;
         }
 
         // ================ MAPPERS ================
