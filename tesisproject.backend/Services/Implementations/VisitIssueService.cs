@@ -1,11 +1,9 @@
 ﻿using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
-using tesisproject.shared.DTOs.Budgets.Request;
 using tesisproject.shared.DTOs.VisitIssues.Request;
 using tesisproject.shared.DTOs.VisitIssues.Response;
 using tesisproject.shared.Entities.Core;
-using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -35,25 +33,20 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             // Validar existencia de Visit
-            var visitExists = await _visitRepo.ExistsAsync(v => v.VisitId == request.VisitId, ct);
+            var visitExists = await VisitExistsAsync(request.VisitId, ct);
             if (!visitExists)
-                return ServiceResult<VisitIssueResponseDTO>.Fail(
-                    $"Visit {request.VisitId} was not found.",
-                    ErrorType.NotFound);
-            var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
-            if (user is null)
-            {
-                return ServiceResult<VisitIssueResponseDTO>.Fail(
-                    "User not found.",
-                    ErrorType.NotFound
-                );
-            }
+                return FailVisitNotFound<VisitIssueResponseDTO>(request.VisitId);
+
+            var (userFound, reporterUserId) = await TryGetCurrentUserIdAsync(currentUserId, ct);
+            if (!userFound)
+                return FailUserNotFound<VisitIssueResponseDTO>();
+
             var entity = new VisitIssue
             {
                 VisitId = request.VisitId,
                 Description = request.Description,
                 CreatedAtUtc = DateTime.UtcNow,
-                ReportedByUserId = user.IdUser
+                ReportedByUserId = reporterUserId
             };
 
             await _issueRepo.AddAsync(entity, ct);
@@ -71,9 +64,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             var entity = await _issueRepo.GetByIdWithRefsAsync(id, ct);
             if (entity is null)
-                return ServiceResult<VisitIssueResponseDTO>.Fail(
-                    $"VisitIssue {id} was not found.",
-                    ErrorType.NotFound);
+                return FailVisitIssueNotFound<VisitIssueResponseDTO>(id);
 
             return ServiceResult<VisitIssueResponseDTO>.Ok(ToResponse(entity));
         }
@@ -85,11 +76,9 @@ namespace tesisproject.backend.Services.Implementations
             int visitId,
             CancellationToken ct = default)
         {
-            var visitExists = await _visitRepo.ExistsAsync(v => v.VisitId == visitId, ct);
+            var visitExists = await VisitExistsAsync(visitId, ct);
             if (!visitExists)
-                return ServiceResult<IReadOnlyList<VisitIssueResponseDTO>>.Fail(
-                    $"Visit {visitId} was not found.",
-                    ErrorType.NotFound);
+                return FailVisitNotFound<IReadOnlyList<VisitIssueResponseDTO>>(visitId);
 
             var items = await _issueRepo.GetByVisitAsync(visitId, ct);
             var result = items.Select(ToResponse).ToList().AsReadOnly();
@@ -108,20 +97,15 @@ namespace tesisproject.backend.Services.Implementations
         {
             var entity = await _issueRepo.FirstOrDefaultAsync(x => x.VisitIssueId == id, ct);
             if (entity is null)
-                return ServiceResult<VisitIssueResponseDTO>.Fail(
-                    $"VisitIssue {id} was not found.",
-                    ErrorType.NotFound);
-            var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
-            if (user is null)
-            {
-                return ServiceResult<VisitIssueResponseDTO>.Fail(
-                    "User not found.",
-                    ErrorType.NotFound
-                );
-            }
+                return FailVisitIssueNotFound<VisitIssueResponseDTO>(id);
+
+            var (userFound, reporterUserId) = await TryGetCurrentUserIdAsync(currentUserId, ct);
+            if (!userFound)
+                return FailUserNotFound<VisitIssueResponseDTO>();
+
             // Aplicar solo campos no nulos (PATCH-like)
             if (request.Description is not null) entity.Description = request.Description;
-            entity.ReportedByUserId = user.IdUser;
+            entity.ReportedByUserId = reporterUserId;
             entity.UpdatedAtUtc = DateTime.UtcNow;
 
             _issueRepo.Update(entity);
@@ -139,15 +123,33 @@ namespace tesisproject.backend.Services.Implementations
         {
             var entity = await _issueRepo.FirstOrDefaultAsync(x => x.VisitIssueId == id, ct);
             if (entity is null)
-                return ServiceResult<NoContent>.Fail(
-                    $"VisitIssue {id} was not found.",
-                    ErrorType.NotFound);
+                return FailVisitIssueNotFound<NoContent>(id);
 
             _issueRepo.Remove(entity);
             await _uow.SaveChangesAsync(ct);
 
             return ServiceResult<NoContent>.Ok(new NoContent());
         }
+
+        private Task<bool> VisitExistsAsync(int visitId, CancellationToken ct)
+            => _visitRepo.ExistsAsync(v => v.VisitId == visitId, ct);
+
+        private async Task<(bool Found, int IdUser)> TryGetCurrentUserIdAsync(int currentUserId, CancellationToken ct)
+        {
+            var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+            return user is null
+                ? (false, default)
+                : (true, user.IdUser);
+        }
+
+        private static ServiceResult<T> FailVisitNotFound<T>(int visitId)
+            => ServiceResult<T>.Fail($"Visit {visitId} was not found.", ErrorType.NotFound);
+
+        private static ServiceResult<T> FailVisitIssueNotFound<T>(int id)
+            => ServiceResult<T>.Fail($"VisitIssue {id} was not found.", ErrorType.NotFound);
+
+        private static ServiceResult<T> FailUserNotFound<T>()
+            => ServiceResult<T>.Fail("User not found.", ErrorType.NotFound);
 
         // =========================
         //     MAPEO A RESPONSE

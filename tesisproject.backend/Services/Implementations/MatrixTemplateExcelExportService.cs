@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using OfficeOpenXml;
@@ -20,6 +19,22 @@ namespace tesisproject.backend.Services.Implementations
     /// </summary>
     public class MatrixTemplateExcelExportService : IMatrixTemplateExcelExportService
     {
+        private const string EmptyPlaceholder = "-";
+        private const string PipeSeparator = " | ";
+        private const string DefaultWorksheetName = "Matriz proyectos";
+
+        private const string DynamicCategoriesKey = "MATRIX_DYNAMIC_CATEGORIES";
+        private const string DynamicObjectivesKey = "MATRIX_DYNAMIC_OBJECTIVES";
+
+        private const string CategoryTypePrefix = "CATEGORY_TYPE_";
+        private const string ObjectivePrefix = "OBJECTIVE_";
+
+        private const int CategoryColumnsBaseOrder = 1000; // después de base
+        private const int ObjectiveColumnsBaseOrder = 2000; // después de categorías
+
+        private const int ObjectiveTypeGeneralId = 1;
+        private const int ObjectiveTypeSpecificId = 2;
+
         private readonly IProjectFlatReportService _flatService;
         private readonly IResearchCategoryService _categoryService;
         private readonly ILogger<MatrixTemplateExcelExportService> _logger;
@@ -99,6 +114,15 @@ namespace tesisproject.backend.Services.Implementations
             public Func<ProjectFlatReportDTO, object?> Selector { get; init; } = _ => null;
         }
 
+        private static ColumnDef CloneColumn(ColumnDef source, string header)
+            => new ColumnDef
+            {
+                FieldKey = source.FieldKey,
+                Order = source.Order,
+                Selector = source.Selector,
+                Header = header
+            };
+
         private byte[] GenerateExcelInternal(
             ExportRequestDTO request,
             List<ProjectFlatReportDTO> projects,
@@ -127,24 +151,15 @@ namespace tesisproject.backend.Services.Implementations
                 // ==============================
                 // CASO ESPECIAL: TODAS CATEGORÍAS DINÁMICAS
                 // ==============================
-                if (key == "MATRIX_DYNAMIC_CATEGORIES")
+                if (key == DynamicCategoriesKey)
                 {
                     var dynamicCategoryColumns = allColumns
-                        .Where(c => c.FieldKey.StartsWith("CATEGORY_TYPE_",
-                            StringComparison.OrdinalIgnoreCase))
+                        .Where(c => c.FieldKey.StartsWith(CategoryTypePrefix, StringComparison.OrdinalIgnoreCase))
                         .OrderBy(c => c.Order)
                         .ToList();
 
                     foreach (var def in dynamicCategoryColumns)
-                    {
-                        selectedColumns.Add(new ColumnDef
-                        {
-                            FieldKey = def.FieldKey,
-                            Order = def.Order,
-                            Selector = def.Selector,
-                            Header = def.Header // usamos header por defecto
-                        });
-                    }
+                        selectedColumns.Add(CloneColumn(def, def.Header)); // usamos header por defecto
 
                     continue; // siguiente dtoCol
                 }
@@ -152,24 +167,15 @@ namespace tesisproject.backend.Services.Implementations
                 // ==============================
                 // CASO ESPECIAL: TODOS OBJETIVOS DINÁMICOS
                 // ==============================
-                if (key == "MATRIX_DYNAMIC_OBJECTIVES")
+                if (key == DynamicObjectivesKey)
                 {
                     var dynamicObjectiveColumns = allColumns
-                        .Where(c => c.FieldKey.StartsWith("OBJECTIVE_",
-                            StringComparison.OrdinalIgnoreCase))
+                        .Where(c => c.FieldKey.StartsWith(ObjectivePrefix, StringComparison.OrdinalIgnoreCase))
                         .OrderBy(c => c.Order)
                         .ToList();
 
                     foreach (var def in dynamicObjectiveColumns)
-                    {
-                        selectedColumns.Add(new ColumnDef
-                        {
-                            FieldKey = def.FieldKey,
-                            Order = def.Order,
-                            Selector = def.Selector,
-                            Header = def.Header
-                        });
-                    }
+                        selectedColumns.Add(CloneColumn(def, def.Header));
 
                     continue;
                 }
@@ -178,8 +184,7 @@ namespace tesisproject.backend.Services.Implementations
                 // CASO NORMAL: 1 fieldKey → 1 columna
                 // ==============================
                 var defNormal = allColumns.FirstOrDefault(c =>
-                    string.Equals(c.FieldKey, dtoCol.FieldKey,
-                        StringComparison.OrdinalIgnoreCase));
+                    string.Equals(c.FieldKey, dtoCol.FieldKey, StringComparison.OrdinalIgnoreCase));
 
                 if (defNormal is null)
                 {
@@ -187,15 +192,11 @@ namespace tesisproject.backend.Services.Implementations
                     continue;
                 }
 
-                selectedColumns.Add(new ColumnDef
-                {
-                    FieldKey = defNormal.FieldKey,
-                    Order = defNormal.Order,
-                    Selector = defNormal.Selector,
-                    Header = string.IsNullOrWhiteSpace(dtoCol.Header)
-                        ? defNormal.Header
-                        : dtoCol.Header!
-                });
+                var header = string.IsNullOrWhiteSpace(dtoCol.Header)
+                    ? defNormal.Header
+                    : dtoCol.Header!;
+
+                selectedColumns.Add(CloneColumn(defNormal, header));
             }
 
             if (selectedColumns.Count == 0)
@@ -204,35 +205,39 @@ namespace tesisproject.backend.Services.Implementations
 
             // 3) Generar Excel con EPPlus (igual estilo que MatrixExcelExportService)
             using var package = new ExcelPackage();
-            var ws = package.Workbook.Worksheets.Add(
-                string.IsNullOrWhiteSpace(request.Name) ? "Matriz proyectos" : request.Name);
+
+            var worksheetName = string.IsNullOrWhiteSpace(request.Name)
+                ? DefaultWorksheetName
+                : request.Name;
+
+            var worksheet = package.Workbook.Worksheets.Add(worksheetName);
 
             var row = 1;
             var col = 1;
 
             // 3.1) Encabezados (en orden del DTO expandido)
-            foreach (var c in selectedColumns)
+            foreach (var column in selectedColumns)
             {
-                ws.Cells[row, col].Value = c.Header;
+                worksheet.Cells[row, col].Value = column.Header;
                 col++;
             }
 
             // 3.2) Filas de datos
             row = 2;
-            foreach (var p in projects)
+            foreach (var project in projects)
             {
                 col = 1;
-                foreach (var c in selectedColumns)
+                foreach (var column in selectedColumns)
                 {
-                    ws.Cells[row, col].Value = c.Selector(p);
+                    worksheet.Cells[row, col].Value = column.Selector(project);
                     col++;
                 }
                 row++;
             }
 
             // Ajustar ancho
-            if (ws.Dimension != null)
-                ws.Cells[ws.Dimension.Address].AutoFitColumns();
+            if (worksheet.Dimension != null)
+                worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
 
             return package.GetAsByteArray();
         }
@@ -253,7 +258,7 @@ namespace tesisproject.backend.Services.Implementations
                 Order = i++,
                 FieldKey = "PROJECT_CODE",
                 Header = "Código de proyecto",
-                Selector = p => p.ProjectCode ?? "-"
+                Selector = p => p.ProjectCode ?? EmptyPlaceholder
             });
 
             // 2  PROJECT_NAME
@@ -262,7 +267,7 @@ namespace tesisproject.backend.Services.Implementations
                 Order = i++,
                 FieldKey = "PROJECT_NAME",
                 Header = "Nombre del proyecto",
-                Selector = p => p.ProjectName ?? "-"
+                Selector = p => p.ProjectName ?? EmptyPlaceholder
             });
 
             // 3  PROJECT_NUMBER
@@ -280,7 +285,7 @@ namespace tesisproject.backend.Services.Implementations
                 Order = i++,
                 FieldKey = "PROJECT_TYPE",
                 Header = "Tipo de proyecto",
-                Selector = p => p.ProjectTypeName ?? "-"
+                Selector = p => p.ProjectTypeName ?? EmptyPlaceholder
             });
 
             // 5  PROJECT_STATE
@@ -289,7 +294,7 @@ namespace tesisproject.backend.Services.Implementations
                 Order = i++,
                 FieldKey = "PROJECT_STATE",
                 Header = "Estado del proyecto",
-                Selector = p => p.ProjectStateName ?? "-"
+                Selector = p => p.ProjectStateName ?? EmptyPlaceholder
             });
 
             // 6  CONVOCATION_NAME
@@ -298,7 +303,7 @@ namespace tesisproject.backend.Services.Implementations
                 Order = i++,
                 FieldKey = "CONVOCATION_NAME",
                 Header = "Convocatoria",
-                Selector = p => p.ConvocationName ?? "-"
+                Selector = p => p.ConvocationName ?? EmptyPlaceholder
             });
 
             // 7  APPROVAL_DATE
@@ -352,7 +357,7 @@ namespace tesisproject.backend.Services.Implementations
                 Order = i++,
                 FieldKey = "EXECUTION_PERCENTAGE",
                 Header = "% de ejecución",
-                Selector = p => p.ExecutionPercentage?.ToString("N2") ?? "-"
+                Selector = p => p.ExecutionPercentage?.ToString("N2") ?? EmptyPlaceholder
             });
 
             // 13 FACULTY_NAME
@@ -361,7 +366,7 @@ namespace tesisproject.backend.Services.Implementations
                 Order = i++,
                 FieldKey = "FACULTY_NAME",
                 Header = "Facultad",
-                Selector = p => p.FacultyName ?? "-"
+                Selector = p => p.FacultyName ?? EmptyPlaceholder
             });
 
             // 14 COORDINATOR_NAME
@@ -370,7 +375,7 @@ namespace tesisproject.backend.Services.Implementations
                 Order = i++,
                 FieldKey = "COORDINATOR_NAME",
                 Header = "Coordinador del proyecto",
-                Selector = p => p.CoordinatorName ?? "-"
+                Selector = p => p.CoordinatorName ?? EmptyPlaceholder
             });
 
             // 15 COORDINATOR_EMAIL
@@ -379,7 +384,7 @@ namespace tesisproject.backend.Services.Implementations
                 Order = i++,
                 FieldKey = "COORDINATOR_EMAIL",
                 Header = "Correo del coordinador",
-                Selector = p => p.CoordinatorEmail ?? "-"
+                Selector = p => p.CoordinatorEmail ?? EmptyPlaceholder
             });
 
             // 16 COORDINATOR_PHONE
@@ -388,7 +393,7 @@ namespace tesisproject.backend.Services.Implementations
                 Order = i++,
                 FieldKey = "COORDINATOR_PHONE",
                 Header = "Teléfono del coordinador",
-                Selector = p => p.CoordinatorPhone ?? "-"
+                Selector = p => p.CoordinatorPhone ?? EmptyPlaceholder
             });
 
             // 17 SENESCYT_MEMBERS
@@ -489,13 +494,14 @@ namespace tesisproject.backend.Services.Implementations
                 Header = "Categorías de investigación (bundle)",
                 Selector = p => ResolveResearchCategoriesBundle(p)
             });
+
             // SUBROGANT_NAME
             list.Add(new ColumnDef
             {
                 Order = i++,
                 FieldKey = "SUBROGANT_NAME",
                 Header = "Subrogante del proyecto",
-                Selector = p => p.SubrogantName ?? "-"
+                Selector = p => p.SubrogantName ?? EmptyPlaceholder
             });
 
             // SUBROGANT_EMAIL
@@ -504,7 +510,7 @@ namespace tesisproject.backend.Services.Implementations
                 Order = i++,
                 FieldKey = "SUBROGANT_EMAIL",
                 Header = "Correo del subrogante",
-                Selector = p => p.SubrogantEmail ?? "-"
+                Selector = p => p.SubrogantEmail ?? EmptyPlaceholder
             });
 
             // SUBROGANT_PHONE
@@ -513,55 +519,52 @@ namespace tesisproject.backend.Services.Implementations
                 Order = i++,
                 FieldKey = "SUBROGANT_PHONE",
                 Header = "Teléfono del subrogante",
-                Selector = p => p.SubrogantPhone ?? "-"
+                Selector = p => p.SubrogantPhone ?? EmptyPlaceholder
             });
 
             return list;
         }
 
-
-        private static string ResolveObjetivosBundle(ProjectFlatReportDTO p)
+        private static string ResolveObjetivosBundle(ProjectFlatReportDTO project)
         {
-            if (p.Objectives is null || p.Objectives.Count == 0)
-                return "-";
+            if (project.Objectives is null || project.Objectives.Count == 0)
+                return EmptyPlaceholder;
 
             // Objetivo general (typeId == 1)
-            var general = p.Objectives
-                .Where(o => o.ObjectiveTypeId == 1)
+            var general = project.Objectives
+                .Where(o => o.ObjectiveTypeId == ObjectiveTypeGeneralId)
                 .OrderBy(o => o.ObjectiveId)
                 .Select(o => o.Objective)
                 .FirstOrDefault();
 
-            var especificos = p.Objectives
-                .Where(o => o.ObjectiveTypeId != 1)
+            var especificos = project.Objectives
+                .Where(o => o.ObjectiveTypeId != ObjectiveTypeGeneralId)
                 .OrderBy(o => o.ObjectiveTypeId)
                 .ThenBy(o => o.ObjectiveId)
                 .Select(o => o.Objective)
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .ToList();
 
-            var sb = new List<string>();
+            var lines = new List<string>();
 
             if (!string.IsNullOrWhiteSpace(general))
-            {
-                sb.Add("GENERAL: " + general);
-            }
+                lines.Add("GENERAL: " + general);
 
             if (especificos.Count > 0)
             {
-                sb.Add("ESPECÍFICOS:");
-                sb.AddRange(especificos.Select(e => "- " + e));
+                lines.Add("ESPECÍFICOS:");
+                lines.AddRange(especificos.Select(e => "- " + e));
             }
 
-            return sb.Count == 0 ? "-" : string.Join(Environment.NewLine, sb);
+            return lines.Count == 0 ? EmptyPlaceholder : string.Join(Environment.NewLine, lines);
         }
 
-        private static string ResolveResearchCategoriesBundle(ProjectFlatReportDTO p)
+        private static string ResolveResearchCategoriesBundle(ProjectFlatReportDTO project)
         {
-            if (p.ResearchCategories is null || p.ResearchCategories.Count == 0)
-                return "-";
+            if (project.ResearchCategories is null || project.ResearchCategories.Count == 0)
+                return EmptyPlaceholder;
 
-            var names = p.ResearchCategories
+            var names = project.ResearchCategories
                 .Select(c =>
                     string.IsNullOrWhiteSpace(c.CategoryName)
                         ? c.ResearchCategoryId.ToString()
@@ -569,7 +572,7 @@ namespace tesisproject.backend.Services.Implementations
                 .Distinct()
                 .ToList();
 
-            return names.Count == 0 ? "-" : string.Join(", ", names);
+            return names.Count == 0 ? EmptyPlaceholder : string.Join(", ", names);
         }
 
         // ------------------ CATEGORÍAS DINÁMICAS ------------------
@@ -611,7 +614,6 @@ namespace tesisproject.backend.Services.Implementations
                 .OrderBy(x => x.TypeId)
                 .ToList();
 
-            var baseOrder = 1000; // después de base
             var offset = 0;
 
             foreach (var type in typeInfos)
@@ -623,8 +625,8 @@ namespace tesisproject.backend.Services.Implementations
 
                 list.Add(new ColumnDef
                 {
-                    Order = baseOrder + (offset++),
-                    FieldKey = $"CATEGORY_TYPE_{localTypeId}", // clave para DTO
+                    Order = CategoryColumnsBaseOrder + (offset++),
+                    FieldKey = $"{CategoryTypePrefix}{localTypeId}", // clave para DTO
                     Header = header,
                     Selector = p => GetCategoriesForTypeSummary(p, localTypeId, categoryById)
                 });
@@ -639,7 +641,7 @@ namespace tesisproject.backend.Services.Implementations
             Dictionary<int, ResearchCategoryTreeItemDTO> categoryById)
         {
             if (project.ResearchCategories is null || project.ResearchCategories.Count == 0)
-                return "-";
+                return EmptyPlaceholder;
 
             var categoryIds = project.ResearchCategories
                 .Select(rc => rc.ResearchCategoryId)
@@ -647,7 +649,7 @@ namespace tesisproject.backend.Services.Implementations
                 .ToList();
 
             if (categoryIds.Count == 0)
-                return "-";
+                return EmptyPlaceholder;
 
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
@@ -666,7 +668,7 @@ namespace tesisproject.backend.Services.Implementations
                 }
             }
 
-            return names.Count == 0 ? "-" : string.Join(", ", names);
+            return names.Count == 0 ? EmptyPlaceholder : string.Join(", ", names);
         }
 
         private static IEnumerable<ResearchCategoryTreeItemDTO> GetCategoryPathToRoot(
@@ -723,7 +725,6 @@ namespace tesisproject.backend.Services.Implementations
                 .OrderBy(x => x.TypeId)
                 .ToList();
 
-            var baseOrder = 2000; // después de categorías
             var offset = 0;
 
             foreach (var ot in objectiveTypes)
@@ -738,8 +739,8 @@ namespace tesisproject.backend.Services.Implementations
 
                     list.Add(new ColumnDef
                     {
-                        Order = baseOrder + (offset++),
-                        FieldKey = $"OBJECTIVE_{localTypeId}_{localIndex}", // clave para DTO
+                        Order = ObjectiveColumnsBaseOrder + (offset++),
+                        FieldKey = $"{ObjectivePrefix}{localTypeId}_{localIndex}", // clave para DTO
                         Header = header,
                         Selector = p => GetObjectiveText(p, localTypeId, localIndex)
                     });
@@ -752,8 +753,8 @@ namespace tesisproject.backend.Services.Implementations
         private static string GetObjectiveTypeLabel(int typeId, string? defaultName)
             => typeId switch
             {
-                1 => "Objetivo general",
-                2 => "Objetivo específico",
+                ObjectiveTypeGeneralId => "Objetivo general",
+                ObjectiveTypeSpecificId => "Objetivo específico",
                 _ => string.IsNullOrWhiteSpace(defaultName)
                         ? $"Tipo {typeId}"
                         : defaultName!
@@ -765,7 +766,7 @@ namespace tesisproject.backend.Services.Implementations
             int index)
         {
             if (project.Objectives is null || project.Objectives.Count == 0)
-                return "-";
+                return EmptyPlaceholder;
 
             var objectives = project.Objectives
                 .Where(o => o.ObjectiveTypeId == typeId)
@@ -773,10 +774,10 @@ namespace tesisproject.backend.Services.Implementations
                 .ToList();
 
             if (index <= 0 || index > objectives.Count)
-                return "-";
+                return EmptyPlaceholder;
 
             var obj = objectives[index - 1];
-            return string.IsNullOrWhiteSpace(obj.Objective) ? "-" : obj.Objective;
+            return string.IsNullOrWhiteSpace(obj.Objective) ? EmptyPlaceholder : obj.Objective;
         }
 
         // =========================================================
@@ -784,22 +785,22 @@ namespace tesisproject.backend.Services.Implementations
         // =========================================================
 
         private static string FormatDate(DateTime? date)
-            => date.HasValue ? date.Value.ToString("yyyy-MM-dd") : "-";
+            => date.HasValue ? date.Value.ToString("yyyy-MM-dd") : EmptyPlaceholder;
 
         private static string GetBudgetInitialSummary(ProjectFlatReportDTO project)
         {
-            if (project.Budgets is null || project.Budgets.Count == 0) return "-";
+            if (project.Budgets is null || project.Budgets.Count == 0) return EmptyPlaceholder;
 
             var values = project.Budgets.Select(b => b.InitialAmount).ToList();
 
             return values.Count == 0
-                ? "-"
-                : string.Join(" | ", values.Select(v => v.ToString("N2")));
+                ? EmptyPlaceholder
+                : string.Join(PipeSeparator, values.Select(v => v.ToString("N2")));
         }
 
         private static string GetBudgetFundingTypesSummary(ProjectFlatReportDTO project)
         {
-            if (project.Budgets is null || project.Budgets.Count == 0) return "-";
+            if (project.Budgets is null || project.Budgets.Count == 0) return EmptyPlaceholder;
 
             var names = project.Budgets
                 .Select(b => b.FundingTypeName ?? string.Empty)
@@ -807,46 +808,46 @@ namespace tesisproject.backend.Services.Implementations
                 .Distinct()
                 .ToList();
 
-            return names.Count == 0 ? "-" : string.Join(" | ", names);
+            return names.Count == 0 ? EmptyPlaceholder : string.Join(PipeSeparator, names);
         }
 
         private static string GetBudgetCertifiedSummary(ProjectFlatReportDTO project)
         {
-            if (project.Budgets is null || project.Budgets.Count == 0) return "-";
+            if (project.Budgets is null || project.Budgets.Count == 0) return EmptyPlaceholder;
 
             var values = project.Budgets.Select(b => b.CertifiedAmount).ToList();
 
             return values.Count == 0
-                ? "-"
-                : string.Join(" | ", values.Select(v => v.ToString("N2")));
+                ? EmptyPlaceholder
+                : string.Join(PipeSeparator, values.Select(v => v.ToString("N2")));
         }
 
         private static string GetBudgetExecutedSummary(ProjectFlatReportDTO project)
         {
-            if (project.Budgets is null || project.Budgets.Count == 0) return "-";
+            if (project.Budgets is null || project.Budgets.Count == 0) return EmptyPlaceholder;
 
             var values = project.Budgets.Select(b => b.ExecutedAmount).ToList();
 
             return values.Count == 0
-                ? "-"
-                : string.Join(" | ", values.Select(v => v.ToString("N2")));
+                ? EmptyPlaceholder
+                : string.Join(PipeSeparator, values.Select(v => v.ToString("N2")));
         }
 
         private static string GetProductTitlesSummary(ProjectFlatReportDTO project)
         {
-            if (project.Products is null || project.Products.Count == 0) return "-";
+            if (project.Products is null || project.Products.Count == 0) return EmptyPlaceholder;
 
             var titles = project.Products
                 .Select(p => p.Title)
                 .Where(t => !string.IsNullOrWhiteSpace(t))
                 .ToList();
 
-            return titles.Count == 0 ? "-" : string.Join(" | ", titles);
+            return titles.Count == 0 ? EmptyPlaceholder : string.Join(PipeSeparator, titles);
         }
 
         private static string GetProductTypesSummary(ProjectFlatReportDTO project)
         {
-            if (project.Products is null || project.Products.Count == 0) return "-";
+            if (project.Products is null || project.Products.Count == 0) return EmptyPlaceholder;
 
             var types = project.Products
                 .Select(p => p.ProductTypeName ?? string.Empty)
@@ -854,24 +855,24 @@ namespace tesisproject.backend.Services.Implementations
                 .Distinct()
                 .ToList();
 
-            return types.Count == 0 ? "-" : string.Join(" | ", types);
+            return types.Count == 0 ? EmptyPlaceholder : string.Join(PipeSeparator, types);
         }
 
         private static string GetExternalNamesSummary(ProjectFlatReportDTO project)
         {
-            if (project.ExternalResearchers is null || project.ExternalResearchers.Count == 0) return "-";
+            if (project.ExternalResearchers is null || project.ExternalResearchers.Count == 0) return EmptyPlaceholder;
 
             var names = project.ExternalResearchers
                 .Select(r => r.FullName)
                 .Where(n => !string.IsNullOrWhiteSpace(n))
                 .ToList();
 
-            return names.Count == 0 ? "-" : string.Join(" | ", names);
+            return names.Count == 0 ? EmptyPlaceholder : string.Join(PipeSeparator, names);
         }
 
         private static string GetExternalInstitutionsSummary(ProjectFlatReportDTO project)
         {
-            if (project.ExternalResearchers is null || project.ExternalResearchers.Count == 0) return "-";
+            if (project.ExternalResearchers is null || project.ExternalResearchers.Count == 0) return EmptyPlaceholder;
 
             var insts = project.ExternalResearchers
                 .Select(r => r.InstitutionName ?? string.Empty)
@@ -879,12 +880,12 @@ namespace tesisproject.backend.Services.Implementations
                 .Distinct()
                 .ToList();
 
-            return insts.Count == 0 ? "-" : string.Join(" | ", insts);
+            return insts.Count == 0 ? EmptyPlaceholder : string.Join(PipeSeparator, insts);
         }
 
         private static string GetSenescytNamesSummary(ProjectFlatReportDTO project)
         {
-            if (project.SenescytMembers is null || project.SenescytMembers.Count == 0) return "-";
+            if (project.SenescytMembers is null || project.SenescytMembers.Count == 0) return EmptyPlaceholder;
 
             var names = project.SenescytMembers
                 .Select(m => m.FullName)
@@ -892,7 +893,7 @@ namespace tesisproject.backend.Services.Implementations
                 .Distinct()
                 .ToList();
 
-            return names.Count == 0 ? "-" : string.Join(" | ", names);
+            return names.Count == 0 ? EmptyPlaceholder : string.Join(PipeSeparator, names);
         }
     }
 }

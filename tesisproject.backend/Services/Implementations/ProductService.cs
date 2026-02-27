@@ -1,4 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Linq.Expressions;
+using Microsoft.EntityFrameworkCore;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.Products.Product.Request;
@@ -11,7 +15,41 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class ProductService : IProductService
     {
+        private const string RequestRequiredMessage = "Request is required.";
+        private const string ProjectIdRequiredMessage = "ProjectId is required.";
+        private const string TitleRequiredMessage = "Title is required.";
+        private const string ProductTypeIdRequiredMessage = "ProductTypeId is required.";
+        private const string ProductTypeNotFoundMessage = "ProductType not found.";
+
+        private const string ProductNotFoundMessage = "Product not found.";
+        private const string NoProductsFoundMessage = "No products found.";
+        private const string ProjectIdRequiredLowercaseMessage = "projectId is required.";
+        private const string NoProductsFoundForProjectMessage = "No products found for this project.";
+
+        private const string ProductCouldNotLoadAfterCreationMessage = "Product could not be loaded after creation.";
+        private const string ProductCouldNotLoadAfterUpdateMessage = "Product could not be loaded after update.";
+
+        private const string ProductCreatedMessage = "Product created";
+        private const string ProductRetrievedMessage = "Product retrieved";
+        private const string ProductsRetrievedMessage = "Products retrieved";
+        private const string ProjectProductsRetrievedMessage = "Project products retrieved";
+        private const string ProductUpdatedMessage = "Product updated";
+        private const string ProductDeletedMessage = "Product deleted";
+
         private readonly IUnitOfWork _uow;
+
+        private static readonly Expression<Func<Product, ProductListItemResponseDTO>> MapToListItemExpression = p => new ProductListItemResponseDTO
+        {
+            Id = p.Id,
+            ProjectId = p.ProjectId,
+            VisitId = p.VisitId,
+            Title = p.Title,
+            Description = p.Description,
+            ProductTypeId = p.ProductTypeId,
+            ProductTypeName = p.ProductType != null ? p.ProductType.Name : string.Empty,
+            IsActive = p.IsActive,
+            CreatedAt = p.CreatedAt
+        };
 
         public ProductService(IUnitOfWork uow)
         {
@@ -28,21 +66,21 @@ namespace tesisproject.backend.Services.Implementations
             {
                 // Basic validations
                 if (request is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail("Request is required.", ErrorType.Validation);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation);
 
                 if (request.ProjectId <= 0)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail("ProjectId is required.", ErrorType.Validation);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProjectIdRequiredMessage, ErrorType.Validation);
 
                 if (string.IsNullOrWhiteSpace(request.Title))
-                    return ServiceResult<ProductDetailResponseDTO>.Fail("Title is required.", ErrorType.Validation);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(TitleRequiredMessage, ErrorType.Validation);
 
                 if (request.ProductTypeId <= 0)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail("ProductTypeId is required.", ErrorType.Validation);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductTypeIdRequiredMessage, ErrorType.Validation);
 
                 // ProductType exists
-                var type = await _uow.ProductTypes.GetByIdAsync(new object[] { request.ProductTypeId }, ct);
+                var type = await _uow.ProductTypes.GetByIdAsync(Key(request.ProductTypeId), ct);
                 if (type is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail("ProductType not found.", ErrorType.NotFound);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductTypeNotFoundMessage, ErrorType.NotFound);
 
                 // Load definitions for this type (include ProductAttribute to validate DataType/Unit/Name)
                 var defs = await _uow.ProductAttributeDefinitions
@@ -63,8 +101,8 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     ProjectId = request.ProjectId,
                     VisitId = request.VisitId,
-                    Title = request.Title.Trim(),
-                    Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim(),
+                    Title = NormalizeRequiredText(request.Title),
+                    Description = NormalizeOptionalText(request.Description),
                     ProductTypeId = request.ProductTypeId,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
@@ -93,10 +131,10 @@ namespace tesisproject.backend.Services.Implementations
                 var withRefs = await _uow.Products.GetByIdWithRefsAsync(entity.Id, ct);
                 if (withRefs is null)
                     return ServiceResult<ProductDetailResponseDTO>.Fail(
-                        "Product could not be loaded after creation.",
+                        ProductCouldNotLoadAfterCreationMessage,
                         ErrorType.Unexpected);
 
-                return ServiceResult<ProductDetailResponseDTO>.Ok(MapToDetailDTO(withRefs), "Product created");
+                return ServiceResult<ProductDetailResponseDTO>.Ok(MapToDetailDTO(withRefs), ProductCreatedMessage);
             }
             catch (DbUpdateException dbex)
             {
@@ -118,9 +156,9 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var prod = await _uow.Products.GetByIdWithRefsAsync(id, ct);
                 if (prod is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail("Product not found.", ErrorType.NotFound);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductNotFoundMessage, ErrorType.NotFound);
 
-                return ServiceResult<ProductDetailResponseDTO>.Ok(MapToDetailDTO(prod), "Product retrieved");
+                return ServiceResult<ProductDetailResponseDTO>.Ok(MapToDetailDTO(prod), ProductRetrievedMessage);
             }
             catch (Exception ex)
             {
@@ -138,24 +176,13 @@ namespace tesisproject.backend.Services.Implementations
 
                 var items = await q
                     .OrderByDescending(p => p.CreatedAt)
-                    .Select(p => new ProductListItemResponseDTO
-                    {
-                        Id = p.Id,
-                        ProjectId = p.ProjectId,
-                        VisitId = p.VisitId,
-                        Title = p.Title,
-                        Description = p.Description,
-                        ProductTypeId = p.ProductTypeId,
-                        ProductTypeName = p.ProductType != null ? p.ProductType.Name : string.Empty,
-                        IsActive = p.IsActive,
-                        CreatedAt = p.CreatedAt
-                    })
+                    .Select(MapToListItemExpression)
                     .ToListAsync(ct);
 
                 if (items.Count == 0)
-                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail("No products found.", ErrorType.NotFound);
+                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(NoProductsFoundMessage, ErrorType.NotFound);
 
-                return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Ok(items, "Products retrieved");
+                return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Ok(items, ProductsRetrievedMessage);
             }
             catch (Exception ex)
             {
@@ -170,29 +197,18 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (projectId <= 0)
-                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail("projectId is required.", ErrorType.Validation);
+                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(ProjectIdRequiredLowercaseMessage, ErrorType.Validation);
 
                 var entities = await _uow.Products.GetByProjectAsync(projectId, ct); // includes ProductType
                 if (entities.Count == 0)
-                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail("No products found for this project.", ErrorType.NotFound);
+                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(NoProductsFoundForProjectMessage, ErrorType.NotFound);
 
                 var dtos = entities
                     .OrderByDescending(p => p.CreatedAt)
-                    .Select(p => new ProductListItemResponseDTO
-                    {
-                        Id = p.Id,
-                        ProjectId = p.ProjectId,
-                        VisitId = p.VisitId,
-                        Title = p.Title,
-                        Description = p.Description,
-                        ProductTypeId = p.ProductTypeId,
-                        ProductTypeName = p.ProductType != null ? p.ProductType.Name : string.Empty,
-                        IsActive = p.IsActive,
-                        CreatedAt = p.CreatedAt
-                    })
+                    .Select(MapToListItemDto)
                     .ToList();
 
-                return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Ok(dtos, "Project products retrieved");
+                return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Ok(dtos, ProjectProductsRetrievedMessage);
             }
             catch (Exception ex)
             {
@@ -209,18 +225,18 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail("Request is required.", ErrorType.Validation);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation);
 
-                var entity = await _uow.Products.GetByIdAsync(new object[] { request.Id }, ct);
+                var entity = await _uow.Products.GetByIdAsync(Key(request.Id), ct);
                 if (entity is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail("Product not found.", ErrorType.NotFound);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductNotFoundMessage, ErrorType.NotFound);
 
                 if (string.IsNullOrWhiteSpace(request.Title))
-                    return ServiceResult<ProductDetailResponseDTO>.Fail("Title is required.", ErrorType.Validation);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(TitleRequiredMessage, ErrorType.Validation);
 
                 // Update header
-                entity.Title = request.Title.Trim();
-                entity.Description = string.IsNullOrWhiteSpace(request.Description) ? null : request.Description.Trim();
+                entity.Title = NormalizeRequiredText(request.Title);
+                entity.Description = NormalizeOptionalText(request.Description);
                 if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
                 entity.UpdatedAt = DateTime.UtcNow;
                 _uow.Products.Update(entity);
@@ -252,9 +268,9 @@ namespace tesisproject.backend.Services.Implementations
 
                 var withRefs = await _uow.Products.GetByIdWithRefsAsync(entity.Id, ct);
                 if (withRefs is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail("Product could not be loaded after update.", ErrorType.Unexpected);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductCouldNotLoadAfterUpdateMessage, ErrorType.Unexpected);
 
-                return ServiceResult<ProductDetailResponseDTO>.Ok(MapToDetailDTO(withRefs), "Product updated");
+                return ServiceResult<ProductDetailResponseDTO>.Ok(MapToDetailDTO(withRefs), ProductUpdatedMessage);
             }
             catch (DbUpdateException dbex)
             {
@@ -274,9 +290,9 @@ namespace tesisproject.backend.Services.Implementations
         {
             try
             {
-                var entity = await _uow.Products.GetByIdAsync(new object[] { id }, ct);
+                var entity = await _uow.Products.GetByIdAsync(Key(id), ct);
                 if (entity is null)
-                    return ServiceResult<NoContent>.Fail("Product not found.", ErrorType.NotFound);
+                    return ServiceResult<NoContent>.Fail(ProductNotFoundMessage, ErrorType.NotFound);
 
                 // Remove children first if no cascade
                 var authors = await _uow.ProductAuthors.GetByProductAsync(id, ct);
@@ -288,7 +304,7 @@ namespace tesisproject.backend.Services.Implementations
                 _uow.Products.Remove(entity);
                 await _uow.SaveChangesAsync(ct);
 
-                return ServiceResult<NoContent>.Ok(new NoContent(), "Product deleted");
+                return ServiceResult<NoContent>.Ok(new NoContent(), ProductDeletedMessage);
             }
             catch (DbUpdateException dbex)
             {
@@ -303,6 +319,27 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         // ===================== HELPERS =====================
+
+        private static object[] Key(int id) => new object[] { id };
+
+        private static string NormalizeRequiredText(string value) => value.Trim();
+
+        private static string? NormalizeOptionalText(string? value)
+            => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        private static ProductListItemResponseDTO MapToListItemDto(Product p)
+            => new ProductListItemResponseDTO
+            {
+                Id = p.Id,
+                ProjectId = p.ProjectId,
+                VisitId = p.VisitId,
+                Title = p.Title,
+                Description = p.Description,
+                ProductTypeId = p.ProductTypeId,
+                ProductTypeName = p.ProductType != null ? p.ProductType.Name : string.Empty,
+                IsActive = p.IsActive,
+                CreatedAt = p.CreatedAt
+            };
 
         private async Task SyncAuthorsAsync(int productId, IEnumerable<int>? authorUserIds, CancellationToken ct)
         {

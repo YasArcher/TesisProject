@@ -429,29 +429,31 @@
                 .Distinct()
                 .ToList();
 
-            // Si no hay proyectos, puedes mandar null o lista vacía según como lo manejes en backend
             exportRequest.ProjectIds = ids.Any() ? ids : null;
 
+            // 4) Llamar al endpoint de matriz-excel (AHORA WRAPPER)
+            var r = await ExportTemplates.ExportMatrixExcelAsync(exportRequest);
 
-            // 4) Llamar al endpoint de matriz-excel
-            var httpResp = await ExportTemplates.ExportMatrixExcelAsync(exportRequest);
-
-            if (!httpResp.IsSuccessStatusCode)
+            if (!r.Success || r.Response is null)
             {
-                var msg = httpResp.ReasonPhrase ?? "Error al generar el archivo de exportación.";
-                Toast.ShowError(msg);
+                Toast.ShowError(r.Error ?? "Error al generar el archivo de exportación.");
                 return;
             }
 
-            // 5) Descargar el archivo
-            var bytes = await httpResp.Content.ReadAsByteArrayAsync();
-            var base64 = Convert.ToBase64String(bytes);
+            var file = r.Response; // FilePayload(Bytes, ContentType, FileName)
 
-            var fileName = string.IsNullOrWhiteSpace(exportRequest.Name)
-                ? "proyectos.xlsx"
-                : $"{exportRequest.Name}.xlsx";
+            // 5) Descargar con Blob
+            var url = await JS.InvokeAsync<string>(
+                "docViewer.bytesToBlobUrl",
+                file.Bytes,
+                file.ContentType);
 
-            await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, base64);
+            var fileName = string.IsNullOrWhiteSpace(file.FileName)
+                ? (string.IsNullOrWhiteSpace(exportRequest.Name) ? "proyectos.xlsx" : $"{exportRequest.Name}.xlsx")
+                : file.FileName;
+
+            await JS.InvokeVoidAsync("docViewer.downloadUrl", url, fileName);
+            await JS.InvokeVoidAsync("docViewer.revoke", url);
 
             Toast.ShowSuccess("Exportación generada correctamente.");
             showExportPanel = false;
@@ -528,13 +530,12 @@
     {
         try
         {
-            // Podrías bloquear la UI con un flag diferente si quieres
             isLoading = true;
 
-            // 1) Construir un ExportRequestDTO súper básico
+            // 1) Construir request
             var request = new ExportRequestDTO
             {
-                Name = "Proyectos", // nombre del archivo (sin .xlsx)
+                Name = "Proyectos",
                 Columns = new List<ExportColumnDTO>
             {
                 new()
@@ -568,11 +569,11 @@
                     OrderIndex = 5
                 },
 
-                // 🔹 Si quieres que incluya objetivos/categorías dinámicas de una:
+                // dinámicas
                 new()
                 {
                     FieldKey = "MATRIX_DYNAMIC_OBJECTIVES",
-                    Header = "OBJ_",     // el header real lo pone el backend por cada columna
+                    Header = "OBJ_",
                     OrderIndex = 100
                 },
                 new()
@@ -584,25 +585,33 @@
             }
             };
 
-            // 2) Llamar al backend
-            var httpResp = await ExportTemplates.ExportMatrixExcelAsync(request);
+            // 2) Llamar al backend (AHORA WRAPPER)
+            var r = await ExportTemplates.ExportMatrixExcelAsync(request);
 
-            if (!httpResp.IsSuccessStatusCode)
+            if (!r.Success || r.Response is null)
             {
-                var msg = httpResp.ReasonPhrase ?? "Error al generar el archivo de exportación.";
-                Toast.ShowError(msg);
+                Toast.ShowError(r.Error ?? "Error al generar el archivo de exportación.");
                 return;
             }
 
-            // 3) Descargar
-            var bytes = await httpResp.Content.ReadAsByteArrayAsync();
-            var base64 = Convert.ToBase64String(bytes);
+            // 3) Descargar (Blob)
+            var file = r.Response; // FilePayload(Bytes, ContentType, FileName)
 
-            var fileName = string.IsNullOrWhiteSpace(request.Name)
+            var url = await JS.InvokeAsync<string>(
+                "docViewer.bytesToBlobUrl",
+                file.Bytes,
+                file.ContentType);
+
+            var fallbackName = string.IsNullOrWhiteSpace(request.Name)
                 ? "proyectos.xlsx"
                 : $"{request.Name}.xlsx";
 
-            await JS.InvokeVoidAsync("downloadFileFromBytes", fileName, base64);
+            var fileName = string.IsNullOrWhiteSpace(file.FileName)
+                ? fallbackName
+                : file.FileName;
+
+            await JS.InvokeVoidAsync("docViewer.downloadUrl", url, fileName);
+            await JS.InvokeVoidAsync("docViewer.revoke", url);
 
             Toast.ShowSuccess("Exportación de proyectos generada correctamente.");
         }

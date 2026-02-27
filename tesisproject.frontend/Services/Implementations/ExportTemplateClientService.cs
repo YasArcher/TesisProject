@@ -1,4 +1,5 @@
 ﻿using tesisproject.frontend.Services.Interfaces;
+using tesisproject.shared.DTOs.Document.Response;
 using tesisproject.shared.DTOs.Export;
 using tesisproject.shared.Responses;
 
@@ -122,17 +123,10 @@ namespace tesisproject.frontend.Services.Implementations
         // =========================
         //   EXPORT MATRIX EXCEL
         // =========================
-        public Task<HttpResponseMessage> ExportMatrixExcelAsync(
-            ExportRequestDTO request,
-            CancellationToken ct = default)
+        public Task<HttpResponseWrapper<FilePayloadDTO?>> ExportMatrixExcelAsync(ExportRequestDTO request, CancellationToken ct = default)
         {
-            if (request is null)
-                throw new ArgumentNullException(nameof(request));
-            return _api.PostRawAsync(
-                $"{_baseUrl}/matrix-excel",
-                request,
-                ct
-            );
+            if (request is null) throw new ArgumentNullException(nameof(request));
+            return _api.PostFileAsync($"{_baseUrl}/matrix-excel", request, ct);
         }
     }
 }

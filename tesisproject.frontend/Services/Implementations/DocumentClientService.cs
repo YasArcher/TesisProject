@@ -1,4 +1,6 @@
-﻿using tesisproject.frontend.Services.Interfaces;
+﻿using System.Buffers.Text;
+using System.Net.Http.Headers;
+using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.DTOs.Document.Request;
 using tesisproject.shared.DTOs.Document.Response;
 using tesisproject.shared.Responses;
@@ -8,13 +10,11 @@ namespace tesisproject.frontend.Services.Implementations
     public class DocumentClientService : IDocumentClientService
     {
         private readonly IApiClient _api;
-        private readonly IHttpClientFactory _httpClientFactory;
         private const string BaseUrl = "documents";
 
-        public DocumentClientService(IApiClient api, IHttpClientFactory httpClientFactory)
+        public DocumentClientService(IApiClient api)
         {
             _api = api;
-            _httpClientFactory = httpClientFactory;
         }
 
         public Task<HttpResponseWrapper<DocumentResponseDTO?>> CreateAsync(
@@ -67,22 +67,10 @@ namespace tesisproject.frontend.Services.Implementations
             return await _api.DeleteAsync($"{BaseUrl}/{documentId}", ct);
         }
 
-        public string GetViewUrl(int documentId)
-        {
-            var httpClient = _httpClientFactory.CreateClient("Backend");
-            var baseAddress = httpClient.BaseAddress?.ToString().TrimEnd('/')
-                ?? throw new InvalidOperationException("Backend HttpClient no configurado");
+        public Task<HttpResponseWrapper<FilePayloadDTO?>> GetContentAsync(int documentId, CancellationToken ct = default)
+    => _api.GetFileAsync($"{BaseUrl}/{documentId}/content", ct);
 
-            return $"{baseAddress}/{BaseUrl}/{documentId}/content";
-        }
-
-        public string GetDownloadUrl(int documentId)
-        {
-            var httpClient = _httpClientFactory.CreateClient("Backend");
-            var baseAddress = httpClient.BaseAddress?.ToString().TrimEnd('/')
-                ?? throw new InvalidOperationException("Backend HttpClient no configurado");
-
-            return $"{baseAddress}/{BaseUrl}/{documentId}/download";
-        }
+        public Task<HttpResponseWrapper<FilePayloadDTO?>> GetDownloadAsync(int documentId, CancellationToken ct = default)
+            => _api.GetFileAsync($"{BaseUrl}/{documentId}/download", ct);
     }
 }

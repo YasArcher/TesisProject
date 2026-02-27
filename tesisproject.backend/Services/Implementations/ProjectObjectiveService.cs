@@ -12,6 +12,15 @@ namespace tesisproject.backend.Services.Implementations
     {
         private readonly IUnitOfWork _uow;
 
+        private const string ProjectIdRequiredMessage = "ProjectId is required.";
+        private const string InvalidIdMessage = "Invalid id.";
+        private const string ProjectObjectiveNotFoundMessage = "ProjectObjective not found.";
+        private const string RequestRequiredMessage = "Request is required.";
+        private const string ObjectiveTypeIdRequiredMessage = "ObjectiveTypeId is required.";
+        private const string ObjectiveRequiredMessage = "Objective is required.";
+        private const string ResultRequiredMessage = "Result is required.";
+        private const string ObjectiveTypeInvalidOrInactiveMessage = "ObjectiveType is invalid or inactive.";
+
         public ProjectObjectiveService(IUnitOfWork uow)
         {
             _uow = uow;
@@ -24,8 +33,7 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (projectId <= 0)
-                return ServiceResult<IReadOnlyList<ProjectObjectiveListItemDTO>>
-                    .Fail("ProjectId is required.", ErrorType.Validation);
+                return FailValidation<IReadOnlyList<ProjectObjectiveListItemDTO>>(ProjectIdRequiredMessage);
 
             var entities = await _uow.ProjectObjectives.GetByProjectAsync(projectId, ct);
 
@@ -47,12 +55,11 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         public async Task<ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>> GetByProjectWithActivitiesAsync(
-    int projectId,
-    CancellationToken ct = default)
+            int projectId,
+            CancellationToken ct = default)
         {
             if (projectId <= 0)
-                return ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>
-                    .Fail("ProjectId is required.", ErrorType.Validation);
+                return FailValidation<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>(ProjectIdRequiredMessage);
 
             // 1) Objetivos + Activities
             var objectives = await _uow.ProjectObjectives.GetByProjectWithActivitiesAsync(projectId, ct);
@@ -61,11 +68,7 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>.Ok(new List<ProjectObjectiveWithActivitiesDTO>());
 
             // 2) Todas las actividades del proyecto (para calcular progreso una sola vez)
-            var activityIds = objectives
-                .SelectMany(o => o.Activities ?? new List<ObjectiveActivity>())
-                .Select(a => a.ObjectiveActivityId)
-                .Distinct()
-                .ToList();
+            var activityIds = CollectObjectiveActivityIds(objectives);
 
             // 3) Total acumulado por actividad (lo correcto para tu modelo actual)
             var totalsMap = activityIds.Count == 0
@@ -74,41 +77,40 @@ namespace tesisproject.backend.Services.Implementations
 
             // 4) Map a DTO
             var dto = objectives
-    .Select(o => new ProjectObjectiveWithActivitiesDTO
-    {
-        // ======= CAMPOS DE ProjectObjectiveDetailDTO =======
-        Id = o.Id,                 // Ajusta si tu PK se llama distinto
-        ProjectId = o.ProjectId,
-        ObjectiveTypeId = o.ObjectiveTypeId,
-        ObjectiveTypeName = o.ObjectiveType?.Name ?? string.Empty,  // requiere Include ObjectiveType
-        Objective = o.Objective ?? string.Empty,   // o el campo real en entidad (ej: ObjectiveText/Title)
-        Result = o.Result ?? string.Empty,         // o el campo real en entidad (ej: ExpectedResult)
-        WeightedPercentage = o.WeightedPercentage,
-
-        // ======= Activities =======
-        Activities = (o.Activities ?? new List<ObjectiveActivity>())
-            .OrderBy(a => a.ObjectiveActivityId)
-            .Select(a =>
-            {
-                var progress = totalsMap.TryGetValue(a.ObjectiveActivityId, out var p) ? p : 0;
-
-                return new ObjectiveActivityListItemDTO
+                .Select(o => new ProjectObjectiveWithActivitiesDTO
                 {
-                    ObjectiveActivityId = a.ObjectiveActivityId,
-                    ObjectiveId = a.ObjectiveId,
-                    ActivityResult = a.ActivityResult ?? string.Empty,
-                    ActionText = a.ActionText ?? string.Empty,
-                    CreatedAt = a.CreatedAt,
+                    // ======= CAMPOS DE ProjectObjectiveDetailDTO =======
+                    Id = o.Id,                 // Ajusta si tu PK se llama distinto
+                    ProjectId = o.ProjectId,
+                    ObjectiveTypeId = o.ObjectiveTypeId,
+                    ObjectiveTypeName = o.ObjectiveType?.Name ?? string.Empty,  // requiere Include ObjectiveType
+                    Objective = o.Objective ?? string.Empty,   // o el campo real en entidad (ej: ObjectiveText/Title)
+                    Result = o.Result ?? string.Empty,         // o el campo real en entidad (ej: ExpectedResult)
+                    WeightedPercentage = o.WeightedPercentage,
 
-                    // derivado desde snapshots
-                    ProgressPercentage = progress,
-                    IsCompleted = progress >= 100
-                };
-            })
-            .ToList()
-    })
-    .ToList();
+                    // ======= Activities =======
+                    Activities = (o.Activities ?? Enumerable.Empty<ObjectiveActivity>())
+                        .OrderBy(a => a.ObjectiveActivityId)
+                        .Select(a =>
+                        {
+                            var progress = totalsMap.TryGetValue(a.ObjectiveActivityId, out var p) ? p : 0;
 
+                            return new ObjectiveActivityListItemDTO
+                            {
+                                ObjectiveActivityId = a.ObjectiveActivityId,
+                                ObjectiveId = a.ObjectiveId,
+                                ActivityResult = a.ActivityResult ?? string.Empty,
+                                ActionText = a.ActionText ?? string.Empty,
+                                CreatedAt = a.CreatedAt,
+
+                                // derivado desde snapshots
+                                ProgressPercentage = progress,
+                                IsCompleted = progress >= 100
+                            };
+                        })
+                        .ToList()
+                })
+                .ToList();
 
             return ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>.Ok(dto);
         }
@@ -118,13 +120,11 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("Invalid id.", ErrorType.Validation);
+                return FailValidation<ProjectObjectiveDetailDTO>(InvalidIdMessage);
 
             var entity = await _uow.ProjectObjectives.GetByIdWithRefsAsync(id, ct);
             if (entity is null)
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("ProjectObjective not found.", ErrorType.NotFound);
+                return FailNotFound<ProjectObjectiveDetailDTO>(ProjectObjectiveNotFoundMessage);
 
             var dto = new ProjectObjectiveDetailDTO
             {
@@ -146,35 +146,29 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null)
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("Request is required.", ErrorType.Validation);
+                return FailValidation<ProjectObjectiveDetailDTO>(RequestRequiredMessage);
 
             if (request.ProjectId <= 0)
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("ProjectId is required.", ErrorType.Validation);
+                return FailValidation<ProjectObjectiveDetailDTO>(ProjectIdRequiredMessage);
 
             if (request.ObjectiveTypeId <= 0)
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("ObjectiveTypeId is required.", ErrorType.Validation);
+                return FailValidation<ProjectObjectiveDetailDTO>(ObjectiveTypeIdRequiredMessage);
 
             var objectiveText = (request.Objective ?? string.Empty).Trim();
             var resultText = (request.Result ?? string.Empty).Trim();
 
             if (string.IsNullOrWhiteSpace(objectiveText))
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("Objective is required.", ErrorType.Validation);
+                return FailValidation<ProjectObjectiveDetailDTO>(ObjectiveRequiredMessage);
 
             if (string.IsNullOrWhiteSpace(resultText))
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("Result is required.", ErrorType.Validation);
+                return FailValidation<ProjectObjectiveDetailDTO>(ResultRequiredMessage);
 
             // Validar que el ObjectiveType exista y esté activo
             var objectiveType = await _uow.ObjectiveTypes.GetByIdAsync(
                 new object[] { request.ObjectiveTypeId }, ct);
 
             if (objectiveType is null || !objectiveType.IsActive)
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("ObjectiveType is invalid or inactive.", ErrorType.Validation);
+                return FailValidation<ProjectObjectiveDetailDTO>(ObjectiveTypeInvalidOrInactiveMessage);
 
             var entity = new ProjectObjective
             {
@@ -209,42 +203,35 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null || request.Id <= 0)
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("Invalid id.", ErrorType.Validation);
+                return FailValidation<ProjectObjectiveDetailDTO>(InvalidIdMessage);
 
             if (request.ProjectId <= 0)
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("ProjectId is required.", ErrorType.Validation);
+                return FailValidation<ProjectObjectiveDetailDTO>(ProjectIdRequiredMessage);
 
             if (request.ObjectiveTypeId <= 0)
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("ObjectiveTypeId is required.", ErrorType.Validation);
+                return FailValidation<ProjectObjectiveDetailDTO>(ObjectiveTypeIdRequiredMessage);
 
             var objectiveText = (request.Objective ?? string.Empty).Trim();
             var resultText = (request.Result ?? string.Empty).Trim();
 
             if (string.IsNullOrWhiteSpace(objectiveText))
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("Objective is required.", ErrorType.Validation);
+                return FailValidation<ProjectObjectiveDetailDTO>(ObjectiveRequiredMessage);
 
             if (string.IsNullOrWhiteSpace(resultText))
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("Result is required.", ErrorType.Validation);
+                return FailValidation<ProjectObjectiveDetailDTO>(ResultRequiredMessage);
 
             var entity = await _uow.ProjectObjectives.GetByIdAsync(
                 new object[] { request.Id }, ct);
 
             if (entity is null)
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("ProjectObjective not found.", ErrorType.NotFound);
+                return FailNotFound<ProjectObjectiveDetailDTO>(ProjectObjectiveNotFoundMessage);
 
             // Validar ObjectiveType
             var objectiveType = await _uow.ObjectiveTypes.GetByIdAsync(
                 new object[] { request.ObjectiveTypeId }, ct);
 
             if (objectiveType is null || !objectiveType.IsActive)
-                return ServiceResult<ProjectObjectiveDetailDTO>
-                    .Fail("ObjectiveType is invalid or inactive.", ErrorType.Validation);
+                return FailValidation<ProjectObjectiveDetailDTO>(ObjectiveTypeInvalidOrInactiveMessage);
 
             entity.ProjectId = request.ProjectId;
             entity.ObjectiveTypeId = request.ObjectiveTypeId;
@@ -276,60 +263,76 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<bool>.Fail("Invalid id.", ErrorType.Validation);
+                return FailValidation<bool>(InvalidIdMessage);
 
             var entity = await _uow.ProjectObjectives.GetByIdAsync(new object[] { id }, ct);
             if (entity is null)
-                return ServiceResult<bool>.Fail("ProjectObjective not found.", ErrorType.NotFound);
+                return FailNotFound<bool>(ProjectObjectiveNotFoundMessage);
 
             _uow.ProjectObjectives.Remove(entity);
             await _uow.SaveChangesAsync(ct);
 
             return ServiceResult<bool>.Ok(true);
         }
+
         public async Task<ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>>
-        ListByProjectWithActivitiesAsync(int projectId, int visitId, CancellationToken ct = default)
+            ListByProjectWithActivitiesAsync(int projectId, int visitId, CancellationToken ct = default)
         {
             var objectives = await _uow.ProjectObjectives
                 .ListByProjectWithActivitiesAsync(projectId, ct);
 
-            var activityIds = objectives
-                .SelectMany(o => o.Activities ?? new List<ObjectiveActivity>())
+            var activityIds = CollectObjectiveActivityIds(objectives);
+
+            var progressMap = await _uow.VisitObjectiveActivityProgresses
+                .GetCumulativeProgressByProjectUpToVisitAndActivityIdsAsync(projectId, visitId, activityIds, ct);
+
+            var dtoList = objectives
+                .Select(o => new ProjectObjectiveWithActivitiesDTO
+                {
+                    Id = o.Id,
+                    ProjectId = o.ProjectId,
+                    ObjectiveTypeId = o.ObjectiveTypeId,
+                    WeightedPercentage = o.WeightedPercentage,
+                    ObjectiveTypeName = o.ObjectiveType.Name,
+                    Objective = o.Objective,
+                    Result = o.Result,
+                    Activities = (o.Activities ?? Enumerable.Empty<ObjectiveActivity>())
+                        .Select(a =>
+                        {
+                            var progress = progressMap.TryGetValue(a.ObjectiveActivityId, out var p) ? p : 0;
+                            return new ObjectiveActivityListItemDTO
+                            {
+                                ObjectiveActivityId = a.ObjectiveActivityId,
+                                ObjectiveId = a.ObjectiveId,
+                                ActivityResult = a.ActivityResult,
+                                ActionText = a.ActionText,
+                                CreatedAt = a.CreatedAt,
+                                ProgressPercentage = progress,
+                                IsCompleted = progress >= 100
+                            };
+                        })
+                        .ToList()
+                })
+                .ToList();
+
+            return ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>.Ok(dtoList);
+        }
+
+        // ==================== PRIVATE HELPERS ====================
+
+        private static ServiceResult<T> FailValidation<T>(string message)
+            => ServiceResult<T>.Fail(message, ErrorType.Validation);
+
+        private static ServiceResult<T> FailNotFound<T>(string message)
+            => ServiceResult<T>.Fail(message, ErrorType.NotFound);
+
+        private static List<int> CollectObjectiveActivityIds(IEnumerable<ProjectObjective> objectives)
+        {
+            return objectives
+                .SelectMany(o => o.Activities ?? Enumerable.Empty<ObjectiveActivity>())
                 .Select(a => a.ObjectiveActivityId)
                 .Distinct()
                 .ToList();
-
-            var progressMap = await _uow.VisitObjectiveActivityProgresses.GetCumulativeProgressByProjectUpToVisitAndActivityIdsAsync(projectId, visitId, activityIds, ct);
-
-
-            var dtoList = objectives.Select(o => new ProjectObjectiveWithActivitiesDTO
-            {
-                Id = o.Id,
-                ProjectId = o.ProjectId,
-                ObjectiveTypeId = o.ObjectiveTypeId,
-                WeightedPercentage = o.WeightedPercentage,
-                ObjectiveTypeName = o.ObjectiveType.Name,
-                Objective = o.Objective,
-                Result = o.Result,
-                Activities = (o.Activities ?? new List<ObjectiveActivity>())
-                    .Select(a =>
-                    {
-                        var progress = progressMap.TryGetValue(a.ObjectiveActivityId, out var p) ? p : 0;
-                        return new ObjectiveActivityListItemDTO
-                        {
-                            ObjectiveActivityId = a.ObjectiveActivityId,
-                            ObjectiveId = a.ObjectiveId,
-                            ActivityResult = a.ActivityResult,
-                            ActionText = a.ActionText,
-                            CreatedAt = a.CreatedAt,
-                            ProgressPercentage = progress,
-                            IsCompleted = progress >= 100
-                        };
-                    })
-                    .ToList()
-            }).ToList();
-
-            return ServiceResult<IReadOnlyList<ProjectObjectiveWithActivitiesDTO>>.Ok(dtoList);
         }
     }
 }

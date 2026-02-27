@@ -10,6 +10,29 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class ObjectiveActivityService : IObjectiveActivityService
     {
+        private const string InvalidIdMessage = "Invalid id.";
+        private const string ObjectiveIdRequiredMessage = "ObjectiveId is required.";
+        private const string RequestRequiredMessage = "Request is required.";
+        private const string ProjectObjectiveNotFoundMessage = "ProjectObjective not found.";
+        private const string ObjectiveActivityNotFoundMessage = "ObjectiveActivity not found.";
+        private const string InvalidVisitIdMessage = "Invalid visitId.";
+        private const string InvalidActivityIdMessage = "Invalid activityId.";
+        private const string ProgressRangeMessage = "Progress must be between 0 and 100.";
+        private const string VisitNotFoundMessage = "Visit not found.";
+        private const string ActivityResultMaxLengthMessage = "ActivityResult cannot exceed 1000 characters.";
+        private const string ActionTextMaxLengthMessage = "ActionText cannot exceed 1000 characters.";
+
+        private const int CompletedThreshold = 100;
+        private const int MaxTextLength = 1000;
+
+        private const int GeneralObjectiveTypeId = 1;
+
+        private const int ProjectStateCompletedId = 2;
+        private const int ProjectStateInProgressId = 3;
+
+        private const decimal PercentMin = 0m;
+        private const decimal PercentMax = 100m;
+
         private readonly IUnitOfWork _uow;
 
         public ObjectiveActivityService(IUnitOfWork uow)
@@ -25,22 +48,23 @@ namespace tesisproject.backend.Services.Implementations
         {
             if (objectiveId <= 0)
                 return ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>
-                    .Fail("ObjectiveId is required.", ErrorType.Validation);
+                    .Fail(ObjectiveIdRequiredMessage, ErrorType.Validation);
 
-            var entities = await _uow.ObjectiveActivities.GetByObjectiveAsync(objectiveId, ct);
+            var activities = await _uow.ObjectiveActivities.GetByObjectiveAsync(objectiveId, ct);
 
             // 1) IDs de actividades para consultar últimos snapshots
-            var activityIds = entities.Select(a => a.ObjectiveActivityId).ToList();
+            var activityIds = activities.Select(a => a.ObjectiveActivityId).ToList();
 
             // 2) Mapa: ObjectiveActivityId -> ProgressPercentage (último snapshot)
-            var latestProgressMap = await _uow.VisitObjectiveActivityProgresses.GetTotalProgressByActivityIdsAsync(activityIds, ct);
+            var latestProgressMap = await _uow.VisitObjectiveActivityProgresses
+                .GetTotalProgressByActivityIdsAsync(activityIds, ct);
 
             // 3) Construir DTO sin depender de campos eliminados en ObjectiveActivity
-            var dto = entities
+            var dto = activities
                 .OrderBy(a => a.ObjectiveActivityId)
                 .Select(a =>
                 {
-                    var progress = latestProgressMap.TryGetValue(a.ObjectiveActivityId, out var p) ? p : 0;
+                    var progress = GetProgressOrDefault(latestProgressMap, a.ObjectiveActivityId);
 
                     return new ObjectiveActivityListItemDTO
                     {
@@ -51,7 +75,7 @@ namespace tesisproject.backend.Services.Implementations
                         CreatedAt = a.CreatedAt,
 
                         ProgressPercentage = progress,
-                        IsCompleted = progress >= 100
+                        IsCompleted = progress >= CompletedThreshold
                     };
                 })
                 .ToList();
@@ -59,29 +83,26 @@ namespace tesisproject.backend.Services.Implementations
             return ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>.Ok(dto);
         }
 
-
         public async Task<ServiceResult<ObjectiveActivityDetailDTO>> GetByIdAsync(
             int activityId,
             CancellationToken ct = default)
         {
             if (activityId <= 0)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail("Invalid id.", ErrorType.Validation);
+                    .Fail(InvalidIdMessage, ErrorType.Validation);
 
             var entity = await _uow.ObjectiveActivities.GetByIdWithRefsAsync(activityId, ct);
             if (entity is null)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail("ObjectiveActivity not found.", ErrorType.NotFound);
+                    .Fail(ObjectiveActivityNotFoundMessage, ErrorType.NotFound);
 
             var map = await _uow.VisitObjectiveActivityProgresses
-                .GetTotalProgressByActivityIdsAsync(new[] { entity.ObjectiveActivityId }, ct);
+                .GetTotalProgressByActivityIdsAsync(SingleIdArray(entity.ObjectiveActivityId), ct);
 
-            var progress = map.TryGetValue(entity.ObjectiveActivityId, out var p) ? p : 0;
-
+            var progress = GetProgressOrDefault(map, entity.ObjectiveActivityId);
 
             var dto = MapToDetailDto(entity, progress);
             return ServiceResult<ObjectiveActivityDetailDTO>.Ok(dto);
-
         }
 
         // ==================== WRITES ====================
@@ -92,11 +113,11 @@ namespace tesisproject.backend.Services.Implementations
         {
             if (request is null)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail("Request is required.", ErrorType.Validation);
+                    .Fail(RequestRequiredMessage, ErrorType.Validation);
 
             if (request.ObjectiveId <= 0)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail("ObjectiveId is required.", ErrorType.Validation);
+                    .Fail(ObjectiveIdRequiredMessage, ErrorType.Validation);
 
             // Validar que el ProjectObjective exista
             var objective = await _uow.ProjectObjectives.GetByIdAsync(
@@ -104,7 +125,7 @@ namespace tesisproject.backend.Services.Implementations
 
             if (objective is null)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail("ProjectObjective not found.", ErrorType.Validation);
+                    .Fail(ProjectObjectiveNotFoundMessage, ErrorType.Validation);
 
             var entity = new ObjectiveActivity
             {
@@ -114,7 +135,6 @@ namespace tesisproject.backend.Services.Implementations
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = null,
             };
-
 
             await _uow.ObjectiveActivities.AddAsync(entity, ct);
             await _uow.SaveChangesAsync(ct);
@@ -127,27 +147,27 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         public async Task<ServiceResult<ObjectiveActivityDetailDTO>> UpdateAsync(
-     UpdateObjectiveActivityRequestDTO request,
-     CancellationToken ct = default)
+            UpdateObjectiveActivityRequestDTO request,
+            CancellationToken ct = default)
         {
             if (request is null || request.ObjectiveActivityId <= 0)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail("Invalid id.", ErrorType.Validation);
+                    .Fail(InvalidIdMessage, ErrorType.Validation);
 
             if (request.ObjectiveId <= 0)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail("ObjectiveId is required.", ErrorType.Validation);
+                    .Fail(ObjectiveIdRequiredMessage, ErrorType.Validation);
 
             // Validaciones StringLength
             var activityResult = (request.ActivityResult ?? string.Empty).Trim();
-            if (activityResult.Length > 1000)
+            if (activityResult.Length > MaxTextLength)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail("ActivityResult cannot exceed 1000 characters.", ErrorType.Validation);
+                    .Fail(ActivityResultMaxLengthMessage, ErrorType.Validation);
 
             var actionText = (request.ActionText ?? string.Empty).Trim();
-            if (actionText.Length > 1000)
+            if (actionText.Length > MaxTextLength)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail("ActionText cannot exceed 1000 characters.", ErrorType.Validation);
+                    .Fail(ActionTextMaxLengthMessage, ErrorType.Validation);
 
             // 1) Cargar actividad
             var entity = await _uow.ObjectiveActivities.GetByIdAsync(
@@ -155,7 +175,7 @@ namespace tesisproject.backend.Services.Implementations
 
             if (entity is null)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail("ObjectiveActivity not found.", ErrorType.NotFound);
+                    .Fail(ObjectiveActivityNotFoundMessage, ErrorType.NotFound);
 
             // 2) Validar objetivo
             var objective = await _uow.ProjectObjectives.GetByIdAsync(
@@ -163,7 +183,7 @@ namespace tesisproject.backend.Services.Implementations
 
             if (objective is null)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail("ProjectObjective not found.", ErrorType.Validation);
+                    .Fail(ProjectObjectiveNotFoundMessage, ErrorType.Validation);
 
             // 3) Update actividad (solo metadata/textos)
             entity.ObjectiveId = request.ObjectiveId;
@@ -182,26 +202,25 @@ namespace tesisproject.backend.Services.Implementations
 
             // 6) Progreso actual desde snapshots (último)
             var map = await _uow.VisitObjectiveActivityProgresses
-                .GetLatestProgressByActivityIdsAsync(new[] { updated.ObjectiveActivityId }, ct);
+                .GetLatestProgressByActivityIdsAsync(SingleIdArray(updated.ObjectiveActivityId), ct);
 
-            var progress = map.TryGetValue(updated.ObjectiveActivityId, out var p) ? p : 0;
+            var progress = GetProgressOrDefault(map, updated.ObjectiveActivityId);
 
             return ServiceResult<ObjectiveActivityDetailDTO>.Ok(MapToDetailDto(updated, progress));
         }
-
 
         public async Task<ServiceResult<bool>> DeleteAsync(
             int activityId,
             CancellationToken ct = default)
         {
             if (activityId <= 0)
-                return ServiceResult<bool>.Fail("Invalid id.", ErrorType.Validation);
+                return ServiceResult<bool>.Fail(InvalidIdMessage, ErrorType.Validation);
 
             var entity = await _uow.ObjectiveActivities.GetByIdAsync(
                 new object[] { activityId }, ct);
 
             if (entity is null)
-                return ServiceResult<bool>.Fail("ObjectiveActivity not found.", ErrorType.NotFound);
+                return ServiceResult<bool>.Fail(ObjectiveActivityNotFoundMessage, ErrorType.NotFound);
 
             _uow.ObjectiveActivities.Remove(entity);
             await _uow.SaveChangesAsync(ct);
@@ -216,23 +235,23 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (visitId <= 0)
-                return ServiceResult<bool>.Fail("Invalid visitId.", ErrorType.Validation);
+                return ServiceResult<bool>.Fail(InvalidVisitIdMessage, ErrorType.Validation);
 
             if (activityId <= 0)
-                return ServiceResult<bool>.Fail("Invalid activityId.", ErrorType.Validation);
+                return ServiceResult<bool>.Fail(InvalidActivityIdMessage, ErrorType.Validation);
 
             if (progressPercentage < 0 || progressPercentage > 100)
-                return ServiceResult<bool>.Fail("Progress must be between 0 and 100.", ErrorType.Validation);
+                return ServiceResult<bool>.Fail(ProgressRangeMessage, ErrorType.Validation);
 
             // 1) Validar Visit
             var visit = await _uow.Visits.GetByIdAsync(new object[] { visitId }, ct);
             if (visit is null)
-                return ServiceResult<bool>.Fail("Visit not found.", ErrorType.NotFound);
+                return ServiceResult<bool>.Fail(VisitNotFoundMessage, ErrorType.NotFound);
 
             // 2) Validar Activity
             var activity = await _uow.ObjectiveActivities.GetByIdAsync(new object[] { activityId }, ct);
             if (activity is null)
-                return ServiceResult<bool>.Fail("ObjectiveActivity not found.", ErrorType.NotFound);
+                return ServiceResult<bool>.Fail(ObjectiveActivityNotFoundMessage, ErrorType.NotFound);
 
             // 3) Calcular progreso acumulado ANTES de esta visita (VisitId < visitId)
             //    Nota: aquí asumimos que VisitId es incremental y define el orden temporal.
@@ -241,7 +260,7 @@ namespace tesisproject.backend.Services.Implementations
                 .GetCumulativeProgressByProjectUpToVisitAndActivityIdsAsync(
                     projectId: visit.ProjectId,
                     visitId: visitId - 1,               // <- "hasta la anterior" por ID
-                    activityIds: new[] { activityId },
+                    activityIds: SingleIdArray(activityId),
                     ct: ct);
 
             var totalBeforeThisVisit = totalBeforeDict.TryGetValue(activityId, out var before) ? before : 0; // 0..100 clamped
@@ -260,11 +279,7 @@ namespace tesisproject.backend.Services.Implementations
             // 6) Buscar el registro existente "más reciente" en esta visita (si existe)
             //    OJO: tu GenericRepository.FirstOrDefaultAsync no permite ordenar.
             //    Solución: usa Query() y ordena.
-            var existing = await _uow.VisitObjectiveActivityProgresses
-                .Query(asNoTracking: false)
-                .Where(x => x.VisitId == visitId && x.ObjectiveActivityId == activityId)
-                .OrderByDescending(x => x.CreatedAt)
-                .FirstOrDefaultAsync(ct);
+            var existing = await GetLatestProgressEntityForVisitAsync(visitId, activityId, ct);
 
             // 7) Upsert del delta
             if (existing is null)
@@ -298,7 +313,6 @@ namespace tesisproject.backend.Services.Implementations
             return ServiceResult<bool>.Ok(true);
         }
 
-
         // ==================== Helpers ====================
 
         private static ObjectiveActivityDetailDTO MapToDetailDto(ObjectiveActivity entity, int progressPercentage)
@@ -311,8 +325,25 @@ namespace tesisproject.backend.Services.Implementations
                 CreatedAt = entity.CreatedAt,
                 UpdatedAt = entity.UpdatedAt,
                 ProgressPercentage = progressPercentage,
-                IsCompleted = progressPercentage >= 100
+                IsCompleted = progressPercentage >= CompletedThreshold
             };
+
+        private static int[] SingleIdArray(int id) => new[] { id };
+
+        private static int GetProgressOrDefault(IReadOnlyDictionary<int, int> map, int activityId)
+            => map.TryGetValue(activityId, out var value) ? value : 0;
+
+        private async Task<VisitObjectiveActivityProgress?> GetLatestProgressEntityForVisitAsync(
+            int visitId,
+            int activityId,
+            CancellationToken ct)
+        {
+            return await _uow.VisitObjectiveActivityProgresses
+                .Query(asNoTracking: false)
+                .Where(x => x.VisitId == visitId && x.ObjectiveActivityId == activityId)
+                .OrderByDescending(x => x.CreatedAt)
+                .FirstOrDefaultAsync(ct);
+        }
 
         private async Task RecalculateProjectExecutionPercentageAsync(int projectId, CancellationToken ct)
         {
@@ -321,7 +352,7 @@ namespace tesisproject.backend.Services.Implementations
 
             // 2) Excluir objetivo general
             var scopedObjectives = objectives
-                .Where(o => o.ObjectiveTypeId != 1)
+                .Where(o => o.ObjectiveTypeId != GeneralObjectiveTypeId)
                 .ToList();
 
             if (scopedObjectives.Count == 0)
@@ -368,7 +399,7 @@ namespace tesisproject.backend.Services.Implementations
             var execution = weightedSum / 100m;
 
             // clamp y persistir
-            execution = Math.Min(100m, Math.Max(0m, execution));
+            execution = ClampPercentage(execution);
             await SetProjectExecutionAsync(projectId, Math.Round(execution, 2), ct);
         }
 
@@ -376,11 +407,17 @@ namespace tesisproject.backend.Services.Implementations
         {
             var project = await _uow.Projects.GetByIdAsync(new object[] { projectId }, ct);
             if (project is null) return;
-            var clamped = Math.Min(100m, Math.Max(0m, execution));
+
+            var clamped = ClampPercentage(execution);
+
             project.ExecutionPercentage = clamped;
-            project.ProjectStateId = (project.ExecutionPercentage >= 100m) ? 2 : 3;
+            project.ProjectStateId = (project.ExecutionPercentage >= PercentMax) ? ProjectStateCompletedId : ProjectStateInProgressId;
+
             _uow.Projects.Update(project);
             await _uow.SaveChangesAsync(ct);
         }
+
+        private static decimal ClampPercentage(decimal value)
+            => Math.Min(PercentMax, Math.Max(PercentMin, value));
     }
 }

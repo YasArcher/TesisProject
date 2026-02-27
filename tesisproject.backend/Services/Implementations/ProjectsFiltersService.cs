@@ -23,7 +23,6 @@ namespace tesisproject.backend.Services.Implementations
             _researchTypes = researchTypes;
         }
 
-
         public async Task<ServiceResult<ProjectsFilterBootstrapDTO>> GetBootstrapAsync(
             CancellationToken ct = default)
         {
@@ -35,78 +34,30 @@ namespace tesisproject.backend.Services.Implementations
                 // ProjectStates
                 // =======================
                 var statesRes = await _catalogs.GetKeyValuesAsync<ProjectState>(ct: ct);
-                dto.ProjectStates = statesRes.Success && statesRes.Data is not null
-                    ? statesRes.Data
-                    : new List<KeyValueItemDTO>();
+                dto.ProjectStates = GetDataOrEmpty(statesRes, static () => new List<KeyValueItemDTO>());
 
                 // =======================
                 // ProjectTypes
                 // =======================
                 var typesRes = await _catalogs.GetKeyValuesAsync<ProjectType>(ct: ct);
-                dto.ProjectTypes = typesRes.Success && typesRes.Data is not null
-                    ? typesRes.Data
-                    : new List<KeyValueItemDTO>();
+                dto.ProjectTypes = GetDataOrEmpty(typesRes, static () => new List<KeyValueItemDTO>());
 
                 // =======================
                 // Faculties (API externa)
                 // =======================
                 var facRes = await _extTypes.GetFacultiesKeyValuesAsync(ct);
-                dto.Faculties = facRes.Success && facRes.Data is not null
-                    ? facRes.Data
-                    : new List<KeyValueItemDTO>();
+                dto.Faculties = GetDataOrEmpty(facRes, static () => new List<KeyValueItemDTO>());
 
                 // =======================
                 // Funding
                 // =======================
                 var fundingRes = await _catalogs.GetKeyValuesAsync<FundingType>(ct: ct);
-                dto.Funding = fundingRes.Success && fundingRes.Data is not null
-                    ? fundingRes.Data
-                    : new List<KeyValueItemDTO>();
+                dto.Funding = GetDataOrEmpty(fundingRes, static () => new List<KeyValueItemDTO>());
 
                 // =======================
                 // ResearchCategoryTypes dinámicos
                 // =======================
-                var typesQuery = _researchTypes.Query()
-                    .Where(t => t.IsActive && t.IsFilterEnabled)
-                    .Include(t => t.ResearchCategoryGroup)   // 👈 para traer el nombre del grupo
-                    .Include(t => t.ResearchCategories);
-
-                var types = await typesQuery.ToListAsync(ct);
-
-                if (types is null || types.Count == 0)
-                {
-                    dto.ResearchCategoryTypes = new List<ResearchCategoryFilterTypeDTO>();
-                }
-                else
-                {
-                    dto.ResearchCategoryTypes = types
-                        // solo tipos que tengan al menos una categoría activa
-                        .Where(t => t.ResearchCategories.Any(c => c.IsActive))
-                        .OrderBy(t => t.ResearchCategoryGroupId)
-                        .ThenBy(t => t.Id)
-                        .Select(t => new ResearchCategoryFilterTypeDTO
-                        {
-                            Id = t.Id,
-                            Name = t.Name,
-
-                            // 👇 nuevos campos para agrupar en el front
-                            ResearchCategoryGroupId = t.ResearchCategoryGroupId,
-                            ResearchCategoryGroupName = t.ResearchCategoryGroup.Name,
-
-                            Categories = t.ResearchCategories
-                                .Where(c => c.IsActive)
-                                .OrderBy(c => c.Name)
-                                .Select(c => new ResearchCategoryItemDTO
-                                {
-                                    Id = c.Id,
-                                    Name = c.Name,
-                                    ParentCategoryId = c.ParentCategoryId,
-                                    ResearchCategoryTypeId = c.ResearchCategoryTypeId
-                                })
-                                .ToList()
-                        })
-                        .ToList();
-                }
+                dto.ResearchCategoryTypes = await BuildResearchCategoryTypesAsync(ct);
 
                 return ServiceResult<ProjectsFilterBootstrapDTO>
                     .Ok(dto, "Projects filters bootstrap generated.");
@@ -121,6 +72,58 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<ProjectsFilterBootstrapDTO>
                     .Fail(ex.Message, ErrorType.Unexpected);
             }
+        }
+
+        private static TCollection GetDataOrEmpty<TCollection>(
+            ServiceResult<TCollection> result,
+            Func<TCollection> emptyFactory)
+            where TCollection : class
+        {
+            return result.Success && result.Data is not null
+                ? result.Data
+                : emptyFactory();
+        }
+
+        private async Task<List<ResearchCategoryFilterTypeDTO>> BuildResearchCategoryTypesAsync(
+            CancellationToken ct)
+        {
+            var typesQuery = _researchTypes.Query()
+                .Where(t => t.IsActive && t.IsFilterEnabled)
+                .Include(t => t.ResearchCategoryGroup)   // 👈 para traer el nombre del grupo
+                .Include(t => t.ResearchCategories);
+
+            var types = await typesQuery.ToListAsync(ct);
+
+            if (types is null || types.Count == 0)
+                return new List<ResearchCategoryFilterTypeDTO>();
+
+            return types
+                // solo tipos que tengan al menos una categoría activa
+                .Where(t => t.ResearchCategories.Any(c => c.IsActive))
+                .OrderBy(t => t.ResearchCategoryGroupId)
+                .ThenBy(t => t.Id)
+                .Select(t => new ResearchCategoryFilterTypeDTO
+                {
+                    Id = t.Id,
+                    Name = t.Name,
+
+                    // 👇 nuevos campos para agrupar en el front
+                    ResearchCategoryGroupId = t.ResearchCategoryGroupId,
+                    ResearchCategoryGroupName = t.ResearchCategoryGroup.Name,
+
+                    Categories = t.ResearchCategories
+                        .Where(c => c.IsActive)
+                        .OrderBy(c => c.Name)
+                        .Select(c => new ResearchCategoryItemDTO
+                        {
+                            Id = c.Id,
+                            Name = c.Name,
+                            ParentCategoryId = c.ParentCategoryId,
+                            ResearchCategoryTypeId = c.ResearchCategoryTypeId
+                        })
+                        .ToList()
+                })
+                .ToList();
         }
     }
 }

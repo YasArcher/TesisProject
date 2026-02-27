@@ -1,4 +1,7 @@
-﻿using DocumentFormat.OpenXml.Drawing.Charts;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using tesisproject.backend.Options;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.Services.Parsers;
 using tesisproject.backend.Utils;
@@ -7,6 +10,7 @@ using tesisproject.shared.Common.Utils;
 using tesisproject.shared.DTOs.Algorithms.Response;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Entities.External;
+using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -19,7 +23,7 @@ namespace tesisproject.backend.Services.Implementations
         private readonly ICatalogCrudService<ProjectType> _projectTypeService;
         private readonly IExternalPeriodsClient _periods;
         private readonly IExternalDistributivosService _distributivos;
-
+        private readonly DocumentRecognitionOptions _opt;
 
         public DocumentRecognitionService(
             ILogger<IDocumentRecognitionService> logger,
@@ -27,7 +31,8 @@ namespace tesisproject.backend.Services.Implementations
             IMemberRoleTypeService memberRoleTypeService,
             ICatalogCrudService<ProjectType> projectTypeService,
             IExternalPeriodsClient periods,
-            IExternalDistributivosService distributivos)
+            IExternalDistributivosService distributivos,
+            IOptions<DocumentRecognitionOptions> options)
         {
             _logger = logger;
             _externalDirectory = externalDirectory;
@@ -35,7 +40,9 @@ namespace tesisproject.backend.Services.Implementations
             _projectTypeService = projectTypeService;
             _periods = periods;
             _distributivos = distributivos;
+            _opt = options.Value;
         }
+
         // ========================================
         //  MÉTODO 1: Reconocimiento de Resolución
         // ========================================
@@ -44,9 +51,7 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (file is null || file.Length == 0)
-                return ServiceResult<ResolutionInfo>.Fail(
-                    "File is empty.",
-                    ErrorType.Validation);
+                return ServiceResult<ResolutionInfo>.Fail("File is empty.", ErrorType.Validation);
 
             try
             {
@@ -60,9 +65,7 @@ namespace tesisproject.backend.Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error recognizing resolution document");
-                return ServiceResult<ResolutionInfo>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                return ServiceResult<ResolutionInfo>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
 
@@ -74,9 +77,7 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (file is null || file.Length == 0)
-                return ServiceResult<DideProjectFormInfo>.Fail(
-                    "File is empty.",
-                    ErrorType.Validation);
+                return ServiceResult<DideProjectFormInfo>.Fail("File is empty.", ErrorType.Validation);
 
             try
             {
@@ -90,9 +91,7 @@ namespace tesisproject.backend.Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error recognizing DIDE project document");
-                return ServiceResult<DideProjectFormInfo>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                return ServiceResult<DideProjectFormInfo>.Fail(ex.Message, ErrorType.Unexpected);
             }
         }
 
@@ -104,16 +103,22 @@ namespace tesisproject.backend.Services.Implementations
             Stream pdfStream,
             CancellationToken ct)
         {
+            _ = ct; // extractor/parsers son sync
+
             if (pdfStream.CanSeek)
                 pdfStream.Position = 0;
 
             var extractor = new PdfTextExtractor();
-            string rawText = extractor.ExtractTextFromPdfImproved(pdfStream);
-            string text = ResolutionParser.NormalizeText(rawText);
+            var rawText = extractor.ExtractTextFromPdfImproved(pdfStream);
+            var text = ResolutionParser.NormalizeText(rawText);
+
             var info = new ResolutionInfo
             {
                 ResolutionCode = ResolutionParser.ExtractResolutionCode(text),
-                documentTypeId = 1,
+
+                // ✅ no hardcode: depende de tu catálogo seed
+                documentTypeId = DocumentTypeIds.MemorandoInicial,
+
                 ResolutionHeaderDate = DateParser.FromSpanishLongDate(ResolutionParser.ExtractHeaderDate(text)),
                 MeetingDate = DateParser.FromSpanishLongDate(ResolutionParser.ExtractMeetingDate(text)),
                 MainDecisionVerb = ResolutionParser.ExtractMainDecisionVerb(text),
@@ -134,9 +139,6 @@ namespace tesisproject.backend.Services.Implementations
 
             var extractor = new PdfTextExtractor();
 
-            // ===========================
-            // PRIMERA LECTURA (Improved)
-            // ===========================
             var rawTextImproved = extractor.ExtractTextFromPdfImproved(pdfStream);
             var rawText = ResolutionParser.NormalizeText(rawTextImproved);
 
@@ -152,16 +154,10 @@ namespace tesisproject.backend.Services.Implementations
 
             var researchers = DideProjectFormParser.ExtractResearchersFromMembersSection(membersSectionRaw);
 
-            // =========================================
-            // ENRIQUECER CON DIRECTORIO + ROLES
-            // =========================================
             await EnrichResearchersWithExternalDirectoryAsync(researchers, ct);
-            await ResolveMemberRolesAsync(researchers, ct);
+            await ResolveMemberRolesAsync(researchers);
 
-            // Detectar texto del tipo de investigación en el formulario
             var investigationType = DideProjectFormParser.DetectResearchType(rawText);
-
-            // Nuevo: resolver el ID del ProjectType más parecido
             var investigationTypeId = await ResolveInvestigationTypeAsync(investigationType, ct);
 
             var domain_investionLine = DideProjectFormParser.ExtractSectionByMarkers(
@@ -178,7 +174,7 @@ namespace tesisproject.backend.Services.Implementations
 
             var objectives = DideProjectFormParser.ExtractAllSpecificObjectives(actividadesSectionRaw);
 
-            var data = new DideProjectFormInfo
+            return new DideProjectFormInfo
             {
                 ProjectName = tituloBlockRaw,
                 Researchers = researchers,
@@ -186,14 +182,12 @@ namespace tesisproject.backend.Services.Implementations
                 Objectives = objectives,
                 ResearchTypeId = investigationTypeId
             };
-
-            return data;
         }
+
         private async Task EnrichResearchersWithExternalDirectoryAsync(
             IList<ResearcherInfo> researchers,
             CancellationToken ct)
         {
-            // 1) Correos únicos y limpios
             var emails = researchers
                 .Select(r => r.email)
                 .Where(e => !string.IsNullOrWhiteSpace(e))
@@ -204,7 +198,6 @@ namespace tesisproject.backend.Services.Implementations
             if (emails.Count == 0)
                 return;
 
-            // 2) Traer perfiles del directorio externo (batch)
             var externalResult = await _externalDirectory.GetByEmailsAsync(emails, ct);
             if (!externalResult.Success || externalResult.Data is null || externalResult.Data.Count == 0)
             {
@@ -212,7 +205,6 @@ namespace tesisproject.backend.Services.Implementations
                 return;
             }
 
-            // 3) Periodos académicos (una sola vez, antes del loop)
             var periodsRes = await _periods.GetAllAsync(ct);
             var periods = (periodsRes.Success && periodsRes.Data is not null)
                 ? periodsRes.Data
@@ -225,12 +217,10 @@ namespace tesisproject.backend.Services.Implementations
             if (periods.Count == 0)
                 _logger.LogWarning("Academic periods not available; ProjectCareer selection may fallback to BestCareer.");
 
-            // 4) Distributivos (solo los necesarios por correos, una sola vez, antes del loop)
             var distRes = await _distributivos.GetDistributivosByCorreosAsync(emails, ct);
             var distributivos = (distRes.Success && distRes.Data is not null)
                 ? distRes.Data
                     .Where(d => !string.IsNullOrWhiteSpace(d.Email))
-                    // Dedup por (Email, PeriodId) para evitar ruido; determinista por Max(Hours)
                     .GroupBy(d => new { Email = d.Email!.Trim().ToLowerInvariant(), d.PeriodId })
                     .Select(g => g.OrderByDescending(x => x.Hours).First())
                     .ToList()
@@ -239,7 +229,6 @@ namespace tesisproject.backend.Services.Implementations
             if (distributivos.Count == 0)
                 _logger.LogWarning("Distributivos not available/empty; ProjectCareer selection may fallback to BestCareer.");
 
-            // 5) Diccionario email → perfil externo
             var profilesByEmail = externalResult.Data
                 .Where(p => !string.IsNullOrWhiteSpace(p.Email))
                 .GroupBy(p => p.Email!.Trim().ToLowerInvariant())
@@ -248,10 +237,8 @@ namespace tesisproject.backend.Services.Implementations
                     g => g.First(),
                     StringComparer.OrdinalIgnoreCase);
 
-            // 6) Fecha "de ese momento" (no la del proyecto)
             var now = DateTime.UtcNow;
 
-            // 7) Enriquecer cada investigador
             foreach (var r in researchers)
             {
                 if (string.IsNullOrWhiteSpace(r.email))
@@ -261,29 +248,24 @@ namespace tesisproject.backend.Services.Implementations
                 if (!profilesByEmail.TryGetValue(key, out var profile))
                     continue;
 
-                // Nombre
                 if (!string.IsNullOrWhiteSpace(profile.FullName))
                     r.FullName = profile.FullName;
 
-                // Cédula
                 if (!string.IsNullOrWhiteSpace(profile.Document))
                     r.Document = profile.Document;
 
-                // ASP externo
                 if (profile.AspId is not null)
                     r.AspNetUserId = profile.AspId;
 
-                // Carrera: primero por horas/periodo en "este momento", si no, fallback a BestCareer
                 if (profile.Careers is { Count: > 0 })
                 {
                     var chosen = ExternalCareerSelector.SelectProjectCareer(
                         profile: profile,
                         distributivos: distributivos,
-                        projectStartDate: now,   // "fecha de ese momento"
+                        projectStartDate: now,
                         periods: periods,
                         onlyActivePreferred: true);
 
-                    // Fallback: si no hay carrera por ProjectCareer, usar BestCareer
                     chosen ??= ExternalCareerSelector.SelectBestCareer(
                         profile: profile,
                         onlyActivePreferred: true);
@@ -301,7 +283,6 @@ namespace tesisproject.backend.Services.Implementations
             if (string.IsNullOrWhiteSpace(investigationType))
                 return null;
 
-            // Ahora llamas al servicio genérico
             var projectTypesResult = await _projectTypeService.ListAsync(ct);
             if (!projectTypesResult.Success || projectTypesResult.Data is null || projectTypesResult.Data.Count == 0)
             {
@@ -310,17 +291,10 @@ namespace tesisproject.backend.Services.Implementations
             }
 
             var allProjectTypes = projectTypesResult.Data;
-
-            // Si tu CatalogListItemDTO tiene IsActive y quieres filtrar aquí:
-            // allProjectTypes = allProjectTypes.Where(x => x.IsActive).ToList();
-
             var normalizedDetected = Levenshtein.NormalizeForComparison(investigationType);
 
             double bestScore = 0.0;
             int? bestId = null;
-            string? bestName = null;
-
-            const double similarityThreshold = 70.0;
 
             foreach (var pt in allProjectTypes)
             {
@@ -338,27 +312,23 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     bestScore = score;
                     bestId = pt.Id;
-                    bestName = pt.Name;
                 }
             }
 
-            if (bestId.HasValue && bestScore >= similarityThreshold)
-            {
+            if (bestId.HasValue && bestScore >= _opt.ProjectTypeSimilarityThreshold)
                 return bestId;
-            }
 
             _logger.LogWarning(
-                "No suitable project type match for '{Detected}' (bestScore={Score:F2}%)",
+                "No suitable project type match for '{Detected}' (bestScore={Score:F2}%, threshold={Threshold:F2}%)",
                 investigationType,
-                bestScore);
+                bestScore,
+                _opt.ProjectTypeSimilarityThreshold);
 
             return null;
         }
 
-
         private async Task ResolveMemberRolesAsync(
-            IList<ResearcherInfo> researchers,
-            CancellationToken ct)
+            IList<ResearcherInfo> researchers)
         {
             var rolesResult = await _memberRoleTypeService.ListAsync();
             if (!rolesResult.Success || rolesResult.Data is null || rolesResult.Data.Count == 0)
@@ -369,9 +339,8 @@ namespace tesisproject.backend.Services.Implementations
 
             var allRoles = rolesResult.Data;
 
-            // Pre-normalizamos los nombres de rol existentes
             var normalizedRoles = allRoles
-                .Where(x => x.Flag == 1 && !string.IsNullOrWhiteSpace(x.Name))
+                .Where(x => x.Flag == GroupTypeIds.Integrantes && !string.IsNullOrWhiteSpace(x.Name))
                 .Select(x => new
                 {
                     x.Id,
@@ -379,10 +348,6 @@ namespace tesisproject.backend.Services.Implementations
                     NormalizedName = Levenshtein.NormalizeForComparison(x.Name)
                 })
                 .ToList();
-
-
-            // Umbral sugerido: 80% de similitud (ajústalo si quieres)
-            const double similarityThreshold = 50.0;
 
             foreach (var r in researchers)
             {
@@ -397,7 +362,6 @@ namespace tesisproject.backend.Services.Implementations
 
                 foreach (var role in normalizedRoles)
                 {
-                    // Ya normalizados, así que pasamos normalize:false
                     var score = Levenshtein.SimilarityPercentage(
                         normalizedRoleName,
                         role.NormalizedName,
@@ -411,21 +375,20 @@ namespace tesisproject.backend.Services.Implementations
                     }
                 }
 
-                if (bestRoleId.HasValue && bestScore >= similarityThreshold)
+                if (bestRoleId.HasValue && bestScore >= _opt.MemberRoleSimilarityThreshold)
                 {
-                    r.Role = bestRoleId.Value;       // ID interno del tipo de rol
-                    r.RoleName = bestRoleName;       // opcional: sobrescribir con el nombre “oficial”
+                    r.Role = bestRoleId.Value;
+                    r.RoleName = bestRoleName;
                 }
                 else
                 {
-
                     _logger.LogWarning(
-                        "No suitable role match for '{RoleName}' (bestScore={Score:F2}%)",
+                        "No suitable role match for '{RoleName}' (bestScore={Score:F2}%, threshold={Threshold:F2}%)",
                         r.RoleName,
-                        bestScore);
+                        bestScore,
+                        _opt.MemberRoleSimilarityThreshold);
                 }
             }
         }
-
     }
 }

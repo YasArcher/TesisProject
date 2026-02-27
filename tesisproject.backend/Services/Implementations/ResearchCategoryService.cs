@@ -10,6 +10,14 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class ResearchCategoryService : IResearchCategoryService
     {
+        private const string MsgInvalidId = "Invalid id.";
+        private const string MsgNotFound = "ResearchCategory not found.";
+        private const string MsgNameRequired = "Name is required.";
+        private const string MsgTypeIdRequired = "ResearchCategoryTypeId is required.";
+        private const string MsgNameAlreadyExists = "Name already exists.";
+        private const string MsgParentNotFound = "Parent category not found.";
+        private const string MsgParentCannotBeSameAsId = "ParentCategoryId cannot be the same as Id.";
+
         private readonly IUnitOfWork _uow;
 
         public ResearchCategoryService(IUnitOfWork uow)
@@ -34,18 +42,7 @@ namespace tesisproject.backend.Services.Implementations
             var items = await query.ToListAsync(ct);
 
             var dto = items
-                .Select(x => new ResearchCategoryListItemDTO
-                {
-                    Id = x.Id,
-                    Name = x.Name,
-                    IsActive = x.IsActive,
-                    ResearchCategoryTypeId = x.ResearchCategoryTypeId,
-                    ResearchCategoryTypeName = x.ResearchCategoryType.Name,
-                    ParentCategoryId = x.ParentCategoryId,
-                    ParentCategoryName = x.ParentCategory != null
-                        ? x.ParentCategory.Name
-                        : null
-                })
+                .Select(ToListItemDto)
                 .ToList();
 
             return ServiceResult<IReadOnlyList<ResearchCategoryListItemDTO>>.Ok(dto);
@@ -59,12 +56,237 @@ namespace tesisproject.backend.Services.Implementations
                 .Query()
                 .Include(x => x.ResearchCategoryType);
 
-
             if (onlyActives)
                 query = query.Where(x => x.IsActive);
 
             var items = await query.ToListAsync(ct);
 
+            var roots = BuildTree(items);
+
+            return ServiceResult<List<ResearchCategoryTreeItemDTO>>.Ok(roots);
+        }
+
+        public async Task<ServiceResult<ResearchCategoryDetailDTO>> GetByIdAsync(
+            int id,
+            CancellationToken ct = default)
+        {
+            if (id <= 0)
+                return ServiceResult<ResearchCategoryDetailDTO>
+                    .Fail(MsgInvalidId, ErrorType.Validation);
+
+            var entity = await QueryWithTypeAndParent()
+                .FirstOrDefaultAsync(x => x.Id == id, ct);
+
+            if (entity is null)
+                return ServiceResult<ResearchCategoryDetailDTO>
+                    .Fail(MsgNotFound, ErrorType.NotFound);
+
+            var dto = ToDetailDto(entity);
+
+            return ServiceResult<ResearchCategoryDetailDTO>.Ok(dto);
+        }
+
+        // ================= WRITES =================
+
+        public async Task<ServiceResult<ResearchCategoryDetailDTO>> CreateAsync(
+            AddResearchCategoryRequestDTO request,
+            CancellationToken ct = default)
+        {
+            var name = NormalizeName(request?.Name);
+
+            if (string.IsNullOrWhiteSpace(name))
+                return ServiceResult<ResearchCategoryDetailDTO>
+                    .Fail(MsgNameRequired, ErrorType.Validation);
+
+            if (request!.ResearchCategoryTypeId <= 0)
+                return ServiceResult<ResearchCategoryDetailDTO>
+                    .Fail(MsgTypeIdRequired, ErrorType.Validation);
+
+            // Validar duplicado por nombre (catálogo)
+            var duplicated = await _uow.ResearchCategories.ExistsAsync(
+                x => x.Name == name,
+                ct);
+
+            if (duplicated)
+                return ServiceResult<ResearchCategoryDetailDTO>
+                    .Fail(MsgNameAlreadyExists, ErrorType.Validation);
+
+            // Validar parent (si viene)
+            if (request.ParentCategoryId.HasValue)
+            {
+                var parentExists = await EnsureParentExistsAsync(
+                    request.ParentCategoryId.Value,
+                    ct);
+
+                if (!parentExists)
+                    return ServiceResult<ResearchCategoryDetailDTO>
+                        .Fail(MsgParentNotFound, ErrorType.Validation);
+            }
+
+            var entity = new ResearchCategory
+            {
+                Name = name,
+                IsActive = request.IsActive,
+                ResearchCategoryTypeId = request.ResearchCategoryTypeId,
+                ParentCategoryId = request.ParentCategoryId
+            };
+
+            await _uow.ResearchCategories.AddAsync(entity, ct);
+            await _uow.SaveChangesAsync(ct);
+
+            // Recargar con includes mínimos para devolver nombres
+            var created = await QueryWithTypeAndParent()
+                .FirstAsync(x => x.Id == entity.Id, ct);
+
+            var dto = ToDetailDto(created);
+
+            return ServiceResult<ResearchCategoryDetailDTO>.Ok(dto);
+        }
+
+        public async Task<ServiceResult<ResearchCategoryDetailDTO>> UpdateAsync(
+            UpdateResearchCategoryRequestDTO request,
+            CancellationToken ct = default)
+        {
+            if (request is null || request.Id <= 0)
+                return ServiceResult<ResearchCategoryDetailDTO>
+                    .Fail(MsgInvalidId, ErrorType.Validation);
+
+            var name = NormalizeName(request.Name);
+            if (string.IsNullOrWhiteSpace(name))
+                return ServiceResult<ResearchCategoryDetailDTO>
+                    .Fail(MsgNameRequired, ErrorType.Validation);
+
+            if (request.ResearchCategoryTypeId <= 0)
+                return ServiceResult<ResearchCategoryDetailDTO>
+                    .Fail(MsgTypeIdRequired, ErrorType.Validation);
+
+            var entity = await _uow.ResearchCategories
+                .Query(false) // tracking
+                .FirstOrDefaultAsync(x => x.Id == request.Id, ct);
+
+            if (entity is null)
+                return ServiceResult<ResearchCategoryDetailDTO>
+                    .Fail(MsgNotFound, ErrorType.NotFound);
+
+            // Validar nombre duplicado excluyendo el propio Id
+            var duplicated = await _uow.ResearchCategories.ExistsAsync(
+                x => x.Name == name && x.Id != request.Id,
+                ct);
+
+            if (duplicated)
+                return ServiceResult<ResearchCategoryDetailDTO>
+                    .Fail(MsgNameAlreadyExists, ErrorType.Validation);
+
+            // Evitar parent = mismo Id
+            if (request.ParentCategoryId.HasValue &&
+                request.ParentCategoryId.Value == request.Id)
+            {
+                return ServiceResult<ResearchCategoryDetailDTO>
+                    .Fail(MsgParentCannotBeSameAsId, ErrorType.Validation);
+            }
+
+            // Validar parent si viene
+            if (request.ParentCategoryId.HasValue)
+            {
+                var parentExists = await EnsureParentExistsAsync(
+                    request.ParentCategoryId.Value,
+                    ct);
+
+                if (!parentExists)
+                    return ServiceResult<ResearchCategoryDetailDTO>
+                        .Fail(MsgParentNotFound, ErrorType.Validation);
+            }
+
+            entity.Name = name;
+            entity.IsActive = request.IsActive;
+            entity.ResearchCategoryTypeId = request.ResearchCategoryTypeId;
+            entity.ParentCategoryId = request.ParentCategoryId;
+
+            _uow.ResearchCategories.Update(entity);
+            await _uow.SaveChangesAsync(ct);
+
+            // Recargar con includes
+            var updated = await QueryWithTypeAndParent()
+                .FirstAsync(x => x.Id == entity.Id, ct);
+
+            var dto = ToDetailDto(updated);
+
+            return ServiceResult<ResearchCategoryDetailDTO>.Ok(dto);
+        }
+
+        public async Task<ServiceResult<NoContent>> DeleteAsync(
+            int id,
+            CancellationToken ct = default)
+        {
+            if (id <= 0)
+                return ServiceResult<NoContent>
+                    .Fail(MsgInvalidId, ErrorType.Validation);
+
+            var entity = await _uow.ResearchCategories
+                .GetByIdAsync(new object[] { id }, ct);
+
+            if (entity is null)
+                return ServiceResult<NoContent>
+                    .Fail(MsgNotFound, ErrorType.NotFound);
+
+            _uow.ResearchCategories.Remove(entity);
+            await _uow.SaveChangesAsync(ct);
+
+            return ServiceResult<NoContent>.Ok(new NoContent());
+        }
+
+        private IQueryable<ResearchCategory> QueryWithTypeAndParent()
+        {
+            return _uow.ResearchCategories
+                .Query()
+                .Include(x => x.ResearchCategoryType)
+                .Include(x => x.ParentCategory);
+        }
+
+        private static ResearchCategoryListItemDTO ToListItemDto(ResearchCategory x)
+        {
+            return new ResearchCategoryListItemDTO
+            {
+                Id = x.Id,
+                Name = x.Name,
+                IsActive = x.IsActive,
+                ResearchCategoryTypeId = x.ResearchCategoryTypeId,
+                ResearchCategoryTypeName = x.ResearchCategoryType.Name,
+                ParentCategoryId = x.ParentCategoryId,
+                ParentCategoryName = x.ParentCategory != null
+                    ? x.ParentCategory.Name
+                    : null
+            };
+        }
+
+        private static ResearchCategoryDetailDTO ToDetailDto(ResearchCategory entity)
+        {
+            return new ResearchCategoryDetailDTO
+            {
+                Id = entity.Id,
+                Name = entity.Name,
+                IsActive = entity.IsActive,
+                ResearchCategoryTypeId = entity.ResearchCategoryTypeId,
+                ResearchCategoryTypeName = entity.ResearchCategoryType.Name,
+                ParentCategoryId = entity.ParentCategoryId,
+                ParentCategoryName = entity.ParentCategory?.Name
+            };
+        }
+
+        private static string NormalizeName(string? name)
+        {
+            return (name ?? string.Empty).Trim();
+        }
+
+        private Task<bool> EnsureParentExistsAsync(int parentId, CancellationToken ct)
+        {
+            return _uow.ResearchCategories.ExistsAsync(
+                x => x.Id == parentId,
+                ct);
+        }
+
+        private static List<ResearchCategoryTreeItemDTO> BuildTree(List<ResearchCategory> items)
+        {
             // Mapa de nodos
             var map = items.ToDictionary(
                 x => x.Id,
@@ -97,212 +319,7 @@ namespace tesisproject.backend.Services.Implementations
                 }
             }
 
-            return ServiceResult<List<ResearchCategoryTreeItemDTO>>.Ok(roots);
-        }
-
-        public async Task<ServiceResult<ResearchCategoryDetailDTO>> GetByIdAsync(
-            int id,
-            CancellationToken ct = default)
-        {
-            if (id <= 0)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail("Invalid id.", ErrorType.Validation);
-
-            var entity = await _uow.ResearchCategories
-                .Query()
-                .Include(x => x.ResearchCategoryType)
-                .Include(x => x.ParentCategory)
-                .FirstOrDefaultAsync(x => x.Id == id, ct);
-
-            if (entity is null)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail("ResearchCategory not found.", ErrorType.NotFound);
-
-            var dto = new ResearchCategoryDetailDTO
-            {
-                Id = entity.Id,
-                Name = entity.Name,
-                IsActive = entity.IsActive,
-                ResearchCategoryTypeId = entity.ResearchCategoryTypeId,
-                ResearchCategoryTypeName = entity.ResearchCategoryType.Name,
-                ParentCategoryId = entity.ParentCategoryId,
-                ParentCategoryName = entity.ParentCategory?.Name
-            };
-
-            return ServiceResult<ResearchCategoryDetailDTO>.Ok(dto);
-        }
-
-        // ================= WRITES =================
-
-        public async Task<ServiceResult<ResearchCategoryDetailDTO>> CreateAsync(
-            AddResearchCategoryRequestDTO request,
-            CancellationToken ct = default)
-        {
-            var name = (request?.Name ?? string.Empty).Trim();
-
-            if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail("Name is required.", ErrorType.Validation);
-
-            if (request!.ResearchCategoryTypeId <= 0)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail("ResearchCategoryTypeId is required.", ErrorType.Validation);
-
-            // Validar duplicado por nombre (catálogo)
-            var duplicated = await _uow.ResearchCategories.ExistsAsync(
-                x => x.Name == name,
-                ct);
-
-            if (duplicated)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail("Name already exists.", ErrorType.Validation);
-
-            // Validar parent (si viene)
-            if (request.ParentCategoryId.HasValue)
-            {
-                var parentExists = await _uow.ResearchCategories.ExistsAsync(
-                    x => x.Id == request.ParentCategoryId.Value,
-                    ct);
-
-                if (!parentExists)
-                    return ServiceResult<ResearchCategoryDetailDTO>
-                        .Fail("Parent category not found.", ErrorType.Validation);
-            }
-
-            var entity = new ResearchCategory
-            {
-                Name = name,
-                IsActive = request.IsActive,
-                ResearchCategoryTypeId = request.ResearchCategoryTypeId,
-                ParentCategoryId = request.ParentCategoryId
-            };
-
-            await _uow.ResearchCategories.AddAsync(entity, ct);
-            await _uow.SaveChangesAsync(ct);
-
-            // Recargar con includes mínimos para devolver nombres
-            var created = await _uow.ResearchCategories
-                .Query()
-                .Include(x => x.ResearchCategoryType)
-                .Include(x => x.ParentCategory)
-                .FirstAsync(x => x.Id == entity.Id, ct);
-
-            var dto = new ResearchCategoryDetailDTO
-            {
-                Id = created.Id,
-                Name = created.Name,
-                IsActive = created.IsActive,
-                ResearchCategoryTypeId = created.ResearchCategoryTypeId,
-                ResearchCategoryTypeName = created.ResearchCategoryType.Name,
-                ParentCategoryId = created.ParentCategoryId,
-                ParentCategoryName = created.ParentCategory?.Name
-            };
-
-            return ServiceResult<ResearchCategoryDetailDTO>.Ok(dto);
-        }
-
-        public async Task<ServiceResult<ResearchCategoryDetailDTO>> UpdateAsync(
-            UpdateResearchCategoryRequestDTO request,
-            CancellationToken ct = default)
-        {
-            if (request is null || request.Id <= 0)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail("Invalid id.", ErrorType.Validation);
-
-            var name = (request.Name ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail("Name is required.", ErrorType.Validation);
-
-            if (request.ResearchCategoryTypeId <= 0)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail("ResearchCategoryTypeId is required.", ErrorType.Validation);
-
-            var entity = await _uow.ResearchCategories
-                .Query(false) // tracking
-                .FirstOrDefaultAsync(x => x.Id == request.Id, ct);
-
-            if (entity is null)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail("ResearchCategory not found.", ErrorType.NotFound);
-
-            // Validar nombre duplicado excluyendo el propio Id
-            var duplicated = await _uow.ResearchCategories.ExistsAsync(
-                x => x.Name == name && x.Id != request.Id,
-                ct);
-
-            if (duplicated)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail("Name already exists.", ErrorType.Validation);
-
-            // Evitar parent = mismo Id
-            if (request.ParentCategoryId.HasValue &&
-                request.ParentCategoryId.Value == request.Id)
-            {
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail("ParentCategoryId cannot be the same as Id.", ErrorType.Validation);
-            }
-
-            // Validar parent si viene
-            if (request.ParentCategoryId.HasValue)
-            {
-                var parentExists = await _uow.ResearchCategories.ExistsAsync(
-                    x => x.Id == request.ParentCategoryId.Value,
-                    ct);
-
-                if (!parentExists)
-                    return ServiceResult<ResearchCategoryDetailDTO>
-                        .Fail("Parent category not found.", ErrorType.Validation);
-            }
-
-            entity.Name = name;
-            entity.IsActive = request.IsActive;
-            entity.ResearchCategoryTypeId = request.ResearchCategoryTypeId;
-            entity.ParentCategoryId = request.ParentCategoryId;
-
-            _uow.ResearchCategories.Update(entity);
-            await _uow.SaveChangesAsync(ct);
-
-            // Recargar con includes
-            var updated = await _uow.ResearchCategories
-                .Query()
-                .Include(x => x.ResearchCategoryType)
-                .Include(x => x.ParentCategory)
-                .FirstAsync(x => x.Id == entity.Id, ct);
-
-            var dto = new ResearchCategoryDetailDTO
-            {
-                Id = updated.Id,
-                Name = updated.Name,
-                IsActive = updated.IsActive,
-                ResearchCategoryTypeId = updated.ResearchCategoryTypeId,
-                ResearchCategoryTypeName = updated.ResearchCategoryType.Name,
-                ParentCategoryId = updated.ParentCategoryId,
-                ParentCategoryName = updated.ParentCategory?.Name
-            };
-
-            return ServiceResult<ResearchCategoryDetailDTO>.Ok(dto);
-        }
-
-        public async Task<ServiceResult<NoContent>> DeleteAsync(
-            int id,
-            CancellationToken ct = default)
-        {
-            if (id <= 0)
-                return ServiceResult<NoContent>
-                    .Fail("Invalid id.", ErrorType.Validation);
-
-            var entity = await _uow.ResearchCategories
-                .GetByIdAsync(new object[] { id }, ct);
-
-            if (entity is null)
-                return ServiceResult<NoContent>
-                    .Fail("ResearchCategory not found.", ErrorType.NotFound);
-
-            _uow.ResearchCategories.Remove(entity);
-            await _uow.SaveChangesAsync(ct);
-
-            return ServiceResult<NoContent>.Ok(new NoContent());
+            return roots;
         }
     }
-}
+}   

@@ -1,4 +1,5 @@
-﻿using tesisproject.shared.DTOs.Export;
+﻿using tesisproject.shared.DTOs.Document.Response;
+using tesisproject.shared.DTOs.Export;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.frontend.Services.Interfaces
@@ -30,8 +31,8 @@ namespace tesisproject.frontend.Services.Interfaces
             int id,
             CancellationToken ct = default);
 
-        Task<HttpResponseMessage> ExportMatrixExcelAsync(
-    ExportRequestDTO request,
-    CancellationToken ct = default);
+        Task<HttpResponseWrapper<FilePayloadDTO?>> ExportMatrixExcelAsync(
+            ExportRequestDTO request,
+            CancellationToken ct = default);
     }
 }

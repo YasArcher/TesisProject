@@ -756,6 +756,9 @@
   .w-64 {
     width: calc(var(--spacing) * 64);
   }
+  .w-\[220px\] {
+    width: 220px;
+  }
   .w-auto {
     width: auto;
   }

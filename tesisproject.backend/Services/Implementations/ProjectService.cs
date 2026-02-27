@@ -34,6 +34,33 @@ namespace tesisproject.backend.Services.Implementations
         // 🔹 Convocatoria por defecto (para registros sin CallCode o sin match)
         private const int DEFAULT_CONVOCATION_ID = 1;
 
+        private const string ProjectNotFoundMessage = "Project not found.";
+        private const string NoProjectsFoundMessage = "No projects found.";
+        private const string ProjectsRetrievedMessage = "Projects retrieved";
+        private const string ProjectRetrievedMessage = "Project retrieved";
+        private const string ProjectsByTypeRetrievedMessage = "Projects by type retrieved";
+        private const string ProjectCreatedMessage = "Project created";
+        private const string ProjectUpdatedMessage = "Project updated";
+        private const string ProjectDeletedMessage = "Project deleted";
+        private const string ProjectDetailRetrievedMessage = "Project detail retrieved";
+        private const string ConcurrencyConflictMessage = "Concurrency conflict.";
+
+        private const string LegacyMatrixDocumentPath = "legacy-matrix";
+        private const string ExternalResearcherRole = "ExternalResearcher";
+        private const string DefaultHardcodedPassword = "aaaaaqqq1231231";
+
+        private static readonly Dictionary<string, string> ProjectStateManualMap = new()
+        {
+            ["archivado"] = "CANCELADO",
+            ["ejecucion"] = "EN EJECUCION",
+            ["ejecución"] = "EN EJECUCION",
+            ["en ejecucion"] = "EN EJECUCION",
+            ["en ejecución"] = "EN EJECUCION",
+            ["en proceso de finalizacion"] = "EN CIERRE",
+            ["en proceso de finalización"] = "EN CIERRE",
+            ["finalizado"] = "FINALIZADO",
+            ["criterio final"] = "FINALIZADO"
+        };
 
         public ProjectService(
             IUnitOfWork uow,
@@ -97,13 +124,13 @@ namespace tesisproject.backend.Services.Implementations
                     .ToListAsync(ct);
 
                 if (data.Count == 0)
-                    return ServiceResult<List<ProjectListResponseDTO>>.Fail("No projects found.", ErrorType.NotFound);
+                    return FailNotFound<List<ProjectListResponseDTO>>(NoProjectsFoundMessage);
 
-                return ServiceResult<List<ProjectListResponseDTO>>.Ok(data, "Projects retrieved");
+                return ServiceResult<List<ProjectListResponseDTO>>.Ok(data, ProjectsRetrievedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<List<ProjectListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<List<ProjectListResponseDTO>>(ex.Message);
             }
         }
 
@@ -141,12 +168,12 @@ namespace tesisproject.backend.Services.Implementations
                     .FirstOrDefaultAsync(ct);
 
                 return dto is null
-                    ? ServiceResult<ProjectListResponseDTO>.Fail("Project not found.", ErrorType.NotFound)
-                    : ServiceResult<ProjectListResponseDTO>.Ok(dto, "Project retrieved");
+                    ? FailNotFound<ProjectListResponseDTO>(ProjectNotFoundMessage)
+                    : ServiceResult<ProjectListResponseDTO>.Ok(dto, ProjectRetrievedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<ProjectListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<ProjectListResponseDTO>(ex.Message);
             }
         }
 
@@ -173,11 +200,11 @@ namespace tesisproject.backend.Services.Implementations
                     })
                     .ToListAsync(ct);
 
-                return ServiceResult<List<ProjectListResponseDTO>>.Ok(data, "Projects by type retrieved");
+                return ServiceResult<List<ProjectListResponseDTO>>.Ok(data, ProjectsByTypeRetrievedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<List<ProjectListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<List<ProjectListResponseDTO>>(ex.Message);
             }
         }
 
@@ -228,15 +255,15 @@ namespace tesisproject.backend.Services.Implementations
                     })
                     .FirstAsync(ct);
 
-                return ServiceResult<ProjectListResponseDTO>.Ok(created, "Project created");
+                return ServiceResult<ProjectListResponseDTO>.Ok(created, ProjectCreatedMessage);
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<ProjectListResponseDTO>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return FailConflict<ProjectListResponseDTO>(dbex.InnerException?.Message ?? dbex.Message);
             }
             catch (Exception ex)
             {
-                return ServiceResult<ProjectListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<ProjectListResponseDTO>(ex.Message);
             }
         }
 
@@ -246,25 +273,25 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var current = await _uow.Projects.GetByIdAsync(new object[] { id }, ct);
                 if (current is null)
-                    return ServiceResult<NoContent>.Fail("Project not found.", ErrorType.NotFound);
+                    return FailNotFound<NoContent>(ProjectNotFoundMessage);
 
                 ApplyUpdate(current, dto);
                 _uow.Projects.Update(current);
                 await _uow.SaveChangesAsync(ct);
 
-                return ServiceResult<NoContent>.Ok(new NoContent(), "Project updated");
+                return ServiceResult<NoContent>.Ok(new NoContent(), ProjectUpdatedMessage);
             }
             catch (DbUpdateConcurrencyException)
             {
-                return ServiceResult<NoContent>.Fail("Concurrency conflict.", ErrorType.Conflict);
+                return FailConflict<NoContent>(ConcurrencyConflictMessage);
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<NoContent>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return FailConflict<NoContent>(dbex.InnerException?.Message ?? dbex.Message);
             }
             catch (Exception ex)
             {
-                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<NoContent>(ex.Message);
             }
         }
 
@@ -274,20 +301,20 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var current = await _uow.Projects.GetByIdAsync(new object[] { id }, ct);
                 if (current is null)
-                    return ServiceResult<NoContent>.Fail("Project not found.", ErrorType.NotFound);
+                    return FailNotFound<NoContent>(ProjectNotFoundMessage);
 
                 _uow.Projects.Remove(current);
                 await _uow.SaveChangesAsync(ct);
 
-                return ServiceResult<NoContent>.Ok(new NoContent(), "Project deleted");
+                return ServiceResult<NoContent>.Ok(new NoContent(), ProjectDeletedMessage);
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<NoContent>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return FailConflict<NoContent>(dbex.InnerException?.Message ?? dbex.Message);
             }
             catch (Exception ex)
             {
-                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<NoContent>(ex.Message);
             }
         }
 
@@ -347,7 +374,7 @@ namespace tesisproject.backend.Services.Implementations
                     .FirstOrDefaultAsync(ct);
 
                 if (dto is null)
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Project not found.", ErrorType.NotFound);
+                    return FailNotFound<ProjectDetailResponseDTO>(ProjectNotFoundMessage);
 
                 // 2) Traer SOLO referencias de documentos (DocumentId + DocumentTypeId)
                 dto.Documents = await _uow.ProjectDocuments
@@ -360,14 +387,13 @@ namespace tesisproject.backend.Services.Implementations
                     })
                     .ToListAsync(ct);
 
-                return ServiceResult<ProjectDetailResponseDTO>.Ok(dto, "Project detail retrieved");
+                return ServiceResult<ProjectDetailResponseDTO>.Ok(dto, ProjectDetailRetrievedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<ProjectDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<ProjectDetailResponseDTO>(ex.Message);
             }
         }
-
 
         public async Task<ServiceResult<ProjectDetailResponseDTO>> CreateFullAsync(
             AddProjectFullRequestDTO request,
@@ -641,7 +667,7 @@ namespace tesisproject.backend.Services.Implementations
                         {
                             Email = m.Email,
                             Username = m.Document,
-                            Password = "aaaaaqqq1231231",
+                            Password = DefaultHardcodedPassword,
                             AspUserId = m.AspUserId
                         })
                         .ToList();
@@ -807,7 +833,7 @@ namespace tesisproject.backend.Services.Implementations
                             {
                                 ExternalResearcherId = externalId,
                                 Project = projectEntity,
-                                Role = "ExternalResearcher",
+                                Role = ExternalResearcherRole,
                                 CreatedAtUtc = DateTime.UtcNow,
                                 CreatedByUserId = user.IdUser,
                                 ExitDate = null
@@ -899,9 +925,7 @@ namespace tesisproject.backend.Services.Implementations
 
                 if (project is null)
                 {
-                    return ServiceResult<NoContent>.Fail(
-                        "Project not found.",
-                        ErrorType.NotFound);
+                    return FailNotFound<NoContent>(ProjectNotFoundMessage);
                 }
 
                 var newIds = (researchCategoryIds ?? new List<int>())
@@ -940,17 +964,15 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<NoContent>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                return FailUnexpected<NoContent>(ex.Message);
             }
         }
 
         private async Task InsertGroupMembersFromDirectoryAsync(
-    Group groupEntity,
-    ImportedProjectDTO dto,
-    IReadOnlyList<ExternalUserProfileModel> directoryCache,
-    CancellationToken ct)
+            Group groupEntity,
+            ImportedProjectDTO dto,
+            IReadOnlyList<ExternalUserProfileModel> directoryCache,
+            CancellationToken ct)
         {
             if (groupEntity is null) throw new ArgumentNullException(nameof(groupEntity));
             if (dto is null) throw new ArgumentNullException(nameof(dto));
@@ -1019,10 +1041,6 @@ namespace tesisproject.backend.Services.Implementations
             var matchedCoordinators = ResolvePeople(dto.Coordinators, discardedCoordinators);
             var matchedAlternates = ResolvePeople(dto.AlternateCoordinators, discardedAlternates);
 
-            // Si luego agregas Investigators al DTO:
-            // var discardedInvestigators = new List<string>();
-            // var matchedInvestigators = ResolvePeople(dto.Investigators, discardedInvestigators);
-
             // (Opcional) guardar auditoría si tú quieres:
             dto.CoordinatorDiscardedTokens.AddRange(discardedCoordinators);
             dto.AlternateCoordinatorDiscardedTokens.AddRange(discardedAlternates);
@@ -1030,7 +1048,6 @@ namespace tesisproject.backend.Services.Implementations
             // ===== 2) Construir lista total de perfiles a asegurar en ASP local (una sola llamada) =====
             var allProfiles = matchedCoordinators
                 .Concat(matchedAlternates)
-                //.Concat(matchedInvestigators)
                 .GroupBy(x => x.AspId!.Value)
                 .Select(g => g.First())
                 .ToList();
@@ -1060,17 +1077,17 @@ namespace tesisproject.backend.Services.Implementations
                     return new RegisterRequest
                     {
                         Email = p.Email,
-                        Username = p.Document,                // tu CreateFull usa Document aquí
-                        Password = "aaaaaqqq1231231",         // tu flujo actual
+                        Username = p.Document,
+                        Password = DefaultHardcodedPassword,
                         AspUserId = aspId,
                         Role = roleForAsp
                     };
                 })
                 .ToList();
 
-
             if (allProfiles.Count == 0)
                 return;
+
             // Misma lógica de CreateFull: EnsureAppUsersAsync
             var ensure = await _appUsers.EnsureAppUsersAsync(registerDtos, ct);
 
@@ -1101,8 +1118,6 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (matched is null || matched.Count == 0) return;
 
-                // Regla: si hay 2+, solo consideramos los 2 primeros (1ro inactivo, 2do activo)
-                // Si quieres meter todos y solo “apagar” el primero, dímelo y lo ajusto.
                 var take = matched.Count >= 2 ? matched.Take(2).ToList() : matched.Take(1).ToList();
 
                 for (int i = 0; i < take.Count; i++)
@@ -1121,7 +1136,6 @@ namespace tesisproject.backend.Services.Implementations
                         UserId = localUserId,
                         MemberRoleId = roleId,
                         JoinedAt = now,
-                        // 👇 regla:
                         LeftAt = (take.Count >= 2 && i == 0) ? now : null
                     };
 
@@ -1131,14 +1145,12 @@ namespace tesisproject.backend.Services.Implementations
 
             await AddRoleMembersAsync(matchedCoordinators, MemberRoleTypeIds.Coordinador);
             await AddRoleMembersAsync(matchedAlternates, MemberRoleTypeIds.Subrogante);
-            //await AddRoleMembersAsync(matchedInvestigators, MemberRoleTypeIds.Investigador);
         }
 
-
         public async Task<ServiceResult<int>> ImportFromMatrixAsync(
-    ProjectMatrixUploadSummaryDTO summary,
-    int currentUserId,
-    CancellationToken ct = default)
+            ProjectMatrixUploadSummaryDTO summary,
+            int currentUserId,
+            CancellationToken ct = default)
         {
             void PhaseLog(string phase, string message)
             {
@@ -1159,10 +1171,9 @@ namespace tesisproject.backend.Services.Implementations
                     // Aquí decides: o fallas, o sigues sin visitas.
                     // Yo lo dejo como "seguir" para no romper import completo:
                 }
+
                 var academicPeriodsCache = periodsResult.Data?.ToList() ?? new List<ExternalAcademicPeriodModel>();
                 PhaseLog("Init", $"AcademicPeriods loaded (external): {academicPeriodsCache.Count}");
-
-                PhaseLog("Init", $"AcademicPeriods loaded: {academicPeriodsCache.Count}");
 
                 // 🔹 Categorías de investigación (una sola vez)
                 var categoriesResult = await _researchCategoryService.ListAsync(
@@ -1175,7 +1186,7 @@ namespace tesisproject.backend.Services.Implementations
                         $"No se pudieron cargar categorías de investigación: {categoriesResult.Error}");
                 }
 
-                var allCategories = categoriesResult.Data; // IReadOnlyList<ResearchCategoryListItemDTO>?
+                var allCategories = categoriesResult.Data;
 
                 // 🔹 Tipos de documento (para dto.Documents → DocumentType)
                 var documentTypes = await _uow.DocumentTypes
@@ -1196,6 +1207,7 @@ namespace tesisproject.backend.Services.Implementations
                     PhaseLog("Init-Faculties", "Cannot retrieve faculties from external API.");
                     return ServiceResult<int>.Fail("Cannot retrieve faculties from external API.", ErrorType.Unexpected);
                 }
+
                 var externalFacultiesCache = facultiesResult.Data;
                 PhaseLog("Init-Faculties", $"External faculties loaded: {externalFacultiesCache.Count}");
 
@@ -1351,7 +1363,6 @@ namespace tesisproject.backend.Services.Implementations
 
                     await InsertGroupMembersFromDirectoryAsync(groupEntity, dto, directoryCache, ct);
 
-
                     // ============================================
                     // 4) Crear Project
                     // ============================================
@@ -1380,6 +1391,7 @@ namespace tesisproject.backend.Services.Implementations
                     {
                         tentativeEndDate = dto.StartDate.Value.AddMonths(durationMonths);
                     }
+
                     // Regla: si el código empieza con "PE" => Externo; caso contrario Interno
                     var originTypeId = ((dto.ProjectCode ?? string.Empty).Trim()
                             .StartsWith("PE", StringComparison.OrdinalIgnoreCase))
@@ -1400,11 +1412,7 @@ namespace tesisproject.backend.Services.Implementations
                         continue;
                     }
 
-                    // Si ExecutionProgress es decimal?
                     var executionPct = (dto.ExecutionProgress ?? 0m) * 100m;
-
-                    // Si ExecutionProgress fuera double? usa esta en vez de la de arriba:
-                    // var executionPct = (decimal)(dto.ExecutionProgress ?? 0d) * 100m;
 
                     var projectEntity = new Project
                     {
@@ -1430,11 +1438,7 @@ namespace tesisproject.backend.Services.Implementations
 
                     projectEntity.ProjectGroup = groupEntity;
 
-                    await _uow.Projects.AddAsync(projectEntity, ct);
-
-
-                    projectEntity.ProjectGroup = groupEntity;
-
+                    // ✅ B1: solo una inserción
                     await _uow.Projects.AddAsync(projectEntity, ct);
 
                     if (dto.HasExternalParticipants)
@@ -1443,7 +1447,7 @@ namespace tesisproject.backend.Services.Implementations
                         {
                             ExternalResearcherId = 1,
                             Project = projectEntity,
-                            Role = "ExternalResearcher",
+                            Role = ExternalResearcherRole,
                             CreatedAtUtc = DateTime.UtcNow,
                             CreatedByUserId = user.IdUser,
                             ExitDate = null
@@ -1454,7 +1458,6 @@ namespace tesisproject.backend.Services.Implementations
 
                     // ============================================
                     // 4.1) Documento de RESOLUCION INFORME FINAL HCU (si existe)
-                    //      → debe usar el tipo de doc "final de proyecto" (p.ej. Id = 4)
                     // ============================================
 
                     if (finalResolutionDoc is not null)
@@ -1470,7 +1473,7 @@ namespace tesisproject.backend.Services.Implementations
                         var finalDocument = new Document
                         {
                             DocumentTypeId = finalDocTypeId.Value,
-                            DocumentPath = "legacy-matrix",
+                            DocumentPath = LegacyMatrixDocumentPath,
                             ResolutionCode = finalResolutionDoc.Code,
                             ResolutionDate = finalResolutionDoc.Date,
                             CreatedAt = DateTime.UtcNow,
@@ -1490,7 +1493,7 @@ namespace tesisproject.backend.Services.Implementations
                     }
 
                     // ============================================
-                    // 5) Presupuesto histórico  
+                    // 5) Presupuesto histórico
                     // ============================================
 
                     if (dto.AssignedValue.HasValue && dto.AssignedValue.Value > 0)
@@ -1514,8 +1517,9 @@ namespace tesisproject.backend.Services.Implementations
                     }
 
                     // ============================================
-                    // 6) Categorías de investigación 
+                    // 6) Categorías de investigación
                     // ============================================
+
                     if (allCategories is not null && allCategories.Count > 0)
                     {
                         var candidateIds = new List<int>();
@@ -1577,9 +1581,6 @@ namespace tesisproject.backend.Services.Implementations
                         if (domainId.HasValue)
                             candidateIds.Add(domainId.Value);
 
-                        // (Opcional) Si luego usas Sub-línea:
-                        // var subLineId = ResolveResearchCategoryId(allCategories, dto.SubResearchLine, ResearchCategoryTypeIds.SubLineaInvestigacion);
-
                         candidateIds = candidateIds.Distinct().ToList();
 
                         if (candidateIds.Count > 0)
@@ -1605,7 +1606,6 @@ namespace tesisproject.backend.Services.Implementations
 
                     // ============================================
                     // 7) Documentos (GENÉRICO desde dto.Documents)
-                    //    (excepto FECHA* y RESOLUCION INFORME FINAL HCU, que ya tratamos arriba)
                     // ============================================
 
                     if (dto.Documents is not null && dto.Documents.Count > 0 && documentTypes.Count > 0)
@@ -1634,7 +1634,7 @@ namespace tesisproject.backend.Services.Implementations
                             var document = new Document
                             {
                                 DocumentTypeId = docTypeId.Value,
-                                DocumentPath = "legacy-matrix",
+                                DocumentPath = LegacyMatrixDocumentPath,
                                 ResolutionCode = docDto.Code,
                                 ResolutionDate = docDto.Date,
                                 CreatedAt = DateTime.UtcNow,
@@ -1676,7 +1676,7 @@ namespace tesisproject.backend.Services.Implementations
                             var extensionDocument = new Document
                             {
                                 DocumentTypeId = DocumentTypeIds.ResolucionProrroga,
-                                DocumentPath = "legacy-matrix",
+                                DocumentPath = LegacyMatrixDocumentPath,
                                 ResolutionCode = ext.ResolutionCode,
                                 ResolutionDate = ext.NewEndDate,
                                 CreatedAt = nowUtc,
@@ -1703,10 +1703,6 @@ namespace tesisproject.backend.Services.Implementations
 
                     // ============================================
                     // 9) VISITAS (SOLO EJECUTADAS)
-                    // Regla nueva:
-                    // - Solo se crean visitas si: HasReport == true && RawValue no vacío.
-                    // - No se crean visitas por duración.
-                    // - Si no hay ejecutadas -> no se crea nada.
                     // ============================================
 
                     if (defaultAcademicPeriodId <= 0)
@@ -1745,7 +1741,7 @@ namespace tesisproject.backend.Services.Implementations
                                 var visitDocument = new Document
                                 {
                                     DocumentTypeId = DocumentTypeIds.ResolucionVisita,
-                                    DocumentPath = "legacy-matrix",
+                                    DocumentPath = LegacyMatrixDocumentPath,
                                     ResolutionCode = x.raw,
                                     ResolutionDate = null,
                                     CreatedAt = nowUtc,
@@ -1776,7 +1772,6 @@ namespace tesisproject.backend.Services.Implementations
                     }
 
                     // 10 objetivos
-
                     if (!string.IsNullOrWhiteSpace(dto.GeneralObjective))
                     {
                         var objetive = new ProjectObjective
@@ -1807,7 +1802,6 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<int>.Fail("Unexpected server error.");
             }
         }
-
 
         // ============================
         //   HELPERS
@@ -1889,7 +1883,6 @@ namespace tesisproject.backend.Services.Implementations
             {
                 newCode = $"{baseCode}-DUP{counter}";
                 counter++;
-
             } while (await _uow.Projects
                 .Query(asNoTracking: true)
                 .AnyAsync(x => x.ProjectCode == newCode, ct));
@@ -1929,7 +1922,6 @@ namespace tesisproject.backend.Services.Implementations
 
             return leafIds;
         }
-
 
         private static int? ResolveResearchCategoryId(
             IEnumerable<ResearchCategoryListItemDTO> allCategories,
@@ -2053,9 +2045,6 @@ namespace tesisproject.backend.Services.Implementations
                 return null;
             }
 
-            // (Opcional) umbral mínimo para evitar matches “forzados”
-            // if (bestSimilarity < 90.0) return null;
-
             Console.WriteLine(
                 $"[IMPORT][Convocation] Using best match '{callCode}' -> '{(bestMatch.Code ?? bestMatch.Name)}' ({bestSimilarity:F2}%)");
 
@@ -2074,20 +2063,7 @@ namespace tesisproject.backend.Services.Implementations
 
             var norm = Levenshtein.NormalizeForComparison(stateName);
 
-            var manualMap = new Dictionary<string, string>
-            {
-                ["archivado"] = "CANCELADO",
-                ["ejecucion"] = "EN EJECUCION",
-                ["ejecución"] = "EN EJECUCION",
-                ["en ejecucion"] = "EN EJECUCION",
-                ["en ejecución"] = "EN EJECUCION",
-                ["en proceso de finalizacion"] = "EN CIERRE",
-                ["en proceso de finalización"] = "EN CIERRE",
-                ["finalizado"] = "FINALIZADO",
-                ["criterio final"] = "FINALIZADO"
-            };
-
-            if (manualMap.TryGetValue(norm, out var canonicalName))
+            if (ProjectStateManualMap.TryGetValue(norm, out var canonicalName))
             {
                 var canonicalNorm = Levenshtein.NormalizeForComparison(canonicalName);
 
@@ -2167,5 +2143,14 @@ namespace tesisproject.backend.Services.Implementations
             target.RealEndDate = dto.RealEndDate;
             target.ConvocationId = dto.ConvocationId;
         }
+
+        private static ServiceResult<T> FailNotFound<T>(string message)
+            => ServiceResult<T>.Fail(message, ErrorType.NotFound);
+
+        private static ServiceResult<T> FailUnexpected<T>(string message)
+            => ServiceResult<T>.Fail(message, ErrorType.Unexpected);
+
+        private static ServiceResult<T> FailConflict<T>(string message)
+            => ServiceResult<T>.Fail(message, ErrorType.Conflict);
     }
 }

@@ -8,21 +8,41 @@ using tesisproject.backend.Services.Interfaces;
 public class JwtTokenService : ITokenService
 {
     private readonly IConfiguration _cfg;
+
+    // ======= Config keys (strings exactos) =======
+    private const string JwtIssuerKey = "Jwt:Issuer";
+    private const string JwtAudienceKey = "Jwt:Audience";
+    private const string JwtKeyKey = "Jwt:Key";
+    private const string JwtAccessTokenMinutesKey = "Jwt:AccessTokenMinutes";
+    private const string JwtRefreshTokenDaysKey = "Jwt:RefreshTokenDays";
+
+    // ======= Exception messages (texto exacto) =======
+    private const string JwtIssuerMissingMessage = "Jwt:Issuer missing";
+    private const string JwtAudienceMissingMessage = "Jwt:Audience missing";
+    private const string JwtKeyMissingMessage = "Jwt:Key missing";
+    private const string JwtKeyTooShortMessage = "Jwt:Key must be at least 32 chars (≈256 bits).";
+
+    // ======= Magic numbers =======
+    private const int MinKeyLengthChars = 32;           // ~256 bits
+    private const int DefaultAccessTokenMinutes = 60;
+    private const int DefaultRefreshTokenDays = 30;
+    private const int RefreshTokenEntropyBytes = 64;    // 64 bytes de entropía
+
     public JwtTokenService(IConfiguration cfg) => _cfg = cfg;
 
     public (string token, DateTime expiresAtUtc) CreateAccessToken(int userId, string? email, IList<string> roles)
     {
-        var issuer = _cfg["Jwt:Issuer"] ?? throw new InvalidOperationException("Jwt:Issuer missing");
-        var audience = _cfg["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience missing");
-        var keyRaw = _cfg["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key missing");
+        var issuer = _cfg[JwtIssuerKey] ?? throw new InvalidOperationException(JwtIssuerMissingMessage);
+        var audience = _cfg[JwtAudienceKey] ?? throw new InvalidOperationException(JwtAudienceMissingMessage);
+        var keyRaw = _cfg[JwtKeyKey] ?? throw new InvalidOperationException(JwtKeyMissingMessage);
 
-        if (keyRaw.Length < 32) // ~256 bits
-            throw new InvalidOperationException("Jwt:Key must be at least 32 chars (≈256 bits).");
+        if (keyRaw.Length < MinKeyLengthChars) // ~256 bits
+            throw new InvalidOperationException(JwtKeyTooShortMessage);
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(keyRaw));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        var minutes = int.TryParse(_cfg["Jwt:AccessTokenMinutes"], out var m) ? m : 60;
+        var minutes = int.TryParse(_cfg[JwtAccessTokenMinutesKey], out var m) ? m : DefaultAccessTokenMinutes;
         var nowUtc = DateTime.UtcNow;
         var expires = nowUtc.AddMinutes(minutes);
 
@@ -58,11 +78,11 @@ public class JwtTokenService : ITokenService
 
     public (string token, DateTime expiresAtUtc) CreateRefreshToken()
     {
-        var days = int.TryParse(_cfg["Jwt:RefreshTokenDays"], out var d) ? d : 30;
+        var days = int.TryParse(_cfg[JwtRefreshTokenDaysKey], out var d) ? d : DefaultRefreshTokenDays;
         var expires = DateTime.UtcNow.AddDays(days);
 
         // 64 bytes de entropía
-        var buffer = new byte[64];
+        var buffer = new byte[RefreshTokenEntropyBytes];
         RandomNumberGenerator.Fill(buffer);
 
         // Base64URL requiere byte[]

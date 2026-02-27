@@ -44,8 +44,6 @@ namespace tesisproject.backend.Controllers
         // =============== REGISTER ===============
 
         [HttpPost("register")]
-        [Authorize(Roles = "superadmin")]
-        [AllowAnonymous]
         [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
         public async Task<ActionResult<ApiResponse<AuthResponse>>> Register(
             [FromBody] RegisterRequest dto,

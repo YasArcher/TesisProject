@@ -11,6 +11,10 @@ namespace tesisproject.backend.Services.Implementations
     {
         private readonly IUnitOfWork _uow;
 
+        private const string InvalidIdMessage = "Invalid id.";
+        private const string NotFoundMessage = "Not found.";
+        private const string InvalidDataMessage = "Invalid data.";
+
         public ProjectResearchCategoryService(IUnitOfWork uow)
         {
             _uow = uow;
@@ -25,12 +29,9 @@ namespace tesisproject.backend.Services.Implementations
             var items = await _uow.ProjectResearchCategories
                 .GetAllAsync(x => x.ProjectId == projectId, ct);
 
-            var dto = items.Select(x => new ProjectResearchCategoryListItemDTO
-            {
-                Id = x.ProjectResearchCategoryId,
-                ProjectId = x.ProjectId,
-                ResearchCategoryId = x.ResearchCategoryId,
-            }).ToList();
+            var dto = items
+                .Select(MapToListItemDTO)
+                .ToList();
 
             return ServiceResult<List<ProjectResearchCategoryListItemDTO>>.Ok(dto);
         }
@@ -40,20 +41,15 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<ProjectResearchCategoryDetailDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return FailValidation<ProjectResearchCategoryDetailDTO>(InvalidIdMessage);
 
             var entity = await _uow.ProjectResearchCategories
                 .GetByIdAsync(new object[] { id }, ct);
 
             if (entity is null)
-                return ServiceResult<ProjectResearchCategoryDetailDTO>.Fail("Not found.", ErrorType.NotFound);
+                return FailNotFound<ProjectResearchCategoryDetailDTO>(NotFoundMessage);
 
-            var dto = new ProjectResearchCategoryDetailDTO
-            {
-                Id = entity.ProjectResearchCategoryId,
-                ProjectId = entity.ProjectId,
-                ResearchCategoryId = entity.ResearchCategoryId
-            };
+            var dto = MapToDetailDTO(entity);
 
             return ServiceResult<ProjectResearchCategoryDetailDTO>.Ok(dto);
         }
@@ -65,7 +61,7 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request == null || request.ProjectId <= 0 || request.ResearchCategoryId <= 0)
-                return ServiceResult<ProjectResearchCategoryDetailDTO>.Fail("Invalid data.", ErrorType.Validation);
+                return FailValidation<ProjectResearchCategoryDetailDTO>(InvalidDataMessage);
 
             var entity = new ProjectResearchCategory
             {
@@ -76,12 +72,7 @@ namespace tesisproject.backend.Services.Implementations
             await _uow.ProjectResearchCategories.AddAsync(entity, ct);
             await _uow.SaveChangesAsync(ct);
 
-            var dto = new ProjectResearchCategoryDetailDTO
-            {
-                Id = entity.ProjectResearchCategoryId,
-                ProjectId = entity.ProjectId,
-                ResearchCategoryId = entity.ResearchCategoryId
-            };
+            var dto = MapToDetailDTO(entity);
 
             return ServiceResult<ProjectResearchCategoryDetailDTO>.Ok(dto);
         }
@@ -91,13 +82,13 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request == null || request.Id <= 0)
-                return ServiceResult<ProjectResearchCategoryDetailDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return FailValidation<ProjectResearchCategoryDetailDTO>(InvalidIdMessage);
 
             var entity = await _uow.ProjectResearchCategories.GetByIdAsync(
                 new object[] { request.Id }, ct);
 
             if (entity is null)
-                return ServiceResult<ProjectResearchCategoryDetailDTO>.Fail("Not found.", ErrorType.NotFound);
+                return FailNotFound<ProjectResearchCategoryDetailDTO>(NotFoundMessage);
 
             entity.ProjectId = request.ProjectId;
             entity.ResearchCategoryId = request.ResearchCategoryId;
@@ -105,28 +96,23 @@ namespace tesisproject.backend.Services.Implementations
             _uow.ProjectResearchCategories.Update(entity);
             await _uow.SaveChangesAsync(ct);
 
-            var dto = new ProjectResearchCategoryDetailDTO
-            {
-                Id = entity.ProjectResearchCategoryId,
-                ProjectId = entity.ProjectId,
-                ResearchCategoryId = entity.ResearchCategoryId
-            };
+            var dto = MapToDetailDTO(entity);
 
             return ServiceResult<ProjectResearchCategoryDetailDTO>.Ok(dto);
         }
 
         public async Task<ServiceResult<NoContent>> DeleteAsync(
-    int id,
-    CancellationToken ct = default)
+            int id,
+            CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<NoContent>.Fail("Invalid id.", ErrorType.Validation);
+                return FailValidation<NoContent>(InvalidIdMessage);
 
             var entity = await _uow.ProjectResearchCategories
                 .GetByIdAsync(new object[] { id }, ct);
 
             if (entity == null)
-                return ServiceResult<NoContent>.Fail("Not found.", ErrorType.NotFound);
+                return FailNotFound<NoContent>(NotFoundMessage);
 
             _uow.ProjectResearchCategories.Remove(entity);
             await _uow.SaveChangesAsync(ct);
@@ -134,5 +120,28 @@ namespace tesisproject.backend.Services.Implementations
             return ServiceResult<NoContent>.Ok(new NoContent());
         }
 
+        // ================= PRIVATE HELPERS =================
+
+        private static ServiceResult<T> FailValidation<T>(string message)
+            => ServiceResult<T>.Fail(message, ErrorType.Validation);
+
+        private static ServiceResult<T> FailNotFound<T>(string message)
+            => ServiceResult<T>.Fail(message, ErrorType.NotFound);
+
+        private static ProjectResearchCategoryListItemDTO MapToListItemDTO(ProjectResearchCategory entity)
+            => new ProjectResearchCategoryListItemDTO
+            {
+                Id = entity.ProjectResearchCategoryId,
+                ProjectId = entity.ProjectId,
+                ResearchCategoryId = entity.ResearchCategoryId,
+            };
+
+        private static ProjectResearchCategoryDetailDTO MapToDetailDTO(ProjectResearchCategory entity)
+            => new ProjectResearchCategoryDetailDTO
+            {
+                Id = entity.ProjectResearchCategoryId,
+                ProjectId = entity.ProjectId,
+                ResearchCategoryId = entity.ResearchCategoryId
+            };
     }
 }
