@@ -107,29 +107,55 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected bool _isLoadingDetailed = false;
         protected string? _detailedErrorMessage;
         protected ArticlesDetailedResultDto? _detailedResult;
-        protected List<ArticleReportRowDto> _detailedRows = new();
-        protected List<ArticleReportRowDto> _detailedFilteredRows = new();
-        protected ArticlesKpiSummaryDto _detailKpis = new();
 
+        // Datos base de la vista detallada
+        protected List<ArticleReportRowDto> _detailedRows = new();
+
+        // Lista filtrada que usa el .razor: _detailedFilteredRows
+        protected List<ArticleReportRowDto> _detailedFilteredRows = new();
+
+        // Años disponibles para el filtro local
         protected List<int> _detailAvailableYears = new();
+
+        // Filtros locales (año / mes)
         protected int? _detailYearFilter;
         protected int? _detailMonthFilter;
 
-        protected static readonly (int Value, string Label)[] DetailMonths = new[]
+        // Modelo de mes para el combo local (DetailMonths)
+        protected sealed class DetailMonthItem
         {
-            (1, "Enero"),
-            (2, "Febrero"),
-            (3, "Marzo"),
-            (4, "Abril"),
-            (5, "Mayo"),
-            (6, "Junio"),
-            (7, "Julio"),
-            (8, "Agosto"),
-            (9, "Septiembre"),
-            (10, "Octubre"),
-            (11, "Noviembre"),
-            (12, "Diciembre")
+            public int Value { get; set; }
+            public string Label { get; set; } = string.Empty;
+        }
+
+        // Lista de meses mostrada en el .razor
+        protected List<DetailMonthItem> DetailMonths { get; } = new()
+        {
+            new DetailMonthItem { Value = 1,  Label = "Enero" },
+            new DetailMonthItem { Value = 2,  Label = "Febrero" },
+            new DetailMonthItem { Value = 3,  Label = "Marzo" },
+            new DetailMonthItem { Value = 4,  Label = "Abril" },
+            new DetailMonthItem { Value = 5,  Label = "Mayo" },
+            new DetailMonthItem { Value = 6,  Label = "Junio" },
+            new DetailMonthItem { Value = 7,  Label = "Julio" },
+            new DetailMonthItem { Value = 8,  Label = "Agosto" },
+            new DetailMonthItem { Value = 9,  Label = "Septiembre" },
+            new DetailMonthItem { Value = 10, Label = "Octubre" },
+            new DetailMonthItem { Value = 11, Label = "Noviembre" },
+            new DetailMonthItem { Value = 12, Label = "Diciembre" },
         };
+
+        // KPIs locales de la vista detallada
+        protected sealed class DetailKpisModel
+        {
+            public int TotalArticles { get; set; }
+            public int PublishedThisYear { get; set; }
+            public int Q1Q2Count { get; set; }
+            public int OpenAccessCount { get; set; }
+            public int IndexedInScopusCount { get; set; }
+        }
+
+        protected DetailKpisModel _detailKpis = new();
 
         // =========================================================
         // CICLO DE VIDA
@@ -228,6 +254,9 @@ namespace tesisproject.frontend.Features.Management.Pages
 
             _specificFields.Clear();
             _detailedFields.Clear();
+
+            // También limpiar filtros locales de la vista detallada
+            ClearDetailFilters();
 
             await ApplyFilters();
         }
@@ -861,7 +890,7 @@ namespace tesisproject.frontend.Features.Management.Pages
         }
 
         // =========================================================
-        // TABS / VISTA DETALLADA (LADO CLIENTE)
+        // TABS / VISTA DETALLADA (CARGA DE DATOS)
         // =========================================================
 
         protected string GetTabButtonClass(string tabKey)
@@ -900,21 +929,24 @@ namespace tesisproject.frontend.Features.Management.Pages
                 var result = await Insights.GetArticlesDetailedAsync(filter);
 
                 _detailedResult = result;
-                _detailedRows = result.Rows ?? new List<ArticleReportRowDto>();
+                _detailedRows = result?.Rows ?? new List<ArticleReportRowDto>();
 
+                // Inicializar lista filtrada
+                _detailedFilteredRows = _detailedRows.ToList();
+
+                // Construir lista de años disponibles (para combo local)
                 _detailAvailableYears = _detailedRows
-                    .Select(r => r.CreatedYear)
-                    .Where(y => y.HasValue)
-                    .Select(y => y!.Value)
+                    .Where(r => r.CreatedDate.HasValue)
+                    .Select(r => r.CreatedDate!.Value.Year)
                     .Distinct()
                     .OrderBy(y => y)
                     .ToList();
 
+                // Reset de filtros locales
                 _detailYearFilter = null;
                 _detailMonthFilter = null;
 
-                _detailedFilteredRows = new List<ArticleReportRowDto>(_detailedRows);
-
+                // Recalcular KPIs de la vista detallada
                 RebuildDetailKpis();
             }
             catch (Exception ex)
@@ -927,7 +959,7 @@ namespace tesisproject.frontend.Features.Management.Pages
                 _detailAvailableYears = new();
                 _detailYearFilter = null;
                 _detailMonthFilter = null;
-                _detailKpis = new ArticlesKpiSummaryDto();
+                _detailKpis = new DetailKpisModel();
             }
             finally
             {
@@ -936,100 +968,124 @@ namespace tesisproject.frontend.Features.Management.Pages
             }
         }
 
+        private void ResetDetailView()
+        {
+            _detailedResult = null;
+            _detailedRows = new();
+            _detailedFilteredRows = new();
+            _detailedErrorMessage = null;
+            _isLoadingDetailed = false;
+            _detailAvailableYears = new();
+            _detailYearFilter = null;
+            _detailMonthFilter = null;
+            _detailKpis = new DetailKpisModel();
+        }
+
+        // =========================================================
+        // VISTA DETALLADA – FILTROS LOCALES (AÑO / MES)
+        // =========================================================
+
         protected void OnDetailYearChanged(ChangeEventArgs e)
         {
-            var value = e.Value?.ToString();
-            if (int.TryParse(value, out var year))
+            _detailYearFilter = null;
+
+            if (int.TryParse(e.Value?.ToString(), out var year))
+            {
                 _detailYearFilter = year;
-            else
-                _detailYearFilter = null;
+            }
 
             ApplyDetailFilters();
         }
 
         protected void OnDetailMonthChanged(ChangeEventArgs e)
         {
-            var value = e.Value?.ToString();
-            if (int.TryParse(value, out var month) && month >= 1 && month <= 12)
+            _detailMonthFilter = null;
+
+            if (int.TryParse(e.Value?.ToString(), out var month))
+            {
                 _detailMonthFilter = month;
-            else
-                _detailMonthFilter = null;
+            }
 
             ApplyDetailFilters();
-        }
-
-        protected void ApplyDetailFilters()
-        {
-            if (_detailedRows == null)
-                return;
-
-            IEnumerable<ArticleReportRowDto> query = _detailedRows;
-
-            if (_detailYearFilter.HasValue)
-                query = query.Where(r => r.CreatedYear == _detailYearFilter.Value);
-
-            if (_detailMonthFilter.HasValue)
-                query = query.Where(r => r.CreatedMonth == _detailMonthFilter.Value);
-
-            _detailedFilteredRows = query.ToList();
-            RebuildDetailKpis();
         }
 
         protected void ClearDetailFilters()
         {
             _detailYearFilter = null;
             _detailMonthFilter = null;
-            _detailedFilteredRows = new List<ArticleReportRowDto>(_detailedRows);
+
+            // Restaurar lista completa si ya se cargó la vista detallada
+            _detailedFilteredRows = _detailedRows.ToList();
+            RebuildDetailKpis();
+        }
+
+        private void ApplyDetailFilters()
+        {
+            if (_detailedRows == null || _detailedRows.Count == 0)
+            {
+                _detailedFilteredRows = new List<ArticleReportRowDto>();
+                _detailKpis = new DetailKpisModel();
+                return;
+            }
+
+            IEnumerable<ArticleReportRowDto> query = _detailedRows;
+
+            if (_detailYearFilter.HasValue)
+            {
+                query = query.Where(r =>
+                    r.CreatedDate.HasValue &&
+                    r.CreatedDate.Value.Year == _detailYearFilter.Value);
+            }
+
+            if (_detailMonthFilter.HasValue)
+            {
+                query = query.Where(r =>
+                    r.CreatedDate.HasValue &&
+                    r.CreatedDate.Value.Month == _detailMonthFilter.Value);
+            }
+
+            _detailedFilteredRows = query.ToList();
             RebuildDetailKpis();
         }
 
         private void RebuildDetailKpis()
         {
+            var kpis = new DetailKpisModel();
+
             if (_detailedFilteredRows == null || _detailedFilteredRows.Count == 0)
             {
-                _detailKpis = new ArticlesKpiSummaryDto();
+                _detailKpis = kpis;
                 return;
             }
 
-            var nowYear = DateTime.UtcNow.Year;
+            // Total de artículos en la tabla (suma ArticleCount)
+            kpis.TotalArticles = _detailedFilteredRows.Sum(r => r.ArticleCount);
 
-            var total = _detailedFilteredRows.Sum(r => r.ArticleCount);
-            var publishedThisYear = _detailedFilteredRows
-                .Where(r => r.PublicationYear == nowYear)
+            // Año actual para "Publicados este año"
+            var currentYear = DateTime.Now.Year;
+
+            kpis.PublishedThisYear = _detailedFilteredRows
+                .Where(r => r.PublicationDate.HasValue &&
+                            r.PublicationDate.Value.Year == currentYear)
                 .Sum(r => r.ArticleCount);
 
-            var q1q2 = _detailedFilteredRows
-                .Where(r => r.Quartile == "Q1" || r.Quartile == "Q2")
+            // Q1 + Q2
+            kpis.Q1Q2Count = _detailedFilteredRows
+                .Where(r => string.Equals(r.Quartile, "Q1", StringComparison.OrdinalIgnoreCase) ||
+                            string.Equals(r.Quartile, "Q2", StringComparison.OrdinalIgnoreCase))
                 .Sum(r => r.ArticleCount);
 
-            var oa = _detailedFilteredRows
+            // Open Access
+            kpis.OpenAccessCount = _detailedFilteredRows
                 .Where(r => r.IsOpenAccess)
                 .Sum(r => r.ArticleCount);
 
-            var scopus = _detailedFilteredRows
+            // Indexados en Scopus
+            kpis.IndexedInScopusCount = _detailedFilteredRows
                 .Where(r => r.IndexedInScopus)
                 .Sum(r => r.ArticleCount);
 
-            _detailKpis = new ArticlesKpiSummaryDto
-            {
-                TotalArticles = total,
-                PublishedThisYear = publishedThisYear,
-                Q1Q2Count = q1q2,
-                OpenAccessCount = oa,
-                IndexedInScopusCount = scopus
-            };
-        }
-
-        private void ResetDetailView()
-        {
-            _detailedResult = null;
-            _detailedRows = new();
-            _detailedFilteredRows = new();
-            _detailAvailableYears = new();
-            _detailYearFilter = null;
-            _detailMonthFilter = null;
-            _detailKpis = new ArticlesKpiSummaryDto();
-            _detailedErrorMessage = null;
+            _detailKpis = kpis;
         }
     }
 }

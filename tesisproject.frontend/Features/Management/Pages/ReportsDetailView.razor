@@ -1,0 +1,449 @@
+﻿@using tesisproject.shared.DTOs.Reports
+
+@if (IsLoading)
+{
+    <div class="flex items-center justify-center py-16 text-slate-500 text-sm">
+        Cargando datos detallados...
+    </div>
+}
+else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+        @ErrorMessage
+    </div>
+}
+else if (Rows == null || Rows.Count == 0)
+{
+    <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-6 text-sm text-slate-500">
+        No se encontraron artículos para los filtros actuales. Ajusta los filtros superiores o el rango de fechas.
+    </div>
+}
+else
+{
+    <section class="flex flex-col gap-4">
+        <!-- Header vista detallada -->
+        <header class="flex flex-col gap-1">
+            <h2 class="text-base md:text-lg font-semibold text-slate-900">
+                Vista detallada tipo tabla (estilo Excel)
+            </h2>
+            <p class="text-xs md:text-sm text-slate-500 max-w-3xl">
+                Explora los artículos fila a fila, filtra por año, mes y texto libre, y analiza dimensiones clave
+                de tiempo, proyecto, líneas de investigación, áreas OCDE, estado, venue y calidad.
+            </p>
+        </header>
+
+        <!-- Filtros locales (año / mes / búsqueda) -->
+        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-3">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap gap-3 items-end">
+                    <!-- Año -->
+                    <div class="flex flex-col">
+                        <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                            Año de creación
+                        </label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                @onchange="OnYearChanged">
+                            <option value="">Todos los años</option>
+                            @foreach (var year in _availableYears)
+                            {
+                                <option value="@year" selected="@(_yearFilter == year)">@year</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Mes -->
+                    <div class="flex flex-col">
+                        <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                            Mes de creación
+                        </label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                @onchange="OnMonthChanged">
+                            <option value="">Todos los meses</option>
+                            @foreach (var m in DetailMonths)
+                            {
+                                <option value="@m.Value" selected="@(_monthFilter == m.Value)">
+                                    @m.Label
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Búsqueda libre -->
+                    <div class="flex flex-col min-w-[220px]">
+                        <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                            Búsqueda (tipo Excel)
+                        </label>
+                        <div class="relative">
+                            <span class="material-icons text-[16px] text-slate-400 absolute left-2 top-1.5">
+                                search
+                            </span>
+                            <input type="text"
+                                   class="w-full pl-7 pr-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                   placeholder="Filtrar por proyecto, línea, área, estado, venue..."
+                                   @oninput="OnSearchChanged"
+                                   value="@_searchText" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col items-end gap-2">
+                    <button type="button"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            @onclick="ClearLocalFilters">
+                        <span class="material-icons text-[14px]">refresh</span>
+                        Limpiar filtros locales
+                    </button>
+                    <span class="text-[11px] text-slate-400">
+                        Mostrando <strong>@_filteredRows.Count</strong> de @Rows.Count registros.
+                    </span>
+                </div>
+            </div>
+
+            <p class="text-[11px] text-slate-400">
+                Estos filtros operan sobre los resultados ya filtrados por el panel principal (fechas, proyectos, áreas OCDE, etc.).
+            </p>
+        </section>
+
+        <!-- KPIs de la vista detallada -->
+        <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-3 py-3 flex flex-col gap-1">
+                <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                    Total en tabla
+                </span>
+                <span class="text-xl font-bold text-slate-900">
+                    @_kpis.TotalArticles
+                </span>
+                <span class="text-[11px] text-slate-400">
+                    Suma de artículos visibles
+                </span>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-3 py-3 flex flex-col gap-1">
+                <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                    Publicados este año
+                </span>
+                <span class="text-xl font-bold text-slate-900">
+                    @_kpis.PublishedThisYear
+                </span>
+                <span class="text-[11px] text-slate-400">
+                    Según fecha de publicación
+                </span>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-3 py-3 flex flex-col gap-1">
+                <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                    Q1 + Q2
+                </span>
+                <span class="text-xl font-bold text-slate-900">
+                    @_kpis.Q1Q2Count
+                </span>
+                <span class="text-[11px] text-slate-400">
+                    Artículos de alto impacto
+                </span>
+            </div>
+
+            <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-3 py-3 flex flex-col gap-1">
+                <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                    Open Access / Scopus
+                </span>
+                <span class="text-sm font-semibold text-slate-900">
+                    OA: @_kpis.OpenAccessCount
+                </span>
+                <span class="text-[11px] text-slate-400">
+                    Indexados Scopus: @_kpis.IndexedInScopusCount
+                </span>
+            </div>
+        </section>
+
+        <!-- Tabla detallada tipo Excel -->
+        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col gap-3 h-full overflow-hidden">
+            <div class="flex items-center justify-between mb-1">
+                <div>
+                    <h3 class="text-sm md:text-base font-semibold text-slate-900">
+                        Artículos detallados
+                    </h3>
+                    <p class="text-[11px] md:text-xs text-slate-500">
+                        Vista tabular con dimensiones clave de tiempo, proyecto, línea de investigación, áreas OCDE,
+                        estado, venue, acceso abierto e indexación.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex-1 max-h-[480px] overflow-auto rounded-lg border border-slate-200">
+                <table class="min-w-full text-[11px] md:text-xs">
+                    <thead class="bg-slate-50 sticky top-0 z-10">
+                        <tr class="text-left font-semibold text-slate-500 uppercase">
+                            <th class="py-1.5 px-2 border-b border-slate-200">Creación</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200">Año c.</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200">Mes c.</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200">Publicación</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200">Año pub.</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200">Período</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200">Proyecto</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200">Línea</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200">Área amplia</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200">Área específica</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200">Área detallada</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200">Estado</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200">Venue</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200 text-center">Cuartil</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200 text-center">OA</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200 text-center">Scopus</th>
+                            <th class="py-1.5 px-2 border-b border-slate-200 text-right">Art.</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @foreach (var row in _filteredRows)
+                        {
+                            <tr class="hover:bg-slate-50/80">
+                                <td class="py-1.5 px-2 text-slate-700">
+                                    @row.CreatedDate?.ToString("dd/MM/yyyy")
+                                </td>
+                                <td class="py-1.5 px-2 text-slate-700">
+                                    @row.CreatedYear
+                                </td>
+                                <td class="py-1.5 px-2 text-slate-700">
+                                    @GetMonthLabel(row.CreatedMonth)
+                                </td>
+                                <td class="py-1.5 px-2 text-slate-700">
+                                    @row.PublicationDate?.ToString("dd/MM/yyyy")
+                                </td>
+                                <td class="py-1.5 px-2 text-slate-700">
+                                    @row.PublicationYear
+                                </td>
+                                <td class="py-1.5 px-2 text-slate-700">
+                                    @row.AcademicTermName
+                                </td>
+                                <td class="py-1.5 px-2 text-slate-700">
+                                    @row.ProjectName
+                                </td>
+                                <td class="py-1.5 px-2 text-slate-700">
+                                    @row.ResearchLineName
+                                </td>
+                                <td class="py-1.5 px-2 text-slate-700">
+                                    @row.BroadFieldName
+                                </td>
+                                <td class="py-1.5 px-2 text-slate-700">
+                                    @row.SpecificFieldName
+                                </td>
+                                <td class="py-1.5 px-2 text-slate-700">
+                                    @row.DetailedFieldName
+                                </td>
+                                <td class="py-1.5 px-2 text-slate-700">
+                                    @row.PublicationStatusName
+                                </td>
+                                <td class="py-1.5 px-2 text-slate-700">
+                                    @row.VenueName
+                                </td>
+                                <td class="py-1.5 px-2 text-center text-slate-700">
+                                    @row.Quartile
+                                </td>
+                                <td class="py-1.5 px-2 text-center">
+                                    @if (row.IsOpenAccess)
+                                    {
+                                        <span class="inline-flex items-center justify-center rounded-full bg-emerald-50 text-emerald-600 px-2 py-0.5 text-[10px] font-semibold">
+                                            Sí
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="inline-flex items-center justify-center rounded-full bg-slate-50 text-slate-500 px-2 py-0.5 text-[10px]">
+                                            No
+                                        </span>
+                                    }
+                                </td>
+                                <td class="py-1.5 px-2 text-center">
+                                    @if (row.IndexedInScopus)
+                                    {
+                                        <span class="inline-flex items-center justify-center rounded-full bg-indigo-50 text-indigo-600 px-2 py-0.5 text-[10px] font-semibold">
+                                            Sí
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="inline-flex items-center justify-center rounded-full bg-slate-50 text-slate-500 px-2 py-0.5 text-[10px]">
+                                            No
+                                        </span>
+                                    }
+                                </td>
+                                <td class="py-1.5 px-2 text-right font-semibold text-slate-800">
+                                    @row.ArticleCount
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </section>
+}
+
+@code {
+    [Parameter] public List<ArticleReportRowDto> Rows { get; set; } = new();
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+
+    private List<ArticleReportRowDto> _filteredRows = new();
+    private List<int> _availableYears = new();
+    private int? _yearFilter;
+    private int? _monthFilter;
+    private string _searchText = string.Empty;
+    private ArticlesKpiSummaryDto _kpis = new();
+
+    private static readonly (int Value, string Label)[] DetailMonths = new[]
+    {
+        (1, "Enero"),
+        (2, "Febrero"),
+        (3, "Marzo"),
+        (4, "Abril"),
+        (5, "Mayo"),
+        (6, "Junio"),
+        (7, "Julio"),
+        (8, "Agosto"),
+        (9, "Septiembre"),
+        (10, "Octubre"),
+        (11, "Noviembre"),
+        (12, "Diciembre")
+    };
+
+    protected override void OnParametersSet()
+    {
+        if (!IsLoading && string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            BuildStateFromRows();
+        }
+    }
+
+    private void BuildStateFromRows()
+    {
+        if (Rows == null || Rows.Count == 0)
+        {
+            _filteredRows = new();
+            _availableYears = new();
+            _kpis = new ArticlesKpiSummaryDto();
+            return;
+        }
+
+        _availableYears = Rows
+            .Select(r => r.CreatedYear)
+            .Where(y => y.HasValue)
+            .Select(y => y.Value)
+            .Distinct()
+            .OrderBy(y => y)
+            .ToList();
+
+        ApplyFilters();
+    }
+
+    private void OnYearChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (int.TryParse(value, out var year))
+            _yearFilter = year;
+        else
+            _yearFilter = null;
+
+        ApplyFilters();
+    }
+
+    private void OnMonthChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        if (int.TryParse(value, out var month) && month >= 1 && month <= 12)
+            _monthFilter = month;
+        else
+            _monthFilter = null;
+
+        ApplyFilters();
+    }
+
+    private void OnSearchChanged(ChangeEventArgs e)
+    {
+        _searchText = e.Value?.ToString() ?? string.Empty;
+        ApplyFilters();
+    }
+
+    private void ClearLocalFilters()
+    {
+        _yearFilter = null;
+        _monthFilter = null;
+        _searchText = string.Empty;
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        IEnumerable<ArticleReportRowDto> query = Rows ?? Enumerable.Empty<ArticleReportRowDto>();
+
+        if (_yearFilter.HasValue)
+            query = query.Where(r => r.CreatedYear == _yearFilter.Value);
+
+        if (_monthFilter.HasValue)
+            query = query.Where(r => r.CreatedMonth == _monthFilter.Value);
+
+        if (!string.IsNullOrWhiteSpace(_searchText))
+        {
+            var term = _searchText.Trim().ToLowerInvariant();
+
+            query = query.Where(r =>
+                (!string.IsNullOrWhiteSpace(r.ProjectName) && r.ProjectName!.ToLower().Contains(term)) ||
+                (!string.IsNullOrWhiteSpace(r.AcademicTermName) && r.AcademicTermName!.ToLower().Contains(term)) ||
+                (!string.IsNullOrWhiteSpace(r.ResearchLineName) && r.ResearchLineName!.ToLower().Contains(term)) ||
+                (!string.IsNullOrWhiteSpace(r.BroadFieldName) && r.BroadFieldName!.ToLower().Contains(term)) ||
+                (!string.IsNullOrWhiteSpace(r.SpecificFieldName) && r.SpecificFieldName!.ToLower().Contains(term)) ||
+                (!string.IsNullOrWhiteSpace(r.DetailedFieldName) && r.DetailedFieldName!.ToLower().Contains(term)) ||
+                (!string.IsNullOrWhiteSpace(r.PublicationStatusName) && r.PublicationStatusName!.ToLower().Contains(term)) ||
+                (!string.IsNullOrWhiteSpace(r.VenueName) && r.VenueName!.ToLower().Contains(term))
+            );
+        }
+
+        _filteredRows = query.ToList();
+        RebuildKpis();
+    }
+
+    private void RebuildKpis()
+    {
+        if (_filteredRows == null || _filteredRows.Count == 0)
+        {
+            _kpis = new ArticlesKpiSummaryDto();
+            return;
+        }
+
+        var nowYear = DateTime.UtcNow.Year;
+
+        var total = _filteredRows.Sum(r => r.ArticleCount);
+        var publishedThisYear = _filteredRows
+            .Where(r => r.PublicationYear == nowYear)
+            .Sum(r => r.ArticleCount);
+
+        var q1q2 = _filteredRows
+            .Where(r => r.Quartile == "Q1" || r.Quartile == "Q2")
+            .Sum(r => r.ArticleCount);
+
+        var oa = _filteredRows
+            .Where(r => r.IsOpenAccess)
+            .Sum(r => r.ArticleCount);
+
+        var scopus = _filteredRows
+            .Where(r => r.IndexedInScopus)
+            .Sum(r => r.ArticleCount);
+
+        _kpis = new ArticlesKpiSummaryDto
+        {
+            TotalArticles = total,
+            PublishedThisYear = publishedThisYear,
+            Q1Q2Count = q1q2,
+            OpenAccessCount = oa,
+            IndexedInScopusCount = scopus
+        };
+    }
+
+    private static string GetMonthLabel(int? month)
+    {
+        if (!month.HasValue || month.Value < 1 || month.Value > 12)
+            return string.Empty;
+
+        var found = DetailMonths.FirstOrDefault(m => m.Value == month.Value);
+        return found.Label;
+    }
+}

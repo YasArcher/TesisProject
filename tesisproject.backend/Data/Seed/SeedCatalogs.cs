@@ -535,8 +535,7 @@ namespace tesisproject.backend.Data.Seed
             {
         "PUBLICADO",
         "ACEPTADO",
-        "EN REVISIÓN",
-        "RECHAZADO"
+        "SIN ESTADO",
     };
 
             foreach (var name in statuses)

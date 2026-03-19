@@ -16,6 +16,8 @@ public class Article
     public string? EventName { get; set; }
     public string? GroupName { get; set; }
     public string? Filiacion { get; set; }
+    public string? ExternalSource { get; set; }
+    public string? ExternalId { get; set; }
     public int? VenueId { get; set; }
     public Venue? Venue { get; set; }
     public int? AcademicTermId { get; set; }
@@ -37,4 +39,5 @@ public class Article
     public ICollection<ArticleParticipant> Participants { get; set; } = new List<ArticleParticipant>();
     public ICollection<ArticleIndexing> Indexings { get; set; } = new List<ArticleIndexing>();
     public ICollection<ArticleFile> Files { get; set; } = new List<ArticleFile>();
+    public ICollection<DynamicFieldValue> DynamicFieldValues { get; set; } = new List<DynamicFieldValue>();
 }

@@ -34,6 +34,12 @@ namespace tesisproject.backend.Data
         // Otros
         public DbSet<Project> Projects => Set<Project>();
         public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+        public DbSet<FieldCatalogEntry> FieldCatalogEntries => Set<FieldCatalogEntry>();
+        public DbSet<DynamicFieldOption> DynamicFieldOptions => Set<DynamicFieldOption>();
+        public DbSet<FormDefinition> FormDefinitions => Set<FormDefinition>();
+        public DbSet<FormFieldDefinition> FormFieldDefinitions => Set<FormFieldDefinition>();
+        public DbSet<DynamicFieldValue> DynamicFieldValues => Set<DynamicFieldValue>();
+        public DbSet<ArticleParticipantDynamicFieldValue> ArticleParticipantDynamicFieldValues => Set<ArticleParticipantDynamicFieldValue>();
 
         protected override void OnModelCreating(ModelBuilder m)
         {
@@ -44,7 +50,14 @@ namespace tesisproject.backend.Data
             {
                 e.Property(x => x.Title).HasMaxLength(500);
                 e.Property(x => x.Doi).HasMaxLength(200);
-                e.Property(x => x.PublicationUrl).HasMaxLength(400);
+                e.Property(x => x.PublicationUrl).HasMaxLength(500);
+                e.Property(x => x.ProceedingsName).HasMaxLength(300);
+                e.Property(x => x.Proceedings).HasMaxLength(300);
+                e.Property(x => x.EventName).HasMaxLength(300);
+                e.Property(x => x.GroupName).HasMaxLength(300);
+                e.Property(x => x.Filiacion).HasMaxLength(300);
+                e.Property(x => x.ExternalSource).HasMaxLength(50);
+                e.Property(x => x.ExternalId).HasMaxLength(150);
                 e.Property(x => x.IsOpenAccess).HasDefaultValue(false);
 
                 e.HasOne(x => x.AcademicTerm)
@@ -100,7 +113,13 @@ namespace tesisproject.backend.Data
             {
                 e.Property(x => x.Identificacion).HasMaxLength(100);
                 e.Property(x => x.Nombre).HasMaxLength(300);
-                e.Property(x => x.Participacion).HasMaxLength(200);
+                e.Property(x => x.Participacion).HasMaxLength(150);
+                e.Property(x => x.ParticipantType).HasMaxLength(50);
+                e.Property(x => x.Email).HasMaxLength(200);
+                e.Property(x => x.Orcid).HasMaxLength(50);
+                e.Property(x => x.Affiliation).HasMaxLength(300);
+                e.Property(x => x.ExternalAuthorId).HasMaxLength(150);
+                e.Property(x => x.IsPrimaryAuthor).HasDefaultValue(false);
 
                 e.HasOne(x => x.Article)
                  .WithMany(a => a.Participants)
@@ -258,6 +277,104 @@ namespace tesisproject.backend.Data
             {
                 e.Property(x => x.Code).IsRequired();
                 e.Property(x => x.Name).IsRequired();
+            });
+
+            // =============== FieldCatalog ================
+            m.Entity<FieldCatalogEntry>(e =>
+            {
+                e.ToTable("FieldCatalog");
+                e.HasKey(x => x.FieldId);
+                e.Property(x => x.EntityName).HasMaxLength(100).IsRequired();
+                e.Property(x => x.FieldKey).HasMaxLength(100).IsRequired();
+                e.Property(x => x.FieldLabel).HasMaxLength(150).IsRequired();
+                e.Property(x => x.DataType).HasMaxLength(50).IsRequired();
+                e.Property(x => x.SourceType).HasMaxLength(30).IsRequired();
+                e.Property(x => x.PhysicalTableName).HasMaxLength(100);
+                e.Property(x => x.PhysicalColumnName).HasMaxLength(100);
+                e.Property(x => x.ReferenceTableName).HasMaxLength(100);
+                e.Property(x => x.Placeholder).HasMaxLength(200);
+                e.Property(x => x.HelpText).HasMaxLength(500);
+                e.Property(x => x.DefaultValue).HasMaxLength(200);
+                e.Property(x => x.ValidationRule).HasMaxLength(500);
+            });
+
+            // =============== DynamicFieldOptions =========
+            m.Entity<DynamicFieldOption>(e =>
+            {
+                e.ToTable("DynamicFieldOptions");
+                e.HasKey(x => x.DynamicFieldOptionId);
+                e.Property(x => x.OptionValue).HasMaxLength(200).IsRequired();
+                e.Property(x => x.OptionLabel).HasMaxLength(200).IsRequired();
+
+                e.HasOne(x => x.Field)
+                    .WithMany(x => x.Options)
+                    .HasForeignKey(x => x.FieldId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // =============== FormDefinitions ============
+            m.Entity<FormDefinition>(e =>
+            {
+                e.ToTable("FormDefinitions");
+                e.HasKey(x => x.FormId);
+                e.Property(x => x.FormKey).HasMaxLength(100).IsRequired();
+                e.Property(x => x.FormName).HasMaxLength(150).IsRequired();
+                e.Property(x => x.EntityName).HasMaxLength(100).IsRequired();
+                e.Property(x => x.Description).HasMaxLength(500);
+            });
+
+            // =============== FormFields =================
+            m.Entity<FormFieldDefinition>(e =>
+            {
+                e.ToTable("FormFields");
+                e.HasKey(x => x.FormFieldId);
+                e.Property(x => x.GroupName).HasMaxLength(100);
+
+                e.HasOne(x => x.Form)
+                    .WithMany(x => x.Fields)
+                    .HasForeignKey(x => x.FormId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(x => x.Field)
+                    .WithMany(x => x.FormFields)
+                    .HasForeignKey(x => x.FieldId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // =============== DynamicFieldValues ==========
+            m.Entity<DynamicFieldValue>(e =>
+            {
+                e.ToTable("DynamicFieldValues");
+                e.HasKey(x => x.DynamicFieldValueId);
+                e.Property(x => x.ValueDecimal).HasPrecision(18, 4);
+
+                e.HasOne(x => x.Article)
+                    .WithMany(x => x.DynamicFieldValues)
+                    .HasForeignKey(x => x.ArticleId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(x => x.Field)
+                    .WithMany()
+                    .HasForeignKey(x => x.FieldId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // =============== ParticipantDynamicValues ====
+            m.Entity<ArticleParticipantDynamicFieldValue>(e =>
+            {
+                e.ToTable("ArticleParticipantDynamicFieldValues");
+                e.HasKey(x => x.ArticleParticipantDynamicFieldValueId);
+                e.Property(x => x.ValueDecimal).HasPrecision(18, 4);
+
+                e.HasOne(x => x.ArticleParticipant)
+                    .WithMany(x => x.DynamicFieldValues)
+                    .HasForeignKey(x => x.ArticleParticipantId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(x => x.Field)
+                    .WithMany()
+                    .HasForeignKey(x => x.FieldId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

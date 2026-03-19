@@ -24,7 +24,7 @@ namespace tesisproject.backend.Data
             // Fallback seguro — DEBE ser EXACTAMENTE la misma que usas en Program.cs
             if (string.IsNullOrWhiteSpace(cs))
             {
-                cs = "Server=PERSONAL\\DINNOVA;Database=TesisDB;User Id=sa;Password=admin123;TrustServerCertificate=True;MultipleActiveResultSets=True";
+                cs = "Server=PERSONAL\\DINNOVA;Database=TesisDB_Extensible;User Id=sa;Password=admin123;TrustServerCertificate=True;MultipleActiveResultSets=True";
             }
 
             var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();

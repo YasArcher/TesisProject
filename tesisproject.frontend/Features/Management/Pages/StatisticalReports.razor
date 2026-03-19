@@ -43,7 +43,6 @@
 
             <button class="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
                     @onclick="ToggleAdvancedFilters">
-                <span class="material-icons text-sm">tune</span>
                 @(_showAdvancedFilters ? "Cerrar panel de filtros" : "Abrir panel de filtros")
             </button>
         </div>
@@ -139,7 +138,6 @@
                     <button class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
                             @onclick="OpenPdfPreviewAsync"
                             disabled="@(_isLoading || _isPdfGenerating)">
-                        <span class="material-icons text-sm">picture_as_pdf</span>
                         @if (_isPdfGenerating)
                         {
                             <span>Generando PDF...</span>
@@ -153,14 +151,12 @@
                     <button class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
                             @onclick="RunEtlAndReload"
                             disabled="@_isLoading">
-                        <span class="material-icons text-sm">sync</span>
                         Actualizar datos (ETL)
                     </button>
 
                     <button class="inline-flex items-center gap-2 rounded-lg bg-[#7A1E19] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#681813] hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
                             @onclick="ApplyFilters"
                             disabled="@_isLoading">
-                        <span class="material-icons text-sm">filter_alt</span>
                         Aplicar filtros
                     </button>
                 </div>
@@ -181,11 +177,10 @@
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total de artículos</span>
                             <span class="inline-flex items-center justify-center rounded-full bg-slate-100 text-slate-500 p-1">
-                                <span class="material-icons text-[16px]">library_books</span>
                             </span>
                         </div>
                         <span class="text-2xl font-bold text-slate-900">
-                            @_kpis?.TotalArticles ?? 0
+                            @_kpis?.TotalArticles 
                         </span>
                         <span class="text-[11px] text-slate-400">
                             Registrados en el sistema
@@ -197,11 +192,10 @@
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Publicados este año</span>
                             <span class="inline-flex items-center justify-center rounded-full bg-emerald-50 text-emerald-600 p-1">
-                                <span class="material-icons text-[16px]">event</span>
                             </span>
                         </div>
                         <span class="text-2xl font-bold text-slate-900">
-                            @_kpis?.PublishedThisYear ?? 0
+                            @_kpis?.PublishedThisYear 
                         </span>
                         <span class="text-[11px] text-slate-400">
                             Según la fecha de publicación
@@ -213,7 +207,6 @@
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Artículos Q1 + Q2</span>
                             <span class="inline-flex items-center justify-center rounded-full bg-indigo-50 text-indigo-600 p-1">
-                                <span class="material-icons text-[16px]">auto_graph</span>
                             </span>
                         </div>
                         <span class="text-2xl font-bold text-slate-900">
@@ -231,7 +224,6 @@
                                 Crecimiento acumulado
                             </span>
                             <span class="inline-flex items-center justify-center rounded-full bg-blue-50 text-blue-600 p-1">
-                                <span class="material-icons text-[16px]">trending_up</span>
                             </span>
                         </div>
                         <span class="text-2xl font-bold text-slate-900">
@@ -247,7 +239,6 @@
                         <div class="flex items-center justify-between">
                             <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Open Access / Scopus</span>
                             <span class="inline-flex items-center justify-center rounded-full bg-amber-50 text-amber-600 p-1">
-                                <span class="material-icons text-[16px]">public</span>
                             </span>
                         </div>
                         <div class="flex flex-col">
@@ -275,14 +266,12 @@
                 <button type="button"
                         class="@GetTabButtonClass("dashboard")"
                         @onclick="SwitchToDashboard">
-                    <span class="material-icons text-[16px] mr-1">dashboard</span>
                     Resumen gráfico
                 </button>
 
                 <button type="button"
                         class="@GetTabButtonClass("detail")"
                         @onclick="SwitchToDetail">
-                    <span class="material-icons text-[16px] mr-1">table_view</span>
                     Vista detallada (tabla)
                 </button>
             </nav>
@@ -1249,13 +1238,11 @@
                 <div class="px-4 py-3 border-t border-slate-200 flex items-center justify-between gap-2">
                     <button class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
                             @onclick="ClearFilters">
-                        <span class="material-icons text-sm">clear_all</span>
                         Limpiar filtros
                     </button>
 
                     <button class="inline-flex items-center gap-2 rounded-lg bg-[#7A1E19] px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-[#681813]"
                             @onclick="ApplyFilters">
-                        <span class="material-icons text-sm">done</span>
                         Aplicar filtros
                     </button>
                 </div>

@@ -9,7 +9,6 @@ using System.Security.Claims;
 using System.Text;
 using tesisproject.backend.BI.ETL;
 using tesisproject.backend.Data;
-using tesisproject.backend.Data.Seed;          // ✅ Importante: SeedCatalogs
 using tesisproject.backend.DataWarehouse;
 using tesisproject.backend.Identity;
 using tesisproject.backend.Mapping;
@@ -35,7 +34,7 @@ builder.WebHost.PreferHostingUrls(true)
 
 // ===== DbContext =====
 var cs = config.GetConnectionString("DefaultConnection")
-          ?? "Server=PERSONAL\\DINNOVA;Database=TesisDB;User Id=sa;Password=admin123;TrustServerCertificate=True;MultipleActiveResultSets=True";
+          ?? "Server=PERSONAL\\DINNOVA;Database=TesisDB_Extensible;User Id=sa;Password=admin123;TrustServerCertificate=True;MultipleActiveResultSets=True";
 
 builder.Services.AddDbContext<DwDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DwConnection")));
@@ -56,6 +55,8 @@ services.AddScoped<IArticlesRepository, ArticlesRepository>();
 services.AddScoped<IUnitOfWork, UnitOfWork>();
 services.AddScoped<IArticlesService, ArticlesService>();
 services.AddScoped<IVenuesService, VenuesService>();
+services.AddScoped<IConfigurationFormsService, ConfigurationFormsService>();
+services.AddScoped<IArticleRegistrationService, ArticleRegistrationService>();
 services.AddHttpContextAccessor();
 
 
@@ -220,7 +221,7 @@ app.UseCors(CorsPolicyName);
 app.UseAuthentication();
 app.UseAuthorization();
 
-// ===== Migrar BD + Seed =====
+// ===== Validar BD configurada =====
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
@@ -230,60 +231,62 @@ using (var scope = app.Services.CreateScope())
 
     try
     {
-        await db.Database.MigrateAsync();
+        var canConnect = await db.Database.CanConnectAsync();
+        if (!canConnect)
+        {
+            throw new InvalidOperationException("No se pudo establecer conexion con la base de datos configurada.");
+        }
 
         var tables = await db.Database
             .SqlQueryRaw<string>("SELECT t.name FROM sys.tables t ORDER BY t.name")
             .ToListAsync();
 
         logger.LogWarning("EF existing tables: {tables}", string.Join(", ", tables));
-    }
-    catch (Exception ex)
-    {
-        logger.LogError(ex, "Error migrating database");
-        throw;
-    }
 
-    // Seed roles + admin
-    try
-    {
-        var roleMgr = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
-        var userMgr = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var identityTablesExist = tables.Any(x => x == "AspNetUsers") && tables.Any(x => x == "AspNetRoles");
 
-        foreach (var role in new[] { "Admin", "Editor", "Viewer", "SuperAdmin" })
+        if (identityTablesExist)
         {
-            if (!await roleMgr.RoleExistsAsync(role))
-                await roleMgr.CreateAsync(new ApplicationRole { Name = role });
-        }
-
-        var adminEmail = "admin@local.test";
-        var admin = await userMgr.FindByEmailAsync(adminEmail);
-        if (admin is null)
-        {
-            admin = new ApplicationUser
+            try
             {
-                UserName = "admin",
-                Email = adminEmail,
-                EmailConfirmed = true
-            };
+                var roleMgr = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+                var userMgr = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
 
-            await userMgr.CreateAsync(admin, "Admin#1234");
-            await userMgr.AddToRoleAsync(admin, "Admin");
+                foreach (var role in new[] { "Admin", "Editor", "Viewer", "SuperAdmin" })
+                {
+                    if (!await roleMgr.RoleExistsAsync(role))
+                        await roleMgr.CreateAsync(new ApplicationRole { Name = role });
+                }
+
+                var adminEmail = "admin@local.test";
+                var admin = await userMgr.FindByEmailAsync(adminEmail);
+                if (admin is null)
+                {
+                    admin = new ApplicationUser
+                    {
+                        UserName = "admin",
+                        Email = adminEmail,
+                        EmailConfirmed = true
+                    };
+
+                    await userMgr.CreateAsync(admin, "Admin#1234");
+                    await userMgr.AddToRoleAsync(admin, "Admin");
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Identity startup seed failed");
+            }
+        }
+        else
+        {
+            logger.LogWarning("Identity tables were not found in the configured database. Startup seed was skipped.");
         }
     }
     catch (Exception ex)
     {
-        logger.LogWarning(ex, "Seeding Identity failed");
-    }
-
-    // ✅ Seed de catálogos alineado al modelo + TXT/XLSX
-    try
-    {
-        await SeedCatalogs.InitializeAsync(db);
-    }
-    catch (Exception ex)
-    {
-        logger.LogWarning(ex, "Seeding catalogs failed");
+        logger.LogError(ex, "Error validating configured database");
+        throw;
     }
 }
 

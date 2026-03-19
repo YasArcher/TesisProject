@@ -1,8 +1,1124 @@
-﻿@page "/analytics/prediction"
-@attribute [Authorize]
-<PageTitle>IA Predicciones</PageTitle>
-<h3>Panel para manejo de predicciones</h3>
+﻿@page "/ia"
+@using Microsoft.AspNetCore.Components
+@using System.Globalization
+
+<PageTitle>Panel de Inteligencia Artificial</PageTitle>
+
+<div class="min-h-screen bg-[#f2f2f2]">
+    <div class="mx-auto max-w-7xl px-4 py-8">
+
+        <!-- ENCABEZADO PRINCIPAL -->
+        <div class="mb-6 rounded-3xl bg-gradient-to-r from-[#1a2b2b] via-[#4d1a1a] to-[#800909] px-6 py-6 shadow-lg shadow-slate-400/60">
+            <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div class="flex flex-1 items-start gap-4">
+                    <div class="relative">
+                        <div class="absolute inset-0 rounded-2xl bg-white/10 blur-md"></div>
+                        <div class="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f2f2f2]/10 border border-white/30">
+                            <i class="bi bi-cpu-fill text-2xl text-[#f2f2f2]"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <span class="inline-flex items-center gap-2 rounded-full bg-black/20 px-3 py-1 text-[11px] font-semibold tracking-wide text-[#f2f2f2] border border-white/30">
+                            <i class="bi bi-diagram-3-fill text-xs"></i>
+                            MÓDULO IA · PREDICCIÓN Y RECOMENDACIÓN
+                        </span>
+                        <h1 class="mt-2 text-2xl md:text-3xl font-extrabold tracking-tight text-[#f2f2f2]">
+                            Panel de Inteligencia Artificial
+                        </h1>
+                        <p class="mt-2 max-w-2xl text-xs md:text-sm text-[#f2f2f2]/80">
+                            Análisis predictivo y motor de recomendación basados en los registros históricos de artículos
+                            científicos de la DIDE. Visualiza el desempeño de los modelos, su arquitectura de red neuronal
+                            y ejecuta simulaciones de predicción y recomendación de revistas.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- ESTADO DEL SISTEMA -->
+                <div class="w-full md:w-[320px] space-y-3">
+                    <div class="flex items-center justify-between rounded-2xl bg-black/20 px-4 py-2 text-[11px] text-[#f2f2f2] border border-white/30">
+                        <div class="flex items-center gap-2">
+                            <div class="relative">
+                                <div class="absolute inset-0 rounded-full bg-emerald-400 blur-sm opacity-70"></div>
+                                <div class="relative h-2 w-2 rounded-full bg-emerald-300 animate-pulse"></div>
+                            </div>
+                            <span>Sistema IA: <span class="font-semibold text-emerald-200">Operativo</span></span>
+                        </div>
+                        <div>
+                            Última sincronización:
+                            <span class="font-mono">@DateTime.Now.ToString("HH:mm:ss")</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3 text-xs text-[#f2f2f2]">
+                        <div class="rounded-2xl bg-black/20 px-3 py-3 border border-white/20">
+                            <p class="text-[10px] uppercase tracking-wide text-[#f2f2f2]/70">Modelos IA</p>
+                            <p class="mt-1 text-xl font-bold">@_aiModelsCount</p>
+                            <p class="mt-1 text-[11px] text-[#f2f2f2]/70">Predicción · Recomendación · Pronóstico</p>
+                        </div>
+                        <div class="rounded-2xl bg-black/20 px-3 py-3 border border-white/20">
+                            <p class="text-[10px] uppercase tracking-wide text-[#f2f2f2]/70">Último entrenamiento</p>
+                            <p class="mt-1 text-xs font-semibold">
+                                @(_lastTrainingUtc?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Sin ejecutar")
+                            </p>
+                            <p class="mt-1 text-[11px]">
+                                Estado: <span class="font-semibold text-emerald-200">@_trainingStatus</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TARJETAS DE ESTADO RÁPIDO -->
+        <div class="mb-5 grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div class="rounded-2xl bg-white shadow-sm border border-slate-200 px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Puntos de datos</p>
+                        <p class="mt-1 text-2xl font-bold text-[#1a2b2b]">24.7K</p>
+                    </div>
+                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#348e91]/10">
+                        <i class="bi bi-database text-lg text-[#348e91]"></i>
+                    </div>
+                </div>
+                <p class="mt-2 text-[11px] text-emerald-700">
+                    +1.2K este mes
+                </p>
+            </div>
+
+            <div class="rounded-2xl bg-white shadow-sm border border-slate-200 px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Precisión global</p>
+                        <p class="mt-1 text-2xl font-bold text-[#1a2b2b]">@_globalAccuracy.ToString("0.0")%</p>
+                    </div>
+                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10">
+                        <i class="bi bi-graph-up-arrow text-lg text-emerald-600"></i>
+                    </div>
+                </div>
+                <p class="mt-2 text-[11px] text-slate-500">
+                    F1: <span class="font-semibold">@_f1Score.ToString("0.00")</span> · AUC: <span class="font-semibold">@_rocAuc.ToString("0.00")</span>
+                </p>
+            </div>
+
+            <div class="rounded-2xl bg-white shadow-sm border border-slate-200 px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Uso de memoria</p>
+                        <p class="mt-1 text-2xl font-bold text-[#1a2b2b]">@_memoryUsage.ToString("0.0") GB</p>
+                    </div>
+                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#1c5052]/10">
+                        <i class="bi bi-speedometer2 text-lg text-[#1c5052]"></i>
+                    </div>
+                </div>
+                <p class="mt-2 text-[11px] text-slate-500">
+                    Latencia API: <span class="font-semibold">@_apiLatency.ToString("0")ms</span>
+                </p>
+            </div>
+
+            <div class="rounded-2xl bg-white shadow-sm border border-slate-200 px-4 py-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">Épocas entrenadas</p>
+                        <p class="mt-1 text-2xl font-bold text-[#1a2b2b]">@_currentEpoch/@_totalEpochs</p>
+                    </div>
+                    <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#800909]/10">
+                        <i class="bi bi-diagram-3 text-lg text-[#800909]"></i>
+                    </div>
+                </div>
+                <p class="mt-2 text-[11px] text-slate-500">
+                    Loss entrenamiento: <span class="font-semibold">@_trainLoss.ToString("0.000")</span> · validación: <span class="font-semibold">@_valLoss.ToString("0.000")</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- NAVEGACIÓN POR PESTAÑAS -->
+        <div class="mb-5 rounded-2xl bg-white border border-slate-200 px-3 py-2 shadow-sm">
+            <div class="flex flex-wrap gap-2">
+                <button type="button"
+                        class="@GetTabClass(AiTab.Overview)"
+                        @onclick="() => SetTab(AiTab.Overview)">
+                    <i class="bi bi-kanban me-1 text-xs"></i>
+                    Panel IA
+                </button>
+                <button type="button"
+                        class="@GetTabClass(AiTab.Prediction)"
+                        @onclick="() => SetTab(AiTab.Prediction)">
+                    <i class="bi bi-graph-up-arrow me-1 text-xs"></i>
+                    Predicción
+                </button>
+                <button type="button"
+                        class="@GetTabClass(AiTab.Recommendation)"
+                        @onclick="() => SetTab(AiTab.Recommendation)">
+                    <i class="bi bi-stars me-1 text-xs"></i>
+                    Recomendación
+                </button>
+            </div>
+        </div>
+
+        <!-- CONTENIDO POR PESTAÑA -->
+        <div>
+            @if (_activeTab == AiTab.Overview)
+            {
+                <!-- ================= PANEL / DASHBOARD ================= -->
+                <div class="grid grid-cols-1 gap-5 xl:grid-cols-3">
+                    <!-- IZQUIERDA: MÉTRICAS MATEMÁTICAS -->
+                    <div class="xl:col-span-2 space-y-5">
+
+                        <!-- Curvas de entrenamiento (placeholder gráfico) -->
+                        <div class="rounded-3xl bg-white border border-slate-200 px-5 py-5 shadow-sm">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <h2 class="text-sm md:text-base font-semibold text-[#1a2b2b]">
+                                        Comportamiento del entrenamiento
+                                    </h2>
+                                    <p class="text-[11px] text-slate-600">
+                                        Evolución de la función de pérdida y precisión a lo largo de las épocas.
+                                    </p>
+                                </div>
+                                <span class="inline-flex items-center rounded-full bg-[#348e91]/10 px-3 py-1 text-[11px] font-semibold text-[#1c5052] border border-[#348e91]/40">
+                                    <i class="bi bi-sliders me-1 text-xs"></i>
+                                    Módulo matemático
+                                </span>
+                            </div>
+
+                            <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2 text-xs">
+                                <div class="rounded-2xl border border-dashed border-slate-300 bg-[#f2f2f2] h-44 flex items-center justify-center text-[11px] text-slate-500">
+                                    Aquí puedes conectar un gráfico (line chart) con:
+                                    <br />
+                                    <strong>Loss entrenamiento vs. loss validación</strong>
+                                </div>
+                                <div class="rounded-2xl border border-dashed border-slate-300 bg-[#f2f2f2] h-44 flex items-center justify-center text-[11px] text-slate-500 text-center px-4">
+                                    Y otro gráfico para:
+                                    <br />
+                                    <strong>Accuracy entrenamiento vs. accuracy validación</strong>
+                                    <br />
+                                    por época de entrenamiento.
+                                </div>
+                            </div>
+
+                            <div class="mt-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                <div class="rounded-2xl bg-[#f2f2f2] px-3 py-2 border border-slate-200">
+                                    <p class="text-[10px] text-slate-500">Accuracy entrenamiento</p>
+                                    <p class="mt-1 text-sm font-semibold text-[#1a2b2b]">@_trainAccuracy.ToString("0.0")%</p>
+                                </div>
+                                <div class="rounded-2xl bg-[#f2f2f2] px-3 py-2 border border-slate-200">
+                                    <p class="text-[10px] text-slate-500">Accuracy validación</p>
+                                    <p class="mt-1 text-sm font-semibold text-[#1a2b2b]">@_valAccuracy.ToString("0.0")%</p>
+                                </div>
+                                <div class="rounded-2xl bg-[#f2f2f2] px-3 py-2 border border-slate-200">
+                                    <p class="text-[10px] text-slate-500">AUC (ROC)</p>
+                                    <p class="mt-1 text-sm font-semibold text-[#1a2b2b]">@_rocAuc.ToString("0.00")</p>
+                                </div>
+                                <div class="rounded-2xl bg-[#f2f2f2] px-3 py-2 border border-slate-200">
+                                    <p class="text-[10px] text-slate-500">F1-score</p>
+                                    <p class="mt-1 text-sm font-semibold text-[#1a2b2b]">@_f1Score.ToString("0.00")</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Matriz de confusión + resumen -->
+                        <div class="rounded-3xl bg-white border border-slate-200 px-5 py-5 shadow-sm">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <h2 class="text-sm md:text-base font-semibold text-[#1a2b2b]">
+                                        Desempeño del clasificador (estado de publicación)
+                                    </h2>
+                                    <p class="text-[11px] text-slate-600">
+                                        Resumen de la matriz de confusión para las clases: PUBLICADO, ACEPTADO, SIN ESTADO.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2 text-xs">
+                                <div>
+                                    <p class="mb-2 text-[11px] font-semibold text-slate-600">Matriz de confusión (resumen)</p>
+                                    <div class="grid grid-cols-4 text-[10px] text-center border border-slate-200 rounded-xl overflow-hidden">
+                                        <div class="bg-[#1c5052] text-[#f2f2f2] font-semibold py-1">Real \ Pred</div>
+                                        <div class="bg-[#1c5052] text-[#f2f2f2] font-semibold py-1">PUB</div>
+                                        <div class="bg-[#1c5052] text-[#f2f2f2] font-semibold py-1">ACEP</div>
+                                        <div class="bg-[#1c5052] text-[#f2f2f2] font-semibold py-1">SIN</div>
+
+                                        <div class="bg-[#348e91]/10 font-semibold py-1">PUB</div>
+                                        <div class="py-1">120</div>
+                                        <div class="py-1">8</div>
+                                        <div class="py-1">4</div>
+
+                                        <div class="bg-[#348e91]/10 font-semibold py-1">ACEP</div>
+                                        <div class="py-1">10</div>
+                                        <div class="py-1">85</div>
+                                        <div class="py-1">3</div>
+
+                                        <div class="bg-[#348e91]/10 font-semibold py-1">SIN</div>
+                                        <div class="py-1">5</div>
+                                        <div class="py-1">6</div>
+                                        <div class="py-1">70</div>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <p class="text-[11px] font-semibold text-slate-600">Interpretación matemática</p>
+                                    <p class="text-[11px] text-slate-600">
+                                        • La función de pérdida utilizada puede modelarse como
+                                        <span class="font-mono">L = - Σ yᵢ log(pᵢ)</span> (cross-entropy) según la probabilidad
+                                        predicha para cada estado de publicación.
+                                    </p>
+                                    <p class="text-[11px] text-slate-600">
+                                        • A partir de la matriz de confusión se calculan precisión, recall y F1-score para cada
+                                        clase. Estos indicadores permiten evaluar el balance entre falsos positivos y falsos
+                                        negativos en PUBLICADO / ACEPTADO / SIN ESTADO.
+                                    </p>
+                                    <p class="text-[11px] text-slate-600">
+                                        • El área bajo la curva ROC (AUC) resume la capacidad del modelo para separar clases
+                                        en diferentes umbrales de decisión.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DERECHA: RED NEURONAL + OPERACIONES -->
+                    <div class="space-y-5">
+                        <!-- Arquitectura de red neuronal -->
+                        <div class="rounded-3xl bg-white border border-slate-200 px-5 py-5 shadow-sm">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <h2 class="text-sm md:text-base font-semibold text-[#1a2b2b]">
+                                        Arquitectura de la red neuronal
+                                    </h2>
+                                    <p class="text-[11px] text-slate-600">
+                                        Configuración estructural del modelo utilizado para predicción de estado de publicación.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3 text-xs">
+                                <div class="rounded-2xl bg-[#f2f2f2] px-3 py-3 border border-slate-200">
+                                    <p class="text-[10px] text-slate-500">Entradas (features)</p>
+                                    <p class="mt-1 text-sm font-semibold text-[#1a2b2b]">@_inputFeatures</p>
+                                </div>
+                                <div class="rounded-2xl bg-[#f2f2f2] px-3 py-3 border border-slate-200">
+                                    <p class="text-[10px] text-slate-500">Capas ocultas</p>
+                                    <p class="mt-1 text-sm font-semibold text-[#1a2b2b]">@_hiddenLayers</p>
+                                </div>
+                                <div class="rounded-2xl bg-[#f2f2f2] px-3 py-3 border border-slate-200">
+                                    <p class="text-[10px] text-slate-500">Neuronas totales</p>
+                                    <p class="mt-1 text-sm font-semibold text-[#1a2b2b]">@_totalNeurons</p>
+                                </div>
+                                <div class="rounded-2xl bg-[#f2f2f2] px-3 py-3 border border-slate-200">
+                                    <p class="text-[10px] text-slate-500">Función de activación</p>
+                                    <p class="mt-1 text-sm font-semibold text-[#1a2b2b]">
+                                        Ocultas: @_activationHidden · Salida: @_activationOutput
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="mt-3 rounded-2xl bg-[#1a2b2b]/5 px-3 py-3 border border-[#1a2b2b]/15 text-[11px] text-slate-700">
+                                <p class="mb-1 font-semibold text-[#1a2b2b]">Hiperparámetros clave</p>
+                                <p>• Tasa de aprendizaje (learning rate): <span class="font-mono">@_learningRate.ToString("0.0000")</span></p>
+                                <p>• Optimizador: <span class="font-semibold">@_optimizerName</span></p>
+                                <p>• Regularización: <span class="font-semibold">@_regularization</span></p>
+                                <p>• Tamaño de lote (batch size): <span class="font-mono">@_batchSize</span></p>
+                            </div>
+                        </div>
+
+                        <!-- Operaciones IA -->
+                        <div class="rounded-3xl bg-white border border-slate-200 px-5 py-5 shadow-sm">
+                            <h2 class="text-sm md:text-base font-semibold text-[#1a2b2b] mb-4">
+                                Operaciones del módulo IA
+                            </h2>
+
+                            <div class="space-y-3 text-xs">
+                                <button type="button"
+                                        @onclick="() => SetTab(AiTab.Prediction)"
+                                        class="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-[#f2f2f2] px-4 py-3 hover:border-[#348e91] hover:bg-[#348e91]/5 transition-colors">
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#348e91]/10">
+                                            <i class="bi bi-graph-up-arrow text-[#1c5052]"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-[13px] font-semibold text-[#1a2b2b]">Ejecutar predicción</p>
+                                            <p class="text-[11px] text-slate-600">Simular probabilidad de PUBLICADO / ACEPTADO / SIN ESTADO.</p>
+                                        </div>
+                                    </div>
+                                    <i class="bi bi-chevron-right text-slate-400"></i>
+                                </button>
+
+                                <button type="button"
+                                        @onclick="() => SetTab(AiTab.Recommendation)"
+                                        class="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-[#f2f2f2] px-4 py-3 hover:border-[#800909] hover:bg-[#800909]/5 transition-colors">
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#800909]/10">
+                                            <i class="bi bi-stars text-[#800909]"></i>
+                                        </div>
+                                        <div>
+                                            <p class="text-[13px] font-semibold text-[#1a2b2b]">Obtener recomendaciones</p>
+                                            <p class="text-[11px] text-slate-600">Sugerencia de revistas según perfil del artículo.</p>
+                                        </div>
+                                    </div>
+                                    <i class="bi bi-chevron-right text-slate-400"></i>
+                                </button>
+
+                                <button type="button"
+                                        @onclick="RunModelTraining"
+                                        disabled="@_isTrainingModel"
+                                        class="w-full flex items-center justify-between rounded-2xl border border-slate-200 bg-[#f2f2f2] px-4 py-3 hover:border-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed">
+                                    <div class="flex items-center gap-3">
+                                        <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10">
+                                            @if (_isTrainingModel)
+                                            {
+                                                <i class="bi bi-arrow-repeat animate-spin text-emerald-700"></i>
+                                            }
+                                            else
+                                            {
+                                                <i class="bi bi-cpu text-emerald-700"></i>
+                                            }
+                                        </div>
+                                        <div>
+                                            <p class="text-[13px] font-semibold text-[#1a2b2b]">
+                                                @(_isTrainingModel ? "Entrenando modelo..." : "Reentrenar modelos")
+                                            </p>
+                                            <p class="text-[11px] text-slate-600">Actualiza los pesos con los datos más recientes.</p>
+                                        </div>
+                                    </div>
+                                    <i class="bi bi-chevron-right text-slate-400"></i>
+                                </button>
+                            </div>
+
+                            <div class="mt-4 pt-3 border-t border-slate-200 text-[11px] text-slate-600">
+                                <p class="mb-1 font-semibold text-[#1a2b2b]">Resumen técnico</p>
+                                <p>
+                                    El entreno ajusta los parámetros θ de la red minimizando la función de pérdida
+                                    mediante descenso de gradiente estocástico. En cada época se actualizan los pesos
+                                    a partir del gradiente ∂L/∂θ calculado sobre lotes de ejemplos de artículos.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+            else if (_activeTab == AiTab.Prediction)
+            {
+                <!-- ================= PESTAÑA PREDICCIÓN ================= -->
+                <div class="grid grid-cols-1 gap-5 xl:grid-cols-3">
+                    <!-- Formulario de predicción -->
+                    <div class="xl:col-span-2 rounded-3xl bg-white border border-slate-200 px-5 py-5 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-sm md:text-base font-semibold text-[#1a2b2b]">
+                                    Motor de predicción de estado de publicación
+                                </h2>
+                                <p class="text-[11px] text-slate-600">
+                                    Simula la probabilidad de que un artículo sea PUBLICADO, ACEPTADO o permanezca SIN ESTADO,
+                                    según sus características.
+                                </p>
+                            </div>
+                            <span class="inline-flex items-center rounded-full bg-[#348e91]/10 px-3 py-1 text-[11px] font-semibold text-[#1c5052] border border-[#348e91]/40">
+                                <i class="bi bi-lightning-charge me-1 text-xs"></i>
+                                Análisis en tiempo real
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 text-xs">
+                            <!-- Línea de investigación -->
+                            <div>
+                                <label class="mb-1 block font-semibold text-slate-700">
+                                    Línea de investigación
+                                </label>
+                                <select class="w-full rounded-xl border border-slate-300 bg-[#f2f2f2] px-3 py-2 text-xs shadow-sm focus:border-[#348e91] focus:ring-2 focus:ring-[#348e91]/30"
+                                        @bind="_predInput.ResearchLine">
+                                    <option value="">Seleccionar...</option>
+                                    @foreach (var line in _researchLinesIa)
+                                    {
+                                        <option value="@line">@line</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- Campo amplio OCDE -->
+                            <div>
+                                <label class="mb-1 block font-semibold text-slate-700">
+                                    Campo amplio OCDE
+                                </label>
+                                <select class="w-full rounded-xl border border-slate-300 bg-[#f2f2f2] px-3 py-2 text-xs shadow-sm focus:border-[#348e91] focus:ring-2 focus:ring-[#348e91]/30"
+                                        @bind="_predInput.BroadField">
+                                    <option value="">Seleccionar...</option>
+                                    @foreach (var field in _broadFieldsIa)
+                                    {
+                                        <option value="@field">@field</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <!-- Campo específico -->
+                            <div>
+                                <label class="mb-1 block font-semibold text-slate-700">
+                                    Campo específico OCDE
+                                </label>
+                                <input class="w-full rounded-xl border border-slate-300 bg-[#f2f2f2] px-3 py-2 text-xs shadow-sm focus:border-[#348e91] focus:ring-2 focus:ring-[#348e91]/30"
+                                       placeholder="Ej. Tecnologías de la Información y la Comunicación (TIC)"
+                                       @bind="_predInput.SpecificField" />
+                            </div>
+
+                            <!-- Campo detallado -->
+                            <div>
+                                <label class="mb-1 block font-semibold text-slate-700">
+                                    Campo detallado OCDE
+                                </label>
+                                <input class="w-full rounded-xl border border-slate-300 bg-[#f2f2f2] px-3 py-2 text-xs shadow-sm focus:border-[#348e91] focus:ring-2 focus:ring-[#348e91]/30"
+                                       placeholder="Ej. Sistemas de información"
+                                       @bind="_predInput.DetailedField" />
+                            </div>
+
+                            <!-- Año objetivo -->
+                            <div>
+                                <label class="mb-1 block font-semibold text-slate-700">
+                                    Año objetivo de publicación
+                                </label>
+                                <input type="number"
+                                       class="w-full rounded-xl border border-slate-300 bg-[#f2f2f2] px-3 py-2 text-xs shadow-sm focus:border-[#348e91] focus:ring-2 focus:ring-[#348e91]/30"
+                                       @bind="_predInput.TargetYear" />
+                            </div>
+
+                            <!-- SJR -->
+                            <div>
+                                <label class="mb-1 block font-semibold text-slate-700">
+                                    SJR estimado de la revista
+                                </label>
+                                <input type="number" step="0.01" min="0"
+                                       class="w-full rounded-xl border border-slate-300 bg-[#f2f2f2] px-3 py-2 text-xs shadow-sm focus:border-[#348e91] focus:ring-2 focus:ring-[#348e91]/30"
+                                       @bind="_predInput.Sjr" />
+                            </div>
+
+                            <!-- Cuartil -->
+                            <div>
+                                <label class="mb-1 block font-semibold text-slate-700">
+                                    Cuartil objetivo
+                                </label>
+                                <select class="w-full rounded-xl border border-slate-300 bg-[#f2f2f2] px-3 py-2 text-xs shadow-sm focus:border-[#348e91] focus:ring-2 focus:ring-[#348e91]/30"
+                                        @bind="_predInput.Quartile">
+                                    <option value="">Sin preferencia</option>
+                                    <option value="Q1">Q1</option>
+                                    <option value="Q2">Q2</option>
+                                    <option value="Q3">Q3</option>
+                                    <option value="Q4">Q4</option>
+                                </select>
+                            </div>
+
+                            <!-- Flags -->
+                            <div class="md:col-span-2">
+                                <label class="mb-1 block font-semibold text-slate-700">
+                                    Características del artículo
+                                </label>
+                                <div class="flex flex-wrap gap-2">
+                                    <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-[#f2f2f2] px-3 py-1 text-[11px] cursor-pointer hover:border-[#348e91]">
+                                        <input type="checkbox" class="h-3 w-3" @bind="_predInput.IsProjectResult" />
+                                        <span>Es resultado de proyecto</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-[#f2f2f2] px-3 py-1 text-[11px] cursor-pointer hover:border-[#348e91]">
+                                        <input type="checkbox" class="h-3 w-3" @bind="_predInput.HasIntercultural" />
+                                        <span>Tiene componente intercultural</span>
+                                    </label>
+                                    <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-[#f2f2f2] px-3 py-1 text-[11px] cursor-pointer hover:border-[#348e91]">
+                                        <input type="checkbox" class="h-3 w-3" @bind="_predInput.IsOpenAccess" />
+                                        <span>Es de acceso abierto</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
+                            <button type="button"
+                                    @onclick="ResetPredictionForm"
+                                    class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                                <i class="bi bi-eraser"></i>
+                                Limpiar formulario
+                            </button>
+
+                            <button type="button"
+                                    @onclick="RunPredictionAsync"
+                                    disabled="@_isRunningPrediction"
+                                    class="inline-flex items-center gap-2 rounded-xl bg-[#800909] px-6 py-2 text-xs font-semibold text-white shadow-md hover:bg-[#661111] disabled:opacity-60 disabled:cursor-not-allowed">
+                                @if (_isRunningPrediction)
+                                {
+                                    <i class="bi bi-arrow-repeat animate-spin"></i>
+                                    <span>Calculando...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-calculator"></i>
+                                    <span>Ejecutar predicción</span>
+                                }
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Resultados de predicción -->
+                    <div class="rounded-3xl bg-white border border-slate-200 px-5 py-5 shadow-sm">
+                        <h2 class="text-sm md:text-base font-semibold text-[#1a2b2b] mb-4">
+                            Resultados de la predicción
+                        </h2>
+
+                        @if (_predResult == null)
+                        {
+                            <div class="flex h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-[#f2f2f2] text-[11px] text-slate-500 text-center px-4">
+                                Ejecuta una simulación para visualizar aquí las probabilidades por estado de publicación.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="space-y-4 text-xs">
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-slate-600">PUBLICADO</span>
+                                        <span class="font-bold text-emerald-700">@_predResult.PublishedProb.ToString("0.0")%</span>
+                                    </div>
+                                    <div class="h-2 rounded-full bg-[#f2f2f2] overflow-hidden">
+                                        <div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600"
+                                             style="width:@_predResult.PublishedProb%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-slate-600">ACEPTADO</span>
+                                        <span class="font-bold text-[#348e91]">@_predResult.AcceptedProb.ToString("0.0")%</span>
+                                    </div>
+                                    <div class="h-2 rounded-full bg-[#f2f2f2] overflow-hidden">
+                                        <div class="h-full rounded-full bg-gradient-to-r from-[#348e91] to-[#1c5052]"
+                                             style="width:@_predResult.AcceptedProb%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between mb-1">
+                                        <span class="text-slate-600">SIN ESTADO</span>
+                                        <span class="font-bold text-slate-600">@_predResult.NoStatusProb.ToString("0.0")%</span>
+                                    </div>
+                                    <div class="h-2 rounded-full bg-[#f2f2f2] overflow-hidden">
+                                        <div class="h-full rounded-full bg-gradient-to-r from-slate-400 to-slate-500"
+                                             style="width:@_predResult.NoStatusProb%"></div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 rounded-2xl bg-[#f2f2f2] px-3 py-3 border border-slate-200">
+                                    <p class="text-[11px] font-semibold text-[#1a2b2b] mb-1">
+                                        Explicación del modelo
+                                    </p>
+                                    <p class="text-[11px] text-slate-600">
+                                        @_predResult.Explanation
+                                    </p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+            else if (_activeTab == AiTab.Recommendation)
+            {
+                <!-- ================= PESTAÑA RECOMENDACIÓN ================= -->
+                <div class="grid grid-cols-1 gap-5 xl:grid-cols-3">
+                    <!-- Formulario recomendación -->
+                    <div class="xl:col-span-2 rounded-3xl bg-white border border-slate-200 px-5 py-5 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 class="text-sm md:text-base font-semibold text-[#1a2b2b]">
+                                    Motor de recomendaciones de revistas
+                                </h2>
+                                <p class="text-[11px] text-slate-600">
+                                    Ingresa los datos de un artículo (real o simulado) para obtener sugerencias de revistas
+                                    alineadas a su perfil temático y métricas.
+                                </p>
+                            </div>
+                            <span class="inline-flex items-center rounded-full bg-[#800909]/10 px-3 py-1 text-[11px] font-semibold text-[#800909] border border-[#800909]/40">
+                                <i class="bi bi-stars me-1 text-xs"></i>
+                                Motor de recomendación
+                            </span>
+                        </div>
+
+                        <div class="space-y-4 text-xs">
+                            <div>
+                                <label class="mb-1 block font-semibold text-slate-700">
+                                    Título o resumen breve del artículo
+                                </label>
+                                <textarea rows="3"
+                                          class="w-full rounded-xl border border-slate-300 bg-[#f2f2f2] px-3 py-2 text-xs shadow-sm focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/30 resize-none"
+                                          placeholder="Ej. Implementación de un sistema de reportería y visualización de datos con BI e IA para la gestión de artículos científicos en la UTA."
+                                          @bind="_recInput.TitleOrSummary"></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="mb-1 block font-semibold text-slate-700">
+                                        Línea de investigación
+                                    </label>
+                                    <select class="w-full rounded-xl border border-slate-300 bg-[#f2f2f2] px-3 py-2 text-xs shadow-sm focus:border-[#348e91] focus:ring-2 focus:ring-[#348e91]/30"
+                                            @bind="_recInput.ResearchLine">
+                                        <option value="">Seleccionar...</option>
+                                        @foreach (var line in _researchLinesIa)
+                                        {
+                                            <option value="@line">@line</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="mb-1 block font-semibold text-slate-700">
+                                        Campo amplio OCDE
+                                    </label>
+                                    <select class="w-full rounded-xl border border-slate-300 bg-[#f2f2f2] px-3 py-2 text-xs shadow-sm focus:border-[#348e91] focus:ring-2 focus:ring-[#348e91]/30"
+                                            @bind="_recInput.BroadField">
+                                        <option value="">Seleccionar...</option>
+                                        @foreach (var field in _broadFieldsIa)
+                                        {
+                                            <option value="@field">@field</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div>
+                                    <label class="mb-1 block font-semibold text-slate-700">
+                                        Cuartil objetivo
+                                    </label>
+                                    <select class="w-full rounded-xl border border-slate-300 bg-[#f2f2f2] px-3 py-2 text-xs shadow-sm focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/30"
+                                            @bind="_recInput.TargetQuartile">
+                                        <option value="">Sin preferencia</option>
+                                        <option value="Q1">Q1</option>
+                                        <option value="Q2">Q2</option>
+                                        <option value="Q3">Q3</option>
+                                        <option value="Q4">Q4</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="mb-1 block font-semibold text-slate-700">
+                                        Preferencia de acceso abierto
+                                    </label>
+                                    <select class="w-full rounded-xl border border-slate-300 bg-[#f2f2f2] px-3 py-2 text-xs shadow-sm focus:border-[#1c5052] focus:ring-2 focus:ring-[#1c5052]/30"
+                                            @bind="_recInput.OpenAccessPreference">
+                                        <option value="">Indistinto</option>
+                                        <option value="true">Sí, acceso abierto</option>
+                                        <option value="false">No, modelo tradicional</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="mb-1 block font-semibold text-slate-700">
+                                    Fuentes de indexación deseadas
+                                </label>
+                                <div class="flex flex-wrap gap-2">
+                                    @foreach (var src in _indexingSourcesIa)
+                                    {
+                                        <label class="inline-flex items-center gap-2 rounded-full border border-slate-300 bg-[#f2f2f2] px-3 py-1 text-[11px] cursor-pointer hover:border-[#348e91]">
+                                            <input type="checkbox"
+                                                   class="h-3 w-3"
+                                                   value="@src"
+                                                   @onchange="(e) => ToggleIndexingSource(src, e.Value as bool?)" />
+                                            <span>@src</span>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200">
+                                <button type="button"
+                                        @onclick="ResetRecommendationForm"
+                                        class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50">
+                                    <i class="bi bi-eraser"></i>
+                                    Limpiar simulación
+                                </button>
+
+                                <button type="button"
+                                        @onclick="RunRecommendationAsync"
+                                        disabled="@_isRunningRecommendation"
+                                        class="inline-flex items-center gap-2 rounded-xl bg-[#4d1a1a] px-6 py-2 text-xs font-semibold text-white shadow-md hover:bg-[#661111] disabled:opacity-60 disabled:cursor-not-allowed">
+                                    @if (_isRunningRecommendation)
+                                    {
+                                        <i class="bi bi-arrow-repeat animate-spin"></i>
+                                        <span>Procesando...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-magic"></i>
+                                        <span>Generar recomendaciones</span>
+                                    }
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resultados recomendación -->
+                    <div class="rounded-3xl bg-white border border-slate-200 px-5 py-5 shadow-sm">
+                        <h2 class="text-sm md:text-base font-semibold text-[#1a2b2b] mb-4">
+                            Revistas recomendadas por IA
+                        </h2>
+
+                        @if (_recResults == null || !_recResults.Any())
+                        {
+                            <div class="flex h-56 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-[#f2f2f2] text-[11px] text-slate-500 text-center px-4">
+                                Completa la simulación para visualizar aquí las revistas sugeridas por el modelo.
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="max-h-[360px] space-y-3 overflow-y-auto pr-1 text-xs">
+                                @foreach (var v in _recResults)
+                                {
+                                    <div class="relative rounded-2xl border border-slate-200 bg-[#fdfdfd] px-3 py-3 shadow-sm">
+                                        <div class="absolute -top-2 -right-2 rounded-full bg-[#348e91]/10 px-2 py-1 text-[10px] font-semibold text-[#1c5052] border border-[#348e91]/40">
+                                            @v.MatchScore.ToString("0.0")%
+                                        </div>
+
+                                        <p class="text-[13px] font-semibold text-[#1a2b2b] mb-1">
+                                            @v.VenueName
+                                        </p>
+                                        <div class="flex flex-wrap items-center gap-3 mb-2 text-[11px] text-slate-600">
+                                            <span class="inline-flex items-center gap-1">
+                                                <i class="bi bi-graph-up text-[#1c5052]"></i>
+                                                SJR:
+                                                <span class="font-semibold">@v.Sjr.ToString("0.000")</span>
+                                            </span>
+                                            <span class="inline-flex items-center gap-1">
+                                                <i class="bi bi-award text-[#800909]"></i>
+                                                Cuartil:
+                                                <span class="font-semibold">@v.Quartile</span>
+                                            </span>
+                                        </div>
+                                        <div class="mb-2 flex flex-wrap gap-1">
+                                            @foreach (var src in v.IndexingSources.Take(3))
+                                            {
+                                                <span class="rounded-full bg-[#f2f2f2] px-2 py-0.5 text-[10px] text-[#1c5052] border border-slate-200">
+                                                    @src
+                                                </span>
+                                            }
+                                            @if (v.IndexingSources.Length > 3)
+                                            {
+                                                <span class="rounded-full bg-[#f2f2f2] px-2 py-0.5 text-[10px] text-slate-500 border border-slate-200">
+                                                    +@(v.IndexingSources.Length - 3)
+                                                </span>
+                                            }
+                                        </div>
+                                        <p class="text-[11px] text-slate-600">
+                                            @v.Reason
+                                        </p>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="mt-4 pt-3 border-t border-slate-200 grid grid-cols-2 gap-3 text-center text-xs">
+                                <div>
+                                    <p class="text-[11px] text-slate-500">Total sugerencias</p>
+                                    <p class="mt-1 text-lg font-semibold text-[#1a2b2b]">@_recResults.Count</p>
+                                </div>
+                                <div>
+                                    <p class="text-[11px] text-slate-500">Promedio de afinidad</p>
+                                    <p class="mt-1 text-lg font-semibold text-emerald-700">
+                                        @_recResults.Average(r => r.MatchScore).ToString("0.0")%
+                                    </p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
 
 @code {
+    private enum AiTab
+    {
+        Overview,
+        Prediction,
+        Recommendation
+    }
 
+    private AiTab _activeTab = AiTab.Overview;
+
+    // ====== ESTADO SISTEMA / MODELOS ======
+    private int _aiModelsCount = 3;
+    private DateTime? _lastTrainingUtc = DateTime.UtcNow.AddDays(-1);
+    private string _trainingStatus = "Optimizado";
+    private bool _isTrainingModel = false;
+    private double _memoryUsage = 2.4;
+    private int _apiLatency = 42;
+
+    // Métricas matemáticas (placeholder, luego las conectas a tu backend)
+    private int _currentEpoch = 18;
+    private int _totalEpochs = 30;
+    private double _trainLoss = 0.231;
+    private double _valLoss = 0.287;
+    private double _trainAccuracy = 95.3;
+    private double _valAccuracy = 93.8;
+    private double _rocAuc = 0.94;
+    private double _f1Score = 0.92;
+    private double _globalAccuracy = 94.7;
+
+    // Arquitectura de red neuronal (placeholders)
+    private int _inputFeatures = 47;
+    private int _hiddenLayers = 3;
+    private int _totalNeurons = 128;
+    private double _learningRate = 0.0008;
+    private string _optimizerName = "Adam";
+    private string _activationHidden = "ReLU";
+    private string _activationOutput = "Softmax";
+    private string _regularization = "Dropout + L2";
+    private int _batchSize = 64;
+
+    // ====== LISTAS CATÁLOGOS ======
+    private readonly List<string> _researchLinesIa = new()
+    {
+        "TECNOLOGIA DE LA INFORMACION Y SISTEMAS DE CONTROL",
+        "DESARROLLO EMPRESARIAL",
+        "PRODUCCION AGROALIMENTARIA Y MEDIO AMBIENTE",
+        "SALUD HUMANA",
+        "COMPORTAMIENTO SOCIAL Y EDUCATIVO"
+    };
+
+    private readonly List<string> _broadFieldsIa = new()
+    {
+        "Tecnologías de la Información y la Comunicación (TIC)",
+        "Ingeniería, Industria y Construcción",
+        "Ciencias Naturales, Matemáticas y Estadísticas",
+        "Agricultura, Silvicultura, Pesca y Veterinaria",
+        "Salud y Bienestar",
+        "Servicios",
+        "Ciencias Sociales, Periodismo, Información y Derecho",
+        "Artes y Humanidades",
+        "Administración"
+    };
+
+    private readonly List<string> _indexingSourcesIa = new()
+    {
+        "SCOPUS",
+        "SCIELO",
+        "SCIMAGO JOURNAL RANK",
+        "ISI WEB OF KNOWLEDGE",
+        "CINAHL",
+        "DOAJ",
+        "ERIHPLUS",
+        "REDALYC",
+        "LILACS",
+        "WEB_OF_CIENCE"
+    };
+
+    // ====== PREDICCIÓN ======
+    private PredictionInput _predInput = new();
+    private PredictionResult? _predResult;
+    private bool _isRunningPrediction = false;
+    private ForecastInput _forecastInput = new()
+    {
+        FromYear = DateTime.UtcNow.Year,
+        ToYear = DateTime.UtcNow.Year + 3
+    };
+    private ForecastResult? _forecastResult;
+    private bool _isRunningForecast = false;
+
+    // ====== RECOMENDACIÓN ======
+    private RecommendationInput _recInput = new();
+    private List<RecommendationResult>? _recResults;
+    private bool _isRunningRecommendation = false;
+    private List<string> _selectedIndexingSources = new();
+
+    // ====== MÉTODOS UI ======
+    private void SetTab(AiTab tab) => _activeTab = tab;
+
+    private string GetTabClass(AiTab tab)
+    {
+        bool isActive = _activeTab == tab;
+        var baseClass = "inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors";
+        if (isActive)
+        {
+            return $"{baseClass} bg-[#1a2b2b] text-[#f2f2f2] border border-[#1a2b2b]";
+        }
+        return $"{baseClass} bg-transparent text-slate-600 border border-transparent hover:bg-[#f2f2f2] hover:text-[#1a2b2b]";
+    }
+
+    private void ResetPredictionForm()
+    {
+        _predInput = new PredictionInput();
+        _predResult = null;
+    }
+
+    private async Task RunPredictionAsync()
+    {
+        _isRunningPrediction = true;
+        _predResult = null;
+
+        try
+        {
+            // TODO: reemplazar con llamada real a tu backend de IA
+            await Task.Delay(800);
+
+            _predResult = new PredictionResult
+            {
+                PublishedProb = 62.3,
+                AcceptedProb = 24.7,
+                NoStatusProb = 13.0,
+                Explanation = "Probabilidad alta de publicación debido a una combinación favorable de línea de investigación, campo OCDE, SJR y cuartil objetivo, consistente con los patrones históricos de éxito observados en la DIDE."
+            };
+        }
+        finally
+        {
+            _isRunningPrediction = false;
+        }
+    }
+
+    private async Task RunForecastAsync()
+    {
+        _isRunningForecast = true;
+        _forecastResult = null;
+
+        try
+        {
+            await Task.Delay(600);
+            // TODO: lógica real de pronóstico (series temporales)
+        }
+        finally
+        {
+            _isRunningForecast = false;
+        }
+    }
+
+    private void ResetRecommendationForm()
+    {
+        _recInput = new RecommendationInput();
+        _recResults = null;
+        _selectedIndexingSources.Clear();
+    }
+
+    private async Task RunRecommendationAsync()
+    {
+        _isRunningRecommendation = true;
+        _recResults = new List<RecommendationResult>();
+
+        try
+        {
+            // TODO: conectar con tu motor de recomendación real
+            await Task.Delay(900);
+
+            _recResults = new List<RecommendationResult>
+            {
+                new()
+                {
+                    VenueName = "Journal of Intelligent Data & Analytics",
+                    Sjr = 1.85m,
+                    Quartile = "Q1",
+                    MatchScore = 86.4,
+                    IndexingSources = new[] {"SCOPUS", "SCIMAGO JOURNAL RANK", "WEB_OF_CIENCE"},
+                    Reason = "Alta afinidad temática con BI, analítica y sistemas de información; buen historial de publicaciones en líneas afines a la DIDE."
+                },
+                new()
+                {
+                    VenueName = "Revista Latinoamericana de Tecnología y Sistemas de Información",
+                    Sjr = 0.73m,
+                    Quartile = "Q2",
+                    MatchScore = 79.2,
+                    IndexingSources = new[] {"SCIELO", "REDALYC", "DOAJ"},
+                    Reason = "Fuerte enfoque regional y tecnológico, cuartil adecuado para consolidar producción científica institucional."
+                },
+                new()
+                {
+                    VenueName = "International Journal of Applied Computer Science in Education",
+                    Sjr = 0.55m,
+                    Quartile = "Q3",
+                    MatchScore = 68.7,
+                    IndexingSources = new[] {"DOAJ", "ERIHPLUS"},
+                    Reason = "Opción accesible para trabajos aplicados en TIC y educación; tasa de aceptación histórica favorable."
+                }
+            };
+        }
+        finally
+        {
+            _isRunningRecommendation = false;
+        }
+    }
+
+    private void ToggleIndexingSource(string source, bool? isChecked)
+    {
+        if (isChecked == true)
+        {
+            if (!_selectedIndexingSources.Contains(source))
+                _selectedIndexingSources.Add(source);
+        }
+        else
+        {
+            _selectedIndexingSources.Remove(source);
+        }
+    }
+
+    private async Task RunModelTraining()
+    {
+        _isTrainingModel = true;
+        try
+        {
+            // TODO: disparar entrenamiento en backend
+            await Task.Delay(2000);
+            _lastTrainingUtc = DateTime.UtcNow;
+            _trainingStatus = "Optimizado";
+        }
+        finally
+        {
+            _isTrainingModel = false;
+        }
+    }
+
+    // ====== CLASES AUXILIARES ======
+    private class PredictionInput
+    {
+        public string? ResearchLine { get; set; }
+        public string? BroadField { get; set; }
+        public string? SpecificField { get; set; }
+        public string? DetailedField { get; set; }
+        public int TargetYear { get; set; } = DateTime.UtcNow.Year;
+        public decimal Sjr { get; set; }
+        public string? Quartile { get; set; }
+        public bool IsProjectResult { get; set; }
+        public bool HasIntercultural { get; set; }
+        public bool IsOpenAccess { get; set; }
+    }
+
+    private class PredictionResult
+    {
+        public double PublishedProb { get; set; }
+        public double AcceptedProb { get; set; }
+        public double NoStatusProb { get; set; }
+        public string Explanation { get; set; } = string.Empty;
+    }
+
+    private class ForecastInput
+    {
+        public int FromYear { get; set; }
+        public int ToYear { get; set; }
+        public string? ResearchLine { get; set; }
+    }
+
+    private class ForecastResult
+    {
+        public List<ForecastPoint> Points { get; set; } = new();
+    }
+
+    private class ForecastPoint
+    {
+        public int Year { get; set; }
+        public int PredictedArticles { get; set; }
+    }
+
+    private class RecommendationInput
+    {
+        public string? TitleOrSummary { get; set; }
+        public string? ResearchLine { get; set; }
+        public string? BroadField { get; set; }
+        public string? TargetQuartile { get; set; }
+        public string? OpenAccessPreference { get; set; }
+        public string? IndexingSourcesRaw { get; set; }
+    }
+
+    private class RecommendationResult
+    {
+        public string VenueName { get; set; } = string.Empty;
+        public decimal Sjr { get; set; }
+        public string Quartile { get; set; } = "Q2";
+        public double MatchScore { get; set; }
+        public string[] IndexingSources { get; set; } = Array.Empty<string>();
+        public string Reason { get; set; } = string.Empty;
+    }
 }
