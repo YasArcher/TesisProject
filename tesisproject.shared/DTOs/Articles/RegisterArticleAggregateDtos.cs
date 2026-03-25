@@ -4,6 +4,8 @@ namespace tesisproject.shared.DTOs.Articles
     {
         public string? FormKey { get; set; }
         public ArticleAggregateCoreDto Article { get; set; } = new();
+        public ArticleVenueInputDto Venue { get; set; } = new();
+        public ArticleVenueMetricInputDto VenueMetric { get; set; } = new();
         public List<DynamicFieldValueInputDto> DynamicFields { get; set; } = new();
         public List<ArticleParticipantAggregateDto> Participants { get; set; } = new();
     }
@@ -23,7 +25,6 @@ namespace tesisproject.shared.DTOs.Articles
         public string? EventName { get; set; }
         public string? GroupName { get; set; }
         public string? Filiacion { get; set; }
-        public int? VenueId { get; set; }
         public int? AcademicTermId { get; set; }
         public byte? PublicationStatusId { get; set; }
         public int? ResearchLineId { get; set; }
@@ -33,6 +34,24 @@ namespace tesisproject.shared.DTOs.Articles
         public bool IsOpenAccess { get; set; }
         public string? ExternalSource { get; set; }
         public string? ExternalId { get; set; }
+    }
+
+    public class ArticleVenueInputDto
+    {
+        public int? VenueId { get; set; }
+        public string? JournalName { get; set; }
+        public string? IssnCode { get; set; }
+        public string? IssueNumber { get; set; }
+        public string? VolumeNumber { get; set; }
+        public string? JournalUrl { get; set; }
+        public string? Type { get; set; }
+    }
+
+    public class ArticleVenueMetricInputDto
+    {
+        public short? Year { get; set; }
+        public decimal? Sjr { get; set; }
+        public string? Quartile { get; set; }
     }
 
     public class ArticleParticipantAggregateDto

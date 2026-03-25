@@ -1,513 +1,1765 @@
-﻿@page "/management/exportinformation"
-@using System.Net.Http.Headers
-@using System.Net.Http.Json
+@page "/management/exportinformation"
 @using Microsoft.AspNetCore.Components.Forms
-@using tesisproject.shared.DTOs.Articles
+@using Microsoft.AspNetCore.Components
+@using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.Catalogs
+@using tesisproject.shared.DTOs.Configuration
+@using tesisproject.shared.DTOs.Imports
 
-@inject HttpClient Http
-@inject NavigationManager Nav
-@inject Blazored.Toast.Services.IToastService Toast
+@inject IFormConfigurationClient FormConfigurationClient
+@inject IBulkImportClient BulkImportClient
+@inject ExportJsInterop ExportJs
 
-<PageTitle>Exportar / Importar artículos (BI)</PageTitle>
+<PageTitle>Carga masiva dinámica</PageTitle>
 
-<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-    <div class="mx-auto max-w-7xl px-4 py-8">
-        <!-- Header -->
-        <div class="mb-8">
-            <div class="flex items-center gap-3 mb-2">
-                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-[#800909] to-[#a61a1a] text-white shadow-lg">
-                    <i class="bi bi-arrow-left-right text-lg"></i>
-                </div>
-                <div>
-                    <h1 class="text-2xl md:text-3xl font-bold text-gray-900">
-                        Exportar / Importar Artículos BI
-                    </h1>
-                    <p class="mt-1 text-sm text-gray-600">
-                        Sincronización de datos desnormalizados para Business Intelligence
-                    </p>
-                </div>
-            </div>
-
-            <!-- Stats/Info Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
-                            <i class="bi bi-download text-sm"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500">Exportación</p>
-                            <p class="text-sm font-semibold text-gray-900">CSV & Excel BI</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
-                            <i class="bi bi-upload text-sm"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500">Importación</p>
-                            <p class="text-sm font-semibold text-gray-900">Con validación</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 text-purple-600">
-                            <i class="bi bi-database text-sm"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-500">Integración</p>
-                            <p class="text-sm font-semibold text-gray-900">OLTP → BI</p>
-                        </div>
-                    </div>
-                </div>
+<div class="app-page-shell bulk-import-page">
+    <div class="bulk-import-hero mb-4 rounded-[1.6rem] p-4 text-white shadow-lg">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+                <h1 class="text-2xl font-black md:text-3xl">Carga masiva dinámica</h1>
             </div>
         </div>
+    </div>
 
-        <!-- Main Content - Two Columns -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <!-- Left Column - Export -->
-            <div class="space-y-6">
-                <!-- Export Card -->
-                <div class="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-                    <div class="bg-gradient-to-r from-emerald-500 to-emerald-600 px-6 py-4">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
-                                    <i class="bi bi-file-earmark-arrow-down text-xl text-white"></i>
-                                </div>
+    <AppAlertBanner Class="mb-4" Variant="error" Title="@MessageTitle" Message="@ErrorMessage" />
+    <AppAlertBanner Class="mb-4" Variant="success" Title="@MessageTitle" Message="@SuccessMessage" />
+    <AppAlertBanner Class="mb-4" Variant="warning" Title="@MessageTitle" Message="@WarningMessage" />
+
+    @if (IsLoading)
+    {
+        <div class="rounded-3xl border bg-white p-6 text-center text-slate-600 shadow-sm">Cargando configuración de campos y lotes recientes...</div>
+    }
+    else
+    {
+        <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-4">
+            <AppMetricCard Label="Campos de artículo" Value="@SelectedArticleFieldIds.Count.ToString()" HelperText="seleccionados para la plantilla" Tone="accent" />
+            <AppMetricCard Label="Campos de participante" Value="@SelectedParticipantFieldIds.Count.ToString()" HelperText="incluidos en el lote" Tone="warm" />
+            <AppMetricCard Label="Lote actual" Value="@(CurrentBatch?.Summary.BatchCode ?? "Sin lote")" HelperText="preview y estados del staging" Tone="default" />
+            <AppMetricCard Label="Lotes recientes" Value="@RecentBatches.Count.ToString()" HelperText="historial rápido para retomar" Tone="accent" />
+        </div>
+
+        <div class="grid grid-cols-1 gap-6 2xl:grid-cols-[1.15fr_0.85fr]">
+            <section class="space-y-6">
+                <div class="rounded-[1.6rem] border border-[#d9e5e8] bg-white p-4 shadow-sm">
+                    <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <h2 class="text-base font-black text-[#12343b] md:text-lg">1. Diseñar plantilla</h2>
+                        <div class="flex flex-wrap gap-2">
+                            <button class="rounded-xl border border-[#c7d6da] bg-white px-4 py-2 text-sm font-semibold text-[#12343b]" @onclick="UseActiveFormsAsync">Usar formularios activos</button>
+                            <button class="rounded-xl border border-[#e2c695] bg-[#fff3de] px-4 py-2 text-sm font-semibold text-[#8b5a16]" @onclick="SelectRequiredOnly">Solo obligatorios</button>
+                            <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60" disabled="@IsGeneratingTemplate" @onclick="DownloadTemplateAsync">@(IsGeneratingTemplate ? "Generando..." : "Descargar plantilla")</button>
+                        </div>
+                    </div>
+
+                    <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <input class="w-full rounded-xl border border-[#c9d7db] bg-[#f7fafb] px-3 py-2 text-sm" placeholder="Buscar campos de artículo" @bind="ArticleFieldSearchTerm" @bind:event="oninput" />
+                        <input class="w-full rounded-xl border border-[#e1d1b0] bg-[#fffaf2] px-3 py-2 text-sm" placeholder="Buscar campos de participante" @bind="ParticipantFieldSearchTerm" @bind:event="oninput" />
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+                        <div class="rounded-3xl border border-[#d9e5e8] bg-[#f8fbfc] p-3.5">
+                            <div class="mb-3 flex items-center justify-between">
                                 <div>
-                                    <h2 class="text-lg font-bold text-white">Exportar para BI</h2>
-                                    <p class="text-sm text-white/90">Genera plantillas listas para análisis</p>
+                                    <h3 class="font-bold text-[#12343b]">Campos de artículo</h3>
                                 </div>
+                                <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#2f4858]">@SelectedArticleFieldIds.Count seleccionados</span>
                             </div>
-                            <span class="rounded-full bg-white/20 px-3 py-1 text-xs font-semibold text-white">
-                                RECOMENDADO
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="p-6">
-                        <div class="mb-6">
-                            <h3 class="text-sm font-semibold text-gray-900 mb-3">Formatos disponibles</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div class="border border-gray-200 rounded-xl p-4 hover:border-emerald-300 transition-colors">
-                                    <div class="flex items-start gap-3">
-                                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-                                            <i class="bi bi-file-earmark-text text-lg"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="font-medium text-gray-900">CSV BI</h4>
-                                            <p class="text-xs text-gray-600 mt-1">Ideal para ETL y procesos automatizados</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="border border-gray-200 rounded-xl p-4 hover:border-blue-300 transition-colors">
-                                    <div class="flex items-start gap-3">
-                                        <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-                                            <i class="bi bi-file-earmark-excel text-lg"></i>
-                                        </div>
-                                        <div>
-                                            <h4 class="font-medium text-gray-900">Excel BI</h4>
-                                            <p class="text-xs text-gray-600 mt-1">Optimizado para uso en hojas de cálculo</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="space-y-3">
-                            <div class="rounded-lg bg-gray-50 p-4">
-                                <h4 class="text-sm font-medium text-gray-900 mb-2">Incluye en la exportación:</h4>
-                                <ul class="space-y-2">
-                                    <li class="flex items-center gap-2 text-sm text-gray-600">
-                                        <i class="bi bi-check-circle-fill text-emerald-500"></i>
-                                        <span>Nombres de catálogos y metadatos</span>
-                                    </li>
-                                    <li class="flex items-center gap-2 text-sm text-gray-600">
-                                        <i class="bi bi-check-circle-fill text-emerald-500"></i>
-                                        <span>Índices SJR y cuartiles calculados</span>
-                                    </li>
-                                    <li class="flex items-center gap-2 text-sm text-gray-600">
-                                        <i class="bi bi-check-circle-fill text-emerald-500"></i>
-                                        <span>Datos desnormalizados para BI</span>
-                                    </li>
-                                    <li class="flex items-center gap-2 text-sm text-gray-600">
-                                        <i class="bi bi-check-circle-fill text-emerald-500"></i>
-                                        <span>Compatibilidad con Power BI y Tableau</span>
-                                    </li>
-                                </ul>
-                            </div>
-
-                            <div class="flex flex-col sm:flex-row gap-3 pt-2">
-                                <button @onclick="ExportCsvBi"
-                                        class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-emerald-700 hover:shadow-xl hover:-translate-y-0.5">
-                                    <i class="bi bi-file-earmark-arrow-down"></i>
-                                    Exportar CSV BI
-                                </button>
-
-                                <button @onclick="ExportExcelBi"
-                                        class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl hover:-translate-y-0.5">
-                                    <i class="bi bi-file-earmark-excel"></i>
-                                    Exportar Excel BI
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Instructions -->
-                <div class="bg-gradient-to-r from-gray-900 to-gray-800 rounded-2xl p-5 text-white">
-                    <h3 class="text-lg font-bold mb-3 flex items-center gap-2">
-                        <i class="bi bi-lightbulb"></i>
-                        ¿Cómo funciona?
-                    </h3>
-                    <ol class="space-y-3 text-sm">
-                        <li class="flex items-start gap-2">
-                            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs font-bold">1</span>
-                            <span>Exporta la plantilla en tu formato preferido</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs font-bold">2</span>
-                            <span>Edita los datos en Excel o tu herramienta de BI</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <span class="flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs font-bold">3</span>
-                            <span>Sube el archivo editado para sincronizar cambios</span>
-                        </li>
-                    </ol>
-                </div>
-            </div>
-
-            <!-- Right Column - Import -->
-            <div class="space-y-6">
-                <!-- Import Card -->
-                <div class="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
-                    <div class="bg-gradient-to-r from-[#800909] to-[#a61a1a] px-6 py-4">
-                        <div class="flex items-center gap-3">
-                            <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
-                                <i class="bi bi-file-earmark-arrow-up text-xl text-white"></i>
-                            </div>
-                            <div>
-                                <h2 class="text-lg font-bold text-white">Importar desde BI</h2>
-                                <p class="text-sm text-white/90">Sincroniza cambios desde archivos editados</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="p-6">
-                        <!-- File Upload Area -->
-                        <div class="mb-6">
-                            <label class="block text-sm font-medium text-gray-900 mb-3">
-                                Selecciona archivo para importar
-                            </label>
-
-                            <div class="border-2 border-dashed border-gray-300 rounded-2xl p-6 text-center transition-colors hover:border-[#800909]">
-                                <div class="max-w-xs mx-auto">
-                                    <div class="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-[#800909] mx-auto mb-3">
-                                        <i class="bi bi-cloud-arrow-up text-xl"></i>
-                                    </div>
-
-                                    <div class="space-y-2">
-                                        <p class="text-sm font-medium text-gray-900">
-                                            Selecciona tu archivo
-                                        </p>
-                                        <p class="text-xs text-gray-600">
-                                            haz clic en el botón de abajo
-                                        </p>
-                                    </div>
-
-                                    <div class="mt-4">
-                                        <InputFile OnChange="OnFileSelected"
-                                                   accept=".csv,.xlsx,.xls"
-                                                   class="hidden"
-                                                   id="file-upload" />
-                                        <label for="file-upload"
-                                               class="cursor-pointer inline-flex items-center gap-2 rounded-xl bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200 transition-colors">
-                                            <i class="bi bi-folder2-open"></i>
-                                            Examinar archivos
-                                        </label>
-                                    </div>
-
-                                    <p class="text-xs text-gray-500 mt-3">
-                                        Formatos soportados: .xlsx, .xls, .csv (UTF-8, separador ;)
-                                    </p>
-                                </div>
-                            </div>
-
-                            @if (_selectedFile is not null)
-                            {
-                                <div class="mt-4 rounded-xl bg-emerald-50 p-4 border border-emerald-200">
-                                    <div class="flex items-center justify-between">
-                                        <div class="flex items-center gap-3">
-                                            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
-                                                <i class="bi bi-file-earmark-check"></i>
-                                            </div>
-                                            <div>
-                                                <p class="text-sm font-medium text-gray-900">
-                                                    Archivo seleccionado
-                                                </p>
-                                                <p class="text-xs text-gray-600">
-                                                    @_selectedFile.Name • @(_selectedFile.Size / 1024) KB
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <button @onclick="ClearFile"
-                                                class="text-sm text-gray-500 hover:text-gray-700">
-                                            <i class="bi bi-x-lg"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                            }
-                        </div>
-
-                        <!-- Import Button -->
-                        <div class="mb-6">
-                            <button @onclick="ImportCsvBi"
-                                    disabled="@(_selectedFile is null || _isImporting)"
-                                    class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#800909] to-[#a61a1a] px-5 py-3.5 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
-                                @if (_isImporting)
+                            <div class="max-h-[28rem] space-y-2 overflow-auto pr-1">
+                                @if (!FilteredArticleFields.Any())
                                 {
-                                    <i class="bi bi-arrow-repeat animate-spin"></i>
-                                    <span>Procesando importación...</span>
+                                    <AppEmptyState Title="Sin coincidencias" Message="Prueba otra búsqueda para encontrar campos de artículo." />
                                 }
                                 else
                                 {
-                                    <i class="bi bi-upload"></i>
-                                    <span>Iniciar Importación</span>
+                                    @foreach (var field in FilteredArticleFields)
+                                    {
+                                        <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-[#d9e5e8] bg-white px-4 py-3 transition hover:border-[#8cb0b8] hover:shadow-sm">
+                                            <input type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-[#12343b]" checked="@SelectedArticleFieldIds.Contains(field.FieldId)" @onchange="(args) => ToggleArticleField(field.FieldId, args.Value)" />
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <span class="font-semibold text-[#12343b]">@field.FieldLabel</span>
+                                                    <span class="rounded-full bg-[#eef5f6] px-2 py-0.5 text-[11px] font-semibold text-[#2f4858]">@field.FieldKey</span>
+                                                    @if (field.IsDynamic)
+                                                    {
+                                                        <span class="rounded-full bg-[#fff1d6] px-2 py-0.5 text-[11px] font-semibold text-[#8b5a16]">Dinámico</span>
+                                                    }
+                                                    @if (field.IsRequired)
+                                                    {
+                                                        <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">Obligatorio</span>
+                                                    }
+                                                </div>
+                                                <div class="mt-1 text-xs text-slate-500">@field.DataType · @field.SourceType</div>
+                                            </div>
+                                        </label>
+                                    }
                                 }
-                            </button>
+                            </div>
+                        </div>
 
-                            @if (_selectedFile is null)
+                        <div class="rounded-3xl border border-[#ead8bd] bg-[#fffdf8] p-3.5">
+                            <div class="mb-3 flex items-center justify-between">
+                                <div>
+                                    <h3 class="font-bold text-[#8b5a16]">Campos de participante</h3>
+                                </div>
+                                <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#8b5a16]">@SelectedParticipantFieldIds.Count seleccionados</span>
+                            </div>
+                            <div class="max-h-[28rem] space-y-2 overflow-auto pr-1">
+                                @if (!FilteredParticipantFields.Any())
+                                {
+                                    <AppEmptyState Title="Sin coincidencias" Message="Prueba otra búsqueda para encontrar campos de participante." />
+                                }
+                                else
+                                {
+                                    @foreach (var field in FilteredParticipantFields)
+                                    {
+                                        <label class="flex cursor-pointer items-start gap-3 rounded-2xl border border-[#ead8bd] bg-white px-4 py-3 transition hover:border-[#d9ba86] hover:shadow-sm">
+                                            <input type="checkbox" class="mt-1 h-4 w-4 rounded border-slate-300 text-[#c17c2f]" checked="@SelectedParticipantFieldIds.Contains(field.FieldId)" @onchange="(args) => ToggleParticipantField(field.FieldId, args.Value)" />
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <span class="font-semibold text-[#8b5a16]">@field.FieldLabel</span>
+                                                    <span class="rounded-full bg-[#fff4e4] px-2 py-0.5 text-[11px] font-semibold text-[#8b5a16]">@field.FieldKey</span>
+                                                </div>
+                                                <div class="mt-1 text-xs text-slate-500">@field.DataType · @field.SourceType</div>
+                                            </div>
+                                        </label>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="rounded-[1.6rem] border border-[#d9e5e8] bg-white p-4 shadow-sm">
+                    <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <h2 class="text-base font-black text-[#12343b] md:text-lg">2. Subir archivo al staging</h2>
+                        <span class="rounded-full bg-[#eef5f6] px-3 py-1 text-xs font-semibold text-[#2f4858]">Estados: Pending · Validated · Processed · Error</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[0.75fr_0.25fr]">
+                        <div class="rounded-3xl border-2 border-dashed border-[#c7d6da] bg-[#f8fbfc] p-4">
+                            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                <div>
+                                    <div class="font-semibold text-[#12343b]">Archivo de carga</div>
+                                </div>
+                                <InputFile OnChange="OnFileSelected" accept=".xlsx,.xls,.csv" class="block text-sm text-slate-600" />
+                            </div>
+
+                            @if (SelectedFile is not null)
                             {
-                                <p class="text-xs text-amber-600 mt-2 text-center">
-                                    <i class="bi bi-info-circle"></i>
-                                    Primero selecciona un archivo para importar
-                                </p>
+                                <div class="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                                    Archivo seleccionado: <span class="font-semibold">@SelectedFile.Name</span> · @((SelectedFile.Size / 1024.0).ToString("F1")) KB
+                                </div>
                             }
                         </div>
 
-                        <!-- Import Results -->
-                        @if (!string.IsNullOrWhiteSpace(_importMessage))
-                        {
-                            <div class="rounded-2xl border @(_importHasError ? "border-red-200 bg-red-50" : "border-emerald-200 bg-emerald-50") p-4">
-                                <div class="flex items-start gap-3">
-                                    <div class="flex h-6 w-6 items-center justify-center rounded-full @(_importHasError ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600")">
-                                        <i class="bi @(_importHasError ? "bi-exclamation-triangle-fill" : "bi-check-circle-fill")"></i>
-                                    </div>
-                                    <div class="flex-1">
-                                        <p class="text-sm @(_importHasError ? "text-red-800" : "text-emerald-800")">
-                                            @_importMessage
-                                        </p>
-
-                                        @if (_importResult is not null)
-                                        {
-                                            <!-- Stats -->
-                                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
-                                                <div class="text-center">
-                                                    <p class="text-xs text-gray-600">Total</p>
-                                                    <p class="text-sm font-bold text-gray-900">@_importResult.TotalRows</p>
-                                                </div>
-                                                <div class="text-center">
-                                                    <p class="text-xs text-gray-600">Creados</p>
-                                                    <p class="text-sm font-bold text-emerald-600">@_importResult.Created</p>
-                                                </div>
-                                                <div class="text-center">
-                                                    <p class="text-xs text-gray-600">Actualizados</p>
-                                                    <p class="text-sm font-bold text-blue-600">@_importResult.Updated</p>
-                                                </div>
-                                                <div class="text-center">
-                                                    <p class="text-xs text-gray-600">Errores</p>
-                                                    <p class="text-sm font-bold @(_importResult.Errors > 0 ? "text-red-600" : "text-gray-900")">@_importResult.Errors</p>
-                                                </div>
-                                            </div>
-
-                                            <!-- Error Details -->
-                                            @if (_importResult.Errors > 0 && _importResult.ErrorMessages?.Count > 0)
-                                            {
-                                                <div class="mt-4 border-t border-gray-200 pt-4">
-                                                    <details class="group">
-                                                        <summary class="cursor-pointer text-sm font-medium text-gray-900 flex items-center justify-between">
-                                                            <span>Ver detalles de errores (@_importResult.Errors)</span>
-                                                            <i class="bi bi-chevron-down group-open:rotate-180 transition-transform"></i>
-                                                        </summary>
-                                                        <div class="mt-2 max-h-60 overflow-y-auto rounded-lg bg-gray-50 p-3">
-                                                            <ul class="space-y-1.5 text-xs">
-                                                                @foreach (var err in _importResult.ErrorMessages.Take(20))
-                                                                {
-                                                                    <li class="flex items-start gap-2 text-red-700">
-                                                                        <i class="bi bi-dot mt-0.5"></i>
-                                                                        <span>@err</span>
-                                                                    </li>
-                                                                }
-                                                                @if (_importResult.ErrorMessages.Count > 20)
-                                                                {
-                                                                    <li class="text-xs text-gray-500 italic">
-                                                                        ... y @(_importResult.ErrorMessages.Count - 20) errores más
-                                                                    </li>
-                                                                }
-                                                            </ul>
-                                                        </div>
-                                                    </details>
-                                                </div>
-                                            }
-                                        }
-                                    </div>
-                                </div>
-                            </div>
-                        }
+                        <div class="space-y-3 rounded-3xl border border-[#ead8bd] bg-[#fffdf8] p-4">
+                            <label class="block text-sm font-semibold text-[#8b5a16]">Fuente</label>
+                            <select class="w-full rounded-xl border border-[#e1d1b0] bg-white px-3 py-2 text-sm" @bind="SelectedSourceType">
+                                <option value="Excel">Excel</option>
+                                <option value="Csv">CSV</option>
+                                <option value="Manual">Manual</option>
+                            </select>
+                            <label class="block text-sm font-semibold text-[#8b5a16]">Notas</label>
+                            <textarea class="min-h-[4.5rem] w-full rounded-xl border border-[#e1d1b0] bg-white px-3 py-2 text-sm" @bind="UploadNotes" placeholder="Describe el objetivo del lote o el subconjunto que estás cargando."></textarea>
+                            <button class="w-full rounded-xl bg-gradient-to-r from-[#c17c2f] to-[#d08d46] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60" disabled="@(SelectedFile is null || IsUploading)" @onclick="UploadAsync">@(IsUploading ? "Subiendo..." : "Crear lote en staging")</button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Tips -->
-                <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100">
-                    <h3 class="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                        <i class="bi bi-shield-check text-blue-600"></i>
-                        Recomendaciones de importación
-                    </h3>
-                    <ul class="space-y-2 text-sm text-gray-700">
-                        <li class="flex items-start gap-2">
-                            <i class="bi bi-check-circle text-blue-500 mt-0.5"></i>
-                            <span>Usa siempre la plantilla exportada desde este sistema</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <i class="bi bi-check-circle text-blue-500 mt-0.5"></i>
-                            <span>Mantén los nombres de columna sin modificaciones</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <i class="bi bi-check-circle text-blue-500 mt-0.5"></i>
-                            <span>No elimines el campo <code>Id</code> para actualizaciones</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <i class="bi bi-check-circle text-blue-500 mt-0.5"></i>
-                            <span>El sistema valida automáticamente nombres de catálogos</span>
-                        </li>
-                    </ul>
+                <div class="rounded-[1.6rem] border border-[#d9e5e8] bg-white p-4 shadow-sm">
+                    <div class="mb-4 flex items-center justify-between gap-3">
+                        <h2 class="text-base font-black text-[#12343b] md:text-lg">3. Lotes recientes</h2>
+                        <button class="rounded-xl border border-[#c7d6da] bg-white px-4 py-2 text-sm font-semibold text-[#12343b]" @onclick="LoadRecentBatchesAsync">Actualizar</button>
+                    </div>
+
+                    @if (!RecentBatches.Any())
+                    {
+                        <AppEmptyState Title="Aún no hay lotes recientes" Message="Cuando subas el primer archivo, aquí verás el historial rápido para retomarlo." />
+                    }
+                    else
+                    {
+                        <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                            @foreach (var batch in RecentBatches)
+                            {
+                                <button class="rounded-3xl border border-[#d9e5e8] bg-[#f8fbfc] p-4 text-left transition hover:border-[#8cb0b8] hover:shadow-sm" @onclick="() => OpenBatchAsync(batch.ImportBatchId)">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div class="font-semibold text-[#12343b]">@batch.BatchCode</div>
+                                            <div class="mt-1 text-xs text-slate-500">@batch.FileName</div>
+                                        </div>
+                                        <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#2f4858]">@batch.Status</span>
+                                    </div>
+                                    <div class="mt-3 grid grid-cols-3 gap-2 text-xs text-slate-500">
+                                        <div>Total: <span class="font-semibold text-slate-700">@batch.TotalRows</span></div>
+                                        <div>Errores: <span class="font-semibold text-rose-700">@batch.ErrorRows</span></div>
+                                        <div>Procesadas: <span class="font-semibold text-emerald-700">@batch.ProcessedRows</span></div>
+                                    </div>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <aside class="space-y-6 xl:sticky xl:top-6 xl:self-start">
+                <div class="rounded-[1.6rem] border border-[#d9e5e8] bg-white p-4 shadow-sm">
+                    <div class="mb-4 flex items-center justify-between gap-3">
+                        <h2 class="text-base font-black text-[#12343b] md:text-lg">Lote actual</h2>
+                        @if (CurrentBatch is not null)
+                        {
+                            <button class="rounded-xl border border-[#c7d6da] bg-white px-3 py-2 text-sm font-semibold text-[#12343b]" @onclick="RefreshCurrentBatchAsync">Refrescar</button>
+                        }
+                    </div>
+
+                    @if (CurrentBatch is null)
+                    {
+                        <AppEmptyState Title="Todavía no hay un lote abierto" Message="Descarga una plantilla, súbela y aquí aparecerá la previsualización con los estados reales del staging." />
+                    }
+                    else
+                    {
+                        <div class="space-y-3 text-sm">
+                            <div class="rounded-2xl bg-[#f4f8f9] px-4 py-3">
+                                <div class="text-xs uppercase tracking-wide text-slate-500">Código</div>
+                                <div class="mt-1 font-semibold text-[#12343b]">@CurrentBatch.Summary.BatchCode</div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="rounded-2xl bg-[#eef5f6] px-4 py-3">
+                                    <div class="text-xs uppercase tracking-wide text-slate-500">Estado</div>
+                                    <div class="mt-1 text-lg font-black text-[#2f4858]">@CurrentBatch.Summary.Status</div>
+                                </div>
+                                <div class="rounded-2xl bg-[#fff4e4] px-4 py-3">
+                                    <div class="text-xs uppercase tracking-wide text-slate-500">Filas</div>
+                                    <div class="mt-1 text-lg font-black text-[#c17c2f]">@CurrentBatch.Summary.TotalRows</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-3 gap-3 text-center">
+                                <div class="rounded-2xl border border-[#d9e5e8] bg-white px-3 py-3">
+                                    <div class="text-xs text-slate-500">Valid</div>
+                                    <div class="text-lg font-black text-emerald-700">@CurrentBatch.Summary.ValidRows</div>
+                                </div>
+                                <div class="rounded-2xl border border-[#d9e5e8] bg-white px-3 py-3">
+                                    <div class="text-xs text-slate-500">Error</div>
+                                    <div class="text-lg font-black text-rose-700">@CurrentBatch.Summary.ErrorRows</div>
+                                </div>
+                                <div class="rounded-2xl border border-[#d9e5e8] bg-white px-3 py-3">
+                                    <div class="text-xs text-slate-500">Processed</div>
+                                    <div class="text-lg font-black text-[#12343b]">@CurrentBatch.Summary.ProcessedRows</div>
+                                </div>
+                            </div>
+                            <div class="rounded-3xl border border-[#d9e5e8] bg-[#f8fbfc] p-4">
+                                <div class="mb-3 flex items-center justify-between gap-3">
+                                    <div class="text-sm font-bold text-[#12343b]">Ruta del lote</div>
+                                    <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#2f4858]">@GetCurrentStageLabel()</span>
+                                </div>
+                                <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                    @foreach (var stage in BatchStages)
+                                    {
+                                        <div class="rounded-2xl border px-4 py-3 @GetStageCardClass(stage.Key)">
+                                            <div class="flex items-center justify-between gap-3">
+                                                <div class="font-semibold">@stage.Label</div>
+                                                <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold @GetStageBadgeClass(stage.Key)">@GetStageStatusText(stage.Key)</span>
+                                            </div>
+                                            <div class="mt-2 text-xs opacity-80">@stage.Helper</div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5 flex flex-col gap-3">
+                            <button class="rounded-xl border border-[#d7c19c] bg-[#fff4e4] px-4 py-2.5 text-sm font-semibold text-[#8b5a16] disabled:opacity-60" disabled="@(CurrentBatch.Template is null || IsGeneratingTemplate)" @onclick="DownloadTemplateFromBatchAsync">@(IsGeneratingTemplate ? "Generando..." : "Re-descargar plantilla del lote")</button>
+                            <button class="rounded-xl border border-[#c7d6da] bg-white px-4 py-2.5 text-sm font-semibold text-[#12343b] disabled:opacity-60" disabled="@IsValidatingBatch" @onclick="ValidateCurrentBatchAsync">@(IsValidatingBatch ? "Validando..." : "Validar lote")</button>
+                            <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60" disabled="@(CurrentBatch.Summary.TotalRows == 0 || IsProcessingBatch)" @onclick="ProcessCurrentBatchAsync">@(IsProcessingBatch ? "Procesando..." : "Procesar lote")</button>
+                        </div>
+                    }
+                </div>
+            </aside>
+        </div>
+        @if (CurrentBatch is not null)
+        {
+            <section class="mt-6 space-y-6">
+                <div class="rounded-[2rem] border border-[#ead8bd] bg-white p-5 shadow-sm">
+                    <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                        <div>
+                            <h2 class="text-base font-black text-[#8b5a16] md:text-lg">Bandeja de corrección</h2>
+                            <p class="text-sm text-slate-500">Trabaja fila por fila sobre los pendientes reales del lote y salta directo al editor asistido.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button class="rounded-xl border border-[#e7c690] bg-[#fff4e4] px-4 py-2 text-sm font-semibold text-[#8b5a16] disabled:opacity-60" disabled="@(!ErrorRows.Any())" @onclick="OpenNextErrorRowAsync">Abrir siguiente error</button>
+                            <span class="rounded-full bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">@ErrorRows.Count fila(s) con error</span>
+                        </div>
+                    </div>
+
+                    @if (!ErrorRows.Any())
+                    {
+                        <AppEmptyState Title="No hay filas pendientes de corrección" Message="Cuando un lote tenga errores, aquí verás una cola directa para revisarlos uno por uno." />
+                    }
+                    else
+                    {
+                        <div class="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+                            <input class="rounded-xl border border-[#e1d1b0] bg-[#fffaf2] px-3 py-2 text-sm" placeholder="Buscar por fila, valor o mensaje de error" @bind="CorrectionQueueSearchTerm" @bind:event="oninput" />
+                            <select class="rounded-xl border border-[#e1d1b0] bg-white px-3 py-2 text-sm" @bind="CorrectionQueueSort">
+                                <option value="row">Ordenar por fila</option>
+                                <option value="errors">Más errores primero</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                            @foreach (var row in FilteredErrorRows)
+                            {
+                                <button class="rounded-3xl border border-[#ead8bd] bg-[#fffdf8] p-4 text-left transition hover:border-[#d9ba86] hover:shadow-sm" @onclick="async () => await OpenCorrectionModalAsync(row)">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div>
+                                            <div class="font-semibold text-[#8b5a16]">Fila @row.RowNumber</div>
+                                            <div class="mt-1 text-xs text-slate-500">@GetRowCorrectionSummary(row)</div>
+                                        </div>
+                                        <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">@row.Errors.Count error(es)</span>
+                                    </div>
+                                    <div class="mt-3 flex flex-wrap gap-2">
+                                        @foreach (var badge in GetRowErrorBadges(row))
+                                        {
+                                            <span class="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-slate-600">@badge</span>
+                                        }
+                                    </div>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="rounded-[2rem] border border-[#d9e5e8] bg-white p-5 shadow-sm">
+                    <div class="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-base font-black text-[#12343b] md:text-lg">Previsualización del lote</h2>
+                            <p class="text-sm text-slate-500">Vista tipo hoja para revisar lo subido, detectar errores y abrir el detalle completo por fila.</p>
+                        </div>
+                        <span class="rounded-full bg-[#eef5f6] px-3 py-1 text-xs font-semibold text-[#2f4858]">@FilteredPreviewRows.Count filas visibles</span>
+                    </div>
+
+                    @if (!CurrentBatch.Rows.Any())
+                    {
+                        <AppEmptyState Title="El lote no tiene filas cargadas" Message="Revisa la plantilla y vuelve a subir el archivo si esperabas ver información aquí." />
+                    }
+                    else
+                    {
+                        <div class="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-[1.2fr_0.7fr_0.7fr_0.8fr]">
+                            <input class="rounded-xl border border-[#c9d7db] bg-[#f7fafb] px-3 py-2 text-sm" placeholder="Buscar valor, campo o contenido dentro del preview" @bind="PreviewSearchTerm" @bind:event="oninput" />
+                            <select class="rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm" @bind="PreviewStatusFilter">
+                                <option value="all">Todos los estados</option>
+                                <option value="pending">Pending</option>
+                                <option value="valid">Valid</option>
+                                <option value="processed">Processed</option>
+                                <option value="error">Error</option>
+                            </select>
+                            <label class="inline-flex items-center gap-2 rounded-xl border border-[#d9e5e8] bg-white px-3 py-2 text-sm text-slate-700">
+                                <input type="checkbox" @bind="PreviewErrorsOnly" />
+                                Solo filas con errores
+                            </label>
+                            <label class="inline-flex items-center gap-2 rounded-xl border border-[#d9e5e8] bg-white px-3 py-2 text-sm text-slate-700">
+                                <input type="checkbox" @bind="ShowNormalizedValues" />
+                                Ver normalizados
+                            </label>
+                        </div>
+
+                        <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+                            <div class="rounded-2xl bg-[#f4f8f9] px-4 py-3 text-sm text-slate-600">
+                                Columnas visibles: <span class="font-bold text-[#12343b]">@OrderedPreviewHeaders.Count</span>
+                            </div>
+                            <div class="rounded-2xl bg-[#fff4e4] px-4 py-3 text-sm text-slate-600">
+                                Modo de celda: <span class="font-bold text-[#8b5a16]">@(ShowNormalizedValues ? "Normalizado" : "Raw")</span>
+                            </div>
+                            <div class="rounded-2xl bg-[#eef5f6] px-4 py-3 text-sm text-slate-600">
+                                Revisión rápida: <span class="font-bold text-[#2f4858]">@GetBatchReviewHint()</span>
+                            </div>
+                        </div>
+
+                        @if (CurrentBatch.Template is not null)
+                        {
+                            <div class="mb-4 rounded-3xl border border-[#d9e5e8] bg-[#fcfefe] p-4">
+                                <div class="mb-3 flex items-center justify-between gap-3">
+                                    <div>
+                                        <div class="font-bold text-[#12343b]">Cómo interpreta esta plantilla</div>
+                                        <div class="text-xs text-slate-500">El sistema acepta nombres, códigos o IDs según el campo y los normaliza antes de validar.</div>
+                                    </div>
+                                    <span class="rounded-full bg-[#eef5f6] px-3 py-1 text-xs font-semibold text-[#2f4858]">@((CurrentBatch.Template.ArticleFields.Count + CurrentBatch.Template.ParticipantFields.Count)) columnas en plantilla</span>
+                                </div>
+                        <div class="app-table-wrap rounded-2xl border border-[#e6eef0]">
+                                    <table class="app-table-compact min-w-full divide-y divide-[#e6eef0] text-sm">
+                                        <thead class="bg-[#f4f8f9]">
+                                            <tr>
+                                                <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Campo</th>
+                                                <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Encabezado</th>
+                                                <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Tipo</th>
+                                                <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Lectura sugerida</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-[#eef3f5] bg-white">
+                                            @foreach (var templateField in TemplateFieldPreviewItems)
+                                            {
+                                                <tr>
+                                                    <td class="px-4 py-3">
+                                                        <div class="font-semibold text-[#12343b]">@templateField.FieldLabel</div>
+                                                        <div class="text-xs text-slate-500">@templateField.EntityName.@templateField.FieldKey</div>
+                                                    </td>
+                                                    <td class="px-4 py-3 font-mono text-xs text-slate-700">@templateField.HeaderKey</td>
+                                                    <td class="px-4 py-3 text-slate-600">@templateField.DataType</td>
+                                                    <td class="px-4 py-3 text-slate-600">@GetTemplateFieldInterpretation(templateField)</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        }
+
+                        @if (!FilteredPreviewRows.Any())
+                        {
+                            <AppEmptyState Title="No hay filas que coincidan con el filtro actual" Message="Prueba otro criterio o limpia los filtros para volver a ver todo el staging." />
+                        }
+                        else
+                        {
+                        <div class="app-table-wrap rounded-3xl border border-[#d9e5e8]">
+                            <table class="app-table-compact min-w-full divide-y divide-[#d9e5e8] text-sm">
+                                <thead class="bg-[#f4f8f9]">
+                                    <tr>
+                                        <th class="sticky left-0 z-10 bg-[#f4f8f9] px-4 py-3 text-left font-semibold text-[#12343b]">Fila</th>
+                                        <th class="sticky left-[4.5rem] z-10 bg-[#f4f8f9] px-4 py-3 text-left font-semibold text-[#12343b]">Estado</th>
+                                        @foreach (var header in OrderedPreviewHeaders)
+                                        {
+                                            <th class="px-4 py-3 text-left font-semibold text-[#12343b]">@header</th>
+                                        }
+                                        <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Errores</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Detalle</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-[#eef3f5] bg-white">
+                                    @foreach (var row in FilteredPreviewRows)
+                                    {
+                                        <tr class="align-top">
+                                            <td class="sticky left-0 bg-white px-4 py-3 font-semibold text-slate-700">@row.RowNumber</td>
+                                            <td class="sticky left-[4.5rem] bg-white px-4 py-3">
+                                                <span class="@GetRowStatusBadgeClass(row.RowStatus)">@row.RowStatus</span>
+                                            </td>
+                                            @foreach (var header in OrderedPreviewHeaders)
+                                            {
+                                                var cell = FindCell(row, header);
+                                                <td class="@GetPreviewCellClass(cell)">
+                                                    @if (cell is null)
+                                                    {
+                                                        <span class="text-slate-300">-</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="truncate font-medium @(cell.IsValid ? "text-slate-700" : "text-rose-700")" title="@(ShowNormalizedValues ? cell.NormalizedValue : cell.RawValue)">
+                                                            @(ShowNormalizedValues ? GetNormalizedDisplayValue(cell) : GetDisplayValue(cell))
+                                                        </div>
+                                                        @if (!cell.IsValid && !string.IsNullOrWhiteSpace(cell.ValidationMessage))
+                                                        {
+                                                            <div class="mt-1 text-[11px] text-rose-600">@cell.ValidationMessage</div>
+                                                        }
+                                                    }
+                                                </td>
+                                            }
+                                            <td class="px-4 py-3">
+                                                @if (row.Errors.Any())
+                                                {
+                                                    <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">@row.Errors.Count error(es)</span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Sin errores</span>
+                                                }
+                                            </td>
+                                            <td class="px-4 py-3">
+                                                <div class="flex flex-wrap gap-2">
+                                                    <button class="rounded-xl border border-[#c7d6da] bg-white px-3 py-2 text-xs font-semibold text-[#12343b]" @onclick="() => OpenRowModal(row)">Ver fila</button>
+                                                    @if (row.Errors.Any())
+                                                    {
+                                                        <button class="rounded-xl border border-[#e7c690] bg-[#fff4e4] px-3 py-2 text-xs font-semibold text-[#8b5a16]" @onclick="async () => await OpenCorrectionModalAsync(row)">Corregir</button>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        }
+                    }
+                </div>
+
+                <div class="rounded-[2rem] border border-[#d9e5e8] bg-white p-5 shadow-sm">
+                    <div class="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-base font-black text-[#12343b] md:text-lg">Errores del lote</h2>
+                            <p class="text-sm text-slate-500">Aquí se mezclan observaciones del parser, validación SQL y reglas adicionales del cliente.</p>
+                        </div>
+                        <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">@FilteredBatchErrors.Count error(es) visibles</span>
+                    </div>
+
+                    <div class="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-[1.2fr_0.7fr_0.7fr]">
+                        <input class="rounded-xl border border-[#c9d7db] bg-[#f7fafb] px-3 py-2 text-sm" placeholder="Buscar por código, campo o mensaje de error" @bind="ErrorSearchTerm" @bind:event="oninput" />
+                        <select class="rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm" @bind="ErrorSeverityFilter">
+                            <option value="all">Todas las severidades</option>
+                            <option value="Error">Error</option>
+                            <option value="Warning">Warning</option>
+                        </select>
+                        <label class="inline-flex items-center gap-2 rounded-xl border border-[#d9e5e8] bg-white px-3 py-2 text-sm text-slate-700">
+                            <input type="checkbox" @bind="OnlyRowErrors" />
+                            Solo errores por fila
+                        </label>
+                    </div>
+
+                    @if (!FilteredBatchErrors.Any())
+                    {
+                        <AppEmptyState Title="No hay errores registrados" Message="Eso normalmente significa que el lote todavía no fue validado o que la carga va bien." />
+                    }
+                    else
+                    {
+                        <div class="app-table-wrap rounded-3xl border border-[#ead1d1]">
+                            <table class="app-table-compact min-w-full divide-y divide-[#f1dede] text-sm">
+                                <thead class="bg-rose-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-semibold text-rose-800">Código</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-rose-800">Severidad</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-rose-800">Fila</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-rose-800">Campo</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-rose-800">Mensaje</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-[#f8e9e9] bg-white">
+                                    @foreach (var error in FilteredBatchErrors)
+                                    {
+                                        <tr class="align-top">
+                                            <td class="px-4 py-3 font-semibold text-rose-700">@error.ErrorCode</td>
+                                            <td class="px-4 py-3">
+                                                <span class="rounded-full px-2 py-1 text-xs font-semibold @(error.Severity.Equals("Warning", StringComparison.OrdinalIgnoreCase) ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700")">@error.Severity</span>
+                                            </td>
+                                            <td class="px-4 py-3 text-slate-600">@(error.ImportBatchRowId?.ToString() ?? "-")</td>
+                                            <td class="px-4 py-3 text-slate-600">@(string.IsNullOrWhiteSpace(error.FieldLabel) ? "-" : $"{error.FieldLabel} ({error.FieldKey})")</td>
+                                            <td class="px-4 py-3 text-slate-700">@error.ErrorMessage</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+    }
+</div>
+
+@if (SelectedPreviewRow is not null)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
+        <div class="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+            <div class="flex items-center justify-between border-b border-[#d9e5e8] bg-gradient-to-r from-[#12343b] to-[#2f4858] px-6 py-4 text-white">
+                <div>
+                    <div class="text-xs uppercase tracking-[0.2em] text-white/70">Detalle de staging</div>
+                    <h3 class="text-xl font-black">Fila @SelectedPreviewRow.RowNumber</h3>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    @if (ErrorRows.Any())
+                    {
+                        <button class="rounded-xl border border-white/25 px-3 py-2 text-sm font-semibold disabled:opacity-50" disabled="@(GetPreviousErrorRow() is null)" @onclick="OpenPreviousErrorRowAsync">Anterior error</button>
+                        <button class="rounded-xl border border-white/25 px-3 py-2 text-sm font-semibold disabled:opacity-50" disabled="@(GetNextErrorRow() is null)" @onclick="OpenNextErrorRowFromModalAsync">Siguiente error</button>
+                    }
+                    <button class="rounded-xl border border-white/25 px-3 py-2 text-sm font-semibold" @onclick="EnterCorrectionModeAsync">Corregir fila</button>
+                    <button class="rounded-xl border border-white/25 px-3 py-2 text-sm font-semibold" @onclick="CloseRowModal">Cerrar</button>
+                </div>
+            </div>
+            <div class="grid max-h-[calc(90vh-5rem)] grid-cols-1 gap-0 overflow-auto xl:grid-cols-[1.2fr_0.8fr]">
+                <div class="border-r border-[#eef3f5] p-6">
+                    <div class="mb-4 flex flex-wrap items-center gap-3">
+                        <span class="@GetRowStatusBadgeClass(SelectedPreviewRow.RowStatus)">@SelectedPreviewRow.RowStatus</span>
+                        <span class="rounded-full bg-[#eef5f6] px-3 py-1 text-xs font-semibold text-[#2f4858]">@SelectedPreviewRow.Cells.Count celdas</span>
+                        <span class="rounded-full px-3 py-1 text-xs font-semibold @(IsCorrectionMode ? "bg-[#fff4e4] text-[#8b5a16]" : "bg-slate-100 text-slate-600")">@(IsCorrectionMode ? "Modo corrección" : "Solo lectura")</span>
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(RowModalErrorMessage))
+                    {
+                        <AppAlertBanner Class="mb-4" Variant="error" Title="No pude guardar la corrección" Message="@RowModalErrorMessage" />
+                    }
+                    @if (!string.IsNullOrWhiteSpace(RowModalSuccessMessage))
+                    {
+                        <AppAlertBanner Class="mb-4" Variant="success" Title="Corrección aplicada" Message="@RowModalSuccessMessage" />
+                    }
+
+                    @if (!IsCorrectionMode)
+                    {
+                        <div class="app-table-wrap rounded-3xl border border-[#d9e5e8]">
+                            <table class="app-table-compact min-w-full divide-y divide-[#d9e5e8] text-sm">
+                                <thead class="bg-[#f4f8f9]">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Campo</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Raw</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Normalizado</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-[#eef3f5] bg-white">
+                                    @foreach (var cell in SelectedPreviewRow.Cells)
+                                    {
+                                        <tr class="align-top">
+                                            <td class="px-4 py-3">
+                                                <div class="font-semibold text-[#12343b]">@cell.FieldLabel</div>
+                                                <div class="text-xs text-slate-500">@cell.EntityName.@cell.FieldKey</div>
+                                            </td>
+                                            <td class="max-w-[14rem] break-words px-4 py-3 text-slate-700">@cell.RawValue</td>
+                                            <td class="max-w-[14rem] break-words px-4 py-3 font-medium text-slate-900">@cell.NormalizedValue</td>
+                                            <td class="px-4 py-3">
+                                                <span class="rounded-full px-3 py-1 text-xs font-semibold @(cell.IsValid ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700")">@(cell.IsValid ? "OK" : "Revisar")</span>
+                                                @if (!string.IsNullOrWhiteSpace(cell.ValidationMessage))
+                                                {
+                                                    <div class="mt-2 text-xs @(cell.IsValid ? "text-amber-700" : "text-rose-700")">@cell.ValidationMessage</div>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="rounded-3xl border border-[#d9e5e8] bg-[#fcfefe] p-4">
+                            <div class="mb-4">
+                                <div class="font-bold text-[#12343b]">Editor asistido de fila</div>
+                                <div class="text-sm text-slate-500">Ajusta los valores crudos y guarda. El sistema volverá a normalizar y revalidar el lote completo.</div>
+                            </div>
+                            @if (IsLoadingCorrectionMetadata)
+                            {
+                                <div class="mb-4 rounded-2xl border border-[#d9e5e8] bg-white px-4 py-3 text-sm text-slate-600">Cargando sugerencias y ayudas para esta fila...</div>
+                            }
+                            <div class="max-h-[32rem] space-y-3 overflow-auto pr-1">
+                                @foreach (var field in SelectedRowEditableFields)
+                                {
+                                    var hasError = IsFieldInError(field.FieldId);
+                                    <div class="rounded-2xl border px-4 py-4 @(hasError ? "border-rose-200 bg-rose-50/50" : "border-[#d9e5e8] bg-white")">
+                                        <div class="flex flex-wrap items-center gap-2">
+                                            <div class="font-semibold text-[#12343b]">@field.FieldLabel</div>
+                                            <span class="rounded-full bg-[#eef5f6] px-2 py-0.5 text-[11px] font-semibold text-[#2f4858]">@field.EntityName.@field.FieldKey</span>
+                                            @if (field.IsRequired)
+                                            {
+                                                <span class="rounded-full bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700">Obligatorio</span>
+                                            }
+                                            @if (field.IsDynamic)
+                                            {
+                                                <span class="rounded-full bg-[#fff4e4] px-2 py-0.5 text-[11px] font-semibold text-[#8b5a16]">Dinámico</span>
+                                            }
+                                        </div>
+                                        <div class="mt-1 text-xs text-slate-500">@GetTemplateFieldInterpretation(field)</div>
+                                        @if (GetDynamicOptions(field.FieldId).Any())
+                                        {
+                                            <select class="mt-3 w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm" value="@GetCorrectionValue(field.FieldId)" @onchange="async (args) => await HandleCorrectionValueChangedAsync(field, args.Value?.ToString())">
+                                                <option value="">Selecciona una opción</option>
+                                                @foreach (var option in GetDynamicOptions(field.FieldId))
+                                                {
+                                                    <option value="@option.OptionValue">@option.OptionLabel</option>
+                                                }
+                                            </select>
+                                        }
+                                        else if (GetCatalogSuggestions(field.FieldId).Any())
+                                        {
+                                            var datalistId = $"field-suggestions-{field.FieldId}";
+                                            <input list="@datalistId" class="mt-3 w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm" value="@GetCorrectionValue(field.FieldId)" @oninput="async (args) => await HandleCorrectionValueChangedAsync(field, args.Value?.ToString())" placeholder="@field.HeaderKey" />
+                                            <datalist id="@datalistId">
+                                                @foreach (var item in GetCatalogSuggestions(field.FieldId))
+                                                {
+                                                    <option value="@item.Name"></option>
+                                                }
+                                            </datalist>
+                                        }
+                                        else if (IsBooleanField(field))
+                                        {
+                                            <select class="mt-3 w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm" value="@GetCorrectionValue(field.FieldId)" @onchange="async (args) => await HandleCorrectionValueChangedAsync(field, args.Value?.ToString())">
+                                                <option value="">Sin valor</option>
+                                                <option value="Si">Sí</option>
+                                                <option value="No">No</option>
+                                            </select>
+                                        }
+                                        else if (IsDateField(field))
+                                        {
+                                            <input type="date" class="mt-3 w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm" value="@GetCorrectionValue(field.FieldId)" @oninput="async (args) => await HandleCorrectionValueChangedAsync(field, args.Value?.ToString())" />
+                                        }
+                                        else if (IsNumericField(field))
+                                        {
+                                            <input type="number" step="@GetInputStep(field)" class="mt-3 w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm" value="@GetCorrectionValue(field.FieldId)" @oninput="async (args) => await HandleCorrectionValueChangedAsync(field, args.Value?.ToString())" placeholder="@field.HeaderKey" />
+                                        }
+                                        else
+                                        {
+                                            <input class="mt-3 w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm" value="@GetCorrectionValue(field.FieldId)" @oninput="async (args) => await HandleCorrectionValueChangedAsync(field, args.Value?.ToString())" placeholder="@field.HeaderKey" />
+                                        }
+                                        @if (GetCatalogSuggestions(field.FieldId).Any())
+                                        {
+                                            <div class="mt-2 text-xs text-[#2f4858]">Sugerencias: @string.Join(" | ", GetCatalogSuggestions(field.FieldId).Take(6).Select(x => x.Name))</div>
+                                        }
+                                        @if (TryGetExistingCell(field.FieldId) is { } existingCell)
+                                        {
+                                            <div class="mt-2 grid grid-cols-1 gap-2 text-xs md:grid-cols-2">
+                                                <div class="rounded-xl bg-[#f4f8f9] px-3 py-2 text-slate-600">Raw actual: <span class="font-semibold text-slate-800">@existingCell.RawValue</span></div>
+                                                <div class="rounded-xl bg-[#fff4e4] px-3 py-2 text-slate-600">Normalizado actual: <span class="font-semibold text-slate-800">@existingCell.NormalizedValue</span></div>
+                                            </div>
+                                            @if (!string.IsNullOrWhiteSpace(existingCell.ValidationMessage))
+                                            {
+                                                <div class="mt-2 text-xs text-rose-700">@existingCell.ValidationMessage</div>
+                                            }
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="bg-[#fffdf8] p-6">
+                    <h4 class="text-base font-black text-[#8b5a16]">Errores y acciones</h4>
+                    <div class="mt-4 rounded-3xl border border-[#ead8bd] bg-white px-4 py-4 text-sm text-slate-700">
+                        <div class="font-semibold text-[#8b5a16]">Sugerencia</div>
+                        <div class="mt-2">Corrige primero los campos marcados con error. Al guardar, el sistema vuelve a normalizar referencias, recalcula el staging y refresca el lote.</div>
+                    </div>
+                    @if (!SelectedPreviewRow.Errors.Any())
+                    {
+                        <div class="mt-4 rounded-3xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">Esta fila no tiene errores persistidos en el lote.</div>
+                    }
+                    else
+                    {
+                        <div class="mt-4 space-y-3">
+                            @foreach (var error in SelectedPreviewRow.Errors)
+                            {
+                                <div class="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm">
+                                    <div class="font-semibold text-rose-700">@error.ErrorCode</div>
+                                    <div class="mt-2 text-rose-900">@error.ErrorMessage</div>
+                                    @if (!string.IsNullOrWhiteSpace(error.FieldLabel))
+                                    {
+                                        <div class="mt-2 text-xs text-rose-700">Campo: @error.FieldLabel (@error.FieldKey)</div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+
+                    @if (IsCorrectionMode)
+                    {
+                        <div class="mt-6 space-y-3">
+                            <button class="w-full rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60" disabled="@IsSavingCorrections" @onclick="SaveRowCorrectionsAsync">@(IsSavingCorrections ? "Guardando y validando..." : "Guardar correcciones y revalidar lote")</button>
+                            <button class="w-full rounded-xl border border-[#d9e5e8] bg-white px-4 py-3 text-sm font-semibold text-slate-700" @onclick="CancelCorrectionMode">Cancelar edición</button>
+                        </div>
+                    }
                 </div>
             </div>
         </div>
     </div>
-</div>
+}
 
 @code {
-    private IBrowserFile? _selectedFile;
-    private bool _isImporting = false;
-    private string? _importMessage;
-    private bool _importHasError;
-    private ArticleImportResultDto? _importResult;
+    [SupplyParameterFromQuery(Name = "batchId")]
+    public int? InitialBatchId { get; set; }
 
-    private void OnFileSelected(InputFileChangeEventArgs e)
+    private List<FieldCatalogItemDto> ArticleFields = new();
+    private List<FieldCatalogItemDto> ParticipantFields = new();
+    private HashSet<int> SelectedArticleFieldIds = new();
+    private HashSet<int> SelectedParticipantFieldIds = new();
+    private List<BulkImportBatchSummaryDto> RecentBatches = new();
+    private BulkImportBatchDetailDto? CurrentBatch;
+    private BulkImportRowPreviewDto? SelectedPreviewRow;
+    private ResolvedFormDto? ArticleForm;
+    private ResolvedFormDto? ParticipantForm;
+    private IBrowserFile? SelectedFile;
+    private string SelectedSourceType = "Excel";
+    private string UploadNotes = string.Empty;
+    private string ArticleFieldSearchTerm = string.Empty;
+    private string ParticipantFieldSearchTerm = string.Empty;
+    private string PreviewSearchTerm = string.Empty;
+    private string PreviewStatusFilter = "all";
+    private string ErrorSearchTerm = string.Empty;
+    private string ErrorSeverityFilter = "all";
+    private string CorrectionQueueSearchTerm = string.Empty;
+    private string CorrectionQueueSort = "row";
+    private string? RowModalErrorMessage;
+    private string? RowModalSuccessMessage;
+    private bool PreviewErrorsOnly;
+    private bool ShowNormalizedValues;
+    private bool OnlyRowErrors;
+    private bool IsLoadingCorrectionMetadata;
+    private bool IsCorrectionMode;
+    private bool IsSavingCorrections;
+    private bool IsLoading = true;
+    private bool IsGeneratingTemplate;
+    private bool IsUploading;
+    private bool IsValidatingBatch;
+    private bool IsProcessingBatch;
+    private string? ErrorMessage;
+    private string? SuccessMessage;
+    private string? WarningMessage;
+    private string? MessageTitle;
+
+    private IEnumerable<FieldCatalogItemDto> FilteredArticleFields => ArticleFields.Where(field => Matches(field, ArticleFieldSearchTerm));
+    private IEnumerable<FieldCatalogItemDto> FilteredParticipantFields => ParticipantFields.Where(field => Matches(field, ParticipantFieldSearchTerm));
+    private List<string> OrderedPreviewHeaders => CurrentBatch?.Template is not null
+        ? CurrentBatch.Template.ArticleFields
+            .Concat(CurrentBatch.Template.ParticipantFields)
+            .Select(x => $"{x.EntityName}.{x.FieldKey}")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList()
+        : CurrentBatch?.Rows
+            .SelectMany(x => x.Cells)
+            .Select(x => $"{x.EntityName}.{x.FieldKey}")
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList() ?? new List<string>();
+
+    private List<BulkImportRowPreviewDto> FilteredPreviewRows => CurrentBatch?.Rows
+        .Where(MatchesPreviewFilter)
+        .ToList() ?? new List<BulkImportRowPreviewDto>();
+    private List<BulkImportRowPreviewDto> ErrorRows => CurrentBatch?.Rows
+        .Where(row => row.Errors.Any() || string.Equals(row.RowStatus, "Error", StringComparison.OrdinalIgnoreCase))
+        .OrderBy(row => row.RowNumber)
+        .ToList() ?? new List<BulkImportRowPreviewDto>();
+    private List<BulkImportRowPreviewDto> FilteredErrorRows => ErrorRows
+        .Where(MatchesCorrectionQueueFilter)
+        .OrderBy(row => CorrectionQueueSort == "errors" ? -row.Errors.Count : row.RowNumber)
+        .ThenBy(row => row.RowNumber)
+        .ToList();
+    private List<BulkImportErrorDto> FilteredBatchErrors => CurrentBatch?.Errors
+        .Where(MatchesErrorFilter)
+        .ToList() ?? new List<BulkImportErrorDto>();
+    private List<(string Key, string Label, string Helper)> BatchStages => new()
     {
-        _selectedFile = e.File;
-        _importMessage = null;
-        _importHasError = false;
-        _importResult = null;
+        ("uploaded", "Carga al staging", "El archivo ya fue interpretado y quedó almacenado en ImportBatch e ImportBatchRow."),
+        ("validated", "Validación", "Se aplican reglas del modelo, resolución de referencias y checks adicionales del cliente."),
+        ("processed", "Procesamiento", "Solo las filas limpias pasan al modelo híbrido definitivo.")
+    };
+    private List<BulkImportTemplateFieldDto> TemplateFieldPreviewItems => CurrentBatch?.Template is null
+        ? new List<BulkImportTemplateFieldDto>()
+        : CurrentBatch.Template.ArticleFields.Concat(CurrentBatch.Template.ParticipantFields).ToList();
+    private List<BulkImportTemplateFieldDto> SelectedRowEditableFields
+    {
+        get
+        {
+            if (SelectedPreviewRow is null)
+            {
+                return new List<BulkImportTemplateFieldDto>();
+            }
+
+            var result = new List<BulkImportTemplateFieldDto>();
+
+            if (CurrentBatch?.Template is not null)
+            {
+                result.AddRange(CurrentBatch.Template.ArticleFields);
+                result.AddRange(CurrentBatch.Template.ParticipantFields);
+            }
+
+            result.AddRange(SelectedPreviewRow.Cells.Select(MapCellToEditableField));
+
+            var missingErrorFields = SelectedPreviewRow.Errors
+                .Where(error => error.FieldId.HasValue && result.All(field => field.FieldId != error.FieldId.Value))
+                .Select(error => FindEditableFieldById(error.FieldId!.Value))
+                .Where(field => field is not null)
+                .Cast<BulkImportTemplateFieldDto>();
+
+            result.AddRange(missingErrorFields);
+
+            return result
+                .GroupBy(field => field.FieldId)
+                .Select(group => group.First())
+                .OrderBy(field => field.EntityName)
+                .ThenBy(field => field.FieldLabel)
+                .ToList();
+        }
+    }
+    private Dictionary<int, string?> CorrectionValues = new();
+    private Dictionary<int, List<CatalogItemDto>> CorrectionCatalogSuggestions = new();
+    private Dictionary<int, List<DynamicFieldOptionDto>> CorrectionDynamicOptions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+        if (InitialBatchId.HasValue && InitialBatchId.Value > 0)
+        {
+            await OpenBatchAsync(InitialBatchId.Value);
+        }
     }
 
-    private void ClearFile()
+    private async Task LoadAsync()
     {
-        _selectedFile = null;
-        _importMessage = null;
-        _importHasError = false;
-        _importResult = null;
+        try
+        {
+            IsLoading = true;
+            ClearMessages();
+            ArticleFields = await FormConfigurationClient.GetFieldsAsync("Article");
+            ParticipantFields = await FormConfigurationClient.GetFieldsAsync("ArticleParticipant");
+            ArticleForm = await FormConfigurationClient.GetResolvedFormAsync("ArticleManualForm");
+            ParticipantForm = await FormConfigurationClient.GetResolvedFormAsync("ArticleParticipantForm");
+            await UseActiveFormsAsync();
+            await LoadRecentBatchesAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"No pude cargar la configuración de carga masiva: {ex.Message}";
+        }
+        finally
+        {
+            IsLoading = false;
+        }
     }
 
-    private void ExportCsvBi()
+    private Task UseActiveFormsAsync()
     {
-        var baseUri = Http.BaseAddress;
-        string url = baseUri is null
-            ? "api/Articles/export-bi"
-            : new Uri(baseUri, "api/Articles/export-bi").ToString();
-
-        Nav.NavigateTo(url, forceLoad: true);
-
-        // Feedback visual - usando la firma correcta de Toast
-        Toast.ShowSuccess("Generando archivo CSV BI...");
+        SelectedArticleFieldIds = ArticleForm?.Sections.SelectMany(x => x.Fields).Select(x => x.FieldId).ToHashSet() ?? new HashSet<int>();
+        SelectedParticipantFieldIds = ParticipantForm?.Sections.SelectMany(x => x.Fields).Select(x => x.FieldId).ToHashSet() ?? new HashSet<int>();
+        return Task.CompletedTask;
     }
 
-    private void ExportExcelBi()
+    private void SelectRequiredOnly()
     {
-        var baseUri = Http.BaseAddress;
-        string url = baseUri is null
-            ? "api/Articles/export-bi-excel"
-            : new Uri(baseUri, "api/Articles/export-bi-excel").ToString();
-
-        Nav.NavigateTo(url, forceLoad: true);
-
-        // Feedback visual - usando la firma correcta de Toast
-        Toast.ShowSuccess("Generando archivo Excel BI...");
+        SelectedArticleFieldIds = ArticleFields.Where(x => x.IsRequired).Select(x => x.FieldId).ToHashSet();
+        SelectedParticipantFieldIds = ParticipantFields.Where(x => x.IsRequired).Select(x => x.FieldId).ToHashSet();
     }
 
-    private async Task ImportCsvBi()
+    private void ToggleArticleField(int fieldId, object? value) => ToggleSelection(SelectedArticleFieldIds, fieldId, value);
+    private void ToggleParticipantField(int fieldId, object? value) => ToggleSelection(SelectedParticipantFieldIds, fieldId, value);
+
+    private static void ToggleSelection(HashSet<int> set, int fieldId, object? value)
     {
-        if (_selectedFile is null)
+        var isChecked = value as bool? == true;
+        if (isChecked) set.Add(fieldId); else set.Remove(fieldId);
+    }
+
+    private async Task DownloadTemplateAsync()
+    {
+        try
+        {
+            ClearMessages();
+            IsGeneratingTemplate = true;
+            if (SelectedArticleFieldIds.Count == 0 && SelectedParticipantFieldIds.Count == 0)
+            {
+                MessageTitle = "Plantilla incompleta";
+                WarningMessage = "Selecciona al menos un campo antes de generar la plantilla.";
+                return;
+            }
+
+            var request = new BulkImportTemplateRequest
+            {
+                EntityName = "Article",
+                SourceType = SelectedSourceType,
+                UseActiveFormsWhenEmpty = false,
+                ArticleFieldIds = SelectedArticleFieldIds.OrderBy(x => x).ToList(),
+                ParticipantFieldIds = SelectedParticipantFieldIds.OrderBy(x => x).ToList(),
+                TemplateName = "carga_masiva_articulos"
+            };
+
+            var file = await BulkImportClient.GenerateTemplateAsync(request);
+            await ExportJs.DownloadFile(file.FileName, file.ContentType, file.Content);
+            MessageTitle = "Plantilla generada";
+            SuccessMessage = "La plantilla dinámica se descargó correctamente.";
+        }
+        catch (Exception ex)
+        {
+            MessageTitle = "Error al generar plantilla";
+            ErrorMessage = $"No pude generar la plantilla: {ex.Message}";
+        }
+        finally
+        {
+            IsGeneratingTemplate = false;
+        }
+    }
+
+    private void OnFileSelected(InputFileChangeEventArgs args)
+    {
+        SelectedFile = args.File;
+        ClearMessages();
+        if (SelectedFile is not null)
+        {
+            MessageTitle = "Archivo listo";
+            SuccessMessage = $"Archivo listo para subir: {SelectedFile.Name}";
+        }
+    }
+
+    private async Task UploadAsync()
+    {
+        if (SelectedFile is null)
+        {
+            MessageTitle = "Archivo requerido";
+            WarningMessage = "Primero selecciona un archivo para crear el lote.";
             return;
-
-        _isImporting = true;
-        _importMessage = null;
-        _importHasError = false;
-        _importResult = null;
+        }
 
         try
         {
-            using var content = new MultipartFormDataContent();
-            var fileContent = new StreamContent(_selectedFile.OpenReadStream(long.MaxValue));
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
-            content.Add(fileContent, "file", _selectedFile.Name);
-
-            var response = await Http.PostAsync("api/Articles/import-bi", content);
-
-            if (!response.IsSuccessStatusCode)
+            ClearMessages();
+            IsUploading = true;
+            CurrentBatch = await BulkImportClient.UploadAsync(SelectedFile, SelectedSourceType, UploadNotes);
+            SelectedFile = null;
+            UploadNotes = string.Empty;
+            ResetPreviewFilters();
+            SelectedPreviewRow = null;
+            await LoadRecentBatchesAsync();
+            if (CurrentBatch is not null)
             {
-                _importHasError = true;
-                _importMessage = $"Error al importar: {(int)response.StatusCode} {response.ReasonPhrase}";
-                return;
-            }
-
-            var result = await response.Content.ReadFromJsonAsync<ArticleImportResultDto>();
-            _importResult = result;
-
-            if (result is null)
-            {
-                _importHasError = true;
-                _importMessage = "No se pudo interpretar la respuesta del servidor.";
-                return;
-            }
-
-            _importHasError = result.Errors > 0;
-
-            _importMessage =
-                $"Importación completada. " +
-                $"Filas leídas: {result.TotalRows}. " +
-                $"Procesadas: {result.Processed}. " +
-                $"Creadas: {result.Created}. " +
-                $"Actualizadas: {result.Updated}. " +
-                $"Errores: {result.Errors}.";
-
-            // Feedback visual - usando la firma correcta de Toast
-            if (_importHasError)
-            {
-                Toast.ShowWarning($"Importación con {result.Errors} errores");
-            }
-            else
-            {
-                Toast.ShowSuccess("Importación completada exitosamente");
+                MessageTitle = "Staging creado";
+                SuccessMessage = $"El archivo se cargó al staging. Lote {CurrentBatch.Summary.BatchCode} con {CurrentBatch.Summary.TotalRows} fila(s) detectadas. Revisa la tabla, valida y procesa solo cuando el lote esté limpio.";
             }
         }
         catch (Exception ex)
         {
-            _importHasError = true;
-            _importMessage = $"Error al subir e importar el archivo: {ex.Message}";
-            Toast.ShowError("Error en la importación");
+            MessageTitle = "Error al subir a staging";
+            ErrorMessage = $"No pude subir el archivo al staging: {ex.Message}";
         }
         finally
         {
-            _isImporting = false;
+            IsUploading = false;
         }
     }
+
+    private async Task LoadRecentBatchesAsync() => RecentBatches = await BulkImportClient.GetBatchesAsync("Article", 10);
+
+    private async Task OpenBatchAsync(int batchId)
+    {
+        try
+        {
+            ClearMessages();
+            CurrentBatch = await BulkImportClient.GetBatchAsync(batchId, 25);
+            SelectedPreviewRow = null;
+            if (CurrentBatch is null)
+            {
+                MessageTitle = "Lote no disponible";
+                WarningMessage = "No pude abrir el lote seleccionado.";
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageTitle = "Error al abrir lote";
+            ErrorMessage = $"No pude abrir el lote: {ex.Message}";
+        }
+    }
+
+    private async Task RefreshCurrentBatchAsync()
+    {
+        if (CurrentBatch is not null) await OpenBatchAsync(CurrentBatch.Summary.ImportBatchId);
+    }
+
+    private async Task ValidateCurrentBatchAsync()
+    {
+        if (CurrentBatch is null) return;
+        try
+        {
+            ClearMessages();
+            IsValidatingBatch = true;
+            var result = await BulkImportClient.ValidateBatchAsync(CurrentBatch.Summary.ImportBatchId);
+            if (result is not null)
+            {
+                CurrentBatch = result.Batch;
+                SelectedPreviewRow = null;
+                MessageTitle = "Validación completada";
+                SuccessMessage = $"{result.Message} Filas válidas: {CurrentBatch.Summary.ValidRows}. Filas con error: {CurrentBatch.Summary.ErrorRows}. Usa los filtros del preview para enfocarte en lo pendiente.";
+                await LoadRecentBatchesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageTitle = "Error al validar";
+            ErrorMessage = $"No pude validar el lote: {ex.Message}";
+        }
+        finally
+        {
+            IsValidatingBatch = false;
+        }
+    }
+
+    private async Task ProcessCurrentBatchAsync()
+    {
+        if (CurrentBatch is null) return;
+        try
+        {
+            ClearMessages();
+            IsProcessingBatch = true;
+            var result = await BulkImportClient.ProcessBatchAsync(CurrentBatch.Summary.ImportBatchId);
+            if (result is not null)
+            {
+                CurrentBatch = result.Batch;
+                SelectedPreviewRow = null;
+                MessageTitle = "Procesamiento completado";
+                SuccessMessage = $"{result.Message} Filas procesadas: {CurrentBatch.Summary.ProcessedRows}. El staging conserva la trazabilidad para auditoría y revisión posterior.";
+                await LoadRecentBatchesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageTitle = "Error al procesar";
+            ErrorMessage = $"No pude procesar el lote: {ex.Message}";
+        }
+        finally
+        {
+            IsProcessingBatch = false;
+        }
+    }
+
+    private static bool Matches(FieldCatalogItemDto field, string term)
+    {
+        if (string.IsNullOrWhiteSpace(term)) return true;
+        var normalized = term.Trim();
+        return field.FieldLabel.Contains(normalized, StringComparison.OrdinalIgnoreCase)
+            || field.FieldKey.Contains(normalized, StringComparison.OrdinalIgnoreCase)
+            || field.DataType.Contains(normalized, StringComparison.OrdinalIgnoreCase)
+            || field.SourceType.Contains(normalized, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task DownloadTemplateFromBatchAsync()
+    {
+        if (CurrentBatch?.Template is null)
+        {
+            MessageTitle = "Sin plantilla";
+            WarningMessage = "Este lote no tiene metadata suficiente para regenerar la plantilla.";
+            return;
+        }
+
+        try
+        {
+            ClearMessages();
+            IsGeneratingTemplate = true;
+            var request = new BulkImportTemplateRequest
+            {
+                EntityName = CurrentBatch.Template.EntityName,
+                SourceType = CurrentBatch.Summary.SourceType,
+                UseActiveFormsWhenEmpty = false,
+                ArticleFieldIds = CurrentBatch.Template.ArticleFields.Select(x => x.FieldId).ToList(),
+                ParticipantFieldIds = CurrentBatch.Template.ParticipantFields.Select(x => x.FieldId).ToList(),
+                TemplateName = $"plantilla_{CurrentBatch.Summary.BatchCode.ToLowerInvariant()}"
+            };
+
+            var file = await BulkImportClient.GenerateTemplateAsync(request);
+            await ExportJs.DownloadFile(file.FileName, file.ContentType, file.Content);
+            MessageTitle = "Plantilla regenerada";
+            SuccessMessage = $"Se regeneró la plantilla del lote {CurrentBatch.Summary.BatchCode}.";
+        }
+        catch (Exception ex)
+        {
+            MessageTitle = "Error al regenerar plantilla";
+            ErrorMessage = $"No pude regenerar la plantilla del lote: {ex.Message}";
+        }
+        finally
+        {
+            IsGeneratingTemplate = false;
+        }
+    }
+
+    private void OpenRowModal(BulkImportRowPreviewDto row)
+    {
+        SelectedPreviewRow = row;
+        IsCorrectionMode = false;
+        RowModalErrorMessage = null;
+        RowModalSuccessMessage = null;
+        InitializeCorrectionValues();
+    }
+
+    private async Task OpenCorrectionModalAsync(BulkImportRowPreviewDto row)
+    {
+        OpenRowModal(row);
+        await EnterCorrectionModeAsync();
+    }
+
+    private async Task OpenNextErrorRowAsync()
+    {
+        var next = FilteredErrorRows.FirstOrDefault();
+        if (next is not null)
+        {
+            await OpenCorrectionModalAsync(next);
+        }
+    }
+
+    private void CloseRowModal()
+    {
+        SelectedPreviewRow = null;
+        IsCorrectionMode = false;
+        IsSavingCorrections = false;
+        RowModalErrorMessage = null;
+        RowModalSuccessMessage = null;
+        CorrectionValues.Clear();
+        CorrectionCatalogSuggestions.Clear();
+        CorrectionDynamicOptions.Clear();
+    }
+
+    private async Task EnterCorrectionModeAsync()
+    {
+        if (SelectedPreviewRow is null)
+        {
+            return;
+        }
+
+        IsCorrectionMode = true;
+        RowModalErrorMessage = null;
+        RowModalSuccessMessage = null;
+        InitializeCorrectionValues();
+        await LoadCorrectionMetadataAsync();
+    }
+
+    private BulkImportRowPreviewDto? GetPreviousErrorRow()
+    {
+        if (SelectedPreviewRow is null)
+        {
+            return null;
+        }
+
+        var index = ErrorRows.FindIndex(row => row.ImportBatchRowId == SelectedPreviewRow.ImportBatchRowId);
+        return index > 0 ? ErrorRows[index - 1] : null;
+    }
+
+    private BulkImportRowPreviewDto? GetNextErrorRow()
+    {
+        if (SelectedPreviewRow is null)
+        {
+            return null;
+        }
+
+        var index = ErrorRows.FindIndex(row => row.ImportBatchRowId == SelectedPreviewRow.ImportBatchRowId);
+        return index >= 0 && index + 1 < ErrorRows.Count ? ErrorRows[index + 1] : null;
+    }
+
+    private async Task OpenPreviousErrorRowAsync()
+    {
+        var previous = GetPreviousErrorRow();
+        if (previous is not null)
+        {
+            await OpenCorrectionModalAsync(previous);
+        }
+    }
+
+    private async Task OpenNextErrorRowFromModalAsync()
+    {
+        var next = GetNextErrorRow();
+        if (next is not null)
+        {
+            await OpenCorrectionModalAsync(next);
+        }
+    }
+
+    private void CancelCorrectionMode()
+    {
+        IsCorrectionMode = false;
+        RowModalErrorMessage = null;
+        RowModalSuccessMessage = null;
+        InitializeCorrectionValues();
+    }
+
+    private void InitializeCorrectionValues()
+    {
+        CorrectionValues = SelectedRowEditableFields.ToDictionary(
+            field => field.FieldId,
+            field => TryGetExistingCell(field.FieldId)?.RawValue,
+            EqualityComparer<int>.Default);
+    }
+
+    private BulkImportRowCellDto? TryGetExistingCell(int fieldId)
+        => SelectedPreviewRow?.Cells.FirstOrDefault(x => x.FieldId == fieldId);
+
+    private List<CatalogItemDto> GetCatalogSuggestions(int fieldId)
+        => CorrectionCatalogSuggestions.TryGetValue(fieldId, out var items) ? items : new List<CatalogItemDto>();
+
+    private List<DynamicFieldOptionDto> GetDynamicOptions(int fieldId)
+        => CorrectionDynamicOptions.TryGetValue(fieldId, out var items) ? items : new List<DynamicFieldOptionDto>();
+
+    private BulkImportTemplateFieldDto? FindEditableFieldById(int fieldId)
+    {
+        var field = ArticleFields.Concat(ParticipantFields).FirstOrDefault(x => x.FieldId == fieldId);
+        return field is null ? null : MapFieldCatalogToEditableField(field);
+    }
+
+    private static BulkImportTemplateFieldDto MapCellToEditableField(BulkImportRowCellDto cell)
+        => new()
+        {
+            FieldId = cell.FieldId,
+            EntityName = cell.EntityName,
+            FieldKey = cell.FieldKey,
+            FieldLabel = cell.FieldLabel,
+            DataType = cell.ValueType ?? "string",
+            HeaderKey = $"{cell.EntityName}.{cell.FieldKey}"
+        };
+
+    private static BulkImportTemplateFieldDto MapFieldCatalogToEditableField(FieldCatalogItemDto field)
+        => new()
+        {
+            FieldId = field.FieldId,
+            EntityName = field.EntityName,
+            FieldKey = field.FieldKey,
+            FieldLabel = field.FieldLabel,
+            DataType = field.DataType,
+            SourceType = field.SourceType,
+            HeaderKey = $"{field.EntityName}.{field.FieldKey}|{field.FieldLabel}",
+            IsRequired = field.IsRequired,
+            IsDynamic = field.IsDynamic,
+            HelpText = field.HelpText,
+            Placeholder = field.Placeholder
+        };
+
+    private bool IsFieldInError(int fieldId)
+        => SelectedPreviewRow?.Errors.Any(x => x.FieldId == fieldId) == true
+            || TryGetExistingCell(fieldId)?.IsValid == false;
+
+    private string? GetCorrectionValue(int fieldId)
+        => CorrectionValues.TryGetValue(fieldId, out var value) ? value : null;
+
+    private void SetCorrectionValue(int fieldId, string? value)
+        => CorrectionValues[fieldId] = value;
+
+    private async Task HandleCorrectionValueChangedAsync(BulkImportTemplateFieldDto field, string? value)
+    {
+        SetCorrectionValue(field.FieldId, value);
+
+        if (field.FieldKey == "BroadFieldId")
+        {
+            var specificField = SelectedRowEditableFields.FirstOrDefault(x => x.FieldKey == "SpecificFieldId");
+            var detailedField = SelectedRowEditableFields.FirstOrDefault(x => x.FieldKey == "DetailedFieldId");
+
+            if (specificField is not null)
+            {
+                CorrectionValues[specificField.FieldId] = null;
+                await LoadCatalogSuggestionsForFieldAsync(specificField);
+            }
+
+            if (detailedField is not null)
+            {
+                CorrectionValues[detailedField.FieldId] = null;
+                await LoadCatalogSuggestionsForFieldAsync(detailedField);
+            }
+        }
+        else if (field.FieldKey == "SpecificFieldId")
+        {
+            var detailedField = SelectedRowEditableFields.FirstOrDefault(x => x.FieldKey == "DetailedFieldId");
+            if (detailedField is not null)
+            {
+                CorrectionValues[detailedField.FieldId] = null;
+                await LoadCatalogSuggestionsForFieldAsync(detailedField);
+            }
+        }
+    }
+
+    private async Task LoadCorrectionMetadataAsync()
+    {
+        IsLoadingCorrectionMetadata = true;
+        CorrectionCatalogSuggestions.Clear();
+        CorrectionDynamicOptions.Clear();
+
+        try
+        {
+            foreach (var field in SelectedRowEditableFields)
+            {
+                if (field.IsDynamic)
+                {
+                    var options = await FormConfigurationClient.GetFieldOptionsAsync(field.FieldId);
+                    if (options.Any())
+                    {
+                        CorrectionDynamicOptions[field.FieldId] = options.Where(x => x.IsActive).OrderBy(x => x.DisplayOrder).ToList();
+                    }
+                }
+
+                if (IsCatalogLikeField(field))
+                {
+                    await LoadCatalogSuggestionsForFieldAsync(field);
+                }
+            }
+        }
+        catch
+        {
+            // La corrección puede seguir funcionando aunque no logremos cargar sugerencias.
+        }
+        finally
+        {
+            IsLoadingCorrectionMetadata = false;
+        }
+    }
+
+    private async Task LoadCatalogSuggestionsForFieldAsync(BulkImportTemplateFieldDto field)
+    {
+        var parentId = GetParentCatalogId(field);
+        var items = await FormConfigurationClient.GetCatalogItemsByFieldAsync(field.FieldId, parentId);
+        if (items.Any())
+        {
+            CorrectionCatalogSuggestions[field.FieldId] = items.OrderBy(x => x.Name).ToList();
+        }
+        else
+        {
+            CorrectionCatalogSuggestions.Remove(field.FieldId);
+        }
+    }
+
+    private async Task SaveRowCorrectionsAsync()
+    {
+        if (CurrentBatch is null || SelectedPreviewRow is null)
+        {
+            return;
+        }
+
+        try
+        {
+            IsSavingCorrections = true;
+            RowModalErrorMessage = null;
+            RowModalSuccessMessage = null;
+
+            var request = new BulkImportRowCorrectionRequest
+            {
+                RevalidateBatch = true,
+                Cells = SelectedRowEditableFields
+                    .Select(field => new BulkImportRowCorrectionCellDto
+                    {
+                        FieldId = field.FieldId,
+                        RawValue = GetCorrectionValue(field.FieldId)
+                    })
+                    .ToList()
+            };
+
+            var result = await BulkImportClient.CorrectRowAsync(CurrentBatch.Summary.ImportBatchId, SelectedPreviewRow.ImportBatchRowId, request);
+            if (result is null)
+            {
+                RowModalErrorMessage = "No recibí respuesta al guardar la corrección.";
+                return;
+            }
+
+            CurrentBatch = result.Batch;
+            await LoadRecentBatchesAsync();
+
+            var refreshedRow = CurrentBatch.Rows.FirstOrDefault(x => x.ImportBatchRowId == SelectedPreviewRow.ImportBatchRowId);
+            SelectedPreviewRow = refreshedRow;
+            IsCorrectionMode = refreshedRow is not null && refreshedRow.Errors.Any();
+            RowModalSuccessMessage = result.Message;
+            MessageTitle = "Corrección aplicada";
+            SuccessMessage = result.Message;
+            if (refreshedRow is null)
+            {
+                CloseRowModal();
+            }
+            else
+            {
+                InitializeCorrectionValues();
+                if (IsCorrectionMode)
+                {
+                    await LoadCorrectionMetadataAsync();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            RowModalErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsSavingCorrections = false;
+        }
+    }
+
+    private bool IsCatalogLikeField(BulkImportTemplateFieldDto field)
+        => !string.IsNullOrWhiteSpace(field.ReferenceTableName)
+            || field.FieldKey is "AcademicTermId" or "PublicationStatusId" or "ResearchLineId" or "BroadFieldId" or "SpecificFieldId" or "DetailedFieldId";
+
+    private int? GetParentCatalogId(BulkImportTemplateFieldDto field)
+    {
+        return field.FieldKey switch
+        {
+            "SpecificFieldId" => TryResolveFieldIntValue("BroadFieldId"),
+            "DetailedFieldId" => TryResolveFieldIntValue("SpecificFieldId"),
+            _ => null
+        };
+    }
+
+    private int? TryResolveFieldIntValue(string fieldKey)
+    {
+        var editableField = SelectedRowEditableFields.FirstOrDefault(x => x.FieldKey == fieldKey);
+        if (editableField is null)
+        {
+            return null;
+        }
+
+        var rawCandidate = GetCorrectionValue(editableField.FieldId);
+        if (int.TryParse(rawCandidate, out var parsedFromRaw))
+        {
+            return parsedFromRaw;
+        }
+
+        var existingCell = TryGetExistingCell(editableField.FieldId);
+        return int.TryParse(existingCell?.NormalizedValue, out var parsedNormalized) ? parsedNormalized : null;
+    }
+
+    private static bool IsBooleanField(BulkImportTemplateFieldDto field)
+        => (field.DataType ?? string.Empty).Contains("bool", StringComparison.OrdinalIgnoreCase)
+            || (field.DataType ?? string.Empty).Contains("bit", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsDateField(BulkImportTemplateFieldDto field)
+        => (field.DataType ?? string.Empty).Contains("date", StringComparison.OrdinalIgnoreCase)
+            || (field.DataType ?? string.Empty).Contains("time", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsNumericField(BulkImportTemplateFieldDto field)
+    {
+        var type = field.DataType ?? string.Empty;
+        return type.Contains("int", StringComparison.OrdinalIgnoreCase)
+            || type.Contains("short", StringComparison.OrdinalIgnoreCase)
+            || type.Contains("decimal", StringComparison.OrdinalIgnoreCase)
+            || type.Contains("numeric", StringComparison.OrdinalIgnoreCase)
+            || type.Contains("double", StringComparison.OrdinalIgnoreCase)
+            || type.Contains("float", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetInputStep(BulkImportTemplateFieldDto field)
+    {
+        var type = field.DataType ?? string.Empty;
+        return type.Contains("decimal", StringComparison.OrdinalIgnoreCase)
+            || type.Contains("numeric", StringComparison.OrdinalIgnoreCase)
+            || type.Contains("double", StringComparison.OrdinalIgnoreCase)
+            || type.Contains("float", StringComparison.OrdinalIgnoreCase)
+            ? "0.01"
+            : "1";
+    }
+
+    private static BulkImportRowCellDto? FindCell(BulkImportRowPreviewDto row, string headerKey)
+        => row.Cells.FirstOrDefault(x => $"{x.EntityName}.{x.FieldKey}".Equals(headerKey, StringComparison.OrdinalIgnoreCase));
+
+    private static string GetDisplayValue(BulkImportRowCellDto cell)
+        => string.IsNullOrWhiteSpace(cell.RawValue) ? (cell.NormalizedValue ?? string.Empty) : cell.RawValue ?? string.Empty;
+
+    private static string GetNormalizedDisplayValue(BulkImportRowCellDto cell)
+        => string.IsNullOrWhiteSpace(cell.NormalizedValue) ? (cell.RawValue ?? string.Empty) : cell.NormalizedValue ?? string.Empty;
+
+    private static string GetRowStatusBadgeClass(string status)
+    {
+        return status.ToLowerInvariant() switch
+        {
+            "processed" => "rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700",
+            "valid" => "rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700",
+            "validated" => "rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700",
+            "error" => "rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700",
+            _ => "rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
+        };
+    }
+
+    private bool MatchesPreviewFilter(BulkImportRowPreviewDto row)
+    {
+        if (PreviewErrorsOnly && !row.Errors.Any())
+        {
+            return false;
+        }
+
+        if (!string.Equals(PreviewStatusFilter, "all", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(row.RowStatus, PreviewStatusFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(PreviewSearchTerm))
+        {
+            return true;
+        }
+
+        var term = PreviewSearchTerm.Trim();
+
+        if (row.RowNumber.ToString().Contains(term, StringComparison.OrdinalIgnoreCase)
+            || row.RowStatus.Contains(term, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return row.Cells.Any(cell =>
+                   cell.FieldKey.Contains(term, StringComparison.OrdinalIgnoreCase)
+                   || cell.FieldLabel.Contains(term, StringComparison.OrdinalIgnoreCase)
+                   || (cell.RawValue?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
+                   || (cell.NormalizedValue?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false))
+               || row.Errors.Any(error =>
+                   error.ErrorCode.Contains(term, StringComparison.OrdinalIgnoreCase)
+                   || error.ErrorMessage.Contains(term, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string GetPreviewCellClass(BulkImportRowCellDto? cell)
+    {
+        if (cell is null)
+        {
+            return "max-w-[16rem] px-4 py-3 text-slate-700";
+        }
+
+        return cell.IsValid
+            ? "max-w-[16rem] bg-white px-4 py-3 text-slate-700"
+            : "max-w-[16rem] bg-rose-50/80 px-4 py-3 text-rose-700";
+    }
+
+    private bool MatchesErrorFilter(BulkImportErrorDto error)
+    {
+        if (OnlyRowErrors && !error.ImportBatchRowId.HasValue)
+        {
+            return false;
+        }
+
+        if (!string.Equals(ErrorSeverityFilter, "all", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(error.Severity, ErrorSeverityFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(ErrorSearchTerm))
+        {
+            return true;
+        }
+
+        var term = ErrorSearchTerm.Trim();
+        return error.ErrorCode.Contains(term, StringComparison.OrdinalIgnoreCase)
+            || error.ErrorMessage.Contains(term, StringComparison.OrdinalIgnoreCase)
+            || (error.FieldKey?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (error.FieldLabel?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (error.ImportBatchRowId?.ToString().Contains(term, StringComparison.OrdinalIgnoreCase) ?? false);
+    }
+
+    private bool MatchesCorrectionQueueFilter(BulkImportRowPreviewDto row)
+    {
+        if (string.IsNullOrWhiteSpace(CorrectionQueueSearchTerm))
+        {
+            return true;
+        }
+
+        var term = CorrectionQueueSearchTerm.Trim();
+        if (row.RowNumber.ToString().Contains(term, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return row.Errors.Any(error =>
+                   error.ErrorCode.Contains(term, StringComparison.OrdinalIgnoreCase)
+                   || error.ErrorMessage.Contains(term, StringComparison.OrdinalIgnoreCase)
+                   || (error.FieldKey?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
+                   || (error.FieldLabel?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false))
+               || row.Cells.Any(cell =>
+                   cell.FieldKey.Contains(term, StringComparison.OrdinalIgnoreCase)
+                   || cell.FieldLabel.Contains(term, StringComparison.OrdinalIgnoreCase)
+                   || (cell.RawValue?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
+                   || (cell.NormalizedValue?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false));
+    }
+
+    private string GetRowCorrectionSummary(BulkImportRowPreviewDto row)
+    {
+        if (!row.Errors.Any())
+        {
+            return "Fila lista para continuar.";
+        }
+
+        var distinctFields = row.Errors
+            .Select(error => string.IsNullOrWhiteSpace(error.FieldLabel) ? error.ErrorCode : error.FieldLabel)
+            .Distinct()
+            .Take(3)
+            .ToList();
+
+        return $"Revisar {string.Join(", ", distinctFields)}.";
+    }
+
+    private List<string> GetRowErrorBadges(BulkImportRowPreviewDto row)
+        => row.Errors
+            .Select(error => !string.IsNullOrWhiteSpace(error.FieldLabel) ? error.FieldLabel! : error.ErrorCode)
+            .Distinct()
+            .Take(4)
+            .ToList();
+
+    private string GetBatchReviewHint()
+    {
+        if (CurrentBatch is null)
+        {
+            return "Sin lote";
+        }
+
+        if (CurrentBatch.Summary.ErrorRows > 0)
+        {
+            return "Revisar errores";
+        }
+
+        if (CurrentBatch.Summary.ValidRows > 0 && CurrentBatch.Summary.ProcessedRows == 0)
+        {
+            return "Listo para procesar";
+        }
+
+        if (CurrentBatch.Summary.ProcessedRows > 0)
+        {
+            return "Procesado";
+        }
+
+        return "Pendiente de validación";
+    }
+
+    private string GetCurrentStageLabel()
+    {
+        if (CurrentBatch is null)
+        {
+            return "Sin lote";
+        }
+
+        if (CurrentBatch.Summary.ProcessedRows > 0)
+        {
+            return "Procesado";
+        }
+
+        if (CurrentBatch.Summary.Status.Equals("Validated", StringComparison.OrdinalIgnoreCase)
+            || CurrentBatch.Summary.ValidRows > 0
+            || CurrentBatch.Summary.ErrorRows > 0)
+        {
+            return "Validado";
+        }
+
+        return "Cargado";
+    }
+
+    private string GetStageStatusText(string stageKey)
+    {
+        return stageKey switch
+        {
+            "uploaded" => CurrentBatch is null ? "Pendiente" : "Listo",
+            "validated" => CurrentBatch is null ? "Pendiente" : (CurrentBatch.Summary.ValidRows > 0 || CurrentBatch.Summary.ErrorRows > 0 || CurrentBatch.Summary.Status.Equals("Validated", StringComparison.OrdinalIgnoreCase) ? "Listo" : "Pendiente"),
+            "processed" => CurrentBatch is not null && CurrentBatch.Summary.ProcessedRows > 0 ? "Listo" : "Pendiente",
+            _ => "Pendiente"
+        };
+    }
+
+    private string GetStageCardClass(string stageKey)
+    {
+        var isReady = GetStageStatusText(stageKey) == "Listo";
+        return isReady
+            ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+            : "border-[#d9e5e8] bg-white text-slate-700";
+    }
+
+    private string GetStageBadgeClass(string stageKey)
+    {
+        var isReady = GetStageStatusText(stageKey) == "Listo";
+        return isReady
+            ? "bg-emerald-100 text-emerald-700"
+            : "bg-slate-100 text-slate-600";
+    }
+
+    private static string GetTemplateFieldInterpretation(BulkImportTemplateFieldDto field)
+    {
+        return field.FieldKey switch
+        {
+            "AcademicTermId" => "Acepta ID o nombre del periodo; se convierte al ID real.",
+            "PublicationStatusId" => "Acepta ID o nombre del estado; se convierte al ID real.",
+            "ResearchLineId" => "Acepta ID o nombre de la línea; se convierte al ID real.",
+            "BroadFieldId" => "Acepta ID o nombre del campo amplio; se convierte al ID real.",
+            "SpecificFieldId" => "Acepta ID, nombre o código; se convierte al ID real.",
+            "DetailedFieldId" => "Acepta ID, nombre o código; se convierte al ID real.",
+            "JournalName" => "Se usa para resolver o crear el venue del artículo.",
+            "IssnCode" => "Refuerza la coincidencia del venue o ayuda a crearlo.",
+            "Sjr" => "Se guarda como métrica decimal del venue.",
+            "Quartile" => "Se guarda como métrica del venue, por ejemplo Q1.",
+            _ when field.IsDynamic => "El sistema toma el valor y lo guarda como campo dinámico configurado.",
+            _ when field.IsRequired => "Debe venir informado para que la fila pueda quedar válida.",
+            _ => "Se interpreta según el tipo de dato configurado en FieldCatalog."
+        };
+    }
+
+    private void ResetPreviewFilters()
+    {
+        PreviewSearchTerm = string.Empty;
+        PreviewStatusFilter = "all";
+        PreviewErrorsOnly = false;
+        ShowNormalizedValues = false;
+        ErrorSearchTerm = string.Empty;
+        ErrorSeverityFilter = "all";
+        OnlyRowErrors = false;
+    }
+
+    private void ClearMessages()
+    {
+        ErrorMessage = null;
+        SuccessMessage = null;
+        WarningMessage = null;
+        MessageTitle = null;
+    }
 }
+

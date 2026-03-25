@@ -66,7 +66,7 @@ namespace tesisproject.backend.Mapping
                 Indexings = a.Indexings?.Select(ix => new ArticleIndexingDto
                 {
                     IndexingSourceId = ix.IndexingSourceId,
-                    IndexingSourceName = ix.IndexingSource?.Name
+                    IndexingSourceName = ix.IndexingSource?.Name ?? string.Empty
                 }).ToList(),
 
                 Participants = a.Participants?

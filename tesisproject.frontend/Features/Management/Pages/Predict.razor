@@ -909,8 +909,6 @@
         FromYear = DateTime.UtcNow.Year,
         ToYear = DateTime.UtcNow.Year + 3
     };
-    private ForecastResult? _forecastResult;
-    private bool _isRunningForecast = false;
 
     // ====== RECOMENDACIÓN ======
     private RecommendationInput _recInput = new();
@@ -964,18 +962,8 @@
 
     private async Task RunForecastAsync()
     {
-        _isRunningForecast = true;
-        _forecastResult = null;
-
-        try
-        {
-            await Task.Delay(600);
-            // TODO: lógica real de pronóstico (series temporales)
-        }
-        finally
-        {
-            _isRunningForecast = false;
-        }
+        await Task.Delay(600);
+        // TODO: lógica real de pronóstico (series temporales)
     }
 
     private void ResetRecommendationForm()

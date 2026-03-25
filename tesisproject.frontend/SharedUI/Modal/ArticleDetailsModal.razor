@@ -77,6 +77,7 @@
                 }
                 else
                 {
+                    var detail = Detail;
                     <!-- RESUMEN GENERAL -->
                     <section class="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm space-y-2">
                         <div class="flex flex-wrap items-center justify-between gap-2">
@@ -85,30 +86,30 @@
                                     Resumen general
                                 </p>
                                 <p class="text-sm text-slate-700 line-clamp-3">
-                                    @Detail.Title
+                                    @detail.Title
                                 </p>
                             </div>
 
                             <div class="flex flex-wrap gap-1.5 text-[11px]">
-                                @if (!string.IsNullOrWhiteSpace(Detail.Doi))
+                                @if (!string.IsNullOrWhiteSpace(detail.Doi))
                                 {
                                     <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
                                         <i class="bi bi-link-45deg"></i> DOI
                                     </span>
                                 }
-                                @if (Detail.IsProjectResult)
+                                @if (detail.IsProjectResult)
                                 {
                                     <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800 font-medium">
                                         <i class="bi bi-diagram-3"></i> Resultado de proyecto
                                     </span>
                                 }
-                                @if (Detail.HasInterculturalComponent)
+                                @if (detail.HasInterculturalComponent)
                                 {
                                     <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-amber-800 font-medium">
                                         <i class="bi bi-people"></i> Componente intercultural
                                     </span>
                                 }
-                                @if (Detail.IsOpenAccess)
+                                @if (detail.IsOpenAccess)
                                 {
                                     <span class="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-purple-800 font-medium">
                                         <i class="bi bi-unlock"></i> Open Access
@@ -128,34 +129,34 @@
                             </p>
 
                             <div class="space-y-1.5 text-xs text-slate-700">
-                                @if (!string.IsNullOrWhiteSpace(Detail.VenueName))
+                                @if (!string.IsNullOrWhiteSpace(detail.VenueName))
                                 {
                                     <div class="flex justify-between gap-2">
                                         <span class="text-[11px] text-slate-500">Revista / Evento</span>
-                                        <span class="font-medium text-right line-clamp-2">@Detail.VenueName</span>
+                                        <span class="font-medium text-right line-clamp-2">@detail.VenueName</span>
                                     </div>
                                 }
-                                @if (Detail is not null && !string.IsNullOrWhiteSpace(Detail.IssnCode))
+                                @if (!string.IsNullOrWhiteSpace(detail.IssnCode))
                                 {
                                     <div class="flex justify-between gap-2">
                                         <span class="text-[11px] text-slate-500">ISSN</span>
-                                        <span class="font-medium text-right">@Detail.IssnCode</span>
+                                        <span class="font-medium text-right">@detail.IssnCode</span>
                                     </div>
                                 }
 
-                                @if (!string.IsNullOrWhiteSpace(Detail.Doi))
+                                @if (!string.IsNullOrWhiteSpace(detail.Doi))
                                 {
                                     <div class="flex justify-between gap-2">
                                         <span class="text-[11px] text-slate-500">DOI</span>
-                                        <span class="font-mono text-[11px] text-right">@Detail.Doi</span>
+                                        <span class="font-mono text-[11px] text-right">@detail.Doi</span>
                                     </div>
                                 }
 
-                                @if (Detail.Year.HasValue)
+                                @if (detail.Year.HasValue)
                                 {
                                     <div class="flex justify-between gap-2">
                                         <span class="text-[11px] text-slate-500">Año</span>
-                                        <span class="font-medium text-right">@Detail.Year</span>
+                                        <span class="font-medium text-right">@detail.Year</span>
                                     </div>
                                 }
 

@@ -4,11 +4,12 @@
 <div class="sidebar menu-bg h-100 d-flex flex-column @(_collapsed ? "is-collapsed" : null)">
     <!-- Branding -->
     <div class="sidebar-brand d-flex align-items-center justify-content-between px-3 py-3 border-bottom border-white-20">
-        <div class="d-flex align-items-center">
+        <div class="d-flex align-items-center brand-identity">
             <div class="brand-mark d-inline-flex align-items-center justify-content-center me-2">
                 <span class="fw-bold">SI</span>
             </div>
             <div class="brand-text">
+                <div class="brand-kicker">Plataforma</div>
                 <div class="fw-semibold lh-1">Sistema Integrado</div>
                 <small class="opacity-75 lh-1">de Documentación</small>
             </div>
@@ -122,7 +123,7 @@
             <div class="accordion-panel">
                 <ul class="nav flex-column ms-4 my-2 gap-1">
                     <li class="nav-item"><NavLink href="/management/statisticalreports" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Reporteria</NavLink></li>
-                    <li class="nav-item"><NavLink href="/management/exportinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Exportar e Importar datos</NavLink></li>
+                    <li class="nav-item"><NavLink href="/management/exportinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Carga Masiva Dinámica</NavLink></li>
                     <li class="nav-item"><NavLink href="/management/backupsinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Copias de Seguridad</NavLink></li>
                 </ul>
             </div>
@@ -142,6 +143,7 @@
 
             <div class="accordion-panel">
                 <ul class="nav flex-column ms-4 my-2 gap-1">
+                    <li class="nav-item"><NavLink href="/management/externalapis" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Explorador de APIs externas</NavLink></li>
                     <li class="nav-item"><NavLink href="/test-api" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Centro de Ayuda</NavLink></li>
                     <li class="nav-item"><NavLink href="/help/manual" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Manual de Usuario</NavLink></li>
                     <li class="nav-item"><NavLink href="/configuration" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Configuración</NavLink></li>
@@ -171,6 +173,8 @@
 </div>
 
 @code {
+    [Parameter] public EventCallback<bool> CollapseChanged { get; set; }
+
     private bool _collapsed = false;
 
     private bool _openRegistrar = true;
@@ -178,7 +182,11 @@
     private bool _openReportes = false;
     private bool _openAyuda = false;
 
-    private void Toggle() => _collapsed = !_collapsed;
+    private async Task Toggle()
+    {
+        _collapsed = !_collapsed;
+        await CollapseChanged.InvokeAsync(_collapsed);
+    }
 
     private void ToggleSection(string key)
     {

@@ -40,6 +40,10 @@ namespace tesisproject.backend.Data
         public DbSet<FormFieldDefinition> FormFieldDefinitions => Set<FormFieldDefinition>();
         public DbSet<DynamicFieldValue> DynamicFieldValues => Set<DynamicFieldValue>();
         public DbSet<ArticleParticipantDynamicFieldValue> ArticleParticipantDynamicFieldValues => Set<ArticleParticipantDynamicFieldValue>();
+        public DbSet<ImportBatch> ImportBatches => Set<ImportBatch>();
+        public DbSet<ImportBatchRow> ImportBatchRows => Set<ImportBatchRow>();
+        public DbSet<ImportBatchRowValue> ImportBatchRowValues => Set<ImportBatchRowValue>();
+        public DbSet<ImportBatchError> ImportBatchErrors => Set<ImportBatchError>();
 
         protected override void OnModelCreating(ModelBuilder m)
         {
@@ -48,6 +52,8 @@ namespace tesisproject.backend.Data
             // =============== Article ===================
             m.Entity<Article>(e =>
             {
+                e.Ignore(x => x.ProjectId);
+                e.Ignore(x => x.Project);
                 e.Property(x => x.Title).HasMaxLength(500);
                 e.Property(x => x.Doi).HasMaxLength(200);
                 e.Property(x => x.PublicationUrl).HasMaxLength(500);
@@ -375,6 +381,78 @@ namespace tesisproject.backend.Data
                     .WithMany()
                     .HasForeignKey(x => x.FieldId)
                     .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            // =============== ImportBatch ================
+            m.Entity<ImportBatch>(e =>
+            {
+                e.ToTable("ImportBatch");
+                e.HasKey(x => x.ImportBatchId);
+                e.Property(x => x.BatchCode).HasMaxLength(100).IsRequired();
+                e.Property(x => x.SourceType).HasMaxLength(50).IsRequired();
+                e.Property(x => x.EntityName).HasMaxLength(100).IsRequired();
+                e.Property(x => x.FileName).HasMaxLength(260);
+                e.Property(x => x.SourceReference).HasMaxLength(300);
+                e.Property(x => x.Status).HasMaxLength(30).IsRequired();
+                e.Property(x => x.CreatedBy).HasMaxLength(150);
+                e.Property(x => x.Notes).HasMaxLength(500);
+
+                e.HasMany(x => x.Rows)
+                    .WithOne(x => x.Batch)
+                    .HasForeignKey(x => x.ImportBatchId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasMany(x => x.Errors)
+                    .WithOne(x => x.Batch)
+                    .HasForeignKey(x => x.ImportBatchId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // =============== ImportBatchRow ============
+            m.Entity<ImportBatchRow>(e =>
+            {
+                e.ToTable("ImportBatchRow");
+                e.HasKey(x => x.ImportBatchRowId);
+                e.Property(x => x.RowStatus).HasMaxLength(30).IsRequired();
+
+                e.HasMany(x => x.Values)
+                    .WithOne(x => x.Row)
+                    .HasForeignKey(x => x.ImportBatchRowId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasMany(x => x.Errors)
+                    .WithOne(x => x.Row)
+                    .HasForeignKey(x => x.ImportBatchRowId)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+
+            // =============== ImportBatchRowValue =======
+            m.Entity<ImportBatchRowValue>(e =>
+            {
+                e.ToTable("ImportBatchRowValue");
+                e.HasKey(x => x.ImportBatchRowValueId);
+                e.Property(x => x.ValueType).HasMaxLength(50);
+                e.Property(x => x.ValidationMessage).HasMaxLength(500);
+
+                e.HasOne(x => x.Field)
+                    .WithMany()
+                    .HasForeignKey(x => x.FieldId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // =============== ImportBatchError ==========
+            m.Entity<ImportBatchError>(e =>
+            {
+                e.ToTable("ImportBatchError");
+                e.HasKey(x => x.ImportBatchErrorId);
+                e.Property(x => x.ErrorCode).HasMaxLength(100).IsRequired();
+                e.Property(x => x.ErrorMessage).HasMaxLength(500).IsRequired();
+                e.Property(x => x.Severity).HasMaxLength(20).IsRequired();
+
+                e.HasOne(x => x.Field)
+                    .WithMany()
+                    .HasForeignKey(x => x.FieldId)
+                    .OnDelete(DeleteBehavior.NoAction);
             });
         }
     }

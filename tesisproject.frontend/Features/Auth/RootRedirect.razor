@@ -4,7 +4,6 @@
 @code {
     protected override void OnInitialized()
     {
-        // Redirige inmediatamente a /login al entrar a la raíz
-        Nav.NavigateTo("/login", forceLoad: true);
+        Nav.NavigateTo("/panel/principal", forceLoad: true);
     }
 }

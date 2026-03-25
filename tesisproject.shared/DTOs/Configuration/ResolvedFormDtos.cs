@@ -43,6 +43,7 @@ namespace tesisproject.shared.DTOs.Configuration
         public string OptionValue { get; set; } = string.Empty;
         public string OptionLabel { get; set; } = string.Empty;
         public int DisplayOrder { get; set; }
+        public bool IsActive { get; set; }
     }
 
     public class ResolvedFormFieldDto

@@ -1,246 +1,143 @@
-﻿/* ===== Layout con SIDEBAR FIJO ===== */
 .app-shell {
+    --shell-sidebar-width: 272px;
+    --shell-sidebar-collapsed-width: 92px;
+    --shell-header-height: 68px;
     min-height: 100vh;
-    display: flex;
-    overflow: hidden; /* Previene scroll general */
+    background: #fbf5e7;
+    transition: background .2s ease;
 }
 
-/* Sidebar fijo */
 .layout-aside {
     position: fixed;
-    left: 0;
-    top: 0;
-    height: 100vh;
-    width: 270px; /* Mismo ancho que tu sidebar */
-    z-index: 1000;
-    overflow-y: auto; /* Scroll interno si es necesario */
-    transition: width 0.28s ease; /* Transición para el colapso */
+    inset: 0 auto 0 0;
+    z-index: 1040;
+    width: var(--shell-sidebar-width);
+    transition: width .28s ease, transform .28s ease;
 }
 
-/* Contenido principal con scroll independiente */
+.app-shell.sidebar-collapsed .layout-aside {
+    width: var(--shell-sidebar-collapsed-width);
+}
+
 .layout-main {
-    margin-left: 270px; /* Mismo ancho que el sidebar */
-    flex: 1;
+    min-height: 100vh;
+    margin-left: var(--shell-sidebar-width);
     display: flex;
     flex-direction: column;
-    min-height: 100vh;
-    overflow-y: auto; /* Scroll solo aquí */
+    width: calc(100% - var(--shell-sidebar-width));
     min-width: 0;
-    background-color: var(--page-bg);
-    transition: margin-left 0.28s ease; /* Transición suave */
+    transition: margin-left .28s ease, width .28s ease;
 }
 
-    /* Área de contenido principal */
-    .layout-main main {
-        flex: 1;
-        overflow-y: auto;
-        padding: 1rem;
-    }
+.app-shell.sidebar-collapsed .layout-main {
+    margin-left: var(--shell-sidebar-collapsed-width);
+    width: calc(100% - var(--shell-sidebar-collapsed-width));
+}
 
-/* ===== Header / Footer ===== */
 .brand-header {
-    background: #6e6e6e;
-    color: #ffffff;
     position: sticky;
     top: 0;
-    z-index: 999;
+    z-index: 1020;
+    min-height: var(--shell-header-height);
+    background: #16324f !important;
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(151, 186, 214, 0.16);
+    box-shadow: 0 10px 24px rgba(12, 28, 44, 0.12);
 }
 
-    .brand-header .fw-semibold,
-    .brand-header * {
-        background: #7A1E19;
-        color: #ffffff;
-    }
+.brand-header-inner {
+    min-height: var(--shell-header-height);
+}
+
+.brand-title {
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mobile-menu-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 0.95rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1030;
+    border: 0;
+    background: rgba(16, 34, 54, 0.48);
+    backdrop-filter: blur(2px);
+}
+
+.app-main-content {
+    flex: 1 1 auto;
+    padding: .72rem;
+    min-width: 0;
+}
+
+.app-shell.sidebar-collapsed .app-main-content {
+    padding-left: .75rem;
+}
 
 .app-footer {
-    background: #7A1E19;
-    color: rgba(255,255,255,.9);
     margin-top: auto;
+    padding-inline: 1rem;
 }
 
-/* =========================================================
-   Compatibilidad con Sidebar Colapsado - CORREGIDO
-   ========================================================= */
-
-/* Cuando el sidebar está colapsado - ESTILO CORRECTO */
-.app-shell:has(.sidebar.is-collapsed) .layout-main {
-    margin-left: 72px;
-}
-
-.app-shell:has(.sidebar.is-collapsed) .layout-aside {
-    width: 72px;
-}
-
-/* Alternativa si :has() no es soportado */
-.sidebar.is-collapsed {
-    width: 72px;
-}
-
-    .sidebar.is-collapsed ~ .layout-main {
-        margin-left: 72px;
+@media (max-width: 1199.98px) {
+    .app-main-content {
+        padding: .68rem;
     }
-
-/* =========================================================
-   Scroll Personalizado
-   ========================================================= */
-
-/* Scrollbar para sidebar */
-.layout-aside::-webkit-scrollbar {
-    width: 6px;
 }
 
-.layout-aside::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-}
-
-.layout-aside::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 3px;
-}
-
-    .layout-aside::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.5);
-    }
-
-/* Scrollbar para contenido principal */
-.layout-main::-webkit-scrollbar {
-    width: 8px;
-}
-
-.layout-main::-webkit-scrollbar-track {
-    background: #f1f1f1;
-}
-
-.layout-main::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
-    border-radius: 4px;
-}
-
-    .layout-main::-webkit-scrollbar-thumb:hover {
-        background: #a8a8a8;
-    }
-
-/* =========================================================
-   Responsive Design
-   ========================================================= */
-
-/* Tablets */
-@media (max-width: 1024px) {
-    .layout-aside {
-        width: 72px;
-    }
-
-    .layout-main {
-        margin-left: 72px;
-    }
-
-    /* Cuando el sidebar NO está colapsado en tablets */
-    .sidebar:not(.is-collapsed) {
-        width: 270px;
-    }
-
-        .sidebar:not(.is-collapsed) ~ .layout-main {
-            margin-left: 270px;
-        }
-}
-
-/* Móviles */
-@media (max-width: 768px) {
+@media (max-width: 991.98px) {
     .layout-aside {
         transform: translateX(-100%);
-        transition: transform 0.3s ease;
-        width: 270px;
+        width: min(var(--shell-sidebar-width), calc(100vw - 2.75rem));
+        max-width: calc(100vw - 2.75rem);
     }
 
-        .layout-aside.mobile-open {
-            transform: translateX(0);
-            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
-        }
+    .app-shell.sidebar-collapsed .layout-aside {
+        width: min(var(--shell-sidebar-width), calc(100vw - 2.75rem));
+    }
+
+    .layout-aside.mobile-open {
+        transform: translateX(0);
+    }
 
     .layout-main {
-        margin-left: 0 !important;
         width: 100%;
+        margin-left: 0;
     }
 
-        .layout-main main {
-            padding: 0.75rem !important;
-        }
+    .app-shell.sidebar-collapsed .layout-main {
+        width: 100%;
+        margin-left: 0;
+    }
 
-    /* Overlay para móviles cuando el menú está abierto */
-    .layout-aside.mobile-open + .layout-main::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: 999;
-        pointer-events: none;
+    .brand-title {
+        font-size: 0.86rem;
+        letter-spacing: 0.06em;
     }
 }
 
-/* Pantallas muy grandes */
-@media (min-width: 1600px) {
-    .layout-main {
-        margin-left: 270px;
+@media (max-width: 767.98px) {
+    .app-main-content {
+        padding: 1rem 0.75rem 1.25rem;
     }
 
-    .sidebar.is-collapsed ~ .layout-main {
-        margin-left: 72px;
-    }
-}
-
-/* =========================================================
-   Ajustes para Contenido Específico
-   ========================================================= */
-
-/* Asegura que el contenido tenga espacio suficiente */
-.layout-main main > div {
-    min-height: calc(100vh - 120px);
-}
-
-/* Mejora el aspecto del header en móviles */
-@media (max-width: 768px) {
-    .brand-header {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
-}
-
-/* Ajustes para impresión */
-@media print {
-    .layout-aside {
-        display: none;
+    .brand-header-inner {
+        padding-inline: 0.75rem;
     }
 
-    .layout-main {
-        margin-left: 0 !important;
-    }
-
-    .brand-header,
     .app-footer {
-        display: none;
+        padding-inline: 0.75rem;
     }
-}
-
-/* =========================================================
-   Solución Alternativa con JavaScript
-   ========================================================= */
-
-/* Clases para control manual desde JavaScript */
-.layout-main.sidebar-expanded {
-    margin-left: 270px;
-}
-
-.layout-main.sidebar-collapsed {
-    margin-left: 72px;
-}
-
-.layout-aside.sidebar-expanded {
-    width: 270px;
-}
-
-.layout-aside.sidebar-collapsed {
-    width: 72px;
 }

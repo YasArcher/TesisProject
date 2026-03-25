@@ -1,0 +1,44 @@
+.app-alert-banner {
+    border-radius: 1.15rem;
+    border: 1px solid;
+    padding: .9rem 1rem;
+    background: #ffffff;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
+}
+
+.app-alert-banner__title {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .18em;
+}
+
+.app-alert-banner__message {
+    margin-top: .3rem;
+    font-size: .9rem;
+    line-height: 1.5;
+}
+
+.app-alert-banner--success {
+    background: #f6fbf7;
+    border-color: #b8d9c1;
+    color: #22543d;
+}
+
+.app-alert-banner--error {
+    background: #fff7f7;
+    border-color: #e5b8b8;
+    color: #7A1E19;
+}
+
+.app-alert-banner--warning {
+    background: #fffaf1;
+    border-color: #e7d09a;
+    color: #8f6c14;
+}
+
+.app-alert-banner--info {
+    background: #f5f9fc;
+    border-color: #c8d7e6;
+    color: #16324f;
+}

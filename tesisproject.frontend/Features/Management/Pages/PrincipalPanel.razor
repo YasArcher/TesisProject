@@ -1,243 +1,176 @@
-﻿@page "/panel/principal"
+@page "/panel/principal"
 @attribute [Authorize]
 
 @using System.Threading
+@using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Articles
 @using tesisproject.shared.DTOs.Catalogs
-@using tesisproject.frontend.SharedUI.Dashboard
-@using tesisproject.frontend.Services.Interfaces
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IArticlesClient ArticlesClient
 @inject ICatalogsService CatalogsService
 @implements IDisposable
 
-<div class="min-h-[calc(100vh-80px)] bg-[#f2f2f2]">
-    <div class="mx-auto max-w-[1400px] px-4 py-6 space-y-6">
-        <!-- HERO: Título + tarjeta usuario/reloj -->
-        <section class="rounded-3xl border border-slate-200/80 bg-white/95 px-5 py-4 shadow-lg shadow-slate-300/40 border-t-4 border-t-[#800909]">
-            <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <!-- Título -->
-                <div>
-                    <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-[#1c5052]">
-                        Panel principal DIDE
-                    </h1>
-                    <p class="mt-1 text-sm md:text-base text-slate-600">
-                        Dirección de Investigación y Desarrollo – Universidad Técnica de Ambato
-                    </p>
-                </div>
-
-                <!-- Tarjeta usuario + reloj -->
-                <div class="flex-shrink-0">
-                    <DashboardUserSummaryCard UserName="@UserName"
-                                             Initials="@Initials"
-                                             Role="Investigador UTA"
-                                             Time="@CurrentTime"
-                                             Date="@CurrentDate"
-                                             HeaderText="Sesión activa" />
-                </div>
-            </div>
-        </section>
-
-        <!-- KPIs (ahora con datos reales) -->
-        <section class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <DashboardKpiCard
-                Title="Proyectos activos"
-                Value="@(_kpisLoading ? "…" : KpiProjectsActive.ToString())"
-                Description="Registrados en la DIDE"
-                IconCss="bi bi-journal-text"
-                ContainerClass="bg-white/95 border-slate-200"
-                IconContainerClass="bg-[#1c5052]/10 text-[#1c5052]"
-                TitleClass="text-slate-500"
-                ValueClass="text-[#213635]"
-                DescriptionClass="text-slate-500" />
-
-            <DashboardKpiCard
-                Title="Publicaciones"
-                Value="@(_kpisLoading ? "…" : KpiPublications.ToString())"
-                Description="Artículos registrados en el sistema"
-                IconCss="bi bi-journal-check"
-                ContainerClass="bg-emerald-50/80 border-emerald-100"
-                IconContainerClass="bg-emerald-600/10 text-emerald-700"
-                TitleClass="text-emerald-800/90"
-                ValueClass="text-emerald-800"
-                DescriptionClass="text-emerald-900/80" />
-
-            <DashboardKpiCard
-                Title="En ejecución"
-                Value="@(_kpisLoading ? "…" : KpiInExecution.ToString())"
-                Description="Artículos en estado ACEPTADO"
-                IconCss="bi bi-clock-history"
-                ContainerClass="bg-sky-50/80 border-sky-100"
-                IconContainerClass="bg-sky-600/10 text-sky-700"
-                TitleClass="text-sky-800/90"
-                ValueClass="text-sky-800"
-                DescriptionClass="text-sky-900/80" />
-
-            <DashboardKpiCard
-                Title="Nuevos este mes"
-                Value="@(_kpisLoading ? "…" : KpiNewThisMonth.ToString())"
-                Description="Artículos creados en el mes actual"
-                IconCss="bi bi-graph-up-arrow"
-                ContainerClass="bg-gradient-to-br from-[#800909]/4 via-white to-white border border-[#800909]/15"
-                IconContainerClass="bg-[#800909]/15 text-[#800909]"
-                TitleClass="text-[#4d1a1a]"
-                ValueClass="text-[#800909]"
-                DescriptionClass="text-[#4d1a1a]/80" />
-        </section>
-
-        <!-- Bloque central: video + galería -->
-        <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <!-- Video institucional -->
-            <article class="rounded-3xl border border-slate-200 bg-white/95 shadow-sm">
-                <header class="border-b border-slate-200/70 bg-gradient-to-r from-[#1c5052]/8 via-white to-white px-5 py-4">
-                    <h2 class="text-base md:text-lg font-semibold text-[#1c5052] flex items-center gap-2">
-                        <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-[#1c5052]/15 text-[#1c5052]">
-                            <i class="bi bi-play-circle"></i>
-                        </span>
-                        Video institucional DIDE
-                    </h2>
-                    <p class="mt-1 text-xs md:text-sm text-slate-600">
-                        Conoce la misión, visión y líneas de acción de la Dirección de Investigación y Desarrollo.
-                    </p>
-                </header>
-                <div class="p-5">
-                    <div class="flex aspect-video items-center justify-center rounded-2xl bg-gradient-to-br from-[#1c5052]/12 via-[#213635]/10 to-[#800909]/12">
-                        <div class="text-center">
-                            <button class="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-r from-[#1c5052] to-[#800909] shadow-lg shadow-[#1c5052]/40">
-                                <svg class="h-10 w-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                                </svg>
-                            </button>
-                            <p class="text-xs md:text-sm text-slate-700">
-                                Video institucional DIDE–UTA
-                            </p>
-                            <button class="mt-3 inline-flex items-center justify-center rounded-xl bg-gradient-to-r from-[#1c5052] to-[#800909] px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-white shadow-sm hover:from-[#213635] hover:to-[#800909]">
-                                Ver video
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </article>
-
-            <!-- Galería / entorno DIDE -->
-            <article class="rounded-3xl border border-slate-200 bg-white/95 shadow-sm">
-                <header class="border-b border-slate-200/70 bg-gradient-to-r from-[#800909]/8 via-white to-white px-5 py-4">
-                    <h2 class="text-base md:text-lg font-semibold text-[#800909] flex items-center gap-2">
-                        <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-[#800909]/15 text-[#800909]">
-                            <i class="bi bi-image"></i>
-                        </span>
-                        Galería DIDE
-                    </h2>
-                    <p class="mt-1 text-xs md:text-sm text-slate-600">
-                        Un vistazo a nuestras instalaciones, equipo y actividades institucionales.
-                    </p>
-                </header>
-                <div class="p-5 space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="flex aspect-square items-center justify-center rounded-2xl bg-gradient-to-br from-[#1c5052] to-[#348e91] p-2 text-center text-xs font-semibold text-white">
-                            Laboratorios de investigación
-                        </div>
-                        <div class="flex aspect-square items-center justify-center rounded-2xl bg-gradient-to-br from-[#800909] to-[#4d1a1a] p-2 text-center text-xs font-semibold text-white">
-                            Equipo DIDE
-                        </div>
-                        <div class="flex aspect-square items-center justify-center rounded-2xl bg-gradient-to-br from-[#213635] to-[#0a0c0d] p-2 text-center text-xs font-semibold text-white">
-                            Eventos académicos
-                        </div>
-                        <div class="flex aspect-square items-center justify-center rounded-2xl bg-gradient-to-br from-[#348e91] to-[#1c5052] p-2 text-center text-xs font-semibold text-white">
-                            Proyectos en marcha
-                        </div>
-                    </div>
-
-                    <button class="w-full inline-flex items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-700 shadow-sm hover:bg-slate-50">
-                        Ver galería completa
-                    </button>
-                </div>
-            </article>
-        </section>
-
-        <!-- Bloque informativo: capacidades y fortalezas -->
-        <section class="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
-            <div class="mb-4 flex items-center justify-between gap-3">
-                <div>
-                    <h2 class="text-base md:text-lg font-semibold text-[#213635]">
-                        Capacidades y fortalezas de la DIDE
-                    </h2>
-                    <p class="text-xs md:text-sm text-slate-600">
-                        Elementos claves que soportan la gestión de proyectos y publicaciones científicas.
-                    </p>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <DashboardHighlightCard
-                    Title="Infraestructura"
-                    Description="Laboratorios especializados, equipamiento y espacios diseñados para potenciar la investigación aplicada."
-                    IconCss="bi bi-building"
-                    ContainerClass="border-slate-200/80 bg-gradient-to-br from-[#f9fafb] via-white to-[#f3f4f6]"
-                    IconContainerClass="bg-[#1c5052]/10 text-[#1c5052]"
-                    TitleClass="text-[#1c5052]"
-                    DescriptionClass="text-slate-600" />
-
-                <DashboardHighlightCard
-                    Title="Certificación"
-                    Description="Procesos alineados con estándares de calidad y normativas nacionales e internacionales."
-                    IconCss="bi bi-shield-check"
-                    ContainerClass="border-emerald-100 bg-emerald-50/70"
-                    IconContainerClass="bg-emerald-700/10 text-emerald-700"
-                    TitleClass="text-emerald-800"
-                    DescriptionClass="text-emerald-900/90" />
-
-                <DashboardHighlightCard
-                    Title="Innovación"
-                    Description="Impulso a soluciones tecnológicas avanzadas y proyectos con impacto regional y nacional."
-                    IconCss="bi bi-lightbulb"
-                    ContainerClass="border-sky-100 bg-sky-50/70"
-                    IconContainerClass="bg-sky-600/10 text-sky-700"
-                    TitleClass="text-sky-800"
-                    DescriptionClass="text-sky-900/90" />
-            </div>
-        </section>
-
-        <!-- Actividad reciente -->
-        <section class="rounded-3xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm">
-            <header class="mb-3">
-                <h2 class="text-base md:text-lg font-semibold text-[#800909]">
-                    Actividad reciente DIDE
-                </h2>
-                <p class="text-xs md:text-sm text-slate-600">
-                    Resumen de los últimos movimientos en proyectos y publicaciones científicas.
+<div class="principal-shell">
+    <div class="app-page-shell principal-shell__inner">
+        <section class="principal-hero">
+            <div class="principal-hero__copy">
+                <span class="principal-chip">@Greeting</span>
+                <h1 class="principal-hero__title">Centro de control de investigación y publicaciones</h1>
+                <p class="principal-hero__subtitle">
+                    Seguimiento operativo para registro, configuración dinámica, carga masiva y validación de información científica.
                 </p>
-            </header>
 
-            <div class="space-y-3">
-                <DashboardActivityItem
-                    Title="Nuevo proyecto aprobado"
-                    Description="&quot;Desarrollo de materiales compuestos sostenibles&quot;"
-                    TimeAgo="Hace 2 días"
-                    ContainerClass="border-l-[#800909] bg-[#800909]/5"
-                    DotClass="bg-[#800909]"
-                    TitleClass="text-[#800909]"
-                    DescriptionClass="text-slate-700" />
-
-                <DashboardActivityItem
-                    Title="Publicación indexada"
-                    Description="&quot;Análisis de eficiencia energética en procesos industriales&quot;"
-                    TimeAgo="Hace 1 semana"
-                    ContainerClass="border-l-emerald-600 bg-emerald-50"
-                    DotClass="bg-emerald-600"
-                    TitleClass="text-emerald-800"
-                    DescriptionClass="text-slate-700" />
-
-                <DashboardActivityItem
-                    Title="Convenio internacional"
-                    Description="Firma de acuerdo con universidad europea para investigación conjunta."
-                    TimeAgo="Hace 2 semanas"
-                    ContainerClass="border-l-sky-700 bg-sky-50"
-                    DotClass="bg-sky-700"
-                    TitleClass="text-sky-800"
-                    DescriptionClass="text-slate-700" />
+                <div class="principal-hero__actions">
+                    <a class="principal-action principal-action--solid" href="/articulos/registrar">
+                        <span class="principal-action__icon">+</span>
+                        <span>Registrar artículo</span>
+                    </a>
+                    <a class="principal-action principal-action--ghost" href="/management/exportinformation">
+                        <span class="principal-action__icon">⇪</span>
+                        <span>Ir a carga masiva</span>
+                    </a>
+                    <a class="principal-action principal-action--ghost" href="/management/externalapis">
+                        <span class="principal-action__icon">↗</span>
+                        <span>Consultar APIs externas</span>
+                    </a>
+                </div>
             </div>
+
+            <aside class="principal-status-card">
+                <div class="principal-status-card__head">
+                    <div>
+                        <div class="principal-status-card__label">Sesión operativa</div>
+                        <div class="principal-status-card__user">@UserName</div>
+                    </div>
+                    <div class="principal-status-card__badge">En línea</div>
+                </div>
+
+                <div class="principal-status-card__clock">@CurrentTime</div>
+                <div class="principal-status-card__date">@CurrentDate</div>
+
+                <div class="principal-status-card__meta">
+                    <div class="principal-mini-stat">
+                        <span class="principal-mini-stat__label">Rol</span>
+                        <strong>@UserRole</strong>
+                    </div>
+                    <div class="principal-mini-stat">
+                        <span class="principal-mini-stat__label">Iniciales</span>
+                        <strong>@Initials</strong>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <section class="principal-kpis">
+            @foreach (var metric in DashboardMetrics)
+            {
+                <article class="principal-kpi-card @(metric.Highlight ? "principal-kpi-card--highlight" : string.Empty)">
+                    <div class="principal-kpi-card__top">
+                        <span class="principal-kpi-card__label">@metric.Title</span>
+                        <span class="principal-kpi-card__icon">@metric.Icon</span>
+                    </div>
+                    <div class="principal-kpi-card__value">@metric.Value</div>
+                    <p class="principal-kpi-card__description">@metric.Description</p>
+                    <div class="principal-kpi-card__foot">
+                        <span class="principal-kpi-card__trend">@metric.Trend</span>
+                    </div>
+                </article>
+            }
+        </section>
+
+        <section class="principal-grid">
+            <article class="principal-panel principal-panel--spotlight">
+                <div class="principal-panel__head">
+                    <div>
+                        <span class="principal-panel__eyebrow">Foco del momento</span>
+                        <h2 class="principal-panel__title">@CurrentFocus.Title</h2>
+                    </div>
+                    <span class="principal-pulse"></span>
+                </div>
+
+                <p class="principal-panel__copy">@CurrentFocus.Description</p>
+
+                <div class="principal-focus-list">
+                    @foreach (var point in CurrentFocus.Bullets)
+                    {
+                        <div class="principal-focus-item">
+                            <span class="principal-focus-item__dot"></span>
+                            <span>@point</span>
+                        </div>
+                    }
+                </div>
+            </article>
+
+            <article class="principal-panel">
+                <div class="principal-panel__head">
+                    <div>
+                        <span class="principal-panel__eyebrow">Atajos</span>
+                        <h2 class="principal-panel__title">Flujos principales</h2>
+                    </div>
+                </div>
+
+                <div class="principal-shortcuts">
+                    @foreach (var shortcut in QuickActions)
+                    {
+                        <a class="principal-shortcut" href="@shortcut.Href">
+                            <div class="principal-shortcut__icon">@shortcut.Icon</div>
+                            <div>
+                                <div class="principal-shortcut__title">@shortcut.Title</div>
+                                <div class="principal-shortcut__description">@shortcut.Description</div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            </article>
+        </section>
+
+        <section class="principal-grid principal-grid--balanced">
+            <article class="principal-panel">
+                <div class="principal-panel__head">
+                    <div>
+                        <span class="principal-panel__eyebrow">Pulso del sistema</span>
+                        <h2 class="principal-panel__title">Indicadores operativos</h2>
+                    </div>
+                </div>
+
+                <div class="principal-progress-list">
+                    @foreach (var item in OperationalIndicators)
+                    {
+                        <div class="principal-progress-item">
+                            <div class="principal-progress-item__meta">
+                                <span>@item.Label</span>
+                                <strong>@item.DisplayValue</strong>
+                            </div>
+                            <div class="principal-progress-item__bar">
+                                <span style="width:@item.Percent%"></span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </article>
+
+            <article class="principal-panel">
+                <div class="principal-panel__head">
+                    <div>
+                        <span class="principal-panel__eyebrow">Actividad</span>
+                        <h2 class="principal-panel__title">Movimientos recientes</h2>
+                    </div>
+                </div>
+
+                <div class="principal-activity">
+                    @foreach (var activity in ActivityFeed)
+                    {
+                        <div class="principal-activity__item">
+                            <div class="principal-activity__rail"></div>
+                            <div class="principal-activity__content">
+                                <div class="principal-activity__time">@activity.TimeAgo</div>
+                                <div class="principal-activity__title">@activity.Title</div>
+                                <div class="principal-activity__description">@activity.Description</div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </article>
         </section>
     </div>
 </div>
@@ -245,16 +178,59 @@
 @code {
     private string UserName = "Usuario";
     private string Initials = "U";
+    private string UserRole = "Investigador UTA";
+    private string Greeting = "Bienvenido";
     private string CurrentTime = "00:00:00";
     private string CurrentDate = "01 de enero de 2024";
     private Timer? timer;
 
-    // KPIs
     private bool _kpisLoading = true;
     private int KpiProjectsActive;
     private int KpiPublications;
     private int KpiInExecution;
     private int KpiNewThisMonth;
+    private int _focusIndex;
+
+    private IReadOnlyList<DashboardMetric> DashboardMetrics => new[]
+    {
+        new DashboardMetric("Proyectos activos", _kpisLoading ? "..." : KpiProjectsActive.ToString(), "Panorama de iniciativas registradas", "↺", $"{Math.Max(KpiProjectsActive, 1)} frentes abiertos"),
+        new DashboardMetric("Publicaciones", _kpisLoading ? "..." : KpiPublications.ToString(), "Volumen de artículos en el sistema", "⌘", $"{Math.Max(KpiPublications, 1)} artículos totales", true),
+        new DashboardMetric("Aceptados", _kpisLoading ? "..." : KpiInExecution.ToString(), "Seguimiento de artículos en estado aceptado", "✓", $"{Math.Max(KpiInExecution, 1)} en seguimiento"),
+        new DashboardMetric("Altas del mes", _kpisLoading ? "..." : KpiNewThisMonth.ToString(), "Movimientos recientes en el mes actual", "↑", $"{Math.Max(KpiNewThisMonth, 1)} registros recientes")
+    };
+
+    private IReadOnlyList<QuickAction> QuickActions => new[]
+    {
+        new QuickAction("Formulario dinámico", "Configura campos, formularios y reglas activas.", "/configuration", "⚙"),
+        new QuickAction("Registro manual", "Trabaja sobre el formulario activo y mutable.", "/articulos/registrar", "✎"),
+        new QuickAction("Carga masiva", "Valida staging, corrige filas y procesa lotes.", "/management/exportinformation", "⇪"),
+        new QuickAction("Explorador externo", "Consulta DOI, autores y fuentes académicas.", "/management/externalapis", "◎")
+    };
+
+    private IReadOnlyList<FocusCard> FocusCards => new[]
+    {
+        new FocusCard("Formulario activo y mutable", "La configuración dinámica ya gobierna qué se renderiza en el registro y en la carga masiva.", new[] { "Ajusta campos obligatorios desde configuración.", "Activa un formulario nuevo sin tocar código.", "Usa el mismo contrato para registro y staging." }),
+        new FocusCard("Calidad del dato antes de procesar", "El staging ya permite validar, corregir y revisar errores sin salir de la interfaz.", new[] { "Corrige filas con dependencias OCDE.", "Revalida desde la misma bandeja.", "Procesa solo cuando el lote esté consistente." }),
+        new FocusCard("Conexión con fuentes externas", "Scopus y otros proveedores pueden servir como puerta de entrada para nuevos registros y cargas externas.", new[] { "Consulta por DOI, texto, autor o coautor.", "Enriquece metadata antes de registrar.", "Prepara el salto a staging externo." })
+    };
+
+    private FocusCard CurrentFocus => FocusCards[_focusIndex % FocusCards.Count];
+
+    private IReadOnlyList<OperationalIndicator> OperationalIndicators => new[]
+    {
+        new OperationalIndicator("Cobertura de publicaciones", KpiPublications, Math.Max(KpiPublications + 4, 8)),
+        new OperationalIndicator("Seguimiento de artículos aceptados", KpiInExecution, Math.Max(KpiPublications, 6)),
+        new OperationalIndicator("Carga del mes", KpiNewThisMonth, Math.Max(KpiPublications, 5)),
+        new OperationalIndicator("Relación proyectos/publicaciones", KpiProjectsActive, Math.Max(Math.Max(KpiPublications, KpiProjectsActive + 2), 6))
+    };
+
+    private IReadOnlyList<ActivityEntry> ActivityFeed => new[]
+    {
+        new ActivityEntry("Configuración de formularios", "El sistema puede alternar formularios activos sin romper el registro manual.", "Ahora"),
+        new ActivityEntry("Carga masiva dinámica", "Staging, validación y corrección asistida listos para lotes más complejos.", "Hace poco"),
+        new ActivityEntry("Fuentes externas", "El explorador ya consulta Scopus y transfiere resultados al registro.", "Reciente"),
+        new ActivityEntry("Arquitectura consolidada", "El núcleo nuevo y el legado ya están separados físicamente para evolucionar con menos riesgo.", "Hoy")
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -296,23 +272,12 @@
             var articles = articlesTask.Result ?? new List<ArticleListItemDto>();
             var projects = projectsTask.Result ?? new List<CatalogItemDto>();
 
-            // Proyectos activos (por ahora: total proyectos registrados)
             KpiProjectsActive = projects.Count;
-
-            // Publicaciones = total artículos registrados
             KpiPublications = articles.Count;
+            KpiInExecution = articles.Count(a => (a.PublicationStatusName ?? string.Empty).Trim().ToUpperInvariant() == "ACEPTADO");
 
-            // En ejecución: artículos con estado ACEPATDO
-            KpiInExecution = articles.Count(a =>
-                (a.PublicationStatusName ?? string.Empty)
-                    .Trim()
-                    .ToUpperInvariant() == "ACEPTADO");
-
-            // Nuevos este mes: según CreatedAt
             var now = DateTime.Now;
-            KpiNewThisMonth = articles.Count(a =>
-                a.CreatedAt.Year == now.Year &&
-                a.CreatedAt.Month == now.Month);
+            KpiNewThisMonth = articles.Count(a => a.CreatedAt.Year == now.Year && a.CreatedAt.Month == now.Month);
         }
         catch (Exception ex)
         {
@@ -325,17 +290,14 @@
         }
     }
 
-    private string GetInitials(string name)
+    private static string GetInitials(string name)
     {
         if (string.IsNullOrWhiteSpace(name)) return "U";
 
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2)
-        {
-            return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
-        }
-
-        return parts[0][0].ToString().ToUpperInvariant();
+        return parts.Length >= 2
+            ? $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant()
+            : parts[0][0].ToString().ToUpperInvariant();
     }
 
     private void StartClock()
@@ -343,7 +305,11 @@
         UpdateClock();
         timer = new Timer(_ =>
         {
-            InvokeAsync(UpdateClock);
+            InvokeAsync(() =>
+            {
+                UpdateClock();
+                StateHasChanged();
+            });
         }, null, 1000, 1000);
     }
 
@@ -351,13 +317,32 @@
     {
         var now = DateTime.Now;
         CurrentTime = now.ToString("HH:mm:ss");
-        CurrentDate = now.ToString("dd 'de' MMMM 'de' yyyy",
-            new System.Globalization.CultureInfo("es-ES"));
-        StateHasChanged();
+        CurrentDate = now.ToString("dd 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES"));
+        Greeting = now.Hour switch
+        {
+            var hour when hour < 12 => "Buenos días",
+            var hour when hour < 18 => "Buenas tardes",
+            _ => "Buenas noches"
+        };
+
+        if (now.Second % 8 == 0)
+        {
+            _focusIndex = (_focusIndex + 1) % FocusCards.Count;
+        }
     }
 
     public void Dispose()
     {
         timer?.Dispose();
     }
+
+    private sealed record DashboardMetric(string Title, string Value, string Description, string Icon, string Trend, bool Highlight = false);
+    private sealed record QuickAction(string Title, string Description, string Href, string Icon);
+    private sealed record FocusCard(string Title, string Description, IReadOnlyList<string> Bullets);
+    private sealed record OperationalIndicator(string Label, int Value, int Total)
+    {
+        public int Percent => Total <= 0 ? 0 : Math.Clamp((int)Math.Round((double)Value / Total * 100), 0, 100);
+        public string DisplayValue => $"{Value} / {Math.Max(Total, 1)}";
+    }
+    private sealed record ActivityEntry(string Title, string Description, string TimeAgo);
 }

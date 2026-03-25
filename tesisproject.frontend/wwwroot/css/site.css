@@ -10,20 +10,26 @@
 
 /* ---------------- Variables de tema ---------------- */
 :root {
-    --brand-header: #6e6e6e; /* encabezado y acentos */
-    --page-bg: #E3E2E1; /* fondo de página */
-    --menu-bg: #7A1E19; /* menú lateral y footer */
-    --footer-text: #999999; /* texto del footer */
+    --brand-header: #b88a1a; /* encabezado y acentos */
+    --page-bg: #f8f1de; /* fondo de página */
+    --menu-bg: #16324f; /* menú lateral y footer */
+    --footer-text: #6e6e6e; /* texto del footer */
     --font-stack: "Helvetica Neue", Helvetica, Arial, sans-serif;
     /* Integra con Bootstrap (colores principales) */
-    --bs-primary: #7A1E19;
-    --bs-link-color: #7A1E19;
-    --bs-link-hover-color: #671915;
-    --bg-surface: #E3E2E1;
+    --bs-primary: #b88a1a;
+    --bs-link-color: #b88a1a;
+    --bs-link-hover-color: #8f6c14;
+    --bg-surface: #fbf5e7;
     --bg-card: #FFFFFF;
     --ink: #1F2937;
     --ink-soft: #475569;
-    --brand: #7A1E19;
+    --brand: #b88a1a;
+    --accent-navy: #16324f;
+    --accent-steel: #436b8c;
+    --accent-cream: #f8f1de;
+    --accent-bronze: #8f6c14;
+    --accent-gray: #6e6e6e;
+    --accent-wine: #7A1E19;
 }
 
 /* ---------------- Base ---------------- */
@@ -32,8 +38,8 @@ html, body {
 }
 /* Botón compacto coherente con la paleta (#7A1E19) */
 .btn-mini {
-    --btn-bg: #7A1E19;
-    --btn-bg-hover: #8C2A24;
+    --btn-bg: #b88a1a;
+    --btn-bg-hover: #c49728;
     --btn-ink: #fff;
     display: inline-flex;
     align-items: center;
@@ -127,18 +133,18 @@ body {
 .btn-primary {
     --bs-btn-bg: var(--bs-primary);
     --bs-btn-border-color: var(--bs-primary);
-    --bs-btn-hover-bg: #671915;
-    --bs-btn-hover-border-color: #671915;
-    --bs-btn-active-bg: #56140F;
-    --bs-btn-active-border-color: #56140F;
-    --bs-btn-disabled-bg: #7A1E19;
-    --bs-btn-disabled-border-color: #7A1E19;
+    --bs-btn-hover-bg: #9e7716;
+    --bs-btn-hover-border-color: #9e7716;
+    --bs-btn-active-bg: #8c6913;
+    --bs-btn-active-border-color: #8c6913;
+    --bs-btn-disabled-bg: #b88a1a;
+    --bs-btn-disabled-border-color: #b88a1a;
 }
 
 /* ---------------- Controles de formulario ---------------- */
 .form-control:focus, .form-select:focus {
     border-color: var(--brand-header);
-    box-shadow: 0 0 0 .20rem rgba(122,30,25,.15);
+    box-shadow: 0 0 0 .20rem rgba(184,138,26,.18);
 }
 
 .form-check-input:checked {
@@ -235,7 +241,7 @@ a {
 }
 /* ===== Secciones modernas ===== */
 .app-section-card .section-head {
-    background: linear-gradient(90deg, rgba(122,30,25,.08), rgba(122,30,25,0));
+    background: #fcf4df;
     border-left: 4px solid var(--brand-header);
     border-top-left-radius: 1rem;
     border-top-right-radius: 1rem;
@@ -250,12 +256,12 @@ a {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(122,30,25,.12);
+    background: rgba(184,138,26,.12);
 }
 
 /* ===== Badges suaves (para Resumen) ===== */
 .badge-soft-primary {
-    background: rgba(122,30,25,.15);
+    background: rgba(184,138,26,.15);
     color: var(--brand-header);
 }
 
@@ -301,7 +307,7 @@ a {
 }
 /* ===== Hero header moderno ===== */
 .hero-header {
-    background: linear-gradient(135deg, rgba(122,30,25,.95), rgba(122,30,25,.75));
+    background: var(--brand-header);
 }
 
 .hero-overlay {
@@ -329,12 +335,12 @@ a {
     gap: .5rem;
 }
 
-    .app-pill-tabs .nav-link {
-        background: rgba(122,30,25,.08);
+.app-pill-tabs .nav-link {
+        background: #ffffff;
         color: #4a4a4a;
         border-radius: 50rem;
         padding: .5rem .9rem;
-        border: 1px solid rgba(0,0,0,.05);
+        border: 1px solid rgba(110,110,110,.18);
     }
 
         .app-pill-tabs .nav-link.active {
@@ -351,7 +357,7 @@ a {
 }
 
 .app-glass-head {
-    background: linear-gradient(90deg, rgba(122,30,25,.10), rgba(122,30,25,0));
+    background: #fcf4df;
     border-top-left-radius: 1rem;
     border-top-right-radius: 1rem;
 }
@@ -362,8 +368,8 @@ a {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: rgba(122,30,25,.18);
-    color: #7A1E19;
+    background: rgba(184,138,26,.18);
+    color: #b88a1a;
     border-radius: .5rem;
     font-size: .95rem;
 }
@@ -412,9 +418,121 @@ a {
     position: sticky;
     bottom: .25rem;
     z-index: 5;
-    background: rgba(227,226,225,.65);
+    background: rgba(248,241,222,.95);
     backdrop-filter: blur(6px);
-    border: 1px solid rgba(0,0,0,.06);
+    border: 1px solid rgba(110,110,110,.12);
     border-radius: .75rem;
     padding: .5rem .75rem;
+}
+
+.app-page-shell {
+    width: 100%;
+    max-width: none;
+    margin-inline: auto;
+    padding-inline: .65rem;
+    padding-block: 1rem 1.25rem;
+}
+
+.app-panel {
+    border-radius: 1.75rem;
+    border: 1px solid rgba(110, 110, 110, 0.12);
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(110, 110, 110, 0.06);
+}
+
+.app-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.app-table-wrap table {
+    min-width: 720px;
+}
+
+.app-table-compact th,
+.app-table-compact td {
+    padding: .7rem .85rem !important;
+    vertical-align: top;
+}
+
+.app-table-compact thead th {
+    font-size: .78rem;
+    letter-spacing: .01em;
+    background: #f5f9fc;
+    color: #16324f;
+    border-bottom: 1px solid rgba(67, 107, 140, 0.14);
+}
+
+.app-table-compact tbody td {
+    font-size: .84rem;
+}
+
+.app-table-compact tbody tr:nth-child(even) {
+    background: rgba(67, 107, 140, 0.03);
+}
+
+.app-table-compact tbody tr:hover {
+    background: rgba(184, 138, 26, 0.05);
+}
+
+.app-mobile-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+
+.app-mobile-stack > * {
+    min-width: 0;
+}
+
+.app-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+@media (max-width: 991.98px) {
+    .sticky-aside,
+    .xl\:sticky {
+        position: static !important;
+        top: auto !important;
+    }
+
+    .app-page-shell {
+        padding-inline: .75rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .app-page-shell {
+        padding-inline: .6rem;
+        padding-block: .85rem 1.1rem;
+    }
+
+    .app-panel {
+        border-radius: 1.3rem;
+    }
+
+    .app-table-wrap table {
+        min-width: 640px;
+    }
+
+    .app-table-compact th,
+    .app-table-compact td {
+        padding: .62rem .72rem !important;
+    }
+
+    .form-actions-sticky {
+        position: static;
+        bottom: auto;
+        padding: .75rem;
+    }
+
+    .nav-tabs,
+    .app-pill-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: .25rem;
+    }
 }

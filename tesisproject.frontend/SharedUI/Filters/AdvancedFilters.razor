@@ -116,7 +116,7 @@
                                 <label class="inline-flex items-center">
                                     <input type="checkbox"
                                            checked="@(_selectedQuartiles?.Contains(quartile) ?? false)"
-                                           @onchange="@((e) => ToggleQuartile(quartile, (bool)e.Value))"
+                                           @onchange="@((e) => ToggleQuartile(quartile, e.Value is bool isChecked && isChecked))"
                                            class="rounded border-slate-300 text-[#7A1E19]" />
                                     <span class="ml-1 text-sm">@quartile</span>
                                 </label>

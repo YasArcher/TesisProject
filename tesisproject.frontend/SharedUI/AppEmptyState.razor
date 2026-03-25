@@ -1,0 +1,20 @@
+@namespace tesisproject.frontend.SharedUI
+
+<div class="app-empty-state @(Dashed ? "app-empty-state--dashed" : "app-empty-state--solid") @Class">
+    @if (!string.IsNullOrWhiteSpace(Title))
+    {
+        <div class="app-empty-state__title">@Title</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <div class="app-empty-state__message">@Message</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public bool Dashed { get; set; } = true;
+    [Parameter] public string? Class { get; set; }
+
+}

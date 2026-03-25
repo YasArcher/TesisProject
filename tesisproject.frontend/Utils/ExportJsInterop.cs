@@ -10,6 +10,9 @@ namespace tesisproject.frontend.Utils
         public ValueTask ExportCsv(string filename, string csv)
             => _js.InvokeVoidAsync("tesisExport.exportCsv", filename, csv);
 
+        public ValueTask DownloadFile(string filename, string contentType, byte[] content)
+            => _js.InvokeVoidAsync("tesisExport.downloadFileFromBase64", filename, contentType, Convert.ToBase64String(content));
+
         public ValueTask PrintSection(string elementId)
             => _js.InvokeVoidAsync("tesisExport.printSection", elementId);
     }

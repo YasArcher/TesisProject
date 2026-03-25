@@ -1,0 +1,30 @@
+@namespace tesisproject.frontend.SharedUI
+
+@if (!string.IsNullOrWhiteSpace(Message))
+{
+    <div class="app-alert-banner @GetVariantClass() @Class" data-variant="@Variant.ToLowerInvariant()">
+        @if (!string.IsNullOrWhiteSpace(Title))
+        {
+            <div class="app-alert-banner__title">@Title</div>
+        }
+        <div class="app-alert-banner__message">@Message</div>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string Variant { get; set; } = "info";
+    [Parameter] public string? Class { get; set; }
+
+    private string GetVariantClass()
+    {
+        return Variant.ToLowerInvariant() switch
+        {
+            "success" => "app-alert-banner--success",
+            "error" => "app-alert-banner--error",
+            "warning" => "app-alert-banner--warning",
+            _ => "app-alert-banner--info"
+        };
+    }
+}

@@ -1,72 +1,51 @@
-﻿@namespace tesisproject.frontend.Features.Management.Layout
+@namespace tesisproject.frontend.Features.Management.Layout
 @inherits LayoutComponentBase
-@using Microsoft.AspNetCore.Components.Authorization
 @using tesisproject.frontend.SharedUI
-@implements IDisposable
 
-<AuthorizeView>
-    <Authorized>
-        <div class="app-shell">
-            <!-- Sidebar fijo -->
-            <aside class="layout-aside menu-bg text-white @sidebarClass" @ref="sidebarElement">
-                <SideBar @ref="sidebarComponent" />
-            </aside>
+<div class="app-shell @(mobileMenuOpen ? "menu-open" : null) @(sidebarCollapsed ? "sidebar-collapsed" : null)">
+    <aside class="layout-aside menu-bg text-white @(mobileMenuOpen ? "mobile-open" : null) @(sidebarCollapsed ? "collapsed" : null)" @onclick:stopPropagation="true">
+        <SideBar @ref="sidebarComponent" CollapseChanged="HandleSidebarCollapseChanged" />
+    </aside>
 
-            <!-- Contenido principal -->
-            <div class="layout-main @mainContentClass" @onclick="CloseMobileMenu">
-                <header class="brand-header text-white shadow-sm">
-                    <div class="d-flex align-items-center justify-content-between px-4 py-3">
-                        <button class="btn btn-sm btn-outline-light d-lg-none mobile-menu-btn"
-                                @onclick="ToggleMobileMenu">
-                            <span>☰</span>
-                        </button>
+    @if (mobileMenuOpen)
+    {
+        <button type="button" class="mobile-backdrop" @onclick="CloseMobileMenu" aria-label="Cerrar menú lateral"></button>
+    }
 
-                        <div class="fw-semibold">SISTEMA INTEGRADO</div>
+    <div class="layout-main" @onclick="CloseMobileMenu">
+        <header class="brand-header text-white shadow-sm">
+            <div class="brand-header-inner d-flex align-items-center justify-content-between gap-3 px-3 px-lg-4 py-3">
+                <button class="btn btn-sm btn-outline-light d-lg-none mobile-menu-btn"
+                        @onclick:stopPropagation="true"
+                        @onclick="ToggleMobileMenu"
+                        aria-label="Abrir menú lateral">
+                    <span>☰</span>
+                </button>
 
-                        <div class="d-lg-none" style="width: 40px;"></div>
-                    </div>
-                </header>
+                <div class="fw-semibold brand-title">SISTEMA INTEGRADO</div>
 
-                <main class="flex-grow-1 p-4">
-                    @Body
-                </main>
-
-                <footer class="app-footer text-center py-2">
-                    <small>© @DateTime.Now.Year — Sistema Integrado</small>
-                </footer>
+                <div class="d-lg-none" style="width: 40px;"></div>
             </div>
-        </div>
-    </Authorized>
+        </header>
 
-    <Authorizing>
-        <div class="d-flex justify-content-center align-items-center" style="min-height: 60vh;">
-            <div class="text-muted">Cargando…</div>
-        </div>
-    </Authorizing>
+        <main class="flex-grow-1 app-main-content">
+            @Body
+        </main>
 
-    <NotAuthorized>
-        @Body
-    </NotAuthorized>
-</AuthorizeView>
+        <footer class="app-footer text-center py-2">
+            <small>© @DateTime.Now.Year - Sistema Integrado</small>
+        </footer>
+    </div>
+</div>
 
 @code {
-    private bool mobileMenuOpen = false;
-    private string sidebarClass = "sidebar-expanded";
-    private string mainContentClass = "sidebar-expanded";
-    private ElementReference sidebarElement;
+    private bool mobileMenuOpen;
+    private bool sidebarCollapsed;
     private SideBar? sidebarComponent;
-    private Timer? sidebarCheckTimer;
-
-    protected override Task OnAfterRenderAsync(bool firstRender)
-    {
-        // ❗ Se removió toda referencia a JS porque no existía la función JS
-        return Task.CompletedTask;
-    }
 
     private void ToggleMobileMenu()
     {
         mobileMenuOpen = !mobileMenuOpen;
-        UpdateSidebarClasses();
     }
 
     private void CloseMobileMenu()
@@ -74,26 +53,11 @@
         if (mobileMenuOpen)
         {
             mobileMenuOpen = false;
-            UpdateSidebarClasses();
         }
     }
 
-    private void UpdateSidebarClasses()
+    private void HandleSidebarCollapseChanged(bool collapsed)
     {
-        if (mobileMenuOpen)
-        {
-            sidebarClass = "mobile-open sidebar-expanded";
-            mainContentClass = "sidebar-expanded";
-        }
-        else
-        {
-            sidebarClass = "sidebar-expanded";
-            mainContentClass = "sidebar-expanded";
-        }
-    }
-
-    public void Dispose()
-    {
-        sidebarCheckTimer?.Dispose();
+        sidebarCollapsed = collapsed;
     }
 }

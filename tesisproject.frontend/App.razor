@@ -4,21 +4,14 @@
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
-            <AuthorizeRouteView RouteData="@routeData"
-                                DefaultLayout="@(typeof(tesisproject.frontend.Features.Management.Layout.MainLayout))">
-                <NotAuthorized>
-                    <RedirectToLogin />
-                </NotAuthorized>
-                <Authorizing>
-                    <p>Verificando credenciales...</p>
-                </Authorizing>
-            </AuthorizeRouteView>
+            <RouteView RouteData="@routeData"
+                       DefaultLayout="@(typeof(tesisproject.frontend.Features.Management.Layout.MainLayout))" />
         </Found>
 
         <NotFound>
             <LayoutView Layout="@(typeof(tesisproject.frontend.Features.Management.Layout.MainLayout))">
                 <p>Página no encontrada</p>
-                <a href="/login">Ir a Login</a>
+                <a href="/panel/principal">Ir al sistema</a>
             </LayoutView>
         </NotFound>
     </Router>
