@@ -20,10 +20,16 @@
         </div>
     </div>
 
-    <AppAlertBanner Class="mb-4" Variant="error" Title="Error" Message="@ErrorMessage" />
-    <AppAlertBanner Class="mb-4" Variant="success" Title="Consulta completada" Message="@SuccessMessage" />
-    <AppConfirmPanel Class="mb-3"
+    <AppStatusModal Visible="@HasStatusMessage"
+                    Variant="@CurrentStatusVariant"
+                    Eyebrow="APIs externas"
+                    Title="@CurrentStatusTitle"
+                    Message="@CurrentStatusMessage"
+                    OnClose="CloseStatusModal" />
+    <AppConfirmPanel
                      Visible="@(SelectedArticleDetail is not null)"
+                     Size="xl"
+                     Eyebrow="Detalle externo"
                      Title="Detalle del artículo externo"
                      Message=""
                      ConfirmText="Cerrar"
@@ -533,5 +539,20 @@
         {
             IsSendingToStaging = false;
         }
+    }
+
+    private bool HasStatusMessage => !string.IsNullOrWhiteSpace(ErrorMessage) || !string.IsNullOrWhiteSpace(SuccessMessage);
+
+    private string CurrentStatusVariant => !string.IsNullOrWhiteSpace(ErrorMessage) ? "error" : "success";
+
+    private string CurrentStatusTitle => !string.IsNullOrWhiteSpace(ErrorMessage) ? "No pude completar la operación" : "Consulta completada";
+
+    private string CurrentStatusMessage => !string.IsNullOrWhiteSpace(ErrorMessage) ? ErrorMessage! : SuccessMessage ?? string.Empty;
+
+    private Task CloseStatusModal()
+    {
+        ErrorMessage = null;
+        SuccessMessage = null;
+        return Task.CompletedTask;
     }
 }

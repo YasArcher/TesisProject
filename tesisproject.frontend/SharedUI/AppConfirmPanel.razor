@@ -2,18 +2,25 @@
 
 @if (Visible)
 {
-    <div class="app-confirm-panel @Class">
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-                @if (!string.IsNullOrWhiteSpace(Eyebrow))
-                {
-                    <div class="app-confirm-panel__eyebrow">@Eyebrow</div>
-                }
-                <div class="app-confirm-panel__title">@Title</div>
+    <div class="app-confirm-panel__backdrop" @onclick="HandleBackdropClickAsync">
+        <div class="app-confirm-panel app-confirm-panel--modal @GetSizeClass() @Class" @onclick:stopPropagation="true">
+            <div class="app-confirm-panel__body">
+                <div class="app-confirm-panel__header">
+                    <div>
+                        @if (!string.IsNullOrWhiteSpace(Eyebrow))
+                        {
+                            <div class="app-confirm-panel__eyebrow">@Eyebrow</div>
+                        }
+                        <div class="app-confirm-panel__title">@Title</div>
+                    </div>
+                    <button type="button" class="app-confirm-panel__close" @onclick="OnCancel" aria-label="Cerrar">×</button>
+                </div>
+
                 @if (!string.IsNullOrWhiteSpace(Message))
                 {
                     <div class="app-confirm-panel__message">@Message</div>
                 }
+
                 @if (ChildContent is not null)
                 {
                     <div class="app-confirm-panel__content">
@@ -21,6 +28,7 @@
                     </div>
                 }
             </div>
+
             <div class="app-confirm-panel__actions">
                 @if (CancelText != string.Empty)
                 {
@@ -43,4 +51,22 @@
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public string? Class { get; set; }
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Size { get; set; } = "md";
+
+    private string GetSizeClass()
+        => Size?.ToLowerInvariant() switch
+        {
+            "sm" => "app-confirm-panel--sm",
+            "lg" => "app-confirm-panel--lg",
+            "xl" => "app-confirm-panel--xl",
+            _ => "app-confirm-panel--md"
+        };
+
+    private async Task HandleBackdropClickAsync()
+    {
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
 }

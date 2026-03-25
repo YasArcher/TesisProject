@@ -137,6 +137,8 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    background: #fbf7ee;
+    border-color: rgba(143, 108, 20, 0.14);
 }
 
 .principal-status-card__head,
@@ -164,8 +166,8 @@
     align-self: flex-start;
     border-radius: 999px;
     padding: .45rem .72rem;
-    background: rgba(200, 215, 230, 0.42);
-    color: #436b8c;
+    background: #efe4c5;
+    color: #8f6c14;
     font-weight: 700;
     font-size: .78rem;
 }
@@ -174,25 +176,26 @@
     margin-top: 1.2rem;
     font-size: clamp(2rem, 3vw, 2.8rem);
     font-weight: 800;
-    color: #16324f;
+    color: #7A1E19;
     line-height: 1;
 }
 
 .principal-status-card__date {
-    color: #6e6041;
+    color: #6e6e6e;
     margin-top: .45rem;
 }
 
 .principal-mini-stat {
     flex: 1;
     border-radius: 1rem;
-    background: #f5f9fc;
+    background: #ffffff;
     padding: .85rem;
+    border: 1px solid rgba(110, 110, 110, 0.12);
 }
 
 .principal-mini-stat__label {
     display: block;
-    color: #8c763d;
+    color: #7A1E19;
     font-size: .74rem;
     text-transform: uppercase;
     letter-spacing: .06em;
@@ -201,7 +204,7 @@
 .principal-mini-stat strong {
     display: block;
     margin-top: .25rem;
-    color: #3c2f0e;
+    color: #16324f;
 }
 
 .principal-kpis {
@@ -216,22 +219,22 @@
 }
 
 .principal-kpi-card--highlight {
-    background: #fff8f0;
+    background: #fff7e6;
     border-color: rgba(184, 138, 26, 0.16);
 }
 
 .principal-kpis .principal-kpi-card:nth-child(2) {
-    background: #f5f9fc;
-    border-color: rgba(67, 107, 140, 0.16);
+    background: #f3f0ea;
+    border-color: rgba(110, 110, 110, 0.16);
 }
 
 .principal-kpis .principal-kpi-card:nth-child(3) {
-    background: #f7f4ef;
+    background: #eef3ee;
     border-color: rgba(91, 107, 95, 0.18);
 }
 
 .principal-kpis .principal-kpi-card:nth-child(4) {
-    background: #fff8f8;
+    background: #fdf0ed;
     border-color: rgba(164, 74, 63, 0.16);
 }
 
@@ -260,9 +263,24 @@
     align-items: center;
     justify-content: center;
     border-radius: .95rem;
-    background: rgba(67, 107, 140, 0.1);
-    color: #16324f;
+    background: #efe4c5;
+    color: #8f6c14;
     font-size: 1rem;
+}
+
+.principal-kpis .principal-kpi-card:nth-child(2) .principal-kpi-card__icon {
+    background: #e5e1d8;
+    color: #6e6e6e;
+}
+
+.principal-kpis .principal-kpi-card:nth-child(3) .principal-kpi-card__icon {
+    background: #dfe9e1;
+    color: #5b6b5f;
+}
+
+.principal-kpis .principal-kpi-card:nth-child(4) .principal-kpi-card__icon {
+    background: #f4deda;
+    color: #a44a3f;
 }
 
 .principal-kpi-card__value {
@@ -287,7 +305,7 @@
 }
 
 .principal-kpi-card__trend {
-    color: #436b8c;
+    color: #5b6b5f;
     font-size: .82rem;
     font-weight: 700;
 }
@@ -308,7 +326,7 @@
 }
 
 .principal-panel--spotlight {
-    background: #fffaf0;
+    background: #fff9ed;
     border-left: 4px solid #b88a1a;
 }
 
@@ -367,16 +385,16 @@
     border-radius: 1.1rem;
     text-decoration: none;
     color: inherit;
-    background: #f5f9fc;
-    border: 1px solid rgba(67, 107, 140, 0.12);
+    background: #fffdf7;
+    border: 1px solid rgba(110, 110, 110, 0.12);
     transition: transform .2s ease, background .2s ease, border-color .2s ease;
 }
 
 .principal-shortcut:hover {
     transform: translateY(-2px);
     text-decoration: none;
-    background: #ece7dc;
-    border-color: rgba(67, 107, 140, 0.24);
+    background: #f3ede0;
+    border-color: rgba(184, 138, 26, 0.24);
 }
 
 .principal-shortcut__icon {
@@ -386,8 +404,8 @@
     width: 2.6rem;
     height: 2.6rem;
     border-radius: 1rem;
-    background: #16324f;
-    color: #fff6e2;
+    background: #ece7dc;
+    color: #7A1E19;
     font-weight: 800;
     flex-shrink: 0;
 }
@@ -415,7 +433,7 @@
     display: block;
     height: 100%;
     border-radius: inherit;
-    background: #436b8c;
+    background: #b88a1a;
 }
 
 .principal-progress-item__meta span {
@@ -430,13 +448,13 @@
     width: .85rem;
     min-width: .85rem;
     border-radius: 999px;
-    background: #7A1E19;
+    background: #a44a3f;
 }
 
 .principal-activity__content {
     flex: 1;
     border-radius: 1rem;
-    background: #fff8f8;
+    background: #fffaf8;
     border: 1px solid rgba(164, 74, 63, 0.14);
     padding: .9rem 1rem;
 }

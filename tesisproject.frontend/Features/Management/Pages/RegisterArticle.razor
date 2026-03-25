@@ -33,10 +33,13 @@
         </div>
     </div>
 
-    <AppAlertBanner Class="mb-4" Variant="warning" Message="@WarningMessage" />
-    <AppAlertBanner Class="mb-4" Variant="error" Message="@ErrorMessage" />
-    <AppAlertBanner Class="mb-4" Variant="success" Message="@SuccessMessage" />
-    <AppConfirmPanel Class="mb-4"
+    <AppStatusModal Visible="@HasStatusMessage"
+                    Variant="@CurrentStatusVariant"
+                    Eyebrow="Registro dinámico"
+                    Title="@CurrentStatusTitle"
+                    Message="@CurrentStatusMessage"
+                    OnClose="CloseStatusModal" />
+    <AppConfirmPanel
                      Visible="@PendingRemoveParticipantIndex.HasValue"
                      Title="@($"Quitar participante {PendingRemoveParticipantIndex}")"
                      Message="Se eliminarán los datos cargados para ese participante antes de guardar."
@@ -1029,6 +1032,34 @@
             ExpandedArticleSections = ExpandedArticleSections.ToList(),
             IsParticipantsPanelExpanded = IsParticipantsPanelExpanded
         });
+    }
+
+    private bool HasStatusMessage
+        => !string.IsNullOrWhiteSpace(ErrorMessage)
+           || !string.IsNullOrWhiteSpace(SuccessMessage)
+           || !string.IsNullOrWhiteSpace(WarningMessage);
+
+    private string CurrentStatusVariant
+        => !string.IsNullOrWhiteSpace(ErrorMessage) ? "error"
+         : !string.IsNullOrWhiteSpace(WarningMessage) ? "warning"
+         : "success";
+
+    private string CurrentStatusTitle
+        => !string.IsNullOrWhiteSpace(ErrorMessage) ? "No pude completar el registro"
+         : !string.IsNullOrWhiteSpace(WarningMessage) ? "Revisa este punto"
+         : "Acción completada";
+
+    private string CurrentStatusMessage
+        => !string.IsNullOrWhiteSpace(ErrorMessage) ? ErrorMessage
+         : !string.IsNullOrWhiteSpace(WarningMessage) ? WarningMessage
+         : SuccessMessage;
+
+    private Task CloseStatusModal()
+    {
+        ErrorMessage = string.Empty;
+        SuccessMessage = string.Empty;
+        WarningMessage = string.Empty;
+        return Task.CompletedTask;
     }
 
     private void GoBack() => NavManager.NavigateTo("/articulos/listado");

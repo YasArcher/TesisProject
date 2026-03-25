@@ -1,0 +1,66 @@
+@namespace tesisproject.frontend.SharedUI
+
+@if (Visible)
+{
+    <div class="app-status-modal__backdrop" @onclick="HandleCloseAsync">
+        <div class="app-status-modal @GetVariantClass() @Class" @onclick:stopPropagation="true">
+            <div class="app-status-modal__icon">@GetIcon()</div>
+            @if (!string.IsNullOrWhiteSpace(Eyebrow))
+            {
+                <div class="app-status-modal__eyebrow">@Eyebrow</div>
+            }
+            <div class="app-status-modal__title">@Title</div>
+            @if (!string.IsNullOrWhiteSpace(Message))
+            {
+                <div class="app-status-modal__message">@Message</div>
+            }
+            @if (ChildContent is not null)
+            {
+                <div class="app-status-modal__content">
+                    @ChildContent
+                </div>
+            }
+            <div class="app-status-modal__actions">
+                <button class="app-status-modal__button" @onclick="HandleCloseAsync">@(CloseText ?? "Entendido")</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Variant { get; set; } = "info";
+    [Parameter] public string Eyebrow { get; set; } = "Estado";
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public string? CloseText { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string GetVariantClass()
+        => Variant.ToLowerInvariant() switch
+        {
+            "success" => "app-status-modal--success",
+            "error" => "app-status-modal--error",
+            "warning" => "app-status-modal--warning",
+            _ => "app-status-modal--info"
+        };
+
+    private string GetIcon()
+        => Variant.ToLowerInvariant() switch
+        {
+            "success" => "✓",
+            "error" => "!",
+            "warning" => "!",
+            _ => "i"
+        };
+
+    private async Task HandleCloseAsync()
+    {
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+}

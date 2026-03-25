@@ -1,9 +1,64 @@
+.app-confirm-panel__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    background: rgba(15, 23, 42, 0.48);
+    backdrop-filter: blur(4px);
+}
+
 .app-confirm-panel {
+    width: min(100%, 42rem);
+    max-height: min(90vh, 54rem);
+    overflow: hidden;
     border-radius: 1.5rem;
     border: 1px solid rgba(184, 138, 26, 0.2);
     background: #fffaf1;
-    padding: 1rem 1.1rem;
-    box-shadow: 0 10px 20px rgba(122, 30, 25, 0.05);
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
+}
+
+.app-confirm-panel--sm {
+    width: min(100%, 30rem);
+}
+
+.app-confirm-panel--md {
+    width: min(100%, 42rem);
+}
+
+.app-confirm-panel--lg {
+    width: min(100%, 56rem);
+}
+
+.app-confirm-panel--xl {
+    width: min(100%, 74rem);
+}
+
+.app-confirm-panel__body {
+    padding: 1.15rem 1.2rem 0;
+    overflow-y: auto;
+    max-height: calc(min(90vh, 54rem) - 5.75rem);
+}
+
+.app-confirm-panel__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.app-confirm-panel__close {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+    border: 1px solid rgba(110, 110, 110, 0.2);
+    background: #ffffff;
+    color: #4b5563;
+    font-size: 1.2rem;
+    line-height: 1;
+    flex-shrink: 0;
 }
 
 .app-confirm-panel__eyebrow {
@@ -36,6 +91,10 @@
     display: flex;
     gap: .75rem;
     align-items: center;
+    justify-content: flex-end;
+    padding: 1rem 1.2rem 1.2rem;
+    border-top: 1px solid rgba(110, 110, 110, 0.12);
+    background: #fffdf8;
 }
 
 .app-confirm-panel__button {
@@ -58,9 +117,26 @@
 }
 
 @media (max-width: 767.98px) {
+    .app-confirm-panel__backdrop {
+        padding: .75rem;
+        align-items: flex-end;
+    }
+
+    .app-confirm-panel {
+        width: 100%;
+        max-height: 92vh;
+        border-radius: 1.25rem 1.25rem 0 0;
+    }
+
+    .app-confirm-panel__body {
+        max-height: calc(92vh - 5.75rem);
+        padding: 1rem 1rem 0;
+    }
+
     .app-confirm-panel__actions {
         width: 100%;
         flex-direction: column;
+        padding: .9rem 1rem 1rem;
     }
 
     .app-confirm-panel__button {

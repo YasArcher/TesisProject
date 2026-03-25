@@ -14,9 +14,13 @@
         <h1 class="mt-2 text-2xl font-black md:text-3xl">Formularios y metadatos</h1>
     </div>
 
-    <AppAlertBanner Class="mb-4" Variant="success" Message="@Message" />
-    <AppAlertBanner Class="mb-4" Variant="error" Message="@ErrorMessage" />
-    <AppConfirmPanel Class="mb-4"
+    <AppStatusModal Visible="@HasStatusMessage"
+                    Variant="@CurrentStatusVariant"
+                    Eyebrow="Configuración"
+                    Title="@CurrentStatusTitle"
+                    Message="@CurrentStatusMessage"
+                    OnClose="CloseStatusModal" />
+    <AppConfirmPanel
                      Visible="@HasPendingConfirmation"
                      Title="@PendingConfirmationTitle"
                      Message="@PendingConfirmationMessage"
@@ -995,6 +999,21 @@
 
     private async Task NotifyFormConfigurationChangedAsync()
         => await LocalStorage.SetItemAsync("ui.form-configuration.version", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+
+    private bool HasStatusMessage => !string.IsNullOrWhiteSpace(ErrorMessage) || !string.IsNullOrWhiteSpace(Message);
+
+    private string CurrentStatusVariant => !string.IsNullOrWhiteSpace(ErrorMessage) ? "error" : "success";
+
+    private string CurrentStatusTitle => !string.IsNullOrWhiteSpace(ErrorMessage) ? "No pude completar la acción" : "Cambio aplicado";
+
+    private string CurrentStatusMessage => !string.IsNullOrWhiteSpace(ErrorMessage) ? ErrorMessage : Message;
+
+    private Task CloseStatusModal()
+    {
+        ErrorMessage = string.Empty;
+        Message = string.Empty;
+        return Task.CompletedTask;
+    }
 
     private enum PendingConfigAction
     {

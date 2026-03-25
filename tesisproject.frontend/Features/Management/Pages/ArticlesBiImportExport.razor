@@ -22,9 +22,20 @@
         </div>
     </div>
 
-    <AppAlertBanner Class="mb-4" Variant="error" Title="@MessageTitle" Message="@ErrorMessage" />
-    <AppAlertBanner Class="mb-4" Variant="success" Title="@MessageTitle" Message="@SuccessMessage" />
-    <AppAlertBanner Class="mb-4" Variant="warning" Title="@MessageTitle" Message="@WarningMessage" />
+    <AppConfirmPanel Visible="@HasPendingAction"
+                     Eyebrow="Confirmación operativa"
+                     Title="@PendingActionTitle"
+                     Message="@PendingActionMessage"
+                     ConfirmText="@PendingActionConfirmText"
+                     OnConfirm="ConfirmPendingActionAsync"
+                     OnCancel="CancelPendingAction" />
+
+    <AppStatusModal Visible="@ShowFeedbackModal"
+                    Variant="@FeedbackVariant"
+                    Eyebrow="@FeedbackEyebrow"
+                    Title="@FeedbackTitle"
+                    Message="@FeedbackMessage"
+                    OnClose="CloseFeedbackModal" />
 
     @if (IsLoading)
     {
@@ -160,7 +171,7 @@
                             </select>
                             <label class="block text-sm font-semibold text-[#8b5a16]">Notas</label>
                             <textarea class="min-h-[4.5rem] w-full rounded-xl border border-[#e1d1b0] bg-white px-3 py-2 text-sm" @bind="UploadNotes" placeholder="Describe el objetivo del lote o el subconjunto que estás cargando."></textarea>
-                            <button class="w-full rounded-xl bg-gradient-to-r from-[#c17c2f] to-[#d08d46] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60" disabled="@(SelectedFile is null || IsUploading)" @onclick="UploadAsync">@(IsUploading ? "Subiendo..." : "Crear lote en staging")</button>
+                            <button class="w-full rounded-xl bg-gradient-to-r from-[#c17c2f] to-[#d08d46] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60" disabled="@(SelectedFile is null || IsUploading)" @onclick="RequestUpload">@(IsUploading ? "Subiendo..." : "Crear lote en staging")</button>
                         </div>
                     </div>
                 </div>
@@ -267,8 +278,8 @@
 
                         <div class="mt-5 flex flex-col gap-3">
                             <button class="rounded-xl border border-[#d7c19c] bg-[#fff4e4] px-4 py-2.5 text-sm font-semibold text-[#8b5a16] disabled:opacity-60" disabled="@(CurrentBatch.Template is null || IsGeneratingTemplate)" @onclick="DownloadTemplateFromBatchAsync">@(IsGeneratingTemplate ? "Generando..." : "Re-descargar plantilla del lote")</button>
-                            <button class="rounded-xl border border-[#c7d6da] bg-white px-4 py-2.5 text-sm font-semibold text-[#12343b] disabled:opacity-60" disabled="@IsValidatingBatch" @onclick="ValidateCurrentBatchAsync">@(IsValidatingBatch ? "Validando..." : "Validar lote")</button>
-                            <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60" disabled="@(CurrentBatch.Summary.TotalRows == 0 || IsProcessingBatch)" @onclick="ProcessCurrentBatchAsync">@(IsProcessingBatch ? "Procesando..." : "Procesar lote")</button>
+                            <button class="rounded-xl border border-[#c7d6da] bg-white px-4 py-2.5 text-sm font-semibold text-[#12343b] disabled:opacity-60" disabled="@IsValidatingBatch" @onclick="RequestValidateCurrentBatch">@(IsValidatingBatch ? "Validando..." : "Validar lote")</button>
+                            <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60" disabled="@(CurrentBatch.Summary.TotalRows == 0 || IsProcessingBatch)" @onclick="RequestProcessCurrentBatch">@(IsProcessingBatch ? "Procesando..." : "Procesar lote")</button>
                         </div>
                     }
                 </div>
@@ -551,25 +562,31 @@
 
 @if (SelectedPreviewRow is not null)
 {
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 p-4">
-        <div class="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
-            <div class="flex items-center justify-between border-b border-[#d9e5e8] bg-gradient-to-r from-[#12343b] to-[#2f4858] px-6 py-4 text-white">
-                <div>
-                    <div class="text-xs uppercase tracking-[0.2em] text-white/70">Detalle de staging</div>
-                    <h3 class="text-xl font-black">Fila @SelectedPreviewRow.RowNumber</h3>
+    <AppConfirmPanel Visible="true"
+                     Size="xl"
+                     Eyebrow="Detalle de staging"
+                     Title="@($"Fila {SelectedPreviewRow.RowNumber}")"
+                     ConfirmText="Cerrar"
+                     CancelText=""
+                     OnConfirm="CloseRowModal"
+                     OnCancel="CloseRowModal">
+        <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+            <div class="rounded-[1.6rem] border border-[#d9e5e8] bg-white shadow-sm overflow-hidden">
+                <div class="flex flex-col gap-3 border-b border-[#d9e5e8] bg-[#16324f] px-6 py-4 text-white md:flex-row md:items-center md:justify-between">
+                    <div>
+                        <div class="text-xs uppercase tracking-[0.2em] text-white/70">Detalle de staging</div>
+                        <h3 class="text-xl font-black">Fila @SelectedPreviewRow.RowNumber</h3>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if (ErrorRows.Any())
+                        {
+                            <button class="rounded-xl border border-white/25 px-3 py-2 text-sm font-semibold disabled:opacity-50" disabled="@(GetPreviousErrorRow() is null)" @onclick="OpenPreviousErrorRowAsync">Anterior error</button>
+                            <button class="rounded-xl border border-white/25 px-3 py-2 text-sm font-semibold disabled:opacity-50" disabled="@(GetNextErrorRow() is null)" @onclick="OpenNextErrorRowFromModalAsync">Siguiente error</button>
+                        }
+                        <button class="rounded-xl border border-white/25 px-3 py-2 text-sm font-semibold" @onclick="EnterCorrectionModeAsync">Corregir fila</button>
+                    </div>
                 </div>
-                <div class="flex flex-wrap items-center gap-2">
-                    @if (ErrorRows.Any())
-                    {
-                        <button class="rounded-xl border border-white/25 px-3 py-2 text-sm font-semibold disabled:opacity-50" disabled="@(GetPreviousErrorRow() is null)" @onclick="OpenPreviousErrorRowAsync">Anterior error</button>
-                        <button class="rounded-xl border border-white/25 px-3 py-2 text-sm font-semibold disabled:opacity-50" disabled="@(GetNextErrorRow() is null)" @onclick="OpenNextErrorRowFromModalAsync">Siguiente error</button>
-                    }
-                    <button class="rounded-xl border border-white/25 px-3 py-2 text-sm font-semibold" @onclick="EnterCorrectionModeAsync">Corregir fila</button>
-                    <button class="rounded-xl border border-white/25 px-3 py-2 text-sm font-semibold" @onclick="CloseRowModal">Cerrar</button>
-                </div>
-            </div>
-            <div class="grid max-h-[calc(90vh-5rem)] grid-cols-1 gap-0 overflow-auto xl:grid-cols-[1.2fr_0.8fr]">
-                <div class="border-r border-[#eef3f5] p-6">
+                <div class="p-6">
                     <div class="mb-4 flex flex-wrap items-center gap-3">
                         <span class="@GetRowStatusBadgeClass(SelectedPreviewRow.RowStatus)">@SelectedPreviewRow.RowStatus</span>
                         <span class="rounded-full bg-[#eef5f6] px-3 py-1 text-xs font-semibold text-[#2f4858]">@SelectedPreviewRow.Cells.Count celdas</span>
@@ -710,7 +727,9 @@
                         </div>
                     }
                 </div>
-                <div class="bg-[#fffdf8] p-6">
+            </div>
+            <div class="rounded-[1.6rem] border border-[#ead8bd] bg-[#fffdf8] p-6 shadow-sm">
+                <div>
                     <h4 class="text-base font-black text-[#8b5a16]">Errores y acciones</h4>
                     <div class="mt-4 rounded-3xl border border-[#ead8bd] bg-white px-4 py-4 text-sm text-slate-700">
                         <div class="font-semibold text-[#8b5a16]">Sugerencia</div>
@@ -747,7 +766,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </AppConfirmPanel>
 }
 
 @code {
@@ -791,6 +810,17 @@
     private string? SuccessMessage;
     private string? WarningMessage;
     private string? MessageTitle;
+    private bool ShowFeedbackModal;
+    private string FeedbackVariant = "info";
+    private string FeedbackEyebrow = "Estado";
+    private string FeedbackTitle = string.Empty;
+    private string? FeedbackMessage;
+    private PendingBulkAction PendingAction = PendingBulkAction.None;
+    private string PendingActionTitle = string.Empty;
+    private string PendingActionMessage = string.Empty;
+    private string PendingActionConfirmText = "Confirmar";
+
+    private bool HasPendingAction => PendingAction != PendingBulkAction.None;
 
     private IEnumerable<FieldCatalogItemDto> FilteredArticleFields => ArticleFields.Where(field => Matches(field, ArticleFieldSearchTerm));
     private IEnumerable<FieldCatalogItemDto> FilteredParticipantFields => ParticipantFields.Where(field => Matches(field, ParticipantFieldSearchTerm));
@@ -893,7 +923,7 @@
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"No pude cargar la configuración de carga masiva: {ex.Message}";
+            ShowFeedback("error", "No pude cargar la pantalla", "Error de carga", $"No pude cargar la configuración de carga masiva: {ex.Message}");
         }
         finally
         {
@@ -931,8 +961,7 @@
             IsGeneratingTemplate = true;
             if (SelectedArticleFieldIds.Count == 0 && SelectedParticipantFieldIds.Count == 0)
             {
-                MessageTitle = "Plantilla incompleta";
-                WarningMessage = "Selecciona al menos un campo antes de generar la plantilla.";
+                ShowFeedback("warning", "Plantilla incompleta", "Plantilla incompleta", "Selecciona al menos un campo antes de generar la plantilla.");
                 return;
             }
 
@@ -948,13 +977,11 @@
 
             var file = await BulkImportClient.GenerateTemplateAsync(request);
             await ExportJs.DownloadFile(file.FileName, file.ContentType, file.Content);
-            MessageTitle = "Plantilla generada";
-            SuccessMessage = "La plantilla dinámica se descargó correctamente.";
+            ShowFeedback("success", "Plantilla lista", "Plantilla generada", "La plantilla dinámica se descargó correctamente.");
         }
         catch (Exception ex)
         {
-            MessageTitle = "Error al generar plantilla";
-            ErrorMessage = $"No pude generar la plantilla: {ex.Message}";
+            ShowFeedback("error", "No pude generar la plantilla", "Error de descarga", $"No pude generar la plantilla: {ex.Message}");
         }
         finally
         {
@@ -968,17 +995,29 @@
         ClearMessages();
         if (SelectedFile is not null)
         {
-            MessageTitle = "Archivo listo";
-            SuccessMessage = $"Archivo listo para subir: {SelectedFile.Name}";
+            ShowFeedback("info", "Archivo preparado", "Archivo listo", $"Archivo listo para subir: {SelectedFile.Name}");
         }
+    }
+
+    private void RequestUpload()
+    {
+        if (SelectedFile is null)
+        {
+            ShowFeedback("warning", "Archivo requerido", "Archivo requerido", "Primero selecciona un archivo para crear el lote.");
+            return;
+        }
+
+        PendingAction = PendingBulkAction.Upload;
+        PendingActionTitle = "Crear lote en staging";
+        PendingActionMessage = $"Voy a subir '{SelectedFile.Name}' al staging para crear un nuevo lote de revisión.";
+        PendingActionConfirmText = "Crear lote";
     }
 
     private async Task UploadAsync()
     {
         if (SelectedFile is null)
         {
-            MessageTitle = "Archivo requerido";
-            WarningMessage = "Primero selecciona un archivo para crear el lote.";
+            ShowFeedback("warning", "Archivo requerido", "Archivo requerido", "Primero selecciona un archivo para crear el lote.");
             return;
         }
 
@@ -994,14 +1033,12 @@
             await LoadRecentBatchesAsync();
             if (CurrentBatch is not null)
             {
-                MessageTitle = "Staging creado";
-                SuccessMessage = $"El archivo se cargó al staging. Lote {CurrentBatch.Summary.BatchCode} con {CurrentBatch.Summary.TotalRows} fila(s) detectadas. Revisa la tabla, valida y procesa solo cuando el lote esté limpio.";
+                ShowFeedback("success", "Staging creado", "Lote listo para revisión", $"El archivo se cargó al staging. Lote {CurrentBatch.Summary.BatchCode} con {CurrentBatch.Summary.TotalRows} fila(s) detectadas. Revisa la tabla, valida y procesa solo cuando el lote esté limpio.");
             }
         }
         catch (Exception ex)
         {
-            MessageTitle = "Error al subir a staging";
-            ErrorMessage = $"No pude subir el archivo al staging: {ex.Message}";
+            ShowFeedback("error", "No pude subir el archivo", "Error al subir a staging", $"No pude subir el archivo al staging: {ex.Message}");
         }
         finally
         {
@@ -1020,20 +1057,31 @@
             SelectedPreviewRow = null;
             if (CurrentBatch is null)
             {
-                MessageTitle = "Lote no disponible";
-                WarningMessage = "No pude abrir el lote seleccionado.";
+                ShowFeedback("warning", "Lote no disponible", "Lote no disponible", "No pude abrir el lote seleccionado.");
             }
         }
         catch (Exception ex)
         {
-            MessageTitle = "Error al abrir lote";
-            ErrorMessage = $"No pude abrir el lote: {ex.Message}";
+            ShowFeedback("error", "No pude abrir el lote", "Error al abrir lote", $"No pude abrir el lote: {ex.Message}");
         }
     }
 
     private async Task RefreshCurrentBatchAsync()
     {
         if (CurrentBatch is not null) await OpenBatchAsync(CurrentBatch.Summary.ImportBatchId);
+    }
+
+    private void RequestValidateCurrentBatch()
+    {
+        if (CurrentBatch is null)
+        {
+            return;
+        }
+
+        PendingAction = PendingBulkAction.Validate;
+        PendingActionTitle = $"Validar lote {CurrentBatch.Summary.BatchCode}";
+        PendingActionMessage = "Voy a ejecutar la validación del staging para normalizar referencias y detectar errores fila por fila.";
+        PendingActionConfirmText = "Validar lote";
     }
 
     private async Task ValidateCurrentBatchAsync()
@@ -1048,20 +1096,31 @@
             {
                 CurrentBatch = result.Batch;
                 SelectedPreviewRow = null;
-                MessageTitle = "Validación completada";
-                SuccessMessage = $"{result.Message} Filas válidas: {CurrentBatch.Summary.ValidRows}. Filas con error: {CurrentBatch.Summary.ErrorRows}. Usa los filtros del preview para enfocarte en lo pendiente.";
+                ShowFeedback("success", "Validación completada", "Lote validado", $"{result.Message} Filas válidas: {CurrentBatch.Summary.ValidRows}. Filas con error: {CurrentBatch.Summary.ErrorRows}. Usa los filtros del preview para enfocarte en lo pendiente.");
                 await LoadRecentBatchesAsync();
             }
         }
         catch (Exception ex)
         {
-            MessageTitle = "Error al validar";
-            ErrorMessage = $"No pude validar el lote: {ex.Message}";
+            ShowFeedback("error", "No pude validar el lote", "Error al validar", $"No pude validar el lote: {ex.Message}");
         }
         finally
         {
             IsValidatingBatch = false;
         }
+    }
+
+    private void RequestProcessCurrentBatch()
+    {
+        if (CurrentBatch is null)
+        {
+            return;
+        }
+
+        PendingAction = PendingBulkAction.Process;
+        PendingActionTitle = $"Procesar lote {CurrentBatch.Summary.BatchCode}";
+        PendingActionMessage = "Voy a persistir en el modelo híbrido todas las filas válidas del lote actual. Conviene hacerlo solo cuando los errores pendientes estén controlados.";
+        PendingActionConfirmText = "Procesar lote";
     }
 
     private async Task ProcessCurrentBatchAsync()
@@ -1076,15 +1135,13 @@
             {
                 CurrentBatch = result.Batch;
                 SelectedPreviewRow = null;
-                MessageTitle = "Procesamiento completado";
-                SuccessMessage = $"{result.Message} Filas procesadas: {CurrentBatch.Summary.ProcessedRows}. El staging conserva la trazabilidad para auditoría y revisión posterior.";
+                ShowFeedback("success", "Procesamiento completado", "Lote procesado", $"{result.Message} Filas procesadas: {CurrentBatch.Summary.ProcessedRows}. El staging conserva la trazabilidad para auditoría y revisión posterior.");
                 await LoadRecentBatchesAsync();
             }
         }
         catch (Exception ex)
         {
-            MessageTitle = "Error al procesar";
-            ErrorMessage = $"No pude procesar el lote: {ex.Message}";
+            ShowFeedback("error", "No pude procesar el lote", "Error al procesar", $"No pude procesar el lote: {ex.Message}");
         }
         finally
         {
@@ -1106,8 +1163,7 @@
     {
         if (CurrentBatch?.Template is null)
         {
-            MessageTitle = "Sin plantilla";
-            WarningMessage = "Este lote no tiene metadata suficiente para regenerar la plantilla.";
+            ShowFeedback("warning", "Sin plantilla", "Sin plantilla", "Este lote no tiene metadata suficiente para regenerar la plantilla.");
             return;
         }
 
@@ -1127,13 +1183,11 @@
 
             var file = await BulkImportClient.GenerateTemplateAsync(request);
             await ExportJs.DownloadFile(file.FileName, file.ContentType, file.Content);
-            MessageTitle = "Plantilla regenerada";
-            SuccessMessage = $"Se regeneró la plantilla del lote {CurrentBatch.Summary.BatchCode}.";
+            ShowFeedback("success", "Plantilla regenerada", "Plantilla regenerada", $"Se regeneró la plantilla del lote {CurrentBatch.Summary.BatchCode}.");
         }
         catch (Exception ex)
         {
-            MessageTitle = "Error al regenerar plantilla";
-            ErrorMessage = $"No pude regenerar la plantilla del lote: {ex.Message}";
+            ShowFeedback("error", "No pude regenerar la plantilla", "Error al regenerar plantilla", $"No pude regenerar la plantilla del lote: {ex.Message}");
         }
         finally
         {
@@ -1419,8 +1473,7 @@
             SelectedPreviewRow = refreshedRow;
             IsCorrectionMode = refreshedRow is not null && refreshedRow.Errors.Any();
             RowModalSuccessMessage = result.Message;
-            MessageTitle = "Corrección aplicada";
-            SuccessMessage = result.Message;
+            ShowFeedback("success", "Corrección aplicada", "Corrección aplicada", result.Message);
             if (refreshedRow is null)
             {
                 CloseRowModal();
@@ -1674,6 +1727,52 @@
         return "Pendiente de validación";
     }
 
+    private void ShowFeedback(string variant, string eyebrow, string title, string? message)
+    {
+        MessageTitle = title;
+        ErrorMessage = variant == "error" ? message : null;
+        SuccessMessage = variant == "success" ? message : null;
+        WarningMessage = variant == "warning" ? message : null;
+        FeedbackVariant = variant;
+        FeedbackEyebrow = eyebrow;
+        FeedbackTitle = title;
+        FeedbackMessage = message;
+        ShowFeedbackModal = true;
+    }
+
+    private Task CloseFeedbackModal()
+    {
+        ShowFeedbackModal = false;
+        return Task.CompletedTask;
+    }
+
+    private void CancelPendingAction()
+    {
+        PendingAction = PendingBulkAction.None;
+        PendingActionTitle = string.Empty;
+        PendingActionMessage = string.Empty;
+        PendingActionConfirmText = "Confirmar";
+    }
+
+    private async Task ConfirmPendingActionAsync()
+    {
+        var action = PendingAction;
+        CancelPendingAction();
+
+        switch (action)
+        {
+            case PendingBulkAction.Upload:
+                await UploadAsync();
+                break;
+            case PendingBulkAction.Validate:
+                await ValidateCurrentBatchAsync();
+                break;
+            case PendingBulkAction.Process:
+                await ProcessCurrentBatchAsync();
+                break;
+        }
+    }
+
     private string GetCurrentStageLabel()
     {
         if (CurrentBatch is null)
@@ -1760,6 +1859,14 @@
         SuccessMessage = null;
         WarningMessage = null;
         MessageTitle = null;
+    }
+
+    private enum PendingBulkAction
+    {
+        None,
+        Upload,
+        Validate,
+        Process
     }
 }
 

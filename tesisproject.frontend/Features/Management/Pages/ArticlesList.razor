@@ -97,10 +97,17 @@
         </div>
 
         <!-- MENSAJES DE ESTADO / CONTENIDO -->
+        <AppStatusModal Visible="@_showStatusModal"
+                        Variant="@_statusVariant"
+                        Eyebrow="Artículos"
+                        Title="@_statusTitle"
+                        Message="@_statusMessage"
+                        OnClose="CloseStatusModal" />
+
         @if (!string.IsNullOrWhiteSpace(_errorMessage))
         {
-            <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm">
-                @_errorMessage
+            <div class="rounded-2xl border border-rose-200 bg-rose-50/40 px-4 py-3 text-sm text-rose-700 shadow-sm">
+                Ocurrió un problema al cargar el listado.
             </div>
         }
         else if (_isLoading)
@@ -247,6 +254,10 @@
 
     private bool _isLoading = true;
     private string? _errorMessage;
+    private bool _showStatusModal;
+    private string _statusVariant = "info";
+    private string _statusTitle = string.Empty;
+    private string? _statusMessage;
 
     // Filtros internos
     private string? _searchText;
@@ -324,6 +335,7 @@
         catch (Exception ex)
         {
             _errorMessage = ex.Message;
+            ShowStatus("error", "No pude cargar el listado", ex.Message);
         }
         finally
         {
@@ -492,6 +504,7 @@
             return;
 
         await ArticlesClient.DeleteAsync(_articleToDelete.Id);
+        var deletedTitle = _articleToDelete.Title;
 
         _allArticles.RemoveAll(a => a.Id == _articleToDelete.Id);
         ApplyFilters();
@@ -502,5 +515,20 @@
         }
 
         _articleToDelete = null;
+        ShowStatus("success", "Artículo eliminado", $"El artículo '{deletedTitle}' se eliminó correctamente.");
+    }
+
+    private void ShowStatus(string variant, string title, string? message)
+    {
+        _statusVariant = variant;
+        _statusTitle = title;
+        _statusMessage = message;
+        _showStatusModal = true;
+    }
+
+    private Task CloseStatusModal()
+    {
+        _showStatusModal = false;
+        return Task.CompletedTask;
     }
 }
