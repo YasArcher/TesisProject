@@ -6,8 +6,12 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 builder.Logging.AddDebug();
 
+var backendUrl = builder.Configuration["BackendUrl"]
+                 ?? Environment.GetEnvironmentVariable("TESIS_BACKEND_URL")
+                 ?? "http://localhost:5040";
+
 builder.WebHost.PreferHostingUrls(true)
-               .UseUrls("http://localhost:5040");
+               .UseUrls(backendUrl);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
                       ?? "Server=PERSONAL\\DINNOVA;Database=TesisDB_Extensible;User Id=sa;Password=admin123;Encrypt=False;TrustServerCertificate=True";

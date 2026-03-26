@@ -33,18 +33,40 @@
     }
     else
     {
-        <div class="mb-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-            <AppMetricCard Label="Formularios" Value="@Forms.Count.ToString()" HelperText="@($"{Forms.Count(x => x.IsActive)} activos")" Tone="accent" />
-            <AppMetricCard Label="Campos" Value="@AvailableFields.Count.ToString()" HelperText="@($"{AvailableFields.Count(x => x.IsDynamic)} dinámicos")" Tone="accent" />
-            <AppMetricCard Label="Asignaciones" Value="@SelectedFormFields.Count.ToString()" HelperText="del formulario actual" Tone="default" />
-            <AppMetricCard Label="Catálogo activo" Value="@GetCatalogLabel(SelectedCatalogKey)" HelperText="@($"{CatalogItems.Count} elementos")" Tone="default" />
-        </div>
+        <div class="mb-6 rounded-[1.8rem] border border-[#cfe0e4] bg-[radial-gradient(circle_at_top_left,_rgba(18,52,59,0.08),_transparent_35%),linear-gradient(135deg,#eef6f7_0%,#ffffff_55%,#fff6ea_100%)] p-4 shadow-sm">
+            <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                <div class="rounded-2xl border border-[#d9e5e8] bg-white/90 px-4 py-3 shadow-sm">
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Formularios</div>
+                    <div class="mt-1 text-lg font-black text-[#12343b]">@Forms.Count</div>
+                    <div class="text-xs text-slate-500">@Forms.Count(x => x.IsActive) activos</div>
+                </div>
+                <div class="rounded-2xl border border-[#d9e5e8] bg-white/90 px-4 py-3 shadow-sm">
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Campos</div>
+                    <div class="mt-1 text-lg font-black text-[#12343b]">@AvailableFields.Count</div>
+                    <div class="text-xs text-slate-500">@AvailableFields.Count(x => x.IsDynamic) dinámicos</div>
+                </div>
+                <div class="rounded-2xl border border-[#e8d2ac] bg-[#fffaf2] px-4 py-3 shadow-sm">
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Asignaciones</div>
+                    <div class="mt-1 text-lg font-black text-[#8b5a16]">@SelectedFormFields.Count</div>
+                    <div class="text-xs text-slate-500">del formulario actual</div>
+                </div>
+                <div class="rounded-2xl border border-[#ead8bd] bg-[#fffdf8] px-4 py-3 shadow-sm">
+                    <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Catálogo activo</div>
+                    <div class="mt-1 truncate text-sm font-black text-[#c17c2f]">@GetCatalogLabel(SelectedCatalogKey)</div>
+                    <div class="text-xs text-slate-500">@CatalogItems.Count elementos</div>
+                </div>
+            </div>
 
-        <div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
-            <button type="button" class="@($"{GetTabButtonClass("forms")} w-full xl:w-auto")" @onclick='() => SetActiveTabAsync("forms")'>Formularios</button>
-            <button type="button" class="@($"{GetTabButtonClass("fields")} w-full xl:w-auto")" @onclick='() => SetActiveTabAsync("fields")'>Campos</button>
-            <button type="button" class="@($"{GetTabButtonClass("catalogs")} w-full xl:w-auto")" @onclick='() => SetActiveTabAsync("catalogs")'>Catálogos</button>
-            <button type="button" class="@($"{GetTabButtonClass("options")} w-full xl:w-auto")" @onclick='() => SetActiveTabAsync("options")'>Opciones dinámicas</button>
+            <div class="mt-4 rounded-2xl border border-[#d7e1e4] bg-white/80 px-3 py-3 shadow-sm">
+                <div class="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Navegación del módulo</div>
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
+                    <button type="button" class="@($"{GetTabButtonClass("forms")} w-full xl:w-auto")" @onclick='() => SetActiveTabAsync("forms")'>Formularios</button>
+                    <button type="button" class="@($"{GetTabButtonClass("fields")} w-full xl:w-auto")" @onclick='() => SetActiveTabAsync("fields")'>Campos</button>
+                    <button type="button" class="@($"{GetTabButtonClass("catalogs")} w-full xl:w-auto")" @onclick='() => SetActiveTabAsync("catalogs")'>Catálogos</button>
+                    <button type="button" class="@($"{GetTabButtonClass("options")} w-full xl:w-auto")" @onclick='() => SetActiveTabAsync("options")'>Opciones dinámicas</button>
+                </div>
+                <div class="mt-3 rounded-xl bg-[#f7fafb] px-3 py-2 text-sm text-slate-600">@GetActiveTabHelperText()</div>
+            </div>
         </div>
 
         @if (ActiveTab == "forms")
@@ -55,15 +77,15 @@
                         <h2 class="text-base font-bold text-[#12343b]">Formularios configurados</h2>
                     </header>
                     <div class="space-y-3 px-5 py-5">
-                        <input class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm" placeholder="Buscar formulario por nombre, clave o entidad" @bind="FormSearchTerm" @bind:event="oninput" @bind:after="PersistUiStateAsync" />
-                        <details class="rounded-2xl border p-4" open>
+                        <input class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm" placeholder="Buscar formulario por nombre, identificador visible o tipo" @bind="FormSearchTerm" @bind:event="oninput" @bind:after="PersistUiStateAsync" />
+                        <details class="rounded-2xl border p-3" open>
                             <summary class="cursor-pointer font-semibold text-slate-900">Nuevo formulario</summary>
-                            <div class="mt-4 space-y-3 text-sm">
-                                <input class="w-full rounded-xl border px-3 py-2" placeholder="FormKey" @bind="NewForm.FormKey" />
+                            <div class="mt-3 space-y-2.5 text-sm">
+                                <input class="w-full rounded-xl border px-3 py-2" placeholder="Identificador interno del formulario" @bind="NewForm.FormKey" />
                                 <input class="w-full rounded-xl border px-3 py-2" placeholder="Nombre del formulario" @bind="NewForm.FormName" />
                                 <select class="w-full rounded-xl border px-3 py-2" @bind="NewForm.EntityName">
-                                    <option value="Article">Article</option>
-                                    <option value="ArticleParticipant">ArticleParticipant</option>
+                                    <option value="Article">Artículo</option>
+                                    <option value="ArticleParticipant">Participante del artículo</option>
                                 </select>
                                 <textarea class="w-full rounded-xl border px-3 py-2" rows="3" placeholder="Descripción" @bind="NewForm.Description"></textarea>
                                 <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" @bind="NewForm.IsActive" /> Activo</label>
@@ -77,28 +99,30 @@
                         }
                         else
                         {
-                            @foreach (var form in GetFilteredForms())
-                            {
-                                <button type="button" class="w-full rounded-2xl border px-4 py-3 text-left transition @(SelectedFormId == form.FormId ? "border-[#2f4858] bg-[#edf3f5]" : "border-slate-200 bg-white hover:bg-slate-50")" @onclick="() => SelectFormAsync(form.FormId, form.FormKey)">
-                                    <div class="flex items-center justify-between gap-3">
-                                        <div>
-                                            <div class="text-sm font-semibold text-slate-900">@form.FormName</div>
-                                            <div class="mt-1 text-xs text-slate-500">@form.EntityName · @form.FormKey</div>
+                            <div class="max-h-[32rem] space-y-2 overflow-y-auto pr-1">
+                                @foreach (var form in GetFilteredForms())
+                                {
+                                    <button type="button" class="w-full rounded-2xl border px-3 py-2.5 text-left transition @(SelectedFormId == form.FormId ? "border-[#2f4858] bg-[#edf3f5]" : "border-slate-200 bg-white hover:bg-slate-50")" @onclick="() => SelectFormAsync(form.FormId, form.FormKey)">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <div>
+                                                <div class="text-sm font-semibold text-slate-900">@form.FormName</div>
+                                                <div class="mt-1 text-xs text-slate-500">@GetUserFacingEntityName(form.EntityName) · @GetUserFacingFormIdentifier(form.FormKey)</div>
+                                            </div>
+                                            <span class="rounded-full px-2 py-1 text-[11px] @(form.IsActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600")">@(form.IsActive ? "Activo" : "Inactivo")</span>
                                         </div>
-                                        <span class="rounded-full px-2 py-1 text-[11px] @(form.IsActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600")">@(form.IsActive ? "Activo" : "Inactivo")</span>
-                                    </div>
-                                </button>
-                            }
+                                    </button>
+                                }
+                            </div>
                         }
                     </div>
                 </section>
 
                 <div class="space-y-6">
-                    <section class="rounded-3xl border bg-white shadow-sm">
-                        <header class="border-b bg-[#f5f7f8] px-5 py-4">
+                    <section class="rounded-3xl border bg-gradient-to-br from-[#f8fbfc] to-[#fffaf3] shadow-sm">
+                        <header class="border-b bg-gradient-to-r from-[#edf5f6] to-[#fff7ec] px-4 py-3">
                             <h2 class="text-base font-bold text-[#12343b]">Formulario seleccionado</h2>
                         </header>
-                        <div class="space-y-4 px-5 py-5 text-sm">
+                        <div class="space-y-3 px-4 py-4 text-sm">
                             @if (SelectedForm is null)
                             {
                                 <div class="text-slate-500">Selecciona un formulario.</div>
@@ -108,6 +132,10 @@
                                 <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                                     <input class="rounded-xl border px-3 py-2" @bind="SelectedForm.FormName" />
                                     <label class="inline-flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" @bind="SelectedForm.IsActive" /> Activo</label>
+                                </div>
+                                <div class="rounded-xl border border-[#d8e5e8] bg-white/80 px-3 py-2 text-xs text-slate-600">
+                                    Identificador visible: <span class="font-semibold text-[#12343b]">@GetUserFacingFormIdentifier(SelectedForm.FormKey)</span>
+                                    · Tipo: <span class="font-semibold text-[#12343b]">@GetUserFacingEntityName(SelectedForm.EntityName)</span>
                                 </div>
                                 <textarea class="w-full rounded-xl border px-3 py-2" rows="3" @bind="SelectedForm.Description"></textarea>
                                 <div class="app-mobile-stack">
@@ -132,14 +160,29 @@
                                 <details class="rounded-2xl border p-4" open>
                                     <summary class="cursor-pointer font-semibold text-slate-900">Agregar campo al formulario</summary>
                                     <div class="mt-4 space-y-3 text-sm">
+                                        <div class="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_auto]">
+                                            <input class="rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm"
+                                                   placeholder="Buscar campo para asignar"
+                                                   @bind="FormAssignmentFieldSearchTerm"
+                                                   @bind:event="oninput" />
+                                            <label class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
+                                                Campos visibles
+                                                <input type="range" min="6" max="16" step="1" @bind="FormAssignmentFieldPickerSize" />
+                                                <span class="rounded-full bg-white px-2 py-1 text-[11px] text-slate-700">@FormAssignmentFieldPickerSize</span>
+                                            </label>
+                                        </div>
                                         <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                            <select class="rounded-xl border px-3 py-2" @bind="AddFieldRequest.FieldId">
-                                                <option value="0">Selecciona un campo</option>
-                                                @foreach (var field in AvailableFields)
-                                                {
-                                                    <option value="@field.FieldId">@field.FieldLabel (@field.FieldKey)</option>
-                                                }
-                                            </select>
+                                            <div class="space-y-2 md:col-span-2">
+                                                <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Campos disponibles</div>
+                                                <select class="min-h-[12rem] w-full rounded-xl border px-3 py-2" size="@FormAssignmentFieldPickerSize" @bind="AddFieldRequest.FieldId">
+                                                    <option value="0">Selecciona un campo</option>
+                                                    @foreach (var field in GetFilteredAvailableFieldsForAssignment())
+                                                    {
+                                                        <option value="@field.FieldId">@field.FieldLabel</option>
+                                                    }
+                                                </select>
+                                                <div class="text-xs text-slate-500">@GetFilteredAvailableFieldsForAssignment().Count() campo(s) visibles para asignar.</div>
+                                            </div>
                                             <input class="rounded-xl border px-3 py-2" placeholder="Grupo" @bind="AddFieldRequest.GroupName" />
                                             <input class="rounded-xl border px-3 py-2" type="number" placeholder="Orden" @bind="AddFieldRequest.DisplayOrder" />
                                             <input class="rounded-xl border px-3 py-2" type="number" placeholder="ColumnSpan" @bind="AddFieldRequest.ColumnSpan" />
@@ -159,13 +202,15 @@
                                 }
                                 else
                                 {
+                                    <div class="max-h-[34rem] overflow-y-auto pr-1">
+                                    <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
                                     @foreach (var field in SelectedFormFields)
                                     {
                                         <details class="rounded-2xl border p-4">
                                             <summary class="cursor-pointer">
                                                 <div class="inline-flex items-center gap-3">
                                                     <span class="font-semibold text-slate-900">@field.FieldLabel</span>
-                                                    <span class="text-xs text-slate-500">@field.FieldKey · @field.DataType</span>
+                                                    <span class="text-xs text-slate-500">@GetUserFacingDataType(field.DataType)</span>
                                                 </div>
                                             </summary>
                                             <div class="mt-4 text-sm">
@@ -186,6 +231,8 @@
                                             </div>
                                         </details>
                                     }
+                                    </div>
+                                    </div>
                                 }
                             }
                         </div>
@@ -196,216 +243,488 @@
 
         @if (ActiveTab == "fields")
         {
-            <section class="rounded-3xl border bg-white shadow-sm">
-                <header class="border-b bg-[#f5f7f8] px-5 py-4">
-                    <h2 class="text-base font-bold text-[#12343b]">Campos de la entidad</h2>
-                </header>
-                <div class="space-y-4 px-5 py-5">
-                    <input class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm" placeholder="Buscar campo por etiqueta, clave o tipo" @bind="FieldSearchTerm" @bind:event="oninput" @bind:after="PersistUiStateAsync" />
-                    <details class="rounded-2xl border p-4" open>
-                        <summary class="cursor-pointer font-semibold text-slate-900">Nuevo campo dinámico</summary>
-                        <div class="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-                            <select class="rounded-xl border px-3 py-2" @bind="NewField.EntityName">
-                                <option value="Article">Article</option>
-                                <option value="ArticleParticipant">ArticleParticipant</option>
-                            </select>
-                            <input class="rounded-xl border px-3 py-2" placeholder="FieldKey" @bind="NewField.FieldKey" />
-                            <input class="rounded-xl border px-3 py-2" placeholder="Etiqueta visible" @bind="NewField.FieldLabel" />
-                            <select class="rounded-xl border px-3 py-2" @bind="NewField.DataType">
-                                <option value="string">string</option>
-                                <option value="int">int</option>
-                                <option value="decimal">decimal</option>
-                                <option value="datetime">datetime</option>
-                                <option value="bool">bool</option>
-                            </select>
-                            <input class="rounded-xl border px-3 py-2" placeholder="Placeholder" @bind="NewField.Placeholder" />
-                            <textarea class="rounded-xl border px-3 py-2 md:col-span-2" rows="2" placeholder="HelpText" @bind="NewField.HelpText"></textarea>
-                            <label class="inline-flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" @bind="NewField.IsRequired" /> Requerido</label>
-                            <label class="inline-flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" @bind="NewField.IsActive" /> Activo</label>
+            <div class="grid grid-cols-1 gap-6 xl:grid-cols-[0.82fr_1.18fr]">
+                <section class="rounded-3xl border bg-gradient-to-br from-[#f8fbfc] to-[#fffaf3] shadow-sm">
+                    <header class="border-b bg-gradient-to-r from-[#edf5f6] to-[#fff7ec] px-5 py-4">
+                        <h2 class="text-base font-bold text-[#12343b]">Nuevo campo dinámico</h2>
+                    </header>
+                    <div class="space-y-4 px-5 py-5 text-sm">
+                        <div class="rounded-2xl border border-[#d9e5e8] bg-white/80 px-4 py-3 text-slate-600">
+                            Define un nuevo campo para el sistema y luego asígnalo a los formularios que lo necesiten.
                         </div>
-                        <button class="mt-4 rounded-xl bg-[#2f4858] px-4 py-2 text-sm font-semibold text-white" @onclick="CreateDynamicFieldAsync">Crear campo</button>
-                    </details>
+                        <div class="grid grid-cols-1 gap-3">
+                            <label class="space-y-1">
+                                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Sección del sistema</span>
+                                <select class="w-full rounded-xl border px-3 py-2" @bind="NewField.EntityName">
+                                    <option value="Article">Artículo</option>
+                                    <option value="ArticleParticipant">Participante del artículo</option>
+                                </select>
+                            </label>
+                            <label class="space-y-1">
+                                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Identificador interno</span>
+                                <input class="w-full rounded-xl border px-3 py-2" placeholder="Clave técnica del campo" @bind="NewField.FieldKey" />
+                            </label>
+                            <label class="space-y-1">
+                                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Nombre visible</span>
+                                <input class="w-full rounded-xl border px-3 py-2" placeholder="Nombre que verá el usuario" @bind="NewField.FieldLabel" />
+                            </label>
+                            <label class="space-y-1">
+                                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Tipo de dato</span>
+                                <select class="w-full rounded-xl border px-3 py-2" @bind="NewField.DataType">
+                                    <option value="string">Texto</option>
+                                    <option value="int">Número entero</option>
+                                    <option value="decimal">Número decimal</option>
+                                    <option value="datetime">Fecha y hora</option>
+                                    <option value="bool">Sí / No</option>
+                                </select>
+                            </label>
+                            <label class="space-y-1">
+                                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Texto guía en el campo</span>
+                                <input class="w-full rounded-xl border px-3 py-2" placeholder="Texto de apoyo dentro del campo" @bind="NewField.Placeholder" />
+                            </label>
+                            <label class="space-y-1">
+                                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Ayuda para el usuario</span>
+                                <textarea class="w-full rounded-xl border px-3 py-2" rows="2" placeholder="Mensaje o instrucción para completar el campo" @bind="NewField.HelpText"></textarea>
+                            </label>
+                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                <label class="inline-flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" @bind="NewField.IsRequired" /> Requerido</label>
+                                <label class="inline-flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" @bind="NewField.IsActive" /> Activo</label>
+                            </div>
+                        </div>
+                        <button class="rounded-xl bg-[#2f4858] px-4 py-2 text-sm font-semibold text-white" @onclick="CreateDynamicFieldAsync">Crear campo</button>
+                    </div>
+                </section>
 
-                    @if (!GetFilteredFields().Any())
-                    {
-                        <AppEmptyState Title="Sin campos visibles" Message="No hay campos que coincidan con la búsqueda actual." />
-                    }
-                    else
-                    {
-                        @foreach (var field in GetFilteredFields())
+                <section class="rounded-3xl border bg-white shadow-sm">
+                    <header class="border-b bg-[#f5f7f8] px-5 py-4">
+                        <h2 class="text-base font-bold text-[#12343b]">Campos del sistema</h2>
+                    </header>
+                    <div class="space-y-4 px-5 py-5">
+                        <input class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm" placeholder="Buscar campo por nombre visible, clave o tipo" @bind="FieldSearchTerm" @bind:event="oninput" @bind:after="PersistUiStateAsync" />
+
+                        @if (!GetFilteredFields().Any())
                         {
-                            <details class="rounded-2xl border p-4">
-                                <summary class="cursor-pointer">
-                                    <div class="inline-flex items-center gap-3">
-                                        <span class="font-semibold text-slate-900">@field.FieldLabel</span>
-                                        <span class="text-xs text-slate-500">@field.FieldKey · @field.DataType · @(field.IsDynamic ? "Dinámico" : "Físico")</span>
-                                        <span class="rounded-full px-2 py-1 text-[11px] @(field.IsActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600")">@(field.IsActive ? "Activo" : "Inactivo")</span>
-                                    </div>
-                                </summary>
-                                <div class="mt-4 text-sm">
-                                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                                        <input class="rounded-xl border px-3 py-2" value="@field.FieldLabel" @onchange="e => field.FieldLabel = e.Value?.ToString() ?? field.FieldLabel" />
-                                        <input class="rounded-xl border px-3 py-2" value="@field.DisplayOrder" type="number" @onchange="e => field.DisplayOrder = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : field.DisplayOrder" />
-                                        <input class="rounded-xl border px-3 py-2" value="@field.Placeholder" placeholder="Placeholder" @onchange="e => field.Placeholder = e.Value?.ToString()" />
-                                        <input class="rounded-xl border px-3 py-2" value="@field.MaxLength" type="number" placeholder="MaxLength" @onchange="e => field.MaxLength = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null" />
-                                    </div>
-                                    <textarea class="mt-3 w-full rounded-xl border px-3 py-2" rows="2" @onchange="e => field.HelpText = e.Value?.ToString()">@field.HelpText</textarea>
-                                    <div class="mt-3 flex flex-wrap gap-4">
-                                        <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsActive" @onchange="e => field.IsActive = e.Value is bool b && b" /> Activo</label>
-                                        <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsRequired" @onchange="e => field.IsRequired = e.Value is bool b && b" /> Requerido</label>
-                                        <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsVisible" @onchange="e => field.IsVisible = e.Value is bool b && b" /> Visible</label>
-                                        <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsEditable" @onchange="e => field.IsEditable = e.Value is bool b && b" /> Editable</label>
-                                    </div>
-                                    <button class="mt-4 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateFieldAsync(field)">Guardar campo</button>
-                                </div>
-                            </details>
+                            <AppEmptyState Title="Sin campos visibles" Message="No hay campos que coincidan con la búsqueda actual." />
                         }
-                    }
-                </div>
-            </section>
+                        else
+                        {
+                            <div class="space-y-4">
+                                <div class="rounded-2xl border border-[#d9e5e8] bg-[#f8fbfc] p-4">
+                                    <div class="mb-3 flex items-center justify-between gap-3">
+                                        <div>
+                                            <div class="font-bold text-[#12343b]">Campos dinámicos</div>
+                                            <div class="text-xs text-slate-500">Campos creados para extender el modelo sin tocar la base estructural.</div>
+                                        </div>
+                                        <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#12343b]">@GetFilteredDynamicFields().Count() visibles</span>
+                                    </div>
+                                    @if (!GetFilteredDynamicFields().Any())
+                                    {
+                                        <AppEmptyState Title="Sin campos dinámicos" Message="No hay campos dinámicos con el filtro actual." />
+                                    }
+                                    else
+                                    {
+                                        <div class="max-h-[22rem] overflow-y-auto pr-1">
+                                            <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                                                @foreach (var field in GetFilteredDynamicFields())
+                                                {
+                                                    <details class="rounded-2xl border border-[#d8e5e8] bg-white p-4">
+                                                        <summary class="cursor-pointer">
+                                                            <div class="flex flex-wrap items-center gap-2">
+                                                                <span class="font-semibold text-slate-900">@field.FieldLabel</span>
+                                                                <span class="text-xs text-slate-500">@GetUserFacingDataType(field.DataType)</span>
+                                                                <span class="@GetFieldActiveBadgeClass(field.IsActive)">@(field.IsActive ? "Activo" : "Inactivo")</span>
+                                                            </div>
+                                                        </summary>
+                                                        <div class="mt-4 text-sm">
+                                                            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                                                <input class="rounded-xl border px-3 py-2" value="@field.FieldLabel" @onchange="e => field.FieldLabel = e.Value?.ToString() ?? field.FieldLabel" />
+                                                                <input class="rounded-xl border px-3 py-2" value="@field.DisplayOrder" type="number" @onchange="e => field.DisplayOrder = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : field.DisplayOrder" />
+                                                                <input class="rounded-xl border px-3 py-2" value="@field.Placeholder" placeholder="Texto guía en el campo" @onchange="e => field.Placeholder = e.Value?.ToString()" />
+                                                                <input class="rounded-xl border px-3 py-2" value="@field.MaxLength" type="number" placeholder="Cantidad máxima de caracteres" @onchange="e => field.MaxLength = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null" />
+                                                            </div>
+                                                            <textarea class="mt-3 w-full rounded-xl border px-3 py-2" rows="2" @onchange="e => field.HelpText = e.Value?.ToString()">@field.HelpText</textarea>
+                                                            <div class="mt-3 flex flex-wrap gap-4">
+                                                                <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsActive" @onchange="e => field.IsActive = e.Value is bool b && b" /> Activo</label>
+                                                                <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsRequired" @onchange="e => field.IsRequired = e.Value is bool b && b" /> Requerido</label>
+                                                                <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsVisible" @onchange="e => field.IsVisible = e.Value is bool b && b" /> Visible</label>
+                                                                <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsEditable" @onchange="e => field.IsEditable = e.Value is bool b && b" /> Editable</label>
+                                                            </div>
+                                                            <button class="mt-4 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateFieldAsync(field)">Guardar campo</button>
+                                                        </div>
+                                                    </details>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="rounded-2xl border border-[#ead8bd] bg-[#fffdf8] p-4">
+                                    <div class="mb-3 flex items-center justify-between gap-3">
+                                        <div>
+                                            <div class="font-bold text-[#8b5a16]">Campos físicos</div>
+                                            <div class="text-xs text-slate-500">Campos ya existentes dentro del modelo base del sistema.</div>
+                                        </div>
+                                        <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#8b5a16]">@GetFilteredPhysicalFields().Count() visibles</span>
+                                    </div>
+                                    @if (!GetFilteredPhysicalFields().Any())
+                                    {
+                                        <AppEmptyState Title="Sin campos físicos" Message="No hay campos físicos con el filtro actual." />
+                                    }
+                                    else
+                                    {
+                                        <div class="max-h-[22rem] overflow-y-auto pr-1">
+                                            <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                                                @foreach (var field in GetFilteredPhysicalFields())
+                                                {
+                                                    <details class="rounded-2xl border border-[#ead8bd] bg-white p-4">
+                                                        <summary class="cursor-pointer">
+                                                            <div class="flex flex-wrap items-center gap-2">
+                                                                <span class="font-semibold text-slate-900">@field.FieldLabel</span>
+                                                                <span class="text-xs text-slate-500">@GetUserFacingDataType(field.DataType)</span>
+                                                                <span class="@GetFieldActiveBadgeClass(field.IsActive)">@(field.IsActive ? "Activo" : "Inactivo")</span>
+                                                            </div>
+                                                        </summary>
+                                                        <div class="mt-4 text-sm">
+                                                            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                                                <input class="rounded-xl border px-3 py-2" value="@field.FieldLabel" @onchange="e => field.FieldLabel = e.Value?.ToString() ?? field.FieldLabel" />
+                                                                <input class="rounded-xl border px-3 py-2" value="@field.DisplayOrder" type="number" @onchange="e => field.DisplayOrder = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : field.DisplayOrder" />
+                                                                <input class="rounded-xl border px-3 py-2" value="@field.Placeholder" placeholder="Texto guía en el campo" @onchange="e => field.Placeholder = e.Value?.ToString()" />
+                                                                <input class="rounded-xl border px-3 py-2" value="@field.MaxLength" type="number" placeholder="Cantidad máxima de caracteres" @onchange="e => field.MaxLength = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null" />
+                                                            </div>
+                                                            <textarea class="mt-3 w-full rounded-xl border px-3 py-2" rows="2" @onchange="e => field.HelpText = e.Value?.ToString()">@field.HelpText</textarea>
+                                                            <div class="mt-3 flex flex-wrap gap-4">
+                                                                <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsActive" @onchange="e => field.IsActive = e.Value is bool b && b" /> Activo</label>
+                                                                <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsRequired" @onchange="e => field.IsRequired = e.Value is bool b && b" /> Requerido</label>
+                                                                <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsVisible" @onchange="e => field.IsVisible = e.Value is bool b && b" /> Visible</label>
+                                                                <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsEditable" @onchange="e => field.IsEditable = e.Value is bool b && b" /> Editable</label>
+                                                            </div>
+                                                            <button class="mt-4 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateFieldAsync(field)">Guardar campo</button>
+                                                        </div>
+                                                    </details>
+                                                }
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </section>
+            </div>
         }
 
         @if (ActiveTab == "catalogs")
         {
-            <section class="rounded-3xl border bg-white shadow-sm">
-                <header class="border-b bg-[#f5f7f8] px-5 py-4">
-                    <h2 class="text-base font-bold text-[#12343b]">Catálogos físicos</h2>
-                </header>
-                <div class="space-y-4 px-5 py-5 text-sm">
-                    <div class="grid grid-cols-1 gap-3 lg:grid-cols-[0.8fr_1.2fr]">
-                        <select class="rounded-xl border px-3 py-2" @bind="SelectedCatalogKey" @bind:after="OnCatalogKeyChangedWithPersistenceAsync">
-                            <option value="academic-terms">Academic Terms</option>
-                            <option value="research-lines">Research Lines</option>
-                            <option value="broad-fields">Broad Fields</option>
-                            <option value="specific-fields">Specific Fields</option>
-                            <option value="detailed-fields">Detailed Fields</option>
-                        </select>
-                        <div class="rounded-xl border bg-slate-50 px-4 py-2 text-slate-600">Trabajando sobre: <span class="font-semibold text-slate-900">@GetCatalogLabel(SelectedCatalogKey)</span></div>
-                    </div>
-
-                    <details class="rounded-2xl border p-4" open>
-                        <summary class="cursor-pointer font-semibold text-slate-900">Crear elemento de catálogo</summary>
-                        <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                            <input class="rounded-xl border px-3 py-2" placeholder="Nombre" @bind="NewCatalogItem.Name" />
-                            <input class="rounded-xl border px-3 py-2" placeholder="ParentId opcional" type="number" @bind="NewCatalogItem.ParentId" />
-                            <input class="rounded-xl border px-3 py-2" placeholder="Code opcional" @bind="NewCatalogItem.Code" />
-                            <input class="rounded-xl border px-3 py-2" placeholder="Type opcional" @bind="NewCatalogItem.Type" />
-                            <input class="rounded-xl border px-3 py-2" placeholder="ISSN opcional" @bind="NewCatalogItem.IssnCode" />
-                            <input class="rounded-xl border px-3 py-2" placeholder="JournalUrl opcional" @bind="NewCatalogItem.JournalUrl" />
+            <section class="rounded-3xl border border-[#d8e4e7] bg-white shadow-sm">
+                <header class="border-b border-[#d8e4e7] bg-gradient-to-r from-[#f2f7f7] via-[#faf5ec] to-[#f5f7f8] px-5 py-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-base font-bold text-[#12343b]">Catálogos físicos</h2>
+                            <p class="mt-1 text-xs text-slate-600">@GetCatalogHelperText()</p>
                         </div>
-                        <button class="mt-4 rounded-xl bg-[#12343b] px-4 py-2 text-sm font-semibold text-white" @onclick="CreateCatalogItemAsync">Crear elemento</button>
-                    </details>
+                        <div class="rounded-2xl border border-[#d9c7ab] bg-white/85 px-4 py-2 text-xs text-slate-600">
+                            Trabajando sobre:
+                            <span class="font-semibold text-[#12343b]">@GetCatalogLabel(SelectedCatalogKey)</span>
+                        </div>
+                    </div>
+                </header>
+                <div class="space-y-5 px-5 py-5 text-sm">
+                    <div class="grid grid-cols-1 gap-4 xl:grid-cols-[0.82fr_1.18fr]">
+                        <section class="rounded-3xl border border-[#d8e4e7] bg-[#f7fafb] p-4 shadow-sm">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <h3 class="text-sm font-bold text-[#12343b]">Crear elemento de catálogo</h3>
+                                    <p class="mt-1 text-xs text-slate-600">@GetCatalogCreationGuidance()</p>
+                                </div>
+                                <span class="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-[#12343b]">@GetCatalogLabel(SelectedCatalogKey)</span>
+                            </div>
 
-                    <input class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm" placeholder="Buscar elemento de catálogo por nombre, código o tipo" @bind="CatalogSearchTerm" @bind:event="oninput" @bind:after="PersistUiStateAsync" />
+                            <div class="mt-4 space-y-4">
+                                <div>
+                                    <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Catálogo a administrar</label>
+                                    <select class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" @bind="SelectedCatalogKey" @bind:after="OnCatalogKeyChangedWithPersistenceAsync">
+                                        <option value="academic-terms">Períodos académicos</option>
+                                        <option value="research-lines">Líneas de investigación</option>
+                                        <option value="broad-fields">Campos amplios</option>
+                                        <option value="specific-fields">Campos específicos</option>
+                                        <option value="detailed-fields">Campos detallados</option>
+                                    </select>
+                                </div>
 
-                    @if (!GetFilteredCatalogItems().Any())
-                    {
-                        <AppEmptyState Title="Sin elementos visibles" Message="No hay elementos de catálogo que coincidan con la búsqueda actual." />
-                    }
-                    else
-                    {
-                        @foreach (var item in GetFilteredCatalogItems())
-                        {
-                            <details class="rounded-2xl border p-4">
-                                <summary class="cursor-pointer">
-                                    <div class="inline-flex items-center gap-3">
-                                        <span class="font-semibold text-slate-900">@item.Name</span>
-                                        <span class="text-xs text-slate-500">Id @item.Id</span>
-                                        @if (item.ParentId.HasValue)
+                                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                    <div>
+                                        <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Código visible</label>
+                                        <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" placeholder="Código del elemento" @bind="NewCatalogItem.Code" disabled="@(!CatalogSupportsCode())" />
+                                        @if (!CatalogSupportsCode())
                                         {
-                                            <span class="text-xs text-slate-500">Parent @item.ParentId</span>
+                                            <div class="mt-1 text-[11px] text-slate-500">Este catálogo no usa código según el modelo actual.</div>
                                         }
                                     </div>
-                                </summary>
-                                <div class="mt-4 grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
-                                    <input class="rounded-xl border px-3 py-2" value="@item.Name" @onchange="e => item.Name = e.Value?.ToString() ?? item.Name" />
-                                    <input class="rounded-xl border px-3 py-2" value="@item.ParentId" type="number" placeholder="ParentId" @onchange="e => item.ParentId = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null" />
-                                    <input class="rounded-xl border px-3 py-2" value="@item.Code" placeholder="Code" @onchange="e => item.Code = e.Value?.ToString()" />
-                                    <input class="rounded-xl border px-3 py-2" value="@item.Type" placeholder="Type" @onchange="e => item.Type = e.Value?.ToString()" />
-                                    <input class="rounded-xl border px-3 py-2" value="@item.IssnCode" placeholder="ISSN" @onchange="e => item.IssnCode = e.Value?.ToString()" />
-                                    <input class="rounded-xl border px-3 py-2" value="@item.JournalUrl" placeholder="JournalUrl" @onchange="e => item.JournalUrl = e.Value?.ToString()" />
+                                    <div>
+                                        <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Nombre del elemento</label>
+                                        <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" placeholder="Nombre que verá el usuario" @bind="NewCatalogItem.Name" />
+                                    </div>
                                 </div>
-                                <button class="mt-4 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateCatalogItemAsync(item)">Guardar catálogo</button>
-                            </details>
-                        }
-                    }
+
+                                @if (CatalogRequiresParent())
+                                {
+                                    <div>
+                                        <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">@GetCatalogParentLabel()</label>
+                                        <select class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" @bind="NewCatalogItem.ParentId">
+                                            <option value="">Selecciona un elemento relacionado</option>
+                                            @foreach (var parent in GetCatalogParentOptions())
+                                            {
+                                                <option value="@parent.Id">@parent.Name @(!string.IsNullOrWhiteSpace(parent.Code) ? $"({parent.Code})" : string.Empty)</option>
+                                            }
+                                        </select>
+                                    </div>
+                                }
+
+                                <div class="rounded-2xl border border-dashed border-[#d9c7ab] bg-[#fffaf1] px-4 py-3 text-xs text-[#7a5a26]">
+                                    @GetCatalogOrderHint()
+                                </div>
+
+                                <button class="w-full rounded-xl bg-[#12343b] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0f2b31]" @onclick="CreateCatalogItemAsync">Crear elemento</button>
+                            </div>
+                        </section>
+
+                        <section class="rounded-3xl border border-[#d8e4e7] bg-white p-4 shadow-sm">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <h3 class="text-sm font-bold text-[#12343b]">Elementos creados</h3>
+                                    <p class="mt-1 text-xs text-slate-600">Consulta y actualiza los elementos registrados en el catálogo activo.</p>
+                                </div>
+                                <span class="rounded-full bg-[#f5f7f8] px-3 py-1 text-[11px] font-semibold text-slate-700">@GetFilteredCatalogItems().Count() visibles</span>
+                            </div>
+
+                            <div class="mt-4">
+                                <input class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm" placeholder="Buscar elemento por nombre, código o relación" @bind="CatalogSearchTerm" @bind:event="oninput" @bind:after="PersistUiStateAsync" />
+                            </div>
+
+                            <div class="mt-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+                                El modelo actual de estos catálogos no expone un estado activo/inactivo. Aquí se administra nombre, código y relación jerárquica cuando aplica.
+                            </div>
+
+                            @if (!GetFilteredCatalogItems().Any())
+                            {
+                                <div class="mt-4">
+                                    <AppEmptyState Title="Sin elementos visibles" Message="No hay elementos de catálogo que coincidan con la búsqueda actual." />
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="mt-4 max-h-[42rem] overflow-y-auto pr-1">
+                                    <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                                        @foreach (var item in GetFilteredCatalogItems())
+                                        {
+                                            <details class="rounded-2xl border border-slate-200 bg-[#fbfcfc] p-4">
+                                                <summary class="cursor-pointer list-none">
+                                                    <div class="flex flex-wrap items-center justify-between gap-3">
+                                                        <div class="min-w-0">
+                                                            <div class="truncate font-semibold text-slate-900">@item.Name</div>
+                                                            <div class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                                                                @if (!string.IsNullOrWhiteSpace(item.Code))
+                                                                {
+                                                                    <span class="rounded-full bg-[#eef5f6] px-2 py-1 font-semibold text-[#12343b]">@item.Code</span>
+                                                                }
+                                                                @if (!string.IsNullOrWhiteSpace(GetCatalogParentSummary(item)))
+                                                                {
+                                                                    <span class="rounded-full bg-[#fff5e7] px-2 py-1 font-semibold text-[#8b5a16]">@GetCatalogParentSummary(item)</span>
+                                                                }
+                                                                <span class="rounded-full bg-emerald-100 px-2 py-1 font-semibold text-emerald-800">Disponible</span>
+                                                            </div>
+                                                        </div>
+                                                        <span class="text-xs font-semibold text-slate-400">Editar</span>
+                                                    </div>
+                                                </summary>
+
+                                                <div class="mt-4 space-y-3">
+                                                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                                                        <div>
+                                                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Código visible</label>
+                                                            <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" value="@item.Code" placeholder="Código del elemento" disabled="@(!CatalogSupportsCode())" @onchange="e => item.Code = e.Value?.ToString()" />
+                                                        </div>
+                                                        <div>
+                                                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Nombre del elemento</label>
+                                                            <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" value="@item.Name" @onchange="e => item.Name = e.Value?.ToString() ?? item.Name" />
+                                                        </div>
+                                                    </div>
+
+                                                    @if (CatalogRequiresParent())
+                                                    {
+                                                        <div>
+                                                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">@GetCatalogParentLabel()</label>
+                                                            <select class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" @onchange="e => item.ParentId = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null">
+                                                                <option value="">Selecciona un elemento relacionado</option>
+                                                                @foreach (var parent in GetCatalogParentOptions())
+                                                                {
+                                                                    <option value="@parent.Id" selected="@(item.ParentId == parent.Id)">@parent.Name @(!string.IsNullOrWhiteSpace(parent.Code) ? $"({parent.Code})" : string.Empty)</option>
+                                                                }
+                                                            </select>
+                                                        </div>
+                                                    }
+
+                                                    <button class="w-full rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateCatalogItemAsync(item)">Guardar cambios</button>
+                                                </div>
+                                            </details>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </section>
+                    </div>
                 </div>
             </section>
         }
 
         @if (ActiveTab == "options")
         {
-            <section class="rounded-3xl border bg-white shadow-sm">
-                <header class="border-b bg-[#f5f7f8] px-5 py-4">
-                    <h2 class="text-base font-bold text-[#12343b]">Opciones de campos dinámicos</h2>
-                </header>
-                <div class="space-y-4 px-5 py-5 text-sm">
-                    <div class="grid grid-cols-1 gap-3 lg:grid-cols-[1.2fr_0.8fr]">
-                        <select class="rounded-xl border px-3 py-2" @bind="SelectedDynamicFieldId" @bind:after="OnDynamicFieldChangedWithPersistenceAsync">
-                            <option value="">Selecciona un campo dinámico</option>
-                            @foreach (var field in AvailableFields.Where(x => x.IsDynamic).OrderBy(x => x.FieldLabel))
-                            {
-                                <option value="@field.FieldId">@field.FieldLabel (@field.FieldKey)</option>
-                            }
-                        </select>
-                        <div class="rounded-xl border bg-slate-50 px-4 py-2 text-slate-600">Campo actual: <span class="font-semibold text-slate-900">@GetSelectedDynamicFieldName()</span></div>
+            <section class="rounded-3xl border border-[#d8e4e7] bg-white shadow-sm">
+                <header class="border-b border-[#d8e4e7] bg-gradient-to-r from-[#f2f7f7] via-[#faf5ec] to-[#f5f7f8] px-5 py-4">
+                    <div>
+                        <h2 class="text-base font-bold text-[#12343b]">Opciones dinámicas</h2>
+                        <p class="mt-1 text-xs text-slate-600">Gestiona las listas de selección que usan los campos dinámicos del sistema.</p>
                     </div>
-
-                    @if (SelectedDynamicFieldId.HasValue)
-                    {
-                        <input class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm" placeholder="Buscar opción por etiqueta o valor" @bind="OptionSearchTerm" @bind:event="oninput" @bind:after="PersistUiStateAsync" />
-                        <details class="rounded-2xl border p-4" open>
-                            <summary class="cursor-pointer font-semibold text-slate-900">Crear opción</summary>
-                            <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                                <input class="rounded-xl border px-3 py-2" placeholder="OptionValue" @bind="NewOption.OptionValue" />
-                                <input class="rounded-xl border px-3 py-2" placeholder="OptionLabel" @bind="NewOption.OptionLabel" />
-                                <input class="rounded-xl border px-3 py-2" placeholder="DisplayOrder" type="number" @bind="NewOption.DisplayOrder" />
-                                <label class="inline-flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" @bind="NewOption.IsActive" /> Activa</label>
+                </header>
+                <div class="px-5 py-5 text-sm">
+                    <div class="grid grid-cols-1 gap-4 xl:grid-cols-[0.82fr_1.18fr]">
+                        <section class="rounded-3xl border border-[#d8e4e7] bg-[#f7fafb] p-4 shadow-sm">
+                            <div>
+                                <h3 class="text-sm font-bold text-[#12343b]">Registrar opción</h3>
+                                <p class="mt-1 text-xs text-slate-600">Selecciona el campo y registra los valores que el usuario podrá elegir.</p>
                             </div>
-                            <button class="mt-4 rounded-xl bg-[#2f4858] px-4 py-2 text-sm font-semibold text-white" @onclick="CreateFieldOptionAsync">Crear opción</button>
-                        </details>
 
-                        @if (DynamicFieldOptions.Count == 0)
-                        {
-                            <div class="rounded-2xl border border-dashed p-5 text-slate-500">Este campo dinámico todavía no tiene opciones configuradas.</div>
-                        }
-                        else
-                        {
-                            @if (!GetFilteredOptions().Any())
+                            <div class="mt-4 space-y-4">
+                                <div>
+                                    <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Campo dinámico</label>
+                                    <select class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" @bind="SelectedDynamicFieldId" @bind:after="OnDynamicFieldChangedWithPersistenceAsync">
+                                        <option value="">Selecciona un campo dinámico</option>
+                                        @foreach (var field in AvailableFields.Where(x => x.IsDynamic).OrderBy(x => x.FieldLabel))
+                                        {
+                                            <option value="@field.FieldId">@field.FieldLabel</option>
+                                        }
+                                    </select>
+                                </div>
+
+                                @if (SelectedDynamicFieldId.HasValue)
+                                {
+                                    <div class="rounded-2xl border border-dashed border-[#d9c7ab] bg-[#fffaf1] px-4 py-3 text-xs text-[#7a5a26]">
+                                        Define el valor interno, el texto visible y el orden en que aparecerá dentro del formulario.
+                                    </div>
+
+                                    <div class="grid grid-cols-1 gap-3">
+                                        <div>
+                                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Valor interno</label>
+                                            <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" placeholder="Valor que usará el sistema" @bind="NewOption.OptionValue" />
+                                        </div>
+                                        <div>
+                                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Texto visible</label>
+                                            <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" placeholder="Texto que verá el usuario" @bind="NewOption.OptionLabel" />
+                                        </div>
+                                        <div class="grid grid-cols-1 gap-3 md:grid-cols-[0.7fr_1.3fr]">
+                                            <div>
+                                                <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Orden de aparición</label>
+                                                <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" type="number" @bind="NewOption.DisplayOrder" />
+                                            </div>
+                                            <label class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 md:mt-6">
+                                                <input type="checkbox" @bind="NewOption.IsActive" />
+                                                Opción activa
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <button class="w-full rounded-xl bg-[#2f4858] px-4 py-2.5 text-sm font-semibold text-white" @onclick="CreateFieldOptionAsync">Crear opción</button>
+                                }
+                                else
+                                {
+                                    <div class="rounded-2xl border border-dashed border-slate-300 px-4 py-5 text-slate-500">
+                                        Selecciona un campo dinámico para empezar a registrar sus opciones.
+                                    </div>
+                                }
+                            </div>
+                        </section>
+
+                        <section class="rounded-3xl border border-[#d8e4e7] bg-white p-4 shadow-sm">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <h3 class="text-sm font-bold text-[#12343b]">Opciones registradas</h3>
+                                    <p class="mt-1 text-xs text-slate-600">Revisa, actualiza o desactiva las opciones del campo seleccionado.</p>
+                                </div>
+                                <span class="rounded-full bg-[#f5f7f8] px-3 py-1 text-[11px] font-semibold text-slate-700">@GetFilteredOptions().Count() visibles</span>
+                            </div>
+
+                            @if (SelectedDynamicFieldId.HasValue)
                             {
-                                <AppEmptyState Title="Sin opciones visibles" Message="No hay opciones que coincidan con la búsqueda actual." />
+                                <div class="mt-4">
+                                    <input class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm" placeholder="Buscar opción por texto visible o valor interno" @bind="OptionSearchTerm" @bind:event="oninput" @bind:after="PersistUiStateAsync" />
+                                </div>
+
+                                @if (DynamicFieldOptions.Count == 0)
+                                {
+                                    <div class="mt-4 rounded-2xl border border-dashed p-5 text-slate-500">Este campo todavía no tiene opciones registradas.</div>
+                                }
+                                else if (!GetFilteredOptions().Any())
+                                {
+                                    <div class="mt-4">
+                                        <AppEmptyState Title="Sin opciones visibles" Message="No hay opciones que coincidan con la búsqueda actual." />
+                                    </div>
+                                }
+                                else
+                                {
+                                    <div class="mt-4 max-h-[38rem] overflow-y-auto pr-1">
+                                        <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+                                            @foreach (var option in GetFilteredOptions())
+                                            {
+                                                <details class="rounded-2xl border border-slate-200 bg-[#fbfcfc] p-4">
+                                                    <summary class="cursor-pointer list-none">
+                                                        <div class="flex flex-wrap items-center justify-between gap-3">
+                                                            <div class="min-w-0">
+                                                                <div class="truncate font-semibold text-slate-900">@option.OptionLabel</div>
+                                                                <div class="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                                                                    <span class="rounded-full bg-[#eef5f6] px-2 py-1 font-semibold text-[#12343b]">@option.OptionValue</span>
+                                                                    <span class="rounded-full px-2 py-1 font-semibold @(option.IsActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600")">@(option.IsActive ? "Activa" : "Inactiva")</span>
+                                                                </div>
+                                                            </div>
+                                                            <span class="text-xs font-semibold text-slate-400">Editar</span>
+                                                        </div>
+                                                    </summary>
+
+                                                    <div class="mt-4 space-y-3">
+                                                        <div>
+                                                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Valor interno</label>
+                                                            <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" value="@option.OptionValue" @onchange="e => option.OptionValue = e.Value?.ToString() ?? option.OptionValue" />
+                                                        </div>
+                                                        <div>
+                                                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Texto visible</label>
+                                                            <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" value="@option.OptionLabel" @onchange="e => option.OptionLabel = e.Value?.ToString() ?? option.OptionLabel" />
+                                                        </div>
+                                                        <div class="grid grid-cols-1 gap-3 md:grid-cols-[0.7fr_1.3fr]">
+                                                            <div>
+                                                                <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Orden de aparición</label>
+                                                                <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" value="@option.DisplayOrder" type="number" @onchange="e => option.DisplayOrder = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : option.DisplayOrder" />
+                                                            </div>
+                                                            <label class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 md:mt-6">
+                                                                <input type="checkbox" checked="@option.IsActive" @onchange="e => UpdateOptionActiveState(option, e.Value)" />
+                                                                Opción activa
+                                                            </label>
+                                                        </div>
+                                                        <div class="flex flex-wrap gap-3">
+                                                            <button class="flex-1 rounded-xl bg-[#586f7c] px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateFieldOptionAsync(option)">Guardar cambios</button>
+                                                            <button class="flex-1 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white" @onclick="() => RequestDeleteFieldOption(option)">Eliminar</button>
+                                                        </div>
+                                                    </div>
+                                                </details>
+                                            }
+                                        </div>
+                                    </div>
+                                }
                             }
                             else
                             {
-                                @foreach (var option in GetFilteredOptions())
-                                {
-                                    <details class="rounded-2xl border p-4">
-                                        <summary class="cursor-pointer">
-                                            <div class="inline-flex items-center gap-3">
-                                                <span class="font-semibold text-slate-900">@option.OptionLabel</span>
-                                                <span class="text-xs text-slate-500">@option.OptionValue</span>
-                                                <span class="rounded-full px-2 py-1 text-[11px] @(option.IsActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600")">@(option.IsActive ? "Activa" : "Inactiva")</span>
-                                            </div>
-                                        </summary>
-                                        <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                                            <input class="rounded-xl border px-3 py-2" value="@option.OptionValue" @onchange="e => option.OptionValue = e.Value?.ToString() ?? option.OptionValue" />
-                                            <input class="rounded-xl border px-3 py-2" value="@option.OptionLabel" @onchange="e => option.OptionLabel = e.Value?.ToString() ?? option.OptionLabel" />
-                                            <input class="rounded-xl border px-3 py-2" value="@option.DisplayOrder" type="number" @onchange="e => option.DisplayOrder = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : option.DisplayOrder" />
-                                            <label class="inline-flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" checked="@option.IsActive" @onchange="e => UpdateOptionActiveState(option, e.Value)" /> Activa</label>
-                                        </div>
-                                        <div class="mt-4 flex flex-wrap gap-3">
-                                            <button class="rounded-xl bg-[#586f7c] px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateFieldOptionAsync(option)">Guardar opción</button>
-                                            <button class="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white" @onclick="() => RequestDeleteFieldOption(option)">Eliminar opción</button>
-                                        </div>
-                                    </details>
-                                }
+                                <div class="mt-2 rounded-2xl border border-dashed p-5 text-slate-500">Selecciona un campo dinámico para ver y administrar sus opciones.</div>
                             }
-                        }
-                    }
-                    else
-                    {
-                        <div class="rounded-2xl border border-dashed p-5 text-slate-500">Selecciona un campo dinámico para administrar sus opciones.</div>
-                    }
+                        </section>
+                    </div>
                 </div>
             </section>
         }
@@ -418,6 +737,8 @@
     private string Message { get; set; } = string.Empty;
     private string ActiveTab { get; set; } = "forms";
     private string FormSearchTerm { get; set; } = string.Empty;
+    private string FormAssignmentFieldSearchTerm { get; set; } = string.Empty;
+    private int FormAssignmentFieldPickerSize { get; set; } = 8;
     private string FieldSearchTerm { get; set; } = string.Empty;
     private string CatalogSearchTerm { get; set; } = string.Empty;
     private string OptionSearchTerm { get; set; } = string.Empty;
@@ -432,6 +753,8 @@
     private List<FormFieldAdminDto> SelectedFormFields { get; set; } = new();
     private string SelectedCatalogKey { get; set; } = "academic-terms";
     private List<CatalogAdminItemDto> CatalogItems { get; set; } = new();
+    private List<CatalogAdminItemDto> BroadFieldCatalogItems { get; set; } = new();
+    private List<CatalogAdminItemDto> SpecificFieldCatalogItems { get; set; } = new();
     private int? SelectedDynamicFieldId { get; set; }
     private List<DynamicFieldOptionDto> DynamicFieldOptions { get; set; } = new();
     private Dictionary<int, bool> optionDisplayState { get; set; } = new();
@@ -460,6 +783,8 @@
         {
             Forms = await FormConfigurationClient.GetFormsAsync();
             CatalogItems = await FormConfigurationClient.GetAdminCatalogAsync(SelectedCatalogKey);
+            BroadFieldCatalogItems = await FormConfigurationClient.GetAdminCatalogAsync("broad-fields");
+            SpecificFieldCatalogItems = await FormConfigurationClient.GetAdminCatalogAsync("specific-fields");
             if (SelectedFormId.HasValue)
             {
                 var current = Forms.FirstOrDefault(x => x.FormId == SelectedFormId.Value);
@@ -606,6 +931,9 @@
     private async Task OnCatalogKeyChangedAsync()
     {
         CatalogItems = await FormConfigurationClient.GetAdminCatalogAsync(SelectedCatalogKey);
+        BroadFieldCatalogItems = await FormConfigurationClient.GetAdminCatalogAsync("broad-fields");
+        SpecificFieldCatalogItems = await FormConfigurationClient.GetAdminCatalogAsync("specific-fields");
+        NewCatalogItem = new UpsertCatalogItemRequest();
     }
 
     private async Task OnCatalogKeyChangedWithPersistenceAsync()
@@ -621,9 +949,11 @@
             var created = await FormConfigurationClient.CreateAdminCatalogItemAsync(SelectedCatalogKey, NewCatalogItem);
             if (created is not null)
             {
-                Message = $"Elemento '{created.Name}' creado en {SelectedCatalogKey}.";
+                Message = $"Elemento '{created.Name}' creado en {GetCatalogLabel(SelectedCatalogKey)}.";
                 NewCatalogItem = new UpsertCatalogItemRequest();
                 CatalogItems = await FormConfigurationClient.GetAdminCatalogAsync(SelectedCatalogKey);
+                BroadFieldCatalogItems = await FormConfigurationClient.GetAdminCatalogAsync("broad-fields");
+                SpecificFieldCatalogItems = await FormConfigurationClient.GetAdminCatalogAsync("specific-fields");
             }
         });
     }
@@ -646,6 +976,8 @@
             {
                 Message = $"Elemento '{updated.Name}' actualizado.";
                 CatalogItems = await FormConfigurationClient.GetAdminCatalogAsync(SelectedCatalogKey);
+                BroadFieldCatalogItems = await FormConfigurationClient.GetAdminCatalogAsync("broad-fields");
+                SpecificFieldCatalogItems = await FormConfigurationClient.GetAdminCatalogAsync("specific-fields");
             }
         });
     }
@@ -770,12 +1102,96 @@
     {
         return key switch
         {
-            "academic-terms" => "Academic Terms",
-            "research-lines" => "Research Lines",
-            "broad-fields" => "Broad Fields",
-            "specific-fields" => "Specific Fields",
-            "detailed-fields" => "Detailed Fields",
+            "academic-terms" => "Períodos académicos",
+            "research-lines" => "Líneas de investigación",
+            "broad-fields" => "Campos amplios",
+            "specific-fields" => "Campos específicos",
+            "detailed-fields" => "Campos detallados",
             _ => key
+        };
+    }
+
+    private string GetCatalogHelperText()
+    {
+        return SelectedCatalogKey switch
+        {
+            "academic-terms" => "Administra los períodos que luego podrán asociarse al registro académico.",
+            "research-lines" => "Mantén actualizadas las líneas de investigación disponibles para clasificar artículos.",
+            "broad-fields" => "Crea la base de la clasificación OCDE antes de registrar niveles dependientes.",
+            "specific-fields" => "Cada campo específico debe quedar vinculado a un campo amplio existente.",
+            "detailed-fields" => "Cada campo detallado debe quedar vinculado a un campo específico ya creado.",
+            _ => "Gestiona los catálogos físicos usados por el sistema."
+        };
+    }
+
+    private string GetCatalogCreationGuidance()
+    {
+        return SelectedCatalogKey switch
+        {
+            "academic-terms" => "Registra períodos con un nombre claro y consistente para que puedan reutilizarse en artículos y reportes.",
+            "research-lines" => "Registra líneas de investigación con el nombre que verá el usuario final en formularios y filtros.",
+            "broad-fields" => "Empieza aquí si vas a construir una nueva rama de clasificación.",
+            "specific-fields" => "Antes de crear un campo específico, debes tener listo su campo amplio relacionado.",
+            "detailed-fields" => "Antes de crear un campo detallado, debes tener listo su campo específico relacionado.",
+            _ => "Completa los datos mínimos que exige el catálogo actual."
+        };
+    }
+
+    private string GetCatalogOrderHint()
+    {
+        return SelectedCatalogKey switch
+        {
+            "broad-fields" => "Orden recomendado: primero crea el campo amplio. Después podrás registrar sus campos específicos.",
+            "specific-fields" => "Orden real del modelo: Campo amplio -> Campo específico. Aquí debes escoger el campo amplio padre.",
+            "detailed-fields" => "Orden real del modelo: Campo amplio -> Campo específico -> Campo detallado. Aquí debes escoger el campo específico padre.",
+            _ => "Este catálogo no requiere relación jerárquica para registrar nuevos elementos."
+        };
+    }
+
+    private static string GetUserFacingEntityName(string entityName)
+    {
+        return entityName switch
+        {
+            "Article" => "Artículo",
+            "ArticleParticipant" => "Participante del artículo",
+            _ => entityName
+        };
+    }
+
+    private static string GetUserFacingFormIdentifier(string formKey)
+    {
+        return formKey switch
+        {
+            "ArticleManualForm" => "Registro manual de artículo",
+            "ArticleParticipantForm" => "Participantes del artículo",
+            _ => formKey
+        };
+    }
+
+    private static string GetUserFacingDataType(string dataType)
+    {
+        return dataType switch
+        {
+            "string" => "Texto",
+            "int" => "Número entero",
+            "decimal" => "Número decimal",
+            "datetime" => "Fecha y hora",
+            "date" => "Fecha",
+            "bool" => "Sí / No",
+            "fk" => "Referencia",
+            _ => dataType
+        };
+    }
+
+    private string GetActiveTabHelperText()
+    {
+        return ActiveTab switch
+        {
+            "forms" => "Define formularios, asigna campos y controla qué ve el usuario en el registro dinámico.",
+            "fields" => "Administra el catálogo maestro de campos y ajusta su comportamiento visual y funcional.",
+            "catalogs" => "Mantén los catálogos físicos que alimentan referencias y dependencias jerárquicas.",
+            "options" => "Configura listas controladas para campos dinámicos tipo selección.",
+            _ => "Gestiona la configuración dinámica del sistema."
         };
     }
 
@@ -787,7 +1203,7 @@
         }
 
         var field = AvailableFields.FirstOrDefault(x => x.FieldId == SelectedDynamicFieldId.Value);
-        return field is null ? "Sin selección" : $"{field.FieldLabel} ({field.FieldKey})";
+        return field is null ? "Sin selección" : field.FieldLabel;
     }
 
     private async Task RunActionAsync(Func<Task> action)
@@ -924,10 +1340,49 @@
             ContainsIgnoreCase(x.DataType, term));
     }
 
+    private List<FieldCatalogItemDto> GetFilteredDynamicFields()
+    {
+        return GetFilteredFields()
+            .Where(x => x.IsDynamic)
+            .ToList();
+    }
+
+    private List<FieldCatalogItemDto> GetFilteredPhysicalFields()
+    {
+        return GetFilteredFields()
+            .Where(x => !x.IsDynamic)
+            .ToList();
+    }
+
+    private static string GetFieldActiveBadgeClass(bool isActive)
+    {
+        return isActive
+            ? "rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-semibold text-emerald-800"
+            : "rounded-full bg-rose-100 px-2 py-1 text-[11px] font-semibold text-rose-700";
+    }
+
+    private IEnumerable<FieldCatalogItemDto> GetFilteredAvailableFieldsForAssignment()
+    {
+        var term = FormAssignmentFieldSearchTerm.Trim();
+        var source = AvailableFields.OrderBy(x => x.DisplayOrder).ThenBy(x => x.FieldLabel);
+        if (string.IsNullOrWhiteSpace(term))
+        {
+            return source;
+        }
+
+        return source.Where(x =>
+            ContainsIgnoreCase(x.FieldLabel, term) ||
+            ContainsIgnoreCase(x.FieldKey, term) ||
+            ContainsIgnoreCase(x.EntityName, term) ||
+            ContainsIgnoreCase(x.DataType, term));
+    }
+
     private IEnumerable<CatalogAdminItemDto> GetFilteredCatalogItems()
     {
         var term = CatalogSearchTerm.Trim();
-        var source = CatalogItems.OrderBy(x => x.Name);
+        var source = CatalogItems
+            .OrderBy(x => x.ParentName)
+            .ThenBy(x => x.Name);
         if (string.IsNullOrWhiteSpace(term))
         {
             return source;
@@ -936,7 +1391,50 @@
         return source.Where(x =>
             ContainsIgnoreCase(x.Name, term) ||
             ContainsIgnoreCase(x.Code, term) ||
-            ContainsIgnoreCase(x.Type, term));
+            ContainsIgnoreCase(x.ParentName, term));
+    }
+
+    private bool CatalogRequiresParent()
+        => SelectedCatalogKey is "specific-fields" or "detailed-fields";
+
+    private bool CatalogSupportsCode()
+        => SelectedCatalogKey is "specific-fields" or "detailed-fields";
+
+    private string GetCatalogParentLabel()
+    {
+        return SelectedCatalogKey switch
+        {
+            "specific-fields" => "Campo amplio relacionado",
+            "detailed-fields" => "Campo específico relacionado",
+            _ => "Elemento relacionado"
+        };
+    }
+
+    private IEnumerable<CatalogAdminItemDto> GetCatalogParentOptions()
+    {
+        return SelectedCatalogKey switch
+        {
+            "specific-fields" => BroadFieldCatalogItems.OrderBy(x => x.Name),
+            "detailed-fields" => SpecificFieldCatalogItems.OrderBy(x => x.Name),
+            _ => Enumerable.Empty<CatalogAdminItemDto>()
+        };
+    }
+
+    private string GetCatalogParentSummary(CatalogAdminItemDto item)
+    {
+        if (string.IsNullOrWhiteSpace(item.ParentName))
+        {
+            return string.Empty;
+        }
+
+        var prefix = SelectedCatalogKey switch
+        {
+            "specific-fields" => "Campo amplio",
+            "detailed-fields" => "Campo específico",
+            _ => "Relacionado con"
+        };
+
+        return $"{prefix}: {item.ParentName}";
     }
 
     private IEnumerable<DynamicFieldOptionDto> GetFilteredOptions()

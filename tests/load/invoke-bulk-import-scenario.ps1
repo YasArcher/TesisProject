@@ -1,5 +1,5 @@
 param(
-    [string]$BaseUrl = "http://localhost:5040",
+    [string]$BaseUrl = "http://localhost:5041",
     [string]$CsvPath = "C:\Users\Personal\Source\Repos\TesisProject\tests\load\generated-bulk-import.csv",
     [string]$SourceType = "Csv",
     [string]$Notes = "Escenario de prueba de carga masiva",
@@ -12,6 +12,19 @@ if (-not (Test-Path $CsvPath)) {
 }
 
 Add-Type -AssemblyName System.Net.Http
+
+function ConvertFrom-JsonCompat {
+    param(
+        [string]$Json
+    )
+
+    $command = Get-Command ConvertFrom-Json
+    if ($command.Parameters.ContainsKey('Depth')) {
+        return $Json | ConvertFrom-Json -Depth 100
+    }
+
+    return $Json | ConvertFrom-Json
+}
 
 function Invoke-MultipartUpload {
     param(
@@ -38,7 +51,7 @@ function Invoke-MultipartUpload {
             throw "HTTP $([int]$response.StatusCode): $body"
         }
 
-        return $body | ConvertFrom-Json -Depth 100
+        return ConvertFrom-JsonCompat -Json $body
     }
     finally {
         $client.Dispose()

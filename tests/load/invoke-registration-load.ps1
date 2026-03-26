@@ -1,28 +1,30 @@
 param(
-    [string]$BaseUrl = "http://localhost:5040",
+    [string]$BaseUrl = "http://localhost:5041",
     [int]$Count = 25,
     [int]$PauseMs = 0,
-    [string]$ExternalSource = "ManualLoadTest"
+    [string]$ExternalSource = "ManualLoadTest",
+    [string]$RunTag = ([DateTime]::UtcNow.ToString("yyyyMMddHHmmss"))
 )
 
 function New-RegistrationPayload {
     param(
         [int]$Index,
-        [string]$ExternalSource
+        [string]$ExternalSource,
+        [string]$RunTag
     )
 
     return @{
         formKey = $null
         article = @{
             title = "Articulo agregado $Index"
-            doi = "10.5555/aggregate.$([DateTime]::UtcNow.ToString('yyyyMMdd')).$Index"
+            doi = "10.5555/aggregate.$RunTag.$Index"
             year = 2024
             publicationUrl = "https://example.org/aggregate/$Index"
             isProjectResult = $false
             hasInterculturalComponent = $false
             isOpenAccess = $true
             externalSource = $ExternalSource
-            externalId = "AGG-$Index"
+            externalId = "AGG-$RunTag-$Index"
         }
         venue = @{
             journalName = "Revista Registro Manual $(([math]::Floor(($Index - 1) / 10)) + 1)"
@@ -56,7 +58,7 @@ $results = New-Object System.Collections.Generic.List[object]
 $total = [System.Diagnostics.Stopwatch]::StartNew()
 
 for ($i = 1; $i -le $Count; $i++) {
-    $payload = New-RegistrationPayload -Index $i -ExternalSource $ExternalSource
+    $payload = New-RegistrationPayload -Index $i -ExternalSource $ExternalSource -RunTag $RunTag
     $json = $payload | ConvertTo-Json -Depth 20
     $watch = [System.Diagnostics.Stopwatch]::StartNew()
 
@@ -100,5 +102,6 @@ $total.Stop()
     maxMs = ($results | Measure-Object -Property elapsedMs -Maximum).Maximum
     minMs = ($results | Measure-Object -Property elapsedMs -Minimum).Minimum
     totalElapsedMs = $total.ElapsedMilliseconds
+    runTag = $RunTag
     items = $results
 } | ConvertTo-Json -Depth 20

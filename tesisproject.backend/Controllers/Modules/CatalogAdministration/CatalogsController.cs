@@ -4,7 +4,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using tesisproject.backend.Data;
 using tesisproject.backend.Data.Entities;
 using tesisproject.shared.DTOs.Catalogs;
@@ -18,10 +20,12 @@ namespace tesisproject.backend.Controllers
     public class CatalogsController : ControllerBase
     {
         private readonly AppDbContext _db;
+        private readonly ILogger<CatalogsController> _logger;
 
-        public CatalogsController(AppDbContext db)
+        public CatalogsController(AppDbContext db, ILogger<CatalogsController> logger)
         {
             _db = db;
+            _logger = logger;
         }
 
         // ========== Períodos Académicos ==========
@@ -155,16 +159,24 @@ namespace tesisproject.backend.Controllers
         [HttpGet("projects")]
         public async Task<ActionResult<List<CatalogItemDto>>> GetProjects(CancellationToken ct)
         {
-            var list = await _db.Projects
-                .OrderBy(x => x.Name)
-                .Select(x => new CatalogItemDto
-                {
-                    Id = x.Id,       // ✅ PK real de Project
-                    Name = x.Name
-                })
-                .ToListAsync(ct);
+            try
+            {
+                var list = await _db.Projects
+                    .OrderBy(x => x.Name)
+                    .Select(x => new CatalogItemDto
+                    {
+                        Id = x.Id,
+                        Name = x.Name
+                    })
+                    .ToListAsync(ct);
 
-            return Ok(list);
+                return Ok(list);
+            }
+            catch (SqlException ex) when (ex.Number == 208 && ex.Message.Contains("Projects", System.StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning(ex, "La tabla Projects no existe en la base actual. Se devolverá un catálogo vacío.");
+                return Ok(new List<CatalogItemDto>());
+            }
         }
         // ========== Revistas / Venues ==========
         [HttpGet("venues")]

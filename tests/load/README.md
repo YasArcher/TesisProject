@@ -1,5 +1,9 @@
 # Pruebas de carga funcional
 
+Plan complementario:
+
+1. `C:\Users\Personal\Source\Repos\TesisProject\docs\plan-pruebas-oltp-extensible.md`
+
 Esta carpeta deja una base reproducible para probar el sistema nuevo en dos flujos:
 
 1. `registro manual agregado`
@@ -69,7 +73,7 @@ Qué mide:
 
 Requisito:
 
-1. backend levantado en `http://localhost:5040`
+1. backend de pruebas levantado en `http://localhost:5041`
 
 ### 3. Ejecutar carga repetida del registro manual
 

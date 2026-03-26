@@ -56,41 +56,78 @@
     }
     else
     {
-        <div class="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-4">
-            <AppMetricCard Label="Formulario activo" Value="@(ArticleForm?.FormName ?? "Sin formulario")" HelperText="@($"{ArticleSections.Count} secciones")" Tone="accent" />
-            <AppMetricCard Label="Campos visibles" Value="@ArticleSections.Sum(x => x.Fields.Count(IsVisibleField)).ToString()" HelperText="en el formulario actual" Tone="default" />
-            <AppMetricCard Label="Participantes" Value="@Participants.Count.ToString()" HelperText="agregados en este registro" Tone="warm" />
-            <AppMetricCard Label="Estado" Value="Listo para captura" HelperText="Navega por secciones o usa el panel lateral" Tone="accent" />
-        </div>
+        <div class="mb-5 rounded-[1.8rem] border border-[#d7e1e4] bg-gradient-to-br from-[#f3f8f9] via-white to-[#fff9f0] p-4 shadow-sm">
+            <div class="grid grid-cols-1 gap-3 xl:grid-cols-[1.25fr_0.75fr]">
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="rounded-2xl border border-[#d9e5e8] bg-white/90 px-4 py-3 shadow-sm">
+                            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Secciones activas</div>
+                            <div class="mt-1 text-lg font-black text-[#12343b]">@ArticleSections.Count</div>
+                            <div class="text-xs text-slate-500">formulario: @(ArticleForm?.FormName ?? "Sin formulario")</div>
+                        </div>
+                        <div class="rounded-2xl border border-[#d9e5e8] bg-white/90 px-4 py-3 shadow-sm">
+                            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Campos visibles</div>
+                            <div class="mt-1 text-lg font-black text-[#12343b]">@GetVisibleFieldCount()</div>
+                            <div class="text-xs text-slate-500">entre artículo y participantes</div>
+                        </div>
+                        <div class="rounded-2xl border border-[#e8d2ac] bg-[#fffaf2] px-4 py-3 shadow-sm">
+                            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Capturados</div>
+                            <div class="mt-1 text-lg font-black text-[#8b5a16]">@GetCompletedVisibleFieldCount()</div>
+                            <div class="text-xs text-slate-500">campos con valor registrado</div>
+                        </div>
+                        <div class="rounded-2xl border border-[#ead8bd] bg-[#fffdf8] px-4 py-3 shadow-sm">
+                            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Pendientes</div>
+                            <div class="mt-1 text-lg font-black text-[#c17c2f]">@GetMissingRequiredTotalCount()</div>
+                            <div class="text-xs text-slate-500">obligatorios aún por completar</div>
+                        </div>
+                    </div>
 
-        <div class="mb-6 rounded-3xl border border-[#d7e1e4] bg-white p-4 shadow-sm">
-            <div class="grid grid-cols-1 gap-3 xl:grid-cols-[1.2fr_0.8fr]">
-                <input class="w-full rounded-xl border border-[#c9d7db] bg-[#f7fafb] px-3 py-2 text-sm" placeholder="Buscar sección o campo dentro del formulario" @bind="SectionSearchTerm" @bind:event="oninput" @bind:after="PersistUiStateAsync" />
-                <div class="rounded-xl border border-[#d7e1e4] bg-[#f7fafb] px-4 py-2 text-sm text-slate-600">
-                    Requeridos pendientes:
-                    <span class="font-bold text-[#b45309]">@GetMissingRequiredCount(ArticleSections)</span>
+                    <div class="rounded-2xl border border-[#cfe0e4] bg-gradient-to-r from-[#eef5f6] to-white p-3">
+                        <div class="mb-2 flex items-center justify-between gap-3">
+                            <div>
+                                <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Explorador del formulario</div>
+                                <div class="text-sm text-slate-600">Busca por sección, etiqueta o nombre técnico del campo activo.</div>
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(SectionSearchTerm))
+                            {
+                                <button class="rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-xs font-semibold text-[#12343b]" @onclick="ClearSectionSearchAsync">Limpiar</button>
+                            }
+                        </div>
+                        <div class="flex flex-col gap-3 lg:flex-row">
+                            <input class="w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2.5 text-sm shadow-sm"
+                                   placeholder="Ejemplo: DOI, autores, revista, BroadFieldId..."
+                                   @bind="SectionSearchTerm"
+                                   @bind:event="oninput"
+                                   @bind:after="PersistUiStateAsync" />
+                            <button class="rounded-xl border border-[#c9d7db] bg-white px-4 py-2 text-sm font-semibold text-[#12343b]" @onclick="ExpandAllArticleSectionsAsync">Expandir</button>
+                            <button class="rounded-xl border border-[#c9d7db] bg-white px-4 py-2 text-sm font-semibold text-[#12343b]" @onclick="CollapseAllArticleSectionsAsync">Contraer</button>
+                        </div>
+                        <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                            <span class="rounded-full bg-white px-3 py-1.5 font-semibold text-[#12343b]">@GetFilteredArticleSections().Count() secciones visibles</span>
+                            <span class="rounded-full bg-white px-3 py-1.5 font-semibold text-[#2f4858]">@GetVisibleFieldCount(ArticleSections) campos de artículo</span>
+                            <span class="rounded-full bg-[#fff4e4] px-3 py-1.5 font-semibold text-[#8b5a16]">@Participants.Count participante(s)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                    <button class="rounded-2xl border border-[#d9e5e8] bg-white/90 px-4 py-3 text-left shadow-sm transition hover:border-[#8cb0b8]" @onclick="GoToConfiguration">
+                        <div class="text-xs uppercase tracking-[0.16em] text-slate-500">Configuración</div>
+                        <div class="mt-1 text-sm font-bold text-[#12343b]">Campos y formularios</div>
+                    </button>
+                    <button class="rounded-2xl border border-[#ead8bd] bg-[#fffdf8] px-4 py-3 text-left shadow-sm transition hover:border-[#d9ba86]" @onclick="GoToBulkImport">
+                        <div class="text-xs uppercase tracking-[0.16em] text-slate-500">Carga masiva</div>
+                        <div class="mt-1 text-sm font-bold text-[#8b5a16]">Abrir importación</div>
+                    </button>
+                    <button class="rounded-2xl border border-[#d9e5e8] bg-white/90 px-4 py-3 text-left shadow-sm transition hover:border-[#8cb0b8] sm:col-span-2 xl:col-span-1" @onclick="GoToArticlesList">
+                        <div class="text-xs uppercase tracking-[0.16em] text-slate-500">Listado</div>
+                        <div class="mt-1 text-sm font-bold text-[#12343b]">Volver a artículos</div>
+                    </button>
                 </div>
             </div>
         </div>
 
-        <div class="mb-6 rounded-3xl border border-[#d7e1e4] bg-[#f7fafb] p-4 shadow-sm">
-            <div class="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Navegación rápida</div>
-            <div class="flex flex-wrap gap-2">
-                @if (!GetFilteredArticleSections().Any())
-                {
-                    <AppEmptyState Class="!rounded-full !px-3 !py-2" Title="Sin coincidencias" Message="" />
-                }
-                @foreach (var sectionState in GetFilteredArticleSections())
-                {
-                    <a class="rounded-full border border-[#c7d6da] bg-white px-3 py-2 text-sm font-semibold text-[#12343b] transition hover:bg-[#e9f1f3]" href="#@GetSectionAnchor(sectionState.GroupName)">@sectionState.GroupName</a>
-                }
-                <a class="rounded-full border border-[#d7c19c] bg-[#fff4e4] px-3 py-2 text-sm font-semibold text-[#8b5a16] transition hover:bg-[#fde7c3]" href="#participants-panel">Participantes</a>
-                <a class="rounded-full border border-[#c7d6da] bg-white px-3 py-2 text-sm font-semibold text-[#12343b] transition hover:bg-[#e9f1f3]" href="#save-panel">Guardar</a>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 gap-6 xl:grid-cols-[1.65fr_0.9fr]">
-            <div class="space-y-6">
+        <div class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(20rem,0.95fr)]">
+            <div class="space-y-4 xl:max-h-[calc(100vh-11rem)] xl:overflow-y-auto xl:pr-2">
                 @if (!GetFilteredArticleSections().Any())
                 {
                     <AppEmptyState Class="rounded-[2rem] px-6 py-10 text-center shadow-sm" Title="No encontramos secciones o campos con ese criterio" Message="Prueba con otra palabra o limpia la búsqueda para volver a ver todo el formulario." />
@@ -99,15 +136,15 @@
                 {
                     @foreach (var sectionState in GetFilteredArticleSections())
                     {
-                        <section id="@GetSectionAnchor(sectionState.GroupName)" class="rounded-[2rem] border border-[#d9e5e8] bg-white shadow-sm shadow-slate-200/50">
-                            <div class="border-b bg-gradient-to-r from-[#f4f8f9] to-[#fff7ef] px-5 py-4">
+                        <section id="@GetSectionAnchor(sectionState.GroupName)" class="scroll-mt-24 rounded-[1.6rem] border border-[#d9e5e8] bg-white shadow-sm shadow-slate-200/40">
+                            <div class="border-b bg-gradient-to-r from-[#f4f8f9] to-[#fff7ef] px-4 py-3">
                                 <button type="button" class="flex w-full items-center justify-between gap-3 text-left" @onclick="() => ToggleArticleSectionAsync(sectionState.GroupName)">
                                     <div>
-                                        <h2 class="text-base font-bold text-[#12343b]">@sectionState.GroupName</h2>
+                                        <h2 class="text-[15px] font-bold text-[#12343b]">@sectionState.GroupName</h2>
                                         <p class="mt-1 text-xs text-slate-500">@GetVisibleFields(sectionState).Count() campos visibles</p>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <span class="rounded-full bg-[#e6f0f2] px-3 py-1 text-xs font-semibold text-[#2f4858]">Sección</span>
+                                        <span class="@GetSectionStateBadgeClass(sectionState.Fields)">@GetSectionStateBadgeLabel(sectionState.Fields)</span>
                                         <span class="rounded-full bg-[#fff1d6] px-3 py-1 text-xs font-semibold text-[#8b5a16]">@GetCompletionLabel(sectionState.Fields)</span>
                                         <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-600">@(IsArticleSectionExpanded(sectionState.GroupName) ? "Ocultar" : "Mostrar")</span>
                                     </div>
@@ -115,7 +152,7 @@
                             </div>
                             @if (IsArticleSectionExpanded(sectionState.GroupName))
                             {
-                                <div class="grid grid-cols-1 gap-4 px-5 py-5 md:grid-cols-2">
+                                <div class="grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-2">
                                     @foreach (var field in GetVisibleFields(sectionState))
                                     {
                                         <div class="@GetFieldCardClass(field)">
@@ -128,12 +165,12 @@
                     }
                 }
 
-                <section id="participants-panel" class="rounded-[2rem] border border-[#ead8bd] bg-white shadow-sm shadow-slate-200/50">
-                    <header class="border-b bg-gradient-to-r from-[#fff8ed] to-[#fff2df] px-5 py-4">
+                <section id="participants-panel" class="rounded-[1.6rem] border border-[#ead8bd] bg-white shadow-sm shadow-slate-200/40">
+                    <header class="border-b bg-gradient-to-r from-[#fff8ed] to-[#fff2df] px-4 py-3">
                         <div class="flex items-center justify-between gap-3">
                             <button type="button" class="flex items-center gap-3 text-left" @onclick="ToggleParticipantsPanelAsync">
                                 <div>
-                                    <h2 class="text-base font-bold text-[#7a4b17]">Participantes</h2>
+                                    <h2 class="text-[15px] font-bold text-[#7a4b17]">Participantes</h2>
                                     <p class="text-xs text-slate-500">El formulario de participantes también viene desde configuración.</p>
                                 </div>
                                 <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#8b5a16]">@(IsParticipantsPanelExpanded ? "Ocultar" : "Mostrar")</span>
@@ -143,10 +180,10 @@
                     </header>
                     @if (IsParticipantsPanelExpanded)
                     {
-                    <div class="space-y-4 px-5 py-5">
+                    <div class="space-y-3 px-4 py-4">
                         @foreach (var participant in Participants)
                         {
-                            <article class="rounded-3xl border border-[#ead8bd] bg-[#fffdf8] p-4">
+                            <article class="rounded-[1.4rem] border border-[#ead8bd] bg-[#fffdf8] p-3.5">
                                 <details open="@(participant.Index == 1)">
                                     <summary class="cursor-pointer list-none">
                                         <div class="flex items-center justify-between gap-3">
@@ -156,6 +193,7 @@
                                             </div>
                                             <div class="flex items-center gap-2">
                                                 <span class="rounded-full bg-[#fff1d6] px-3 py-1 text-xs font-semibold text-[#8b5a16]">@participant.Sections.Sum(x => GetVisibleFields(x).Count()) campos</span>
+                                                <span class="@GetParticipantStateBadgeClass(participant)">@GetParticipantStateBadgeLabel(participant)</span>
                                                 <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#2f4858]">@GetParticipantCompletionLabel(participant)</span>
                                                 @if (Participants.Count > 1)
                                                 {
@@ -168,12 +206,12 @@
                                     <div class="mt-4 space-y-4">
                                         @foreach (var sectionState in participant.Sections)
                                         {
-                                            <details class="rounded-2xl border border-[#e8edf0] bg-white p-4" open>
+                                            <details class="rounded-2xl border border-[#e8edf0] bg-white p-3.5" open>
                                                 <summary class="cursor-pointer text-sm font-semibold text-[#12343b]">
                                                     <span>@sectionState.GroupName</span>
                                                     <span class="ml-2 rounded-full bg-[#eef5f6] px-2 py-1 text-[11px] font-semibold text-[#2f4858]">@GetCompletionLabel(sectionState.Fields)</span>
                                                 </summary>
-                                                <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                                                <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                                                     @foreach (var field in GetVisibleFields(sectionState))
                                                     {
                                                         <div class="@GetFieldCardClass(field)">
@@ -190,36 +228,51 @@
                     </div>
                     }
                 </section>
-                <div id="save-panel" class="flex flex-col gap-3 rounded-[2rem] border border-[#d9e5e8] bg-white px-5 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-                    <div class="text-sm text-slate-500">El guardado usa `POST /api/articles/aggregate` sobre la nueva base extensible.</div>
-                    <div class="flex gap-3">
-                        <button class="rounded-xl border px-4 py-2 text-sm font-semibold text-slate-700" @onclick="GoBack">Cancelar</button>
-                        <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-5 py-2.5 text-sm font-semibold text-white shadow-md disabled:opacity-60" disabled="@IsSaving" @onclick="SaveAsync">
-                            @(IsSaving ? "Guardando..." : "Guardar artículo")
-                        </button>
-                    </div>
-                </div>
             </div>
 
-            <aside class="space-y-5 xl:sticky xl:top-6 xl:self-start">
-                <section class="rounded-[2rem] border border-[#d9e5e8] bg-white shadow-sm shadow-slate-200/50">
-                    <header class="border-b bg-gradient-to-r from-[#f4f8f9] to-[#fff7ef] px-5 py-4">
-                        <h2 class="text-base font-bold text-[#12343b]">Resumen</h2>
-                    </header>
-                    <div class="space-y-3 px-5 py-4 text-sm">
-                        <div class="rounded-2xl bg-[#f4f8f9] px-4 py-3">
-                            <div class="text-xs uppercase tracking-wide text-slate-500">Formulario</div>
-                            <div class="mt-1 font-semibold text-[#12343b]">@ArticleForm?.FormName</div>
+            <aside class="space-y-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto">
+                <section class="rounded-[1.8rem] border border-[#d9e5e8] bg-gradient-to-br from-[#f7fbfc] via-white to-[#fff8ef] shadow-sm shadow-slate-200/50" id="save-panel">
+                    <header class="border-b bg-gradient-to-r from-[#12343b] to-[#2f4858] px-4 py-4 text-white">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <div class="text-xs uppercase tracking-[0.2em] text-white/70">Resumen operativo</div>
+                                <h2 class="text-base font-bold">Registro del artículo</h2>
+                            </div>
+                            <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold">@(IsSaving ? "Guardando" : "Edición activa")</span>
                         </div>
+                    </header>
+                    <div class="space-y-3 px-4 py-4 text-sm">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" @onclick="GoBack">Cancelar</button>
+                            <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-3 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-60" disabled="@IsSaving" @onclick="SaveAsync">@(IsSaving ? "Guardando..." : "Registrar")</button>
+                            <button class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700" @onclick="ReloadFormsFromConfigurationAsync">Recargar</button>
+                            <button class="rounded-xl border border-[#ead8bd] bg-[#fff7eb] px-3 py-2 text-sm font-semibold text-[#8b5a16]" @onclick="GoBack">Volver</button>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-3">
                             <div class="rounded-2xl bg-[#eef5f6] px-4 py-3">
                                 <div class="text-xs uppercase tracking-wide text-slate-500">Campos</div>
-                                <div class="mt-1 text-lg font-black text-[#2f4858]">@ArticleSections.Sum(x => x.Fields.Count(IsVisibleField))</div>
+                                <div class="mt-1 text-lg font-black text-[#2f4858]">@GetVisibleFieldCount()</div>
                             </div>
                             <div class="rounded-2xl bg-[#fff4e4] px-4 py-3">
-                                <div class="text-xs uppercase tracking-wide text-slate-500">Participantes</div>
-                                <div class="mt-1 text-lg font-black text-[#c17c2f]">@Participants.Count</div>
+                                <div class="text-xs uppercase tracking-wide text-slate-500">Registrados</div>
+                                <div class="mt-1 text-lg font-black text-[#c17c2f]">@GetCompletedVisibleFieldCount()</div>
                             </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="rounded-2xl bg-white px-4 py-3 border border-[#d9e5e8]">
+                                <div class="text-xs uppercase tracking-wide text-slate-500">Obligatorios pendientes</div>
+                                <div class="mt-1 text-lg font-black text-[#b45309]">@GetMissingRequiredTotalCount()</div>
+                            </div>
+                            <div class="rounded-2xl bg-white px-4 py-3 border border-[#d9e5e8]">
+                                <div class="text-xs uppercase tracking-wide text-slate-500">Participantes</div>
+                                <div class="mt-1 text-lg font-black text-[#12343b]">@Participants.Count</div>
+                            </div>
+                        </div>
+                        <div class="rounded-2xl bg-[#f4f8f9] px-4 py-3">
+                            <div class="text-xs uppercase tracking-wide text-slate-500">Formulario</div>
+                            <div class="mt-1 font-semibold text-[#12343b]">@ArticleForm?.FormName</div>
+                            <div class="mt-1 text-xs text-slate-500">@ArticleSections.Count secciones activas</div>
                         </div>
                         <div class="rounded-2xl bg-gradient-to-br from-[#12343b] to-[#2f4858] px-4 py-4 text-white">
                             <div class="text-xs uppercase tracking-[0.25em] text-white/70">Vista previa</div>
@@ -244,18 +297,21 @@
                                 </div>
                                 <div class="flex items-center justify-between rounded-xl bg-white px-3 py-2">
                                     <span class="text-slate-600">Participantes</span>
-                                    <span class="font-semibold text-[#12343b]">@Participants.Count</span>
+                                    <span class="font-semibold text-[#12343b]">@GetParticipantsCompletionSummary()</span>
                                 </div>
                             </div>
                         </div>
                         <div class="rounded-2xl border border-[#d9e5e8] bg-[#fafcfd] px-4 py-4">
-                            <div class="text-xs uppercase tracking-[0.25em] text-slate-500">Saltos rápidos</div>
+                            <div class="text-xs uppercase tracking-[0.25em] text-slate-500">Accesos rápidos</div>
                             <div class="app-chip-row mt-3">
-                                @foreach (var sectionState in ArticleSections.Take(6))
+                                @foreach (var sectionState in GetFilteredArticleSections().Take(6))
                                 {
                                     <a class="rounded-full bg-[#e9f1f3] px-3 py-1.5 text-xs font-semibold text-[#12343b]" href="#@GetSectionAnchor(sectionState.GroupName)">@sectionState.GroupName</a>
                                 }
                                 <a class="rounded-full bg-[#fff1d6] px-3 py-1.5 text-xs font-semibold text-[#8b5a16]" href="#participants-panel">Participantes</a>
+                                <button type="button" class="rounded-full bg-[#eef5f6] px-3 py-1.5 text-xs font-semibold text-[#12343b]" @onclick="GoToConfiguration">Configuración</button>
+                                <button type="button" class="rounded-full bg-[#fff1d6] px-3 py-1.5 text-xs font-semibold text-[#8b5a16]" @onclick="GoToBulkImport">Carga masiva</button>
+                                <button type="button" class="rounded-full bg-[#eef5f6] px-3 py-1.5 text-xs font-semibold text-[#12343b]" @onclick="GoToArticlesList">Listado</button>
                             </div>
                         </div>
                     </div>
@@ -779,7 +835,7 @@
     {
         var seq = 0;
         builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "flex flex-col gap-2");
+        builder.AddAttribute(seq++, "class", "flex flex-col gap-1.5");
         builder.OpenElement(seq++, "label");
         builder.AddAttribute(seq++, "class", "text-sm font-semibold text-[#12343b]");
         builder.AddContent(seq++, field.Definition.FieldLabel);
@@ -789,7 +845,7 @@
         if (NeedsCatalogItems(field))
         {
             builder.OpenElement(seq++, "select");
-            builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2.5 text-sm shadow-sm outline-none");
+            builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm shadow-sm outline-none");
             builder.AddAttribute(seq++, "value", BindConverter.FormatValue(field.CatalogValue));
             builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => OnCatalogChangedAsync(field, scope, e)));
             builder.OpenElement(seq++, "option"); builder.AddAttribute(seq++, "value", ""); builder.AddContent(seq++, field.Definition.Placeholder ?? "Seleccionar..."); builder.CloseElement();
@@ -802,7 +858,7 @@
         else if (HasStaticOptions(field))
         {
             builder.OpenElement(seq++, "select");
-            builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2.5 text-sm shadow-sm outline-none");
+            builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm shadow-sm outline-none");
             builder.AddAttribute(seq++, "value", BindConverter.FormatValue(field.OptionValue));
             builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.OptionValue = e.Value?.ToString()));
             builder.OpenElement(seq++, "option"); builder.AddAttribute(seq++, "value", ""); builder.AddContent(seq++, field.Definition.Placeholder ?? "Seleccionar..."); builder.CloseElement();
@@ -815,26 +871,26 @@
         else if (IsBoolField(field))
         {
             builder.OpenElement(seq++, "label");
-            builder.AddAttribute(seq++, "class", "inline-flex items-center gap-3 rounded-xl border border-[#d8e3e6] bg-[#f7fbfc] px-3 py-3 text-sm text-slate-700");
+            builder.AddAttribute(seq++, "class", "inline-flex items-center gap-3 rounded-xl border border-[#d8e3e6] bg-[#f7fbfc] px-3 py-2.5 text-sm text-slate-700");
             builder.OpenElement(seq++, "input"); builder.AddAttribute(seq++, "type", "checkbox"); builder.AddAttribute(seq++, "checked", field.BoolValue ?? false); builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.BoolValue = e.Value is bool current ? current : e.Value?.ToString() == "true")); builder.CloseElement();
             builder.AddContent(seq++, field.Definition.HelpText ?? "Marcar si aplica");
             builder.CloseElement();
         }
         else if (IsDateField(field))
         {
-            builder.OpenElement(seq++, "input"); builder.AddAttribute(seq++, "type", "date"); builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2.5 text-sm shadow-sm"); builder.AddAttribute(seq++, "value", field.DateValue?.ToString("yyyy-MM-dd")); builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.DateValue = DateTime.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null)); builder.CloseElement();
+            builder.OpenElement(seq++, "input"); builder.AddAttribute(seq++, "type", "date"); builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm shadow-sm"); builder.AddAttribute(seq++, "value", field.DateValue?.ToString("yyyy-MM-dd")); builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.DateValue = DateTime.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null)); builder.CloseElement();
         }
         else if (IsIntField(field))
         {
-            builder.OpenElement(seq++, "input"); builder.AddAttribute(seq++, "type", "number"); builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2.5 text-sm shadow-sm"); builder.AddAttribute(seq++, "value", field.IntValue?.ToString()); builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.IntValue = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null)); builder.CloseElement();
+            builder.OpenElement(seq++, "input"); builder.AddAttribute(seq++, "type", "number"); builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm shadow-sm"); builder.AddAttribute(seq++, "value", field.IntValue?.ToString()); builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.IntValue = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null)); builder.CloseElement();
         }
         else if (IsDecimalField(field))
         {
-            builder.OpenElement(seq++, "input"); builder.AddAttribute(seq++, "type", "number"); builder.AddAttribute(seq++, "step", "0.01"); builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2.5 text-sm shadow-sm"); builder.AddAttribute(seq++, "value", field.DecimalValue?.ToString(System.Globalization.CultureInfo.InvariantCulture)); builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.DecimalValue = decimal.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null)); builder.CloseElement();
+            builder.OpenElement(seq++, "input"); builder.AddAttribute(seq++, "type", "number"); builder.AddAttribute(seq++, "step", "0.01"); builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm shadow-sm"); builder.AddAttribute(seq++, "value", field.DecimalValue?.ToString(System.Globalization.CultureInfo.InvariantCulture)); builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.DecimalValue = decimal.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null)); builder.CloseElement();
         }
         else
         {
-            builder.OpenElement(seq++, "input"); builder.AddAttribute(seq++, "type", string.Equals(field.Definition.FieldKey, "Email", StringComparison.OrdinalIgnoreCase) ? "email" : "text"); builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2.5 text-sm shadow-sm"); builder.AddAttribute(seq++, "placeholder", field.Definition.Placeholder); if (field.Definition.MaxLength.HasValue) builder.AddAttribute(seq++, "maxlength", field.Definition.MaxLength.Value); builder.AddAttribute(seq++, "value", field.TextValue); builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.TextValue = e.Value?.ToString())); builder.CloseElement();
+            builder.OpenElement(seq++, "input"); builder.AddAttribute(seq++, "type", string.Equals(field.Definition.FieldKey, "Email", StringComparison.OrdinalIgnoreCase) ? "email" : "text"); builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm shadow-sm"); builder.AddAttribute(seq++, "placeholder", field.Definition.Placeholder); if (field.Definition.MaxLength.HasValue) builder.AddAttribute(seq++, "maxlength", field.Definition.MaxLength.Value); builder.AddAttribute(seq++, "value", field.TextValue); builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.TextValue = e.Value?.ToString())); builder.CloseElement();
         }
 
         if (!string.IsNullOrWhiteSpace(field.Definition.HelpText) && !IsBoolField(field))
@@ -945,7 +1001,7 @@
             ? "border-[#f2d2a8] bg-[#fffaf3]"
             : "border-[#dbe6e9] bg-[#fbfcfd]";
 
-        return $"{spanClass} rounded-2xl border {accent} p-4 shadow-sm";
+        return $"{spanClass} rounded-[1.2rem] border {accent} p-3 shadow-sm";
     }
 
     private static string GetCompletionLabel(IEnumerable<DynamicFieldState> fields)
@@ -959,6 +1015,37 @@
         var completed = requiredFields.Count(HasValue);
         return $"{completed}/{requiredFields.Count} obligatorios";
     }
+
+    private static string GetSectionStateBadgeLabel(IEnumerable<DynamicFieldState> fields)
+    {
+        var visibleFields = fields.Where(IsVisibleField).ToList();
+        if (visibleFields.Count == 0)
+        {
+            return "Sin campos";
+        }
+
+        var completedVisible = visibleFields.Count(HasValue);
+        if (completedVisible == 0)
+        {
+            return "Pendiente";
+        }
+
+        if (completedVisible == visibleFields.Count)
+        {
+            return "Completa";
+        }
+
+        return "En progreso";
+    }
+
+    private static string GetSectionStateBadgeClass(IEnumerable<DynamicFieldState> fields)
+        => GetSectionStateBadgeLabel(fields) switch
+        {
+            "Completa" => "rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700",
+            "En progreso" => "rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700",
+            "Sin campos" => "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500",
+            _ => "rounded-full bg-[#e6f0f2] px-3 py-1 text-xs font-semibold text-[#2f4858]"
+        };
 
     private static int GetMissingRequiredCount(IEnumerable<DynamicSectionState> sections)
         => sections.SelectMany(x => x.Fields).Count(x => x.Definition.IsRequired && IsVisibleField(x) && !HasValue(x));
@@ -1011,6 +1098,38 @@
     private static string GetParticipantCompletionLabel(DynamicParticipantState participant)
         => GetCompletionLabel(participant.Sections.SelectMany(x => x.Fields));
 
+    private static string GetParticipantStateBadgeLabel(DynamicParticipantState participant)
+        => GetSectionStateBadgeLabel(participant.Sections.SelectMany(x => x.Fields));
+
+    private static string GetParticipantStateBadgeClass(DynamicParticipantState participant)
+        => GetSectionStateBadgeClass(participant.Sections.SelectMany(x => x.Fields));
+
+    private int GetVisibleFieldCount()
+        => GetVisibleFieldCount(ArticleSections) + Participants.Sum(participant => GetVisibleFieldCount(participant.Sections));
+
+    private static int GetVisibleFieldCount(IEnumerable<DynamicSectionState> sections)
+        => sections.Sum(section => section.Fields.Count(IsVisibleField));
+
+    private int GetCompletedVisibleFieldCount()
+        => GetCompletedVisibleFieldCount(ArticleSections) + Participants.Sum(participant => GetCompletedVisibleFieldCount(participant.Sections));
+
+    private static int GetCompletedVisibleFieldCount(IEnumerable<DynamicSectionState> sections)
+        => sections.SelectMany(section => section.Fields).Count(field => IsVisibleField(field) && HasValue(field));
+
+    private int GetMissingRequiredTotalCount()
+        => GetMissingRequiredCount(ArticleSections) + Participants.Sum(participant => GetMissingRequiredCount(participant.Sections));
+
+    private string GetParticipantsCompletionSummary()
+    {
+        if (Participants.Count == 0)
+        {
+            return "Sin participantes";
+        }
+
+        var completed = Participants.Count(participant => GetMissingRequiredCount(participant.Sections) == 0);
+        return $"{completed}/{Participants.Count} completos";
+    }
+
     private async Task LoadUiStateAsync()
     {
         var state = await LocalStorage.GetItemAsync<RegisterArticleUiState>("ui.register-article.state");
@@ -1032,6 +1151,27 @@
             ExpandedArticleSections = ExpandedArticleSections.ToList(),
             IsParticipantsPanelExpanded = IsParticipantsPanelExpanded
         });
+    }
+
+    private async Task ClearSectionSearchAsync()
+    {
+        SectionSearchTerm = string.Empty;
+        await PersistUiStateAsync();
+    }
+
+    private async Task ExpandAllArticleSectionsAsync()
+    {
+        ExpandedArticleSections = ArticleSections
+            .Select(x => x.GroupName)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        await PersistUiStateAsync();
+    }
+
+    private async Task CollapseAllArticleSectionsAsync()
+    {
+        ExpandedArticleSections.Clear();
+        await PersistUiStateAsync();
     }
 
     private bool HasStatusMessage
@@ -1063,6 +1203,12 @@
     }
 
     private void GoBack() => NavManager.NavigateTo("/articulos/listado");
+
+    private void GoToArticlesList() => NavManager.NavigateTo("/articulos/listado");
+
+    private void GoToConfiguration() => NavManager.NavigateTo("/configuration");
+
+    private void GoToBulkImport() => NavManager.NavigateTo("/management/exportinformation");
 
     private sealed class RegisterArticleUiState
     {

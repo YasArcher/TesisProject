@@ -902,7 +902,8 @@ namespace tesisproject.backend.Services.Implementations
                     return new ParsedUploadFile(rows, unmappedHeaders, detectedHeaders.Distinct(StringComparer.OrdinalIgnoreCase).ToList());
                 }
 
-                var headers = SplitCsvLine(lines[0]);
+                var delimiter = InferCsvDelimiter(lines[0]);
+                var headers = SplitCsvLine(lines[0], delimiter);
                 var columns = headers.Select(h =>
                 {
                     var key = ExtractHeaderFieldKey(h);
@@ -918,9 +919,9 @@ namespace tesisproject.backend.Services.Implementations
                     return (Field: field, Header: h);
                 }).ToList();
 
-                for (var i = 2; i < lines.Count; i++)
+                for (var i = 1; i < lines.Count; i++)
                 {
-                    var values = SplitCsvLine(lines[i]);
+                    var values = SplitCsvLine(lines[i], delimiter);
                     var rawData = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
                     var cells = new List<ParsedUploadCell>();
                     for (var c = 0; c < columns.Count && c < values.Count; c++)
@@ -1295,7 +1296,43 @@ namespace tesisproject.backend.Services.Implementations
             return false;
         }
 
-        private static List<string> SplitCsvLine(string line)
+        private static char InferCsvDelimiter(string line)
+        {
+            var commaCount = 0;
+            var semicolonCount = 0;
+            var inQuotes = false;
+
+            for (var i = 0; i < line.Length; i++)
+            {
+                var c = line[i];
+                if (c == '"')
+                {
+                    if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
+                    {
+                        i++;
+                    }
+                    else
+                    {
+                        inQuotes = !inQuotes;
+                    }
+                }
+                else if (!inQuotes)
+                {
+                    if (c == ',')
+                    {
+                        commaCount++;
+                    }
+                    else if (c == ';')
+                    {
+                        semicolonCount++;
+                    }
+                }
+            }
+
+            return semicolonCount > commaCount ? ';' : ',';
+        }
+
+        private static List<string> SplitCsvLine(string line, char delimiter)
         {
             var result = new List<string>();
             var sb = new StringBuilder();
@@ -1316,7 +1353,7 @@ namespace tesisproject.backend.Services.Implementations
                         inQuotes = !inQuotes;
                     }
                 }
-                else if (c == ';' && !inQuotes)
+                else if (c == delimiter && !inQuotes)
                 {
                     result.Add(sb.ToString());
                     sb.Clear();
