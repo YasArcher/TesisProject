@@ -1,0 +1,995 @@
+﻿@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.FacultyScope.Request
+@using tesisproject.shared.DTOs.FacultyScope.Response
+@using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.AppUser
+
+@using tesisproject.frontend.Features.Components
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Card
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.frontend.SharedUI.SelectInput
+
+@inject IToastService Toast
+@inject IFacultyScopeClientService FacultyScopeClient
+@inject IExternalAcademicsClientService ExternalAcademicsClient
+@inject IExternalUserService ExternalUserClient
+
+<div class="p-6 max-w-7xl mx-auto">
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="space-y-1">
+            <h2 class="text-2xl font-bold text-foreground">Grupos de técnicos</h2>
+            <p class="text-sm text-muted max-w-2xl">
+                Cree grupos, asigne facultades permitidas y asigne/desasigne técnicos a cada grupo.
+            </p>
+        </div>
+
+        <div class="flex gap-2">
+            <ActionButton Execute="ReloadAsync"
+                          Text="Refrescar"
+                          Variant="ButtonVariant.Outline"
+                          Intent="ButtonIntent.Neutral"
+                          Disabled="@_loading" />
+
+            <ActionButton Execute="OpenNewModal"
+                          Text="Nuevo grupo"
+                          Variant="ButtonVariant.Filled"
+                          Intent="ButtonIntent.Accept"
+                          Disabled="@_loading" />
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="flex items-center justify-center py-12">
+            <div class="text-center space-y-3">
+                <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+                <p class="text-sm text-muted">Cargando grupos...</p>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="rounded-lg border-2 border-error bg-error/5 p-4">
+            <div class="flex items-start gap-3">
+                <svg class="h-5 w-5 text-error flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div class="flex-1">
+                    <h3 class="text-sm font-semibold text-error mb-1">Error al cargar datos</h3>
+                    <p class="text-sm text-error/80">@_error</p>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="grid gap-6 lg:grid-cols-12">
+            <Card Class="lg:col-span-5 bg-background overflow-hidden">
+                <CardHeader Class="flex items-center justify-between">
+                    <span>Grupos</span>
+                    <span class="text-xs text-muted font-normal">@_groups.Count</span>
+                </CardHeader>
+
+                <CardBody>
+                    <div class="space-y-2 py-2">
+                        @if (_groups.Count == 0)
+                        {
+                            <div class="rounded-xl border border-dashed border-border p-6 text-center">
+                                <p class="text-sm text-muted">No hay grupos creados.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var g in _groups.OrderByDescending(x => x.IsActive).ThenBy(x => x.Name))
+                            {
+                                var selected = _selected?.FacultyScopeId == g.FacultyScopeId;
+
+                                <Card Class="@($"cursor-pointer p-4 {GetGroupCardClass(selected)}")"
+                                      @onclick="() => SelectGroup(g)"
+                                      tabindex="0"
+                                      role="button"
+                                      aria-label="@($"Seleccionar grupo {g.Name}")">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div class="min-w-0">
+                                            <p class="font-semibold text-foreground truncate">@g.Name</p>
+                                            <p class="text-xs text-muted">
+                                                Facultades: @g.Faculties.Count • Técnicos: @g.AssignedUserIds.Count
+                                            </p>
+                                        </div>
+
+                                        <span class="@($"text-xs rounded-full px-2 py-1 {(g.IsActive ? "bg-success/15 text-success" : "bg-muted text-muted-foreground")}")">
+                                            @(g.IsActive ? "Activo" : "Inactivo")
+                                        </span>
+                                    </div>
+                                </Card>
+                            }
+                        }
+                    </div>
+                </CardBody>
+            </Card>
+
+            <Card Class="lg:col-span-7 bg-background overflow-hidden">
+                <CardHeader>
+                    Administración del grupo
+                </CardHeader>
+
+                <CardBody>
+                    @if (_selected is null)
+                    {
+                        <div class="h-full flex items-center justify-center p-8 text-center">
+                            <div class="space-y-2">
+                                <p class="text-sm text-muted">Selecciona un grupo para administrar sus facultades y técnicos.</p>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="flex flex-col gap-4 py-2">
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="space-y-1 min-w-0">
+                                    <p class="text-lg font-bold text-foreground truncate">@_selected.Name</p>
+                                    <p class="text-xs text-muted">ID: @_selected.FacultyScopeId</p>
+                                </div>
+
+                                <div class="flex gap-2">
+                                    <ActionButton Execute="OpenEditModal"
+                                                  Text="Editar"
+                                                  Variant="ButtonVariant.Outline"
+                                                  Intent="ButtonIntent.Neutral" />
+
+                                    <ActionButton Execute="ToggleActiveAsync"
+                                                  Text="@(_selected.IsActive ? "Desactivar" : "Activar")"
+                                                  Variant="ButtonVariant.Outline"
+                                                  Intent="@(_selected.IsActive ? ButtonIntent.Warning : ButtonIntent.Accept)"
+                                                  Disabled="@_savingToggle"
+                                                  ConfirmBeforeExecute="true"
+                                                  ConfirmTitle="@(_selected.IsActive ? "Desactivar grupo" : "Activar grupo")"
+                                                  ConfirmMessage="@(_selected.IsActive
+                                                      ? "¿Seguro que deseas desactivar este grupo?"
+                                                      : "¿Seguro que deseas activar este grupo?")"
+                                                  ConfirmButtonText="@(_selected.IsActive ? "Desactivar" : "Activar")"
+                                                  CancelButtonText="Cancelar" />
+                                </div>
+                            </div>
+
+                            <Card Class="bg-background overflow-hidden">
+                                <CardHeader Class="flex items-center justify-between">
+                                    <span>Facultades del grupo</span>
+                                    <span class="text-xs text-muted font-normal">@_selected.Faculties.Count</span>
+                                </CardHeader>
+
+                                <CardBody>
+                                    <div class="space-y-3 py-2">
+                                        @if (_loadingCatalog)
+                                        {
+                                            <p class="text-sm text-muted">Cargando catálogo de facultades...</p>
+                                        }
+                                        else
+                                        {
+                                            <div class="flex flex-col gap-2 sm:flex-row">
+                                                <div class="flex-1">
+                                                    <SelectInput TItem="ExternalFacultyDTO"
+                                                                 Items="_catalogFaculties"
+                                                                 Value="_facultyToAdd"
+                                                                 ValueChanged="OnFacultyToAddChanged"
+                                                                 GetText="@(f => f.Name)"
+                                                                 GetKey="@(f => f.FacultyId.ToString())"
+                                                                 Placeholder="-- Seleccione una facultad --"
+                                                                 AllowClear="true"
+                                                                 Size="SelectSize.Md" />
+                                                </div>
+
+                                                <ActionButton Execute="AddFacultyToSelection"
+                                                              Text="Agregar"
+                                                              Intent="ButtonIntent.Accept"
+                                                              Variant="ButtonVariant.Filled"
+                                                              Disabled="@(_facultyToAdd is null)" />
+                                            </div>
+
+                                            @if (!string.IsNullOrWhiteSpace(_catalogError))
+                                            {
+                                                <p class="text-sm text-error">@_catalogError</p>
+                                            }
+                                        }
+
+                                        <div class="flex flex-wrap gap-2">
+                                            @foreach (var fid in _selected.Faculties.Select(x => x.FacultyId).Distinct().OrderBy(x => x))
+                                            {
+                                                <span class="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs">
+                                                    @FacultyLabel(fid)
+
+                                                    <ActionButton Execute="() => RemoveFacultyFromSelection(fid)"
+                                                                  Variant="ButtonVariant.Ghost"
+                                                                  Intent="ButtonIntent.Danger"
+                                                                  Size="ButtonSize.Xs"
+                                                                  Class="!px-1 !py-0 min-h-0 leading-none">
+                                                        ✕
+                                                    </ActionButton>
+                                                </span>
+                                            }
+                                        </div>
+
+                                        <div class="flex justify-end">
+                                            <ActionButton Execute="SaveFacultiesAsync"
+                                                          Text="Guardar facultades"
+                                                          Variant="ButtonVariant.Outline"
+                                                          Intent="ButtonIntent.Accept"
+                                                          Disabled="@_savingFaculties" />
+                                        </div>
+
+                                        @if (!string.IsNullOrWhiteSpace(_facultiesError))
+                                        {
+                                            <p class="text-sm text-error">@_facultiesError</p>
+                                        }
+                                    </div>
+                                </CardBody>
+                            </Card>
+
+                            <Card Class="bg-background overflow-hidden">
+                                <CardHeader Class="flex items-center justify-between">
+                                    <span>Técnicos asignados</span>
+                                    <span class="text-xs text-muted font-normal">@_selected.AssignedUserIds.Count</span>
+                                </CardHeader>
+
+                                <CardBody>
+                                    <div class="space-y-3 py-2">
+                                        <div class="flex gap-2">
+                                            <ActionButton Execute="OpenUserPicker"
+                                                          Text="Asignar técnico"
+                                                          Intent="ButtonIntent.Accept"
+                                                          Variant="ButtonVariant.Filled"
+                                                          Disabled="@(_assigningUser || _loadingUsersCatalog)" />
+                                        </div>
+
+                                        @if (_loadingUsersCatalog)
+                                        {
+                                            <p class="text-sm text-muted">Cargando catálogo de usuarios...</p>
+                                        }
+
+                                        @if (!string.IsNullOrWhiteSpace(_usersCatalogError))
+                                        {
+                                            <p class="text-sm text-error">@_usersCatalogError</p>
+                                        }
+
+                                        <div class="space-y-2">
+                                            @if (_selected.AssignedUserIds.Count == 0)
+                                            {
+                                                <p class="text-sm text-muted">No hay técnicos asignados.</p>
+                                            }
+                                            else
+                                            {
+                                                @foreach (var uid in _selected.AssignedUserIds.OrderBy(x => x))
+                                                {
+                                                    <Card Class="p-3">
+                                                        <div class="flex items-center justify-between gap-3">
+                                                            <span class="text-sm text-foreground truncate">@UserLabel(uid)</span>
+
+                                                            <ActionButton Execute="() => UnassignUserAsync(uid)"
+                                                                          Text="Quitar"
+                                                                          Variant="ButtonVariant.Ghost"
+                                                                          Intent="ButtonIntent.Danger"
+                                                                          Disabled="@_unassigningUser"
+                                                                          ConfirmBeforeExecute="true"
+                                                                          ConfirmTitle="Quitar técnico"
+                                                                          ConfirmMessage="¿Seguro que deseas desasignar este técnico del grupo?"
+                                                                          ConfirmButtonText="Quitar"
+                                                                          CancelButtonText="Cancelar" />
+                                                        </div>
+                                                    </Card>
+                                                }
+                                            }
+                                        </div>
+
+                                        @if (!string.IsNullOrWhiteSpace(_assignmentError))
+                                        {
+                                            <p class="text-sm text-error">@_assignmentError</p>
+                                        }
+                                    </div>
+                                </CardBody>
+                            </Card>
+                        </div>
+                    }
+                </CardBody>
+            </Card>
+        </div>
+    }
+</div>
+
+<Modal Id="faculty-scope-group-modal"
+       IsOpen="_modalOpen"
+       IsOpenChanged="OnModalOpenChanged"
+       OnClose="CloseModal"
+       Title="@(_modalEditMode ? "Editar grupo" : "Nuevo grupo")"
+       Size="ModalSize.Lg"
+       CloseOnBackdrop="@(!_modalSaving)"
+       CloseOnEscape="@(!_modalSaving)">
+
+    <ChildContent>
+        <div class="space-y-4">
+            <div>
+                <p class="text-xs text-muted">
+                    Configure nombre y facultades del grupo.
+                </p>
+            </div>
+
+            <TextInput TValue="string"
+                       Label="Nombre"
+                       Value="_edit.Name"
+                       ValueChanged="OnEditNameChanged"
+                       Placeholder="Ingrese el nombre del grupo"
+                       Required="true"
+                       MaxLength="150" />
+
+            @if (_modalEditMode)
+            {
+                <div class="flex items-center gap-2">
+                    <input id="chkActive" type="checkbox" class="h-4 w-4" @bind="_edit.IsActive" />
+                    <label for="chkActive" class="text-sm text-foreground">Activo</label>
+                </div>
+            }
+
+            <div class="space-y-2">
+                <label class="text-sm font-semibold text-foreground">Facultades</label>
+
+                @if (_loadingCatalog)
+                {
+                    <p class="text-sm text-muted">Cargando catálogo de facultades...</p>
+                }
+                else
+                {
+                    <div class="flex flex-col gap-2 sm:flex-row">
+                        <div class="flex-1">
+                            <SelectInput TItem="ExternalFacultyDTO"
+                                         Items="_catalogFaculties"
+                                         Value="_modalFacultyToAdd"
+                                         ValueChanged="OnModalFacultyToAddChanged"
+                                         GetText="@(f => f.Name)"
+                                         GetKey="@(f => f.FacultyId.ToString())"
+                                         Placeholder="-- Seleccione una facultad --"
+                                         AllowClear="true"
+                                         Size="SelectSize.Md" />
+                        </div>
+
+                        <ActionButton Execute="AddFacultyInModal"
+                                      Text="Agregar"
+                                      Variant="ButtonVariant.Outline"
+                                      Intent="ButtonIntent.Accept"
+                                      Disabled="@(_modalFacultyToAdd is null)" />
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(_catalogError))
+                    {
+                        <p class="text-sm text-error">@_catalogError</p>
+                    }
+                }
+
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var fid in _edit.FacultyIds.Distinct().OrderBy(x => x))
+                    {
+                        <span class="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs">
+                            @FacultyLabel(fid)
+
+                            <ActionButton Execute="() => RemoveFacultyInModal(fid)"
+                                          Variant="ButtonVariant.Ghost"
+                                          Intent="ButtonIntent.Danger"
+                                          Size="ButtonSize.Xs"
+                                          Class="!px-1 !py-0 min-h-0 leading-none">
+                                ✕
+                            </ActionButton>
+                        </span>
+                    }
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(_modalError))
+            {
+                <p class="text-sm text-error">@_modalError</p>
+            }
+        </div>
+    </ChildContent>
+
+    <Footer>
+        <div class="flex justify-end gap-2">
+            <ActionButton Execute="CloseModal"
+                          Text="Cancelar"
+                          Variant="ButtonVariant.Outline"
+                          Intent="ButtonIntent.Neutral"
+                          Disabled="@_modalSaving" />
+
+            <ActionButton Execute="SaveModalAsync"
+                          Text="Guardar"
+                          Variant="ButtonVariant.Filled"
+                          Intent="ButtonIntent.Accept"
+                          Disabled="@_modalSaving" />
+        </div>
+    </Footer>
+</Modal>
+
+<UserPickerModal ModalId="faculty-scope-user-picker"
+                 IsOpen="_userPickerOpen"
+                 IsOpenChanged="OnUserPickerOpenChanged"
+                 Users="_catalogUsers"
+                 OnSubmit="HandleUserPickedAsync"
+                 OnCancel="CloseUserPicker"
+                 RequireRoleSelection="false" />
+
+@code {
+    private bool _loading;
+    private string? _error;
+
+    private List<FacultyScopeResponseDTO> _groups = new();
+    private FacultyScopeResponseDTO? _selected;
+
+    private bool _loadingCatalog;
+    private string? _catalogError;
+    private List<ExternalFacultyDTO> _catalogFaculties = new();
+
+    private bool _loadingUsersCatalog;
+    private string? _usersCatalogError;
+    private List<ResolvedUserProfileDTO> _catalogUsers = new();
+
+    private ExternalFacultyDTO? _facultyToAdd;
+    private bool _savingFaculties;
+    private string? _facultiesError;
+
+    private bool _assigningUser;
+    private bool _unassigningUser;
+    private string? _assignmentError;
+
+    private bool _savingToggle;
+
+    private bool _modalOpen;
+    private bool _modalEditMode;
+    private bool _modalSaving;
+    private string? _modalError;
+    private ExternalFacultyDTO? _modalFacultyToAdd;
+
+    private bool _userPickerOpen;
+
+    private EditModel _edit = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFacultyCatalogAsync();
+        await LoadUsersCatalogAsync();
+        await ReloadAsync();
+    }
+
+    private async Task LoadFacultyCatalogAsync()
+    {
+        _loadingCatalog = true;
+        _catalogError = null;
+
+        try
+        {
+            var res = await ExternalAcademicsClient.GetFacultiesWithProgramsAsync();
+            if (!res.Success || res.Response is null)
+            {
+                _catalogError = res.Error ?? "No se pudo cargar el catálogo de facultades.";
+                _catalogFaculties = new();
+                return;
+            }
+
+            _catalogFaculties = res.Response
+                .OrderBy(x => x.Name)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _catalogError = $"Error inesperado cargando facultades: {ex.Message}";
+            _catalogFaculties = new();
+        }
+        finally
+        {
+            _loadingCatalog = false;
+        }
+    }
+
+    private async Task LoadUsersCatalogAsync()
+    {
+        _loadingUsersCatalog = true;
+        _usersCatalogError = null;
+
+        try
+        {
+            var res = await ExternalUserClient.GetListAsync();
+            if (!res.Success || res.Response is null)
+            {
+                _usersCatalogError = res.Error ?? "No se pudo cargar el catálogo de usuarios.";
+                _catalogUsers = new();
+                return;
+            }
+
+            _catalogUsers = res.Response
+                .OrderBy(x => x.FullName)
+                .ThenBy(x => x.Email)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _usersCatalogError = $"Error inesperado cargando usuarios: {ex.Message}";
+            _catalogUsers = new();
+        }
+        finally
+        {
+            _loadingUsersCatalog = false;
+        }
+    }
+
+    private string FacultyLabel(int facultyId)
+    {
+        var f = _catalogFaculties.FirstOrDefault(x => x.FacultyId == facultyId);
+        return f is null ? facultyId.ToString() : $"{f.Name} ({facultyId})";
+    }
+
+    private string UserLabel(int userId)
+    {
+        var user = _catalogUsers.FirstOrDefault(x => x.UserId == userId);
+
+        if (user is null)
+            return $"UserId: {userId}";
+
+        var fullName = string.IsNullOrWhiteSpace(user.FullName)
+            ? $"UserId: {userId}"
+            : user.FullName.Trim();
+
+        var email = string.IsNullOrWhiteSpace(user.Email)
+            ? null
+            : user.Email.Trim();
+
+        return string.IsNullOrWhiteSpace(email)
+            ? $"{fullName} ({userId})"
+            : $"{fullName} - {email} ({userId})";
+    }
+
+    private string GetGroupCardClass(bool selected)
+    {
+        return selected
+            ? "border-primary bg-primary-subtle/40 ring-1 ring-primary"
+            : "border-border hover:bg-muted/40";
+    }
+
+    private Task OnFacultyToAddChanged(ExternalFacultyDTO? value)
+    {
+        _facultyToAdd = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnModalFacultyToAddChanged(ExternalFacultyDTO? value)
+    {
+        _modalFacultyToAdd = value;
+        return Task.CompletedTask;
+    }
+
+    private Task OnEditNameChanged(string? value)
+    {
+        _edit.Name = value ?? string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private Task OnModalOpenChanged(bool value)
+    {
+        _modalOpen = value;
+
+        if (!value)
+            _modalError = null;
+
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var res = await FacultyScopeClient.GetAllAsync(includeAssignments: true);
+            if (!res.Success || res.Response is null)
+            {
+                _error = res.Error ?? "Error al cargar los grupos.";
+                _groups = new();
+                _selected = null;
+                return;
+            }
+
+            _groups = res.Response;
+
+            if (_selected is not null)
+                _selected = _groups.FirstOrDefault(x => x.FacultyScopeId == _selected.FacultyScopeId);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void SelectGroup(FacultyScopeResponseDTO g)
+    {
+        _selected = g;
+        _facultiesError = null;
+        _assignmentError = null;
+        _facultyToAdd = null;
+    }
+
+    private void OpenNewModal()
+    {
+        _modalEditMode = false;
+        _modalError = null;
+        _modalFacultyToAdd = null;
+
+        _edit = new EditModel
+        {
+            Id = 0,
+            Name = string.Empty,
+            IsActive = true,
+            FacultyIds = new List<int>()
+        };
+
+        _modalOpen = true;
+    }
+
+    private void OpenEditModal()
+    {
+        if (_selected is null) return;
+
+        _modalEditMode = true;
+        _modalError = null;
+        _modalFacultyToAdd = null;
+
+        _edit = new EditModel
+        {
+            Id = _selected.FacultyScopeId,
+            Name = _selected.Name,
+            IsActive = _selected.IsActive,
+            FacultyIds = _selected.Faculties.Select(x => x.FacultyId).Distinct().ToList()
+        };
+
+        _modalOpen = true;
+    }
+
+    private Task CloseModal()
+    {
+        _modalOpen = false;
+        _modalError = null;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void AddFacultyInModal()
+    {
+        _modalError = null;
+
+        var facultyId = _modalFacultyToAdd?.FacultyId ?? 0;
+        if (facultyId <= 0)
+        {
+            _modalError = "Seleccione una facultad.";
+            return;
+        }
+
+        if (!_edit.FacultyIds.Contains(facultyId))
+            _edit.FacultyIds.Add(facultyId);
+
+        _modalFacultyToAdd = null;
+    }
+
+    private void RemoveFacultyInModal(int facultyId)
+    {
+        _edit.FacultyIds.Remove(facultyId);
+    }
+
+    private async Task SaveModalAsync()
+    {
+        _modalError = null;
+
+        if (string.IsNullOrWhiteSpace(_edit.Name))
+        {
+            _modalError = "El nombre es requerido.";
+            return;
+        }
+
+        if (_edit.FacultyIds.Count == 0)
+        {
+            _modalError = "Debe agregar al menos una facultad.";
+            return;
+        }
+
+        try
+        {
+            _modalSaving = true;
+
+            if (!_modalEditMode)
+            {
+                var req = new CreateFacultyScopeRequestDTO
+                {
+                    Name = _edit.Name.Trim(),
+                    FacultyIds = _edit.FacultyIds.Distinct().ToList()
+                };
+
+                var res = await FacultyScopeClient.CreateAsync(req);
+                if (!res.Success || res.Response is null)
+                {
+                    _modalError = res.Error ?? "Error al crear el grupo.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Grupo creado exitosamente.");
+            }
+            else
+            {
+                var upd = new UpdateFacultyScopeRequestDTO
+                {
+                    Name = _edit.Name.Trim(),
+                    IsActive = _edit.IsActive
+                };
+
+                var resUpd = await FacultyScopeClient.UpdateAsync(_edit.Id, upd);
+                if (!resUpd.Success)
+                {
+                    _modalError = resUpd.Error ?? "Error al actualizar el grupo.";
+                    return;
+                }
+
+                var set = new SetFacultyScopeFacultiesRequestDTO
+                {
+                    FacultyIds = _edit.FacultyIds.Distinct().ToList()
+                };
+
+                var resSet = await FacultyScopeClient.SetFacultiesAsync(_edit.Id, set);
+                if (!resSet.Success)
+                {
+                    _modalError = resSet.Error ?? "Se actualizó el nombre/estado, pero falló al guardar facultades.";
+                    return;
+                }
+
+                Toast.ShowSuccess("Grupo actualizado exitosamente.");
+            }
+
+            _modalOpen = false;
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _modalError = $"Error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            _modalSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void AddFacultyToSelection()
+    {
+        if (_selected is null) return;
+
+        _facultiesError = null;
+
+        var facultyId = _facultyToAdd?.FacultyId ?? 0;
+        if (facultyId <= 0)
+        {
+            _facultiesError = "Seleccione una facultad.";
+            return;
+        }
+
+        if (!_selected.Faculties.Any(x => x.FacultyId == facultyId))
+        {
+            _selected.Faculties.Add(new FacultyScopeFacultyItemDTO
+            {
+                FacultyId = facultyId,
+                IsActive = true
+            });
+        }
+
+        _facultyToAdd = null;
+    }
+
+    private void RemoveFacultyFromSelection(int facultyId)
+    {
+        if (_selected is null) return;
+
+        var item = _selected.Faculties.FirstOrDefault(x => x.FacultyId == facultyId);
+        if (item is not null)
+            _selected.Faculties.Remove(item);
+    }
+
+    private async Task SaveFacultiesAsync()
+    {
+        if (_selected is null) return;
+
+        _facultiesError = null;
+
+        var facultyIds = _selected.Faculties
+            .Select(x => x.FacultyId)
+            .Distinct()
+            .ToList();
+
+        if (facultyIds.Count == 0)
+        {
+            _facultiesError = "Debe existir al menos una facultad.";
+            return;
+        }
+
+        try
+        {
+            _savingFaculties = true;
+
+            var req = new SetFacultyScopeFacultiesRequestDTO
+            {
+                FacultyIds = facultyIds
+            };
+
+            var res = await FacultyScopeClient.SetFacultiesAsync(_selected.FacultyScopeId, req);
+            if (!res.Success)
+            {
+                _facultiesError = res.Error ?? "Error al guardar las facultades.";
+                return;
+            }
+
+            Toast.ShowSuccess("Facultades guardadas.");
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _facultiesError = $"Error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            _savingFaculties = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OpenUserPicker()
+    {
+        if (_selected is null) return;
+
+        _assignmentError = null;
+        _userPickerOpen = true;
+    }
+
+    private Task OnUserPickerOpenChanged(bool value)
+    {
+        _userPickerOpen = value;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task CloseUserPicker()
+    {
+        _userPickerOpen = false;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleUserPickedAsync(int userId)
+    {
+        if (_selected is null) return;
+
+        _assignmentError = null;
+
+        try
+        {
+            _assigningUser = true;
+
+            var selectedUser = _catalogUsers.FirstOrDefault(x => x.UserId == userId);
+            if (selectedUser is null)
+            {
+                _assignmentError = "No se encontró el usuario seleccionado.";
+                return;
+            }
+
+            var request = new AssignFacultyScopeUserRequestDTO
+            {
+                Email = selectedUser.Email?.Trim() ?? string.Empty,
+                Document = selectedUser.Document?.Trim() ?? string.Empty,
+                AspUserId = selectedUser.AspNetUserId
+            };
+
+            var res = await FacultyScopeClient.AssignScopeToUserAsync(
+                _selected.FacultyScopeId,
+                request);
+
+            if (!res.Success)
+            {
+                _assignmentError = res.Error ?? "Error al asignar el técnico.";
+                return;
+            }
+
+            Toast.ShowSuccess("Técnico asignado.");
+            _userPickerOpen = false;
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _assignmentError = $"Error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            _assigningUser = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task UnassignUserAsync(int userId)
+    {
+        if (_selected is null) return;
+
+        _assignmentError = null;
+
+        try
+        {
+            _unassigningUser = true;
+
+            var res = await FacultyScopeClient.UnassignScopeFromUserAsync(_selected.FacultyScopeId, userId);
+            if (!res.Success)
+            {
+                _assignmentError = res.Error ?? "Error al desasignar el técnico.";
+                return;
+            }
+
+            Toast.ShowSuccess("Técnico desasignado.");
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _assignmentError = $"Error inesperado: {ex.Message}";
+        }
+        finally
+        {
+            _unassigningUser = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ToggleActiveAsync()
+    {
+        if (_selected is null) return;
+
+        try
+        {
+            _savingToggle = true;
+
+            var req = new UpdateFacultyScopeRequestDTO
+            {
+                Name = _selected.Name,
+                IsActive = !_selected.IsActive
+            };
+
+            var res = await FacultyScopeClient.UpdateAsync(_selected.FacultyScopeId, req);
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "Error al cambiar estado.");
+                return;
+            }
+
+            Toast.ShowSuccess("Estado actualizado.");
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error inesperado: {ex.Message}");
+        }
+        finally
+        {
+            _savingToggle = false;
+            StateHasChanged();
+        }
+    }
+
+    private sealed class EditModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public bool IsActive { get; set; } = true;
+        public List<int> FacultyIds { get; set; } = new();
+    }
+}

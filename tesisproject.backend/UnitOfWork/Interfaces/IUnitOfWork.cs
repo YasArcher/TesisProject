@@ -51,7 +51,9 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
         IExportTemplateRepository ExportTemplates { get; }
         IExportFieldRepository ExportFields { get; }
         IVisitObjectiveActivityProgressRepository VisitObjectiveActivityProgresses { get; }
-
+        IFacultyScopeRepository FacultyScopes { get; }
+        IFacultyScopeFacultyRepository FacultyScopeFaculties { get; }
+        IUserFacultyScopeAssignmentRepository UserFacultyScopeAssignments { get; }
 
         // 🔹 Nuevo repositorio agregado:
         IAspNetUserRepository AspNetUsers { get; }

@@ -31,7 +31,6 @@ namespace tesisproject.backend.Data
         public DbSet<ProjectObjective> ProjectObjectives => Set<ProjectObjective>();
         public DbSet<Visit> Visits => Set<Visit>();
         public DbSet<VisitIssue> VisitIssues => Set<VisitIssue>();
-        public DbSet<UserFacultyScope> UserFacultyScopes => Set<UserFacultyScope>();
         public DbSet<Product> Products => Set<Product>();
         public DbSet<ProductAttributeDefinition> ProductAttributeDefinitions => Set<ProductAttributeDefinition>();
         public DbSet<ProductValue> ProductValues => Set<ProductValue>();
@@ -39,6 +38,9 @@ namespace tesisproject.backend.Data
         public DbSet<ObjectiveActivityUser> ObjectiveActivityUsers => Set<ObjectiveActivityUser>();
         public DbSet<Convocation> Convocations => Set<Convocation>();
         public DbSet<ConvocationRule> ConvocationRules => Set<ConvocationRule>();
+        public DbSet<FacultyScope> FacultyScopes => Set<FacultyScope>();
+        public DbSet<FacultyScopeFaculty> FacultyScopeFaculties => Set<FacultyScopeFaculty>();
+        public DbSet<UserFacultyScopeAssignment> UserFacultyScopeAssignments => Set<UserFacultyScopeAssignment>();
         public DbSet<ProjectResearchCategory> ProjectResearchCategories => Set<ProjectResearchCategory>();
         public DbSet<ProjectDocument> ProjectDocuments => Set<ProjectDocument>();
         public DbSet<ExportField> ExportFields { get; set; }
@@ -97,6 +99,7 @@ namespace tesisproject.backend.Data
             ConfigureVisitIssue(builder);
             ConfigureProducts(builder);
             ConfigureConvocations(builder);
+            ConfigureFacultyScopes(builder);
             ConfigureProjectResearchCategory(builder);
             ConfigureResearchCategories(builder);
             ConfigureProjectDocuments(builder);
@@ -122,7 +125,69 @@ namespace tesisproject.backend.Data
             var body = Expression.Convert(expr.Body, typeof(object));
             return Expression.Lambda<Func<TEntity, object?>>(body, param);
         }
+        private static void ConfigureFacultyScopes(ModelBuilder builder)
+        {
+            // =================== FacultyScope ===================
+            builder.Entity<FacultyScope>(b =>
+            {
+                b.HasKey(x => x.FacultyScopeId);
 
+                b.Property(x => x.Name)
+                 .HasMaxLength(200)
+                 .IsRequired();
+
+                b.HasIndex(x => x.Name).IsUnique();
+                b.HasIndex(x => x.IsActive);
+
+                // NAV: Scope -> Faculties
+                b.HasMany(x => x.Faculties)
+                 .WithOne(x => x.FacultyScope)
+                 .HasForeignKey(x => x.FacultyScopeId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // NAV: Scope -> UserAssignments
+                b.HasMany(x => x.UserAssignments)
+                 .WithOne(x => x.FacultyScope)
+                 .HasForeignKey(x => x.FacultyScopeId)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
+
+            // ============== FacultyScopeFaculty (Scope ↔ Faculty) ==============
+            builder.Entity<FacultyScopeFaculty>(b =>
+            {
+                b.HasKey(x => new { x.FacultyScopeId, x.FacultyId });
+
+                b.Property(x => x.FacultyId)
+                 .HasMaxLength(64)
+                 .IsRequired();
+
+                b.HasIndex(x => x.FacultyId);
+                b.HasIndex(x => x.IsActive);
+            });
+
+            // ============== UserFacultyScopeAssignment (User ↔ Scope) ==========
+            builder.Entity<UserFacultyScopeAssignment>(b =>
+            {
+                b.HasKey(x => new { x.IdentityUserId, x.FacultyScopeId });
+
+                b.HasIndex(x => x.IdentityUserId);
+                b.HasIndex(x => x.FacultyScopeId);
+                b.HasIndex(x => x.IsActive);
+
+                // NAV: Assignment -> FacultyScope
+                b.HasOne(x => x.FacultyScope)
+                 .WithMany(s => s.UserAssignments)
+                 .HasForeignKey(x => x.FacultyScopeId)
+                 .OnDelete(DeleteBehavior.NoAction);
+
+                // ✅ NAV: Assignment -> AppUser (AppUser SIN colección)
+                b.HasOne(x => x.User)
+                 .WithMany() // <- sin navegación en AppUser
+                 .HasForeignKey(x => x.IdentityUserId)
+                 .HasPrincipalKey(u => u.IdUser)
+                 .OnDelete(DeleteBehavior.NoAction);
+            });
+        }
         private static void MapUserFK<TEntity, TProp>(
             ModelBuilder mb,
             Expression<Func<TEntity, TProp>> fkExpr,
@@ -264,8 +329,6 @@ namespace tesisproject.backend.Data
             // VisitIssue → ReportedByUserId
             MapUserFK<VisitIssue, int?>(builder, vi => vi.ReportedByUserId);
 
-            // UserFacultyScope → IdentityUserId
-            MapUserFK<UserFacultyScope, int>(builder, ufs => ufs.IdentityUserId);
             // ProductAuthor → UserId
             MapUserFK<ProductAuthor, int>(builder, pa => pa.UserId);
         }

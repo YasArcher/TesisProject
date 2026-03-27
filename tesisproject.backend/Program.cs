@@ -302,6 +302,9 @@ static class StartupExtensions
         builder.Services.AddScoped<IMatrixExcelExportService, MatrixExcelExportService>();
         builder.Services.AddScoped<IMatrixTemplateExcelExportService, MatrixTemplateExcelExportService>();
         builder.Services.AddScoped<IVisitObjectiveActivityProgressRepository, VisitObjectiveActivityProgressRepository>();
+        builder.Services.AddScoped<IFacultyScopeRepository, FacultyScopeRepository>();
+        builder.Services.AddScoped<IFacultyScopeFacultyRepository, FacultyScopeFacultyRepository>();
+        builder.Services.AddScoped<IUserFacultyScopeAssignmentRepository, UserFacultyScopeAssignmentRepository>();
 
         // Genéricos
         builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -347,6 +350,8 @@ static class StartupExtensions
         builder.Services.AddScoped<IExportTemplateService, ExportTemplateService>();
         builder.Services.AddScoped<IExportTemplateExcelService, ExportTemplateExcelService>();
         builder.Services.AddScoped<IVisitObjectiveActivityProgressService, VisitObjectiveActivityProgressService>();
+        builder.Services.AddScoped<IFacultyScopeService, FacultyScopeService>();
+        builder.Services.AddScoped<IUserRoleService, UserRoleService>();
     }
 
     public static void ConfigureApiDocumentation(this WebApplicationBuilder builder)

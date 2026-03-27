@@ -52,6 +52,9 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public IExportTemplateRepository ExportTemplates { get; }
         public IExportFieldRepository ExportFields { get; }
         public IVisitObjectiveActivityProgressRepository VisitObjectiveActivityProgresses { get; set; }
+        public IFacultyScopeRepository FacultyScopes { get; }
+        public IFacultyScopeFacultyRepository FacultyScopeFaculties { get; }
+        public IUserFacultyScopeAssignmentRepository UserFacultyScopeAssignments { get; }
 
 
         public UnitOfWork(
@@ -99,7 +102,11 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             IExportFieldRepository exportFields,
             ICatalogRepository<ProjectOriginType> projectOriginTypes,
             ICatalogRepository<ProjectExtensionType> projectExtensionTypes,
-            IVisitObjectiveActivityProgressRepository visitObjectiveActivityProgresses)
+            IVisitObjectiveActivityProgressRepository visitObjectiveActivityProgresses,
+            IFacultyScopeRepository facultyScopes,
+            IFacultyScopeFacultyRepository facultyScopeFaculties,
+            IUserFacultyScopeAssignmentRepository userFacultyScopeAssignments
+            )
         {
             _ctx = ctx;
             Projects = projectRepository;
@@ -146,6 +153,9 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             ProjectOriginTypes = projectOriginTypes;
             ProjectExtensionTypes = projectExtensionTypes;
             VisitObjectiveActivityProgresses = visitObjectiveActivityProgresses;
+            FacultyScopes = facultyScopes;
+            FacultyScopeFaculties = facultyScopeFaculties;
+            UserFacultyScopeAssignments = userFacultyScopeAssignments;
         }
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)

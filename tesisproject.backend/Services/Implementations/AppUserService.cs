@@ -18,21 +18,19 @@ namespace tesisproject.backend.Services.Implementations
         private readonly UserManager<IdentityUser<int>> _userManager;
         private readonly IAppUserRepository _appUsers;
         private readonly IUnitOfWork _uow;
-        private readonly RoleManager<IdentityRole<int>> _roleManager;
+        private readonly IUserRoleService _userRoles;
 
         public AppUserService(
             UserManager<IdentityUser<int>> userManager,
             IAppUserRepository appUsers,
             IUnitOfWork uow,
-            RoleManager<IdentityRole<int>> roleManager)
+            IUserRoleService userRoles)
         {
             _userManager = userManager;
             _appUsers = appUsers;
             _uow = uow;
-            _roleManager = roleManager;
+            _userRoles = userRoles;
         }
-
-        // =============== SINGLE ===============
 
         public async Task<ServiceResult<int>> EnsureAppUserAsync(
             RegisterRequest dto,
@@ -45,12 +43,10 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (InvalidOperationException invEx)
             {
-                // Errores de Identity (password, email duplicado, etc.)
                 return ServiceResult<int>.Fail(invEx.Message, ErrorType.Validation);
             }
             catch (DbUpdateException dbEx)
             {
-                // Conflictos con la BD (unique keys, FK, etc.)
                 var msg = dbEx.InnerException?.Message ?? dbEx.Message;
                 return ServiceResult<int>.Fail(msg, ErrorType.Conflict);
             }
@@ -60,8 +56,6 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-        // =============== BULK ===============
-
         public async Task<ServiceResult<List<int>>> EnsureAppUsersAsync(
             IEnumerable<RegisterRequest> dtos,
             CancellationToken ct = default)
@@ -69,8 +63,6 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 var result = new List<int>();
-
-                // Mantener el orden de entrada
                 foreach (var dto in dtos)
                 {
                     var idUser = await EnsureSingleInternalAsync(dto, ct);
@@ -94,12 +86,6 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-        /// <summary>
-        /// Lógica central:
-        /// - Busca o crea IdentityUser (ASP local) por Email.
-        /// - Busca o crea AppUser por AspUserId / IdLocal.
-        /// - Devuelve IdUser (PK de APP_USER).
-        /// </summary>
         private async Task<int> EnsureSingleInternalAsync(RegisterRequest dto, CancellationToken ct)
         {
             // 1) Buscar IdentityUser por email
@@ -126,42 +112,21 @@ namespace tesisproject.backend.Services.Implementations
                 userWasCreated = true;
             }
 
-            // 1.1) ASIGNAR ROL (AQUÍ)
-            // - Si NO quieres tocar DTO: deja roleToAssign = "technical"
-            // - Si agregaste dto.Role: permite solo financial/technical
-            var roleToAssign = string.IsNullOrWhiteSpace(dto.Role) ? "technical" : dto.Role.Trim();
-
-            var allowed = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-    {
-        "technical",
-        "financial",
-        "coordinador",
-        // NO incluyas admin/superadmin en registro público
-    };
-
-            if (!allowed.Contains(roleToAssign))
-                roleToAssign = "technical"; // o lanza error si quieres ser estricto
-
-            if (!await _roleManager.RoleExistsAsync(roleToAssign))
-                throw new InvalidOperationException($"Role '{roleToAssign}' does not exist.");
-
-            // Evita duplicar asignación
-            if (!await _userManager.IsInRoleAsync(user, roleToAssign))
+            // 2) Roles (delegado)
+            try
             {
-                var addRole = await _userManager.AddToRoleAsync(user, roleToAssign);
-                if (!addRole.Succeeded)
-                {
-                    var msg = string.Join("; ", addRole.Errors.Select(e => $"{e.Code}:{e.Description}"));
+                await _userRoles.AssignRoleAsync(user, dto.Role, ct);
+            }
+            catch
+            {
+                // Si el IdentityUser se creó en este flujo y rol falló => cleanup inmediato
+                if (userWasCreated)
+                    await _userManager.DeleteAsync(user);
 
-                    // rollback si el usuario se creó recién
-                    if (userWasCreated)
-                        await _userManager.DeleteAsync(user);
-
-                    throw new InvalidOperationException(msg);
-                }
+                throw;
             }
 
-            // 2) Buscar AppUser existente por AspUserId o IdLocal
+            // 3) Buscar/crear AppUser
             AppUser? appUser = null;
 
             if (dto.AspUserId.HasValue)
@@ -200,9 +165,20 @@ namespace tesisproject.backend.Services.Implementations
                     _appUsers.Update(appUser);
             }
 
-            await _uow.SaveChangesAsync(ct);
+            // 4) Guardar BD propia
+            try
+            {
+                await _uow.SaveChangesAsync(ct);
+            }
+            catch
+            {
+                // Compensación: evita Identity user + rol sin AppUser
+                if (userWasCreated)
+                    await _userManager.DeleteAsync(user);
+
+                throw;
+            }
             return appUser.IdUser;
         }
-
     }
 }
