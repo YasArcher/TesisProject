@@ -72,6 +72,17 @@ namespace tesisproject.frontend.Services.Implementations
             return await response.Content.ReadFromJsonAsync<BulkImportActionResultDto>(cancellationToken: ct);
         }
 
+        public async Task<BulkImportActionResultDto?> CreateBatchFromExternalArticlesAsync(ExternalArticlesImportRequest request, CancellationToken ct = default)
+        {
+            using var response = await _http.PostAsJsonAsync("api/import-batches/external-articles", request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude crear el lote externo múltiple en staging.", ct));
+            }
+
+            return await response.Content.ReadFromJsonAsync<BulkImportActionResultDto>(cancellationToken: ct);
+        }
+
         public async Task<BulkImportActionResultDto?> CorrectRowAsync(int batchId, int rowId, BulkImportRowCorrectionRequest request, CancellationToken ct = default)
         {
             using var response = await _http.PutAsJsonAsync($"api/import-batches/{batchId}/rows/{rowId}", request, ct);

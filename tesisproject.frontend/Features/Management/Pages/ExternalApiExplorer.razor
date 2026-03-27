@@ -38,8 +38,8 @@
                      OnCancel="CloseArticleDetail">
         @if (SelectedArticleDetail is not null)
         {
-            <div class="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
-                <div class="rounded-2xl bg-[#f5f9fc] px-4 py-3">
+            <div class="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+                <div class="rounded-2xl bg-[#f5f9fc] px-4 py-3 md:col-span-2 xl:col-span-3">
                     <div class="text-xs uppercase tracking-wide text-slate-500">Título</div>
                     <div class="mt-1 font-semibold text-[#102642]">@SelectedArticleDetail.Title</div>
                 </div>
@@ -71,6 +71,64 @@
                     <div class="text-xs uppercase tracking-wide text-slate-500">Año</div>
                     <div class="mt-1 text-slate-700">@SelectedArticleDetail.PublicationYear</div>
                 </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef]">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Fecha de publicación</div>
+                    <div class="mt-1 text-slate-700">@(!string.IsNullOrWhiteSpace(SelectedArticleDetail.PublicationDate) ? SelectedArticleDetail.PublicationDate : "Sin dato")</div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef]">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Idioma</div>
+                    <div class="mt-1 text-slate-700">@(!string.IsNullOrWhiteSpace(SelectedArticleDetail.Language) ? SelectedArticleDetail.Language : "Sin dato")</div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef]">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Identificador externo</div>
+                    <div class="mt-1 break-all font-mono text-slate-700">@(!string.IsNullOrWhiteSpace(SelectedArticleDetail.ExternalId) ? SelectedArticleDetail.ExternalId : "Sin dato")</div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef]">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Scopus ID</div>
+                    <div class="mt-1 break-all font-mono text-slate-700">@(!string.IsNullOrWhiteSpace(SelectedArticleDetail.ScopusId) ? SelectedArticleDetail.ScopusId : "Sin dato")</div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef]">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Citas detectadas</div>
+                    <div class="mt-1 text-slate-700">@(SelectedArticleDetail.CitationCount?.ToString() ?? "Sin dato")</div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef]">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Acceso abierto</div>
+                    <div class="mt-1 text-slate-700">@GetOpenAccessLabel(SelectedArticleDetail)</div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef]">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Enlace del proveedor</div>
+                    @if (!string.IsNullOrWhiteSpace(SelectedArticleDetail.SourceUrl))
+                    {
+                        <a class="mt-1 inline-flex text-[#295173] underline break-all" href="@SelectedArticleDetail.SourceUrl" target="_blank" rel="noopener noreferrer">@SelectedArticleDetail.SourceUrl</a>
+                    }
+                    else
+                    {
+                        <div class="mt-1 text-slate-500">Sin enlace disponible.</div>
+                    }
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef]">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Enlace de la revista</div>
+                    @if (!string.IsNullOrWhiteSpace(SelectedArticleDetail.JournalUrl))
+                    {
+                        <a class="mt-1 inline-flex text-[#295173] underline break-all" href="@SelectedArticleDetail.JournalUrl" target="_blank" rel="noopener noreferrer">@SelectedArticleDetail.JournalUrl</a>
+                    }
+                    else
+                    {
+                        <div class="mt-1 text-slate-500">Sin enlace disponible.</div>
+                    }
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef]">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Autores detectados</div>
+                    <div class="mt-1 text-slate-700">@SelectedArticleDetail.AuthorNames.Count</div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef]">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Keywords detectadas</div>
+                        <div class="mt-1 text-slate-700">@SelectedArticleDetail.Keywords.Count</div>
+                    </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef]">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Áreas temáticas</div>
+                    <div class="mt-1 text-slate-700">@SelectedArticleDetail.SubjectAreas.Count</div>
+                </div>
                 <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef] md:col-span-2">
                     <div class="text-xs uppercase tracking-wide text-slate-500">Autores</div>
                     <div class="mt-2 flex flex-wrap gap-2">
@@ -84,6 +142,22 @@
                         else
                         {
                             <span class="text-slate-500">Sin autores detallados.</span>
+                        }
+                    </div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef] md:col-span-2">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Afiliaciones detectadas</div>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        @if (SelectedArticleDetail.AuthorAffiliations.Any())
+                        {
+                            @foreach (var affiliation in SelectedArticleDetail.AuthorAffiliations)
+                            {
+                                <span class="rounded-full bg-[#eef5fb] px-3 py-1 text-xs font-semibold text-[#295173]">@affiliation</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-slate-500">Sin afiliaciones disponibles.</span>
                         }
                     </div>
                 </div>
@@ -104,6 +178,36 @@
                     </div>
                 </div>
                 <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef] md:col-span-2">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Áreas temáticas</div>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                        @if (SelectedArticleDetail.SubjectAreas.Any())
+                        {
+                            @foreach (var area in SelectedArticleDetail.SubjectAreas)
+                            {
+                                <span class="rounded-full bg-[#eaf7ee] px-3 py-1 text-xs font-semibold text-emerald-700">@area</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-slate-500">Sin áreas temáticas detectadas.</span>
+                        }
+                    </div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef] md:col-span-2">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Licencia / acceso abierto</div>
+                    <div class="mt-2 space-y-2 text-slate-700">
+                        <div>@GetOpenAccessLabel(SelectedArticleDetail)</div>
+                        @if (!string.IsNullOrWhiteSpace(SelectedArticleDetail.LicenseUrl))
+                        {
+                            <a class="inline-flex text-[#295173] underline break-all" href="@SelectedArticleDetail.LicenseUrl" target="_blank" rel="noopener noreferrer">@SelectedArticleDetail.LicenseUrl</a>
+                        }
+                        else
+                        {
+                            <div class="text-slate-500">Sin licencia visible.</div>
+                        }
+                    </div>
+                </div>
+                <div class="rounded-2xl bg-white px-4 py-3 border border-[#dbe6ef] md:col-span-2">
                     <div class="text-xs uppercase tracking-wide text-slate-500">Resumen</div>
                     <div class="mt-1 whitespace-pre-wrap text-slate-700">@(!string.IsNullOrWhiteSpace(SelectedArticleDetail.ArticleAbstract) ? SelectedArticleDetail.ArticleAbstract : "Sin resumen disponible.")</div>
                 </div>
@@ -118,26 +222,26 @@
     else
     {
         <div class="grid grid-cols-1 gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-            <section class="space-y-6">
-                <div class="rounded-[1.6rem] border border-[#dbe6ef] bg-white p-4 shadow-sm">
-                    <div class="mb-4 flex items-center justify-between gap-3">
-                        <h2 class="text-base font-black text-[#102642] md:text-lg">Proveedores</h2>
-                        <span class="rounded-full bg-[#eef5fb] px-3 py-1 text-xs font-semibold text-[#295173]">@Providers.Count</span>
+            <section class="space-y-4">
+                <div class="rounded-[1.35rem] border border-[#dbe6ef] bg-white p-3.5 shadow-sm">
+                    <div class="mb-3 flex items-center justify-between gap-3">
+                        <h2 class="text-sm font-black text-[#102642] md:text-base">Proveedores</h2>
+                        <span class="rounded-full bg-[#eef5fb] px-2.5 py-1 text-[11px] font-semibold text-[#295173]">@Providers.Count</span>
                     </div>
 
                     <div class="app-chip-row">
                         @foreach (var provider in Providers)
                         {
-                            <button class="rounded-full border px-4 py-2 text-sm font-semibold transition @(SelectedProvider?.ProviderKey == provider.ProviderKey ? "border-[#7caed9] bg-[#eef6ff] text-[#102642] shadow-sm" : "border-[#dbe6ef] bg-white text-slate-600 hover:border-[#c2d7ea]")" @onclick="() => SelectProvider(provider)">
+                            <button class="rounded-full border px-3 py-1.5 text-xs font-semibold transition @(SelectedProvider?.ProviderKey == provider.ProviderKey ? "border-[#7caed9] bg-[#eef6ff] text-[#102642] shadow-sm" : "border-[#dbe6ef] bg-white text-slate-600 hover:border-[#c2d7ea]")" @onclick="() => SelectProvider(provider)">
                                 @provider.DisplayName
                             </button>
                         }
                     </div>
                 </div>
 
-                <div class="rounded-[1.6rem] border border-[#dbe6ef] bg-white p-4 shadow-sm">
-                    <div class="mb-4">
-                        <h2 class="text-base font-black text-[#102642] md:text-lg">Consulta de prueba</h2>
+                <div class="rounded-[1.35rem] border border-[#dbe6ef] bg-white p-3.5 shadow-sm">
+                    <div class="mb-3">
+                        <h2 class="text-sm font-black text-[#102642] md:text-base">Consulta de prueba</h2>
                     </div>
 
                     @if (SelectedProvider is null)
@@ -147,14 +251,13 @@
                     else
                     {
                         <div class="space-y-4">
-                            <div class="flex flex-wrap items-center gap-2 text-xs">
-                                <span class="rounded-full px-3 py-1 font-semibold @(SelectedProvider.RequiresApiKey ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700")">@(SelectedProvider.RequiresApiKey ? "Requiere llave" : "Abierta")</span>
-                                <span class="rounded-full px-3 py-1 font-semibold @(SelectedProvider.IsConfigured || !SelectedProvider.RequiresApiKey ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600")">@(SelectedProvider.IsConfigured || !SelectedProvider.RequiresApiKey ? "Lista" : "Sin configurar")</span>
-                                <span class="rounded-full bg-[#f5f9fc] px-3 py-1 font-semibold text-slate-600">@SelectedProvider.BaseUrl</span>
+                            <div class="flex flex-wrap items-center gap-2 text-[11px]">
+                                <span class="rounded-full px-2.5 py-1 font-semibold @(SelectedProvider.RequiresApiKey ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700")">@(SelectedProvider.RequiresApiKey ? "Requiere llave" : "Abierta")</span>
+                                <span class="rounded-full px-2.5 py-1 font-semibold @(SelectedProvider.IsConfigured || !SelectedProvider.RequiresApiKey ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600")">@(SelectedProvider.IsConfigured || !SelectedProvider.RequiresApiKey ? "Lista" : "Sin configurar")</span>
                             </div>
-                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                                 <div>
-                                    <label class="mb-2 block text-sm font-semibold text-[#102642]">Modo</label>
+                                    <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Modo</label>
                                     <select class="w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2 text-sm" @bind="QueryMode">
                                         <option value="general">Texto libre</option>
                                         <option value="doi">DOI exacto</option>
@@ -166,7 +269,7 @@
                                     </select>
                                 </div>
                                 <div>
-                                    <label class="mb-2 block text-sm font-semibold text-[#102642]">Resultados máximos</label>
+                                    <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Resultados máximos</label>
                                     <select class="w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2 text-sm" @bind="MaxResults">
                                         <option value="5">5</option>
                                         <option value="10">10</option>
@@ -178,15 +281,15 @@
 
                             @if (QueryMode is "author" or "author-coauthor")
                             {
-                                <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                                     <div>
-                                        <label class="mb-2 block text-sm font-semibold text-[#102642]">Autor principal</label>
+                                        <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Autor principal</label>
                                         <input class="w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2 text-sm" @bind="PrimaryAuthor" placeholder="Ej. Juan Perez" />
                                     </div>
                                     @if (QueryMode == "author-coauthor")
                                     {
                                         <div>
-                                            <label class="mb-2 block text-sm font-semibold text-[#102642]">Coautor</label>
+                                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Coautor</label>
                                             <input class="w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2 text-sm" @bind="CoAuthor" placeholder="Ej. Maria Garcia" />
                                         </div>
                                     }
@@ -195,10 +298,14 @@
                             else
                             {
                                 <div>
-                                    <label class="mb-2 block text-sm font-semibold text-[#102642]">Consulta</label>
-                                    <textarea class="min-h-[5.5rem] w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2.5 text-sm" @bind="QueryText" placeholder="@SelectedProvider.SearchHint"></textarea>
+                                    <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Consulta</label>
+                                    <textarea class="min-h-[4.5rem] w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2.5 text-sm" @bind="QueryText" placeholder="@SelectedProvider.SearchHint"></textarea>
                                 </div>
                             }
+
+                            <div class="rounded-2xl border border-dashed border-[#dbe6ef] bg-[#f9fbfd] px-3 py-2 text-[11px] text-slate-500">
+                                Endpoint activo: @SelectedProvider.BaseUrl
+                            </div>
 
                             <div class="app-mobile-stack">
                                 <button class="rounded-xl bg-[#102642] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60" disabled="@IsRunningQuery" @onclick="RunQueryAsync">@(IsRunningQuery ? "Consultando..." : "Probar proveedor")</button>
@@ -212,7 +319,10 @@
             <section class="space-y-6">
                 <div class="rounded-[1.6rem] border border-[#dbe6ef] bg-white p-4 shadow-sm">
                     <div class="mb-4 flex items-center justify-between gap-3">
-                        <h2 class="text-base font-black text-[#102642] md:text-lg">Resultado</h2>
+                        <div>
+                            <h2 class="text-base font-black text-[#102642] md:text-lg">Resultados externos</h2>
+                            <p class="mt-1 text-xs text-slate-500">Aquí puedes revisar, seleccionar y preparar artículos para staging.</p>
+                        </div>
                         @if (LastResult is not null)
                         {
                             <span class="rounded-full px-3 py-1 text-xs font-semibold @(LastResult.Success ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700")">@(LastResult.Success ? "Respuesta útil" : "Con observaciones")</span>
@@ -237,35 +347,131 @@
                             <div class="mt-2 overflow-x-auto font-mono text-xs text-slate-700">@LastResult.FinalRequestUrl</div>
                         </div>
 
-                        <div class="app-table-wrap rounded-3xl border border-[#dbe6ef]">
-                            <table class="app-table-compact min-w-full divide-y divide-[#e6eef4] text-sm">
+                        <div class="mb-4 rounded-3xl border border-[#dbe6ef] bg-[#f9fbfd] p-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <div class="text-sm font-bold text-[#102642]">Selección para staging</div>
+                                    <div class="text-xs text-slate-500">@SelectedExternalArticles.Count artículo(s) en cola</div>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] disabled:opacity-50" disabled="@(!SelectedExternalArticles.Any())" @onclick="ClearSelectedArticles">Limpiar selección</button>
+                                    <button class="rounded-xl bg-[#102642] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50" disabled="@(!SelectedExternalArticles.Any() || IsSendingSelectionToStaging)" @onclick="SendSelectedToStagingAsync">
+                                        @(IsSendingSelectionToStaging ? "Enviando selección..." : "Enviar selección a staging")
+                                    </button>
+                                </div>
+                            </div>
+                            @if (SelectedExternalArticles.Any())
+                            {
+                                <div class="mt-3 flex max-h-[7.5rem] flex-wrap gap-2 overflow-y-auto pr-1">
+                                    @foreach (var selected in SelectedExternalArticles.Values)
+                                    {
+                                        <span class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#295173] shadow-sm">
+                                            <span class="max-w-[16rem] truncate">@selected.Article.Title</span>
+                                            <button class="text-rose-600" @onclick="() => RemoveSelectedArticle(selected.Key)">×</button>
+                                        </span>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                            <div class="text-xs text-slate-500">
+                                Mostrando <span class="font-semibold text-[#102642]">@CurrentResults.Count</span> de <span class="font-semibold text-[#102642]">@LastResult.Articles.Count</span> resultados
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <label class="text-xs font-semibold text-slate-500">Por página</label>
+                                <select class="rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2 text-xs" @bind="ResultsPageSize" @bind:after="ResetResultsPageAsync">
+                                    <option value="5">5</option>
+                                    <option value="10">10</option>
+                                    <option value="15">15</option>
+                                    <option value="20">20</option>
+                                </select>
+                                <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] disabled:opacity-50" disabled="@(ResultsPage <= 1)" @onclick="PreviousResultsPage">Anterior</button>
+                                <span class="text-xs font-semibold text-slate-600">Página @ResultsPage de @TotalResultsPages</span>
+                                <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] disabled:opacity-50" disabled="@(ResultsPage >= TotalResultsPages)" @onclick="NextResultsPage">Siguiente</button>
+                            </div>
+                        </div>
+
+                        <div class="app-table-wrap max-h-[38rem] overflow-auto rounded-3xl border border-[#dbe6ef]">
+                            <table class="app-table-compact min-w-[1050px] divide-y divide-[#e6eef4] text-sm">
                                 <thead class="bg-[#f5f9fc]">
                                     <tr>
+                                        <th class="px-4 py-3 text-left font-semibold text-[#102642]">Selección</th>
                                         <th class="px-4 py-3 text-left font-semibold text-[#102642]">Título</th>
                                         <th class="px-4 py-3 text-left font-semibold text-[#102642]">DOI</th>
                                         <th class="px-4 py-3 text-left font-semibold text-[#102642]">Revista</th>
                                         <th class="px-4 py-3 text-left font-semibold text-[#102642]">Año</th>
                                         <th class="px-4 py-3 text-left font-semibold text-[#102642]">Autores</th>
+                                        <th class="px-4 py-3 text-left font-semibold text-[#102642]">Metadatos</th>
                                         <th class="px-4 py-3 text-left font-semibold text-[#102642]">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-[#eef3f6] bg-white">
-                                    @if (!LastResult.Articles.Any())
+                                    @if (!CurrentResults.Any())
                                     {
                                         <tr>
-                                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">La consulta respondió, pero no encontré artículos mapeables en esta primera lectura.</td>
+                                            <td colspan="8" class="px-4 py-8 text-center text-slate-500">La consulta respondió, pero no encontré artículos mapeables en esta primera lectura.</td>
                                         </tr>
                                     }
                                     else
                                     {
-                                        @foreach (var article in LastResult.Articles)
+                                        @foreach (var article in CurrentResults)
                                         {
                                             <tr class="align-top">
-                                                <td class="px-4 py-3 font-semibold text-[#102642]">@article.Title</td>
-                                                <td class="px-4 py-3 text-slate-600">@article.Doi</td>
+                                                <td class="px-4 py-3">
+                                                    <input type="checkbox" checked="@IsArticleSelected(article)" @onchange="e => ToggleArticleSelection(article, e.Value)" />
+                                                </td>
+                                                <td class="px-4 py-3">
+                                                    <div class="font-semibold text-[#102642]">@article.Title</div>
+                                                    @if (!string.IsNullOrWhiteSpace(article.DocumentType))
+                                                    {
+                                                        <div class="mt-1 text-xs text-slate-500">@article.DocumentType</div>
+                                                    }
+                                                </td>
+                                                <td class="px-4 py-3 text-slate-600 break-all">@(!string.IsNullOrWhiteSpace(article.Doi) ? article.Doi : "Sin DOI")</td>
                                                 <td class="px-4 py-3 text-slate-600">@article.JournalName</td>
                                                 <td class="px-4 py-3 text-slate-600">@article.PublicationYear</td>
                                                 <td class="px-4 py-3 text-slate-600">@article.Authors</td>
+                                                <td class="px-4 py-3">
+                                                    <div class="flex flex-wrap gap-2 text-[11px]">
+                                                        @if (!string.IsNullOrWhiteSpace(article.IssnCode))
+                                                        {
+                                                            <span class="rounded-full bg-[#eef6ff] px-2 py-1 font-semibold text-[#295173]">ISSN: @article.IssnCode</span>
+                                                        }
+                                                        @if (!string.IsNullOrWhiteSpace(article.EIssnCode))
+                                                        {
+                                                            <span class="rounded-full bg-[#eef6ff] px-2 py-1 font-semibold text-[#295173]">E-ISSN: @article.EIssnCode</span>
+                                                        }
+                                                        @if (!string.IsNullOrWhiteSpace(article.Publisher))
+                                                        {
+                                                            <span class="rounded-full bg-[#fff4e4] px-2 py-1 font-semibold text-[#8b5a16]">@article.Publisher</span>
+                                                        }
+                                                        @if (!string.IsNullOrWhiteSpace(article.Volume) || !string.IsNullOrWhiteSpace(article.Issue))
+                                                        {
+                                                            <span class="rounded-full bg-slate-100 px-2 py-1 font-semibold text-slate-600">Vol. @article.Volume / N.º @article.Issue</span>
+                                                        }
+                                                        @if (article.CitationCount.HasValue)
+                                                        {
+                                                            <span class="rounded-full bg-[#f3ecff] px-2 py-1 font-semibold text-[#6e46a1]">@article.CitationCount cita(s)</span>
+                                                        }
+                                                        @if (!string.IsNullOrWhiteSpace(article.PublicationDate))
+                                                        {
+                                                            <span class="rounded-full bg-[#f5f9fc] px-2 py-1 font-semibold text-slate-600">@article.PublicationDate</span>
+                                                        }
+                                                        @if (!string.IsNullOrWhiteSpace(article.Language))
+                                                        {
+                                                            <span class="rounded-full bg-[#f5f9fc] px-2 py-1 font-semibold text-slate-600">@article.Language</span>
+                                                        }
+                                                        @if (article.IsOpenAccess.HasValue)
+                                                        {
+                                                            <span class="rounded-full px-2 py-1 font-semibold @(article.IsOpenAccess == true ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600")">@GetOpenAccessLabel(article)</span>
+                                                        }
+                                                        @if (article.SubjectAreas.Any())
+                                                        {
+                                                            <span class="rounded-full bg-[#eaf7ee] px-2 py-1 font-semibold text-emerald-700">@article.SubjectAreas.Count área(s)</span>
+                                                        }
+                                                    </div>
+                                                </td>
                                                 <td class="px-4 py-3">
                                                     <div class="flex flex-wrap gap-2">
                                                         <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] hover:bg-[#eef6ff]" @onclick="() => OpenArticleDetail(article)">Ver detalle</button>
@@ -298,6 +504,14 @@
 </div>
 
 @code {
+    private sealed class SelectedExternalArticleItem
+    {
+        public string Key { get; set; } = string.Empty;
+        public string ProviderKey { get; set; } = string.Empty;
+        public string ProviderName { get; set; } = string.Empty;
+        public ExternalArticlePreviewDto Article { get; set; } = new();
+    }
+
     private List<ExternalApiProviderDto> Providers = new();
     private ExternalApiProviderDto? SelectedProvider;
     private ExternalApiQueryResultDto? LastResult;
@@ -309,9 +523,40 @@
     private bool IsLoading = true;
     private bool IsRunningQuery;
     private bool IsSendingToStaging;
+    private bool IsSendingSelectionToStaging;
     private string? ErrorMessage;
     private string? SuccessMessage;
     private ExternalArticlePreviewDto? SelectedArticleDetail;
+    private Dictionary<string, SelectedExternalArticleItem> SelectedExternalArticles { get; set; } = new();
+    private int ResultsPage { get; set; } = 1;
+    private int ResultsPageSize { get; set; } = 10;
+
+    private List<ExternalArticlePreviewDto> CurrentResults =>
+        LastResult?.Articles
+            .Skip((ResultsPage - 1) * ResultsPageSize)
+            .Take(ResultsPageSize)
+            .ToList()
+        ?? new List<ExternalArticlePreviewDto>();
+
+    private int TotalResultsPages =>
+        LastResult is null || LastResult.Articles.Count == 0
+            ? 1
+            : (int)Math.Ceiling(LastResult.Articles.Count / (double)ResultsPageSize);
+
+    private static string GetOpenAccessLabel(ExternalArticlePreviewDto article)
+    {
+        if (!string.IsNullOrWhiteSpace(article.OpenAccessStatus))
+        {
+            return article.OpenAccessStatus;
+        }
+
+        return article.IsOpenAccess switch
+        {
+            true => "Open access",
+            false => "Acceso restringido",
+            null => "Sin dato"
+        };
+    }
 
     private string GetFormattedJsonPreview()
     {
@@ -381,10 +626,18 @@
 
     private void SelectProvider(ExternalApiProviderDto provider)
     {
+        var previousProviderKey = SelectedProvider?.ProviderKey;
         SelectedProvider = provider;
         ErrorMessage = null;
         SuccessMessage = null;
         LastResult = null;
+        ResultsPage = 1;
+
+        if (!string.Equals(previousProviderKey, provider.ProviderKey, StringComparison.OrdinalIgnoreCase))
+        {
+            SelectedExternalArticles.Clear();
+        }
+
         UseQuerySample();
     }
 
@@ -440,6 +693,7 @@
                 CoAuthor = CoAuthor,
                 MaxResults = MaxResults
             });
+            ResultsPage = 1;
 
             if (LastResult is not null)
             {
@@ -492,6 +746,121 @@
         NavManager.NavigateTo("/articulos/registrar");
     }
 
+    private string GetArticleSelectionKey(ExternalArticlePreviewDto article)
+    {
+        var baseId = !string.IsNullOrWhiteSpace(article.ExternalId)
+            ? article.ExternalId
+            : !string.IsNullOrWhiteSpace(article.Doi)
+                ? article.Doi
+                : $"{article.Title}|{article.PublicationYear}|{article.JournalName}";
+
+        var providerKey = SelectedProvider?.ProviderKey ?? LastResult?.ProviderKey ?? "unknown";
+        return $"{providerKey}::{baseId}";
+    }
+
+    private bool IsArticleSelected(ExternalArticlePreviewDto article)
+        => SelectedExternalArticles.ContainsKey(GetArticleSelectionKey(article));
+
+    private void ToggleArticleSelection(ExternalArticlePreviewDto article, object? value)
+    {
+        var isChecked = value is bool boolValue && boolValue;
+        var key = GetArticleSelectionKey(article);
+
+        if (isChecked)
+        {
+            SelectedExternalArticles[key] = new SelectedExternalArticleItem
+            {
+                Key = key,
+                ProviderKey = SelectedProvider?.ProviderKey ?? LastResult?.ProviderKey ?? string.Empty,
+                ProviderName = SelectedProvider?.DisplayName ?? LastResult?.ProviderName ?? string.Empty,
+                Article = article
+            };
+        }
+        else
+        {
+            SelectedExternalArticles.Remove(key);
+        }
+    }
+
+    private void RemoveSelectedArticle(string key)
+    {
+        SelectedExternalArticles.Remove(key);
+    }
+
+    private void ClearSelectedArticles()
+    {
+        SelectedExternalArticles.Clear();
+    }
+
+    private async Task SendSelectedToStagingAsync()
+    {
+        if (!SelectedExternalArticles.Any())
+        {
+            ErrorMessage = "Selecciona al menos un artículo antes de enviarlo a staging.";
+            return;
+        }
+
+        try
+        {
+            IsSendingSelectionToStaging = true;
+            ErrorMessage = null;
+            SuccessMessage = null;
+
+            var selectedItems = SelectedExternalArticles.Values.ToList();
+            if (selectedItems.Select(x => x.ProviderKey).Distinct(StringComparer.OrdinalIgnoreCase).Count() > 1)
+            {
+                throw new InvalidOperationException("La selección incluye artículos de distintos proveedores. Envía cada proveedor en un lote separado.");
+            }
+
+            var providerKey = selectedItems.First().ProviderKey;
+            var providerName = selectedItems.First().ProviderName;
+
+            var stagingArticles = new List<ExternalArticlePreviewDto>();
+            foreach (var selected in selectedItems)
+            {
+                var stagingArticle = selected.Article;
+                try
+                {
+                    var enriched = await ExternalApiExplorerClient.EnrichArticleAsync(selected.ProviderKey, selected.Article);
+                    if (enriched is not null)
+                    {
+                        stagingArticle = enriched;
+                    }
+                }
+                catch
+                {
+                    stagingArticle = selected.Article;
+                }
+
+                stagingArticles.Add(stagingArticle);
+            }
+
+            var result = await BulkImportClient.CreateBatchFromExternalArticlesAsync(new ExternalArticlesImportRequest
+            {
+                ProviderKey = providerKey,
+                ProviderName = providerName,
+                Notes = "Lote externo creado desde la selección múltiple del explorador.",
+                ValidateAfterCreate = true,
+                Articles = stagingArticles
+            });
+
+            if (result?.Batch?.Summary?.ImportBatchId > 0)
+            {
+                SuccessMessage = $"Se enviaron {stagingArticles.Count} artículo(s) a staging en el lote {result.Batch.Summary.BatchCode}.";
+                SelectedExternalArticles.Clear();
+                NavManager.NavigateTo($"/management/exportinformation?batchId={result.Batch.Summary.ImportBatchId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"No fue posible enviar la selección a staging: {ex.Message}";
+        }
+        finally
+        {
+            IsSendingSelectionToStaging = false;
+        }
+    }
+
     private async Task SendToStagingAsync(ExternalArticlePreviewDto article)
     {
         if (LastResult is null)
@@ -538,6 +907,28 @@
         finally
         {
             IsSendingToStaging = false;
+        }
+    }
+
+    private Task ResetResultsPageAsync()
+    {
+        ResultsPage = 1;
+        return Task.CompletedTask;
+    }
+
+    private void PreviousResultsPage()
+    {
+        if (ResultsPage > 1)
+        {
+            ResultsPage--;
+        }
+    }
+
+    private void NextResultsPage()
+    {
+        if (ResultsPage < TotalResultsPages)
+        {
+            ResultsPage++;
         }
     }
 

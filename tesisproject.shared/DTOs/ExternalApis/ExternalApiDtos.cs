@@ -39,9 +39,17 @@ namespace tesisproject.shared.DTOs.ExternalApis
         public string? DocumentType { get; set; }
         public string? ArticleAbstract { get; set; }
         public int? PublicationYear { get; set; }
+        public string? PublicationDate { get; set; }
+        public string? Language { get; set; }
         public string? Authors { get; set; }
         public List<string> AuthorNames { get; set; } = new();
+        public List<string> AuthorAffiliations { get; set; } = new();
         public List<string> Keywords { get; set; } = new();
+        public List<string> SubjectAreas { get; set; } = new();
+        public int? CitationCount { get; set; }
+        public bool? IsOpenAccess { get; set; }
+        public string? OpenAccessStatus { get; set; }
+        public string? LicenseUrl { get; set; }
         public string? SourceUrl { get; set; }
         public string? ExternalId { get; set; }
         public string? ExternalSource { get; set; }

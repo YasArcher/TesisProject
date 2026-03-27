@@ -10,6 +10,7 @@ namespace tesisproject.frontend.Services.Interfaces
         Task<BulkImportBatchDetailDto?> UploadAsync(IBrowserFile file, string sourceType, string? notes, CancellationToken ct = default);
         Task<BulkImportBatchDetailDto?> GetBatchAsync(int batchId, int previewRows = 25, CancellationToken ct = default);
         Task<BulkImportActionResultDto?> CreateBatchFromExternalArticleAsync(ExternalArticleImportRequest request, CancellationToken ct = default);
+        Task<BulkImportActionResultDto?> CreateBatchFromExternalArticlesAsync(ExternalArticlesImportRequest request, CancellationToken ct = default);
         Task<BulkImportActionResultDto?> CorrectRowAsync(int batchId, int rowId, BulkImportRowCorrectionRequest request, CancellationToken ct = default);
         Task<BulkImportActionResultDto?> ValidateBatchAsync(int batchId, CancellationToken ct = default);
         Task<BulkImportActionResultDto?> ProcessBatchAsync(int batchId, CancellationToken ct = default);

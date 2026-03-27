@@ -32,138 +32,31 @@
 
     <!-- Nav -->
     <nav class="sidebar-nav flex-grow-1 px-2 py-3">
-
-        <!-- ===== Dashboard Principal ===== -->
-        <div class="sidebar-section text-uppercase fw-semibold text-white-50 px-2 mb-2">
-            Dashboard Principal
-        </div>
-        <ul class="nav flex-column gap-1 mb-3">
-            <li class="nav-item">
-                <NavLink href="/panel/principal"
-                         Match="NavLinkMatch.Prefix"
-                         class="nav-link d-flex align-items-center gap-2 px-3 py-2 text-white-90"
-                         ActiveClass="active">
-                    <span class="icon">📊</span>
-                    <span class="label">Panel Principal</span>
-                </NavLink>
-            </li>
-        </ul>
-
-        <!-- ===== Registro y Catálogo ===== -->
-        <div class="sidebar-section text-uppercase fw-semibold text-white-50 px-2 mt-2 mb-2">
-            Registro y Catálogo
-        </div>
-        <div class="accordion-group @(GroupClass(_openRegistrar))">
+        <div class="accordion-group @(GroupClass(_openModules))">
             <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-90"
-                    @onclick="() => ToggleSection(nameof(_openRegistrar))">
+                    @onclick="() => ToggleSection(nameof(_openModules))">
                 <span class="icon">🗂️</span>
-                <span class="label">Gestión de artículos</span>
+                <span class="label">Gestión académica</span>
                 <span class="caret">▾</span>
             </button>
 
             <div class="accordion-panel">
                 <ul class="nav flex-column ms-4 my-2 gap-1">
-                    <li class="nav-item">
-                        <NavLink href="/articulos/registrar"
-                                 Match="NavLinkMatch.Prefix"
-                                 class="nav-link px-3 py-2 text-white-85" ActiveClass="active">
-                            Registrar Nuevo Artículo
-                        </NavLink>
-                    </li>
-                    <li class="nav-item">
-                        <NavLink href="/articulos/listado"
-                                 class="nav-link px-3 py-2 text-white-85" ActiveClass="active">
-                            Listado Completo de Artículos
-                        </NavLink>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- ===== Inteligencia Artificial ===== -->
-        <div class="sidebar-section text-uppercase fw-semibold text-white-50 px-2 mt-3 mb-2">
-            Inteligencia Artificial
-        </div>
-        <div class="accordion-group @(GroupClass(_openIA))">
-            <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-90"
-                    @onclick="() => ToggleSection(nameof(_openIA))">
-                <span class="icon">🤖</span>
-                <span class="label">IA y Analítica</span>
-                <span class="caret">▾</span>
-            </button>
-
-            <div class="accordion-panel">
-                <ul class="nav flex-column ms-4 my-2 gap-1">
-                    <li class="nav-item">
-                        <NavLink href="/ia" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">
-                            Recomendación y Predicción 
-                        </NavLink>
-                    </li>
-                    <li class="nav-item">
-                        <NavLink href="/ai/datanalysis" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">
-                            Análisis de modelo
-                        </NavLink>
-                    </li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- ===== Reportes y Datos ===== -->
-        <div class="sidebar-section text-uppercase fw-semibold text-white-50 px-2 mt-3 mb-2">
-            Reportes y Datos
-        </div>
-        <div class="accordion-group @(GroupClass(_openReportes))">
-            <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-90"
-                    @onclick="() => ToggleSection(nameof(_openReportes))">
-                <span class="icon">📑</span>
-                <span class="label">Reportería</span>
-                <span class="caret">▾</span>
-            </button>
-
-            <div class="accordion-panel">
-                <ul class="nav flex-column ms-4 my-2 gap-1">
-                    <li class="nav-item"><NavLink href="/management/statisticalreports" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Reporteria</NavLink></li>
-                    <li class="nav-item"><NavLink href="/management/exportinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Carga Masiva Dinámica</NavLink></li>
-                    <li class="nav-item"><NavLink href="/management/backupsinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Copias de Seguridad</NavLink></li>
-                </ul>
-            </div>
-        </div>
-
-        <!-- ===== Ayuda y Configuración ===== -->
-        <div class="sidebar-section text-uppercase fw-semibold text-white-50 px-2 mt-3 mb-2">
-            Ayuda y Configuración
-        </div>
-        <div class="accordion-group @(GroupClass(_openAyuda))">
-            <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-90"
-                    @onclick="() => ToggleSection(nameof(_openAyuda))">
-                <span class="icon">⚙️</span>
-                <span class="label">Soporte & Preferencias</span>
-                <span class="caret">▾</span>
-            </button>
-
-            <div class="accordion-panel">
-                <ul class="nav flex-column ms-4 my-2 gap-1">
-                    <li class="nav-item"><NavLink href="/management/externalapis" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Explorador de APIs externas</NavLink></li>
-                    <li class="nav-item"><NavLink href="/test-api" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Centro de Ayuda</NavLink></li>
-                    <li class="nav-item"><NavLink href="/help/manual" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Manual de Usuario</NavLink></li>
+                    <li class="nav-item"><NavLink href="/panel/principal" Match="NavLinkMatch.Prefix" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Panel principal</NavLink></li>
+                    <li class="nav-item"><NavLink href="/articulos/registrar" Match="NavLinkMatch.Prefix" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Registrar artículo</NavLink></li>
                     <li class="nav-item"><NavLink href="/configuration" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Configuración</NavLink></li>
+                    <li class="nav-item"><NavLink href="/articulos/listado" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Listado de artículos</NavLink></li>
+                    <li class="nav-item"><NavLink href="/management/exportinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Carga masiva</NavLink></li>
+                    <li class="nav-item"><NavLink href="/management/statisticalreports" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Reportería</NavLink></li>
+                    <li class="nav-item"><NavLink href="/management/externalapis" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">APIs externas</NavLink></li>
+                    <li class="nav-item"><NavLink href="/management/backupsinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Copias de seguridad</NavLink></li>
+                    <li class="nav-item"><NavLink href="/test-api" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Centro de ayuda</NavLink></li>
+                    <li class="nav-item"><NavLink href="/help/manual" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Manual de usuario</NavLink></li>
+                    <li class="nav-item"><NavLink href="/perfilview" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Perfil</NavLink></li>
+                    <li class="nav-item"><NavLink href="/ia" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Inteligencia artificial</NavLink></li>
                 </ul>
             </div>
         </div>
-
-        <!-- ===== Perfil ===== -->
-        <div class="sidebar-section text-uppercase fw-semibold text-white-50 px-2 mt-3 mb-2">
-            Perfil
-        </div>
-        <ul class="nav flex-column gap-1">
-            <li class="nav-item">
-                <NavLink href="/perfilview"
-                         class="nav-link d-flex align-items-center gap-2 px-3 py-2 text-white-90" ActiveClass="active">
-                    <span class="icon">👤</span>
-                    <span class="label">Datos de Usuario / Rol</span>
-                </NavLink>
-            </li>
-        </ul>
     </nav>
 
     <!-- Footer -->
@@ -177,10 +70,7 @@
 
     private bool _collapsed = false;
 
-    private bool _openRegistrar = true;
-    private bool _openIA = false;
-    private bool _openReportes = false;
-    private bool _openAyuda = false;
+    private bool _openModules = true;
 
     private async Task Toggle()
     {
@@ -193,10 +83,7 @@
         if (_collapsed) return;
         switch (key)
         {
-            case nameof(_openRegistrar): _openRegistrar = !_openRegistrar; break;
-            case nameof(_openIA): _openIA = !_openIA; break;
-            case nameof(_openReportes): _openReportes = !_openReportes; break;
-            case nameof(_openAyuda): _openAyuda = !_openAyuda; break;
+            case nameof(_openModules): _openModules = !_openModules; break;
         }
         StateHasChanged();
     }

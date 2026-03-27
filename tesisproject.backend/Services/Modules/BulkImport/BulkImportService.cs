@@ -134,7 +134,7 @@ namespace tesisproject.backend.Services.Implementations
             var templateDescriptor = BuildTemplateFromHeaders(parsed.Headers);
             var batch = new ImportBatch
             {
-                BatchCode = $"BATCH-UI-{DateTime.UtcNow:yyyyMMddHHmmss}",
+                BatchCode = GenerateBatchCode("BATCH-UI"),
                 SourceType = string.IsNullOrWhiteSpace(sourceType) ? "Excel" : sourceType.Trim(),
                 EntityName = "Article",
                 FileName = fileName,
@@ -316,19 +316,15 @@ namespace tesisproject.backend.Services.Implementations
 
             var batch = new ImportBatch
             {
-                BatchCode = $"BATCH-EXT-{DateTime.UtcNow:yyyyMMddHHmmss}",
+                BatchCode = GenerateBatchCode("BATCH-EXT"),
                 SourceType = "ExternalApi",
                 EntityName = "Article",
                 FileName = $"{(request.ProviderKey ?? "external").Trim()}-single-article",
-                SourceReference = JsonSerializer.Serialize(new
-                {
-                    Origin = "external-api-explorer",
+                SourceReference = BuildExternalSourceReference(
                     request.ProviderKey,
                     request.ProviderName,
-                    ArticleTitle = request.Article.Title,
-                    request.Article.Doi,
-                    request.Article.ExternalId
-                }),
+                    1,
+                    new[] { request.Article }),
                 TotalRows = 1,
                 SuccessfulRows = 0,
                 ErrorRows = 0,
@@ -340,15 +336,101 @@ namespace tesisproject.backend.Services.Implementations
 
             _db.ImportBatches.Add(batch);
             await _db.SaveChangesAsync(ct);
+            await AddExternalArticleRowAsync(batch.ImportBatchId, 1, request.ProviderName, request.Article, allFields, normalizer, now, ct);
 
-            var authorNames = request.Article.AuthorNames
+            if (request.ValidateAfterCreate)
+            {
+                var validated = await ValidateBatchAsync(batch.ImportBatchId, ct);
+                validated.Message = $"Se creó un lote externo desde {request.ProviderName}. {validated.Message}";
+                return validated;
+            }
+
+            return new BulkImportActionResultDto
+            {
+                Message = $"Se creó un lote externo desde {request.ProviderName}.",
+                Batch = await GetBatchAsync(batch.ImportBatchId, 25, ct) ?? new BulkImportBatchDetailDto()
+            };
+        }
+
+        public async Task<BulkImportActionResultDto> CreateBatchFromExternalArticlesAsync(ExternalArticlesImportRequest request, string? userId, CancellationToken ct = default)
+        {
+            var validArticles = (request.Articles ?? new List<ExternalArticlePreviewDto>())
+                .Where(x => x is not null && !string.IsNullOrWhiteSpace(x.Title))
+                .ToList();
+
+            if (validArticles.Count == 0)
+            {
+                throw new InvalidOperationException("Debes enviar al menos un artículo externo válido para crear el lote.");
+            }
+
+            await ArticleVenueModelHelper.EnsureVenueCompositeFieldsAsync(_db, ct);
+
+            var articleFields = await ResolveTemplateFieldsAsync("Article", new List<int>(), true, ct);
+            var participantFields = await ResolveTemplateFieldsAsync("ArticleParticipant", new List<int>(), true, ct);
+            var allFields = articleFields.Concat(participantFields).ToDictionary(x => x.FieldKey, StringComparer.OrdinalIgnoreCase);
+            var normalizer = await BulkImportNormalizerCache.CreateAsync(_db, ct);
+            var now = DateTime.UtcNow;
+
+            var batch = new ImportBatch
+            {
+                BatchCode = GenerateBatchCode("BATCH-EXT"),
+                SourceType = "ExternalApi",
+                EntityName = "Article",
+                FileName = $"{(request.ProviderKey ?? "external").Trim()}-multi-article",
+                SourceReference = BuildExternalSourceReference(
+                    request.ProviderKey,
+                    request.ProviderName,
+                    validArticles.Count,
+                    validArticles),
+                TotalRows = validArticles.Count,
+                SuccessfulRows = 0,
+                ErrorRows = 0,
+                Status = "Pending",
+                StartedAt = now,
+                CreatedBy = string.IsNullOrWhiteSpace(userId) ? "system" : userId,
+                Notes = request.Notes
+            };
+
+            _db.ImportBatches.Add(batch);
+            await _db.SaveChangesAsync(ct);
+
+            for (var index = 0; index < validArticles.Count; index++)
+            {
+                await AddExternalArticleRowAsync(batch.ImportBatchId, index + 1, request.ProviderName, validArticles[index], allFields, normalizer, now, ct);
+            }
+
+            if (request.ValidateAfterCreate)
+            {
+                var validated = await ValidateBatchAsync(batch.ImportBatchId, ct);
+                validated.Message = $"Se creó un lote externo con {validArticles.Count} artículos desde {request.ProviderName}. {validated.Message}";
+                return validated;
+            }
+
+            return new BulkImportActionResultDto
+            {
+                Message = $"Se creó un lote externo con {validArticles.Count} artículos desde {request.ProviderName}.",
+                Batch = await GetBatchAsync(batch.ImportBatchId, 25, ct) ?? new BulkImportBatchDetailDto()
+            };
+        }
+
+        private async Task AddExternalArticleRowAsync(
+            int batchId,
+            int rowNumber,
+            string providerName,
+            ExternalArticlePreviewDto article,
+            Dictionary<string, FieldCatalogEntry> allFields,
+            BulkImportNormalizerCache normalizer,
+            DateTime createdAt,
+            CancellationToken ct)
+        {
+            var authorNames = article.AuthorNames
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            if (authorNames.Count == 0 && !string.IsNullOrWhiteSpace(request.Article.Authors))
+            if (authorNames.Count == 0 && !string.IsNullOrWhiteSpace(article.Authors))
             {
-                authorNames = request.Article.Authors
+                authorNames = article.Authors
                     .Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                     .Where(x => !string.IsNullOrWhiteSpace(x))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -358,10 +440,10 @@ namespace tesisproject.backend.Services.Implementations
             var primaryAuthor = authorNames.FirstOrDefault() ?? "Autor externo";
             var row = new ImportBatchRow
             {
-                ImportBatchId = batch.ImportBatchId,
-                RowNumber = 1,
+                ImportBatchId = batchId,
+                RowNumber = rowNumber,
                 RowStatus = "Pending",
-                CreatedAt = now
+                CreatedAt = createdAt
             };
 
             _db.ImportBatchRows.Add(row);
@@ -389,21 +471,21 @@ namespace tesisproject.backend.Services.Implementations
                     ValueType = normalized.ValueType,
                     IsValid = normalized.IsValid,
                     ValidationMessage = normalized.ValidationMessage,
-                    CreatedAt = now
+                    CreatedAt = createdAt
                 });
             }
 
-            AddCell("Title", request.Article.Title);
-            AddCell("Doi", request.Article.Doi);
-            AddCell("Year", request.Article.PublicationYear?.ToString(CultureInfo.InvariantCulture));
-            AddCell("PublicationUrl", request.Article.SourceUrl);
-            AddCell("ExternalSource", request.ProviderName);
-            AddCell("ExternalId", request.Article.ExternalId ?? request.Article.ScopusId);
-            AddCell("JournalName", request.Article.JournalName);
-            AddCell("IssnCode", request.Article.IssnCode);
-            AddCell("JournalUrl", request.Article.JournalUrl);
-            AddCell("VolumeNumber", request.Article.Volume);
-            AddCell("IssueNumber", request.Article.Issue);
+            AddCell("Title", article.Title);
+            AddCell("Doi", article.Doi);
+            AddCell("Year", article.PublicationYear?.ToString(CultureInfo.InvariantCulture));
+            AddCell("PublicationUrl", article.SourceUrl);
+            AddCell("ExternalSource", providerName);
+            AddCell("ExternalId", article.ExternalId ?? article.ScopusId);
+            AddCell("JournalName", article.JournalName);
+            AddCell("IssnCode", article.IssnCode);
+            AddCell("JournalUrl", article.JournalUrl);
+            AddCell("VolumeNumber", article.Volume);
+            AddCell("IssueNumber", article.Issue);
 
             AddCell("Index", "1");
             AddCell("Nombre", primaryAuthor);
@@ -417,29 +499,43 @@ namespace tesisproject.backend.Services.Implementations
             {
                 _db.ImportBatchErrors.Add(new ImportBatchError
                 {
-                    ImportBatchId = batch.ImportBatchId,
+                    ImportBatchId = batchId,
                     ImportBatchRowId = row.ImportBatchRowId,
                     ErrorCode = "CLIENT_EXTERNAL_AUTHORS_PENDING",
-                    ErrorMessage = $"El artículo externo trae {authorNames.Count} autores. Por ahora el lote unitario usa el autor principal '{primaryAuthor}' y conserva el resto para revisión manual en registro.",
+                    ErrorMessage = $"El artículo externo trae {authorNames.Count} autores. Por ahora la fila {rowNumber} usa el autor principal '{primaryAuthor}' y conserva el resto para revisión manual en registro.",
                     Severity = "Warning",
-                    CreatedAt = now
+                    CreatedAt = createdAt
                 });
             }
 
             await _db.SaveChangesAsync(ct);
+        }
 
-            if (request.ValidateAfterCreate)
-            {
-                var validated = await ValidateBatchAsync(batch.ImportBatchId, ct);
-                validated.Message = $"Se creó un lote externo desde {request.ProviderName}. {validated.Message}";
-                return validated;
-            }
+        private static string BuildExternalSourceReference(
+            string? providerKey,
+            string? providerName,
+            int articleCount,
+            IEnumerable<ExternalArticlePreviewDto> articles)
+        {
+            var preview = articles
+                .Where(x => x is not null)
+                .Take(3)
+                .Select(x => x.ExternalId ?? x.ScopusId ?? x.Doi ?? x.Title)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x!.Trim())
+                .ToList();
 
-            return new BulkImportActionResultDto
+            var payload = new
             {
-                Message = $"Se creó un lote externo desde {request.ProviderName}.",
-                Batch = await GetBatchAsync(batch.ImportBatchId, 25, ct) ?? new BulkImportBatchDetailDto()
+                Origin = "external-api-explorer",
+                ProviderKey = string.IsNullOrWhiteSpace(providerKey) ? "external" : providerKey.Trim(),
+                ProviderName = string.IsNullOrWhiteSpace(providerName) ? "Proveedor externo" : providerName.Trim(),
+                ArticleCount = articleCount,
+                Preview = preview
             };
+
+            var json = JsonSerializer.Serialize(payload);
+            return json.Length <= 300 ? json : json[..300];
         }
 
         public async Task<BulkImportActionResultDto> CorrectRowAsync(int batchId, int rowId, BulkImportRowCorrectionRequest request, CancellationToken ct = default)
@@ -1390,6 +1486,13 @@ namespace tesisproject.backend.Services.Implementations
                 ValidRows = source.ValidRows,
                 ProcessedRows = source.ProcessedRows
             };
+        }
+
+        private static string GenerateBatchCode(string prefix)
+        {
+            var stamp = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture);
+            var suffix = Guid.NewGuid().ToString("N")[..6].ToUpperInvariant();
+            return $"{prefix}-{stamp}-{suffix}";
         }
 
         private BulkImportTemplateDescriptorDto BuildTemplateFromHeaders(List<string> headers)

@@ -133,4 +133,13 @@ namespace tesisproject.shared.DTOs.Imports
         public bool ValidateAfterCreate { get; set; } = true;
         public ExternalArticlePreviewDto Article { get; set; } = new();
     }
+
+    public class ExternalArticlesImportRequest
+    {
+        public string ProviderKey { get; set; } = string.Empty;
+        public string ProviderName { get; set; } = string.Empty;
+        public string? Notes { get; set; }
+        public bool ValidateAfterCreate { get; set; } = true;
+        public List<ExternalArticlePreviewDto> Articles { get; set; } = new();
+    }
 }

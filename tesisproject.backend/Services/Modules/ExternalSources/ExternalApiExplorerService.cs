@@ -326,8 +326,8 @@ namespace tesisproject.backend.Services.Implementations
                 "crossref" => $"https://api.crossref.org/works?query={encodedQuery}&rows={maxResults}",
                 "openalex" when mode == "doi" => $"https://api.openalex.org/works/https://doi.org/{encodedQuery}",
                 "openalex" => $"https://api.openalex.org/works?search={encodedQuery}&per-page={maxResults}",
-                "semantic-scholar" when mode == "doi" => $"https://api.semanticscholar.org/graph/v1/paper/DOI:{encodedQuery}?fields=title,abstract,year,venue,externalIds,url,authors",
-                "semantic-scholar" => $"https://api.semanticscholar.org/graph/v1/paper/search?query={encodedQuery}&limit={maxResults}&fields=title,abstract,year,venue,externalIds,url,authors",
+                "semantic-scholar" when mode == "doi" => $"https://api.semanticscholar.org/graph/v1/paper/DOI:{encodedQuery}?fields=title,abstract,year,publicationDate,venue,journal,externalIds,url,authors,citationCount,fieldsOfStudy,publicationTypes,openAccessPdf",
+                "semantic-scholar" => $"https://api.semanticscholar.org/graph/v1/paper/search?query={encodedQuery}&limit={maxResults}&fields=title,abstract,year,publicationDate,venue,journal,externalIds,url,authors,citationCount,fieldsOfStudy,publicationTypes,openAccessPdf",
                 _ => throw new InvalidOperationException("Proveedor externo no soportado.")
             };
         }
@@ -393,8 +393,13 @@ namespace tesisproject.backend.Services.Implementations
                     item.TryGetProperty("prism:endingPage", out var endPage) ? endPage.GetString() : null),
                 DocumentType = item.TryGetProperty("subtypeDescription", out var subtype) ? subtype.GetString() : null,
                 PublicationYear = year,
+                PublicationDate = item.TryGetProperty("prism:coverDate", out var publicationDate) ? publicationDate.GetString() : null,
                 Authors = authors,
                 AuthorNames = SplitAuthors(authors),
+                AuthorAffiliations = ExtractScopusSearchAffiliations(item),
+                CitationCount = TryGetIntFromString(item.TryGetProperty("citedby-count", out var citedBy) ? citedBy.GetString() : null),
+                IsOpenAccess = TryGetScopusOpenAccess(item.TryGetProperty("openaccess", out var openAccess) ? openAccess.ToString() : null),
+                OpenAccessStatus = DescribeScopusOpenAccess(item.TryGetProperty("openaccess", out var openAccessStatus) ? openAccessStatus.ToString() : null),
                 SourceUrl = item.TryGetProperty("prism:url", out var url) ? url.GetString() : null,
                 ExternalId = item.TryGetProperty("dc:identifier", out var identifier) ? identifier.GetString() : null,
                 ExternalSource = "Scopus",
@@ -426,12 +431,19 @@ namespace tesisproject.backend.Services.Implementations
                     coredata.ValueKind == JsonValueKind.Object && coredata.TryGetProperty("prism:endingPage", out var endPage) ? endPage.GetString() : null),
                 DocumentType = coredata.ValueKind == JsonValueKind.Object && coredata.TryGetProperty("subtypeDescription", out var subtype) ? subtype.GetString() : null,
                 PublicationYear = TryGetYear(coredata.ValueKind == JsonValueKind.Object && coredata.TryGetProperty("prism:coverDate", out var coverDate) ? coverDate.GetString() : null),
+                PublicationDate = coredata.ValueKind == JsonValueKind.Object && coredata.TryGetProperty("prism:coverDate", out var publicationDate) ? publicationDate.GetString() : null,
+                Language = coredata.ValueKind == JsonValueKind.Object && coredata.TryGetProperty("language", out var language) ? language.GetString() : null,
                 Authors = authors.Any() ? string.Join(", ", authors.Take(5)) : null,
                 AuthorNames = authors,
+                AuthorAffiliations = ExtractScopusAbstractAffiliations(item),
                 SourceUrl = coredata.ValueKind == JsonValueKind.Object && coredata.TryGetProperty("prism:url", out var url) ? url.GetString() : null,
                 ExternalId = coredata.ValueKind == JsonValueKind.Object && coredata.TryGetProperty("dc:identifier", out var identifier) ? identifier.GetString() : null,
                 ArticleAbstract = TryGetNestedString(item, "abstract", "ce:para"),
                 Keywords = ExtractScopusKeywords(item),
+                SubjectAreas = ExtractScopusSubjectAreas(item),
+                CitationCount = TryGetIntFromString(coredata.ValueKind == JsonValueKind.Object && coredata.TryGetProperty("citedby-count", out var citedBy) ? citedBy.GetString() : null),
+                IsOpenAccess = TryGetScopusOpenAccess(coredata.ValueKind == JsonValueKind.Object && coredata.TryGetProperty("openaccess", out var openAccess) ? openAccess.ToString() : null),
+                OpenAccessStatus = DescribeScopusOpenAccess(coredata.ValueKind == JsonValueKind.Object && coredata.TryGetProperty("openaccess", out var openAccessStatus) ? openAccessStatus.ToString() : null),
                 ExternalSource = "Scopus",
                 ScopusId = ExtractScopusIdFromIdentifier(coredata.ValueKind == JsonValueKind.Object && coredata.TryGetProperty("dc:identifier", out var idProp) ? idProp.GetString() : null)
             };
@@ -460,6 +472,43 @@ namespace tesisproject.backend.Services.Implementations
             return names;
         }
 
+        private static List<string> ExtractScopusSearchAffiliations(JsonElement item)
+        {
+            var affiliations = new List<string>();
+            if (item.TryGetProperty("affiliation", out var affiliationArray) && affiliationArray.ValueKind == JsonValueKind.Array)
+            {
+                affiliations.AddRange(affiliationArray.EnumerateArray()
+                    .Select(x => x.TryGetProperty("affilname", out var name) ? name.GetString() : null)
+                    .Where(x => !string.IsNullOrWhiteSpace(x))!
+                    .Cast<string>());
+            }
+
+            return affiliations.Distinct(StringComparer.OrdinalIgnoreCase).Take(15).ToList();
+        }
+
+        private static List<string> ExtractScopusAbstractAffiliations(JsonElement item)
+        {
+            var affiliations = new List<string>();
+            if (item.TryGetProperty("authors", out var authorsRoot)
+                && authorsRoot.TryGetProperty("author", out var authors)
+                && authors.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var author in authors.EnumerateArray())
+                {
+                    if (author.TryGetProperty("affiliation", out var affiliation) && affiliation.ValueKind == JsonValueKind.Object)
+                    {
+                        var name = affiliation.TryGetProperty("affilname", out var affilName) ? affilName.GetString() : null;
+                        if (!string.IsNullOrWhiteSpace(name))
+                        {
+                            affiliations.Add(name);
+                        }
+                    }
+                }
+            }
+
+            return affiliations.Distinct(StringComparer.OrdinalIgnoreCase).Take(15).ToList();
+        }
+
         private static List<string> ExtractScopusKeywords(JsonElement item)
         {
             var keywords = new List<string>();
@@ -480,6 +529,33 @@ namespace tesisproject.backend.Services.Implementations
             }
 
             return keywords.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        }
+
+        private static List<string> ExtractScopusSubjectAreas(JsonElement item)
+        {
+            var areas = new List<string>();
+            if (item.TryGetProperty("subject-areas", out var subjectAreasRoot)
+                && subjectAreasRoot.TryGetProperty("subject-area", out var subjectAreaArray))
+            {
+                if (subjectAreaArray.ValueKind == JsonValueKind.Array)
+                {
+                    areas.AddRange(subjectAreaArray.EnumerateArray()
+                        .Select(x => x.TryGetProperty("$", out var name) ? name.GetString() : null)
+                        .Where(x => !string.IsNullOrWhiteSpace(x))!
+                        .Cast<string>());
+                }
+                else if (subjectAreaArray.ValueKind == JsonValueKind.Object
+                    && subjectAreaArray.TryGetProperty("$", out var singleName))
+                {
+                    var value = singleName.GetString();
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        areas.Add(value);
+                    }
+                }
+            }
+
+            return areas.Distinct(StringComparer.OrdinalIgnoreCase).Take(15).ToList();
         }
 
         private static List<ExternalArticlePreviewDto> ParseCrossref(JsonElement root)
@@ -531,14 +607,22 @@ namespace tesisproject.backend.Services.Implementations
                     null),
                 DocumentType = item.TryGetProperty("type", out var type) ? type.GetString() : null,
                 PublicationYear = TryGetYearFromCrossref(item),
+                PublicationDate = TryGetCrossrefPublicationDate(item),
+                Language = item.TryGetProperty("language", out var language) ? language.GetString() : null,
                 Authors = authorNames.Any() ? string.Join(", ", authorNames.Take(5)) : null,
                 AuthorNames = authorNames,
+                AuthorAffiliations = ExtractCrossrefAffiliations(item),
                 SourceUrl = item.TryGetProperty("URL", out var url) ? url.GetString() : null,
                 ExternalId = item.TryGetProperty("DOI", out var extDoi) ? extDoi.GetString() : null,
                 ArticleAbstract = item.TryGetProperty("abstract", out var summary) ? summary.GetString() : null,
                 Keywords = item.TryGetProperty("subject", out var subjectArray) && subjectArray.ValueKind == JsonValueKind.Array
                     ? subjectArray.EnumerateArray().Select(x => x.GetString()).Where(x => !string.IsNullOrWhiteSpace(x)).Cast<string>().ToList()
                     : new List<string>(),
+                SubjectAreas = item.TryGetProperty("subject", out var areaArray) && areaArray.ValueKind == JsonValueKind.Array
+                    ? areaArray.EnumerateArray().Select(x => x.GetString()).Where(x => !string.IsNullOrWhiteSpace(x)).Cast<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+                    : new List<string>(),
+                CitationCount = item.TryGetProperty("is-referenced-by-count", out var citationCount) && citationCount.TryGetInt32(out var parsedCitationCount) ? parsedCitationCount : null,
+                LicenseUrl = ExtractCrossrefLicenseUrl(item),
                 ExternalSource = "Crossref"
             };
         }
@@ -578,11 +662,103 @@ namespace tesisproject.backend.Services.Implementations
             return null;
         }
 
+        private static string? TryGetCrossrefPublicationDate(JsonElement item)
+        {
+            if (TryReadCrossrefDate(item, "published-print", out var printDate))
+            {
+                return printDate;
+            }
+
+            if (TryReadCrossrefDate(item, "published-online", out var onlineDate))
+            {
+                return onlineDate;
+            }
+
+            return null;
+        }
+
+        private static bool TryReadCrossrefDate(JsonElement item, string propertyName, out string? formattedDate)
+        {
+            formattedDate = null;
+            if (!item.TryGetProperty(propertyName, out var property)
+                || !property.TryGetProperty("date-parts", out var dateParts)
+                || dateParts.ValueKind != JsonValueKind.Array)
+            {
+                return false;
+            }
+
+            var first = dateParts.EnumerateArray().FirstOrDefault();
+            if (first.ValueKind != JsonValueKind.Array)
+            {
+                return false;
+            }
+
+            var parts = first.EnumerateArray()
+                .Where(x => x.ValueKind == JsonValueKind.Number)
+                .Select(x => x.GetInt32())
+                .ToList();
+
+            if (parts.Count == 0)
+            {
+                return false;
+            }
+
+            formattedDate = $"{parts[0]}";
+            if (parts.Count > 1)
+            {
+                formattedDate += $"-{parts[1]:00}";
+            }
+            if (parts.Count > 2)
+            {
+                formattedDate += $"-{parts[2]:00}";
+            }
+
+            return true;
+        }
+
+        private static string? ExtractCrossrefLicenseUrl(JsonElement item)
+        {
+            if (!item.TryGetProperty("license", out var licenseArray) || licenseArray.ValueKind != JsonValueKind.Array)
+            {
+                return null;
+            }
+
+            foreach (var license in licenseArray.EnumerateArray())
+            {
+                if (license.TryGetProperty("URL", out var url))
+                {
+                    return url.GetString();
+                }
+            }
+
+            return null;
+        }
+
         private static string? GetCrossrefAuthorName(JsonElement author)
         {
             var given = author.TryGetProperty("given", out var givenProp) ? givenProp.GetString() : null;
             var family = author.TryGetProperty("family", out var familyProp) ? familyProp.GetString() : null;
             return string.Join(" ", new[] { given, family }.Where(x => !string.IsNullOrWhiteSpace(x)));
+        }
+
+        private static List<string> ExtractCrossrefAffiliations(JsonElement item)
+        {
+            if (!item.TryGetProperty("author", out var authors) || authors.ValueKind != JsonValueKind.Array)
+            {
+                return new List<string>();
+            }
+
+            return authors.EnumerateArray()
+                .SelectMany(author =>
+                    author.TryGetProperty("affiliation", out var affiliations) && affiliations.ValueKind == JsonValueKind.Array
+                        ? affiliations.EnumerateArray()
+                            .Select(x => x.TryGetProperty("name", out var name) ? name.GetString() : null)
+                        : Enumerable.Empty<string?>())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Cast<string>()
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(15)
+                .ToList();
         }
 
         private static List<ExternalArticlePreviewDto> ParseOpenAlex(JsonElement root)
@@ -648,8 +824,11 @@ namespace tesisproject.backend.Services.Implementations
                     : null,
                 DocumentType = item.TryGetProperty("type", out var type) ? type.GetString() : null,
                 PublicationYear = item.TryGetProperty("publication_year", out var year) && year.TryGetInt32(out var parsedYear) ? parsedYear : null,
+                PublicationDate = item.TryGetProperty("publication_date", out var publicationDate) ? publicationDate.GetString() : null,
+                Language = item.TryGetProperty("language", out var language) ? language.GetString() : null,
                 Authors = authors.Any() ? string.Join(", ", authors.Take(5)) : null,
                 AuthorNames = authors,
+                AuthorAffiliations = ExtractOpenAlexAffiliations(item),
                 SourceUrl = item.TryGetProperty("id", out var id) ? id.GetString() : null,
                 ExternalId = item.TryGetProperty("id", out var extId) ? extId.GetString() : null,
                 Keywords = item.TryGetProperty("concepts", out var concepts) && concepts.ValueKind == JsonValueKind.Array
@@ -660,8 +839,40 @@ namespace tesisproject.backend.Services.Implementations
                         .Cast<string>()
                         .ToList()
                     : new List<string>(),
+                SubjectAreas = item.TryGetProperty("concepts", out var subjectConcepts) && subjectConcepts.ValueKind == JsonValueKind.Array
+                    ? subjectConcepts.EnumerateArray()
+                        .Take(10)
+                        .Select(x => x.TryGetProperty("display_name", out var conceptName) ? conceptName.GetString() : null)
+                        .Where(x => !string.IsNullOrWhiteSpace(x))
+                        .Cast<string>()
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList()
+                    : new List<string>(),
+                CitationCount = item.TryGetProperty("cited_by_count", out var citedByCount) && citedByCount.TryGetInt32(out var parsedCitedByCount) ? parsedCitedByCount : null,
+                IsOpenAccess = item.TryGetProperty("open_access", out var openAccess) && openAccess.TryGetProperty("is_oa", out var isOa) ? isOa.GetBoolean() : null,
+                OpenAccessStatus = item.TryGetProperty("open_access", out var openAccessStatus) && openAccessStatus.TryGetProperty("oa_status", out var oaStatus) ? oaStatus.GetString() : null,
                 ExternalSource = "OpenAlex"
             };
+        }
+
+        private static List<string> ExtractOpenAlexAffiliations(JsonElement item)
+        {
+            if (!item.TryGetProperty("authorships", out var authorships) || authorships.ValueKind != JsonValueKind.Array)
+            {
+                return new List<string>();
+            }
+
+            return authorships.EnumerateArray()
+                .SelectMany(authorship =>
+                    authorship.TryGetProperty("institutions", out var institutions) && institutions.ValueKind == JsonValueKind.Array
+                        ? institutions.EnumerateArray()
+                            .Select(x => x.TryGetProperty("display_name", out var name) ? name.GetString() : null)
+                        : Enumerable.Empty<string?>())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Cast<string>()
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(15)
+                .ToList();
         }
 
         private static List<ExternalArticlePreviewDto> ParseSemanticScholar(JsonElement root)
@@ -705,19 +916,40 @@ namespace tesisproject.backend.Services.Implementations
             {
                 Title = item.TryGetProperty("title", out var title) ? title.GetString() ?? "(sin título)" : "(sin título)",
                 Doi = doi,
-                JournalName = item.TryGetProperty("venue", out var venue) ? venue.GetString() : null,
+                JournalName = item.TryGetProperty("journal", out var journal) && journal.ValueKind == JsonValueKind.Object && journal.TryGetProperty("name", out var journalName)
+                    ? journalName.GetString()
+                    : item.TryGetProperty("venue", out var venue) ? venue.GetString() : null,
                 DocumentType = item.TryGetProperty("publicationTypes", out var publicationTypes) && publicationTypes.ValueKind == JsonValueKind.Array
                     ? publicationTypes.EnumerateArray().Select(x => x.GetString()).FirstOrDefault()
                     : null,
                 PublicationYear = item.TryGetProperty("year", out var year) && year.TryGetInt32(out var parsedYear) ? parsedYear : null,
+                PublicationDate = item.TryGetProperty("publicationDate", out var publicationDate) ? publicationDate.GetString() : null,
                 Authors = authors.Any() ? string.Join(", ", authors.Take(5)) : null,
                 AuthorNames = authors,
+                AuthorAffiliations = item.TryGetProperty("authors", out var authorArray) && authorArray.ValueKind == JsonValueKind.Array
+                    ? authorArray.EnumerateArray()
+                        .SelectMany(x => x.TryGetProperty("affiliations", out var affiliations) && affiliations.ValueKind == JsonValueKind.Array
+                            ? affiliations.EnumerateArray().Select(a => a.GetString())
+                            : Enumerable.Empty<string?>())
+                        .Where(x => !string.IsNullOrWhiteSpace(x))
+                        .Cast<string>()
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .Take(15)
+                        .ToList()
+                    : new List<string>(),
                 SourceUrl = item.TryGetProperty("url", out var url) ? url.GetString() : null,
                 ExternalId = item.TryGetProperty("paperId", out var paperId) ? paperId.GetString() : null,
                 ArticleAbstract = item.TryGetProperty("abstract", out var summary) ? summary.GetString() : null,
                 Keywords = item.TryGetProperty("fieldsOfStudy", out var fieldsOfStudy) && fieldsOfStudy.ValueKind == JsonValueKind.Array
                     ? fieldsOfStudy.EnumerateArray().Select(x => x.GetString()).Where(x => !string.IsNullOrWhiteSpace(x)).Cast<string>().ToList()
                     : new List<string>(),
+                SubjectAreas = item.TryGetProperty("fieldsOfStudy", out var subjectAreas) && subjectAreas.ValueKind == JsonValueKind.Array
+                    ? subjectAreas.EnumerateArray().Select(x => x.GetString()).Where(x => !string.IsNullOrWhiteSpace(x)).Cast<string>().Distinct(StringComparer.OrdinalIgnoreCase).ToList()
+                    : new List<string>(),
+                CitationCount = item.TryGetProperty("citationCount", out var citationCount) && citationCount.TryGetInt32(out var parsedCitationCount) ? parsedCitationCount : null,
+                IsOpenAccess = item.TryGetProperty("openAccessPdf", out var openAccessPdf) && openAccessPdf.ValueKind == JsonValueKind.Object ? true : null,
+                OpenAccessStatus = item.TryGetProperty("openAccessPdf", out var openAccessPdfStatus) && openAccessPdfStatus.ValueKind == JsonValueKind.Object ? "Disponible" : null,
+                LicenseUrl = item.TryGetProperty("openAccessPdf", out var openAccessPdfUrl) && openAccessPdfUrl.ValueKind == JsonValueKind.Object && openAccessPdfUrl.TryGetProperty("url", out var openAccessUrl) ? openAccessUrl.GetString() : null,
                 ExternalSource = "Semantic Scholar"
             };
         }
@@ -776,6 +1008,34 @@ namespace tesisproject.backend.Services.Implementations
             }
 
             return !string.IsNullOrWhiteSpace(start) ? start : end;
+        }
+
+        private static int? TryGetIntFromString(string? value)
+            => int.TryParse(value, out var parsed) ? parsed : null;
+
+        private static bool? TryGetScopusOpenAccess(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            return value.Trim() switch
+            {
+                "1" => true,
+                "0" => false,
+                _ => null
+            };
+        }
+
+        private static string? DescribeScopusOpenAccess(string? value)
+        {
+            return TryGetScopusOpenAccess(value) switch
+            {
+                true => "Open access",
+                false => "Acceso restringido",
+                null => null
+            };
         }
 
         private static IEnumerable<string> BuildScopusEnrichmentUrls(string scopusId)
@@ -850,9 +1110,17 @@ namespace tesisproject.backend.Services.Implementations
                 DocumentType = FirstNonEmpty(enriched.DocumentType, original.DocumentType),
                 ArticleAbstract = FirstNonEmpty(enriched.ArticleAbstract, original.ArticleAbstract),
                 PublicationYear = enriched.PublicationYear ?? original.PublicationYear,
+                PublicationDate = FirstNonEmpty(enriched.PublicationDate, original.PublicationDate),
+                Language = FirstNonEmpty(enriched.Language, original.Language),
                 Authors = FirstNonEmpty(enriched.Authors, original.Authors),
                 AuthorNames = enriched.AuthorNames.Any() ? enriched.AuthorNames : original.AuthorNames,
+                AuthorAffiliations = MergeDistinct(enriched.AuthorAffiliations, original.AuthorAffiliations),
                 Keywords = enriched.Keywords.Any() ? enriched.Keywords : original.Keywords,
+                SubjectAreas = MergeDistinct(enriched.SubjectAreas, original.SubjectAreas),
+                CitationCount = enriched.CitationCount ?? original.CitationCount,
+                IsOpenAccess = enriched.IsOpenAccess ?? original.IsOpenAccess,
+                OpenAccessStatus = FirstNonEmpty(enriched.OpenAccessStatus, original.OpenAccessStatus),
+                LicenseUrl = FirstNonEmpty(enriched.LicenseUrl, original.LicenseUrl),
                 SourceUrl = FirstNonEmpty(enriched.SourceUrl, original.SourceUrl),
                 ExternalId = FirstNonEmpty(enriched.ExternalId, original.ExternalId),
                 ExternalSource = FirstNonEmpty(enriched.ExternalSource, original.ExternalSource),
@@ -862,6 +1130,15 @@ namespace tesisproject.backend.Services.Implementations
 
         private static string? FirstNonEmpty(string? primary, string? fallback)
             => !string.IsNullOrWhiteSpace(primary) ? primary : fallback;
+
+        private static List<string> MergeDistinct(IEnumerable<string>? primary, IEnumerable<string>? fallback)
+        {
+            return (primary ?? Enumerable.Empty<string>())
+                .Concat(fallback ?? Enumerable.Empty<string>())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
 
         private sealed class ProviderExecutionResult
         {

@@ -83,6 +83,24 @@ namespace tesisproject.backend.Controllers
             }
         }
 
+        [HttpPost("external-articles")]
+        public async Task<ActionResult<BulkImportActionResultDto>> CreateFromExternalArticles([FromBody] ExternalArticlesImportRequest request, CancellationToken ct)
+        {
+            try
+            {
+                var userId = User?.Identity?.Name ?? "system";
+                return Ok(await _service.CreateBatchFromExternalArticlesAsync(request, userId, ct));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Problem(title: "No pude crear el lote externo múltiple en staging.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
         [HttpPut("{batchId:int}/rows/{rowId:int}")]
         public async Task<ActionResult<BulkImportActionResultDto>> CorrectRow(int batchId, int rowId, [FromBody] BulkImportRowCorrectionRequest request, CancellationToken ct)
         {
