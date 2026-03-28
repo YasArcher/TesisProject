@@ -110,6 +110,7 @@ builder.Services.AddScoped<IProjectOriginTypeClientService, ProjectOriginTypeCli
 builder.Services.AddScoped<IDwEtlClientService, DwEtlClientService>();
 builder.Services.AddScoped<IProjectExtensionTypeClientService, ProjectExtensionTypeClientService>();
 builder.Services.AddScoped<IVisitObjectiveActivityProgressClientService, VisitObjectiveActivityProgressClientService>();
+builder.Services.AddScoped<IFacultyScopeClientService, FacultyScopeClientService>();
 
 // External
 builder.Services.AddScoped<IExternalAcademicsClientService, ExternalAcademicsClientService>();

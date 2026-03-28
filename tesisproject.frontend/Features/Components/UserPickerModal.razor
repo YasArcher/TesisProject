@@ -40,38 +40,36 @@
                            EmptyText="No se encontraron usuarios." />
             </div>
 
-            @if (ShowUserValidation && SelectedUserId is null)
+            @if (RequireRoleSelection)
             {
-                <p class="text-sm text-[color:var(--color-error)]">Por favor, seleccione un usuario.</p>
-            }
+                @if (Roles is not null && Roles.Any())
+                {
+                    <div class="space-y-1">
+                        <label class="block text-sm font-medium text-foreground">
+                            Rol
+                        </label>
 
-            @if (Roles is not null && Roles.Any())
-            {
-                <div class="space-y-1">
-                    <label class="block text-sm font-medium text-foreground">
-                        Rol
-                    </label>
+                        <SelectInput TItem="MemberRoleTypeDetailDTO"
+                                     Items="Roles"
+                                     @bind-Value="SelectedRole"
+                                     GetText="@(r => r.Name)"
+                                     GetKey="@(r => r.Id.ToString())"
+                                     Placeholder="Seleccione un rol"
+                                     AllowClear="true"
+                                     Size="SelectSize.Md" />
 
-                    <SelectInput TItem="MemberRoleTypeDetailDTO"
-                                 Items="Roles"
-                                 @bind-Value="SelectedRole"
-                                 GetText="@(r => r.Name)"
-                                 GetKey="@(r => r.Id.ToString())"
-                                 Placeholder="Seleccione un rol"
-                                 AllowClear="true"
-                                 Size="SelectSize.Md" />
-
-                    @if (ShowRoleValidation && (SelectedRoleId is null || SelectedRoleId <= 0))
-                    {
-                        <p class="text-sm text-[color:var(--color-error)]">Por favor, seleccione un rol.</p>
-                    }
-                </div>
-            }
-            else
-            {
-                <p class="text-sm text-muted">
-                    No hay roles disponibles para seleccionar.
-                </p>
+                        @if (ShowRoleValidation && (SelectedRoleId is null || SelectedRoleId <= 0))
+                        {
+                            <p class="text-sm text-[color:var(--color-error)]">Por favor, seleccione un rol.</p>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="text-sm text-muted">
+                        No hay roles disponibles para seleccionar.
+                    </p>
+                }
             }
 
         </div>
@@ -122,6 +120,8 @@
 
     /// <summary>Id del rol seleccionado (bind desde el padre).</summary>
     [Parameter] public int? SelectedRoleId { get; set; }
+
+    [Parameter] public bool RequireRoleSelection { get; set; } = true;
 
     [Parameter] public EventCallback<int?> SelectedRoleIdChanged { get; set; }
 
@@ -187,87 +187,87 @@
 
     // RowTemplate: solo <td>, el <tr> lo genera DataTable
     private RenderFragment<ResolvedUserProfileDTO> UserRowTemplate => user => @<text>
-@{
-    var selected = SelectedUserId == user.UserId;
-    var baseCell = "px-4 py-3 text-sm align-middle";
-    var selectedBg = selected ? " bg-primary-subtle" : string.Empty;
-    var cellClass = baseCell + selectedBg;
-}
+        @{
+            var selected = SelectedUserId == user.UserId;
+            var baseCell = "px-4 py-3 text-sm align-middle";
+            var selectedBg = selected ? " bg-primary-subtle" : string.Empty;
+            var cellClass = baseCell + selectedBg;
+        }
 
-    <td class="@cellClass">
-        <button type="button"
-                class="inline-flex items-center justify-center rounded-full border border-border w-5 h-5
-                           @(selected ? " bg-primary-subtle text-[color:var(--color-uta-header)]" : " bg-background")"
-                aria-pressed="@selected"
-                @onclick="() => SelectUser(user.UserId)">
-            @if (selected)
-            {
-                <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none">
-                    <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                          d="M20 6 9 17l-5-5" />
-                </svg>
-            }
-        </button>
-    </td>
+            <td class="@cellClass">
+                <button type="button"
+                        class="inline-flex items-center justify-center rounded-full border border-border w-5 h-5
+                                   @(selected ? " bg-primary-subtle text-[color:var(--color-uta-header)]" : " bg-background")"
+                        aria-pressed="@selected"
+                        @onclick="() => SelectUser(user.UserId)">
+                    @if (selected)
+                    {
+                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none">
+                            <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                  d="M20 6 9 17l-5-5" />
+                        </svg>
+                    }
+                </button>
+            </td>
 
-    <td class="@cellClass">
-        @user.FullName
-    </td>
+            <td class="@cellClass">
+                @user.FullName
+            </td>
 
-    <td class="@($"{cellClass} text-muted")">
-        @user.Email
-    </td>
-</text>;
+            <td class="@($"{cellClass} text-muted")">
+                @user.Email
+            </td>
+    </text>;
 
 protected override void OnParametersSet()
 {
-    if (IsOpen && SelectedUserId is null && InitialSelectedUserId is not null)
-        SelectedUserId = InitialSelectedUserId;
+if (IsOpen && SelectedUserId is null && InitialSelectedUserId is not null)
+SelectedUserId = InitialSelectedUserId;
 
-    // Sincronizar rol seleccionado desde SelectedRoleId
-    if (Roles is not null && Roles.Any() && SelectedRoleId.HasValue)
-    {
-        _selectedRole = Roles.FirstOrDefault(r => r.Id == SelectedRoleId.Value);
-    }
-    else if (!SelectedRoleId.HasValue)
-    {
-        _selectedRole = null;
-    }
+// Sincronizar rol seleccionado desde SelectedRoleId
+if (Roles is not null && Roles.Any() && SelectedRoleId.HasValue)
+{
+_selectedRole = Roles.FirstOrDefault(r => r.Id == SelectedRoleId.Value);
+}
+else if (!SelectedRoleId.HasValue)
+{
+_selectedRole = null;
+}
 }
 
 private void SelectUser(int userId)
 {
-    SelectedUserId = userId;
-    ShowUserValidation = false;
-    StateHasChanged();
+SelectedUserId = userId;
+ShowUserValidation = false;
+StateHasChanged();
 }
 
 private Task OnSearchChanged(string value)
 {
-    search = value;
-    // FilteredUsers se recalcula en el getter; solo forzamos render
-    StateHasChanged();
-    return Task.CompletedTask;
+search = value;
+// FilteredUsers se recalcula en el getter; solo forzamos render
+StateHasChanged();
+return Task.CompletedTask;
 }
 
 private async Task Submit()
 {
-    if (SelectedUserId is null)
-    {
-        ShowUserValidation = true;
-        return;
-    }
+if (SelectedUserId is null)
+{
+ShowUserValidation = true;
+return;
+}
 
-    if (SelectedRoleId is null || SelectedRoleId <= 0)
-    {
-        ShowRoleValidation = true;
-        return;
-    }
+if (RequireRoleSelection && (SelectedRoleId is null || SelectedRoleId <= 0))
+{
+ShowRoleValidation = true;
+return;
+}
 
-    ShowUserValidation = false;
-    ShowRoleValidation = false;
+ShowUserValidation = false;
+ShowRoleValidation = false;
 
-    await OnSubmit.InvokeAsync(SelectedUserId.Value);
+await OnSubmit.InvokeAsync(SelectedUserId.Value);
 }
 
 private async Task OnCancelClicked() => await OnCancel.InvokeAsync();

@@ -2,6 +2,7 @@
 using System.Globalization;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.Auth;
 using tesisproject.shared.Common.External;
 using tesisproject.shared.DTOs.AppUser;
 using tesisproject.shared.DTOs.Auth;
@@ -9,6 +10,7 @@ using tesisproject.shared.DTOs.Group.Request;
 using tesisproject.shared.DTOs.Group.Response;
 using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Entities.External;
+using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -23,11 +25,6 @@ namespace tesisproject.backend.Services.Implementations
         private readonly IExternalDistributivosService _distributivos;
 
         // ================= Constants =================
-
-        // IDs quemados / magic numbers
-        private const int CoordinatorPrincipalRoleId = 1;
-        private const int ProjectExtensionTypeId_Prorroga = 1;
-        private const int ProjectExtensionTypeId_AmpliacionPlazo = 2;
         private const int ExtensionDurationMonths = 6;
 
         private const string TemporaryPassword = "Temporal#123";
@@ -485,13 +482,23 @@ namespace tesisproject.backend.Services.Implementations
                 if (string.IsNullOrWhiteSpace(document))
                     return ServiceResult<GroupMemberResponseDTO>.Fail(DocumentRequiredMessage, ErrorType.Validation);
 
+
+
                 // 2) Construir RegisterRequest directo desde el DTO
+                var appRole = request.MemberRole switch
+                {
+                    MemberRoleTypeIds.Coordinador => AppRoles.Coordinador,
+                    MemberRoleTypeIds.Subrogante => AppRoles.Coordinador,
+                    _ => AppRoles.User
+                };
+
                 var registerDto = new RegisterRequest
                 {
                     Email = email,
                     Username = document,
                     Password = TemporaryPassword,
-                    AspUserId = request.AspUserId
+                    AspUserId = request.AspUserId,
+                    Role = appRole
                 };
 
                 // 3) Asegurar AppUser (Identity + AppUser)
@@ -518,7 +525,7 @@ namespace tesisproject.backend.Services.Implementations
                     return ServiceResult<GroupMemberResponseDTO>.Fail(UserAlreadyMemberOfGroupMessage, ErrorType.Conflict);
 
                 // 5.1) Regla: si agrega Coordinador Principal (1), actualizar facultad del proyecto
-                if (request.MemberRole == CoordinatorPrincipalRoleId)
+                if (request.MemberRole == MemberRoleTypeIds.Coordinador)
                 {
                     // (A) Resolver FacultyId (prioridad: FacultyId directo)
                     int? facultyId = request.FacultyId;
@@ -547,7 +554,7 @@ namespace tesisproject.backend.Services.Implementations
                     // (D) Recomendado: cerrar cualquier Coordinador Principal activo previo (histórico)
                     var actives = await _uow.GroupMembers
                         .QueryByGroup(request.GroupId, asNoTracking: false)
-                        .Where(m => m.LeftAt == null && m.MemberRoleId == CoordinatorPrincipalRoleId)
+                        .Where(m => m.LeftAt == null && m.MemberRoleId == MemberRoleTypeIds.Coordinador)
                         .ToListAsync(ct);
 
                     foreach (var m in actives)
@@ -896,7 +903,7 @@ namespace tesisproject.backend.Services.Implementations
                 // =========================
                 var extensions = await _uow.ProjectExtensions.GetByProjectAsync(projectId, ct);
                 extensions = extensions
-                    .Where(e => e.ProjectExtensionTypeId is ProjectExtensionTypeId_Prorroga or ProjectExtensionTypeId_AmpliacionPlazo)
+                    .Where(e => e.ProjectExtensionTypeId is ProjectExtensionTypeIds.Prorroga or ProjectExtensionTypeIds.AmpliacionPlazo)
                     .OrderBy(e => e.ProjectExtensionId)
                     .ToList();
 
@@ -1087,9 +1094,9 @@ namespace tesisproject.backend.Services.Implementations
                     if (extEnd > realEnd) extEnd = realEnd;
                     if (extEnd < extStart) extEnd = extStart;
 
-                    var onlyCoordinator = ext.ProjectExtensionTypeId == ProjectExtensionTypeId_AmpliacionPlazo; // ampliación de plazo
+                    var onlyCoordinator = ext.ProjectExtensionTypeId == ProjectExtensionTypeIds.AmpliacionPlazo; // ampliación de plazo
 
-                    var title = ext.ProjectExtensionTypeId == ProjectExtensionTypeId_AmpliacionPlazo
+                    var title = ext.ProjectExtensionTypeId == ProjectExtensionTypeIds.AmpliacionPlazo
                         ? $"DURACIÓN APROBADA CON RESOLUCIÓN (PRÓRROGA {i + 1}) (6 MESES) - SOLO COORDINADOR PRINCIPAL"
                         : $"DURACIÓN APROBADA CON RESOLUCIÓN (PRÓRROGA {i + 1}) (6 MESES)";
 
@@ -1145,7 +1152,7 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     // CP activo más reciente (JoinedAt más alto)
                     var cp = candidates
-                        .Where(x => x.Member.MemberRoleId == CoordinatorPrincipalRoleId)
+                        .Where(x => x.Member.MemberRoleId == MemberRoleTypeIds.Coordinador)
                         .OrderByDescending(x => x.Member.JoinedAt ?? DateTime.MinValue)
                         .FirstOrDefault();
 
