@@ -5,6 +5,7 @@
 @using tesisproject.shared.DTOs.AppUser
 
 @using tesisproject.frontend.Features.Components
+@using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.Card
 @using tesisproject.frontend.SharedUI.Modal
@@ -66,56 +67,59 @@
     else
     {
         <div class="grid gap-6 lg:grid-cols-12">
-            <Card Class="lg:col-span-5 bg-background overflow-hidden">
-                <CardHeader Class="flex items-center justify-between">
-                    <span>Grupos</span>
-                    <span class="text-xs text-muted font-normal">@_groups.Count</span>
-                </CardHeader>
+            <div class="lg:col-span-5">
+                <Container TItem="FacultyScopeResponseDTO"
+                           Items="OrderedGroups"
+                           Title="Grupos"
+                           ShowItemCount="true"
+                           TotalCount="_groups.Count"
+                           EnableScroll="true"
+                           MaxHeight="42rem"
+                           ScrollbarType="ScrollbarType.Thin"
+                           GridClasses="space-y-2"
+                           EmptyStateTitle="No hay grupos creados"
+                           EmptyStateDescription="Cree su primer grupo para comenzar.">
 
-                <CardBody>
-                    <div class="space-y-2 py-2">
-                        @if (_groups.Count == 0)
-                        {
-                            <div class="rounded-xl border border-dashed border-border p-6 text-center">
-                                <p class="text-sm text-muted">No hay grupos creados.</p>
+                    <EmptyStateAction>
+                        <ActionButton Execute="OpenNewModal"
+                                      Text="Nuevo grupo"
+                                      Variant="ButtonVariant.Filled"
+                                      Intent="ButtonIntent.Accept" />
+                    </EmptyStateAction>
+
+                    <ChildContent Context="g">
+                        @{
+                            var selected = _selected?.FacultyScopeId == g.FacultyScopeId;
+                        }
+
+                        <Card Class="@($"cursor-pointer p-4 {GetGroupCardClass(selected)}")"
+                              @onclick="() => SelectGroup(g)"
+                              tabindex="0"
+                              role="button"
+                              aria-label="@($"Seleccionar grupo {g.Name}")">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <p class="font-semibold text-foreground truncate">@g.Name</p>
+                                    <p class="text-xs text-muted">
+                                        Facultades: @g.Faculties.Count • Técnicos: @g.AssignedUserIds.Count
+                                    </p>
+                                </div>
+
+                                <span class="@($"text-xs rounded-full px-2 py-1 {(g.IsActive ? "bg-success/15 text-success" : "bg-muted text-muted-foreground")}")">
+                                    @(g.IsActive ? "Activo" : "Inactivo")
+                                </span>
                             </div>
-                        }
-                        else
-                        {
-                            @foreach (var g in _groups.OrderByDescending(x => x.IsActive).ThenBy(x => x.Name))
-                            {
-                                var selected = _selected?.FacultyScopeId == g.FacultyScopeId;
+                        </Card>
+                    </ChildContent>
+                </Container>
+            </div>
 
-                                <Card Class="@($"cursor-pointer p-4 {GetGroupCardClass(selected)}")"
-                                      @onclick="() => SelectGroup(g)"
-                                      tabindex="0"
-                                      role="button"
-                                      aria-label="@($"Seleccionar grupo {g.Name}")">
-                                    <div class="flex items-start justify-between gap-2">
-                                        <div class="min-w-0">
-                                            <p class="font-semibold text-foreground truncate">@g.Name</p>
-                                            <p class="text-xs text-muted">
-                                                Facultades: @g.Faculties.Count • Técnicos: @g.AssignedUserIds.Count
-                                            </p>
-                                        </div>
-
-                                        <span class="@($"text-xs rounded-full px-2 py-1 {(g.IsActive ? "bg-success/15 text-success" : "bg-muted text-muted-foreground")}")">
-                                            @(g.IsActive ? "Activo" : "Inactivo")
-                                        </span>
-                                    </div>
-                                </Card>
-                            }
-                        }
-                    </div>
-                </CardBody>
-            </Card>
-
-            <Card Class="lg:col-span-7 bg-background overflow-hidden">
+            <Card Class="lg:col-span-7 flex flex-col h-[22rem] min-h-0 overflow-hidden">
                 <CardHeader>
                     Administración del grupo
                 </CardHeader>
 
-                <CardBody>
+                <CardBody Scroll="true">
                     @if (_selected is null)
                     {
                         <div class="h-full flex items-center justify-center p-8 text-center">
@@ -147,8 +151,8 @@
                                                   ConfirmBeforeExecute="true"
                                                   ConfirmTitle="@(_selected.IsActive ? "Desactivar grupo" : "Activar grupo")"
                                                   ConfirmMessage="@(_selected.IsActive
-                                                      ? "¿Seguro que deseas desactivar este grupo?"
-                                                      : "¿Seguro que deseas activar este grupo?")"
+                                                                                                                                            ? "¿Seguro que deseas desactivar este grupo?"
+                                                                                                                                            : "¿Seguro que deseas activar este grupo?")"
                                                   ConfirmButtonText="@(_selected.IsActive ? "Desactivar" : "Activar")"
                                                   CancelButtonText="Cancelar" />
                                 </div>
@@ -183,8 +187,8 @@
 
                                                 <ActionButton Execute="AddFacultyToSelection"
                                                               Text="Agregar"
+                                                              Variant="ButtonVariant.Outline"
                                                               Intent="ButtonIntent.Accept"
-                                                              Variant="ButtonVariant.Filled"
                                                               Disabled="@(_facultyToAdd is null)" />
                                             </div>
 
@@ -199,7 +203,6 @@
                                             {
                                                 <span class="inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs">
                                                     @FacultyLabel(fid)
-
                                                     <ActionButton Execute="() => RemoveFacultyFromSelection(fid)"
                                                                   Variant="ButtonVariant.Ghost"
                                                                   Intent="ButtonIntent.Danger"
@@ -227,68 +230,70 @@
                                 </CardBody>
                             </Card>
 
-                            <Card Class="bg-background overflow-hidden">
-                                <CardHeader Class="flex items-center justify-between">
-                                    <span>Técnicos asignados</span>
-                                    <span class="text-xs text-muted font-normal">@_selected.AssignedUserIds.Count</span>
-                                </CardHeader>
+                            <div class="space-y-3">
+                                <div class="flex gap-2">
+                                    <ActionButton Execute="OpenUserPicker"
+                                                  Text="Asignar técnico"
+                                                  Intent="ButtonIntent.Accept"
+                                                  Variant="ButtonVariant.Filled"
+                                                  Disabled="@(_assigningUser || _loadingUsersCatalog)" />
+                                </div>
 
-                                <CardBody>
-                                    <div class="space-y-3 py-2">
-                                        <div class="flex gap-2">
-                                            <ActionButton Execute="OpenUserPicker"
-                                                          Text="Asignar técnico"
-                                                          Intent="ButtonIntent.Accept"
-                                                          Variant="ButtonVariant.Filled"
-                                                          Disabled="@(_assigningUser || _loadingUsersCatalog)" />
-                                        </div>
+                                @if (_loadingUsersCatalog)
+                                {
+                                    <p class="text-sm text-muted">Cargando catálogo de usuarios...</p>
+                                }
 
-                                        @if (_loadingUsersCatalog)
-                                        {
-                                            <p class="text-sm text-muted">Cargando catálogo de usuarios...</p>
-                                        }
+                                @if (!string.IsNullOrWhiteSpace(_usersCatalogError))
+                                {
+                                    <p class="text-sm text-error">@_usersCatalogError</p>
+                                }
 
-                                        @if (!string.IsNullOrWhiteSpace(_usersCatalogError))
-                                        {
-                                            <p class="text-sm text-error">@_usersCatalogError</p>
-                                        }
+                                <Container TItem="int"
+                                           Items="OrderedAssignedUserIds"
+                                           Title="Técnicos asignados"
+                                           ShowItemCount="true"
+                                           TotalCount="_selected.AssignedUserIds.Count"
+                                           EnableScroll="true"
+                                           MaxHeight="26rem"
+                                           ScrollbarType="ScrollbarType.Thin"
+                                           GridClasses="space-y-2"
+                                           EmptyStateTitle="No hay técnicos asignados"
+                                           EmptyStateDescription="Asigne técnicos a este grupo para comenzar.">
 
-                                        <div class="space-y-2">
-                                            @if (_selected.AssignedUserIds.Count == 0)
-                                            {
-                                                <p class="text-sm text-muted">No hay técnicos asignados.</p>
-                                            }
-                                            else
-                                            {
-                                                @foreach (var uid in _selected.AssignedUserIds.OrderBy(x => x))
-                                                {
-                                                    <Card Class="p-3">
-                                                        <div class="flex items-center justify-between gap-3">
-                                                            <span class="text-sm text-foreground truncate">@UserLabel(uid)</span>
+                                    <EmptyStateAction>
+                                        <ActionButton Execute="OpenUserPicker"
+                                                      Text="Asignar técnico"
+                                                      Intent="ButtonIntent.Accept"
+                                                      Variant="ButtonVariant.Filled"
+                                                      Disabled="@(_assigningUser || _loadingUsersCatalog)" />
+                                    </EmptyStateAction>
 
-                                                            <ActionButton Execute="() => UnassignUserAsync(uid)"
-                                                                          Text="Quitar"
-                                                                          Variant="ButtonVariant.Ghost"
-                                                                          Intent="ButtonIntent.Danger"
-                                                                          Disabled="@_unassigningUser"
-                                                                          ConfirmBeforeExecute="true"
-                                                                          ConfirmTitle="Quitar técnico"
-                                                                          ConfirmMessage="¿Seguro que deseas desasignar este técnico del grupo?"
-                                                                          ConfirmButtonText="Quitar"
-                                                                          CancelButtonText="Cancelar" />
-                                                        </div>
-                                                    </Card>
-                                                }
-                                            }
-                                        </div>
+                                    <ChildContent Context="uid">
+                                        <Card Class="p-3">
+                                            <div class="flex items-center justify-between gap-3">
+                                                <span class="text-sm text-foreground truncate">@UserLabel(uid)</span>
 
-                                        @if (!string.IsNullOrWhiteSpace(_assignmentError))
-                                        {
-                                            <p class="text-sm text-error">@_assignmentError</p>
-                                        }
-                                    </div>
-                                </CardBody>
-                            </Card>
+                                                <ActionButton Execute="() => UnassignUserAsync(uid)"
+                                                              Text="Quitar"
+                                                              Variant="ButtonVariant.Ghost"
+                                                              Intent="ButtonIntent.Danger"
+                                                              Disabled="@_unassigningUser"
+                                                              ConfirmBeforeExecute="true"
+                                                              ConfirmTitle="Quitar técnico"
+                                                              ConfirmMessage="¿Seguro que deseas desasignar este técnico del grupo?"
+                                                              ConfirmButtonText="Quitar"
+                                                              CancelButtonText="Cancelar" />
+                                            </div>
+                                        </Card>
+                                    </ChildContent>
+                                </Container>
+
+                                @if (!string.IsNullOrWhiteSpace(_assignmentError))
+                                {
+                                    <p class="text-sm text-error">@_assignmentError</p>
+                                }
+                            </div>
                         </div>
                     }
                 </CardBody>
@@ -449,6 +454,12 @@
     private bool _userPickerOpen;
 
     private EditModel _edit = new();
+
+    private IEnumerable<FacultyScopeResponseDTO> OrderedGroups =>
+        _groups.OrderByDescending(x => x.IsActive).ThenBy(x => x.Name);
+
+    private IEnumerable<int> OrderedAssignedUserIds =>
+        _selected?.AssignedUserIds.OrderBy(x => x) ?? Enumerable.Empty<int>();
 
     protected override async Task OnInitializedAsync()
     {
