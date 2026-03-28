@@ -61,8 +61,15 @@ namespace tesisproject.backend.Controllers
         [HttpGet("{batchId:int}")]
         public async Task<ActionResult<BulkImportBatchDetailDto>> GetBatch(int batchId, [FromQuery] int previewRows = 25, CancellationToken ct = default)
         {
-            var detail = await _service.GetBatchAsync(batchId, previewRows, ct);
-            return detail is null ? NotFound() : Ok(detail);
+            try
+            {
+                var detail = await _service.GetBatchAsync(batchId, previewRows, ct);
+                return detail is null ? NotFound() : Ok(detail);
+            }
+            catch (Exception ex)
+            {
+                return Problem(title: "No pude abrir el lote.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+            }
         }
 
         [HttpPost("external-article")]

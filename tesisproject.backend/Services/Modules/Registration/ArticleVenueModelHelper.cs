@@ -32,7 +32,16 @@ namespace tesisproject.backend.Services.Implementations
                 .Where(x => x.EntityName == ArticleEntityName && (x.FieldKey == VenueFieldKey || CompositeFieldKeys.Contains(x.FieldKey)))
                 .ToListAsync(ct);
 
-            var existingByKey = existingFields.ToDictionary(x => x.FieldKey, StringComparer.OrdinalIgnoreCase);
+            var existingByKey = existingFields
+                .GroupBy(x => x.FieldKey, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group
+                        .OrderByDescending(x => x.IsActive)
+                        .ThenByDescending(x => x.UpdatedAt ?? x.CreatedAt)
+                        .ThenByDescending(x => x.FieldId)
+                        .First(),
+                    StringComparer.OrdinalIgnoreCase);
             var created = false;
 
             foreach (var seed in VenueFieldSeeds)
@@ -74,7 +83,16 @@ namespace tesisproject.backend.Services.Implementations
                 existingFields = await db.FieldCatalogEntries
                     .Where(x => x.EntityName == ArticleEntityName && (x.FieldKey == VenueFieldKey || CompositeFieldKeys.Contains(x.FieldKey)))
                     .ToListAsync(ct);
-                existingByKey = existingFields.ToDictionary(x => x.FieldKey, StringComparer.OrdinalIgnoreCase);
+                existingByKey = existingFields
+                    .GroupBy(x => x.FieldKey, StringComparer.OrdinalIgnoreCase)
+                    .ToDictionary(
+                        group => group.Key,
+                        group => group
+                            .OrderByDescending(x => x.IsActive)
+                            .ThenByDescending(x => x.UpdatedAt ?? x.CreatedAt)
+                            .ThenByDescending(x => x.FieldId)
+                            .First(),
+                        StringComparer.OrdinalIgnoreCase);
             }
 
             var form = await db.FormDefinitions
@@ -89,7 +107,14 @@ namespace tesisproject.backend.Services.Implementations
                 return;
             }
 
-            var existingAssignments = form.Fields.ToDictionary(x => x.FieldId);
+            var existingAssignments = form.Fields
+                .GroupBy(x => x.FieldId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group
+                        .OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt)
+                        .ThenByDescending(x => x.FormFieldId)
+                        .First());
             var anchor = form.Fields
                 .OrderBy(x => x.DisplayOrder)
                 .FirstOrDefault(x => existingByKey.TryGetValue(VenueFieldKey, out var venueField) && x.FieldId == venueField.FieldId);

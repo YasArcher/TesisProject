@@ -41,20 +41,75 @@
             </button>
 
             <div class="accordion-panel">
-                <ul class="nav flex-column ms-4 my-2 gap-1">
-                    <li class="nav-item"><NavLink href="/panel/principal" Match="NavLinkMatch.Prefix" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Panel principal</NavLink></li>
-                    <li class="nav-item"><NavLink href="/articulos/registrar" Match="NavLinkMatch.Prefix" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Registrar artículo</NavLink></li>
-                    <li class="nav-item"><NavLink href="/configuration" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Configuración</NavLink></li>
-                    <li class="nav-item"><NavLink href="/articulos/listado" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Listado de artículos</NavLink></li>
-                    <li class="nav-item"><NavLink href="/management/exportinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Carga masiva</NavLink></li>
-                    <li class="nav-item"><NavLink href="/management/statisticalreports" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Reportería</NavLink></li>
-                    <li class="nav-item"><NavLink href="/management/externalapis" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">APIs externas</NavLink></li>
-                    <li class="nav-item"><NavLink href="/management/backupsinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Copias de seguridad</NavLink></li>
-                    <li class="nav-item"><NavLink href="/test-api" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Centro de ayuda</NavLink></li>
-                    <li class="nav-item"><NavLink href="/help/manual" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Manual de usuario</NavLink></li>
-                    <li class="nav-item"><NavLink href="/perfilview" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Perfil</NavLink></li>
-                    <li class="nav-item"><NavLink href="/ia" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Inteligencia artificial</NavLink></li>
-                </ul>
+                <div class="ms-3 my-2 d-flex flex-column gap-2">
+                    <div class="accordion-group nested @(GroupClass(_openArticles))">
+                        <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-85"
+                                @onclick:stopPropagation="true"
+                                @onclick="() => ToggleSection(nameof(_openArticles))">
+                            <span class="icon">📝</span>
+                            <span class="label">Artículos</span>
+                            <span class="caret">▾</span>
+                        </button>
+                        <div class="accordion-panel">
+                            <ul class="nav flex-column ms-4 my-2 gap-1">
+                                <li class="nav-item"><NavLink href="/panel/principal" Match="NavLinkMatch.Prefix" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Panel principal</NavLink></li>
+                                <li class="nav-item"><NavLink href="/articulos/registrar" Match="NavLinkMatch.Prefix" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Registrar artículo</NavLink></li>
+                                <li class="nav-item"><NavLink href="/configuration" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Configuración</NavLink></li>
+                                <li class="nav-item"><NavLink href="/articulos/listado" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Listado de artículos</NavLink></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="accordion-group nested @(GroupClass(_openImportFlow))">
+                        <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-85"
+                                @onclick:stopPropagation="true"
+                                @onclick="() => ToggleSection(nameof(_openImportFlow))">
+                            <span class="icon">📥</span>
+                            <span class="label">Captura e importación</span>
+                            <span class="caret">▾</span>
+                        </button>
+                        <div class="accordion-panel">
+                            <ul class="nav flex-column ms-4 my-2 gap-1">
+                                <li class="nav-item"><NavLink href="/management/exportinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Carga masiva</NavLink></li>
+                                <li class="nav-item"><NavLink href="/management/externalapis" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">APIs externas</NavLink></li>
+                                <li class="nav-item"><NavLink href="/management/backupsinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Copias de seguridad</NavLink></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="accordion-group nested @(GroupClass(_openAnalysis))">
+                        <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-85"
+                                @onclick:stopPropagation="true"
+                                @onclick="() => ToggleSection(nameof(_openAnalysis))">
+                            <span class="icon">📊</span>
+                            <span class="label">Seguimiento</span>
+                            <span class="caret">▾</span>
+                        </button>
+                        <div class="accordion-panel">
+                            <ul class="nav flex-column ms-4 my-2 gap-1">
+                                <li class="nav-item"><NavLink href="/management/statisticalreports" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Reportería</NavLink></li>
+                                <li class="nav-item"><NavLink href="/ia" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Inteligencia artificial</NavLink></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="accordion-group nested @(GroupClass(_openSupport))">
+                        <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-85"
+                                @onclick:stopPropagation="true"
+                                @onclick="() => ToggleSection(nameof(_openSupport))">
+                            <span class="icon">🛟</span>
+                            <span class="label">Soporte y cuenta</span>
+                            <span class="caret">▾</span>
+                        </button>
+                        <div class="accordion-panel">
+                            <ul class="nav flex-column ms-4 my-2 gap-1">
+                                <li class="nav-item"><NavLink href="/test-api" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Centro de ayuda</NavLink></li>
+                                <li class="nav-item"><NavLink href="/help/manual" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Manual de usuario</NavLink></li>
+                                <li class="nav-item"><NavLink href="/perfilview" class="nav-link px-3 py-2 text-white-85" ActiveClass="active">Perfil</NavLink></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
@@ -71,6 +126,10 @@
     private bool _collapsed = false;
 
     private bool _openModules = true;
+    private bool _openArticles = true;
+    private bool _openImportFlow = false;
+    private bool _openAnalysis = false;
+    private bool _openSupport = false;
 
     private async Task Toggle()
     {
@@ -84,6 +143,10 @@
         switch (key)
         {
             case nameof(_openModules): _openModules = !_openModules; break;
+            case nameof(_openArticles): _openArticles = !_openArticles; break;
+            case nameof(_openImportFlow): _openImportFlow = !_openImportFlow; break;
+            case nameof(_openAnalysis): _openAnalysis = !_openAnalysis; break;
+            case nameof(_openSupport): _openSupport = !_openSupport; break;
         }
         StateHasChanged();
     }

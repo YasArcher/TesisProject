@@ -58,8 +58,16 @@ namespace tesisproject.frontend.Services.Implementations
             return await response.Content.ReadFromJsonAsync<BulkImportBatchDetailDto>(cancellationToken: ct);
         }
 
-        public Task<BulkImportBatchDetailDto?> GetBatchAsync(int batchId, int previewRows = 25, CancellationToken ct = default)
-            => _http.GetFromJsonAsync<BulkImportBatchDetailDto>($"api/import-batches/{batchId}?previewRows={previewRows}", ct);
+        public async Task<BulkImportBatchDetailDto?> GetBatchAsync(int batchId, int previewRows = 25, CancellationToken ct = default)
+        {
+            using var response = await _http.GetAsync($"api/import-batches/{batchId}?previewRows={previewRows}", ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude abrir el lote.", ct));
+            }
+
+            return await response.Content.ReadFromJsonAsync<BulkImportBatchDetailDto>(cancellationToken: ct);
+        }
 
         public async Task<BulkImportActionResultDto?> CreateBatchFromExternalArticleAsync(ExternalArticleImportRequest request, CancellationToken ct = default)
         {

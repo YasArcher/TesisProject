@@ -1,0 +1,52 @@
+﻿[
+    {
+        "Name":  "bulk-current-minimal-valid",
+        "CsvPath":  "C:\\Users\\Personal\\Source\\Repos\\TesisProject\\tests\\load\\current-active-delivery\\bulk-current-minimal-valid.csv",
+        "XlsxPath":  "C:\\Users\\Personal\\Source\\Repos\\TesisProject\\tests\\load\\current-active-delivery\\bulk-current-minimal-valid.xlsx",
+        "RowCount":  20,
+        "UsesCatalogs":  false,
+        "UsesCompositeVenue":  false,
+        "IncludesDynamic":  false,
+        "ContainsIntentionalErrors":  false
+    },
+    {
+        "Name":  "bulk-current-complete-valid",
+        "CsvPath":  "C:\\Users\\Personal\\Source\\Repos\\TesisProject\\tests\\load\\current-active-delivery\\bulk-current-complete-valid.csv",
+        "XlsxPath":  "C:\\Users\\Personal\\Source\\Repos\\TesisProject\\tests\\load\\current-active-delivery\\bulk-current-complete-valid.xlsx",
+        "RowCount":  25,
+        "UsesCatalogs":  true,
+        "UsesCompositeVenue":  true,
+        "IncludesDynamic":  true,
+        "ContainsIntentionalErrors":  false
+    },
+    {
+        "Name":  "bulk-current-catalogs-valid",
+        "CsvPath":  "C:\\Users\\Personal\\Source\\Repos\\TesisProject\\tests\\load\\current-active-delivery\\bulk-current-catalogs-valid.csv",
+        "XlsxPath":  "C:\\Users\\Personal\\Source\\Repos\\TesisProject\\tests\\load\\current-active-delivery\\bulk-current-catalogs-valid.xlsx",
+        "RowCount":  18,
+        "UsesCatalogs":  true,
+        "UsesCompositeVenue":  false,
+        "IncludesDynamic":  true,
+        "ContainsIntentionalErrors":  false
+    },
+    {
+        "Name":  "bulk-current-venue-valid",
+        "CsvPath":  "C:\\Users\\Personal\\Source\\Repos\\TesisProject\\tests\\load\\current-active-delivery\\bulk-current-venue-valid.csv",
+        "XlsxPath":  "C:\\Users\\Personal\\Source\\Repos\\TesisProject\\tests\\load\\current-active-delivery\\bulk-current-venue-valid.xlsx",
+        "RowCount":  15,
+        "UsesCatalogs":  true,
+        "UsesCompositeVenue":  true,
+        "IncludesDynamic":  false,
+        "ContainsIntentionalErrors":  false
+    },
+    {
+        "Name":  "bulk-current-controlled-errors",
+        "CsvPath":  "C:\\Users\\Personal\\Source\\Repos\\TesisProject\\tests\\load\\current-active-delivery\\bulk-current-controlled-errors.csv",
+        "XlsxPath":  "C:\\Users\\Personal\\Source\\Repos\\TesisProject\\tests\\load\\current-active-delivery\\bulk-current-controlled-errors.xlsx",
+        "RowCount":  16,
+        "UsesCatalogs":  true,
+        "UsesCompositeVenue":  true,
+        "IncludesDynamic":  true,
+        "ContainsIntentionalErrors":  true
+    }
+]

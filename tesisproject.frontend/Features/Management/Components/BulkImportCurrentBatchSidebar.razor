@@ -14,7 +14,7 @@
 
     @if (Batch is null)
     {
-        <AppEmptyState Title="Todavía no hay un lote abierto" Message="Descarga una plantilla, súbela y aquí aparecerá la previsualización con los estados reales del staging." />
+        <AppEmptyState Title="Sin lote abierto" Message="Abre o crea un lote." />
     }
     else
     {
@@ -35,14 +35,35 @@
             </div>
             <div class="grid grid-cols-1 gap-2">
                 <div class="rounded-2xl border border-[#d9e5e8] bg-white px-3 py-2.5">
-                    <div class="text-xs uppercase tracking-wide text-slate-500">Siguiente paso sugerido</div>
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Siguiente paso</div>
                     <div class="mt-1 text-sm font-bold text-[#12343b]">@BatchReviewHint</div>
-                    <div class="mt-1 text-xs text-slate-500">@OperationalGuidance</div>
                 </div>
+                @if (!string.IsNullOrWhiteSpace(RequiredContractSummary))
+                {
+                    <div class="rounded-2xl border border-[#d6e4ea] bg-[#f7fbfc] px-3 py-2.5">
+                        <div class="text-xs uppercase tracking-wide text-slate-500">Contrato mínimo del lote</div>
+                        <div class="mt-1 text-sm font-bold text-[#12343b]">@RequiredContractSummary</div>
+                        @if (RequiredContractFields.Any())
+                        {
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                @foreach (var field in RequiredContractFields)
+                                {
+                                    <span class="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-[#2f4858]">@field</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(MissingRequiredSummary))
+                {
+                    <div class="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5">
+                        <div class="text-xs uppercase tracking-wide text-rose-600">Faltantes obligatorios</div>
+                        <div class="mt-1 text-sm font-bold text-rose-700">@MissingRequiredSummary</div>
+                    </div>
+                }
                 <div class="rounded-2xl border border-[#ead8bd] bg-[#fffdf8] px-3 py-2.5">
                     <div class="text-xs uppercase tracking-wide text-slate-500">Ventana de revisión</div>
                     <div class="mt-1 text-sm font-bold text-[#8b5a16]">@PreviewWindowLabel</div>
-                    <div class="mt-1 text-xs text-slate-500">@PreviewWindowSummary</div>
                 </div>
             </div>
             <div class="grid grid-cols-3 gap-2 text-center">
@@ -87,7 +108,7 @@
         </div>
 
         <div class="mt-4 flex flex-col gap-2.5">
-            <button class="rounded-xl border border-[#d7c19c] bg-[#fff4e4] px-4 py-2.5 text-sm font-semibold text-[#8b5a16] disabled:opacity-60" disabled="@(!CanDownloadTemplate || IsGeneratingTemplate)" @onclick="OnDownloadTemplate">@(IsGeneratingTemplate ? "Generando..." : "Re-descargar plantilla del lote")</button>
+            <button class="rounded-xl border border-[#d7c19c] bg-[#fff4e4] px-4 py-2.5 text-sm font-semibold text-[#8b5a16] disabled:opacity-60" disabled="@(!CanDownloadTemplate || IsGeneratingTemplate)" @onclick="OnDownloadTemplate">@(IsGeneratingTemplate ? "Generando..." : "Descargar plantilla")</button>
             <button class="rounded-xl border border-[#c7d6da] bg-white px-4 py-2.5 text-sm font-semibold text-[#12343b] disabled:opacity-60" disabled="@IsValidatingBatch" @onclick="OnValidate">@(IsValidatingBatch ? "Validando..." : "Validar lote")</button>
             <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60" disabled="@(!CanProcess || IsProcessingBatch)" @onclick="OnProcess">@(IsProcessingBatch ? "Procesando..." : "Procesar lote")</button>
         </div>
@@ -98,6 +119,9 @@
     [Parameter] public BulkImportBatchDetailDto? Batch { get; set; }
     [Parameter] public string BatchReviewHint { get; set; } = string.Empty;
     [Parameter] public string OperationalGuidance { get; set; } = string.Empty;
+    [Parameter] public string RequiredContractSummary { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<string> RequiredContractFields { get; set; } = Array.Empty<string>();
+    [Parameter] public string MissingRequiredSummary { get; set; } = string.Empty;
     [Parameter] public string PreviewWindowLabel { get; set; } = string.Empty;
     [Parameter] public string PreviewWindowSummary { get; set; } = string.Empty;
     [Parameter] public string CurrentStageLabel { get; set; } = string.Empty;

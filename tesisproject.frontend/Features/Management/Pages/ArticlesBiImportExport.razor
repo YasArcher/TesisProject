@@ -19,7 +19,6 @@
         <div class="flex items-center justify-between gap-3">
             <div>
                 <h1 class="text-xl font-black md:text-2xl">Carga masiva dinámica</h1>
-                <p class="text-xs text-white/75">Configura plantilla, sube a staging, valida, corrige y procesa desde un mismo flujo.</p>
             </div>
         </div>
     </div>
@@ -48,10 +47,6 @@
                     <div>
                         <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Procesando lote</div>
                         <h2 class="mt-1 text-xl font-black text-[#12343b]">@GetBlockingOverlayTitle()</h2>
-                        <p class="mt-2 text-sm text-slate-600">@GetBlockingOverlayMessage()</p>
-                        <div class="mt-4 rounded-2xl bg-[#f4f8f9] px-4 py-3 text-xs text-slate-500">
-                            La pantalla queda temporalmente bloqueada para evitar acciones concurrentes mientras se procesa la información.
-                        </div>
                     </div>
                 </div>
             </div>
@@ -68,22 +63,22 @@
             <div class="rounded-2xl border border-[#d9e5e8] bg-white px-4 py-3 shadow-sm">
                 <div class="text-[11px] uppercase tracking-wide text-slate-500">Artículo</div>
                 <div class="mt-1 text-xl font-black text-[#12343b]">@SelectedArticleFieldIds.Count</div>
-                <div class="text-xs text-slate-500">campos en plantilla</div>
+                <div class="text-xs text-slate-500">selección</div>
             </div>
             <div class="rounded-2xl border border-[#ead8bd] bg-[#fffdf8] px-4 py-3 shadow-sm">
                 <div class="text-[11px] uppercase tracking-wide text-slate-500">Participante</div>
                 <div class="mt-1 text-xl font-black text-[#8b5a16]">@SelectedParticipantFieldIds.Count</div>
-                <div class="text-xs text-slate-500">campos incluidos</div>
+                <div class="text-xs text-slate-500">selección</div>
             </div>
             <div class="rounded-2xl border border-[#d9e5e8] bg-white px-4 py-3 shadow-sm">
                 <div class="text-[11px] uppercase tracking-wide text-slate-500">Lote actual</div>
                 <div class="mt-1 truncate text-sm font-black text-[#12343b]">@(CurrentBatch?.Summary.BatchCode ?? "Sin lote")</div>
-                <div class="text-xs text-slate-500">control de staging</div>
+                <div class="text-xs text-slate-500">staging</div>
             </div>
             <div class="rounded-2xl border border-[#d9e5e8] bg-white px-4 py-3 shadow-sm">
                 <div class="text-[11px] uppercase tracking-wide text-slate-500">Recientes</div>
                 <div class="mt-1 text-xl font-black text-[#2f4858]">@RecentBatches.Count</div>
-                <div class="text-xs text-slate-500">lotes cargados</div>
+                <div class="text-xs text-slate-500">lotes</div>
             </div>
         </div>
 
@@ -122,6 +117,9 @@
                 <BulkImportCurrentBatchSidebar Batch="CurrentBatch"
                                                BatchReviewHint="@GetBatchReviewHint()"
                                                OperationalGuidance="@GetOperationalGuidance()"
+                                               RequiredContractSummary="@GetRequiredContractSummary()"
+                                               RequiredContractFields="RequiredContractFieldLabels"
+                                               MissingRequiredSummary="@GetMissingRequiredSummary()"
                                                PreviewWindowLabel="@($"{CurrentPreviewRows} {GetPreviewCoverageLabel()}")"
                                                PreviewWindowSummary="@GetPreviewWindowSummary()"
                                                CurrentStageLabel="@GetCurrentStageLabel()"
@@ -132,7 +130,7 @@
                                                IsValidatingBatch="IsValidatingBatch"
                                                IsProcessingBatch="IsProcessingBatch"
                                                CanDownloadTemplate="@(CurrentBatch?.Template is not null)"
-                                               CanProcess="@(CurrentBatch?.Summary.TotalRows > 0)"
+                                               CanProcess="@CanProcessCurrentBatch"
                                                StageCards="CurrentBatchStageCards"
                                                OnPrepareNextLoad="PrepareNextLoad"
                                                OnRefresh="RefreshCurrentBatchAsync"
@@ -504,7 +502,13 @@
                             @foreach (var error in SelectedPreviewRow.Errors)
                             {
                                 <div class="rounded-3xl border border-rose-200 bg-rose-50 px-4 py-4 text-sm">
-                                    <div class="font-semibold text-rose-700">@error.ErrorCode</div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <div class="font-semibold text-rose-700">@error.ErrorCode</div>
+                                        @if (IsRequiredFieldError(error))
+                                        {
+                                            <span class="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-rose-700">Campo obligatorio</span>
+                                        }
+                                    </div>
                                     <div class="mt-2 text-rose-900">@error.ErrorMessage</div>
                                     @if (!string.IsNullOrWhiteSpace(error.FieldLabel))
                                     {
@@ -709,6 +713,16 @@
     private List<BulkImportTemplateFieldDto> TemplateFieldPreviewItems => CurrentBatch?.Template is null
         ? new List<BulkImportTemplateFieldDto>()
         : CurrentBatch.Template.ArticleFields.Concat(CurrentBatch.Template.ParticipantFields).ToList();
+    private bool CanProcessCurrentBatch => CurrentBatch is not null
+        && CurrentBatch.Summary.TotalRows > 0
+        && CurrentBatch.Summary.ErrorRows == 0
+        && CurrentBatch.Summary.ValidRows > 0;
+    private IReadOnlyList<string> RequiredContractFieldLabels
+        => GetRequiredContractFieldIds()
+            .Select(ResolveFieldLabel)
+            .Where(label => !string.IsNullOrWhiteSpace(label))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     private List<BulkImportTemplateFieldDto> SelectedRowEditableFields
     {
         get
@@ -1580,6 +1594,88 @@
 
     private static string GetDisplayValue(BulkImportRowCellDto cell)
         => string.IsNullOrWhiteSpace(cell.RawValue) ? (cell.NormalizedValue ?? string.Empty) : cell.RawValue ?? string.Empty;
+
+    private IEnumerable<int> GetRequiredContractFieldIds()
+    {
+        if (CurrentBatch is null || string.IsNullOrWhiteSpace(CurrentBatch.Summary.SourceReference))
+        {
+            return Enumerable.Empty<int>();
+        }
+
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(CurrentBatch.Summary.SourceReference);
+            var root = document.RootElement;
+            var result = new List<int>();
+
+            if (root.TryGetProperty("RequiredArticleFieldIds", out var articleIds) && articleIds.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                result.AddRange(articleIds.EnumerateArray().Where(x => x.TryGetInt32(out _)).Select(x => x.GetInt32()));
+            }
+
+            if (root.TryGetProperty("RequiredParticipantFieldIds", out var participantIds) && participantIds.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                result.AddRange(participantIds.EnumerateArray().Where(x => x.TryGetInt32(out _)).Select(x => x.GetInt32()));
+            }
+
+            return result.Distinct().ToList();
+        }
+        catch
+        {
+            return Enumerable.Empty<int>();
+        }
+    }
+
+    private string ResolveFieldLabel(int fieldId)
+    {
+        var templateField = TemplateFieldPreviewItems.FirstOrDefault(x => x.FieldId == fieldId);
+        if (templateField is not null)
+        {
+            return templateField.FieldLabel;
+        }
+
+        var field = ArticleFields.Concat(ParticipantFields).FirstOrDefault(x => x.FieldId == fieldId);
+        return field?.FieldLabel ?? $"Campo #{fieldId}";
+    }
+
+    private string GetRequiredContractSummary()
+    {
+        var labels = RequiredContractFieldLabels;
+        if (!labels.Any())
+        {
+            return string.Empty;
+        }
+
+        return $"{labels.Count} campo(s) mínimos para poder procesar este lote.";
+    }
+
+    private string GetMissingRequiredSummary()
+    {
+        if (CurrentBatch is null)
+        {
+            return string.Empty;
+        }
+
+        var missingFields = CurrentBatch.Errors
+            .Where(IsRequiredFieldError)
+            .Select(error => !string.IsNullOrWhiteSpace(error.FieldLabel) ? error.FieldLabel! : error.ErrorCode)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (!missingFields.Any())
+        {
+            return string.Empty;
+        }
+
+        var preview = string.Join(", ", missingFields.Take(3));
+        return missingFields.Count > 3
+            ? $"{missingFields.Count} campo(s) faltan por completar. Ej.: {preview}."
+            : $"Completa: {preview}.";
+    }
+
+    private static bool IsRequiredFieldError(BulkImportErrorDto error)
+        => string.Equals(error.ErrorCode, "REQUIRED_FIELD", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(error.ErrorCode, "CLIENT_REQUIRED_FIELD", StringComparison.OrdinalIgnoreCase);
 
     private static string GetNormalizedDisplayValue(BulkImportRowCellDto cell)
         => string.IsNullOrWhiteSpace(cell.NormalizedValue) ? (cell.RawValue ?? string.Empty) : cell.NormalizedValue ?? string.Empty;

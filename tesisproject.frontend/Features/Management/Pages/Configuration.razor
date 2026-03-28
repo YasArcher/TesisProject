@@ -10,7 +10,6 @@
 
 <div class="app-page-shell configuration-page">
     <div class="configuration-hero mb-4 rounded-[1.6rem] p-4 text-white shadow-lg">
-        <div class="text-xs uppercase tracking-[0.3em] text-white/70">Administración</div>
         <h1 class="mt-2 text-2xl font-black md:text-3xl">Formularios y metadatos</h1>
     </div>
 
@@ -65,7 +64,6 @@
                     <button type="button" class="@($"{GetTabButtonClass("catalogs")} w-full xl:w-auto")" @onclick='() => SetActiveTabAsync("catalogs")'>Catálogos</button>
                     <button type="button" class="@($"{GetTabButtonClass("options")} w-full xl:w-auto")" @onclick='() => SetActiveTabAsync("options")'>Opciones dinámicas</button>
                 </div>
-                <div class="mt-3 rounded-xl bg-[#f7fafb] px-3 py-2 text-sm text-slate-600">@GetActiveTabHelperText()</div>
             </div>
         </div>
 
@@ -125,7 +123,7 @@
                         <div class="space-y-3 px-4 py-4 text-sm">
                             @if (SelectedForm is null)
                             {
-                                <div class="text-slate-500">Selecciona un formulario.</div>
+                                <div class="text-slate-500">Sin formulario seleccionado.</div>
                             }
                             else
                             {
@@ -153,7 +151,7 @@
                         <div class="space-y-4 px-5 py-5">
                             @if (SelectedForm is null)
                             {
-                                <div class="text-sm text-slate-500">Selecciona un formulario para asignar campos.</div>
+                                <div class="text-sm text-slate-500">Sin formulario seleccionado.</div>
                             }
                             else
                             {
@@ -249,9 +247,6 @@
                         <h2 class="text-base font-bold text-[#12343b]">Nuevo campo dinámico</h2>
                     </header>
                     <div class="space-y-4 px-5 py-5 text-sm">
-                        <div class="rounded-2xl border border-[#d9e5e8] bg-white/80 px-4 py-3 text-slate-600">
-                            Define un nuevo campo para el sistema y luego asígnalo a los formularios que lo necesiten.
-                        </div>
                         <div class="grid grid-cols-1 gap-3">
                             <label class="space-y-1">
                                 <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Sección del sistema</span>
@@ -492,7 +487,6 @@
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                     <h3 class="text-sm font-bold text-[#12343b]">Elementos creados</h3>
-                                    <p class="mt-1 text-xs text-slate-600">Consulta y actualiza los elementos registrados en el catálogo activo.</p>
                                 </div>
                                 <span class="rounded-full bg-[#f5f7f8] px-3 py-1 text-[11px] font-semibold text-slate-700">@GetFilteredCatalogItems().Count() visibles</span>
                             </div>
@@ -501,9 +495,6 @@
                                 <input class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm" placeholder="Buscar elemento por nombre, código o relación" @bind="CatalogSearchTerm" @bind:event="oninput" @bind:after="PersistUiStateAsync" />
                             </div>
 
-                            <div class="mt-3 rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                                El modelo actual de estos catálogos no expone un estado activo/inactivo. Aquí se administra nombre, código y relación jerárquica cuando aplica.
-                            </div>
 
                             @if (!GetFilteredCatalogItems().Any())
                             {
@@ -591,7 +582,6 @@
                         <section class="rounded-3xl border border-[#d8e4e7] bg-[#f7fafb] p-4 shadow-sm">
                             <div>
                                 <h3 class="text-sm font-bold text-[#12343b]">Registrar opción</h3>
-                                <p class="mt-1 text-xs text-slate-600">Selecciona el campo y registra los valores que el usuario podrá elegir.</p>
                             </div>
 
                             <div class="mt-4 space-y-4">
@@ -638,7 +628,7 @@
                                 else
                                 {
                                     <div class="rounded-2xl border border-dashed border-slate-300 px-4 py-5 text-slate-500">
-                                        Selecciona un campo dinámico para empezar a registrar sus opciones.
+                                        Elige un campo dinámico.
                                     </div>
                                 }
                             </div>
@@ -648,7 +638,6 @@
                             <div class="flex flex-wrap items-start justify-between gap-3">
                                 <div>
                                     <h3 class="text-sm font-bold text-[#12343b]">Opciones registradas</h3>
-                                    <p class="mt-1 text-xs text-slate-600">Revisa, actualiza o desactiva las opciones del campo seleccionado.</p>
                                 </div>
                                 <span class="rounded-full bg-[#f5f7f8] px-3 py-1 text-[11px] font-semibold text-slate-700">@GetFilteredOptions().Count() visibles</span>
                             </div>
@@ -721,7 +710,7 @@
                             }
                             else
                             {
-                                <div class="mt-2 rounded-2xl border border-dashed p-5 text-slate-500">Selecciona un campo dinámico para ver y administrar sus opciones.</div>
+                                <div class="mt-2 rounded-2xl border border-dashed p-5 text-slate-500">Selecciona un campo dinámico.</div>
                             }
                         </section>
                     </div>

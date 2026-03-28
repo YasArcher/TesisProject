@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using tesisproject.backend.Data;
 using tesisproject.backend.Data.Entities;
 using tesisproject.backend.Services.Interfaces;
@@ -132,20 +133,23 @@ namespace tesisproject.backend.Services.Implementations
             var parsed = await ParseFileAsync(fileStream, fileName, ct);
             var now = DateTime.UtcNow;
             var templateDescriptor = BuildTemplateFromHeaders(parsed.Headers);
+            var requiredFieldContract = await BuildRequiredFieldContractAsync(ct);
             var batch = new ImportBatch
             {
                 BatchCode = GenerateBatchCode("BATCH-UI"),
                 SourceType = string.IsNullOrWhiteSpace(sourceType) ? "Excel" : sourceType.Trim(),
                 EntityName = "Article",
                 FileName = fileName,
-                SourceReference = JsonSerializer.Serialize(new BatchTemplateMetadata
+                SourceReference = SerializeBatchMetadata(new BatchTemplateMetadata
                 {
                     Origin = "ui-dynamic-import",
                     FileName = fileName,
                     SourceType = sourceType,
                     ArticleFieldIds = templateDescriptor.ArticleFields.Select(x => x.FieldId).ToList(),
-                    ParticipantFieldIds = templateDescriptor.ParticipantFields.Select(x => x.FieldId).ToList()
-                }),
+                    ParticipantFieldIds = templateDescriptor.ParticipantFields.Select(x => x.FieldId).ToList(),
+                    RequiredArticleFieldIds = requiredFieldContract.ArticleFieldIds,
+                    RequiredParticipantFieldIds = requiredFieldContract.ParticipantFieldIds
+                }, preserveRequiredContractOnlyWhenTrimmed: true),
                 TotalRows = parsed.Rows.Count,
                 SuccessfulRows = 0,
                 ErrorRows = 0,
@@ -158,25 +162,33 @@ namespace tesisproject.backend.Services.Implementations
             _db.ImportBatches.Add(batch);
             await _db.SaveChangesAsync(ct);
 
+            var rowsToInsert = new List<ImportBatchRow>(parsed.Rows.Count);
             foreach (var parsedRow in parsed.Rows)
             {
-                var row = new ImportBatchRow
+                rowsToInsert.Add(new ImportBatchRow
                 {
                     ImportBatchId = batch.ImportBatchId,
                     RowNumber = parsedRow.RowNumber,
                     RowStatus = "Pending",
                     RawJson = JsonSerializer.Serialize(parsedRow.RawData),
                     CreatedAt = now
-                };
+                });
+            }
 
-                _db.ImportBatchRows.Add(row);
-                await _db.SaveChangesAsync(ct);
+            _db.ImportBatchRows.AddRange(rowsToInsert);
+            await _db.SaveChangesAsync(ct);
+
+            var rowValuesToInsert = new List<ImportBatchRowValue>();
+            for (var index = 0; index < parsed.Rows.Count; index++)
+            {
+                var parsedRow = parsed.Rows[index];
+                var savedRow = rowsToInsert[index];
 
                 foreach (var cell in parsedRow.Cells)
                 {
-                    _db.ImportBatchRowValues.Add(new ImportBatchRowValue
+                    rowValuesToInsert.Add(new ImportBatchRowValue
                     {
-                        ImportBatchRowId = row.ImportBatchRowId,
+                        ImportBatchRowId = savedRow.ImportBatchRowId,
                         FieldId = cell.Field.FieldId,
                         RawValue = cell.RawValue,
                         NormalizedValue = cell.NormalizedValue,
@@ -188,9 +200,15 @@ namespace tesisproject.backend.Services.Implementations
                 }
             }
 
+            if (rowValuesToInsert.Count > 0)
+            {
+                _db.ImportBatchRowValues.AddRange(rowValuesToInsert);
+            }
+
+            var batchErrorsToInsert = new List<ImportBatchError>();
             foreach (var header in parsed.UnmappedHeaders)
             {
-                _db.ImportBatchErrors.Add(new ImportBatchError
+                batchErrorsToInsert.Add(new ImportBatchError
                 {
                     ImportBatchId = batch.ImportBatchId,
                     ErrorCode = "CLIENT_UNKNOWN_COLUMN",
@@ -198,6 +216,11 @@ namespace tesisproject.backend.Services.Implementations
                     Severity = "Warning",
                     CreatedAt = now
                 });
+            }
+
+            if (batchErrorsToInsert.Count > 0)
+            {
+                _db.ImportBatchErrors.AddRange(batchErrorsToInsert);
             }
 
             await _db.SaveChangesAsync(ct);
@@ -311,6 +334,7 @@ namespace tesisproject.backend.Services.Implementations
             var articleFields = await ResolveTemplateFieldsAsync("Article", new List<int>(), true, ct);
             var participantFields = await ResolveTemplateFieldsAsync("ArticleParticipant", new List<int>(), true, ct);
             var allFields = articleFields.Concat(participantFields).ToDictionary(x => x.FieldKey, StringComparer.OrdinalIgnoreCase);
+            var requiredFieldContract = await BuildRequiredFieldContractAsync(ct);
             var normalizer = await BulkImportNormalizerCache.CreateAsync(_db, ct);
             var now = DateTime.UtcNow;
 
@@ -324,7 +348,8 @@ namespace tesisproject.backend.Services.Implementations
                     request.ProviderKey,
                     request.ProviderName,
                     1,
-                    new[] { request.Article }),
+                    new[] { request.Article },
+                    requiredFieldContract),
                 TotalRows = 1,
                 SuccessfulRows = 0,
                 ErrorRows = 0,
@@ -368,6 +393,7 @@ namespace tesisproject.backend.Services.Implementations
             var articleFields = await ResolveTemplateFieldsAsync("Article", new List<int>(), true, ct);
             var participantFields = await ResolveTemplateFieldsAsync("ArticleParticipant", new List<int>(), true, ct);
             var allFields = articleFields.Concat(participantFields).ToDictionary(x => x.FieldKey, StringComparer.OrdinalIgnoreCase);
+            var requiredFieldContract = await BuildRequiredFieldContractAsync(ct);
             var normalizer = await BulkImportNormalizerCache.CreateAsync(_db, ct);
             var now = DateTime.UtcNow;
 
@@ -381,7 +407,8 @@ namespace tesisproject.backend.Services.Implementations
                     request.ProviderKey,
                     request.ProviderName,
                     validArticles.Count,
-                    validArticles),
+                    validArticles,
+                    requiredFieldContract),
                 TotalRows = validArticles.Count,
                 SuccessfulRows = 0,
                 ErrorRows = 0,
@@ -515,7 +542,8 @@ namespace tesisproject.backend.Services.Implementations
             string? providerKey,
             string? providerName,
             int articleCount,
-            IEnumerable<ExternalArticlePreviewDto> articles)
+            IEnumerable<ExternalArticlePreviewDto> articles,
+            RequiredFieldContract requiredFieldContract)
         {
             var preview = articles
                 .Where(x => x is not null)
@@ -525,17 +553,17 @@ namespace tesisproject.backend.Services.Implementations
                 .Select(x => x!.Trim())
                 .ToList();
 
-            var payload = new
+            return SerializeBatchMetadata(new BatchTemplateMetadata
             {
                 Origin = "external-api-explorer",
+                SourceType = "ExternalApi",
                 ProviderKey = string.IsNullOrWhiteSpace(providerKey) ? "external" : providerKey.Trim(),
                 ProviderName = string.IsNullOrWhiteSpace(providerName) ? "Proveedor externo" : providerName.Trim(),
                 ArticleCount = articleCount,
-                Preview = preview
-            };
-
-            var json = JsonSerializer.Serialize(payload);
-            return json.Length <= 300 ? json : json[..300];
+                Preview = preview,
+                RequiredArticleFieldIds = requiredFieldContract.ArticleFieldIds,
+                RequiredParticipantFieldIds = requiredFieldContract.ParticipantFieldIds
+            }, preserveRequiredContractOnlyWhenTrimmed: true);
         }
 
         public async Task<BulkImportActionResultDto> CorrectRowAsync(int batchId, int rowId, BulkImportRowCorrectionRequest request, CancellationToken ct = default)
@@ -663,7 +691,17 @@ namespace tesisproject.backend.Services.Implementations
 
         public async Task<BulkImportActionResultDto> ProcessBatchAsync(int batchId, CancellationToken ct = default)
         {
-            await ValidateBatchAsync(batchId, ct);
+            var validation = await ValidateBatchAsync(batchId, ct);
+            if (validation.Batch.Summary.ErrorRows > 0)
+            {
+                throw new InvalidOperationException($"El lote {validation.Batch.Summary.BatchCode} todavía tiene {validation.Batch.Summary.ErrorRows} fila(s) con error. Completa los campos obligatorios y corrige el staging antes de procesarlo.");
+            }
+
+            if (validation.Batch.Summary.ValidRows <= 0)
+            {
+                throw new InvalidOperationException($"El lote {validation.Batch.Summary.BatchCode} no tiene filas listas para procesar.");
+            }
+
             await _db.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.sp_ProcessImportBatch_Article {batchId}", ct);
 
             var batch = await GetBatchAsync(batchId, 25, ct) ?? new BulkImportBatchDetailDto();
@@ -732,11 +770,6 @@ namespace tesisproject.backend.Services.Implementations
 
         private async Task<List<FieldCatalogEntry>> ResolveStoredTemplateFieldsAsync(string entityName, List<int>? fieldIds, CancellationToken ct)
         {
-            if (string.Equals(entityName, "Article", StringComparison.OrdinalIgnoreCase))
-            {
-                await ArticleVenueModelHelper.EnsureVenueCompositeFieldsAsync(_db, ct);
-            }
-
             if (fieldIds is null || fieldIds.Count == 0)
             {
                 return new List<FieldCatalogEntry>();
@@ -1055,7 +1088,7 @@ namespace tesisproject.backend.Services.Implementations
         private async Task ApplyClientSideValidationAsync(int batchId, CancellationToken ct)
         {
             var existingClientErrors = await _db.ImportBatchErrors
-                .Where(x => x.ImportBatchId == batchId && (x.ErrorCode.StartsWith("CLIENT_INVALID_") || x.ErrorCode.StartsWith("CLIENT_OCDE_")))
+                .Where(x => x.ImportBatchId == batchId && (x.ErrorCode.StartsWith("CLIENT_INVALID_") || x.ErrorCode.StartsWith("CLIENT_OCDE_") || x.ErrorCode.StartsWith("CLIENT_REQUIRED_")))
                 .ToListAsync(ct);
 
             if (existingClientErrors.Count > 0)
@@ -1083,6 +1116,7 @@ namespace tesisproject.backend.Services.Implementations
                 });
             }
 
+            await ApplyRequiredFieldValidationAsync(batchId, ct);
             await ApplyRelationalConsistencyValidationAsync(batchId, ct);
             await _db.SaveChangesAsync(ct);
 
@@ -1111,6 +1145,258 @@ namespace tesisproject.backend.Services.Implementations
             batch.FinishedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync(ct);
+        }
+
+        private async Task ApplyRequiredFieldValidationAsync(int batchId, CancellationToken ct)
+        {
+            var requiredFields = await ResolveRequiredProcessFieldsAsync(batchId, ct);
+            if (requiredFields.Count == 0)
+            {
+                return;
+            }
+
+            var existingRequiredErrors = await _db.ImportBatchErrors
+                .AsNoTracking()
+                .Where(x => x.ImportBatchId == batchId
+                    && x.ImportBatchRowId != null
+                    && x.FieldId != null
+                    && (x.ErrorCode == "REQUIRED_FIELD" || x.ErrorCode == "CLIENT_REQUIRED_FIELD"))
+                .Select(x => new { RowId = x.ImportBatchRowId!.Value, FieldId = x.FieldId!.Value })
+                .ToListAsync(ct);
+
+            var existingRequiredErrorKeys = existingRequiredErrors
+                .Select(x => $"{x.RowId}:{x.FieldId}")
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var rowIds = await _db.ImportBatchRows
+                .AsNoTracking()
+                .Where(x => x.ImportBatchId == batchId)
+                .Select(x => new { x.ImportBatchRowId, x.RowNumber })
+                .ToListAsync(ct);
+
+            if (rowIds.Count == 0)
+            {
+                return;
+            }
+
+            var rowValues = await _db.ImportBatchRowValues
+                .AsNoTracking()
+                .Include(x => x.Field)
+                .Where(x => rowIds.Select(r => r.ImportBatchRowId).Contains(x.ImportBatchRowId))
+                .ToListAsync(ct);
+
+            var valuesByRow = rowValues
+                .GroupBy(x => x.ImportBatchRowId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.ToDictionary(x => x.FieldId, x => x));
+
+            var timestamp = DateTime.UtcNow;
+            foreach (var row in rowIds)
+            {
+                valuesByRow.TryGetValue(row.ImportBatchRowId, out var fieldValues);
+                fieldValues ??= new Dictionary<int, ImportBatchRowValue>();
+
+                foreach (var requiredField in requiredFields)
+                {
+                    if (fieldValues.TryGetValue(requiredField.FieldId, out var existingValue)
+                        && HasMeaningfulValue(existingValue))
+                    {
+                        continue;
+                    }
+
+                    var errorKey = $"{row.ImportBatchRowId}:{requiredField.FieldId}";
+                    if (existingRequiredErrorKeys.Contains(errorKey))
+                    {
+                        continue;
+                    }
+
+                    _db.ImportBatchErrors.Add(new ImportBatchError
+                    {
+                        ImportBatchId = batchId,
+                        ImportBatchRowId = row.ImportBatchRowId,
+                        FieldId = requiredField.FieldId,
+                        ErrorCode = "CLIENT_REQUIRED_FIELD",
+                        ErrorMessage = $"Falta completar el campo obligatorio '{requiredField.FieldLabel}' para poder validar y procesar esta fila.",
+                        Severity = "Error",
+                        CreatedAt = timestamp
+                    });
+                    existingRequiredErrorKeys.Add(errorKey);
+                }
+            }
+        }
+
+        private async Task<List<FieldCatalogEntry>> ResolveRequiredProcessFieldsAsync(int batchId, CancellationToken ct)
+        {
+            var persistedFieldIds = await ReadRequiredFieldContractAsync(batchId, ct);
+            if (persistedFieldIds.ArticleFieldIds.Count > 0 || persistedFieldIds.ParticipantFieldIds.Count > 0)
+            {
+                var persistedFields = new List<FieldCatalogEntry>();
+                persistedFields.AddRange(await ResolveStoredTemplateFieldsAsync("Article", persistedFieldIds.ArticleFieldIds, ct));
+                persistedFields.AddRange(await ResolveStoredTemplateFieldsAsync("ArticleParticipant", persistedFieldIds.ParticipantFieldIds, ct));
+
+                if (persistedFields.Count > 0)
+                {
+                    return persistedFields
+                        .GroupBy(x => x.FieldId)
+                        .Select(group => group.First())
+                        .OrderBy(x => x.EntityName)
+                        .ThenBy(x => x.DisplayOrder)
+                        .ThenBy(x => x.FieldId)
+                        .ToList();
+                }
+            }
+
+            var requiredFields = new List<FieldCatalogEntry>();
+            requiredFields.AddRange(await ResolveRequiredProcessFieldsByEntityAsync("Article", ct));
+            requiredFields.AddRange(await ResolveRequiredProcessFieldsByEntityAsync("ArticleParticipant", ct));
+
+            return requiredFields
+                .GroupBy(x => x.FieldId)
+                .Select(group => group.First())
+                .OrderBy(x => x.EntityName)
+                .ThenBy(x => x.DisplayOrder)
+                .ThenBy(x => x.FieldId)
+                .ToList();
+        }
+
+        private async Task<List<FieldCatalogEntry>> ResolveRequiredProcessFieldsByEntityAsync(string entityName, CancellationToken ct)
+        {
+            var activeFormId = await _db.FormDefinitions
+                .AsNoTracking()
+                .Where(x => x.EntityName == entityName && x.IsActive)
+                .OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt)
+                .ThenByDescending(x => x.FormId)
+                .Select(x => (int?)x.FormId)
+                .FirstOrDefaultAsync(ct);
+
+            if (activeFormId.HasValue)
+            {
+                var formRequiredFields = await _db.FormFieldDefinitions
+                    .AsNoTracking()
+                    .Include(x => x.Field)
+                        .ThenInclude(x => x!.Options)
+                    .Where(x => x.FormId == activeFormId.Value && x.IsVisible && x.IsRequired && x.Field != null && x.Field.IsActive)
+                    .Select(x => x.Field!)
+                    .ToListAsync(ct);
+
+                if (formRequiredFields.Count > 0)
+                {
+                    return formRequiredFields;
+                }
+            }
+
+            return await _db.FieldCatalogEntries
+                .AsNoTracking()
+                .Include(x => x.Options)
+                .Where(x => x.EntityName == entityName && x.IsActive && x.IsVisible && x.IsRequired)
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.FieldId)
+                .ToListAsync(ct);
+        }
+
+        private static bool HasMeaningfulValue(ImportBatchRowValue value)
+            => !string.IsNullOrWhiteSpace(value.RawValue) || !string.IsNullOrWhiteSpace(value.NormalizedValue);
+
+        private async Task<RequiredFieldContract> BuildRequiredFieldContractAsync(CancellationToken ct)
+            => new()
+            {
+                ArticleFieldIds = (await ResolveRequiredProcessFieldsByEntityAsync("Article", ct)).Select(x => x.FieldId).Distinct().ToList(),
+                ParticipantFieldIds = (await ResolveRequiredProcessFieldsByEntityAsync("ArticleParticipant", ct)).Select(x => x.FieldId).Distinct().ToList()
+            };
+
+        private async Task<RequiredFieldContract> ReadRequiredFieldContractAsync(int batchId, CancellationToken ct)
+        {
+            var sourceReference = await _db.ImportBatches
+                .AsNoTracking()
+                .Where(x => x.ImportBatchId == batchId)
+                .Select(x => x.SourceReference)
+                .FirstOrDefaultAsync(ct);
+
+            if (string.IsNullOrWhiteSpace(sourceReference))
+            {
+                return new RequiredFieldContract();
+            }
+
+            try
+            {
+                var metadata = JsonSerializer.Deserialize<BatchTemplateMetadata>(sourceReference);
+                if (metadata is null)
+                {
+                    return new RequiredFieldContract();
+                }
+
+                return new RequiredFieldContract
+                {
+                    ArticleFieldIds = metadata.RequiredArticleFieldIds?.Distinct().ToList() ?? new List<int>(),
+                    ParticipantFieldIds = metadata.RequiredParticipantFieldIds?.Distinct().ToList() ?? new List<int>()
+                };
+            }
+            catch
+            {
+                return new RequiredFieldContract();
+            }
+        }
+
+        private static string SerializeBatchMetadata(BatchTemplateMetadata metadata, bool preserveRequiredContractOnlyWhenTrimmed)
+        {
+            var options = new JsonSerializerOptions
+            {
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+
+            var json = JsonSerializer.Serialize(metadata, options);
+            if (json.Length <= 300)
+            {
+                return json;
+            }
+
+            if (!preserveRequiredContractOnlyWhenTrimmed)
+            {
+                return json;
+            }
+
+            var compactMetadata = new BatchTemplateMetadata
+            {
+                Origin = metadata.Origin,
+                SourceType = metadata.SourceType,
+                FileName = metadata.FileName,
+                ProviderKey = metadata.ProviderKey,
+                ProviderName = metadata.ProviderName,
+                ArticleCount = metadata.ArticleCount,
+                RequiredArticleFieldIds = metadata.RequiredArticleFieldIds,
+                RequiredParticipantFieldIds = metadata.RequiredParticipantFieldIds
+            };
+
+            json = JsonSerializer.Serialize(compactMetadata, options);
+            if (json.Length <= 300)
+            {
+                return json;
+            }
+
+            compactMetadata.FileName = null;
+            compactMetadata.ProviderName = null;
+            json = JsonSerializer.Serialize(compactMetadata, options);
+            if (json.Length <= 300)
+            {
+                return json;
+            }
+
+            compactMetadata.ProviderKey = null;
+            compactMetadata.ArticleCount = null;
+            compactMetadata.SourceType = null;
+            json = JsonSerializer.Serialize(compactMetadata, options);
+            if (json.Length <= 300)
+            {
+                return json;
+            }
+
+            return JsonSerializer.Serialize(new BatchTemplateMetadata
+            {
+                Origin = metadata.Origin,
+                RequiredArticleFieldIds = metadata.RequiredArticleFieldIds,
+                RequiredParticipantFieldIds = metadata.RequiredParticipantFieldIds
+            }, options);
         }
 
         private async Task PrepareVenueReferencesAsync(int batchId, CancellationToken ct)
@@ -1686,7 +1972,19 @@ namespace tesisproject.backend.Services.Implementations
             public string? SourceType { get; set; }
             public List<int>? ArticleFieldIds { get; set; }
             public List<int>? ParticipantFieldIds { get; set; }
+            public List<int>? RequiredArticleFieldIds { get; set; }
+            public List<int>? RequiredParticipantFieldIds { get; set; }
+            public string? ProviderKey { get; set; }
+            public string? ProviderName { get; set; }
+            public int? ArticleCount { get; set; }
+            public List<string>? Preview { get; set; }
             public BulkImportTemplateDescriptorDto? Template { get; set; }
+        }
+
+        private sealed class RequiredFieldContract
+        {
+            public List<int> ArticleFieldIds { get; set; } = new();
+            public List<int> ParticipantFieldIds { get; set; } = new();
         }
 
         private sealed class BulkImportNormalizerCache
