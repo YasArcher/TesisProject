@@ -10,6 +10,7 @@ using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Articles;
 using tesisproject.shared.DTOs.ExternalApis;
 using tesisproject.shared.DTOs.Imports;
+using tesisproject.shared.DTOs.MassRegistration;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -436,6 +437,143 @@ namespace tesisproject.backend.Services.Implementations
             return new BulkImportActionResultDto
             {
                 Message = $"Se creó un lote externo con {validArticles.Count} artículos desde {request.ProviderName}.",
+                Batch = await GetBatchAsync(batch.ImportBatchId, 25, ct) ?? new BulkImportBatchDetailDto()
+            };
+        }
+
+        public async Task<BulkImportActionResultDto> CreateBatchFromMatrixAsync(RegistrationMatrixDetailDto matrix, bool validateAfterCreate, string? userId, CancellationToken ct = default)
+        {
+            if (matrix is null || matrix.Summary is null)
+            {
+                throw new InvalidOperationException("La matriz seleccionada no es válida.");
+            }
+
+            var validRows = (matrix.Rows ?? new List<RegistrationMatrixRowDto>())
+                .OrderBy(x => x.RowNumber)
+                .ToList();
+
+            if (validRows.Count == 0)
+            {
+                throw new InvalidOperationException("La matriz no tiene filas para enviar a staging.");
+            }
+
+            await ArticleVenueModelHelper.EnsureVenueCompositeFieldsAsync(_db, ct);
+
+            var columnFieldIds = (matrix.Columns ?? new List<RegistrationMatrixColumnDto>())
+                .Select(x => x.FieldId)
+                .Distinct()
+                .ToList();
+
+            var fields = await _db.FieldCatalogEntries
+                .AsNoTracking()
+                .Include(x => x.Options)
+                .Where(x => columnFieldIds.Contains(x.FieldId))
+                .Where(x => x.EntityName == "Article" || x.EntityName == "ArticleParticipant")
+                .OrderBy(x => x.EntityName)
+                .ThenBy(x => x.DisplayOrder)
+                .ThenBy(x => x.FieldId)
+                .ToListAsync(ct);
+
+            if (fields.Count == 0)
+            {
+                throw new InvalidOperationException("La matriz no tiene columnas válidas para construir el lote.");
+            }
+
+            var fieldsById = fields.ToDictionary(x => x.FieldId);
+            var requiredFieldContract = await BuildRequiredFieldContractAsync(ct);
+            var now = DateTime.UtcNow;
+
+            var batch = new ImportBatch
+            {
+                BatchCode = GenerateBatchCode("BATCH-MTX"),
+                SourceType = "MatrixDraft",
+                EntityName = string.IsNullOrWhiteSpace(matrix.Summary.EntityName) ? "Article" : matrix.Summary.EntityName,
+                FileName = $"{matrix.Summary.Name.Trim()}.matrix",
+                SourceReference = SerializeBatchMetadata(new BatchTemplateMetadata
+                {
+                    Origin = "registration-matrix",
+                    FileName = matrix.Summary.Name,
+                    SourceType = "MatrixDraft",
+                    ArticleFieldIds = fields.Where(x => x.EntityName == "Article").Select(x => x.FieldId).ToList(),
+                    ParticipantFieldIds = fields.Where(x => x.EntityName == "ArticleParticipant").Select(x => x.FieldId).ToList(),
+                    RequiredArticleFieldIds = requiredFieldContract.ArticleFieldIds,
+                    RequiredParticipantFieldIds = requiredFieldContract.ParticipantFieldIds
+                }, preserveRequiredContractOnlyWhenTrimmed: true),
+                TotalRows = validRows.Count,
+                SuccessfulRows = 0,
+                ErrorRows = 0,
+                Status = "Pending",
+                StartedAt = now,
+                CreatedBy = string.IsNullOrWhiteSpace(userId) ? "system" : userId,
+                Notes = $"Lote creado desde matriz: {matrix.Summary.Name}"
+            };
+
+            _db.ImportBatches.Add(batch);
+            await _db.SaveChangesAsync(ct);
+
+            var batchRows = validRows.Select(row => new ImportBatchRow
+            {
+                ImportBatchId = batch.ImportBatchId,
+                RowNumber = row.RowNumber,
+                RowStatus = "Pending",
+                CreatedAt = now
+            }).ToList();
+
+            _db.ImportBatchRows.AddRange(batchRows);
+            await _db.SaveChangesAsync(ct);
+
+            var normalizer = await BulkImportNormalizerCache.CreateAsync(_db, ct);
+            var rowValues = new List<ImportBatchRowValue>();
+
+            for (var index = 0; index < validRows.Count; index++)
+            {
+                var matrixRow = validRows[index];
+                var batchRow = batchRows[index];
+                var rawData = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var cell in matrixRow.Cells.Where(x => !string.IsNullOrWhiteSpace(x.RawValue)))
+                {
+                    if (!fieldsById.TryGetValue(cell.FieldId, out var field))
+                    {
+                        continue;
+                    }
+
+                    var cleaned = cell.RawValue!.Trim();
+                    var normalized = NormalizeValue(field, cleaned, normalizer);
+                    rawData[BuildHeaderKey(field)] = cleaned;
+                    rowValues.Add(new ImportBatchRowValue
+                    {
+                        ImportBatchRowId = batchRow.ImportBatchRowId,
+                        FieldId = field.FieldId,
+                        RawValue = cleaned,
+                        NormalizedValue = normalized.NormalizedValue,
+                        ValueType = normalized.ValueType,
+                        IsValid = normalized.IsValid,
+                        ValidationMessage = normalized.ValidationMessage,
+                        CreatedAt = now
+                    });
+                }
+
+                batchRow.RawJson = rawData.Count == 0 ? null : JsonSerializer.Serialize(rawData);
+            }
+
+            if (rowValues.Count > 0)
+            {
+                _db.ImportBatchRowValues.AddRange(rowValues);
+            }
+
+            await _db.SaveChangesAsync(ct);
+
+            if (validateAfterCreate)
+            {
+                var validated = await ValidateBatchAsync(batch.ImportBatchId, ct);
+                validated.Message = $"Se creó un lote desde la matriz {matrix.Summary.Name}. {validated.Message}";
+                return validated;
+            }
+
+            return new BulkImportActionResultDto
+            {
+                Message = $"Se creó un lote desde la matriz {matrix.Summary.Name}.",
                 Batch = await GetBatchAsync(batch.ImportBatchId, 25, ct) ?? new BulkImportBatchDetailDto()
             };
         }

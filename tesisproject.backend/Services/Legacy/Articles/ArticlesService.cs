@@ -81,7 +81,6 @@ namespace tesisproject.backend.Services.Implementations
                 .Include(a => a.BroadField)
                 .Include(a => a.SpecificField)
                 .Include(a => a.DetailedField)
-                .Include(a => a.Project)
                 .Include(a => a.Indexings)!.ThenInclude(ix => ix.IndexingSource)
                 .Include(a => a.Participants)
                 .AsQueryable();
@@ -161,7 +160,6 @@ namespace tesisproject.backend.Services.Implementations
                     BroadFieldName = a.BroadField?.Name,
                     SpecificFieldName = a.SpecificField?.Name,
                     DetailedFieldName = a.DetailedField?.Name,
-                    ProjectName = a.Project?.Name,
 
                     IsProjectResult = a.IsProjectResult,
                     HasInterculturalComponent = a.HasInterculturalComponent,
@@ -498,10 +496,6 @@ namespace tesisproject.backend.Services.Implementations
                 .AsNoTracking()
                 .ToDictionaryAsync(d => NormalizeName(d.Name), d => d.DetailedFieldId, ct);
 
-            var projectsByName = await _db.Projects
-                .AsNoTracking()
-                .ToDictionaryAsync(p => NormalizeName(p.Name), p => p.Id, ct);
-
             // 2) Leer CSV
             using var reader = new StreamReader(csvStream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
 
@@ -601,7 +595,6 @@ namespace tesisproject.backend.Services.Implementations
                     int? broadFieldId = null;
                     int? specificFieldId = null;
                     int? detailedFieldId = null;
-                    int? projectId = null;
 
                     if (!string.IsNullOrWhiteSpace(academicTermName))
                     {
@@ -643,13 +636,6 @@ namespace tesisproject.backend.Services.Implementations
                         if (!detailedFieldsByName.TryGetValue(NormalizeName(detailedFieldName), out var dfId))
                             throw new Exception($"Campo detallado '{detailedFieldName}' no encontrado.");
                         detailedFieldId = dfId;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(projectName))
-                    {
-                        if (!projectsByName.TryGetValue(NormalizeName(projectName), out var prId))
-                            throw new Exception($"Proyecto '{projectName}' no encontrado.");
-                        projectId = prId;
                     }
 
                     // ---- Upsert de Venue + métrica SJR (reutilizando helpers existentes) ----
@@ -715,7 +701,6 @@ namespace tesisproject.backend.Services.Implementations
                     article.BroadFieldId = broadFieldId;
                     article.SpecificFieldId = specificFieldId;
                     article.DetailedFieldId = detailedFieldId;
-                    article.ProjectId = projectId;
 
                     article.VenueId = venueId;
 
@@ -825,7 +810,6 @@ namespace tesisproject.backend.Services.Implementations
                 BroadFieldId = request.BroadFieldId,
                 SpecificFieldId = request.SpecificFieldId,
                 DetailedFieldId = request.DetailedFieldId,
-                ProjectId = request.ProjectId,
 
                 VenueId = venueId
                 // Si tus entidades tienen audit fields, agrégalos aquí.
@@ -892,7 +876,6 @@ namespace tesisproject.backend.Services.Implementations
             article.BroadFieldId = request.BroadFieldId;
             article.SpecificFieldId = request.SpecificFieldId;
             article.DetailedFieldId = request.DetailedFieldId;
-            article.ProjectId = request.ProjectId;
 
             article.VenueId = venueId;
 

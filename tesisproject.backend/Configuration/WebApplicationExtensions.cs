@@ -3,8 +3,6 @@ using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using tesisproject.backend.Data;
 using tesisproject.backend.Identity;
-using tesisproject.shared.Abstractions.Project;
-using tesisproject.shared.DTOs.Project;
 
 namespace tesisproject.backend.Configuration;
 
@@ -67,6 +65,8 @@ public static class WebApplicationExtensions
 
             logger.LogWarning("EF existing tables: {tables}", string.Join(", ", tables));
 
+            await EnsureRegistrationMatrixModuleTablesAsync(db, logger);
+
             var identityTablesExist = tables.Any(x => x == "AspNetUsers") && tables.Any(x => x == "AspNetRoles");
             if (!identityTablesExist)
             {
@@ -114,19 +114,85 @@ public static class WebApplicationExtensions
         }
     }
 
+    private static async Task EnsureRegistrationMatrixModuleTablesAsync(AppDbContext db, ILogger logger)
+    {
+        const string sql = @"
+IF OBJECT_ID(N'[dbo].[RegistrationMatrix]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[RegistrationMatrix](
+        [RegistrationMatrixId] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        [Name] NVARCHAR(200) NOT NULL,
+        [EntityName] NVARCHAR(100) NOT NULL,
+        [Status] NVARCHAR(30) NOT NULL,
+        [Notes] NVARCHAR(1000) NULL,
+        [LastImportBatchId] INT NULL,
+        [CreatedAt] DATETIME2 NOT NULL,
+        [UpdatedAt] DATETIME2 NULL,
+        CONSTRAINT [FK_RegistrationMatrix_ImportBatch_LastImportBatchId]
+            FOREIGN KEY ([LastImportBatchId]) REFERENCES [dbo].[ImportBatch]([ImportBatchId]) ON DELETE SET NULL
+    );
+    CREATE INDEX [IX_RegistrationMatrix_LastImportBatchId] ON [dbo].[RegistrationMatrix]([LastImportBatchId]);
+END;
+
+IF OBJECT_ID(N'[dbo].[RegistrationMatrixColumn]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[RegistrationMatrixColumn](
+        [RegistrationMatrixColumnId] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        [RegistrationMatrixId] INT NOT NULL,
+        [FieldId] INT NOT NULL,
+        [DisplayOrder] INT NOT NULL,
+        [WidthUnits] INT NOT NULL CONSTRAINT [DF_RegistrationMatrixColumn_WidthUnits] DEFAULT (1),
+        [CreatedAt] DATETIME2 NOT NULL,
+        CONSTRAINT [FK_RegistrationMatrixColumn_FieldCatalog_FieldId]
+            FOREIGN KEY ([FieldId]) REFERENCES [dbo].[FieldCatalog]([FieldId]),
+        CONSTRAINT [FK_RegistrationMatrixColumn_RegistrationMatrix_RegistrationMatrixId]
+            FOREIGN KEY ([RegistrationMatrixId]) REFERENCES [dbo].[RegistrationMatrix]([RegistrationMatrixId]) ON DELETE CASCADE
+    );
+    CREATE INDEX [IX_RegistrationMatrixColumn_FieldId] ON [dbo].[RegistrationMatrixColumn]([FieldId]);
+    CREATE UNIQUE INDEX [IX_RegistrationMatrixColumn_RegistrationMatrixId_FieldId] ON [dbo].[RegistrationMatrixColumn]([RegistrationMatrixId], [FieldId]);
+END;
+
+IF OBJECT_ID(N'[dbo].[RegistrationMatrixRow]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[RegistrationMatrixRow](
+        [RegistrationMatrixRowId] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        [RegistrationMatrixId] INT NOT NULL,
+        [RowNumber] INT NOT NULL,
+        [Status] NVARCHAR(30) NOT NULL,
+        [CreatedAt] DATETIME2 NOT NULL,
+        [UpdatedAt] DATETIME2 NULL,
+        CONSTRAINT [FK_RegistrationMatrixRow_RegistrationMatrix_RegistrationMatrixId]
+            FOREIGN KEY ([RegistrationMatrixId]) REFERENCES [dbo].[RegistrationMatrix]([RegistrationMatrixId]) ON DELETE CASCADE
+    );
+    CREATE UNIQUE INDEX [IX_RegistrationMatrixRow_RegistrationMatrixId_RowNumber] ON [dbo].[RegistrationMatrixRow]([RegistrationMatrixId], [RowNumber]);
+END;
+
+IF OBJECT_ID(N'[dbo].[RegistrationMatrixCell]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[RegistrationMatrixCell](
+        [RegistrationMatrixCellId] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+        [RegistrationMatrixRowId] INT NOT NULL,
+        [FieldId] INT NOT NULL,
+        [RawValue] NVARCHAR(4000) NULL,
+        [CreatedAt] DATETIME2 NOT NULL,
+        [UpdatedAt] DATETIME2 NULL,
+        CONSTRAINT [FK_RegistrationMatrixCell_FieldCatalog_FieldId]
+            FOREIGN KEY ([FieldId]) REFERENCES [dbo].[FieldCatalog]([FieldId]),
+        CONSTRAINT [FK_RegistrationMatrixCell_RegistrationMatrixRow_RegistrationMatrixRowId]
+            FOREIGN KEY ([RegistrationMatrixRowId]) REFERENCES [dbo].[RegistrationMatrixRow]([RegistrationMatrixRowId]) ON DELETE CASCADE
+    );
+    CREATE INDEX [IX_RegistrationMatrixCell_FieldId] ON [dbo].[RegistrationMatrixCell]([FieldId]);
+    CREATE UNIQUE INDEX [IX_RegistrationMatrixCell_RegistrationMatrixRowId_FieldId] ON [dbo].[RegistrationMatrixCell]([RegistrationMatrixRowId], [FieldId]);
+END;
+";
+
+        await db.Database.ExecuteSqlRawAsync(sql);
+        logger.LogInformation("Registration matrix module tables verified.");
+    }
+
     public static WebApplication MapAppEndpoints(this WebApplication app)
     {
         app.MapControllers();
-
-        var projects = app.MapGroup("/api/projects");
-        projects.MapGet("", (IProjectsService svc, CancellationToken ct) => svc.GetAllAsync(ct)).WithOpenApi();
-        projects.MapGet("/{id}", (int id, IProjectsService svc, CancellationToken ct) => svc.GetByIdAsync(id, ct)).WithOpenApi();
-        projects.MapPost("/", (CreateProjectRequest req, IProjectsService svc, CancellationToken ct) => svc.CreateAsync(req, ct))
-            .RequireAuthorization("OnlyAdmins").WithOpenApi();
-        projects.MapPut("/", (UpdateProjectRequest req, IProjectsService svc, CancellationToken ct) => svc.UpdateAsync(req, ct))
-            .RequireAuthorization("OnlyAdmins").WithOpenApi();
-        projects.MapDelete("/{id}", (int id, IProjectsService svc, CancellationToken ct) => svc.DeleteAsync(id, ct))
-            .RequireAuthorization("OnlyAdmins").WithOpenApi();
 
         app.MapGet("/ping", () => "pong").AllowAnonymous();
         return app;

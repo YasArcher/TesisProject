@@ -47,13 +47,24 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("nvarchar(200)");
 
                     b.Property<string>("EventName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("ExternalId")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("ExternalSource")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("Filiacion")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<string>("GroupName")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<bool>("HasInterculturalComponent")
                         .HasColumnType("bit");
@@ -70,20 +81,19 @@ namespace tesisproject.backend.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Proceedings")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<string>("ProceedingsName")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int?>("ProjectId")
-                        .HasColumnType("int");
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
 
                     b.Property<byte?>("PublicationStatusId")
                         .HasColumnType("tinyint");
 
                     b.Property<string>("PublicationUrl")
-                        .HasMaxLength(400)
-                        .HasColumnType("nvarchar(400)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<DateTime?>("PublishedAt")
                         .HasColumnType("datetime2");
@@ -116,8 +126,6 @@ namespace tesisproject.backend.Migrations
                         .IsUnique()
                         .HasDatabaseName("UX_Articles_Doi_NotBlank")
                         .HasFilter("[Doi] IS NOT NULL AND [Doi] <> N''");
-
-                    b.HasIndex("ProjectId");
 
                     b.HasIndex("PublicationStatusId");
 
@@ -319,8 +327,23 @@ namespace tesisproject.backend.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Affiliation")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
                     b.Property<int>("ArticleId")
                         .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ExternalAuthorId")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
 
                     b.Property<string>("Identificacion")
                         .HasMaxLength(100)
@@ -329,14 +352,33 @@ namespace tesisproject.backend.Migrations
                     b.Property<int>("Index")
                         .HasColumnType("int");
 
+                    b.Property<int?>("InstitutionalPersonId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsPrimaryAuthor")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bit")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Nombre")
                         .IsRequired()
                         .HasMaxLength(300)
                         .HasColumnType("nvarchar(300)");
 
+                    b.Property<string>("Orcid")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
                     b.Property<string>("Participacion")
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("ParticipantType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
@@ -344,6 +386,54 @@ namespace tesisproject.backend.Migrations
                         .IsUnique();
 
                     b.ToTable("ArticleParticipants");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ArticleParticipantDynamicFieldValue", b =>
+                {
+                    b.Property<int>("ArticleParticipantDynamicFieldValueId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ArticleParticipantDynamicFieldValueId"));
+
+                    b.Property<int>("ArticleParticipantId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FieldId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool?>("ValueBit")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ValueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("ValueDecimal")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int?>("ValueInt")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ValueJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ValueString")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("ArticleParticipantDynamicFieldValueId");
+
+                    b.HasIndex("ArticleParticipantId");
+
+                    b.HasIndex("FieldId");
+
+                    b.ToTable("ArticleParticipantDynamicFieldValues", (string)null);
                 });
 
             modelBuilder.Entity("tesisproject.backend.Data.Entities.AuditLog", b =>
@@ -437,6 +527,479 @@ namespace tesisproject.backend.Migrations
                     b.ToTable("DetailedFields");
                 });
 
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.DynamicFieldOption", b =>
+                {
+                    b.Property<int>("DynamicFieldOptionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DynamicFieldOptionId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FieldId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("OptionLabel")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("OptionValue")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("DynamicFieldOptionId");
+
+                    b.HasIndex("FieldId");
+
+                    b.ToTable("DynamicFieldOptions", (string)null);
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.DynamicFieldValue", b =>
+                {
+                    b.Property<int>("DynamicFieldValueId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DynamicFieldValueId"));
+
+                    b.Property<int>("ArticleId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FieldId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool?>("ValueBit")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ValueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal?>("ValueDecimal")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("decimal(18,4)");
+
+                    b.Property<int?>("ValueInt")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ValueJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ValueString")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("DynamicFieldValueId");
+
+                    b.HasIndex("ArticleId");
+
+                    b.HasIndex("FieldId");
+
+                    b.ToTable("DynamicFieldValues", (string)null);
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.FieldCatalogEntry", b =>
+                {
+                    b.Property<int>("FieldId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FieldId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DataType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("DefaultValue")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EntityName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FieldKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FieldLabel")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("HelpText")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDynamic")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsEditable")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsFilterable")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsSystemField")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsVisible")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("MaxLength")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PhysicalColumnName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("PhysicalTableName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Placeholder")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("ReferenceTableName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ValidationRule")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("FieldId");
+
+                    b.ToTable("FieldCatalog", (string)null);
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.FormDefinition", b =>
+                {
+                    b.Property<int>("FormId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FormId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("EntityName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FormKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("FormName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("FormId");
+
+                    b.ToTable("FormDefinitions", (string)null);
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.FormFieldDefinition", b =>
+                {
+                    b.Property<int>("FormFieldId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("FormFieldId"));
+
+                    b.Property<int?>("ColumnSpan")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FieldId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FormId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("GroupName")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsEditable")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsRequired")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsVisible")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("FormFieldId");
+
+                    b.HasIndex("FieldId");
+
+                    b.HasIndex("FormId");
+
+                    b.ToTable("FormFields", (string)null);
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ImportBatch", b =>
+                {
+                    b.Property<int>("ImportBatchId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ImportBatchId"));
+
+                    b.Property<string>("BatchCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("EntityName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("ErrorRows")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(260)
+                        .HasColumnType("nvarchar(260)");
+
+                    b.Property<DateTime?>("FinishedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("SourceReference")
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<string>("SourceType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int>("SuccessfulRows")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TotalRows")
+                        .HasColumnType("int");
+
+                    b.HasKey("ImportBatchId");
+
+                    b.ToTable("ImportBatch", (string)null);
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ImportBatchError", b =>
+                {
+                    b.Property<int>("ImportBatchErrorId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ImportBatchErrorId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ErrorCode")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("ErrorMessage")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int?>("FieldId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ImportBatchId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ImportBatchRowId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Severity")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.HasKey("ImportBatchErrorId");
+
+                    b.HasIndex("FieldId");
+
+                    b.HasIndex("ImportBatchId");
+
+                    b.HasIndex("ImportBatchRowId");
+
+                    b.ToTable("ImportBatchError", (string)null);
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ImportBatchRow", b =>
+                {
+                    b.Property<int>("ImportBatchRowId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ImportBatchRowId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ImportBatchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RawJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("RowNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RowStatus")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<int?>("TargetArticleId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TargetParticipantId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("ImportBatchRowId");
+
+                    b.HasIndex("ImportBatchId");
+
+                    b.ToTable("ImportBatchRow", (string)null);
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ImportBatchRowValue", b =>
+                {
+                    b.Property<int>("ImportBatchRowValueId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("ImportBatchRowValueId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FieldId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ImportBatchRowId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsValid")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("NormalizedValue")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("RawValue")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ValidationMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("ValueType")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("ImportBatchRowValueId");
+
+                    b.HasIndex("FieldId");
+
+                    b.HasIndex("ImportBatchRowId");
+
+                    b.ToTable("ImportBatchRowValue", (string)null);
+                });
+
             modelBuilder.Entity("tesisproject.backend.Data.Entities.IndexingSource", b =>
                 {
                     b.Property<int>("IndexingSourceId")
@@ -503,6 +1066,151 @@ namespace tesisproject.backend.Migrations
                         .IsUnique();
 
                     b.ToTable("PublicationStatuses");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.RegistrationMatrix", b =>
+                {
+                    b.Property<int>("RegistrationMatrixId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RegistrationMatrixId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EntityName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("LastImportBatchId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("RegistrationMatrixId");
+
+                    b.HasIndex("LastImportBatchId");
+
+                    b.ToTable("RegistrationMatrix", (string)null);
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.RegistrationMatrixCell", b =>
+                {
+                    b.Property<int>("RegistrationMatrixCellId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RegistrationMatrixCellId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FieldId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RawValue")
+                        .HasMaxLength(4000)
+                        .HasColumnType("nvarchar(4000)");
+
+                    b.Property<int>("RegistrationMatrixRowId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("RegistrationMatrixCellId");
+
+                    b.HasIndex("FieldId");
+
+                    b.HasIndex("RegistrationMatrixRowId", "FieldId")
+                        .IsUnique();
+
+                    b.ToTable("RegistrationMatrixCell", (string)null);
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.RegistrationMatrixColumn", b =>
+                {
+                    b.Property<int>("RegistrationMatrixColumnId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RegistrationMatrixColumnId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FieldId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RegistrationMatrixId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("WidthUnits")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasDefaultValue(1);
+
+                    b.HasKey("RegistrationMatrixColumnId");
+
+                    b.HasIndex("FieldId");
+
+                    b.HasIndex("RegistrationMatrixId", "FieldId")
+                        .IsUnique();
+
+                    b.ToTable("RegistrationMatrixColumn", (string)null);
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.RegistrationMatrixRow", b =>
+                {
+                    b.Property<int>("RegistrationMatrixRowId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("RegistrationMatrixRowId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RegistrationMatrixId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("RegistrationMatrixRowId");
+
+                    b.HasIndex("RegistrationMatrixId", "RowNumber")
+                        .IsUnique();
+
+                    b.ToTable("RegistrationMatrixRow", (string)null);
                 });
 
             modelBuilder.Entity("tesisproject.backend.Data.Entities.ResearchLine", b =>
@@ -739,10 +1447,6 @@ namespace tesisproject.backend.Migrations
                         .HasForeignKey("DetailedFieldId")
                         .OnDelete(DeleteBehavior.NoAction);
 
-                    b.HasOne("tesisproject.backend.Data.Entities.Project", "Project")
-                        .WithMany()
-                        .HasForeignKey("ProjectId");
-
                     b.HasOne("tesisproject.backend.Data.Entities.PublicationStatus", "PublicationStatus")
                         .WithMany("Articles")
                         .HasForeignKey("PublicationStatusId")
@@ -768,8 +1472,6 @@ namespace tesisproject.backend.Migrations
                     b.Navigation("BroadField");
 
                     b.Navigation("DetailedField");
-
-                    b.Navigation("Project");
 
                     b.Navigation("PublicationStatus");
 
@@ -872,6 +1574,25 @@ namespace tesisproject.backend.Migrations
                     b.Navigation("Article");
                 });
 
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ArticleParticipantDynamicFieldValue", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.ArticleParticipant", "ArticleParticipant")
+                        .WithMany("DynamicFieldValues")
+                        .HasForeignKey("ArticleParticipantId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("tesisproject.backend.Data.Entities.FieldCatalogEntry", "Field")
+                        .WithMany()
+                        .HasForeignKey("FieldId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ArticleParticipant");
+
+                    b.Navigation("Field");
+                });
+
             modelBuilder.Entity("tesisproject.backend.Data.Entities.DetailedField", b =>
                 {
                     b.HasOne("tesisproject.backend.Data.Entities.SpecificField", "SpecificField")
@@ -881,6 +1602,169 @@ namespace tesisproject.backend.Migrations
                         .IsRequired();
 
                     b.Navigation("SpecificField");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.DynamicFieldOption", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.FieldCatalogEntry", "Field")
+                        .WithMany("Options")
+                        .HasForeignKey("FieldId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Field");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.DynamicFieldValue", b =>
+                {
+                    b.HasOne("Article", "Article")
+                        .WithMany("DynamicFieldValues")
+                        .HasForeignKey("ArticleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("tesisproject.backend.Data.Entities.FieldCatalogEntry", "Field")
+                        .WithMany()
+                        .HasForeignKey("FieldId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Article");
+
+                    b.Navigation("Field");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.FormFieldDefinition", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.FieldCatalogEntry", "Field")
+                        .WithMany("FormFields")
+                        .HasForeignKey("FieldId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("tesisproject.backend.Data.Entities.FormDefinition", "Form")
+                        .WithMany("Fields")
+                        .HasForeignKey("FormId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Field");
+
+                    b.Navigation("Form");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ImportBatchError", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.FieldCatalogEntry", "Field")
+                        .WithMany()
+                        .HasForeignKey("FieldId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.HasOne("tesisproject.backend.Data.Entities.ImportBatch", "Batch")
+                        .WithMany("Errors")
+                        .HasForeignKey("ImportBatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("tesisproject.backend.Data.Entities.ImportBatchRow", "Row")
+                        .WithMany("Errors")
+                        .HasForeignKey("ImportBatchRowId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Batch");
+
+                    b.Navigation("Field");
+
+                    b.Navigation("Row");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ImportBatchRow", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.ImportBatch", "Batch")
+                        .WithMany("Rows")
+                        .HasForeignKey("ImportBatchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Batch");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ImportBatchRowValue", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.FieldCatalogEntry", "Field")
+                        .WithMany()
+                        .HasForeignKey("FieldId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("tesisproject.backend.Data.Entities.ImportBatchRow", "Row")
+                        .WithMany("Values")
+                        .HasForeignKey("ImportBatchRowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Field");
+
+                    b.Navigation("Row");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.RegistrationMatrix", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.ImportBatch", "LastImportBatch")
+                        .WithMany()
+                        .HasForeignKey("LastImportBatchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("LastImportBatch");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.RegistrationMatrixCell", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.FieldCatalogEntry", "Field")
+                        .WithMany()
+                        .HasForeignKey("FieldId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("tesisproject.backend.Data.Entities.RegistrationMatrixRow", "Row")
+                        .WithMany("Cells")
+                        .HasForeignKey("RegistrationMatrixRowId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Field");
+
+                    b.Navigation("Row");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.RegistrationMatrixColumn", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.FieldCatalogEntry", "Field")
+                        .WithMany()
+                        .HasForeignKey("FieldId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("tesisproject.backend.Data.Entities.RegistrationMatrix", "Matrix")
+                        .WithMany("Columns")
+                        .HasForeignKey("RegistrationMatrixId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Field");
+
+                    b.Navigation("Matrix");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.RegistrationMatrixRow", b =>
+                {
+                    b.HasOne("tesisproject.backend.Data.Entities.RegistrationMatrix", "Matrix")
+                        .WithMany("Rows")
+                        .HasForeignKey("RegistrationMatrixId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Matrix");
                 });
 
             modelBuilder.Entity("tesisproject.backend.Data.Entities.SpecificField", b =>
@@ -897,7 +1781,7 @@ namespace tesisproject.backend.Migrations
             modelBuilder.Entity("tesisproject.backend.Data.Entities.VenueMetric", b =>
                 {
                     b.HasOne("tesisproject.backend.Data.Entities.Venue", "Venue")
-                        .WithMany("Metrics")
+                        .WithMany("VenueMetrics")
                         .HasForeignKey("VenueId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -907,6 +1791,8 @@ namespace tesisproject.backend.Migrations
 
             modelBuilder.Entity("Article", b =>
                 {
+                    b.Navigation("DynamicFieldValues");
+
                     b.Navigation("Files");
 
                     b.Navigation("Indexings");
@@ -919,9 +1805,40 @@ namespace tesisproject.backend.Migrations
                     b.Navigation("Articles");
                 });
 
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ArticleParticipant", b =>
+                {
+                    b.Navigation("DynamicFieldValues");
+                });
+
             modelBuilder.Entity("tesisproject.backend.Data.Entities.BroadField", b =>
                 {
                     b.Navigation("SpecificFields");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.FieldCatalogEntry", b =>
+                {
+                    b.Navigation("FormFields");
+
+                    b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.FormDefinition", b =>
+                {
+                    b.Navigation("Fields");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ImportBatch", b =>
+                {
+                    b.Navigation("Errors");
+
+                    b.Navigation("Rows");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.ImportBatchRow", b =>
+                {
+                    b.Navigation("Errors");
+
+                    b.Navigation("Values");
                 });
 
             modelBuilder.Entity("tesisproject.backend.Data.Entities.IndexingSource", b =>
@@ -932,6 +1849,18 @@ namespace tesisproject.backend.Migrations
             modelBuilder.Entity("tesisproject.backend.Data.Entities.PublicationStatus", b =>
                 {
                     b.Navigation("Articles");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.RegistrationMatrix", b =>
+                {
+                    b.Navigation("Columns");
+
+                    b.Navigation("Rows");
+                });
+
+            modelBuilder.Entity("tesisproject.backend.Data.Entities.RegistrationMatrixRow", b =>
+                {
+                    b.Navigation("Cells");
                 });
 
             modelBuilder.Entity("tesisproject.backend.Data.Entities.ResearchLine", b =>
@@ -948,7 +1877,7 @@ namespace tesisproject.backend.Migrations
                 {
                     b.Navigation("Articles");
 
-                    b.Navigation("Metrics");
+                    b.Navigation("VenueMetrics");
                 });
 #pragma warning restore 612, 618
         }

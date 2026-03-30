@@ -58,9 +58,6 @@ namespace tesisproject.backend.Repositories.Implementations
             if (query.DetailedFieldId.HasValue)
                 q = q.Where(a => a.DetailedFieldId == query.DetailedFieldId);
 
-            if (query.ProjectId.HasValue)
-                q = q.Where(a => a.ProjectId == query.ProjectId);
-
             // Orden por defecto: CreatedAt desc
             if (query.SortBy?.ToLower() == "year")
                 q = query.SortDesc ? q.OrderByDescending(a => a.Year) : q.OrderBy(a => a.Year);
@@ -88,7 +85,6 @@ namespace tesisproject.backend.Repositories.Implementations
                 .Include(a => a.BroadField)
                 .Include(a => a.SpecificField)
                 .Include(a => a.DetailedField)
-                .Include(a => a.Project)
                 .Include(a => a.Participants)
                 .Include(a => a.Files)
                 .Include(a => a.Indexings).ThenInclude(i => i.IndexingSource)

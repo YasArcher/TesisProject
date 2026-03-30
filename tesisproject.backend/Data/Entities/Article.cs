@@ -32,8 +32,6 @@ public class Article
     public SpecificField? SpecificField { get; set; }
     public int? DetailedFieldId { get; set; }
     public DetailedField? DetailedField { get; set; }
-    public int? ProjectId { get; set; }
-    public Project? Project { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public bool IsOpenAccess { get; set; }
     public ICollection<ArticleParticipant> Participants { get; set; } = new List<ArticleParticipant>();

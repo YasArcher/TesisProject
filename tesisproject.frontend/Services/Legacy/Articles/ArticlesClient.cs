@@ -106,9 +106,6 @@ namespace tesisproject.frontend.Services.Implementations
             if (query.DetailedFieldId.HasValue)
                 qs.Add($"DetailedFieldId={query.DetailedFieldId.Value}");
 
-            if (query.ProjectId.HasValue)
-                qs.Add($"ProjectId={query.ProjectId.Value}");
-
             if (!string.IsNullOrWhiteSpace(query.SortBy))
                 qs.Add($"SortBy={Uri.EscapeDataString(query.SortBy)}");
 
@@ -135,8 +132,7 @@ namespace tesisproject.frontend.Services.Implementations
                 Page = 1,
                 PageSize = 1000,   // ajusta el máximo según lo que consideres razonable
                 Search = null,
-                SearchTerm = null,
-                ProjectId = null
+                SearchTerm = null
             };
 
             var result = await GetListAsync(query, cancellationToken);

@@ -1,0 +1,1114 @@
+@page "/management/registration-matrix"
+@using tesisproject.frontend.SharedUI
+@using tesisproject.shared.DTOs.Catalogs
+@using tesisproject.shared.DTOs.Configuration
+@using tesisproject.shared.DTOs.MassRegistration
+@inject IRegistrationMatrixClient RegistrationMatrixClient
+@inject IFormConfigurationClient FormConfigurationClient
+@inject NavigationManager NavManager
+
+<PageTitle>Matriz maestra</PageTitle>
+
+<div class="app-page-shell registration-matrix-page space-y-4">
+    <div class="rounded-[1.6rem] bg-gradient-to-r from-[#12343b] via-[#1d4d57] to-[#2f4858] p-5 text-white shadow-lg">
+        <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+                <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">Captura tabular</div>
+                <h1 class="text-2xl font-black md:text-3xl">Matriz maestra de registro</h1>
+            </div>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div class="rounded-2xl bg-white/10 px-4 py-3 text-sm">
+                    <div class="text-[11px] uppercase tracking-wide text-white/60">Matrices</div>
+                    <div class="mt-1 font-bold text-white">@Matrices.Count</div>
+                </div>
+                <div class="rounded-2xl bg-white/10 px-4 py-3 text-sm">
+                    <div class="text-[11px] uppercase tracking-wide text-white/60">Fila(s)</div>
+                    <div class="mt-1 font-bold text-white">@(SelectedMatrix?.Summary.RowCount ?? 0)</div>
+                </div>
+                <div class="rounded-2xl bg-white/10 px-4 py-3 text-sm">
+                    <div class="text-[11px] uppercase tracking-wide text-white/60">Columna(s)</div>
+                    <div class="mt-1 font-bold text-white">@(SelectedMatrix?.Summary.ColumnCount ?? 0)</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <AppStatusModal Visible="@HasStatusMessage" Variant="@StatusVariant" Eyebrow="Matriz maestra" Title="@StatusTitle" Message="@StatusMessage" OnClose="CloseStatusModal" />
+
+    @if (IsCreateMatrixModalOpen)
+    {
+        <div class="fixed inset-0 z-40 bg-slate-950/55 backdrop-blur-sm"></div>
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="max-h-[90vh] w-full max-w-5xl overflow-auto rounded-[1.8rem] border border-slate-200 bg-white shadow-2xl">
+                <div class="border-b border-slate-200 px-6 py-4">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Nueva matriz</div>
+                            <h2 class="text-xl font-black text-[#12343b]">Crear una matriz de trabajo</h2>
+                        </div>
+                        <button type="button" class="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600" @onclick="CloseCreateMatrixModal">Cerrar</button>
+                    </div>
+                </div>
+                <div class="space-y-4 px-6 py-5">
+                    <div class="grid grid-cols-1 gap-4 lg:grid-cols-[0.9fr_1.35fr]">
+                        <div class="space-y-3 rounded-3xl border border-slate-200 bg-slate-50/60 p-4">
+                            <div class="grid grid-cols-1 gap-3">
+                                <div>
+                                    <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Nombre</label>
+                                    <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Ej. artículos marzo 2026" @bind="NewMatrix.Name" />
+                                </div>
+                                <div>
+                                    <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-500">Notas</label>
+                                    <textarea class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" rows="3" placeholder="Uso interno de la matriz" @bind="NewMatrix.Notes"></textarea>
+                                </div>
+                                <div class="rounded-2xl bg-white px-3 py-3 text-sm text-slate-600">
+                                    <span class="font-semibold text-[#12343b]">@SelectedNewFieldIds.Count campo(s)</span> seleccionado(s).
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rounded-3xl border border-slate-200 bg-slate-50/60 p-4">
+                            <div class="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                                <h3 class="text-sm font-black text-[#12343b]">Campos iniciales</h3>
+                                <input class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Buscar campo" @bind="NewFieldSearch" />
+                            </div>
+                            <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                                <div class="max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white p-3">
+                                    <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Artículo</div>
+                                    @foreach (var field in GetFilteredNewFields("Article"))
+                                    {
+                                        <label class="mb-2 flex items-start gap-2 text-sm">
+                                            <input type="checkbox" class="mt-1" checked="@SelectedNewFieldIds.Contains(field.FieldId)" @onchange="e => ToggleNewField(field.FieldId, e.Value is bool value && value)" />
+                                            <span>@field.FieldLabel</span>
+                                        </label>
+                                    }
+                                </div>
+                                <div class="max-h-72 overflow-auto rounded-2xl border border-slate-200 bg-white p-3">
+                                    <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Participante</div>
+                                    @foreach (var field in GetFilteredNewFields("ArticleParticipant"))
+                                    {
+                                        <label class="mb-2 flex items-start gap-2 text-sm">
+                                            <input type="checkbox" class="mt-1" checked="@SelectedNewFieldIds.Contains(field.FieldId)" @onchange="e => ToggleNewField(field.FieldId, e.Value is bool value && value)" />
+                                            <span>@field.FieldLabel</span>
+                                        </label>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2 border-t border-slate-200 px-6 py-4 sm:flex-row sm:justify-end">
+                    <button type="button" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700" @onclick="CloseCreateMatrixModal">Cancelar</button>
+                    <button type="button" class="rounded-xl bg-[#12343b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0f2a30]" @onclick="CreateMatrixAsync">Crear matriz</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (IsSubmitConfirmModalOpen && SelectedMatrix is not null)
+    {
+        <div class="fixed inset-0 z-40 bg-slate-950/55 backdrop-blur-sm"></div>
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="w-full max-w-2xl rounded-[1.8rem] border border-slate-200 bg-white shadow-2xl">
+                <div class="border-b border-[#ead9e0] bg-gradient-to-r from-[#fff7fa] to-[#f9edf2] px-6 py-5">
+                    <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9b3d5a]">Confirmación crítica</div>
+                    <h2 class="mt-1 text-xl font-black text-[#5f1831]">Enviar matriz a staging</h2>
+                    <p class="mt-2 text-sm text-slate-600">Esta acción convertirá tu hoja de trabajo en un lote formal de validación. Es el paso previo al procesamiento definitivo.</p>
+                </div>
+                <div class="space-y-4 px-6 py-5">
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                        <div class="rounded-2xl border border-[#ead9e0] bg-[#fff7fa] px-4 py-3 text-sm">
+                            <div class="text-[11px] font-semibold uppercase tracking-wide text-[#9b3d5a]">Matriz</div>
+                            <div class="mt-1 font-bold text-[#5f1831]">@SelectedMatrix.Summary.Name</div>
+                        </div>
+                        <div class="rounded-2xl border border-[#ead9e0] bg-[#fff7fa] px-4 py-3 text-sm">
+                            <div class="text-[11px] font-semibold uppercase tracking-wide text-[#9b3d5a]">Filas</div>
+                            <div class="mt-1 font-bold text-[#5f1831]">@SelectedMatrix.Summary.RowCount</div>
+                        </div>
+                        <div class="rounded-2xl border border-[#ead9e0] bg-[#fff7fa] px-4 py-3 text-sm">
+                            <div class="text-[11px] font-semibold uppercase tracking-wide text-[#9b3d5a]">Columnas</div>
+                            <div class="mt-1 font-bold text-[#5f1831]">@SelectedMatrix.Summary.ColumnCount</div>
+                        </div>
+                    </div>
+                    <div class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                        Recomendación: envía la matriz solo cuando ya no necesites seguir completando información en esta hoja y estés listo para entrar a validación.
+                    </div>
+                    <label class="flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm transition @(SubmitConfirmReviewed ? "border-[#c98da1] bg-[#fff4f7]" : "border-slate-200 bg-slate-50")">
+                        <input type="checkbox" class="mt-1 accent-[#8b2f4c]" @bind="SubmitConfirmReviewed" />
+                        <span>
+                            <span class="block font-semibold text-[#5f1831]">Revisión completa</span>
+                            <span class="block text-slate-600">Confirmo que revisé columnas, filas y valores antes de generar el lote.</span>
+                        </span>
+                    </label>
+                    <label class="flex items-start gap-3 rounded-2xl border px-4 py-3 text-sm transition @(SubmitConfirmUnderstood ? "border-[#c98da1] bg-[#fff4f7]" : "border-slate-200 bg-slate-50")">
+                        <input type="checkbox" class="mt-1 accent-[#8b2f4c]" @bind="SubmitConfirmUnderstood" />
+                        <span>
+                            <span class="block font-semibold text-[#5f1831]">Comprensión del paso siguiente</span>
+                            <span class="block text-slate-600">Entiendo que la matriz pasará a staging para validación, corrección y posterior procesamiento.</span>
+                        </span>
+                    </label>
+                </div>
+                <div class="flex flex-col gap-2 border-t border-slate-200 px-6 py-4 sm:flex-row sm:justify-end">
+                    <button type="button" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700" @onclick="CloseSubmitConfirmModal">Cancelar</button>
+                    <button type="button" class="rounded-xl bg-gradient-to-r from-[#7b2945] to-[#a33a61] px-4 py-2 text-sm font-semibold text-white shadow-sm transition enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60" disabled="@(!CanConfirmSubmit)" @onclick="ConfirmSubmitToStagingAsync">Confirmar envío a staging</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (PendingRemoveColumn is not null)
+    {
+        <div class="fixed inset-0 z-40 bg-slate-950/55 backdrop-blur-sm"></div>
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="w-full max-w-xl rounded-[1.8rem] border border-slate-200 bg-white shadow-2xl">
+                <div class="border-b border-[#ead9e0] bg-gradient-to-r from-[#fff7fa] to-[#f9edf2] px-6 py-5">
+                    <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9b3d5a]">Confirmación de eliminación</div>
+                    <h2 class="mt-1 text-xl font-black text-[#5f1831]">Quitar columna de la matriz</h2>
+                </div>
+                <div class="space-y-4 px-6 py-5">
+                    <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                        Vas a quitar la columna <span class="font-bold">@PendingRemoveColumn.FieldLabel</span> de esta matriz.
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                        Esta acción también elimina de la matriz los valores ya registrados en esa columna para todas las filas del borrador actual.
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2 border-t border-slate-200 px-6 py-4 sm:flex-row sm:justify-end">
+                    <button type="button" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700" @onclick="CancelRemoveColumn">Cancelar</button>
+                    <button type="button" class="rounded-xl bg-gradient-to-r from-[#931D21] to-[#b62d33] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110" @onclick="ConfirmRemoveColumnAsync">Sí, quitar columna</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (IsColumnsModalOpen && SelectedMatrix is not null)
+    {
+        <div class="fixed inset-0 z-40 bg-slate-950/55 backdrop-blur-sm"></div>
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="max-h-[88vh] w-full max-w-4xl overflow-auto rounded-[1.8rem] border border-slate-200 bg-white shadow-2xl">
+                <div class="border-b border-slate-200 px-6 py-4">
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Columnas</div>
+                            <h2 class="text-xl font-black text-[#12343b]">Agregar columnas a la matriz</h2>
+                        </div>
+                        <button type="button" class="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600" @onclick="CloseColumnsModal">Cerrar</button>
+                    </div>
+                </div>
+                <div class="space-y-4 px-6 py-5">
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="rounded-2xl bg-slate-50 px-4 py-2 text-sm text-slate-600">
+                            <span class="font-semibold text-[#12343b]">@SelectedExistingFieldIds.Count campo(s)</span> listo(s) para agregar.
+                        </div>
+                        <input class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" placeholder="Buscar campo" @bind="ExistingFieldSearch" />
+                    </div>
+                    <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                        <div class="max-h-80 overflow-auto rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                            <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Artículo</div>
+                            @foreach (var field in GetFilteredAvailableFields("Article"))
+                            {
+                                <label class="mb-2 flex items-start gap-2 text-sm">
+                                    <input type="checkbox" class="mt-1" checked="@SelectedExistingFieldIds.Contains(field.FieldId)" @onchange="e => ToggleExistingField(field.FieldId, e.Value is bool value && value)" />
+                                    <span>@field.FieldLabel</span>
+                                </label>
+                            }
+                        </div>
+                        <div class="max-h-80 overflow-auto rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                            <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Participante</div>
+                            @foreach (var field in GetFilteredAvailableFields("ArticleParticipant"))
+                            {
+                                <label class="mb-2 flex items-start gap-2 text-sm">
+                                    <input type="checkbox" class="mt-1" checked="@SelectedExistingFieldIds.Contains(field.FieldId)" @onchange="e => ToggleExistingField(field.FieldId, e.Value is bool value && value)" />
+                                    <span>@field.FieldLabel</span>
+                                </label>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2 border-t border-slate-200 px-6 py-4 sm:flex-row sm:justify-end">
+                    <button type="button" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700" @onclick="CloseColumnsModal">Cancelar</button>
+                    <button type="button" class="rounded-xl bg-[#12343b] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0f2a30]" @onclick="AddSelectedColumnsAsync">Agregar selección</button>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (IsLoading)
+    {
+        <div class="rounded-3xl border bg-white p-6 text-center text-slate-600 shadow-sm">Cargando matrices y campos...</div>
+    }
+    else
+    {
+        <section class="rounded-[1.8rem] border border-slate-200 bg-white p-3 shadow-sm">
+            <div class="grid grid-cols-1 gap-3 xl:grid-cols-[0.62fr_1.05fr_1.15fr]">
+                <div class="rounded-3xl border border-slate-200 bg-slate-50/70 p-3">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Creación</div>
+                            <h2 class="text-sm font-black text-[#12343b]">Nueva matriz</h2>
+                        </div>
+                        <button type="button" class="rounded-xl bg-[#12343b] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0f2a30]" @onclick="OpenCreateMatrixModal">Crear</button>
+                    </div>
+                </div>
+
+                <div class="rounded-3xl border border-slate-200 bg-slate-50/70 p-3">
+                    <div class="mb-2 flex items-center justify-between gap-3">
+                        <h2 class="text-sm font-black text-[#12343b]">Matrices recientes</h2>
+                        <span class="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-[#2f4858]">@Matrices.Count</span>
+                    </div>
+                    @if (!Matrices.Any())
+                    {
+                        <AppEmptyState Title="Sin matrices" Message="Crea una matriz para empezar." />
+                    }
+                    else
+                    {
+                        <div class="grid max-h-40 grid-cols-1 gap-2 overflow-auto pr-1">
+                            @foreach (var matrix in Matrices)
+                            {
+                                <button type="button" class="w-full rounded-2xl border px-3 py-2 text-left transition @(SelectedMatrix?.Summary.RegistrationMatrixId == matrix.RegistrationMatrixId ? "border-[#2f4858] bg-[#edf3f5]" : "border-slate-200 bg-white hover:bg-slate-50")" @onclick="() => OpenMatrixAsync(matrix.RegistrationMatrixId)">
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0">
+                                            <div class="truncate font-semibold text-slate-900">@matrix.Name</div>
+                                            <div class="mt-1 text-[11px] text-slate-500">@matrix.RowCount fila(s) · @matrix.ColumnCount columna(s)</div>
+                                            @if (matrix.LastImportBatchId.HasValue)
+                                            {
+                                                <div class="mt-1 text-[11px] font-medium text-slate-500">Lote #@matrix.LastImportBatchId</div>
+                                            }
+                                        </div>
+                                        <span class="@GetMatrixStatusClass(matrix)">@GetMatrixStatusLabel(matrix)</span>
+                                    </div>
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="rounded-3xl border border-slate-200 bg-gradient-to-br from-[#f6fbfb] to-[#eef4f5] p-3">
+                    @if (SelectedMatrix is null)
+                    {
+                        <AppEmptyState Title="Panel de trabajo" Message="Selecciona una matriz para habilitar columnas y envío." />
+                    }
+                    else
+                    {
+                        <div class="flex flex-col gap-3">
+                            <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                                <div>
+                                    <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Matriz activa</div>
+                                    <h2 class="text-sm font-black text-[#12343b]">@SelectedMatrix.Summary.Name</h2>
+                                    <div class="mt-1 text-[11px] text-slate-500">@SelectedMatrix.Summary.RowCount fila(s) · @SelectedMatrix.Summary.ColumnCount columna(s)</div>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <button class="rounded-xl border border-[#c7d6da] bg-white px-3 py-2 text-sm font-semibold text-[#12343b] shadow-sm" @onclick="OpenColumnsModal">Columnas</button>
+                                    <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-3 py-2 text-sm font-semibold text-white shadow-sm" @onclick="OpenSubmitConfirmModal">Enviar a staging</button>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-2 text-[11px] text-slate-500">
+                                <span class="rounded-full bg-white px-3 py-1 shadow-sm">@SelectedMatrix.Columns.Count(x => x.IsRequired) obligatorio(s)</span>
+                                <span class="rounded-full bg-white px-3 py-1 shadow-sm">@SelectedMatrix.Summary.Status</span>
+                                @if (SelectedMatrix.Summary.LastImportBatchId.HasValue)
+                                {
+                                    <span class="rounded-full bg-white px-3 py-1 shadow-sm">Lote #@SelectedMatrix.Summary.LastImportBatchId</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <section class="overflow-hidden rounded-[1.8rem] border border-[#d5e4e8] bg-[#eef0f3] shadow-[0_18px_50px_rgba(18,52,59,0.08)]">
+            @if (SelectedMatrix is null)
+            {
+                <div class="p-6"><AppEmptyState Title="Selecciona una matriz" Message="La hoja de registro ocupará este espacio." /></div>
+            }
+            else if (!SelectedMatrix.Columns.Any())
+            {
+                <div class="p-6"><AppEmptyState Title="Sin columnas" Message="Agrega columnas desde el panel superior para empezar a registrar." /></div>
+            }
+            else
+            {
+                <div class="border-b border-[#d8c7cf] bg-gradient-to-r from-[#f2f3f5] to-[#e8ebef] px-4 py-3">
+                    <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+                        <h3 class="text-base font-black text-[#12343b]">Hoja de registro</h3>
+                        <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                            <span class="rounded-full bg-white/80 px-3 py-1 shadow-sm">Arrastra columnas</span>
+                            <span class="rounded-full bg-white/80 px-3 py-1 shadow-sm">Catálogos guiados</span>
+                            <span class="rounded-full bg-white/80 px-3 py-1 shadow-sm">Opciones dinámicas</span>
+                            <button class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#7b2945] text-lg font-bold text-white shadow-sm transition hover:bg-[#67223a]" title="Agregar fila" @onclick="AddRowAsync">+</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-b border-[#dadde3] bg-[#f5f6f8] px-4 py-2">
+                    <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <div class="text-xs text-slate-500">Fila fija: @(PinnedRow?.RowNumber is int rowNumber ? $"#{rowNumber}" : "ninguna")</div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <label class="text-xs font-semibold uppercase tracking-wide text-slate-500">Filas por página</label>
+                            <select class="rounded-xl border border-[#d8c7cf] bg-white px-3 py-2 text-sm" value="@RowPageSize" @onchange="ChangePageSize">
+                                @foreach (var size in PageSizeOptions)
+                                {
+                                    <option value="@size">@size</option>
+                                }
+                            </select>
+                            @if (ShouldPaginate)
+                            {
+                                <button class="rounded-xl border border-[#d8c7cf] bg-white px-3 py-2 text-sm font-semibold text-[#7b2945] disabled:opacity-50" disabled="@(CurrentPage <= 1)" @onclick="PreviousPage">Anterior</button>
+                                <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#931D21] shadow-sm">Página @CurrentPage de @TotalPages</span>
+                                <button class="rounded-xl border border-[#d8c7cf] bg-white px-3 py-2 text-sm font-semibold text-[#7b2945] disabled:opacity-50" disabled="@(CurrentPage >= TotalPages)" @onclick="NextPage">Siguiente</button>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="matrix-scroll-host relative max-h-[70vh] overflow-auto bg-[#f3f4f6]">
+                    <table class="min-w-full border-separate border-spacing-0 text-sm">
+                        <thead class="sticky top-0 z-30 bg-[#931D21] shadow-sm">
+                            <tr>
+                                <th class="border border-[#b04c50] px-3 py-2 text-left text-xs font-bold uppercase tracking-[0.16em] text-[#fff7f9]">Fila</th>
+                                @foreach (var column in OrderedColumns)
+                                {
+                                    <th class="border border-[#b04c50] px-2 py-2 text-left align-top">
+                                        <div class="flex min-w-[13rem] items-start justify-between gap-2 rounded-lg bg-[#931D21] px-2 py-1 shadow-sm">
+                                            <div>
+                                                <div class="flex items-center gap-2">
+                                                    <div class="font-semibold text-white">@column.FieldLabel @if (column.IsRequired) { <span class="text-rose-100">*</span> }</div>
+                                                </div>
+                                                <div class="mt-1 text-[11px] text-rose-100/90">@GetColumnLegend(column)</div>
+                                            </div>
+                                            <div class="flex flex-col gap-1">
+                                                <button class="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 shadow-sm" @onclick="() => MoveColumnAsync(column, -1)">◀</button>
+                                                <button class="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 shadow-sm" @onclick="() => MoveColumnAsync(column, 1)">▶</button>
+                                                <button class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-rose-50 text-sm font-bold text-rose-700 shadow-sm transition hover:bg-rose-100" title="Quitar columna" @onclick="() => PromptRemoveColumn(column)">X</button>
+                                            </div>
+                                        </div>
+                                    </th>
+                                }
+                                <th class="border border-[#b04c50] px-3 py-2 text-left text-xs font-bold uppercase tracking-[0.16em] text-[#fff7f9]">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (PinnedRow is not null)
+                            {
+                                @RenderMatrixRow(PinnedRow, true)
+                            }
+                            @foreach (var row in VisibleRows)
+                            {
+                                @RenderMatrixRow(row, false)
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    }
+</div>
+
+@if (SelectedMatrix is not null)
+{
+    <button class="fixed bottom-10 right-6 z-20 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#931D21] text-2xl font-bold text-white shadow-[0_14px_30px_rgba(147,29,33,0.35)] transition hover:bg-[#7e171b]" title="Agregar fila" @onclick="AddRowAsync">+</button>
+}
+
+@code {
+    private readonly Dictionary<OptionCacheKey, List<OptionItem>> FieldOptions = new();
+    private List<RegistrationMatrixSummaryDto> Matrices { get; set; } = new();
+    private RegistrationMatrixDetailDto? SelectedMatrix { get; set; }
+    private List<FieldCatalogItemDto> ArticleFields { get; set; } = new();
+    private List<FieldCatalogItemDto> ParticipantFields { get; set; } = new();
+    private CreateRegistrationMatrixRequest NewMatrix { get; set; } = new();
+    private HashSet<int> SelectedNewFieldIds { get; set; } = new();
+    private HashSet<int> SelectedExistingFieldIds { get; set; } = new();
+    private bool IsLoading { get; set; } = true;
+    private bool IsCreateMatrixModalOpen { get; set; }
+    private bool IsColumnsModalOpen { get; set; }
+    private bool IsSubmitConfirmModalOpen { get; set; }
+    private bool SubmitConfirmReviewed { get; set; }
+    private bool SubmitConfirmUnderstood { get; set; }
+    private string NewFieldSearch { get; set; } = string.Empty;
+    private string ExistingFieldSearch { get; set; } = string.Empty;
+    private RegistrationMatrixColumnDto? PendingRemoveColumn { get; set; }
+    private int? PinnedRowId { get; set; }
+    private int CurrentPage { get; set; } = 1;
+    private int RowPageSize { get; set; } = 20;
+    private bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusTitle);
+    private bool CanConfirmSubmit => SubmitConfirmReviewed && SubmitConfirmUnderstood;
+    private string StatusVariant { get; set; } = "info";
+    private string StatusTitle { get; set; } = string.Empty;
+    private string StatusMessage { get; set; } = string.Empty;
+    private IReadOnlyList<RegistrationMatrixColumnDto> OrderedColumns => SelectedMatrix?.Columns.OrderBy(x => x.DisplayOrder).ThenBy(x => x.RegistrationMatrixColumnId).ToList() ?? new List<RegistrationMatrixColumnDto>();
+    private IReadOnlyList<int> PageSizeOptions => new[] { 10, 20, 30, 50 };
+    private IReadOnlyList<RegistrationMatrixRowDto> AllRowsOrdered => SelectedMatrix?.Rows.OrderBy(x => x.RowNumber).ToList() ?? new List<RegistrationMatrixRowDto>();
+    private RegistrationMatrixRowDto? PinnedRow => PinnedRowId.HasValue ? AllRowsOrdered.FirstOrDefault(x => x.RegistrationMatrixRowId == PinnedRowId.Value) : null;
+    private IReadOnlyList<RegistrationMatrixRowDto> UnpinnedRows => AllRowsOrdered.Where(x => x.RegistrationMatrixRowId != PinnedRowId).ToList();
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling(UnpinnedRows.Count / (double)RowPageSize));
+    private bool ShouldPaginate => UnpinnedRows.Count > RowPageSize;
+    private IReadOnlyList<RegistrationMatrixRowDto> VisibleRows => UnpinnedRows.Skip((CurrentPage - 1) * RowPageSize).Take(RowPageSize).ToList();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            ArticleFields = await FormConfigurationClient.GetFieldsAsync("Article");
+            ParticipantFields = await FormConfigurationClient.GetFieldsAsync("ArticleParticipant");
+            Matrices = await RegistrationMatrixClient.GetMatricesAsync();
+            if (Matrices.Any())
+            {
+                SelectedMatrix = await RegistrationMatrixClient.GetMatrixAsync(Matrices.First().RegistrationMatrixId);
+                PinnedRowId = null;
+                CurrentPage = 1;
+                await EnsureSupportAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude cargar la matriz maestra", ex.Message);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task OpenMatrixAsync(int id)
+    {
+        try
+        {
+            SelectedMatrix = await RegistrationMatrixClient.GetMatrixAsync(id);
+            SelectedExistingFieldIds.Clear();
+            PinnedRowId = null;
+            CurrentPage = 1;
+            await EnsureSupportAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude abrir la matriz", ex.Message);
+        }
+    }
+
+    private void OpenCreateMatrixModal() => IsCreateMatrixModalOpen = true;
+
+    private void CloseCreateMatrixModal()
+    {
+        IsCreateMatrixModalOpen = false;
+        NewFieldSearch = string.Empty;
+    }
+
+    private void OpenColumnsModal() => IsColumnsModalOpen = true;
+
+    private void CloseColumnsModal()
+    {
+        IsColumnsModalOpen = false;
+        ExistingFieldSearch = string.Empty;
+    }
+
+    private async Task CreateMatrixAsync()
+    {
+        try
+        {
+            NewMatrix.FieldIds = SelectedNewFieldIds.ToList();
+            var created = await RegistrationMatrixClient.CreateMatrixAsync(NewMatrix);
+            if (created is null)
+            {
+                return;
+            }
+
+            Matrices = await RegistrationMatrixClient.GetMatricesAsync();
+            SelectedMatrix = created;
+            FieldOptions.Clear();
+            PinnedRowId = null;
+            CurrentPage = 1;
+            await EnsureSupportAsync();
+            NewMatrix = new CreateRegistrationMatrixRequest();
+            SelectedNewFieldIds.Clear();
+            NewFieldSearch = string.Empty;
+            IsCreateMatrixModalOpen = false;
+            ShowStatus("success", "Matriz creada", "La matriz ya está lista para empezar a registrar.");
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude crear la matriz", ex.Message);
+        }
+    }
+
+    private async Task AddSelectedColumnsAsync()
+    {
+        if (SelectedMatrix is null || SelectedExistingFieldIds.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            SelectedMatrix = await RegistrationMatrixClient.AddColumnsAsync(SelectedMatrix.Summary.RegistrationMatrixId, new AddRegistrationMatrixColumnsRequest { FieldIds = SelectedExistingFieldIds.ToList() });
+            Matrices = await RegistrationMatrixClient.GetMatricesAsync();
+            SelectedExistingFieldIds.Clear();
+            ExistingFieldSearch = string.Empty;
+            IsColumnsModalOpen = false;
+            FieldOptions.Clear();
+            EnsureCurrentPageWithinRange();
+            await EnsureSupportAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude agregar columnas", ex.Message);
+        }
+    }
+
+    private async Task RemoveColumnAsync(int id)
+    {
+        if (SelectedMatrix is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await RegistrationMatrixClient.DeleteColumnAsync(SelectedMatrix.Summary.RegistrationMatrixId, id);
+            SelectedMatrix = await RegistrationMatrixClient.GetMatrixAsync(SelectedMatrix.Summary.RegistrationMatrixId);
+            Matrices = await RegistrationMatrixClient.GetMatricesAsync();
+            FieldOptions.Clear();
+            EnsureCurrentPageWithinRange();
+            await EnsureSupportAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude quitar la columna", ex.Message);
+        }
+    }
+
+    private void PromptRemoveColumn(RegistrationMatrixColumnDto column) => PendingRemoveColumn = column;
+
+    private void CancelRemoveColumn() => PendingRemoveColumn = null;
+
+    private async Task ConfirmRemoveColumnAsync()
+    {
+        var column = PendingRemoveColumn;
+        PendingRemoveColumn = null;
+        if (column is null)
+        {
+            return;
+        }
+
+        await RemoveColumnAsync(column.RegistrationMatrixColumnId);
+    }
+
+    private async Task MoveColumnAsync(RegistrationMatrixColumnDto column, int offset)
+    {
+        var ordered = OrderedColumns.ToList();
+        var currentIndex = ordered.FindIndex(x => x.RegistrationMatrixColumnId == column.RegistrationMatrixColumnId);
+        if (currentIndex < 0)
+        {
+            return;
+        }
+
+        var targetIndex = currentIndex + offset;
+        if (targetIndex < 0 || targetIndex >= ordered.Count || SelectedMatrix is null)
+        {
+            return;
+        }
+
+        try
+        {
+            SelectedMatrix = await RegistrationMatrixClient.UpdateColumnOrderAsync(SelectedMatrix.Summary.RegistrationMatrixId, column.RegistrationMatrixColumnId, new UpdateRegistrationMatrixColumnOrderRequest { DisplayOrder = targetIndex + 1, WidthUnits = column.WidthUnits });
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude reordenar la columna", ex.Message);
+        }
+    }
+
+    private async Task AddRowAsync()
+    {
+        if (SelectedMatrix is null)
+        {
+            return;
+        }
+
+        try
+        {
+            SelectedMatrix = await RegistrationMatrixClient.AddRowAsync(SelectedMatrix.Summary.RegistrationMatrixId);
+            Matrices = await RegistrationMatrixClient.GetMatricesAsync();
+            PinnedRowId = SelectedMatrix?.Rows.OrderByDescending(x => x.RowNumber).FirstOrDefault()?.RegistrationMatrixRowId;
+            CurrentPage = TotalPages;
+            await EnsureSupportAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude agregar la fila", ex.Message);
+        }
+    }
+
+    private async Task UpdateCellAsync(int rowId, int fieldId, string? value)
+    {
+        if (SelectedMatrix is null)
+        {
+            return;
+        }
+
+        try
+        {
+            SelectedMatrix = await RegistrationMatrixClient.UpdateCellAsync(SelectedMatrix.Summary.RegistrationMatrixId, rowId, new UpdateRegistrationMatrixCellRequest { FieldId = fieldId, RawValue = value });
+            await ClearDependentHierarchyValuesAsync(rowId, fieldId);
+            EnsureCurrentPageWithinRange();
+            await EnsureSupportAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude guardar la celda", ex.Message);
+        }
+    }
+
+    private async Task ClearDependentHierarchyValuesAsync(int rowId, int changedFieldId)
+    {
+        if (SelectedMatrix is null)
+        {
+            return;
+        }
+
+        var changedField = GetFieldById(changedFieldId);
+        if (changedField is null)
+        {
+            return;
+        }
+
+        if (changedField.FieldKey.Equals("BroadFieldId", StringComparison.OrdinalIgnoreCase))
+        {
+            await ClearCellIfNeededAsync(rowId, "SpecificFieldId");
+            await ClearCellIfNeededAsync(rowId, "DetailedFieldId");
+        }
+        else if (changedField.FieldKey.Equals("SpecificFieldId", StringComparison.OrdinalIgnoreCase))
+        {
+            await ClearCellIfNeededAsync(rowId, "DetailedFieldId");
+        }
+    }
+
+    private async Task ClearCellIfNeededAsync(int rowId, string fieldKey)
+    {
+        if (SelectedMatrix is null)
+        {
+            return;
+        }
+
+        var targetField = ArticleFields.Concat(ParticipantFields).FirstOrDefault(x => x.FieldKey.Equals(fieldKey, StringComparison.OrdinalIgnoreCase));
+        if (targetField is null)
+        {
+            return;
+        }
+
+        var row = SelectedMatrix.Rows.FirstOrDefault(x => x.RegistrationMatrixRowId == rowId);
+        if (row is null)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(GetCellValue(row, targetField.FieldId)))
+        {
+            return;
+        }
+
+        SelectedMatrix = await RegistrationMatrixClient.UpdateCellAsync(SelectedMatrix.Summary.RegistrationMatrixId, rowId, new UpdateRegistrationMatrixCellRequest { FieldId = targetField.FieldId, RawValue = null });
+    }
+
+    private async Task DeleteRowAsync(int rowId)
+    {
+        if (SelectedMatrix is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await RegistrationMatrixClient.DeleteRowAsync(SelectedMatrix.Summary.RegistrationMatrixId, rowId);
+            SelectedMatrix = await RegistrationMatrixClient.GetMatrixAsync(SelectedMatrix.Summary.RegistrationMatrixId);
+            Matrices = await RegistrationMatrixClient.GetMatricesAsync();
+            if (PinnedRowId == rowId)
+            {
+                PinnedRowId = null;
+            }
+            EnsureCurrentPageWithinRange();
+            await EnsureSupportAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude quitar la fila", ex.Message);
+        }
+    }
+
+    private void OpenSubmitConfirmModal()
+    {
+        SubmitConfirmReviewed = false;
+        SubmitConfirmUnderstood = false;
+        IsSubmitConfirmModalOpen = true;
+    }
+
+    private void CloseSubmitConfirmModal()
+    {
+        SubmitConfirmReviewed = false;
+        SubmitConfirmUnderstood = false;
+        IsSubmitConfirmModalOpen = false;
+    }
+
+    private async Task ConfirmSubmitToStagingAsync()
+    {
+        if (SelectedMatrix is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await RegistrationMatrixClient.SubmitToStagingAsync(SelectedMatrix.Summary.RegistrationMatrixId, new SubmitRegistrationMatrixRequest());
+            if (result?.BatchResult?.Batch is not null)
+            {
+                SelectedMatrix = result.Matrix;
+                Matrices = await RegistrationMatrixClient.GetMatricesAsync();
+                PinnedRowId = null;
+                CloseSubmitConfirmModal();
+                NavManager.NavigateTo($"/management/exportinformation?batchId={result.BatchResult.Batch.Summary.ImportBatchId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude enviar la matriz a staging", ex.Message);
+        }
+    }
+
+    private async Task EnsureSupportAsync()
+    {
+        if (SelectedMatrix is null)
+        {
+            return;
+        }
+
+        foreach (var column in SelectedMatrix.Columns)
+        {
+            var field = GetFieldById(column.FieldId);
+            if (field is null)
+            {
+                continue;
+            }
+
+            if (field.IsDynamic)
+            {
+                await EnsureOptionsAsync(field, null);
+                continue;
+            }
+
+            if (!LooksCatalog(field))
+            {
+                continue;
+            }
+
+            if (!IsHierarchicalCatalog(field))
+            {
+                await EnsureOptionsAsync(field, null);
+                continue;
+            }
+
+            foreach (var row in SelectedMatrix.Rows)
+            {
+                await EnsureOptionsAsync(field, GetParentCatalogId(field, row));
+            }
+        }
+    }
+
+    private async Task EnsureOptionsAsync(FieldCatalogItemDto field, int? parentId)
+    {
+        var key = new OptionCacheKey(field.FieldId, parentId);
+        if (FieldOptions.ContainsKey(key))
+        {
+            return;
+        }
+
+        if (field.IsDynamic)
+        {
+            var options = await FormConfigurationClient.GetFieldOptionsAsync(field.FieldId);
+            FieldOptions[key] = options.Where(x => x.IsActive).OrderBy(x => x.DisplayOrder).Select(x => new OptionItem(x.OptionValue, x.OptionLabel)).ToList();
+            return;
+        }
+
+        if (LooksCatalog(field))
+        {
+            try
+            {
+                var options = await FormConfigurationClient.GetCatalogItemsByFieldAsync(field.FieldId, parentId);
+                FieldOptions[key] = options.OrderBy(x => x.Name).Select(x => new OptionItem(x.Id.ToString(), x.Name)).ToList();
+            }
+            catch
+            {
+                FieldOptions[key] = new();
+            }
+            return;
+        }
+
+        FieldOptions[key] = new();
+    }
+
+    private IEnumerable<FieldCatalogItemDto> GetFilteredNewFields(string entity) =>
+        FilterFields(entity == "Article" ? ArticleFields : ParticipantFields, SelectedNewFieldIds, NewFieldSearch, false);
+
+    private IEnumerable<FieldCatalogItemDto> GetFilteredAvailableFields(string entity) =>
+        FilterFields(entity == "Article" ? ArticleFields : ParticipantFields, SelectedMatrix?.Columns.Select(x => x.FieldId).ToHashSet() ?? new HashSet<int>(), ExistingFieldSearch, true);
+
+    private static IEnumerable<FieldCatalogItemDto> FilterFields(IEnumerable<FieldCatalogItemDto> source, HashSet<int> selectedIds, string search, bool excludeSelected)
+    {
+        var query = source.AsEnumerable();
+        if (excludeSelected)
+        {
+            query = query.Where(x => !selectedIds.Contains(x.FieldId));
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(x => x.FieldLabel.Contains(search, StringComparison.OrdinalIgnoreCase) || x.FieldKey.Contains(search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return query.OrderBy(x => x.DisplayOrder).ThenBy(x => x.FieldLabel);
+    }
+
+    private void ChangePageSize(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var size))
+        {
+            RowPageSize = Math.Max(1, size);
+            EnsureCurrentPageWithinRange();
+        }
+    }
+
+    private void PreviousPage()
+    {
+        if (CurrentPage > 1)
+        {
+            CurrentPage--;
+        }
+    }
+
+    private void NextPage()
+    {
+        if (CurrentPage < TotalPages)
+        {
+            CurrentPage++;
+        }
+    }
+
+    private void EnsureCurrentPageWithinRange()
+    {
+        if (CurrentPage < 1)
+        {
+            CurrentPage = 1;
+        }
+
+        if (CurrentPage > TotalPages)
+        {
+            CurrentPage = TotalPages;
+        }
+    }
+
+    private RenderFragment RenderMatrixRow(RegistrationMatrixRowDto row, bool pinned) => @<tr class="@(pinned ? "sticky top-[58px] z-20 bg-[#fff3f6] shadow-[0_10px_22px_rgba(147,29,33,0.18)]" : "bg-white transition hover:bg-[#fff7fa] even:bg-[#fffcfd]")">
+        <td class="border border-[#ead9e0] px-3 py-3 align-top font-semibold text-slate-700 @(pinned ? "bg-[#f8dde4]" : "")">
+            @row.RowNumber
+            <div class="mt-1">
+                <span class="@GetRowStatusClass(row)">@GetRowStatusLabel(row)</span>
+            </div>
+            @if (pinned)
+            {
+                <div class="mt-1 rounded-full bg-[#931D21] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white shadow-sm">Fila activa</div>
+            }
+        </td>
+        @foreach (var column in OrderedColumns)
+        {
+            var field = GetFieldById(column.FieldId);
+            var value = GetCellValue(row, column.FieldId);
+            <td class="border border-[#ead9e0] px-3 py-3 align-top @(pinned ? "bg-[#fff8fa]" : "")" style="@GetColumnStyle(column)">
+                @if (field is not null && HasOptionsForRow(field, row))
+                {
+                    <select class="min-w-[13rem] rounded-xl border border-[#d8c7cf] bg-white px-3 py-2 text-sm shadow-sm" value="@value" @onchange="e => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, e.Value?.ToString())">
+                        <option value="">Seleccionar...</option>
+                        @foreach (var option in GetOptionsForRow(field, row))
+                        {
+                            <option value="@option.Value">@option.Label</option>
+                        }
+                    </select>
+                }
+                else if (field is not null && IsBooleanField(field))
+                {
+                    <select class="min-w-[13rem] rounded-xl border border-[#d8c7cf] bg-white px-3 py-2 text-sm shadow-sm" value="@value" @onchange="e => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, e.Value?.ToString())">
+                        <option value="">Seleccionar...</option>
+                        <option value="true">Sí</option>
+                        <option value="false">No</option>
+                    </select>
+                }
+                else
+                {
+                    <input class="min-w-[13rem] rounded-xl border border-[#d8c7cf] bg-white px-3 py-2 text-sm shadow-sm" type="@(field is null ? "text" : GetInputType(field))" step="@(field is null ? null : GetInputStep(field))" placeholder="@(field is null ? "Registrar valor" : GetPlaceholder(field))" value="@value" @onchange="e => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, e.Value?.ToString())" />
+                }
+                @if (field is not null && ShowSupport(field, row))
+                {
+                    <div class="mt-1 text-[11px] text-slate-400">@GetSupport(field, row)</div>
+                }
+            </td>
+        }
+        <td class="border border-[#ead9e0] px-3 py-3 align-top @(pinned ? "bg-[#fff7fa]" : "")">
+            <button class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700" @onclick="() => DeleteRowAsync(row.RegistrationMatrixRowId)">Quitar fila</button>
+        </td>
+    </tr>;
+
+    private FieldCatalogItemDto? GetFieldById(int id) => ArticleFields.Concat(ParticipantFields).FirstOrDefault(x => x.FieldId == id);
+    private string GetCellValue(RegistrationMatrixRowDto row, int fieldId) => row.Cells.FirstOrDefault(x => x.FieldId == fieldId)?.RawValue ?? string.Empty;
+    private void ToggleNewField(int id, bool selected) { if (selected) SelectedNewFieldIds.Add(id); else SelectedNewFieldIds.Remove(id); }
+    private void ToggleExistingField(int id, bool selected) { if (selected) SelectedExistingFieldIds.Add(id); else SelectedExistingFieldIds.Remove(id); }
+    private void ShowStatus(string variant, string title, string message) { StatusVariant = variant; StatusTitle = title; StatusMessage = message; }
+    private Task CloseStatusModal() { StatusTitle = string.Empty; StatusMessage = string.Empty; return Task.CompletedTask; }
+    private static bool LooksCatalog(FieldCatalogItemDto field) => !string.IsNullOrWhiteSpace(field.ReferenceTableName) || field.SourceType.Equals("Catalog", StringComparison.OrdinalIgnoreCase) || field.FieldKey.EndsWith("Id", StringComparison.OrdinalIgnoreCase);
+    private static bool IsHierarchicalCatalog(FieldCatalogItemDto field) => field.FieldKey is "SpecificFieldId" or "DetailedFieldId";
+    private static bool IsBooleanField(FieldCatalogItemDto field) => field.DataType.Contains("bool", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("bit", StringComparison.OrdinalIgnoreCase);
+    private static bool IsNumericField(FieldCatalogItemDto field) => field.DataType.Contains("int", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("decimal", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("number", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("double", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("float", StringComparison.OrdinalIgnoreCase);
+    private static string GetInputType(FieldCatalogItemDto field) => field.DataType.Contains("datetime", StringComparison.OrdinalIgnoreCase) ? "datetime-local" : field.DataType.Contains("date", StringComparison.OrdinalIgnoreCase) ? "date" : IsNumericField(field) ? "number" : "text";
+    private static string? GetInputStep(FieldCatalogItemDto field) => field.DataType.Contains("decimal", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("double", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("float", StringComparison.OrdinalIgnoreCase) ? "0.01" : IsNumericField(field) ? "1" : null;
+    private static string GetPlaceholder(FieldCatalogItemDto field) => !string.IsNullOrWhiteSpace(field.Placeholder) ? field.Placeholder! : field.IsRequired ? "Campo obligatorio" : "Registrar valor";
+    private static string GetColumnLegend(RegistrationMatrixColumnDto column) => $"{(column.EntityName == "ArticleParticipant" ? "Participante" : "Artículo")}{(column.IsRequired ? " · Obligatorio" : "")}{(column.IsDynamic ? " · Dinámico" : "")}";
+    private static string GetColumnStyle(RegistrationMatrixColumnDto column) => $"min-width:{12 + ((Math.Clamp(column.WidthUnits, 1, 3) - 1) * 5)}rem;";
+
+    private bool HasOptionsForRow(FieldCatalogItemDto field, RegistrationMatrixRowDto row) => GetOptionsForRow(field, row).Any();
+
+    private IEnumerable<OptionItem> GetOptionsForRow(FieldCatalogItemDto field, RegistrationMatrixRowDto row)
+    {
+        var key = new OptionCacheKey(field.FieldId, GetParentCatalogId(field, row));
+        return FieldOptions.TryGetValue(key, out var options) ? options : Enumerable.Empty<OptionItem>();
+    }
+
+    private int? GetParentCatalogId(FieldCatalogItemDto field, RegistrationMatrixRowDto row)
+    {
+        if (field.FieldKey.Equals("SpecificFieldId", StringComparison.OrdinalIgnoreCase))
+        {
+            return TryGetRelatedFieldValue(row, "BroadFieldId");
+        }
+
+        if (field.FieldKey.Equals("DetailedFieldId", StringComparison.OrdinalIgnoreCase))
+        {
+            return TryGetRelatedFieldValue(row, "SpecificFieldId");
+        }
+
+        return null;
+    }
+
+    private int? TryGetRelatedFieldValue(RegistrationMatrixRowDto row, string fieldKey)
+    {
+        var relatedField = ArticleFields.Concat(ParticipantFields).FirstOrDefault(x => x.FieldKey.Equals(fieldKey, StringComparison.OrdinalIgnoreCase));
+        if (relatedField is null)
+        {
+            return null;
+        }
+
+        var raw = GetCellValue(row, relatedField.FieldId);
+        return int.TryParse(raw, out var value) ? value : null;
+    }
+
+    private string GetSupport(FieldCatalogItemDto field, RegistrationMatrixRowDto row)
+    {
+        if (!string.IsNullOrWhiteSpace(field.HelpText))
+        {
+            return field.HelpText!;
+        }
+
+        if (field.FieldKey.Equals("SpecificFieldId", StringComparison.OrdinalIgnoreCase))
+        {
+            return TryGetRelatedFieldValue(row, "BroadFieldId").HasValue ? "Se filtra según el campo amplio seleccionado en esta fila." : "Primero selecciona un campo amplio para habilitar esta lista.";
+        }
+
+        if (field.FieldKey.Equals("DetailedFieldId", StringComparison.OrdinalIgnoreCase))
+        {
+            return TryGetRelatedFieldValue(row, "SpecificFieldId").HasValue ? "Se filtra según el campo específico seleccionado en esta fila." : "Primero selecciona un campo específico para habilitar esta lista.";
+        }
+
+        if (field.IsDynamic)
+        {
+            return "Opciones dinámicas activas.";
+        }
+
+        if (LooksCatalog(field))
+        {
+            return "Catálogo disponible para ayudarte a registrar.";
+        }
+
+        return string.Empty;
+    }
+
+    private bool ShowSupport(FieldCatalogItemDto field, RegistrationMatrixRowDto row) => !string.IsNullOrWhiteSpace(GetSupport(field, row));
+
+    private static string GetMatrixStatusClass(RegistrationMatrixSummaryDto matrix)
+    {
+        if (matrix.Status.Contains("Processed", StringComparison.OrdinalIgnoreCase))
+        {
+            return "rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-semibold text-emerald-700";
+        }
+
+        if (matrix.Status.Contains("Staging", StringComparison.OrdinalIgnoreCase) || matrix.LastImportBatchId.HasValue)
+        {
+            return "rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700";
+        }
+
+        return "rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600";
+    }
+
+    private static string GetMatrixStatusLabel(RegistrationMatrixSummaryDto matrix)
+    {
+        if (matrix.Status.Contains("Processed", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Procesada";
+        }
+
+        if (matrix.Status.Contains("Staging", StringComparison.OrdinalIgnoreCase) || matrix.LastImportBatchId.HasValue)
+        {
+            return "En staging";
+        }
+
+        return "Borrador";
+    }
+
+    private string GetRowStatusLabel(RegistrationMatrixRowDto row)
+    {
+        var totalRequired = OrderedColumns.Count(x => x.IsRequired);
+        if (totalRequired == 0)
+        {
+            return "Libre";
+        }
+
+        var completedRequired = OrderedColumns.Count(x => x.IsRequired && !string.IsNullOrWhiteSpace(GetCellValue(row, x.FieldId)));
+        if (completedRequired == 0)
+        {
+            return "Vacía";
+        }
+
+        if (completedRequired >= totalRequired)
+        {
+            return "Completa";
+        }
+
+        return $"{completedRequired}/{totalRequired}";
+    }
+
+    private string GetRowStatusClass(RegistrationMatrixRowDto row)
+    {
+        var label = GetRowStatusLabel(row);
+        if (label == "Completa")
+        {
+            return "rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700";
+        }
+
+        if (label == "Vacía")
+        {
+            return "rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600";
+        }
+
+        if (label == "Libre")
+        {
+            return "rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700";
+        }
+
+        return "rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700";
+    }
+
+    private sealed record OptionItem(string Value, string Label);
+    private sealed record OptionCacheKey(int FieldId, int? ParentId);
+}

@@ -35,8 +35,6 @@ namespace tesisproject.frontend.Models.Articles
         public int? SpecificFieldId { get; set; }
         public int? DetailedFieldId { get; set; }
 
-        public int? ProjectId { get; set; }
-
         // Venue / Journal (en tus DTOs se llama JournalName)
         public string? VenueName { get; set; }        // UI-friendly
         public string? IssnCode { get; set; }
@@ -79,7 +77,6 @@ namespace tesisproject.frontend.Models.Articles
                 BroadFieldId = BroadFieldId,
                 SpecificFieldId = SpecificFieldId,
                 DetailedFieldId = DetailedFieldId,
-                ProjectId = IsProjectResult ? ProjectId : null,
                 IndexingSourceIds = IndexingSourceIds?.Distinct().ToList() ?? new(),
                 Participants = Participants
                     .Where(p => !string.IsNullOrWhiteSpace(p.Nombre))
@@ -129,7 +126,6 @@ namespace tesisproject.frontend.Models.Articles
                 BroadFieldId = baseReq.BroadFieldId,
                 SpecificFieldId = baseReq.SpecificFieldId,
                 DetailedFieldId = baseReq.DetailedFieldId,
-                ProjectId = baseReq.ProjectId,
                 IndexingSourceIds = baseReq.IndexingSourceIds,
                 Participants = baseReq.Participants,
                 JournalName = baseReq.JournalName,

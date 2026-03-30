@@ -475,10 +475,6 @@ namespace tesisproject.backend.BI.ETL
                 }
 
                 int? projectKey = null;
-                if (a.ProjectId.HasValue && projectKeyLookup.TryGetValue(a.ProjectId.Value, out var pKey))
-                {
-                    projectKey = pKey;
-                }
 
                 int? academicTermKey = null;
                 if (a.AcademicTermId.HasValue && academicTermKeyLookup.TryGetValue(a.AcademicTermId.Value, out var atKey))

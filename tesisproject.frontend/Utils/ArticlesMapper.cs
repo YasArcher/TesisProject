@@ -32,7 +32,6 @@ namespace tesisproject.frontend.Utils
                 BroadFieldId = dto.BroadFieldId,
                 SpecificFieldId = dto.SpecificFieldId,
                 DetailedFieldId = dto.DetailedFieldId,
-                ProjectId = dto.ProjectId,
                 VenueName = dto.VenueName,
                 IssnCode = dto.IssnCode,
                 IssueNumber = dto.IssueNumber,

@@ -21,7 +21,6 @@ using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Implementations;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.Abstractions.Auth;
-using tesisproject.shared.Abstractions.Project;
 
 namespace tesisproject.backend.Configuration;
 
@@ -59,7 +58,6 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddAppDomainServices(this IServiceCollection services, IConfiguration config)
     {
-        services.AddScoped<IProjectsService, ProjectsService>();
         services.AddScoped<IArticlesRepository, ArticlesRepository>();
         services.AddScoped<IUnitOfWork, tesisproject.backend.UnitOfWork.Implementations.UnitOfWork>();
         services.AddScoped<IArticlesService, ArticlesService>();
@@ -67,6 +65,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IConfigurationFormsService, ConfigurationFormsService>();
         services.AddScoped<IArticleRegistrationService, ArticleRegistrationService>();
         services.AddScoped<IBulkImportService, BulkImportService>();
+        services.AddScoped<IRegistrationMatrixService, RegistrationMatrixService>();
         services.AddScoped<IExternalApiExplorerService, ExternalApiExplorerService>();
         services.Configure<ExternalApiExplorerOptions>(config.GetSection("ExternalApis"));
         services.AddHttpClient("external-api-explorer", client =>

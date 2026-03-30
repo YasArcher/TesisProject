@@ -19,6 +19,7 @@ namespace tesisproject.shared.DTOs.ExternalApis
         public string ProviderKey { get; set; } = string.Empty;
         public string QueryText { get; set; } = string.Empty;
         public string QueryMode { get; set; } = "general";
+        public string? InstitutionName { get; set; }
         public string? PrimaryAuthor { get; set; }
         public string? CoAuthor { get; set; }
         public int MaxResults { get; set; } = 10;

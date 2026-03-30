@@ -43,6 +43,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICatalogsService, CatalogsService>();
         services.AddScoped<IFormConfigurationClient, FormConfigurationClient>();
         services.AddScoped<IBulkImportClient, BulkImportClient>();
+        services.AddScoped<IRegistrationMatrixClient, RegistrationMatrixClient>();
         services.AddScoped<IExternalApiExplorerClient, ExternalApiExplorerClient>();
         services.AddScoped<ExportJsInterop>();
         services.AddScoped<IApiClient, ApiClient>();

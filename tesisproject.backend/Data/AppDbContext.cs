@@ -44,6 +44,10 @@ namespace tesisproject.backend.Data
         public DbSet<ImportBatchRow> ImportBatchRows => Set<ImportBatchRow>();
         public DbSet<ImportBatchRowValue> ImportBatchRowValues => Set<ImportBatchRowValue>();
         public DbSet<ImportBatchError> ImportBatchErrors => Set<ImportBatchError>();
+        public DbSet<RegistrationMatrix> RegistrationMatrices => Set<RegistrationMatrix>();
+        public DbSet<RegistrationMatrixColumn> RegistrationMatrixColumns => Set<RegistrationMatrixColumn>();
+        public DbSet<RegistrationMatrixRow> RegistrationMatrixRows => Set<RegistrationMatrixRow>();
+        public DbSet<RegistrationMatrixCell> RegistrationMatrixCells => Set<RegistrationMatrixCell>();
 
         protected override void OnModelCreating(ModelBuilder m)
         {
@@ -52,8 +56,6 @@ namespace tesisproject.backend.Data
             // =============== Article ===================
             m.Entity<Article>(e =>
             {
-                e.Ignore(x => x.ProjectId);
-                e.Ignore(x => x.Project);
                 e.Property(x => x.Title).HasMaxLength(500);
                 e.Property(x => x.Doi).HasMaxLength(200);
                 e.Property(x => x.PublicationUrl).HasMaxLength(500);
@@ -453,6 +455,71 @@ namespace tesisproject.backend.Data
                     .WithMany()
                     .HasForeignKey(x => x.FieldId)
                     .OnDelete(DeleteBehavior.NoAction);
+            });
+
+            // =============== RegistrationMatrix ========
+            m.Entity<RegistrationMatrix>(e =>
+            {
+                e.ToTable("RegistrationMatrix");
+                e.HasKey(x => x.RegistrationMatrixId);
+                e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+                e.Property(x => x.EntityName).HasMaxLength(100).IsRequired();
+                e.Property(x => x.Status).HasMaxLength(30).IsRequired();
+                e.Property(x => x.Notes).HasMaxLength(1000);
+
+                e.HasOne(x => x.LastImportBatch)
+                    .WithMany()
+                    .HasForeignKey(x => x.LastImportBatchId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                e.HasMany(x => x.Columns)
+                    .WithOne(x => x.Matrix)
+                    .HasForeignKey(x => x.RegistrationMatrixId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasMany(x => x.Rows)
+                    .WithOne(x => x.Matrix)
+                    .HasForeignKey(x => x.RegistrationMatrixId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            m.Entity<RegistrationMatrixColumn>(e =>
+            {
+                e.ToTable("RegistrationMatrixColumn");
+                e.HasKey(x => x.RegistrationMatrixColumnId);
+                e.Property(x => x.WidthUnits).HasDefaultValue(1);
+                e.HasIndex(x => new { x.RegistrationMatrixId, x.FieldId }).IsUnique();
+
+                e.HasOne(x => x.Field)
+                    .WithMany()
+                    .HasForeignKey(x => x.FieldId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            m.Entity<RegistrationMatrixRow>(e =>
+            {
+                e.ToTable("RegistrationMatrixRow");
+                e.HasKey(x => x.RegistrationMatrixRowId);
+                e.Property(x => x.Status).HasMaxLength(30).IsRequired();
+                e.HasIndex(x => new { x.RegistrationMatrixId, x.RowNumber }).IsUnique();
+
+                e.HasMany(x => x.Cells)
+                    .WithOne(x => x.Row)
+                    .HasForeignKey(x => x.RegistrationMatrixRowId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            m.Entity<RegistrationMatrixCell>(e =>
+            {
+                e.ToTable("RegistrationMatrixCell");
+                e.HasKey(x => x.RegistrationMatrixCellId);
+                e.Property(x => x.RawValue).HasMaxLength(4000);
+                e.HasIndex(x => new { x.RegistrationMatrixRowId, x.FieldId }).IsUnique();
+
+                e.HasOne(x => x.Field)
+                    .WithMany()
+                    .HasForeignKey(x => x.FieldId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
         }
     }

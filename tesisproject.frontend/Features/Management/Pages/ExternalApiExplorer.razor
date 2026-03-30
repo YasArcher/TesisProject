@@ -264,6 +264,7 @@
                                         {
                                             <option value="author">Autor</option>
                                             <option value="author-coauthor">Autor + coautor</option>
+                                            <option value="affiliation">Institución / afiliación</option>
                                         }
                                     </select>
                                 </div>
@@ -292,6 +293,13 @@
                                             <input class="w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2 text-sm" @bind="CoAuthor" placeholder="Ej. Maria Garcia" />
                                         </div>
                                     }
+                                </div>
+                            }
+                            else if (QueryMode == "affiliation")
+                            {
+                                <div>
+                                    <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Institución o afiliación</label>
+                                    <input class="w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2 text-sm" @bind="InstitutionName" placeholder="Ej. Universidad Técnica de Ambato" />
                                 </div>
                             }
                             else
@@ -515,6 +523,7 @@
     private ExternalApiQueryResultDto? LastResult;
     private string QueryText = string.Empty;
     private string QueryMode = "general";
+    private string InstitutionName = string.Empty;
     private string PrimaryAuthor = string.Empty;
     private string CoAuthor = string.Empty;
     private int MaxResults = 10;
@@ -661,11 +670,18 @@
         {
             PrimaryAuthor = "Juan Perez";
             CoAuthor = "Maria Garcia";
+            InstitutionName = "Universidad Técnica de Ambato";
         }
         else
         {
             PrimaryAuthor = string.Empty;
             CoAuthor = string.Empty;
+            InstitutionName = string.Empty;
+        }
+
+        if (QueryMode == "affiliation")
+        {
+            QueryText = string.Empty;
         }
     }
 
@@ -687,6 +703,7 @@
                 ProviderKey = SelectedProvider.ProviderKey,
                 QueryText = QueryText,
                 QueryMode = QueryMode,
+                InstitutionName = InstitutionName,
                 PrimaryAuthor = PrimaryAuthor,
                 CoAuthor = CoAuthor,
                 MaxResults = MaxResults

@@ -51,7 +51,6 @@ namespace tesisproject.backend.Mapping
                 BroadFieldId = a.BroadFieldId,
                 SpecificFieldId = a.SpecificFieldId,
                 DetailedFieldId = a.DetailedFieldId,
-                ProjectId = a.ProjectId,
 
                 // Venue
                 VenueName = a.Venue?.Name,
