@@ -1,0 +1,12 @@
+﻿.divide-border > * + * {
+    border-top-color: var(--color-border);
+}
+
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
+
+.sortable-chosen {
+    background-color: color-mix(in srgb, var(--color-primary) 5%, transparent);
+}

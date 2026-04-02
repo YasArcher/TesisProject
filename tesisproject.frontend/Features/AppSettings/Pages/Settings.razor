@@ -26,23 +26,23 @@
 @inject IProjectTypeClientService ProjectTypeClient
 @inject ITransactionTypeClientService TransactionTypeClient
 
-<div class="flex flex-col h-full space-y-4">
+<div class="flex flex-col h-full min-h-0 gap-4">
     <!-- Header -->
-    <div class="rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm">
+    <div class="rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm shrink-0">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div class="space-y-2">
                 <h1 class="text-2xl font-bold text-foreground">
                     Configuración del Sistema
                 </h1>
-                <p class="text-sm text-muted">
+                @* <p class="text-sm text-muted">
                     Configure catálogos del sistema, productos y otras opciones.
-                </p>
+                </p> *@
             </div>
         </div>
     </div>
 
     <!-- Tabs container -->
-    <div class="flex-1 overflow-y-auto min-h-0">
+    <div class="flex-1 min-h-0 overflow-hidden">
         <Tabs ActiveKey="@_activeTab"
               OnChange="OnTabChanged"
               Variant="TabVariant.Underline">
@@ -112,7 +112,8 @@
                                                         OnProductTypeSelected="HandleDesignerLoadDesignAsync"
                                                         OnAddDefinitionRequested="HandleDesignerAddDefinition"
                                                         OnRemoveDefinitionRequested="HandleDesignerRemoveDefinition"
-                                                        OnSaveDesignRequested="HandleDesignerSaveDesignAsync" />
+                                                        OnSaveDesignRequested="HandleDesignerSaveDesignAsync"
+                                                        OnDefinitionRowsReordered="HandleDesignerRowsReordered" />
                             </ChildContent>
                         </Tab>
 
@@ -1503,7 +1504,10 @@
     }
 
     // ==================== LÓGICA DEL DESIGNER ====================
-
+    private void HandleDesignerRowsReordered(List<ProductAttributeDefinitionUpsertDTO> rows)
+    {
+        _designerDefinitionRows = rows;
+    }
     private async Task LoadDesignerProductTypesAsync()
     {
         _designerLoading = true;

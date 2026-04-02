@@ -1,84 +1,85 @@
 ﻿@using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.frontend.SharedUI.ActionButton
 
-<div class="group rounded-xl border-2 border-border bg-background shadow-sm hover:shadow-md transition-all duration-200">
-    <div class="p-5 border-b border-border bg-background/50">
-        <!-- Row: Title + Actions -->
-        <div class="flex items-start justify-between gap-4">
-            <div class="flex items-center gap-2 min-w-0">
-                @if (Icon is not null)
-                {
-                    <div class="h-5 w-5 text-primary flex-shrink-0">
-                        @Icon
-                    </div>
-                }
-                <h3 class="text-base font-semibold text-foreground truncate">@Title</h3>
-            </div>
+<div class="group rounded-xl border-2 border-border bg-background shadow-sm hover:shadow-md transition-all duration-200 h-[28rem] flex flex-col overflow-hidden">
+    <div class="p-5 border-b border-border bg-background/50 shrink-0">
+        <div class="flex flex-col gap-3">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-2 min-w-0">
+                    @if (Icon is not null)
+                    {
+                        <div class="h-5 w-5 text-primary flex-shrink-0">
+                            @Icon
+                        </div>
+                    }
 
-            <div class="flex items-center gap-3 flex-shrink-0">
-                <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-primary/10 text-xs font-medium text-primary whitespace-nowrap">
-                    @VisibleItems.Count / @Items.Count @(Items.Count == 1 ? CountLabelSingular : CountLabelPlural)
-                </span>
+                    <h3 class="text-base font-semibold text-foreground truncate">
+                        @Title
+                    </h3>
+                </div>
 
-                @if (InactiveCount > 0)
-                {
-                    <ActionButton Text="@(_showInactive? HideInactiveText : ShowInactiveText)"
+                <div class="flex items-center gap-2 flex-wrap justify-end flex-shrink-0">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-primary/10 text-xs font-medium text-primary whitespace-nowrap">
+                        @VisibleItems.Count / @Items.Count @(Items.Count == 1 ? CountLabelSingular : CountLabelPlural)
+                    </span>
+
+                    @if (InactiveCount > 0)
+                    {
+                        <ActionButton Text="@(_showInactive? HideInactiveText : ShowInactiveText)"
+                                      Intent="ButtonIntent.Add"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Xs"
+                                      Execute="@ToggleInactive"
+                                      Class="opacity-80 hover:opacity-100">
+                            <Icon>
+                                @if (_showInactive)
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                        <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                                        <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 0 1 0-1.113ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z" clip-rule="evenodd" />
+                                    </svg>
+                                }
+                                else
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                        <path d="M3.53 2.47a.75.75 0 0 0-1.06 1.06l18 18a.75.75 0 1 0 1.06-1.06l-18-18ZM22.676 12.553a11.249 11.249 0 0 1-2.631 4.31l-3.099-3.099a5.25 5.25 0 0 0-6.71-6.71L7.759 4.577a11.217 11.217 0 0 1 4.242-.827c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113Z" />
+                                        <path d="M15.75 12c0 .18-.013.357-.037.53l-4.244-4.243A3.75 3.75 0 0 1 15.75 12ZM12.53 15.713l-4.243-4.244a3.75 3.75 0 0 0 4.244 4.243Z" />
+                                        <path d="M6.75 12c0-.619.107-1.213.304-1.764l-3.1-3.1a11.25 11.25 0 0 0-2.63 4.31c-.12.362-.12.752 0 1.114 1.489 4.467 5.704 7.69 10.675 7.69 1.5 0 2.933-.294 4.242-.827l-2.477-2.477A5.25 5.25 0 0 1 6.75 12Z" />
+                                    </svg>
+                                }
+                            </Icon>
+                        </ActionButton>
+                    }
+
+                    <ActionButton Text="@NewButtonText"
                                   Intent="ButtonIntent.Add"
                                   Variant="ButtonVariant.Outline"
                                   Size="ButtonSize.Xs"
-                                  Execute="@ToggleInactive"
-                                  Class="opacity-80 hover:opacity-100">
+                                  Execute="OnNewRequested">
                         <Icon>
-                            @if (_showInactive)
-                            {
-                                <!-- Eye off -->
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
-                                    <path fill-rule="evenodd" d="M1.323 11.447C2.811 6.976 7.028 3.75 12.001 3.75c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113-1.487 4.471-5.705 7.697-10.677 7.697-4.97 0-9.186-3.223-10.675-7.69a1.762 1.762 0 0 1 0-1.113ZM17.25 12a5.25 5.25 0 1 1-10.5 0 5.25 5.25 0 0 1 10.5 0Z" clip-rule="evenodd" />
-                                </svg>
-                            }
-                            else
-                            {
-                                <!-- Eye -->
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                    <path d="M3.53 2.47a.75.75 0 0 0-1.06 1.06l18 18a.75.75 0 1 0 1.06-1.06l-18-18ZM22.676 12.553a11.249 11.249 0 0 1-2.631 4.31l-3.099-3.099a5.25 5.25 0 0 0-6.71-6.71L7.759 4.577a11.217 11.217 0 0 1 4.242-.827c4.97 0 9.185 3.223 10.675 7.69.12.362.12.752 0 1.113Z" />
-                                    <path d="M15.75 12c0 .18-.013.357-.037.53l-4.244-4.243A3.75 3.75 0 0 1 15.75 12ZM12.53 15.713l-4.243-4.244a3.75 3.75 0 0 0 4.244 4.243Z" />
-                                    <path d="M6.75 12c0-.619.107-1.213.304-1.764l-3.1-3.1a11.25 11.25 0 0 0-2.63 4.31c-.12.362-.12.752 0 1.114 1.489 4.467 5.704 7.69 10.675 7.69 1.5 0 2.933-.294 4.242-.827l-2.477-2.477A5.25 5.25 0 0 1 6.75 12Z" />
-                                </svg>
-                            }
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+                            </svg>
                         </Icon>
                     </ActionButton>
-                }
-
-                <ActionButton Text="@NewButtonText"
-                              Intent="ButtonIntent.Add"
-                              Variant="ButtonVariant.Outline"
-                              Size="ButtonSize.Xs"
-                              Execute="OnNewRequested">
-                    <Icon>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                            <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
-                        </svg>
-                    </Icon>
-                </ActionButton>
+                </div>
             </div>
+
+            @if (!string.IsNullOrWhiteSpace(Description))
+            {
+                <div>
+                    <p class="text-xs text-muted leading-relaxed">
+                        @Description
+                    </p>
+                </div>
+            }
         </div>
-
-        <!-- ✅ Description BELOW row (separate container) -->
-        @if (!string.IsNullOrWhiteSpace(Description))
-        {
-            <div class="mt-2">
-                <p class="text-xs text-muted leading-relaxed">
-                    @Description
-                </p>
-            </div>
-        }
     </div>
 
-    <div class="p-5">
+    <div class="p-5 flex-1 min-h-0 overflow-hidden">
         @if (VisibleItems.Count == 0)
         {
-            <div class="flex flex-col items-center justify-center text-center py-8 px-4">
+            <div class="h-full min-h-0 flex flex-col items-center justify-center text-center px-4">
                 @if (EmptyIcon is not null)
                 {
                     <div class="mx-auto h-12 w-12 text-muted/40 mb-3">
@@ -113,7 +114,7 @@
         }
         else
         {
-            <ul class="space-y-2 max-h-96 overflow-y-auto pr-1 scrollbar-thin">
+            <ul class="space-y-2 h-full min-h-0 overflow-y-auto pr-1 scrollbar-thin">
                 @foreach (var item in VisibleItems)
                 {
                     <li class="group/item rounded-lg border border-border bg-background hover:border-primary/40 hover:bg-primary/5 transition-all duration-150">
@@ -124,7 +125,6 @@
                                 </span>
 
                                 <div class="flex items-center gap-1.5 flex-wrap">
-                                    @* Badge de estado Activo/Inactivo *@
                                     @if (item.IsActive)
                                     {
                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
@@ -143,7 +143,6 @@
                                             Inactivo
                                         </span>
                                     }
-
                                 </div>
                             </div>
 
@@ -159,12 +158,6 @@
                                             @if (EditIcon is not null)
                                             {
                                                 @EditIcon
-                                            }
-                                            else
-                                            {
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
                                             }
                                         </Icon>
                                     </ActionButton>
@@ -183,12 +176,6 @@
                                             @if (DeleteIcon is not null)
                                             {
                                                 @DeleteIcon
-                                            }
-                                            else
-                                            {
-                                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
                                             }
                                         </Icon>
                                     </ActionButton>
@@ -239,8 +226,8 @@
     [Parameter] public EventCallback<int> OnDeleteRequested { get; set; }
 
     [Parameter] public bool HideInactiveByDefault { get; set; } = true;
-    [Parameter] public string ShowInactiveText { get; set; } = "";
-    [Parameter] public string HideInactiveText { get; set; } = "";
+    [Parameter] public string ShowInactiveText { get; set; } = "Mostrar inactivos";
+    [Parameter] public string HideInactiveText { get; set; } = "Ocultar inactivos";
 
     private bool _showInactive;
 
