@@ -20,11 +20,11 @@ namespace tesisproject.frontend.SharedUI.OrderableTable
         [Parameter] public Func<TItem, bool>? CanDragItem { get; set; }
 
         [Parameter] public string TableClass { get; set; } = "min-w-full divide-y divide-border border-separate border-spacing-0";
-        [Parameter] public string HeaderClass { get; set; } = "bg-background";
+        [Parameter] public string HeaderClass { get; set; } = "bg-primary-subtle";
 
         // Igual que TableBase
         [Parameter]
-        public string HeaderCellClass { get; set; } = "px-4 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wider select-none bg-background sticky top-0 z-30";
+        public string HeaderCellClass { get; set; } = "px-4 py-3 text-left text-xs font-semibold text-primary uppercase tracking-wider select-none bg-primary-subtle sticky top-0 z-20";
 
         [Parameter] public string BodyClass { get; set; } = "bg-background divide-y divide-border";
         [Parameter] public string RowClass { get; set; } = "odd:bg-primary-subtle hover:bg-primary-subtle-hover transition-colors duration-150";
@@ -32,7 +32,7 @@ namespace tesisproject.frontend.SharedUI.OrderableTable
         [Parameter] public string EmptyCellClass { get; set; } = "px-4 py-4 text-sm text-muted text-center align-middle";
 
         [Parameter] public string HandleTitle { get; set; } = "Arrastrar para reordenar";
-        [Parameter] public string HandleHeaderCellClass { get; set; } = "w-12 px-4 py-3 bg-background sticky top-0 z-30";
+        [Parameter] public string HandleHeaderCellClass { get; set; } = "w-12 px-4 py-3 bg-primary-subtle sticky top-0 z-20";
         [Parameter] public string HandleCellClass { get; set; } = "w-12 px-4 py-3 text-center align-middle";
 
         [Parameter]
