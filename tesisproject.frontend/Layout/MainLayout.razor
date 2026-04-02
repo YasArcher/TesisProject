@@ -56,8 +56,10 @@
         }
 
         <!-- Contenido principal - SIN scroll, deja que las páginas manejen su propio scroll -->
-        <main class="flex-1 min-h-0 min-w-0 overflow-hidden bg-background">
-            @Body
+        <main class="flex flex-col flex-1 min-h-0 min-w-0 overflow-hidden bg-background">
+            <div class="flex-1 min-h-0 overflow-hidden">
+                @Body
+            </div>
         </main>
     </div>
 </div>
