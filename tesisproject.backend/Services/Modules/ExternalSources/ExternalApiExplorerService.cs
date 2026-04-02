@@ -261,12 +261,7 @@ namespace tesisproject.backend.Services.Implementations
 
             if (mode == "affiliation")
             {
-                var affiliationQuery = BuildScopusAffiliationQuery(request.InstitutionName);
-                if (string.IsNullOrWhiteSpace(affiliationQuery))
-                {
-                    throw new InvalidOperationException("Debes informar la institución o afiliación para este modo de búsqueda.");
-                }
-
+                var affiliationQuery = BuildScopusUtaAffiliationQuery();
                 yield return new ScopusAttempt($"https://api.elsevier.com/content/search/scopus?query={Uri.EscapeDataString(affiliationQuery)}&count={maxResults}&view=STANDARD", "búsqueda por afiliación");
                 yield break;
             }
@@ -331,10 +326,10 @@ namespace tesisproject.backend.Services.Implementations
             var mode = (request.QueryMode ?? "general").Trim().ToLowerInvariant();
 
             return providerKey switch
-                {
-                    "scopus" when mode == "doi" => $"https://api.elsevier.com/content/abstract/doi/{encodedQuery}?view=META",
-                    "scopus" when mode == "affiliation" => $"https://api.elsevier.com/content/search/scopus?query={Uri.EscapeDataString(BuildScopusAffiliationQuery(request.InstitutionName) ?? string.Empty)}&count={maxResults}&view=STANDARD",
-                    "scopus" => $"https://api.elsevier.com/content/search/scopus?query={encodedQuery}&count={maxResults}&view=STANDARD",
+            {
+                "scopus" when mode == "doi" => $"https://api.elsevier.com/content/abstract/doi/{encodedQuery}?view=META",
+                    "scopus" when mode == "affiliation" => $"https://api.elsevier.com/content/search/scopus?query={Uri.EscapeDataString(BuildScopusUtaAffiliationQuery())}&count={maxResults}&view=STANDARD",
+                "scopus" => $"https://api.elsevier.com/content/search/scopus?query={encodedQuery}&count={maxResults}&view=STANDARD",
                 "crossref" when mode == "doi" => $"https://api.crossref.org/works/{encodedQuery}",
                 "crossref" => $"https://api.crossref.org/works?query={encodedQuery}&rows={maxResults}",
                 "openalex" when mode == "doi" => $"https://api.openalex.org/works/https://doi.org/{encodedQuery}",
@@ -345,15 +340,20 @@ namespace tesisproject.backend.Services.Implementations
             };
         }
 
-        private static string? BuildScopusAffiliationQuery(string? institutionName)
+        private static string BuildScopusUtaAffiliationQuery()
         {
-            if (string.IsNullOrWhiteSpace(institutionName))
+            var variants = new[]
             {
-                return null;
-            }
+                "Universidad Técnica de Ambato",
+                "Universidad Tecnica de Ambato",
+                "Technical University of Ambato",
+                "Universidad Técnica Ambato",
+                "Universidad Tecnica Ambato",
+                "Univ Tecnica de Ambato",
+                "Univ Técnica de Ambato"
+            };
 
-            var cleaned = institutionName.Trim();
-            return $"AFFIL({cleaned})";
+            return string.Join(" OR ", variants.Select(x => $"AFFIL(\"{x}\")"));
         }
 
         private static List<ExternalArticlePreviewDto> ParseArticles(string providerKey, string rawJson)

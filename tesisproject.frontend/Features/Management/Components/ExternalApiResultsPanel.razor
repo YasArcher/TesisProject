@@ -1,0 +1,270 @@
+@using tesisproject.shared.DTOs.ExternalApis
+
+<section class="space-y-6">
+    <div class="rounded-[1.6rem] border border-[#dbe6ef] bg-white p-4 shadow-sm">
+        <div class="mb-4 flex items-center justify-between gap-3">
+            <div>
+                <h2 class="text-base font-black text-[#102642] md:text-lg">Resultados externos</h2>
+            </div>
+            @if (Result is not null)
+            {
+                <span class="rounded-full px-3 py-1 text-xs font-semibold @(Result.Success ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700")">@(Result.Success ? "Respuesta útil" : "Con observaciones")</span>
+            }
+        </div>
+
+        @if (Result is null)
+        {
+            <AppEmptyState Title="Aún no hay consultas" Message="Lanza una prueba para inspeccionar artículos y el JSON crudo del proveedor." />
+        }
+        else
+        {
+            <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+                <div class="rounded-2xl bg-[#f5f9fc] px-4 py-3 text-sm text-slate-600">Proveedor: <span class="font-bold text-[#102642]">@Result.ProviderName</span></div>
+                <div class="rounded-2xl bg-[#eef6ff] px-4 py-3 text-sm text-slate-600">HTTP: <span class="font-bold text-[#295173]">@Result.StatusCode</span></div>
+                <div class="rounded-2xl bg-[#fff6ea] px-4 py-3 text-sm text-slate-600">Artículos: <span class="font-bold text-[#8b5a16]">@Result.Articles.Count</span></div>
+                <div class="rounded-2xl bg-[#f5f9fc] px-4 py-3 text-sm text-slate-600">Modo: <span class="font-bold text-[#102642]">@QueryMode</span></div>
+            </div>
+
+            <div class="mb-4 rounded-2xl border border-[#dbe6ef] bg-[#f9fbfd] px-4 py-3 text-sm text-slate-600">
+                <div class="font-semibold text-[#102642]">Request final</div>
+                <div class="mt-2 overflow-x-auto font-mono text-xs text-slate-700">@Result.FinalRequestUrl</div>
+            </div>
+
+            <div class="mb-4 rounded-3xl border border-[#dbe6ef] bg-[#f9fbfd] p-4">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <div class="text-sm font-bold text-[#102642]">Selección para staging</div>
+                        <div class="text-xs text-slate-500">@SelectedArticles.Count artículo(s) en cola</div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] disabled:opacity-50"
+                                disabled="@(!SelectedArticles.Any())"
+                                @onclick="OnClearSelectedArticles">
+                            Limpiar selección
+                        </button>
+                        <button class="rounded-xl bg-[#102642] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                                disabled="@(!SelectedArticles.Any() || IsSendingSelectionToStaging)"
+                                @onclick="OnSendSelectedToStaging">
+                            @(IsSendingSelectionToStaging ? "Enviando selección..." : "Enviar selección a staging")
+                        </button>
+                    </div>
+                </div>
+                @if (SelectedArticles.Any())
+                {
+                    <div class="mt-3 flex max-h-[7.5rem] flex-wrap gap-2 overflow-y-auto pr-1">
+                        @foreach (var selected in SelectedArticles)
+                        {
+                            <span class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#295173] shadow-sm">
+                                <span class="max-w-[16rem] truncate">@selected.Value.Title</span>
+                                <button class="text-rose-600" @onclick="() => OnRemoveSelectedArticle.InvokeAsync(selected.Key)">×</button>
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs text-slate-500">
+                    Mostrando <span class="font-semibold text-[#102642]">@CurrentResults.Count</span> de <span class="font-semibold text-[#102642]">@Result.Articles.Count</span> resultados
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <label class="text-xs font-semibold text-slate-500">Por página</label>
+                    <select class="rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2 text-xs"
+                            value="@ResultsPageSize"
+                            @onchange="OnResultsPageSizeChanged">
+                        <option value="5">5</option>
+                        <option value="10">10</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                    </select>
+                    <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] disabled:opacity-50"
+                            disabled="@(ResultsPage <= 1)"
+                            @onclick="OnPreviousPage">
+                        Anterior
+                    </button>
+                    <span class="text-xs font-semibold text-slate-600">Página @ResultsPage de @TotalResultsPages</span>
+                    <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] disabled:opacity-50"
+                            disabled="@(ResultsPage >= TotalResultsPages)"
+                            @onclick="OnNextPage">
+                        Siguiente
+                    </button>
+                </div>
+            </div>
+
+            <div class="app-table-wrap max-h-[38rem] overflow-auto rounded-3xl border border-[#dbe6ef]">
+                <table class="app-table-compact min-w-[1050px] divide-y divide-[#e6eef4] text-sm">
+                    <thead class="bg-[#f5f9fc]">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-semibold text-[#102642]">Selección</th>
+                            <th class="px-4 py-3 text-left font-semibold text-[#102642]">Título</th>
+                            <th class="px-4 py-3 text-left font-semibold text-[#102642]">DOI</th>
+                            <th class="px-4 py-3 text-left font-semibold text-[#102642]">Revista</th>
+                            <th class="px-4 py-3 text-left font-semibold text-[#102642]">Año</th>
+                            <th class="px-4 py-3 text-left font-semibold text-[#102642]">Autores</th>
+                            <th class="px-4 py-3 text-left font-semibold text-[#102642]">Metadatos</th>
+                            <th class="px-4 py-3 text-left font-semibold text-[#102642]">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#eef3f6] bg-white">
+                        @if (!CurrentResults.Any())
+                        {
+                            <tr>
+                                <td colspan="8" class="px-4 py-8 text-center text-slate-500">La consulta respondió, pero no encontré artículos mapeables en esta primera lectura.</td>
+                            </tr>
+                        }
+                        else
+                        {
+                            @foreach (var article in CurrentResults)
+                            {
+                                <tr class="align-top">
+                                    <td class="px-4 py-3">
+                                        <input type="checkbox"
+                                               checked="@IsSelected(article)"
+                                               @onchange="e => ToggleSelection(article, e)" />
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="font-semibold text-[#102642]">@article.Title</div>
+                                        @if (!string.IsNullOrWhiteSpace(article.DocumentType))
+                                        {
+                                            <div class="mt-1 text-xs text-slate-500">@article.DocumentType</div>
+                                        }
+                                    </td>
+                                    <td class="break-all px-4 py-3 text-slate-600">@(!string.IsNullOrWhiteSpace(article.Doi) ? article.Doi : "Sin DOI")</td>
+                                    <td class="px-4 py-3 text-slate-600">@article.JournalName</td>
+                                    <td class="px-4 py-3 text-slate-600">@article.PublicationYear</td>
+                                    <td class="px-4 py-3 text-slate-600">@article.Authors</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex flex-wrap gap-2 text-[11px]">
+                                            @if (!string.IsNullOrWhiteSpace(article.IssnCode))
+                                            {
+                                                <span class="rounded-full bg-[#eef6ff] px-2 py-1 font-semibold text-[#295173]">ISSN: @article.IssnCode</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(article.EIssnCode))
+                                            {
+                                                <span class="rounded-full bg-[#eef6ff] px-2 py-1 font-semibold text-[#295173]">E-ISSN: @article.EIssnCode</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(article.Publisher))
+                                            {
+                                                <span class="rounded-full bg-[#fff4e4] px-2 py-1 font-semibold text-[#8b5a16]">@article.Publisher</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(article.Volume) || !string.IsNullOrWhiteSpace(article.Issue))
+                                            {
+                                                <span class="rounded-full bg-slate-100 px-2 py-1 font-semibold text-slate-600">Vol. @article.Volume / N.º @article.Issue</span>
+                                            }
+                                            @if (article.CitationCount.HasValue)
+                                            {
+                                                <span class="rounded-full bg-[#f3ecff] px-2 py-1 font-semibold text-[#6e46a1]">@article.CitationCount cita(s)</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(article.PublicationDate))
+                                            {
+                                                <span class="rounded-full bg-[#f5f9fc] px-2 py-1 font-semibold text-slate-600">@article.PublicationDate</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(article.Language))
+                                            {
+                                                <span class="rounded-full bg-[#f5f9fc] px-2 py-1 font-semibold text-slate-600">@article.Language</span>
+                                            }
+                                            @if (article.IsOpenAccess.HasValue)
+                                            {
+                                                <span class="rounded-full px-2 py-1 font-semibold @(article.IsOpenAccess == true ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600")">@GetOpenAccessLabel(article)</span>
+                                            }
+                                            @if (article.SubjectAreas.Any())
+                                            {
+                                                <span class="rounded-full bg-[#eaf7ee] px-2 py-1 font-semibold text-emerald-700">@article.SubjectAreas.Count área(s)</span>
+                                            }
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex flex-wrap gap-2">
+                                            <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] hover:bg-[#eef6ff]"
+                                                    @onclick="() => OnOpenDetail.InvokeAsync(article)">
+                                                Ver detalle
+                                            </button>
+                                            <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] hover:bg-[#eef6ff]"
+                                                    @onclick="() => OnSendToRegister.InvokeAsync(article)">
+                                                Llevar a registro
+                                            </button>
+                                            <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] hover:bg-[#eef6ff] disabled:opacity-60"
+                                                    disabled="@IsSendingToStaging"
+                                                    @onclick="() => OnSendToStaging.InvokeAsync(article)">
+                                                @(IsSendingToStaging ? "Enviando..." : "Enviar a staging")
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 rounded-[2rem] border border-[#dbe6ef] bg-[#0d1b2a] p-5 text-slate-100 shadow-inner">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Raw payload</div>
+                        <div class="font-semibold">Vista previa JSON</div>
+                    </div>
+                    <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200">@Result.ExecutedAtUtc.ToLocalTime()</span>
+                </div>
+                <pre class="max-h-[24rem] overflow-auto whitespace-pre-wrap break-words rounded-2xl border border-white/10 bg-[#08121d] p-4 text-xs text-slate-200">@FormattedJsonPreview</pre>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public ExternalApiQueryResultDto? Result { get; set; }
+    [Parameter] public string QueryMode { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<ExternalArticlePreviewDto> CurrentResults { get; set; } = [];
+    [Parameter] public int ResultsPage { get; set; }
+    [Parameter] public int TotalResultsPages { get; set; } = 1;
+    [Parameter] public int ResultsPageSize { get; set; } = 10;
+    [Parameter] public EventCallback<int> ResultsPageSizeChanged { get; set; }
+    [Parameter] public EventCallback OnPreviousPage { get; set; }
+    [Parameter] public EventCallback OnNextPage { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, ExternalArticlePreviewDto> SelectedArticles { get; set; } = new Dictionary<string, ExternalArticlePreviewDto>();
+    [Parameter] public Func<ExternalArticlePreviewDto, bool>? IsArticleSelected { get; set; }
+    [Parameter] public EventCallback<(ExternalArticlePreviewDto Article, bool IsSelected)> OnToggleSelection { get; set; }
+    [Parameter] public EventCallback<string> OnRemoveSelectedArticle { get; set; }
+    [Parameter] public EventCallback OnClearSelectedArticles { get; set; }
+    [Parameter] public EventCallback OnSendSelectedToStaging { get; set; }
+    [Parameter] public bool IsSendingSelectionToStaging { get; set; }
+    [Parameter] public EventCallback<ExternalArticlePreviewDto> OnOpenDetail { get; set; }
+    [Parameter] public EventCallback<ExternalArticlePreviewDto> OnSendToRegister { get; set; }
+    [Parameter] public EventCallback<ExternalArticlePreviewDto> OnSendToStaging { get; set; }
+    [Parameter] public bool IsSendingToStaging { get; set; }
+    [Parameter] public string FormattedJsonPreview { get; set; } = string.Empty;
+
+    private static string GetOpenAccessLabel(ExternalArticlePreviewDto article)
+    {
+        if (!string.IsNullOrWhiteSpace(article.OpenAccessStatus))
+        {
+            return article.OpenAccessStatus;
+        }
+
+        return article.IsOpenAccess switch
+        {
+            true => "Open access",
+            false => "Acceso restringido",
+            _ => "Sin dato"
+        };
+    }
+
+    private bool IsSelected(ExternalArticlePreviewDto article)
+        => IsArticleSelected?.Invoke(article) == true;
+
+    private Task ToggleSelection(ExternalArticlePreviewDto article, ChangeEventArgs args)
+    {
+        var isSelected = args.Value is bool value && value;
+        return OnToggleSelection.InvokeAsync((article, isSelected));
+    }
+
+    private Task OnResultsPageSizeChanged(ChangeEventArgs args)
+    {
+        if (int.TryParse(Convert.ToString(args.Value), out var pageSize))
+        {
+            return ResultsPageSizeChanged.InvokeAsync(pageSize);
+        }
+
+        return Task.CompletedTask;
+    }
+}

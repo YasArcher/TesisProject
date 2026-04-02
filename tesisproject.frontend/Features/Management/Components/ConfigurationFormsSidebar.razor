@@ -1,0 +1,80 @@
+@using tesisproject.shared.DTOs.Configuration
+
+<section class="rounded-3xl border bg-white shadow-sm">
+    <header class="border-b bg-[#f5f7f8] px-5 py-4">
+        <h2 class="text-base font-bold text-[#12343b]">Formularios configurados</h2>
+    </header>
+    <div class="space-y-3 px-5 py-5">
+        <input class="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-sm"
+               placeholder="Buscar formulario por nombre, identificador visible o tipo"
+               value="@FormSearchTerm"
+               @oninput="OnFormSearchTermChanged" />
+        <details class="rounded-2xl border p-3" open>
+            <summary class="cursor-pointer font-semibold text-slate-900">Nuevo formulario</summary>
+            <div class="mt-3 space-y-2.5 text-sm">
+                <input class="w-full rounded-xl border px-3 py-2" placeholder="Identificador interno del formulario" @bind="NewForm.FormKey" />
+                <input class="w-full rounded-xl border px-3 py-2" placeholder="Nombre del formulario" @bind="NewForm.FormName" />
+                <select class="w-full rounded-xl border px-3 py-2" @bind="NewForm.EntityName">
+                    <option value="Article">Artículo</option>
+                    <option value="ArticleParticipant">Participante del artículo</option>
+                </select>
+                <textarea class="w-full rounded-xl border px-3 py-2" rows="3" placeholder="Descripción" @bind="NewForm.Description"></textarea>
+                <label class="inline-flex items-center gap-2 text-sm"><input type="checkbox" @bind="NewForm.IsActive" /> Activo</label>
+                <button class="rounded-xl bg-[#12343b] px-4 py-2 text-sm font-semibold text-white" @onclick="OnCreateForm">Crear formulario</button>
+            </div>
+        </details>
+
+        @if (!FilteredForms.Any())
+        {
+            <AppEmptyState Title="Sin formularios visibles" Message="No hay formularios que coincidan con la búsqueda actual." />
+        }
+        else
+        {
+            <div class="max-h-[32rem] space-y-2 overflow-y-auto pr-1">
+                @foreach (var form in FilteredForms)
+                {
+                    <button type="button"
+                            class="w-full rounded-2xl border px-3 py-2.5 text-left transition @(SelectedFormId == form.FormId ? "border-[#2f4858] bg-[#edf3f5]" : "border-slate-200 bg-white hover:bg-slate-50")"
+                            @onclick="() => OnSelectForm.InvokeAsync((form.FormId, form.FormKey))">
+                        <div class="flex items-center justify-between gap-3">
+                            <div>
+                                <div class="text-sm font-semibold text-slate-900">@form.FormName</div>
+                                <div class="mt-1 text-xs text-slate-500">@GetUserFacingEntityName(form.EntityName) · @GetUserFacingFormIdentifier(form.FormKey)</div>
+                            </div>
+                            <span class="rounded-full px-2 py-1 text-[11px] @(form.IsActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-600")">@(form.IsActive ? "Activo" : "Inactivo")</span>
+                        </div>
+                    </button>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public string FormSearchTerm { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> FormSearchTermChanged { get; set; }
+    [Parameter] public CreateFormDefinitionRequest NewForm { get; set; } = new();
+    [Parameter] public EventCallback OnCreateForm { get; set; }
+    [Parameter] public IReadOnlyList<FormSummaryDto> FilteredForms { get; set; } = [];
+    [Parameter] public int? SelectedFormId { get; set; }
+    [Parameter] public EventCallback<(int FormId, string FormKey)> OnSelectForm { get; set; }
+
+    private Task OnFormSearchTermChanged(ChangeEventArgs args)
+        => FormSearchTermChanged.InvokeAsync(Convert.ToString(args.Value) ?? string.Empty);
+
+    private static string GetUserFacingEntityName(string entityName)
+        => entityName switch
+        {
+            "Article" => "Artículo",
+            "ArticleParticipant" => "Participante del artículo",
+            _ => entityName
+        };
+
+    private static string GetUserFacingFormIdentifier(string formKey)
+        => formKey switch
+        {
+            "ArticleManualForm" => "Registro manual de artículo",
+            "ArticleParticipantForm" => "Participantes del artículo",
+            _ => formKey
+        };
+}

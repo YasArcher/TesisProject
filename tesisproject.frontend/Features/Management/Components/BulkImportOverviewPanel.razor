@@ -1,0 +1,29 @@
+<div class="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+    <div class="rounded-2xl border border-[#d9e5e8] bg-white px-4 py-3 shadow-sm">
+        <div class="text-[11px] uppercase tracking-wide text-slate-500">Artículo</div>
+        <div class="mt-1 text-xl font-black text-[#12343b]">@SelectedArticleFieldsCount</div>
+        <div class="text-xs text-slate-500">selección</div>
+    </div>
+    <div class="rounded-2xl border border-[#ead8bd] bg-[#fffdf8] px-4 py-3 shadow-sm">
+        <div class="text-[11px] uppercase tracking-wide text-slate-500">Participante</div>
+        <div class="mt-1 text-xl font-black text-[#8b5a16]">@SelectedParticipantFieldsCount</div>
+        <div class="text-xs text-slate-500">selección</div>
+    </div>
+    <div class="rounded-2xl border border-[#d9e5e8] bg-white px-4 py-3 shadow-sm">
+        <div class="text-[11px] uppercase tracking-wide text-slate-500">Lote actual</div>
+        <div class="mt-1 truncate text-sm font-black text-[#12343b]">@CurrentBatchCode</div>
+        <div class="text-xs text-slate-500">staging</div>
+    </div>
+    <div class="rounded-2xl border border-[#d9e5e8] bg-white px-4 py-3 shadow-sm">
+        <div class="text-[11px] uppercase tracking-wide text-slate-500">Recientes</div>
+        <div class="mt-1 text-xl font-black text-[#2f4858]">@RecentBatchesCount</div>
+        <div class="text-xs text-slate-500">lotes</div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int SelectedArticleFieldsCount { get; set; }
+    [Parameter] public int SelectedParticipantFieldsCount { get; set; }
+    [Parameter] public string CurrentBatchCode { get; set; } = "Sin lote";
+    [Parameter] public int RecentBatchesCount { get; set; }
+}

@@ -2,6 +2,17 @@ html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
 }
 
+.app-shell-warm {
+    background: #fbf5e7;
+    border-radius: 2rem;
+}
+
+.app-module-hero {
+    background: #16324f;
+    border: 1px solid rgba(67, 107, 140, 0.2);
+    box-shadow: 0 18px 34px rgba(22, 50, 79, 0.12);
+}
+
 h1:focus {
     outline: none;
 }

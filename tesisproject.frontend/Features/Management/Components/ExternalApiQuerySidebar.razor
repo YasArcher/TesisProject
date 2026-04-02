@@ -1,0 +1,169 @@
+@using tesisproject.frontend.SharedUI
+@using tesisproject.shared.DTOs.ExternalApis
+
+<section class="space-y-4">
+    <div class="rounded-[1.35rem] border border-[#dbe6ef] bg-white p-3.5 shadow-sm">
+        <div class="mb-3 flex items-center justify-between gap-3">
+            <h2 class="text-sm font-black text-[#102642] md:text-base">Proveedores</h2>
+            <span class="rounded-full bg-[#eef5fb] px-2.5 py-1 text-[11px] font-semibold text-[#295173]">@Providers.Count</span>
+        </div>
+
+        <div class="app-chip-row">
+            @foreach (var provider in Providers)
+            {
+                <button class="rounded-full border px-3 py-1.5 text-xs font-semibold transition @(SelectedProvider?.ProviderKey == provider.ProviderKey ? "border-[#7caed9] bg-[#eef6ff] text-[#102642] shadow-sm" : "border-[#dbe6ef] bg-white text-slate-600 hover:border-[#c2d7ea]")"
+                        @onclick="async () => await OnSelectProvider.InvokeAsync(provider)">
+                    @provider.DisplayName
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="rounded-[1.35rem] border border-[#dbe6ef] bg-white p-3.5 shadow-sm">
+        <div class="mb-3">
+            <h2 class="text-sm font-black text-[#102642] md:text-base">Consulta de prueba</h2>
+        </div>
+
+        @if (SelectedProvider is null)
+        {
+            <AppEmptyState Title="Selecciona un proveedor" Message="" />
+        }
+        else
+        {
+            <div class="space-y-4">
+                <div class="flex flex-wrap items-center gap-2 text-[11px]">
+                    <span class="rounded-full px-2.5 py-1 font-semibold @(SelectedProvider.RequiresApiKey ? "bg-amber-50 text-amber-700" : "bg-emerald-50 text-emerald-700")">@(SelectedProvider.RequiresApiKey ? "Requiere llave" : "Abierta")</span>
+                    <span class="rounded-full px-2.5 py-1 font-semibold @(SelectedProvider.IsConfigured || !SelectedProvider.RequiresApiKey ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600")">@(SelectedProvider.IsConfigured || !SelectedProvider.RequiresApiKey ? "Lista" : "Sin configurar")</span>
+                </div>
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Modo</label>
+                        <select class="w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2 text-sm"
+                                value="@QueryMode"
+                                @onchange="OnQueryModeChanged">
+                            <option value="general">Texto libre</option>
+                            <option value="doi">DOI exacto</option>
+                            @if (string.Equals(SelectedProvider.ProviderKey, "scopus", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <option value="author">Autor</option>
+                                <option value="author-coauthor">Autor + coautor</option>
+                                <option value="affiliation">Universidad Técnica de Ambato</option>
+                            }
+                        </select>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Resultados máximos</label>
+                        <select class="w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2 text-sm"
+                                value="@MaxResults"
+                                @onchange="OnMaxResultsChanged">
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="15">15</option>
+                            <option value="20">20</option>
+                        </select>
+                    </div>
+                </div>
+
+                @if (QueryMode is "author" or "author-coauthor")
+                {
+                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+                        <div>
+                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Autor principal</label>
+                            <input class="w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2 text-sm"
+                                   value="@PrimaryAuthor"
+                                   @oninput="OnPrimaryAuthorChanged"
+                                   placeholder="Ej. Juan Perez" />
+                        </div>
+                        @if (QueryMode == "author-coauthor")
+                        {
+                            <div>
+                                <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Coautor</label>
+                                <input class="w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2 text-sm"
+                                       value="@CoAuthor"
+                                       @oninput="OnCoAuthorChanged"
+                                       placeholder="Ej. Maria Garcia" />
+                            </div>
+                        }
+                    </div>
+                }
+                else if (QueryMode == "affiliation")
+                {
+                    <div class="rounded-2xl border border-[#dbe6ef] bg-[#f9fbfd] px-4 py-3">
+                        <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Institución fija</div>
+                        <div class="mt-1 font-semibold text-[#102642]">Universidad Técnica de Ambato</div>
+                        <div class="mt-1 text-xs text-slate-500">La búsqueda se limita a variantes controladas de esta afiliación en Scopus.</div>
+                    </div>
+                }
+                else
+                {
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Consulta</label>
+                        <textarea class="min-h-[4.5rem] w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2.5 text-sm"
+                                  value="@QueryText"
+                                  @oninput="OnQueryTextChanged"
+                                  placeholder="@SelectedProvider.SearchHint"></textarea>
+                    </div>
+                }
+
+                <div class="rounded-2xl border border-dashed border-[#dbe6ef] bg-[#f9fbfd] px-3 py-2 text-[11px] text-slate-500">
+                    Endpoint activo: @SelectedProvider.BaseUrl
+                </div>
+
+                <div class="app-mobile-stack">
+                    <button class="rounded-xl bg-[#102642] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                            disabled="@IsRunningQuery"
+                            @onclick="OnRunQuery">
+                        @(IsRunningQuery ? "Consultando..." : "Probar proveedor")
+                    </button>
+                    <button class="rounded-xl border border-[#c9d7e3] bg-white px-4 py-2.5 text-sm font-semibold text-[#102642]"
+                            @onclick="OnUseSample">
+                        Usar ejemplo
+                    </button>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public IReadOnlyList<ExternalApiProviderDto> Providers { get; set; } = [];
+    [Parameter] public ExternalApiProviderDto? SelectedProvider { get; set; }
+    [Parameter] public string QueryMode { get; set; } = "general";
+    [Parameter] public EventCallback<string> QueryModeChanged { get; set; }
+    [Parameter] public int MaxResults { get; set; } = 10;
+    [Parameter] public EventCallback<int> MaxResultsChanged { get; set; }
+    [Parameter] public string QueryText { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> QueryTextChanged { get; set; }
+    [Parameter] public string InstitutionName { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> InstitutionNameChanged { get; set; }
+    [Parameter] public string PrimaryAuthor { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> PrimaryAuthorChanged { get; set; }
+    [Parameter] public string CoAuthor { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> CoAuthorChanged { get; set; }
+    [Parameter] public bool IsRunningQuery { get; set; }
+    [Parameter] public EventCallback<ExternalApiProviderDto> OnSelectProvider { get; set; }
+    [Parameter] public EventCallback OnRunQuery { get; set; }
+    [Parameter] public EventCallback OnUseSample { get; set; }
+
+    private Task OnQueryModeChanged(ChangeEventArgs args)
+        => QueryModeChanged.InvokeAsync(Convert.ToString(args.Value) ?? "general");
+
+    private Task OnMaxResultsChanged(ChangeEventArgs args)
+    {
+        if (int.TryParse(Convert.ToString(args.Value), out var maxResults))
+        {
+            return MaxResultsChanged.InvokeAsync(maxResults);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OnQueryTextChanged(ChangeEventArgs args)
+        => QueryTextChanged.InvokeAsync(Convert.ToString(args.Value) ?? string.Empty);
+
+    private Task OnPrimaryAuthorChanged(ChangeEventArgs args)
+        => PrimaryAuthorChanged.InvokeAsync(Convert.ToString(args.Value) ?? string.Empty);
+
+    private Task OnCoAuthorChanged(ChangeEventArgs args)
+        => CoAuthorChanged.InvokeAsync(Convert.ToString(args.Value) ?? string.Empty);
+}

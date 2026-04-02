@@ -1,0 +1,65 @@
+@using tesisproject.shared.DTOs.Configuration
+
+<div class="mb-6 rounded-[1.8rem] border border-[#cfe0e4] bg-[radial-gradient(circle_at_top_left,_rgba(18,52,59,0.08),_transparent_35%),linear-gradient(135deg,#eef6f7_0%,#ffffff_55%,#fff6ea_100%)] p-4 shadow-sm">
+    <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div class="rounded-2xl border border-[#d9e5e8] bg-white/90 px-4 py-3 shadow-sm">
+            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Formularios</div>
+            <div class="mt-1 text-lg font-black text-[#12343b]">@FormsCount</div>
+            <div class="text-xs text-slate-500">@ActiveFormsCount activos</div>
+        </div>
+        <div class="rounded-2xl border border-[#d9e5e8] bg-white/90 px-4 py-3 shadow-sm">
+            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Campos</div>
+            <div class="mt-1 text-lg font-black text-[#12343b]">@FieldsCount</div>
+            <div class="text-xs text-slate-500">@DynamicFieldsCount dinámicos</div>
+        </div>
+        <div class="rounded-2xl border border-[#e8d2ac] bg-[#fffaf2] px-4 py-3 shadow-sm">
+            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Asignaciones</div>
+            <div class="mt-1 text-lg font-black text-[#8b5a16]">@SelectedFormFieldsCount</div>
+            <div class="text-xs text-slate-500">del formulario actual</div>
+        </div>
+        <div class="rounded-2xl border border-[#ead8bd] bg-[#fffdf8] px-4 py-3 shadow-sm">
+            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Catálogo activo</div>
+            <div class="mt-1 truncate text-sm font-black text-[#c17c2f]">@SelectedCatalogLabel</div>
+            <div class="text-xs text-slate-500">@CatalogItemsCount elementos</div>
+        </div>
+    </div>
+
+    <div class="mt-4 rounded-2xl border border-[#d7e1e4] bg-white/80 px-3 py-3 shadow-sm">
+        <div class="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Navegación del módulo</div>
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
+            @foreach (var tab in Tabs)
+            {
+                <button type="button"
+                        class="@($"{GetTabButtonClass(tab.Key)} w-full xl:w-auto")"
+                        @onclick="() => OnTabChange.InvokeAsync(tab.Key)">
+                    @tab.Label
+                </button>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public int FormsCount { get; set; }
+    [Parameter] public int ActiveFormsCount { get; set; }
+    [Parameter] public int FieldsCount { get; set; }
+    [Parameter] public int DynamicFieldsCount { get; set; }
+    [Parameter] public int SelectedFormFieldsCount { get; set; }
+    [Parameter] public string SelectedCatalogLabel { get; set; } = string.Empty;
+    [Parameter] public int CatalogItemsCount { get; set; }
+    [Parameter] public string ActiveTab { get; set; } = "forms";
+    [Parameter] public EventCallback<string> OnTabChange { get; set; }
+
+    private static readonly IReadOnlyList<(string Key, string Label)> Tabs =
+    [
+        ("forms", "Formularios"),
+        ("fields", "Campos"),
+        ("catalogs", "Catálogos"),
+        ("options", "Opciones dinámicas")
+    ];
+
+    private string GetTabButtonClass(string tabName)
+        => ActiveTab == tabName
+            ? "rounded-full bg-[#12343b] px-4 py-2 text-sm font-semibold text-white shadow-sm"
+            : "rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50";
+}
