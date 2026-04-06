@@ -1,4 +1,5 @@
 ﻿@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Catalog
 @using tesisproject.frontend.SharedUI.Modal
 @using tesisproject.frontend.SharedUI.Table
 @using tesisproject.frontend.SharedUI.SelectInput
@@ -16,573 +17,366 @@
 @inject IResearchCategoryClientService ResearchCategoryClient
 @inject IToastService Toast
 
-<div class="p-6 max-w-[1800px] mx-auto space-y-6">
-    <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
+<div class="h-full min-h-0 flex flex-col p-6 max-w-[1800px] mx-auto w-full">
+    <div class="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 flex-1 min-h-0">
 
-        <!-- LEFT SIDEBAR: Groups Selection -->
-        <div class="space-y-4">
-            <div class="rounded-xl border-2 border-border bg-background shadow-sm">
-                <!-- Groups Header -->
-                <div class="p-4 border-b border-border bg-background/50">
-                    <div class="flex items-center justify-between mb-1">
-                        <div class="flex items-center gap-2">
-                            <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                            </svg>
-                            <h3 class="text-base font-semibold text-foreground">Category Groups</h3>
-                        </div>
-                    </div>
-                    <p class="text-xs text-muted mb-3">
-                        High-level containers for organizing research classifications.
-                    </p>
-                    <ActionButton Execute="OpenCreateGroupModal"
-                                  Text="New Group"
-                                  Intent="ButtonIntent.Add"
-                                  Variant="ButtonVariant.Outline"
-                                  Size="ButtonSize.Sm"
-                                  Class="w-full" />
-                </div>
+        <!-- PANEL IZQUIERDO: Selección de Grupos -->
+        <div class="min-h-0 flex flex-col gap-3">
+            <ActionButton Execute="OpenCreateGroupModal"
+                          Text="Nuevo Grupo"
+                          Intent="ButtonIntent.Add"
+                          Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Sm"
+                          Class="w-full" />
 
-                <!-- Groups List -->
-                <div class="p-4">
-                    @if (_loadingGroups)
-                    {
-                        <div class="flex items-center justify-center py-8">
-                            <div class="text-center space-y-2">
-                                <div class="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-primary border-r-transparent"></div>
-                                <p class="text-xs text-muted">Loading groups...</p>
-                            </div>
-                        </div>
-                    }
-                    else if (_groups.Count == 0)
-                    {
-                        <div class="text-center py-8 px-4">
-                            <svg class="mx-auto h-10 w-10 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                            </svg>
-                            <p class="mt-2 text-xs text-muted">No groups yet</p>
-                            <p class="mt-1 text-xs text-muted/70">Create your first group to begin</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-                            @foreach (var g in _groups)
+            <Container TItem="CatalogListItemDTO"
+                       Items="_groups"
+                       Title="Grupos de Categoría"
+                       ShowItemCount="true"
+                       IsLoading="_loadingGroups"
+                       EnableScroll="true"
+                       ScrollbarType="ScrollbarType.Thin"
+                       GridClasses="space-y-2"
+                       EmptyStateTitle="Sin grupos aún"
+                       EmptyStateDescription="Crea tu primer grupo para comenzar">
+                <HeaderIcon>
+                    <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                </HeaderIcon>
+
+                <EmptyStateIcon>
+                    <svg class="mx-auto h-10 w-10 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="1.5"
+                              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                </EmptyStateIcon>
+
+                <ChildContent Context="g">
+                    <SelectableCard TItem="CatalogListItemDTO"
+                                    Item="g"
+                                    IsSelected="@(_selectedGroupId == g.Id)"
+                                    OnSelected="@(item => OnGroupSelected(item.Id))"
+                                    OnEditRequested="OpenEditGroupModal"
+                                    OnDeleteRequested="@(item => DeleteGroupAsync(item.Id))"
+                                    GetTitle="item => item.Name"
+                                    GetIsActive="item => item.IsActive"
+                                    GetIsLocked="item => item.IsLocked"
+                                    GetDeleteConfirmMessage="@(item => $"¿Estás seguro de que deseas eliminar el grupo '{item.Name}'?")">
+
+                        <ItemMeta Context="item">
+                            @if (item.IsActive)
                             {
-                                var isSelected = _selectedGroupId == g.Id;
-                                <div class="group/group rounded-lg border-2 @(isSelected ? "border-primary bg-primary/5" : "border-border bg-background hover:border-primary/40 hover:bg-primary/5") transition-all duration-150">
-                                    <button type="button"
-                                            @onclick="@(() => OnGroupSelected(g.Id))"
-                                            class="w-full p-3">
-                                        <div class="flex items-start justify-between gap-2">
-                                            <div class="flex-1 min-w-0 text-left">
-                                                <div class="flex items-center gap-2 mb-1.5">
-                                                    <div class="w-2 h-2 rounded-full flex-shrink-0 @(g.IsActive ? "bg-secondary" : "bg-muted")"></div>
-                                                    <span class="font-medium text-sm text-foreground truncate">@g.Name</span>
-                                                </div>
-                                                <div class="flex items-center gap-1.5 flex-wrap">
-                                                    @if (g.IsActive)
-                                                    {
-                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
-                                                            Active
-                                                        </span>
-                                                    }
-                                                    @if (g.IsLocked)
-                                                    {
-                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-accent/15 text-accent border border-accent/30">
-                                                            Locked
-                                                        </span>
-                                                    }
-                                                </div>
-                                            </div>
-                                            @if (isSelected)
-                                            {
-                                                <svg class="h-5 w-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                                                </svg>
-                                            }
-                                        </div>
-                                    </button>
-
-                                    @if (!g.IsLocked)
-                                    {
-                                        <div class="px-3 pb-3 flex items-center gap-2">
-                                            <ActionButton Execute="@(() => OpenEditGroupModal(g))"
-                                                          Intent="ButtonIntent.Neutral"
-                                                          Variant="ButtonVariant.Outline"
-                                                          Size="ButtonSize.Xs"
-                                                          Class="flex-1">
-                                                <Icon>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                                        <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
-                                                        <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" />
-                                                    </svg>
-
-                                                </Icon>
-                                            </ActionButton>
-                                            <ActionButton Execute="@(() => DeleteGroupAsync(g.Id))"
-                                                          Intent="ButtonIntent.Delete"
-                                                          Variant="ButtonVariant.Outline"
-                                                          Size="ButtonSize.Xs"
-                                                          ConfirmBeforeExecute="true"
-                                                          ConfirmMessage="@($"Are you sure you want to delete the group '{g.Name}'?")"
-                                                          Class="flex-1">
-                                                <Icon>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                                        <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
-                                                    </svg>
-
-                                                </Icon>
-                                            </ActionButton>
-                                        </div>
-                                    }
-                                </div>
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
+                                    Activo
+                                </span>
                             }
-                        </div>
-                    }
-                </div>
-            </div>
+
+                            @if (item.IsLocked)
+                            {
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-accent/15 text-accent border border-accent/30">
+                                    Bloqueado
+                                </span>
+                            }
+                        </ItemMeta>
+                    </SelectableCard>
+                </ChildContent>
+            </Container>
         </div>
 
-        <!-- RIGHT MAIN PANEL: Types & Categories -->
-        <div class="space-y-6">
+        <!-- PANEL DERECHO: Tipos y Categorías -->
+        <div class="h-full min-h-0 flex flex-col overflow-hidden">
+            <div class="flex-1 min-h-0 overflow-y-auto pr-1">
+                <div class="flex flex-col gap-6">
 
-            <!-- Category Types Section -->
-            <div class="rounded-xl border-2 border-border bg-background shadow-sm">
-                <div class="p-5 border-b border-border bg-background/50">
-                    <div class="flex items-center justify-between">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                                </svg>
-                                <h3 class="text-base font-semibold text-foreground">Category Types</h3>
-                            </div>
-                            <p class="text-xs text-muted">
-                                Define hierarchical levels like "Domain", "Line of Research", "Specific Field".
-                            </p>
-                        </div>
+                    <!-- Sección: Tipos de Categoría -->
+                    <div class="rounded-xl border-2 border-border bg-background shadow-sm overflow-hidden shrink-0">
+                        <div class="p-5 border-b border-border bg-background/50 shrink-0">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                                    </svg>
+                                    <h3 class="text-base font-semibold text-foreground">Tipos de Categoría</h3>
+                                </div>
 
-                        <ActionButton Execute="OpenCreateTypeModal"
-                                      Text="New Type"
-                                      Intent="ButtonIntent.Add"
-                                      Variant="ButtonVariant.Outline"
-                                      Size="ButtonSize.Sm"
-                                      Disabled="@(!_selectedGroupId.HasValue)" />
-                    </div>
-                </div>
-
-                <div class="p-5">
-                    @if (!_selectedGroupId.HasValue)
-                    {
-                        <div class="text-center py-8">
-                            <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7" />
-                            </svg>
-                            <p class="mt-3 text-sm text-muted">Select a category group to manage types</p>
-                        </div>
-                    }
-                    else if (_loadingTypes)
-                    {
-                        <div class="flex items-center justify-center py-8">
-                            <div class="text-center space-y-2">
-                                <div class="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-primary border-r-transparent"></div>
-                                <p class="text-xs text-muted">Loading types...</p>
+                                <ActionButton Execute="OpenCreateTypeModal"
+                                              Text="Nuevo Tipo"
+                                              Intent="ButtonIntent.Add"
+                                              Variant="ButtonVariant.Outline"
+                                              Size="ButtonSize.Sm"
+                                              Disabled="@(!_selectedGroupId.HasValue)" />
                             </div>
                         </div>
-                    }
-                    else if (_types.Count == 0)
-                    {
-                        <div class="text-center py-8">
-                            <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                            </svg>
-                            <p class="mt-3 text-sm text-muted">No types defined yet</p>
-                            <p class="mt-1 text-xs text-muted/70">Add category types to structure your classification</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <DataTable TItem="ResearchCategoryTypeListItemDTO"
-                                   Items="@_types"
-                                   Columns="@_typeColumns"
-                                   EmptyText="No types found">
-                            <RowTemplate>
-                                @{
-                                    var t = context;
-                                    var isSelected = _selectedTypeIdForTree == t.Id;
-                                }
-                                <td class="px-4 py-3 text-sm font-medium text-foreground cursor-pointer"
-                                    @onclick="@(() => OnTypeRowSelected(t.Id))">
-                                    @t.Name
-                                </td>
-                                <td class="px-4 py-3 text-center cursor-pointer"
-                                    @onclick="@(() => OnTypeRowSelected(t.Id))">
-                                    @if (t.IsActive)
-                                    {
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
-                                            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            Active
-                                        </span>
-                                    }
-                                    else
-                                    {
-                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
-                                            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            Inactive
-                                        </span>
-                                    }
-                                </td>
-                                <td class="px-4 py-3 text-center cursor-pointer"
-                                    @onclick="@(() => OnTypeRowSelected(t.Id))">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-xs font-medium text-primary">
-                                        @t.CategoriesCount
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3 text-right">
-                                    <div class="inline-flex items-center gap-2">
-                                        <ActionButton Execute="@(() => OpenEditTypeModal(t.Id))"
-                                                      Intent="ButtonIntent.Neutral"
-                                                      Variant="ButtonVariant.Outline"
-                                                      Size="ButtonSize.Xs">
-                                            <Icon>
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                                    <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
-                                                    <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" />
-                                                </svg>
 
-                                            </Icon>
-                                        </ActionButton>
-                                        <ActionButton Execute="@(() => DeleteTypeAsync(t.Id))"
-                                                      Intent="ButtonIntent.Delete"
-                                                      Variant="ButtonVariant.Outline"
-                                                      Size="ButtonSize.Xs"
-                                                      ConfirmBeforeExecute="true"
-                                                      ConfirmMessage="@($"Are you sure you want to delete the type '{t.Name}'?")">
-                                            <Icon>
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                                    <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
-                                                </svg>
-
-                                            </Icon>
-                                        </ActionButton>
-                                    </div>
-                                </td>
-                            </RowTemplate>
-                        </DataTable>
-                    }
-                </div>
-            </div>
-
-            <!-- Category Tree Section -->
-            <div class="rounded-xl border-2 border-border bg-background shadow-sm">
-                <div class="p-5 border-b border-border bg-background/50">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                                </svg>
-                                <h3 class="text-base font-semibold text-foreground">Category Tree</h3>
-                            </div>
-                            <p class="text-xs text-muted mb-3">
-                                Build the hierarchical classification structure. Select a type to create root categories.
-                            </p>
-                            @if (_selectedGroupId.HasValue && _types.Count > 0)
+                        <div class="p-5">
+                            @if (!_selectedGroupId.HasValue)
                             {
-                                <div class="flex items-center justify-between gap-3 mt-2">
-                                    <p class="text-xs text-muted">
-                                        Select a category type from the list above and then create a new category.
-                                    </p>
+                                <div class="text-center py-8">
+                                    <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                    <p class="mt-3 text-sm text-muted">Selecciona un grupo para gestionar sus tipos</p>
+                                </div>
+                            }
+                            else if (_loadingTypes)
+                            {
+                                <div class="flex items-center justify-center py-8">
+                                    <div class="text-center space-y-2">
+                                        <div class="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-primary border-r-transparent"></div>
+                                        <p class="text-xs text-muted">Cargando tipos...</p>
+                                    </div>
+                                </div>
+                            }
+                            else if (_types.Count == 0)
+                            {
+                                <div class="text-center py-8">
+                                    <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                                    </svg>
+                                    <p class="mt-3 text-sm text-muted">Sin tipos definidos aún</p>
+                                    <p class="mt-1 text-xs text-muted/70">Agrega tipos para estructurar tu clasificación</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <DataTable TItem="ResearchCategoryTypeListItemDTO"
+                                           Items="@_types"
+                                           Columns="@_typeColumns"
+                                           EmptyText="Sin tipos encontrados">
+                                    <RowTemplate>
+                                        @{
+                                            var t = context;
+                                            var isTypeSelected = _selectedTypeIdForTree == t.Id;
+                                        }
+                                        <td class="px-4 py-3 text-sm font-medium cursor-pointer @(isTypeSelected ? "text-primary font-semibold" : "text-foreground")"
+                                            @onclick="@(() => OnTypeRowSelected(t.Id))">
+                                            <div class="flex items-center gap-2">
+                                                @if (isTypeSelected)
+                                                {
+                                                    <svg class="h-3.5 w-3.5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
+                                                    </svg>
+                                                }
+                                                @t.Name
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3 text-center cursor-pointer"
+                                            @onclick="@(() => OnTypeRowSelected(t.Id))">
+                                            @if (t.IsActive)
+                                            {
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
+                                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    Activo
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
+                                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    Inactivo
+                                                </span>
+                                            }
+                                        </td>
+                                        <td class="px-4 py-3 text-center cursor-pointer"
+                                            @onclick="@(() => OnTypeRowSelected(t.Id))">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-md bg-primary/10 text-xs font-medium text-primary">
+                                                @t.CategoriesCount
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right">
+                                            <div class="inline-flex items-center gap-2">
+                                                <ActionButton Execute="@(() => OpenEditTypeModal(t.Id))"
+                                                              Intent="ButtonIntent.Neutral"
+                                                              Variant="ButtonVariant.Outline"
+                                                              Size="ButtonSize.Xs">
+                                                    <Icon>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                                            <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
+                                                            <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" />
+                                                        </svg>
+                                                    </Icon>
+                                                </ActionButton>
+                                                <ActionButton Execute="@(() => DeleteTypeAsync(t.Id))"
+                                                              Intent="ButtonIntent.Delete"
+                                                              Variant="ButtonVariant.Outline"
+                                                              Size="ButtonSize.Xs"
+                                                              ConfirmBeforeExecute="true"
+                                                              ConfirmMessage="@($"¿Estás seguro de que deseas eliminar el tipo '{t.Name}'?")">
+                                                    <Icon>
+                                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                                            <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
+                                                        </svg>
+                                                    </Icon>
+                                                </ActionButton>
+                                            </div>
+                                        </td>
+                                    </RowTemplate>
+                                </DataTable>
+                            }
+                        </div>
+                    </div>
 
-                                    <ActionButton Execute="OpenCreateRootCategoryFromSelectedType"
-                                                  Text="@($"New category{GetSelectedTypeSuffix()}")"
-                                                  Intent="ButtonIntent.Add"
-                                                  Variant="ButtonVariant.Outline"
-                                                  Size="ButtonSize.Sm"
-                                                  Disabled="@(!_selectedTypeIdForTree.HasValue)" />
+                    <!-- Sección: Árbol de Categorías -->
+                    <div class="rounded-xl border-2 border-border bg-background shadow-sm overflow-hidden shrink-0">
+                        <div class="p-5 border-b border-border bg-background/50 shrink-0">
+                            <div class="flex items-center justify-between gap-4">
+                                <div class="flex items-center gap-2">
+                                    <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                    </svg>
+                                    <h3 class="text-base font-semibold text-foreground">Árbol de Categorías</h3>
+                                </div>
+
+                                @if (_selectedGroupId.HasValue && _types.Count > 0)
+                                {
+                                    <div class="flex items-center gap-2 flex-shrink-0">
+                                        @if (_selectedTypeIdForTree.HasValue)
+                                        {
+                                            <ActionButton Execute="OpenCreateRootCategoryFromSelectedType"
+                                                          Text="@($"Nueva — {GetSelectedTypeSuffix()}")"
+                                                          Intent="ButtonIntent.Add"
+                                                          Variant="ButtonVariant.Outline"
+                                                          Size="ButtonSize.Sm" />
+                                        }
+                                        else
+                                        {
+                                            <ActionButton Execute="OpenCreateRootCategoryFromSelectedType"
+                                                          Text="Nueva categoría"
+                                                          Intent="ButtonIntent.Add"
+                                                          Variant="ButtonVariant.Outline"
+                                                          Size="ButtonSize.Sm"
+                                                          Disabled="true" />
+                                        }
+
+                                        @if (_filteredTree.Count > 0)
+                                        {
+                                            <ActionButton Execute="ExpandAllNodes"
+                                                          Variant="ButtonVariant.Outline"
+                                                          Size="ButtonSize.Sm">
+                                                <Icon>
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                                    </svg>
+                                                </Icon>
+                                                <ChildContent>
+                                                    <span>Expandir</span>
+                                                </ChildContent>
+                                            </ActionButton>
+                                            <ActionButton Execute="CollapseAllNodes"
+                                                          Variant="ButtonVariant.Outline"
+                                                          Size="ButtonSize.Sm">
+                                                <Icon>
+                                                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
+                                                    </svg>
+                                                </Icon>
+                                                <ChildContent>
+                                                    <span>Colapsar</span>
+                                                </ChildContent>
+                                            </ActionButton>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="p-5">
+                            @if (!_selectedGroupId.HasValue)
+                            {
+                                <div class="text-center py-8">
+                                    <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7" />
+                                    </svg>
+                                    <p class="mt-3 text-sm text-muted">Selecciona un grupo para ver su árbol de categorías</p>
+                                </div>
+                            }
+                            else if (_loadingCategories)
+                            {
+                                <div class="flex items-center justify-center py-8">
+                                    <div class="text-center space-y-2">
+                                        <div class="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-primary border-r-transparent"></div>
+                                        <p class="text-xs text-muted">Cargando árbol de categorías...</p>
+                                    </div>
+                                </div>
+                            }
+                            else if (_filteredTree.Count == 0)
+                            {
+                                <div class="text-center py-10">
+                                    <svg class="mx-auto h-16 w-16 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                                    </svg>
+                                    <p class="mt-3 text-sm text-muted">Sin categorías aún</p>
+                                    <p class="mt-1 text-xs text-muted/70">Selecciona un tipo y crea tu primera categoría</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="flex items-center justify-between mb-3 pb-3 border-b border-border">
+                                    <p class="text-xs text-muted">
+                                        @_filteredTree.Count @(_filteredTree.Count == 1 ? "categoría raíz" : "categorías raíz")
+                                    </p>
+                                </div>
+
+                                <div class="space-y-2">
+                                    @foreach (var root in _filteredTree)
+                                    {
+                                        @RenderCategoryNode(root, 0, true)
+                                    }
                                 </div>
                             }
                         </div>
                     </div>
-                </div>
 
-                <div class="p-5">
-                    @if (!_selectedGroupId.HasValue)
-                    {
-                        <div class="text-center py-8">
-                            <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7" />
-                            </svg>
-                            <p class="mt-3 text-sm text-muted">Select a category group to view its tree</p>
-                        </div>
-                    }
-                    else if (_loadingCategories)
-                    {
-                        <div class="flex items-center justify-center py-8">
-                            <div class="text-center space-y-2">
-                                <div class="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-primary border-r-transparent"></div>
-                                <p class="text-xs text-muted">Loading category tree...</p>
-                            </div>
-                        </div>
-                    }
-                    else if (_filteredTree.Count == 0)
-                    {
-                        <div class="text-center py-10">
-                            <svg class="mx-auto h-16 w-16 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                            </svg>
-                            <p class="mt-4 text-sm font-medium text-muted">No categories yet</p>
-                            <p class="mt-1 text-xs text-muted/70">Create root categories and build your classification tree</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <!-- Tree controls -->
-                        <div class="flex items-center justify-between mb-4 pb-3 border-b border-border">
-                            <p class="text-xs text-muted">
-                                @_filteredTree.Count root @(_filteredTree.Count == 1 ? "category" : "categories")
-                            </p>
-                            <div class="flex items-center gap-2">
-                                <ActionButton Execute="ExpandAllNodes"
-                                              Variant="ButtonVariant.Outline"
-                                              Size="ButtonSize.Xs">
-                                    <Icon>
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                        </svg>
-                                    </Icon>
-                                    <ChildContent>
-                                        <span>Expand All</span>
-                                    </ChildContent>
-                                </ActionButton>
-                                <ActionButton Execute="CollapseAllNodes"
-                                              Variant="ButtonVariant.Outline"
-                                              Size="ButtonSize.Xs">
-                                    <Icon>
-                                        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
-                                        </svg>
-                                    </Icon>
-                                    <ChildContent>
-                                        <span>Collapse All</span>
-                                    </ChildContent>
-                                </ActionButton>
-                            </div>
-                        </div>
-
-                        <!-- Tree with scroll -->
-                        <div class="space-y-2 max-h-[800px] overflow-y-auto pr-2">
-                            @foreach (var root in _filteredTree)
-                            {
-                                @RenderCategoryNode(root, 0, true)
-                            }
-                        </div>
-                    }
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- MODALS -->
-    @* Group Modal *@
-    <Modal Id="research-group-modal"
-           IsOpen="@_groupModalOpen"
-           IsOpenChanged="v => _groupModalOpen = v"
-           Title="@(_isGroupEdit ? "Edit Category Group" : "New Category Group")"
-           Size="ModalSize.Sm">
-        <ChildContent>
-            <div class="space-y-4">
-                <TextInput @bind-Value="_groupEditModel.Name"
-                           Label="Group Name"
-                           Placeholder="e.g., Knowledge Fields, Research Areas"
-                           Required="true" />
+    <!-- MODALES -->
+    <ResearchCategoryGroupModal IsOpen="_groupModalOpen"
+                                IsOpenChanged="v => _groupModalOpen = v"
+                                IsEdit="_isGroupEdit"
+                                Model="_groupEditModel"
+                                OnSave="SaveGroupAsync"
+                                OnCancel="CloseGroupModal" />
 
-                @if (_isGroupEdit)
-                {
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox"
-                               class="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/30 cursor-pointer"
-                               @bind="_groupEditModel.IsActive" />
-                        <span class="text-sm text-foreground">Active</span>
-                    </label>
-                }
+    <ResearchCategoryTypeModal IsOpen="_typeModalOpen"
+                               IsOpenChanged="v => _typeModalOpen = v"
+                               IsEdit="_isTypeEdit"
+                               Model="_typeEditModel"
+                               SelectedGroupName="@(_groups.FirstOrDefault(g => g.Id == _selectedGroupId)?.Name ?? "Sin grupo seleccionado")"
+                               OnSave="SaveTypeAsync"
+                               OnCancel="CloseTypeModal" />
 
-                <div class="flex justify-end gap-2 pt-4 border-t border-border">
-                    <ActionButton Execute="CloseGroupModal"
-                                  Text="Cancel"
-                                  Intent="ButtonIntent.Neutral"
-                                  Variant="ButtonVariant.Outline"
-                                  Size="ButtonSize.Sm" />
-                    <ActionButton Execute="SaveGroupAsync"
-                                  Text="Save"
-                                  Intent="ButtonIntent.Accept"
-                                  Size="ButtonSize.Sm" />
-                </div>
-            </div>
-        </ChildContent>
-    </Modal>
-
-    @* Type Modal *@
-    <Modal Id="research-type-modal"
-           IsOpen="@_typeModalOpen"
-           IsOpenChanged="v => _typeModalOpen = v"
-           Title="@(_isTypeEdit ? "Edit Category Type" : "New Category Type")"
-           Size="ModalSize.Sm">
-        <ChildContent>
-            <div class="space-y-4">
-                <TextInput @bind-Value="_typeEditModel.Name"
-                           Label="Type Name"
-                           Placeholder="e.g., Domain, Line of Research, Field"
-                           Required="true" />
-
-                <div class="space-y-2">
-                    <label class="text-sm font-medium text-muted">
-                        Category Group
-                    </label>
-                    <input type="text"
-                           class="w-full rounded-lg border border-border bg-muted/5 px-3 py-2 text-sm text-muted cursor-not-allowed"
-                           value="@(_groups.FirstOrDefault(g => g.Id == _selectedGroupId)?.Name ?? "No group selected")"
-                           disabled />
-                </div>
-
-                @if (_isTypeEdit)
-                {
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox"
-                               class="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/30 cursor-pointer"
-                               @bind="_typeEditModel.IsActive" />
-                        <span class="text-sm text-foreground">Active</span>
-                    </label>
-                }
-
-                <div class="flex justify-end gap-2 pt-4 border-t border-border">
-                    <ActionButton Execute="CloseTypeModal"
-                                  Text="Cancel"
-                                  Intent="ButtonIntent.Neutral"
-                                  Variant="ButtonVariant.Outline"
-                                  Size="ButtonSize.Sm" />
-                    <ActionButton Execute="SaveTypeAsync"
-                                  Text="Save"
-                                  Intent="ButtonIntent.Accept"
-                                  Size="ButtonSize.Sm" />
-                </div>
-            </div>
-        </ChildContent>
-    </Modal>
-
-    @* Category Modal *@
-    <Modal Id="research-category-modal"
-           IsOpen="@_categoryModalOpen"
-           IsOpenChanged="v => _categoryModalOpen = v"
-           Title="@(_isCategoryEdit ? "Edit Research Category" : $"New {_selectedTypeName}")"
-           Size="ModalSize.Md">
-        <ChildContent>
-            <div class="space-y-4">
-                <TextInput @bind-Value="_categoryEditModel.Name"
-                           Label="Category Name"
-                           Placeholder="e.g., Health Sciences, Computer Engineering"
-                           Required="true" />
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-foreground">
-                            Category Type <span class="text-error">*</span>
-                        </label>
-                        @if (_isCategoryEdit || _categoryParentLocked)
-                        {
-                            <SelectInput TItem="ResearchCategoryTypeListItemDTO"
-                                         Items="@_types"
-                                         @bind-Value="_selectedTypeForCategory"
-                                         GetText="@(t => t.Name)"
-                                         GetKey="@(t => t.Id.ToString())"
-                                         Placeholder="-- Select type --"
-                                         Size="SelectSize.Md" />
-                        }
-                        else
-                        {
-                            <input type="text"
-                                   class="w-full rounded-lg border border-border bg-muted/5 px-3 py-2 text-sm text-foreground cursor-not-allowed"
-                                   value="@_selectedTypeName"
-                                   disabled />
-                            <p class="text-xs text-muted mt-1">
-                                Type was pre-selected. To change it, use the type buttons above.
-                            </p>
-                        }
-                    </div>
-
-                    <div class="space-y-2">
-                        <label class="text-sm font-medium text-foreground">
-                            Parent Category @(_isParentRequired ? "*" : "(Optional)")
-                        </label>
-                        @if (_availableParents.Any())
-                        {
-                            <SelectInput TItem="ResearchCategoryListItemDTO"
-                                         Items="@_availableParents"
-                                         @bind-Value="_selectedParentCategory"
-                                         GetText="@(c => $"{c.Name} ({c.ResearchCategoryTypeName})")"
-                                         GetKey="@(c => c.Id.ToString())"
-                                         Placeholder="@(_isParentRequired ? "-- Select parent --" : "(Root - No Parent)")"
-                                         Disabled="@_categoryParentLockedFromTree"
-                                         AllowClear="@(!_isParentRequired)"
-                                         Size="SelectSize.Md" />
-                            @if (_categoryParentLockedFromTree && _categoryEditModel.ParentCategoryId.HasValue)
-                            {
-                                <p class="text-xs text-muted mt-1">
-                                    Parent was pre-selected from the tree. Edit the category to change it.
-                                </p>
-                            }
-                        }
-                        else if (_isParentRequired)
-                        {
-                            <div class="w-full rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-sm text-error">
-                                No valid parent categories available. Create a parent category of type "@_requiredParentTypeName" first.
-                            </div>
-                        }
-                        else
-                        {
-                            <input type="text"
-                                   class="w-full rounded-lg border border-border bg-muted/5 px-3 py-2 text-sm text-muted cursor-not-allowed"
-                                   value="(Root category - no parent needed)"
-                                   disabled />
-                        }
-
-                        @if (_isParentRequired && _availableParents.Any())
-                        {
-                            <p class="text-xs text-muted mt-1">
-                                Must select a parent of type "@_requiredParentTypeName"
-                            </p>
-                        }
-                    </div>
-                </div>
-
-                <label class="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox"
-                           class="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/30 cursor-pointer"
-                           @bind="_categoryEditModel.IsActive" />
-                    <span class="text-sm text-foreground">Active</span>
-                </label>
-
-                <div class="flex justify-end gap-2 pt-4 border-t border-border">
-                    <ActionButton Execute="CloseCategoryModal"
-                                  Text="Cancel"
-                                  Intent="ButtonIntent.Neutral"
-                                  Variant="ButtonVariant.Outline"
-                                  Size="ButtonSize.Sm" />
-                    <ActionButton Execute="SaveCategoryAsync"
-                                  Text="Save"
-                                  Intent="ButtonIntent.Accept"
-                                  Size="ButtonSize.Sm"
-                                  Disabled="@(!CanSaveCategory())" />
-                </div>
-            </div>
-        </ChildContent>
-    </Modal>
+    <ResearchCategoryModal IsOpen="_categoryModalOpen"
+                           IsOpenChanged="v => _categoryModalOpen = v"
+                           IsEdit="_isCategoryEdit"
+                           Model="_categoryEditModel"
+                           Types="_types"
+                           AvailableParents="_availableParents"
+                           SelectedType="_selectedTypeForCategory"
+                           SelectedTypeChanged="OnSelectedTypeForCategoryChanged"
+                           SelectedParent="_selectedParentCategory"
+                           SelectedParentChanged="OnSelectedParentCategoryChanged"
+                           SelectedTypeName="_selectedTypeName"
+                           IsParentRequired="_isParentRequired"
+                           RequiredParentTypeName="_requiredParentTypeName"
+                           CategoryParentLocked="_categoryParentLocked"
+                           CategoryParentLockedFromTree="_categoryParentLockedFromTree"
+                           CanSave="CanSaveCategory()"
+                           OnTypeChanged="OnCategoryTypeChanged"
+                           OnSave="SaveCategoryAsync"
+                           OnCancel="CloseCategoryModal" />
 </div>
 
 @code {
@@ -591,7 +385,7 @@
     private ResearchCategoryTypeListItemDTO? _selectedTypeForCategory;
     private ResearchCategoryListItemDTO? _selectedParentCategory;
 
-    // Groups
+    // Grupos
     private bool _loadingGroups;
     private List<CatalogListItemDTO> _groups = new();
     private int? _selectedGroupId;
@@ -599,17 +393,17 @@
     private bool _isGroupEdit;
     private CatalogDetailDTO _groupEditModel = new();
 
-    // Types
+    // Tipos
     private bool _loadingTypes;
     private List<ResearchCategoryTypeListItemDTO> _types = new();
     private bool _typeModalOpen;
     private bool _isTypeEdit;
     private ResearchCategoryTypeDetailDTO _typeEditModel = new();
 
-    // Table columns
+    // Columnas de la tabla
     private List<ColumnDef<ResearchCategoryTypeListItemDTO>> _typeColumns = new();
 
-    // Categories
+    // Categorías
     private bool _loadingCategories;
     private List<ResearchCategoryTreeItemDTO> _allTree = new();
     private List<ResearchCategoryTreeItemDTO> _filteredTree = new();
@@ -620,10 +414,10 @@
     private bool _categoryParentLockedFromTree;
     private ResearchCategoryDetailDTO _categoryEditModel = new();
 
-    // Tree expansion state
+    // Estado de expansión del árbol
     private HashSet<int> _expandedNodes = new();
 
-    // Helper properties for modal
+    // Propiedades auxiliares para el modal
     private string _selectedTypeName => _types.FirstOrDefault(t => t.Id == _categoryEditModel.ResearchCategoryTypeId)?.Name ?? "";
     private bool _isParentRequired => GetIsParentRequired();
     private string _requiredParentTypeName => GetRequiredParentTypeName();
@@ -639,35 +433,29 @@
     {
         _typeColumns = new()
         {
-            new("Name", t => t.Name, Sortable: true),
-            new("Status", t => t.IsActive ? "Active" : "Inactive", Sortable: true, Width: "120px"),
-            new("Categories", t => t.CategoriesCount, Sortable: true, Width: "120px"),
-            new("Actions", t => "", Sortable: false, Width: "150px")
+            new("Nombre", t => t.Name, Sortable: true),
+            new("Estado", t => t.IsActive ? "Activo" : "Inactivo", Sortable: true, Width: "120px"),
+            new("Categorías", t => t.CategoriesCount, Sortable: true, Width: "120px"),
+            new("Acciones", t => "", Sortable: false, Width: "150px")
         };
     }
 
-    // Track selected type/parent changes
-    protected override void OnParametersSet()
+    private Task OnSelectedTypeForCategoryChanged(ResearchCategoryTypeListItemDTO? value)
     {
-        // Sync selected type
-        if (_selectedTypeForCategory != null && _selectedTypeForCategory.Id != _categoryEditModel.ResearchCategoryTypeId)
-        {
-            _categoryEditModel.ResearchCategoryTypeId = _selectedTypeForCategory.Id;
-            OnCategoryTypeChanged();
-        }
-
-        // Sync selected parent
-        if (_selectedParentCategory != null && _selectedParentCategory.Id != _categoryEditModel.ParentCategoryId)
-        {
-            _categoryEditModel.ParentCategoryId = _selectedParentCategory.Id;
-        }
-        else if (_selectedParentCategory == null && _categoryEditModel.ParentCategoryId.HasValue)
-        {
-            _categoryEditModel.ParentCategoryId = null;
-        }
+        _selectedTypeForCategory = value;
+        _categoryEditModel.ResearchCategoryTypeId = value?.Id ?? 0;
+        OnCategoryTypeChanged();
+        return Task.CompletedTask;
     }
 
-    // ===== GROUPS =====
+    private Task OnSelectedParentCategoryChanged(ResearchCategoryListItemDTO? value)
+    {
+        _selectedParentCategory = value;
+        _categoryEditModel.ParentCategoryId = value?.Id;
+        return Task.CompletedTask;
+    }
+
+    // ===== GRUPOS =====
     private async Task LoadGroupsAsync()
     {
         _loadingGroups = true;
@@ -676,7 +464,7 @@
             var result = await ResearchCategoryGroupClient.GetListAsync(onlyActives: false);
             if (!result.Success)
             {
-                Toast.ShowError("Failed to load category groups.");
+                Toast.ShowError("Error al cargar los grupos de categoría.");
                 _groups = new();
                 return;
             }
@@ -697,17 +485,19 @@
     {
         if (_selectedGroupId == groupId) return;
         _selectedGroupId = groupId;
+        _selectedTypeIdForTree = null;
         await LoadTypesAndCategoriesForSelectedGroupAsync();
     }
 
     private void OnTypeRowSelected(int typeId)
     {
         if (_selectedTypeIdForTree == typeId)
+        {
+            _selectedTypeIdForTree = null;
             return;
-
+        }
         _selectedTypeIdForTree = typeId;
     }
-
 
     private void OpenCreateGroupModal()
     {
@@ -733,21 +523,18 @@
     {
         if (!_selectedTypeIdForTree.HasValue)
         {
-            Toast.ShowWarning("Select a category type first.");
+            Toast.ShowWarning("Selecciona primero un tipo de categoría.");
             return;
         }
-
         OpenCreateRootCategoryModalForType(_selectedTypeIdForTree.Value);
     }
 
     private string GetSelectedTypeSuffix()
     {
         if (!_selectedTypeIdForTree.HasValue) return string.Empty;
-
         var selectedType = _types.FirstOrDefault(t => t.Id == _selectedTypeIdForTree.Value);
-        return selectedType is null ? string.Empty : $" for {selectedType.Name}";
+        return selectedType?.Name ?? string.Empty;
     }
-
 
     private void CloseGroupModal() => _groupModalOpen = false;
 
@@ -755,7 +542,7 @@
     {
         if (string.IsNullOrWhiteSpace(_groupEditModel.Name))
         {
-            Toast.ShowWarning("Group name is required.");
+            Toast.ShowWarning("El nombre del grupo es obligatorio.");
             return;
         }
 
@@ -770,10 +557,10 @@
             var result = await ResearchCategoryGroupClient.UpdateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Failed to update group.");
+                Toast.ShowError("Error al actualizar el grupo.");
                 return;
             }
-            Toast.ShowSuccess("Group updated successfully.");
+            Toast.ShowSuccess("Grupo actualizado correctamente.");
         }
         else
         {
@@ -781,10 +568,10 @@
             var result = await ResearchCategoryGroupClient.CreateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Failed to create group.");
+                Toast.ShowError("Error al crear el grupo.");
                 return;
             }
-            Toast.ShowSuccess("Group created successfully.");
+            Toast.ShowSuccess("Grupo creado correctamente.");
             _selectedGroupId = result.Response?.Id;
         }
         _groupModalOpen = false;
@@ -796,15 +583,15 @@
         var result = await ResearchCategoryGroupClient.DeleteAsync(groupId);
         if (!result.Success)
         {
-            Toast.ShowError("Failed to delete group.");
+            Toast.ShowError("Error al eliminar el grupo.");
             return;
         }
-        Toast.ShowSuccess("Group deleted successfully.");
+        Toast.ShowSuccess("Grupo eliminado correctamente.");
         if (_selectedGroupId == groupId) _selectedGroupId = null;
         await LoadGroupsAsync();
     }
 
-    // ===== TYPES =====
+    // ===== TIPOS =====
     private async Task LoadTypesAndCategoriesForSelectedGroupAsync()
     {
         await LoadTypesAsync();
@@ -822,7 +609,7 @@
             var result = await ResearchCategoryTypeClient.ListAsync(onlyActives: false);
             if (!result.Success)
             {
-                Toast.ShowError("Failed to load category types.");
+                Toast.ShowError("Error al cargar los tipos de categoría.");
                 return;
             }
             var allTypes = result.Response ?? Array.Empty<ResearchCategoryTypeListItemDTO>();
@@ -838,7 +625,7 @@
     {
         if (!_selectedGroupId.HasValue)
         {
-            Toast.ShowWarning("Select a group before creating types.");
+            Toast.ShowWarning("Selecciona un grupo antes de crear tipos.");
             return;
         }
         _isTypeEdit = false;
@@ -856,7 +643,7 @@
         var result = await ResearchCategoryTypeClient.GetByIdAsync(typeId);
         if (!result.Success || result.Response is null)
         {
-            Toast.ShowError("Failed to load type details.");
+            Toast.ShowError("Error al cargar los detalles del tipo.");
             return;
         }
         _typeEditModel = result.Response;
@@ -869,12 +656,12 @@
     {
         if (string.IsNullOrWhiteSpace(_typeEditModel.Name))
         {
-            Toast.ShowWarning("Type name is required.");
+            Toast.ShowWarning("El nombre del tipo es obligatorio.");
             return;
         }
         if (!_selectedGroupId.HasValue)
         {
-            Toast.ShowWarning("Select a group before saving types.");
+            Toast.ShowWarning("Selecciona un grupo antes de guardar el tipo.");
             return;
         }
 
@@ -889,10 +676,10 @@
             var result = await ResearchCategoryTypeClient.UpdateAsync(_typeEditModel.Id, dto);
             if (!result.Success || !result.Response)
             {
-                Toast.ShowError("Failed to update type.");
+                Toast.ShowError("Error al actualizar el tipo.");
                 return;
             }
-            Toast.ShowSuccess("Type updated successfully.");
+            Toast.ShowSuccess("Tipo actualizado correctamente.");
         }
         else
         {
@@ -904,10 +691,10 @@
             var result = await ResearchCategoryTypeClient.CreateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Failed to create type.");
+                Toast.ShowError("Error al crear el tipo.");
                 return;
             }
-            Toast.ShowSuccess("Type created successfully.");
+            Toast.ShowSuccess("Tipo creado correctamente.");
         }
         _typeModalOpen = false;
         await LoadTypesAndCategoriesForSelectedGroupAsync();
@@ -918,14 +705,15 @@
         var result = await ResearchCategoryTypeClient.DeleteAsync(typeId);
         if (!result.Success)
         {
-            Toast.ShowError("Failed to delete type.");
+            Toast.ShowError("Error al eliminar el tipo.");
             return;
         }
-        Toast.ShowSuccess("Type deleted successfully.");
+        Toast.ShowSuccess("Tipo eliminado correctamente.");
+        if (_selectedTypeIdForTree == typeId) _selectedTypeIdForTree = null;
         await LoadTypesAndCategoriesForSelectedGroupAsync();
     }
 
-    // ===== CATEGORIES =====
+    // ===== CATEGORÍAS =====
     private async Task LoadCategoriesAsync()
     {
         _loadingCategories = true;
@@ -939,7 +727,7 @@
             var treeResult = await ResearchCategoryClient.GetTreeAsync(onlyActives: false);
             if (!treeResult.Success)
             {
-                Toast.ShowError("Failed to load category tree.");
+                Toast.ShowError("Error al cargar el árbol de categorías.");
                 return;
             }
             _allTree = treeResult.Response ?? new List<ResearchCategoryTreeItemDTO>();
@@ -947,7 +735,7 @@
             var listResult = await ResearchCategoryClient.GetAllAsync(onlyActives: false);
             if (!listResult.Success)
             {
-                Toast.ShowError("Failed to load category list.");
+                Toast.ShowError("Error al cargar la lista de categorías.");
                 return;
             }
             var flatAll = listResult.Response ?? Array.Empty<ResearchCategoryListItemDTO>();
@@ -981,15 +769,10 @@
     {
         _expandedNodes.Clear();
         foreach (var root in _filteredTree)
-        {
             AddNodeAndChildrenToExpanded(root);
-        }
     }
 
-    private void CollapseAllNodes()
-    {
-        _expandedNodes.Clear();
-    }
+    private void CollapseAllNodes() => _expandedNodes.Clear();
 
     private void AddNodeAndChildrenToExpanded(ResearchCategoryTreeItemDTO node)
     {
@@ -997,9 +780,7 @@
         {
             _expandedNodes.Add(node.Id);
             foreach (var child in node.Children)
-            {
                 AddNodeAndChildrenToExpanded(child);
-            }
         }
     }
 
@@ -1029,14 +810,14 @@
     {
         if (!_selectedGroupId.HasValue || _types.Count == 0)
         {
-            Toast.ShowWarning("Select a group and ensure it has at least one type.");
+            Toast.ShowWarning("Selecciona un grupo y asegúrate de tener al menos un tipo.");
             return;
         }
 
         var selectedType = _types.FirstOrDefault(t => t.Id == typeId);
         if (selectedType == null || !selectedType.IsActive)
         {
-            Toast.ShowWarning("Selected type is not active.");
+            Toast.ShowWarning("El tipo seleccionado no está activo.");
             return;
         }
 
@@ -1051,7 +832,6 @@
             ResearchCategoryTypeId = typeId
         };
 
-        // Sync select inputs
         _selectedTypeForCategory = selectedType;
         _selectedParentCategory = null;
 
@@ -1062,18 +842,17 @@
     {
         if (!_selectedGroupId.HasValue || _types.Count == 0)
         {
-            Toast.ShowWarning("Select a group and ensure it has at least one type.");
+            Toast.ShowWarning("Selecciona un grupo y asegúrate de tener al menos un tipo.");
             return;
         }
 
         var parent = _flatCategoriesForGroup.FirstOrDefault(c => c.Id == parentCategoryId);
         if (parent == null)
         {
-            Toast.ShowError("Parent category not found.");
+            Toast.ShowError("Categoría padre no encontrada.");
             return;
         }
 
-        // Find the next type in hierarchy
         var parentTypeIndex = _types.FindIndex(t => t.Id == parent.ResearchCategoryTypeId);
         var nextTypeId = parentTypeIndex >= 0 && parentTypeIndex < _types.Count - 1
             ? _types[parentTypeIndex + 1].Id
@@ -1090,7 +869,6 @@
             ResearchCategoryTypeId = nextTypeId
         };
 
-        // Sync select inputs
         _selectedTypeForCategory = _types.FirstOrDefault(t => t.Id == nextTypeId);
         _selectedParentCategory = parent;
 
@@ -1106,12 +884,11 @@
         var result = await ResearchCategoryClient.GetByIdAsync(categoryId);
         if (!result.Success || result.Response is null)
         {
-            Toast.ShowError("Failed to load category details.");
+            Toast.ShowError("Error al cargar los detalles de la categoría.");
             return;
         }
         _categoryEditModel = result.Response;
 
-        // Sync select inputs
         _selectedTypeForCategory = _types.FirstOrDefault(t => t.Id == _categoryEditModel.ResearchCategoryTypeId);
         _selectedParentCategory = _categoryEditModel.ParentCategoryId.HasValue
             ? _flatCategoriesForGroup.FirstOrDefault(c => c.Id == _categoryEditModel.ParentCategoryId)
@@ -1124,7 +901,6 @@
 
     private void OnCategoryTypeChanged()
     {
-        // Reset parent when type changes
         if (!_categoryParentLockedFromTree)
         {
             _categoryEditModel.ParentCategoryId = null;
@@ -1136,33 +912,27 @@
     private bool GetIsParentRequired()
     {
         if (_categoryEditModel.ResearchCategoryTypeId <= 0) return false;
-
         var typeIndex = _types.FindIndex(t => t.Id == _categoryEditModel.ResearchCategoryTypeId);
-        return typeIndex > 0; // First type is root level, doesn't need parent
+        return typeIndex > 0;
     }
 
     private string GetRequiredParentTypeName()
     {
         if (_categoryEditModel.ResearchCategoryTypeId <= 0) return "";
-
         var typeIndex = _types.FindIndex(t => t.Id == _categoryEditModel.ResearchCategoryTypeId);
         if (typeIndex <= 0) return "";
-
         return _types[typeIndex - 1].Name;
     }
 
     private List<ResearchCategoryListItemDTO> GetAvailableParents()
     {
         if (_categoryEditModel.ResearchCategoryTypeId <= 0) return new();
-
         var typeIndex = _types.FindIndex(t => t.Id == _categoryEditModel.ResearchCategoryTypeId);
-        if (typeIndex <= 0) return new(); // First type (root), no parents needed
-
+        if (typeIndex <= 0) return new();
         var parentTypeId = _types[typeIndex - 1].Id;
-
         return _flatCategoriesForGroup
             .Where(c => c.ResearchCategoryTypeId == parentTypeId)
-            .Where(c => !_isCategoryEdit || c.Id != _categoryEditModel.Id) // Exclude self when editing
+            .Where(c => !_isCategoryEdit || c.Id != _categoryEditModel.Id)
             .OrderBy(c => c.Name)
             .ToList();
     }
@@ -1173,7 +943,6 @@
         if (_categoryEditModel.ResearchCategoryTypeId <= 0) return false;
         if (_isParentRequired && !_categoryEditModel.ParentCategoryId.HasValue) return false;
         if (_isParentRequired && !_availableParents.Any()) return false;
-
         return true;
     }
 
@@ -1182,11 +951,11 @@
         if (!CanSaveCategory())
         {
             if (string.IsNullOrWhiteSpace(_categoryEditModel.Name))
-                Toast.ShowWarning("Category name is required.");
+                Toast.ShowWarning("El nombre de la categoría es obligatorio.");
             else if (_categoryEditModel.ResearchCategoryTypeId <= 0)
-                Toast.ShowWarning("Category type is required.");
+                Toast.ShowWarning("El tipo de categoría es obligatorio.");
             else if (_isParentRequired && !_categoryEditModel.ParentCategoryId.HasValue)
-                Toast.ShowWarning($"Parent category of type '{_requiredParentTypeName}' is required.");
+                Toast.ShowWarning($"Se requiere una categoría padre de tipo '{_requiredParentTypeName}'.");
             return;
         }
 
@@ -1203,10 +972,10 @@
             var result = await ResearchCategoryClient.UpdateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Failed to update category.");
+                Toast.ShowError("Error al actualizar la categoría.");
                 return;
             }
-            Toast.ShowSuccess("Category updated successfully.");
+            Toast.ShowSuccess("Categoría actualizada correctamente.");
         }
         else
         {
@@ -1220,10 +989,10 @@
             var result = await ResearchCategoryClient.CreateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Failed to create category.");
+                Toast.ShowError("Error al crear la categoría.");
                 return;
             }
-            Toast.ShowSuccess("Category created successfully.");
+            Toast.ShowSuccess("Categoría creada correctamente.");
         }
         _categoryModalOpen = false;
         await LoadCategoriesAsync();
@@ -1235,15 +1004,15 @@
         var result = await ResearchCategoryClient.DeleteAsync(categoryId);
         if (!result.Success)
         {
-            Toast.ShowError("Failed to delete category.");
+            Toast.ShowError("Error al eliminar la categoría.");
             return;
         }
-        Toast.ShowSuccess("Category deleted successfully.");
+        Toast.ShowSuccess("Categoría eliminada correctamente.");
         await LoadCategoriesAsync();
         await LoadTypesAsync();
     }
 
-    // ===== TREE RENDERING =====
+    // ===== RENDERIZADO DEL ÁRBOL =====
     private RenderFragment RenderCategoryNode(ResearchCategoryTreeItemDTO node, int depth, bool isLast) => builder =>
     {
         var seq = 0;
@@ -1253,15 +1022,15 @@
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", "relative");
 
-        // Node card
+        // Tarjeta del nodo
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", $"group/node flex items-center gap-3 p-3 rounded-lg border-2 border-border bg-background hover:border-primary/40 hover:bg-primary/5 transition-all duration-150 {(depth > 0 ? "ml-6" : "")}");
 
-        // Left side: Expand/Collapse button + Icon + Content
+        // Izquierda: botón expandir + ícono + contenido
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", "flex items-center gap-3 flex-1 min-w-0");
 
-        // Expand/Collapse button (only if has children)
+        // Botón expandir/colapsar
         if (hasChildren)
         {
             builder.OpenComponent<ActionButton>(seq++);
@@ -1288,13 +1057,12 @@
         }
         else
         {
-            // Spacer when no children
             builder.OpenElement(seq++, "div");
             builder.AddAttribute(seq++, "class", "w-6 flex-shrink-0");
             builder.CloseElement();
         }
 
-        // Icon
+        // Ícono del nodo
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", $"w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 {(node.IsActive ? "bg-secondary/15 text-secondary" : "bg-muted/15 text-muted")}");
         builder.OpenElement(seq++, "svg");
@@ -1311,7 +1079,7 @@
         builder.CloseElement();
         builder.CloseElement();
 
-        // Name & type
+        // Nombre y tipo
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", "flex-1 min-w-0");
         builder.OpenElement(seq++, "div");
@@ -1330,11 +1098,11 @@
 
         builder.CloseElement(); // flex items-center
 
-        // Actions
+        // Acciones
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", "flex items-center gap-2 opacity-0 group-hover/node:opacity-100 transition-opacity flex-shrink-0");
 
-        // Add child button
+        // Agregar hijo
         builder.OpenComponent<ActionButton>(seq++);
         builder.AddAttribute(seq++, "Execute", EventCallback.Factory.Create(this, () => OpenCreateChildCategoryModal(node.Id)));
         builder.AddAttribute(seq++, "Intent", ButtonIntent.Add);
@@ -1357,7 +1125,7 @@
         }));
         builder.CloseComponent();
 
-        // Edit button
+        // Editar
         builder.OpenComponent<ActionButton>(seq++);
         builder.AddAttribute(seq++, "Execute", EventCallback.Factory.Create(this, () => OpenEditCategoryModal(node.Id)));
         builder.AddAttribute(seq++, "Intent", ButtonIntent.Neutral);
@@ -1380,7 +1148,7 @@
         }));
         builder.CloseComponent();
 
-        // Delete button (only show if node is a leaf - no children)
+        // Eliminar (solo hojas)
         if (!hasChildren)
         {
             builder.OpenComponent<ActionButton>(seq++);
@@ -1389,7 +1157,7 @@
             builder.AddAttribute(seq++, "Variant", ButtonVariant.Outline);
             builder.AddAttribute(seq++, "Size", ButtonSize.Xs);
             builder.AddAttribute(seq++, "ConfirmBeforeExecute", true);
-            builder.AddAttribute(seq++, "ConfirmMessage", $"Are you sure you want to delete '{node.Name}'?");
+            builder.AddAttribute(seq++, "ConfirmMessage", $"¿Estás seguro de que deseas eliminar '{node.Name}'?");
             builder.AddAttribute(seq++, "Icon", (RenderFragment)(b2 =>
             {
                 b2.OpenElement(0, "svg");
@@ -1408,11 +1176,10 @@
             builder.CloseComponent();
         }
 
-        builder.CloseElement(); // actions
+        builder.CloseElement(); // acciones
+        builder.CloseElement(); // tarjeta
 
-        builder.CloseElement(); // card
-
-        // Render children (only if expanded)
+        // Hijos (solo si expandido)
         if (hasChildren && isExpanded)
         {
             builder.OpenElement(seq++, "div");
@@ -1428,6 +1195,6 @@
             builder.CloseElement();
         }
 
-        builder.CloseElement(); // relative wrapper
+        builder.CloseElement(); // wrapper relativo
     };
 }

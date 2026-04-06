@@ -1,276 +1,243 @@
 ﻿@using System.Globalization
 @using Microsoft.AspNetCore.Components
 @using tesisproject.frontend.SharedUI.ActionButton
-@using tesisproject.frontend.SharedUI.StatCard
+@using tesisproject.frontend.SharedUI.Table
 @using tesisproject.shared.DTOs.External
 @using tesisproject.shared.DTOs.AppUser
 @using tesisproject.shared.DTOs.ExternalResearcherProject.Response
-@using tesisproject.frontend.SharedUI.Table
-@using tesisproject.shared.DTOs.ExternalResearcher.Response
 
+<div class="w-full min-w-0 flex flex-col gap-4 p-4 md:p-5">
+    <!-- Acciones -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <ActionButton Text="Agregar miembros"
+                      Intent="ButtonIntent.Accept"
+                      Variant="ButtonVariant.Filled"
+                      Size="ButtonSize.Sm"
+                      Execute="@(() => OnInviteMember.InvokeAsync())"
+                      Class="w-full" />
 
-<div class="p-6 space-y-4">
-    <!-- Header + actions -->
-    <div class="flex flex-col md:flex-row md:justify-between md:items-center gap-3">
-        <div class="flex items-center gap-2">
-            <ActionButton Text="Agregar Miembros"
-                          Intent="ButtonIntent.Accept"
-                          Variant="ButtonVariant.Filled"
-                          Size="ButtonSize.Sm"
-                          Execute="@(()=> OnInviteMember.InvokeAsync())">
-                <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                        <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
-                    </svg>
-                </Icon>
-            </ActionButton>
-            <ActionButton Text="Agregar investigador externo"
-                          Intent="ButtonIntent.Neutral"
-                          Variant="ButtonVariant.Outline"
-                          Size="ButtonSize.Sm"
-                          Execute="@(()=> OnAddExternalResearcher.InvokeAsync())">
-                <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                        <path d="M5.25 6.375a4.125 4.125 0 1 1 8.25 0 4.125 4.125 0 0 1-8.25 0ZM2.25 19.125a7.125 7.125 0 0 1 14.25 0v.003l-.001.119a.75.75 0 0 1-.363.63 13.067 13.067 0 0 1-6.761 1.873c-2.472 0-4.786-.684-6.76-1.873a.75.75 0 0 1-.364-.63l-.001-.122ZM18.75 7.5a.75.75 0 0 0-1.5 0v2.25H15a.75.75 0 0 0 0 1.5h2.25v2.25a.75.75 0 0 0 1.5 0v-2.25H21a.75.75 0 0 0 0-1.5h-2.25V7.5Z" />
-                    </svg>
-                </Icon>
-            </ActionButton>
-        </div>
+        <ActionButton Text="Agregar externo"
+                      Intent="ButtonIntent.Neutral"
+                      Variant="ButtonVariant.Outline"
+                      Size="ButtonSize.Sm"
+                      Execute="@(() => OnAddExternalResearcher.InvokeAsync())"
+                      Class="w-full" />
     </div>
 
-    @if (IsLoading)
-    {
-        <div class="text-sm text-muted">Cargando Miembros…</div>
-    }
-    else if (Members is null || Members.Count == 0)
-    {
-        <div class="text-sm text-muted">Este proyecto no tiene miembros aun.</div>
-    }
-    else
-    {
-        <!-- Tabla reutilizable: miembros internos -->
-        <DataTable TItem="ResolvedUserProfileDTO"
-                   Items="filtered"
-                   Columns="_columns"
-                   PageSize="PageSize"
-                   Total="filtered.Count"
-                   CurrentPage="currentPage"
-                   OnPageChanged="HandlePageChanged"
-                   EmptyText="Este proyecto no tiene miembros aun.">
-
-            <RowTemplate Context="m">
-                <td class="px-4 py-3 text-sm font-medium text-foreground align-middle w-48">
-                    @m.FullName
-                </td>
-
-                <td class="px-4 py-3 text-sm text-muted align-middle w-56">
-                    @m.Email
-                </td>
-
-                <td class="px-4 py-3 text-sm align-middle w-40">
-                    <span class="px-2 py-0.5 rounded-full text-xs border border-border text-foreground bg-foreground/5">
-                        @m.Role
+    <!-- Miembros internos -->
+    <section class="rounded-xl border border-border bg-background p-4 shadow-sm min-w-0">
+        <div class="flex items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2 min-w-0">
+                <h3 class="text-sm font-semibold text-foreground truncate">Miembros</h3>
+                @if (InternalMembers.Count > 0)
+                {
+                    <span class="px-2 py-0.5 text-[11px] font-medium rounded-full bg-primary text-white whitespace-nowrap">
+                        @InternalMembers.Count
                     </span>
-                </td>
+                }
+            </div>
+        </div>
 
-                <td class="px-4 py-3 text-sm text-foreground align-middle w-40">
-                    @m.Position
-                </td>
+        @if (IsLoading)
+        {
+            <div class="text-sm text-muted">Cargando miembros...</div>
+        }
+        else if (InternalMembers.Count == 0)
+        {
+            <div class="rounded-lg border border-dashed border-border bg-background/50 px-4 py-6 text-center">
+                <p class="text-sm text-muted">No hay miembros registrados.</p>
+            </div>
+        }
+        else
+        {
+            <div class="min-w-0">
+                <DataTable TItem="ResolvedUserProfileDTO"
+                           Items="InternalMembers"
+                           Columns="_columns"
+                           PageSize="PageSize"
+                           Total="InternalMembers.Count"
+                           CurrentPage="_internalPage"
+                           OnPageChanged="HandleInternalPageChanged"
+                           EmptyText="No hay miembros registrados.">
 
-                <td class="px-4 py-3 text-sm text-foreground align-middle w-32">
-                    @m.Document
-                </td>
+                    <RowTemplate Context="m">
+                        <td class="px-4 py-3 text-sm font-medium text-foreground align-middle w-48">
+                            @m.FullName
+                        </td>
 
-                <td class="px-4 py-3 text-sm text-foreground align-middle w-32">
-                    @GetFacultyNameFor(m)
-                </td>
+                        <td class="px-4 py-3 text-sm text-muted align-middle w-56">
+                            @m.Email
+                        </td>
 
-                <td class="px-4 py-3 text-sm text-foreground align-middle w-40">
-                    @GetProgramNameFor(m)
-                </td>
+                        <td class="px-4 py-3 text-sm align-middle w-40">
+                            <span class="px-2 py-0.5 rounded-full text-xs border border-border text-foreground bg-foreground/5">
+                                @m.Role
+                            </span>
+                        </td>
 
-                <td class="px-4 py-3 text-sm text-right align-middle w-44">
-                    <div class="inline-flex gap-1">
-                        <ActionButton Text="Eliminar"
-                                      Intent="ButtonIntent.Danger"
-                                      Variant="ButtonVariant.Outline"
-                                      Size="ButtonSize.Xs"
-                                      Execute="@(()=> OnRemoveMember.InvokeAsync(m.UserGroupId))" />
-                    </div>
-                </td>
-            </RowTemplate>
-        </DataTable>
-    }
+                        <td class="px-4 py-3 text-sm text-foreground align-middle w-40">
+                            @m.Position
+                        </td>
 
-    <!-- ============================================== -->
-    <!-- SEGUNDA TABLA: INVESTIGADORES EXTERNOS         -->
-    <!-- ============================================== -->
-    <div class="mt-8 border-t border-border pt-4 space-y-3">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-            <h3 class="text-sm font-semibold text-foreground">
-                Investigadores externos del proyecto
-            </h3>
-            @* Aquí luego puedes poner un botón "Agregar investigador externo" *@
+                        <td class="px-4 py-3 text-sm text-foreground align-middle w-32">
+                            @m.Document
+                        </td>
+
+                        <td class="px-4 py-3 text-sm text-foreground align-middle w-32">
+                            @GetFacultyNameFor(m)
+                        </td>
+
+                        <td class="px-4 py-3 text-sm text-foreground align-middle w-40">
+                            @GetProgramNameFor(m)
+                        </td>
+
+                        <td class="px-4 py-3 text-sm text-right align-middle w-32">
+                            <ActionButton Text="Eliminar"
+                                          Intent="ButtonIntent.Danger"
+                                          Variant="ButtonVariant.Outline"
+                                          Size="ButtonSize.Xs"
+                                          Execute="@(() => OnRemoveMember.InvokeAsync(m.UserGroupId))" />
+                        </td>
+                    </RowTemplate>
+                </DataTable>
+            </div>
+        }
+    </section>
+
+    <!-- Investigadores externos -->
+    <section class="rounded-xl border border-border bg-background p-4 shadow-sm min-w-0">
+        <div class="flex items-center justify-between gap-2 mb-3">
+            <div class="flex items-center gap-2 min-w-0">
+                <h3 class="text-sm font-semibold text-foreground truncate">Externos</h3>
+                @if (ExternalMembers.Count > 0)
+                {
+                    <span class="px-2 py-0.5 text-[11px] font-medium rounded-full bg-secondary text-white whitespace-nowrap">
+                        @ExternalMembers.Count
+                    </span>
+                }
+            </div>
         </div>
 
         @if (IsLoadingExternalResearchers)
         {
-            <div class="text-sm text-muted">Cargando investigadores externos…</div>
+            <div class="text-sm text-muted">Cargando externos...</div>
         }
-        else if (ExternalResearchersProjects is null || ExternalResearchersProjects.Count == 0)
+        else if (ExternalMembers.Count == 0)
         {
-            <div class="text-sm text-muted">Este proyecto no tiene investigadores externos registrados.</div>
+            <div class="rounded-lg border border-dashed border-border bg-background/50 px-4 py-6 text-center">
+                <p class="text-sm text-muted">No hay investigadores externos.</p>
+            </div>
         }
         else
         {
-            <DataTable TItem="ExternalResearcherProjectListItemDTO"
-                       Items="externalFiltered"
-                       Columns="_externalColumns"
-                       PageSize="PageSize"
-                       Total="externalFiltered.Count"
-                       CurrentPage="currentPage"
-                       OnPageChanged="HandlePageChanged"
-                       EmptyText="Este proyecto no tiene investigadores externos registrados.">
+            <div class="min-w-0">
+                <DataTable TItem="ExternalResearcherProjectListItemDTO"
+                           Items="ExternalMembers"
+                           Columns="_externalColumns"
+                           PageSize="PageSize"
+                           Total="ExternalMembers.Count"
+                           CurrentPage="_externalPage"
+                           OnPageChanged="HandleExternalPageChanged"
+                           EmptyText="No hay investigadores externos.">
 
-                <RowTemplate Context="er">
-                    <td class="px-4 py-3 text-sm font-medium text-foreground align-middle w-56">
-                        @er.ExternalResearcherFullName
-                    </td>
+                    <RowTemplate Context="er">
+                        <td class="px-4 py-3 text-sm font-medium text-foreground align-middle w-56">
+                            @er.ExternalResearcherFullName
+                        </td>
 
-                    <td class="px-4 py-3 text-sm text-muted align-middle w-56">
-                        @er.ExternalResearcherEmail
-                    </td>
+                        <td class="px-4 py-3 text-sm text-muted align-middle w-56">
+                            @er.ExternalResearcherEmail
+                        </td>
 
-                    <td class="px-4 py-3 text-sm align-middle w-40">
-                        <span class="px-2 py-0.5 rounded-full text-xs border border-border text-foreground bg-foreground/5">
-                            @er.Role
-                        </span>
-                    </td>
+                        <td class="px-4 py-3 text-sm align-middle w-40">
+                            <span class="px-2 py-0.5 rounded-full text-xs border border-border text-foreground bg-foreground/5">
+                                @er.Role
+                            </span>
+                        </td>
 
-                    <td class="px-4 py-3 text-sm text-foreground align-middle w-40">
-                        @er.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture)
-                    </td>
+                        <td class="px-4 py-3 text-sm text-foreground align-middle w-40">
+                            @er.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm", CultureInfo.InvariantCulture)
+                        </td>
 
-                    <td class="px-4 py-3 text-sm text-foreground align-middle w-40">
-                        @(er.ExitDate.HasValue
-                                            ? er.ExitDate.Value.ToLocalTime().ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
-                                            : "-")
-                    </td>
+                        <td class="px-4 py-3 text-sm text-foreground align-middle w-32">
+                            @(er.ExitDate.HasValue
+                                ? er.ExitDate.Value.ToLocalTime().ToString("dd/MM/yyyy", CultureInfo.InvariantCulture)
+                                : "-")
+                        </td>
 
-                    <!-- 🔥 Nueva columna de acciones -->
-                    <td class="px-4 py-3 text-sm text-right align-middle w-32">
-                        <ActionButton Text="Eliminar"
-                                      Intent="ButtonIntent.Danger"
-                                      Variant="ButtonVariant.Outline"
-                                      Size="ButtonSize.Xs"
-                                      Execute="@(() => OnRemoveExternalResearcher.InvokeAsync(er.Id))" />
-                    </td>
-                </RowTemplate>
-
-            </DataTable>
+                        <td class="px-4 py-3 text-sm text-right align-middle w-32">
+                            <ActionButton Text="Eliminar"
+                                          Intent="ButtonIntent.Danger"
+                                          Variant="ButtonVariant.Outline"
+                                          Size="ButtonSize.Xs"
+                                          Execute="@(() => OnRemoveExternalResearcher.InvokeAsync(er.Id))" />
+                        </td>
+                    </RowTemplate>
+                </DataTable>
+            </div>
         }
-    </div>
+    </section>
 </div>
 
 @code {
     [Parameter] public List<ExternalFacultyDTO>? Faculties { get; set; }
 
-    // ===== Miembros internos =====
     [Parameter] public List<ResolvedUserProfileDTO>? Members { get; set; }
     [Parameter] public bool IsLoading { get; set; }
 
-    // ===== Investigadores externos =====
     [Parameter] public List<ExternalResearcherProjectListItemDTO>? ExternalResearchersProjects { get; set; }
     [Parameter] public bool IsLoadingExternalResearchers { get; set; }
 
-    // Eventos para externos
     [Parameter] public EventCallback OnAddExternalResearcher { get; set; }
     [Parameter] public EventCallback<int> OnRemoveExternalResearcher { get; set; }
 
-
-    // Eventos (padre)
     [Parameter] public EventCallback OnInviteMember { get; set; }
     [Parameter] public EventCallback<int> OnRemoveMember { get; set; }
 
-    // Paginación + filtro (compartidos por ahora)
     [Parameter] public int PageSize { get; set; } = 15;
-    private int currentPage = 1;
-    private string searchText = string.Empty;
 
-    // KPIs (por si luego los usas en StatCards)
-    private int totalMembers => Members?.Count ?? 0;
+    private int _internalPage = 1;
+    private int _externalPage = 1;
 
-    private int uniqueRolesCount => Members?
-        .Select(m => (m.Role ?? string.Empty).Trim())
-        .Where(r => !string.IsNullOrWhiteSpace(r))
-        .Distinct(StringComparer.OrdinalIgnoreCase)
-        .Count() ?? 0;
+    private List<ResolvedUserProfileDTO> InternalMembers => Members ?? new();
+    private List<ExternalResearcherProjectListItemDTO> ExternalMembers => ExternalResearchersProjects ?? new();
 
-    private int withFacultyCareer => Members?.Count(m => m.FacultyCareerId.HasValue) ?? 0;
-
-    // Filtro miembros internos
-    private List<ResolvedUserProfileDTO> filtered => string.IsNullOrWhiteSpace(searchText)
-        ? (Members ?? new())
-        : (Members ?? new())
-            .Where(m =>
-                (!string.IsNullOrWhiteSpace(m.FullName) && m.FullName.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrWhiteSpace(m.Email) && m.Email.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrWhiteSpace(m.Role) && m.Role.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrWhiteSpace(m.Document) && m.Document.Contains(searchText, StringComparison.OrdinalIgnoreCase))
-            )
-            .ToList();
-
-    // Filtro investigadores externos
-    private List<ExternalResearcherProjectListItemDTO> externalFiltered => string.IsNullOrWhiteSpace(searchText)
-        ? (ExternalResearchersProjects ?? new())
-        : (ExternalResearchersProjects ?? new())
-            .Where(er =>
-                (!string.IsNullOrWhiteSpace(er.ExternalResearcherFullName) &&
-                    er.ExternalResearcherFullName.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrWhiteSpace(er.ExternalResearcherEmail) &&
-                    er.ExternalResearcherEmail.Contains(searchText, StringComparison.OrdinalIgnoreCase)) ||
-                (!string.IsNullOrWhiteSpace(er.Role) &&
-                    er.Role.Contains(searchText, StringComparison.OrdinalIgnoreCase))
-            )
-            .ToList();
-
-    private IReadOnlyList<ColumnDef<ResolvedUserProfileDTO>> _columns = Array.Empty<ColumnDef<ResolvedUserProfileDTO>>();
-    private IReadOnlyList<ColumnDef<ExternalResearcherProjectListItemDTO>> _externalColumns = Array.Empty<ColumnDef<ExternalResearcherProjectListItemDTO>>();
-
-    protected override void OnInitialized()
-    {
-        _columns = new[]
+    private static readonly IReadOnlyList<ColumnDef<ResolvedUserProfileDTO>> _columns =
+        new[]
         {
-            new ColumnDef<ResolvedUserProfileDTO>("Nombre",   m => m.FullName ?? string.Empty,   "12rem", Sortable: true),
-            new ColumnDef<ResolvedUserProfileDTO>("Email",    m => m.Email ?? string.Empty,      "14rem", Sortable: true),
-            new ColumnDef<ResolvedUserProfileDTO>("Rol",      m => m.Role ?? string.Empty,       "10rem", Sortable: true),
-            new ColumnDef<ResolvedUserProfileDTO>("Position", m => m.Position ?? string.Empty,   "10rem", Sortable: true),
-            new ColumnDef<ResolvedUserProfileDTO>("Cedula",   m => m.Document ?? string.Empty,   "8rem",  Sortable: true),
-            new ColumnDef<ResolvedUserProfileDTO>("Facultad", m => GetFacultyNameFor(m),         "12rem", Sortable: true),
-            new ColumnDef<ResolvedUserProfileDTO>("Carrera",  m => GetProgramNameFor(m),         "12rem", Sortable: true),
-            new ColumnDef<ResolvedUserProfileDTO>("Acciones", m => string.Empty,                 "11rem", Sortable: false),
+            new ColumnDef<ResolvedUserProfileDTO>("Nombre",   m => m.FullName ?? string.Empty, "12rem", Sortable: true),
+            new ColumnDef<ResolvedUserProfileDTO>("Email",    m => m.Email ?? string.Empty,    "14rem", Sortable: true),
+            new ColumnDef<ResolvedUserProfileDTO>("Rol",      m => m.Role ?? string.Empty,     "10rem", Sortable: true),
+            new ColumnDef<ResolvedUserProfileDTO>("Cargo",    m => m.Position ?? string.Empty, "10rem", Sortable: true),
+            new ColumnDef<ResolvedUserProfileDTO>("Cédula",   m => m.Document ?? string.Empty, "8rem",  Sortable: true),
+            new ColumnDef<ResolvedUserProfileDTO>("Facultad", m => string.Empty,               "12rem", Sortable: false),
+            new ColumnDef<ResolvedUserProfileDTO>("Carrera",  m => string.Empty,               "12rem", Sortable: false),
+            new ColumnDef<ResolvedUserProfileDTO>("Acciones", m => string.Empty,               "8rem",  Sortable: false),
         };
 
-        _externalColumns = new[]
+    private static readonly IReadOnlyList<ColumnDef<ExternalResearcherProjectListItemDTO>> _externalColumns =
+        new[]
         {
-            new ColumnDef<ExternalResearcherProjectListItemDTO>("Nombre",  e => e.ExternalResearcherFullName ?? string.Empty, "14rem", Sortable: true),
-            new ColumnDef<ExternalResearcherProjectListItemDTO>("Email",   e => e.ExternalResearcherEmail ?? string.Empty,    "14rem", Sortable: true),
-            new ColumnDef<ExternalResearcherProjectListItemDTO>("Rol",     e => e.Role ?? string.Empty,                       "10rem", Sortable: true),
-            new ColumnDef<ExternalResearcherProjectListItemDTO>("Ingreso", e => e.CreatedAtUtc.ToString("s"),                 "10rem", Sortable: true),
-            new ColumnDef<ExternalResearcherProjectListItemDTO>("Salida",  e => e.ExitDate.HasValue? e.ExitDate.Value.ToString("s") : string.Empty, "10rem", Sortable: true),
-            new ColumnDef<ExternalResearcherProjectListItemDTO>("Acciones", e => string.Empty, "8rem", Sortable: false),
+            new ColumnDef<ExternalResearcherProjectListItemDTO>("Nombre",   e => e.ExternalResearcherFullName ?? string.Empty, "14rem", Sortable: true),
+            new ColumnDef<ExternalResearcherProjectListItemDTO>("Email",    e => e.ExternalResearcherEmail ?? string.Empty,    "14rem", Sortable: true),
+            new ColumnDef<ExternalResearcherProjectListItemDTO>("Rol",      e => e.Role ?? string.Empty,                       "10rem", Sortable: true),
+            new ColumnDef<ExternalResearcherProjectListItemDTO>("Ingreso",  e => e.CreatedAtUtc,                               "10rem", Sortable: true),
+            new ColumnDef<ExternalResearcherProjectListItemDTO>("Salida",   e => e.ExitDate,                                   "10rem", Sortable: true),
+            new ColumnDef<ExternalResearcherProjectListItemDTO>("Acciones", e => string.Empty,                                 "8rem",  Sortable: false),
         };
 
-
-    }
-
-    private Task HandlePageChanged(int page)
+    private Task HandleInternalPageChanged(int page)
     {
-        currentPage = page;
+        _internalPage = page;
         return Task.CompletedTask;
     }
 
-    // GetFacultyNameFor y GetProgramNameFor se quedan igual que ya los tienes
+    private Task HandleExternalPageChanged(int page)
+    {
+        _externalPage = page;
+        return Task.CompletedTask;
+    }
+
     private string GetFacultyNameFor(ResolvedUserProfileDTO member)
     {
         if (!member.FacultyCareerId.HasValue || Faculties is null || Faculties.Count == 0)
@@ -278,12 +245,10 @@
 
         int id = member.FacultyCareerId.Value;
 
-        // 1) Ver si es FACULTAD
         var faculty = Faculties.FirstOrDefault(f => f.FacultyId == id);
         if (faculty is not null)
-            return faculty.Name; // Es facultad directa
+            return faculty.Name;
 
-        // 2) Ver si es PROGRAMA
         var program = Faculties
             .SelectMany(f => f.Programs ?? new List<ExternalProgramDTO>())
             .FirstOrDefault(p => p.ProgramId == id);
@@ -304,11 +269,9 @@
 
         int id = member.FacultyCareerId.Value;
 
-        // Si es FACULTAD → no tiene programa asociado
         if (Faculties.Any(f => f.FacultyId == id))
             return "-";
 
-        // Si es PROGRAMA → devolver su nombre
         var program = Faculties
             .SelectMany(f => f.Programs ?? new List<ExternalProgramDTO>())
             .FirstOrDefault(p => p.ProgramId == id);

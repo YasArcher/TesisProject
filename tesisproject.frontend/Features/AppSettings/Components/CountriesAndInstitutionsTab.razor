@@ -1,5 +1,6 @@
 ﻿@using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Catalog
 @using tesisproject.frontend.SharedUI.Modal
 @using tesisproject.frontend.SharedUI.Table
 @using tesisproject.frontend.SharedUI.SelectInput
@@ -20,7 +21,7 @@
 
 <div class="h-full min-h-0 flex flex-col p-6 max-w-[1800px] mx-auto w-full gap-6">
     <!-- Main Content Grid -->
-    <div class="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6 flex-1 min-h-0">
+    <div class="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 flex-1 min-h-0">
 
         <!-- LEFT SIDEBAR: Countries -->
         <div class="min-h-0 h-full flex flex-col gap-4 overflow-hidden">
@@ -74,78 +75,34 @@
                                       Variant="ButtonVariant.Outline"
                                       Size="ButtonSize.Sm" />
                     </EmptyStateAction>
-
                     <ChildContent Context="country">
-                        @{
-                            var isSelected = _selectedCountryId == country.Id;
-                        }
+                        <SelectableCard TItem="CountryListItemDTO"
+                                        Item="country"
+                                        IsSelected="@(_selectedCountryId == country.Id)"
+                                        OnSelected="@(item => OnCountrySelected(item.Id))"
+                                        OnEditRequested="OpenEditCountryModal"
+                                        OnDeleteRequested="@(item => DeleteCountryAsync(item.Id))"
+                                        GetTitle="item => item.Name"
+                                        GetIsActive="item => item.IsActive"
+                                        GetDeleteConfirmMessage="@(item => $"¿Está seguro de que desea eliminar '{item.Name}'? Esto afectará a todas las instituciones asociadas.")">
 
-                        <div class="group/country rounded-lg border-2 @(isSelected ? "border-primary bg-primary/5" : "border-border bg-background hover:border-primary/40 hover:bg-primary/5") transition-all duration-150">
-                            <button type="button"
-                                    @onclick="@(() => OnCountrySelected(country.Id))"
-                                    class="w-full p-3">
-                                <div class="flex items-start justify-between gap-2">
-                                    <div class="flex-1 min-w-0 text-left">
-                                        <div class="flex items-center gap-2 mb-1.5">
-                                            <div class="w-2 h-2 rounded-full flex-shrink-0 @(country.IsActive ? "bg-secondary" : "bg-muted")"></div>
-                                            <span class="font-medium text-sm text-foreground truncate">@country.Name</span>
-                                        </div>
+                            <ItemMeta Context="item">
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
+                                    @item.IsoCode
+                                </span>
 
-                                        <div class="flex items-center gap-1.5 flex-wrap">
-                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
-                                                @country.IsoCode
-                                            </span>
-                                            <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
-                                                @country.IsoAlpha3
-                                            </span>
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
+                                    @item.IsoAlpha3
+                                </span>
 
-                                            @if (country.IsActive)
-                                            {
-                                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
-                                                    Activo
-                                                </span>
-                                            }
-                                        </div>
-                                    </div>
-
-                                    @if (isSelected)
-                                    {
-                                        <svg class="h-5 w-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                                        </svg>
-                                    }
-                                </div>
-                            </button>
-
-                            <div class="px-3 pb-3 flex items-center gap-2">
-                                <ActionButton Execute="@(() => OpenEditCountryModal(country))"
-                                              Intent="ButtonIntent.Neutral"
-                                              Variant="ButtonVariant.Outline"
-                                              Size="ButtonSize.Xs"
-                                              Class="flex-1">
-                                    <Icon>
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                            <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
-                                            <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" />
-                                        </svg>
-                                    </Icon>
-                                </ActionButton>
-
-                                <ActionButton Execute="@(() => DeleteCountryAsync(country.Id))"
-                                              Intent="ButtonIntent.Delete"
-                                              Variant="ButtonVariant.Outline"
-                                              Size="ButtonSize.Xs"
-                                              ConfirmBeforeExecute="true"
-                                              ConfirmMessage="@($"¿Está seguro de que desea eliminar '{country.Name}'? Esto afectará a todas las instituciones asociadas.")"
-                                              Class="flex-1">
-                                    <Icon>
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                            <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
-                                        </svg>
-                                    </Icon>
-                                </ActionButton>
-                            </div>
-                        </div>
+                                @if (item.IsActive)
+                                {
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
+                                        Activo
+                                    </span>
+                                }
+                            </ItemMeta>
+                        </SelectableCard>
                     </ChildContent>
                 </Container>
             </div>

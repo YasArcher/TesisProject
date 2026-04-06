@@ -1,4 +1,5 @@
 ﻿@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Card
 @using tesisproject.frontend.SharedUI.Modal
 @using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.DTOs.Catalog.ProductAttribute.Response
@@ -34,41 +35,39 @@
     {
         <div class="grid gap-6 lg:grid-cols-2 flex-1 min-h-0 overflow-hidden">
             <!-- Product Types Card -->
-            <div class="group rounded-xl border-2 border-border bg-background shadow-sm hover:shadow-md transition-all duration-200 h-full min-h-0 flex flex-col overflow-hidden">
-                <div class="p-5 border-b border-border bg-background/50 shrink-0">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                                </svg>
-                                <h3 class="text-base font-semibold text-foreground">Tipos de Producto</h3>
-                            </div>
-                            <p class="text-xs text-muted leading-relaxed">
-                                Categorías de alto nivel como Producción científica, Patente, Software, etc.
-                            </p>
+            <Card Class="h-full min-h-0 flex flex-col overflow-hidden">
+                <CardHeader Class="flex items-start justify-between gap-4">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                            </svg>
+                            <h3 class="text-base font-semibold text-foreground">Tipos de Producto</h3>
                         </div>
-
-                        <div class="flex items-center gap-3 flex-shrink-0">
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-primary/10 text-xs font-medium text-primary">
-                                @ProductTypes.Count @(ProductTypes.Count == 1 ? "tipo" : "tipos")
-                            </span>
-                            <ActionButton Text="Nuevo tipo"
-                                          Intent="ButtonIntent.Add"
-                                          Variant="ButtonVariant.Outline"
-                                          Size="ButtonSize.Xs"
-                                          Execute="OnNewProductTypeRequested">
-                                <Icon>
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                        <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
-                                    </svg>
-                                </Icon>
-                            </ActionButton>
-                        </div>
+                        <p class="text-xs text-muted leading-relaxed">
+                            Categorías de alto nivel como Producción científica, Patente, Software, etc.
+                        </p>
                     </div>
-                </div>
 
-                <div class="p-5 flex-1 min-h-0">
+                    <div class="flex items-center gap-3 flex-shrink-0">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-primary/10 text-xs font-medium text-primary">
+                            @ProductTypes.Count @(ProductTypes.Count == 1 ? "tipo" : "tipos")
+                        </span>
+                        <ActionButton Text="Nuevo tipo"
+                                      Intent="ButtonIntent.Add"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Xs"
+                                      Execute="OnNewProductTypeRequested">
+                            <Icon>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                    <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+                                </svg>
+                            </Icon>
+                        </ActionButton>
+                    </div>
+                </CardHeader>
+
+                <CardBody Scroll="true">
                     @if (ProductTypes.Count == 0)
                     {
                         <div class="h-full min-h-0 flex items-center justify-center text-center py-8 px-4">
@@ -87,7 +86,7 @@
                     }
                     else
                     {
-                        <ul class="space-y-2 h-full min-h-0 overflow-y-auto pr-1">
+                        <ul class="space-y-2">
                             @foreach (var t in ProductTypes)
                             {
                                 <li class="group/item flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-background hover:border-primary/40 hover:bg-primary/5 transition-all duration-150">
@@ -161,45 +160,43 @@
                             }
                         </ul>
                     }
-                </div>
-            </div>
+                </CardBody>
+            </Card>
 
             <!-- Product Attributes Card -->
-            <div class="group rounded-xl border-2 border-border bg-background shadow-sm hover:shadow-md transition-all duration-200 h-full min-h-0 flex flex-col overflow-hidden">
-                <div class="p-5 border-b border-border bg-background/50 shrink-0">
-                    <div class="flex items-start justify-between gap-4">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-1">
-                                <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                <h3 class="text-base font-semibold text-foreground">Atributos de Producto</h3>
-                            </div>
-                            <p class="text-xs text-muted leading-relaxed">
-                                Campos atómicos como Título, Autores, DOI, Año, etc.
-                            </p>
+            <Card Class="h-full min-h-0 flex flex-col overflow-hidden">
+                <CardHeader Class="flex items-start justify-between gap-4">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <h3 class="text-base font-semibold text-foreground">Atributos de Producto</h3>
                         </div>
-
-                        <div class="flex items-center gap-3 flex-shrink-0">
-                            <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-primary/10 text-xs font-medium text-primary">
-                                @ProductAttributes.Count @(ProductAttributes.Count == 1 ? "atributo" : "atributos")
-                            </span>
-                            <ActionButton Text="Nuevo atributo"
-                                          Intent="ButtonIntent.Add"
-                                          Variant="ButtonVariant.Outline"
-                                          Size="ButtonSize.Xs"
-                                          Execute="OnNewAttributeRequested">
-                                <Icon>
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                        <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
-                                    </svg>
-                                </Icon>
-                            </ActionButton>
-                        </div>
+                        <p class="text-xs text-muted leading-relaxed">
+                            Campos atómicos como Título, Autores, DOI, Año, etc.
+                        </p>
                     </div>
-                </div>
 
-                <div class="p-5 flex-1 min-h-0">
+                    <div class="flex items-center gap-3 flex-shrink-0">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-md bg-primary/10 text-xs font-medium text-primary">
+                            @ProductAttributes.Count @(ProductAttributes.Count == 1 ? "atributo" : "atributos")
+                        </span>
+                        <ActionButton Text="Nuevo atributo"
+                                      Intent="ButtonIntent.Add"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Xs"
+                                      Execute="OnNewAttributeRequested">
+                            <Icon>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                    <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+                                </svg>
+                            </Icon>
+                        </ActionButton>
+                    </div>
+                </CardHeader>
+
+                <CardBody Scroll="true">
                     @if (ProductAttributes.Count == 0)
                     {
                         <div class="h-full min-h-0 flex items-center justify-center text-center py-8 px-4">
@@ -218,7 +215,7 @@
                     }
                     else
                     {
-                        <ul class="space-y-2 h-full min-h-0 overflow-y-auto pr-1">
+                        <ul class="space-y-2">
                             @foreach (var a in ProductAttributes)
                             {
                                 <li class="group/item flex items-center justify-between gap-3 p-3 rounded-lg border border-border bg-background hover:border-primary/40 hover:bg-primary/5 transition-all duration-150">
@@ -301,8 +298,8 @@
                             }
                         </ul>
                     }
-                </div>
-            </div>
+                </CardBody>
+            </Card>
         </div>
     }
 </div>

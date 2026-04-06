@@ -1,356 +1,303 @@
 ﻿@using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI.ActionButton
-@using tesisproject.frontend.SharedUI.ConfirmDialog
 @using tesisproject.shared.DTOs.Visit.Request
 @using tesisproject.shared.DTOs.Visit.Response
 @using tesisproject.shared.DTOs.VisitIssues.Response
 @using tesisproject.shared.Enums
 @using tesisproject.shared.DTOs.ProjectObjective.Response
 @using tesisproject.shared.DTOs.ObjectiveActivity.Response
-
 @using tesisproject.shared.DTOs.Products.Product.Request
 @using tesisproject.shared.DTOs.Products.Product.Response
 @using tesisproject.shared.DTOs.Products.ProductTypeDesign.Response
 @using tesisproject.shared.DTOs.Catalog.Common.Response
 
-@inject NavigationManager Nav
 @inject IToastService Toast
 @inject IVisitClientService VisitService
 @inject IProductClientService ProductService
 @inject IProductTypeClientService ProductTypeService
 @inject IProductTypeDesignClientService ProductTypeDesignService
 
-<div class="space-y-6">
-    <!-- Header superior: Botón volver + Info visita -->
-    <div class="flex items-center justify-between pb-4 border-b border-border px-5">
-        <ActionButton Execute="OnBack"
-                      Text="Volver a visitas"
-                      Intent="ButtonIntent.Info"
-                      Variant="ButtonVariant.Outline"
-                      Size="ButtonSize.Md">
-            <Icon>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                    <path fill-rule="evenodd" d="M7.72 12.53a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 1 1 1.06 1.06L9.31 12l6.97 6.97a.75.75 0 1 1-1.06 1.06l-7.5-7.5Z" clip-rule="evenodd" />
-                </svg>
-            </Icon>
-        </ActionButton>
+<div class="h-full min-h-0 flex flex-col overflow-hidden">
+    <div class="shrink-0 border-b border-border bg-background px-4 py-3 md:px-5">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <ActionButton Execute="OnBack"
+                          Text="Volver a visitas"
+                          Intent="ButtonIntent.Info"
+                          Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Md">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5">
+                        <path fill-rule="evenodd" d="M7.72 12.53a.75.75 0 0 1 0-1.06l7.5-7.5a.75.75 0 1 1 1.06 1.06L9.31 12l6.97 6.97a.75.75 0 1 1-1.06 1.06l-7.5-7.5Z" clip-rule="evenodd" />
+                    </svg>
+                </Icon>
+            </ActionButton>
 
-        <div class="text-right">
-            <span class="inline-flex items-center px-3 py-1 rounded-full bg-primary-subtle text-primary text-sm font-semibold">
+            <span class="inline-flex items-center self-start rounded-full bg-primary-subtle px-3 py-1 text-sm font-semibold text-primary sm:self-auto">
                 Visita #@VisitId
             </span>
         </div>
     </div>
 
-    @if (IsLoading)
-    {
-        <div class="flex items-center gap-3 py-10 px-5">
-            <div class="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-            <span class="text-sm text-muted">Cargando visita...</span>
-        </div>
-    }
-    else
-    {
-
-        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
-        {
-            <div class="mx-5 rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error">
-                @ErrorMessage
-            </div>
-        }
-
-        <!-- Sección de Objetivos del Proyecto -->
-        @if (ProjectObjectives is not null && ProjectObjectives.Any())
-        {
-            <div class="bg-background border border-border rounded-xl shadow-sm">
-                <div class="px-5 py-4 border-b border-border">
-                    <h3 class="text-lg font-bold text-foreground">
-                        Progreso de objetivos del proyecto
-                    </h3>
-                    <p class="text-sm text-muted mt-1">
-                        Registra y actualiza el estado de cumplimiento de objetivos y actividades del proyecto
-                    </p>
-                </div>
-                <div class="@(_isVisitFinalized ? "pointer-events-none opacity-60" : "")">
-                    <ProjectObjectivesProgress Objectives="ProjectObjectives"
-                                               OnSaveActivityRequested="HandleActivitySaveAsync" />
-                </div>
-            </div>
-        }
-    }
-    <!-- Sección de productos (solo de esta visita) -->
-    <div class="bg-background border border-border rounded-xl shadow-sm">
-        <div class="px-5 py-4 border-b border-border">
-            <div class="flex items-center justify-between gap-3">
-                <div>
-                    <h3 class="text-lg font-bold text-foreground">
-                        Productos
-                    </h3>
-                    <p class="text-sm text-muted mt-1">
-                        Productos creados para esta visita
-                    </p>
-                </div>
-
-                <ActionButton Execute="OpenCreateProductModal"
-                              Text="Agregar producto"
-                              Disabled="@(IsLoading || _isVisitFinalized)"
-                              Intent="ButtonIntent.Add"
-                              Variant="ButtonVariant.Filled"
-                              Size="ButtonSize.Md">
-                    <Icon>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                            <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
-                        </svg>
-                    </Icon>
-                </ActionButton>
-            </div>
-        </div>
-
-        <div class="p-5">
-            @if (!string.IsNullOrWhiteSpace(ProductsError))
+    <div class="flex-1 min-h-0 overflow-y-auto">
+        <div class="space-y-4 p-4 md:p-5">
+            @if (IsLoading)
             {
-                <div class="rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error">
-                    @ProductsError
-                </div>
-            }
-            else if (IsLoading || IsLoadingProducts)
-            {
-                <div class="flex items-center gap-3 py-6">
-                    <div class="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                    <span class="text-sm text-muted">Cargando productos...</span>
-                </div>
-            }
-
-            else if (Products is null || Products.Count == 0)
-            {
-                <div class="text-center py-12 px-4">
-                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/10 mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-muted">
-                            <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clip-rule="evenodd" />
-                        </svg>
-                    </div>
-                    <p class="text-sm text-muted font-medium">
-                        Aún no se han creado productos para esta visita
-                    </p>
-                    <p class="text-xs text-muted mt-1">
-                        Haz clic en "Agregar producto" para crear uno desde plantillas
-                    </p>
+                <div class="flex items-center gap-3 rounded-xl border border-border bg-background px-4 py-6">
+                    <div class="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                    <span class="text-sm text-muted">Cargando visita...</span>
                 </div>
             }
             else
             {
-                <div class="space-y-3">
-                    @foreach (var p in Products.OrderByDescending(x => x.CreatedAt))
-                    {
-                        <div class="border border-border rounded-lg bg-background hover:border-primary-light hover:shadow-sm transition-all duration-200">
-                            <div class="p-4">
-                                <div class="flex items-start justify-between gap-4">
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-center gap-2">
-                                            <div class="font-semibold text-foreground truncate">@p.Title</div>
-                                            <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full bg-primary-subtle text-primary border border-primary/20">
-                                                @p.ProductTypeName
-                                            </span>
-                                        </div>
+                @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error">
+                        @ErrorMessage
+                    </div>
+                }
 
-                                        <div class="text-xs text-muted mt-1">
-                                            Creado: @p.CreatedAt.ToString("MMM dd, yyyy HH:mm")
-                                        </div>
-
-                                        @if (!string.IsNullOrWhiteSpace(p.Description))
-                                        {
-                                            <div class="text-sm text-foreground/90 mt-2 whitespace-pre-wrap">
-                                                @p.Description
-                                            </div>
-                                        }
-                                    </div>
-
-                                    <div class="flex items-start gap-2 flex-shrink-0">
-                                        <ActionButton Execute="@(() => OpenEditProductModal(p.Id))"
-                                                      Disabled="@_isVisitFinalized"
-                                                      Text="Abrir"
-                                                      Intent="ButtonIntent.Info"
-                                                      Variant="ButtonVariant.Outline"
-                                                      Size="ButtonSize.Sm" />
-
-                                    </div>
-                                </div>
-                            </div>
+                @if (HasProjectObjectives)
+                {
+                    <section class="rounded-xl border border-border bg-background shadow-sm">
+                        <div class="border-b border-border px-4 py-3 md:px-5">
+                            <h3 class="text-base font-bold text-foreground md:text-lg">
+                                Progreso de objetivos
+                            </h3>
                         </div>
-                    }
+
+                        <div class="p-4 md:p-5 @GetLockedContentClass()">
+                            <ProjectObjectivesProgress Objectives="ProjectObjectives"
+                                                       OnSaveActivityRequested="HandleActivitySaveAsync" />
+                        </div>
+                    </section>
+                }
+            }
+
+            <section class="rounded-xl border border-border bg-background shadow-sm">
+                <div class="border-b border-border px-4 py-3 md:px-5">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <h3 class="text-base font-bold text-foreground md:text-lg">
+                            Productos
+                        </h3>
+
+                        <div class="sm:shrink-0">
+                            <ActionButton Execute="OpenCreateProductModal"
+                                          Text="Agregar producto"
+                                          Disabled="@(IsLoading || IsVisitLocked)"
+                                          Intent="ButtonIntent.Add"
+                                          Variant="ButtonVariant.Filled"
+                                          Size="ButtonSize.Md">
+                                <Icon>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5">
+                                        <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+                                    </svg>
+                                </Icon>
+                            </ActionButton>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="mt-4 pt-4 border-t border-border">
-                    <div class="flex items-center justify-between text-xs text-muted">
-                        <span>
+                <div class="p-4 md:p-5">
+                    @if (!string.IsNullOrWhiteSpace(ProductsError))
+                    {
+                        <div class="rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error">
+                            @ProductsError
+                        </div>
+                    }
+                    else if (IsLoading || IsLoadingProducts)
+                    {
+                        <div class="flex items-center gap-3 py-4">
+                            <div class="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                            <span class="text-sm text-muted">Cargando productos...</span>
+                        </div>
+                    }
+                    else if (!HasProducts)
+                    {
+                        <div class="rounded-xl border border-dashed border-border bg-muted/5 px-4 py-8 text-center text-sm text-muted">
+                            No hay productos registrados para esta visita.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="space-y-3">
+                            @foreach (var product in OrderedProducts)
+                            {
+                                <article @key="product.Id" class="rounded-lg border border-border bg-background transition-all duration-200 hover:border-primary-light hover:shadow-sm">
+                                    <div class="p-4">
+                                        <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                            <div class="min-w-0 flex-1">
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <div class="truncate font-semibold text-foreground">
+                                                        @product.Title
+                                                    </div>
+
+                                                    <span class="inline-flex items-center rounded-full border border-primary/20 bg-primary-subtle px-2 py-0.5 text-xs font-semibold text-primary">
+                                                        @product.ProductTypeName
+                                                    </span>
+                                                </div>
+
+                                                <div class="mt-1 text-xs text-muted">
+                                                    @product.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                                                </div>
+
+                                                @if (!string.IsNullOrWhiteSpace(product.Description))
+                                                {
+                                                    <div class="mt-2 whitespace-pre-wrap text-sm text-foreground/90">
+                                                        @product.Description
+                                                    </div>
+                                                }
+                                            </div>
+
+                                            <div class="flex items-start gap-2 md:shrink-0">
+                                                <ActionButton Execute="@(() => OpenEditProductModal(product.Id))"
+                                                              Disabled="@IsVisitLocked"
+                                                              Text="Abrir"
+                                                              Intent="ButtonIntent.Info"
+                                                              Variant="ButtonVariant.Outline"
+                                                              Size="ButtonSize.Sm" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+
+                        <div class="mt-4 border-t border-border pt-4 text-xs text-muted">
                             Total de productos: <span class="font-semibold text-foreground">@Products.Count</span>
-                        </span>
-                    </div>
-                </div>
-            }
-        </div>
-    </div>
-
-    <!-- Sección de Problemas y Observaciones -->
-    <div class="bg-background border border-border rounded-xl shadow-sm">
-        <!-- Header de la sección -->
-        <div class="px-5 py-4 border-b border-border">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h3 class="text-lg font-bold text-foreground">
-                        Problemas y observaciones
-                    </h3>
-                    <p class="text-sm text-muted mt-1">
-                        Documenta problemas y observaciones encontradas durante la visita
-                    </p>
-                </div>
-
-                <ActionButton Execute="OnAddIssue"
-                              Text="Agregar problema"
-                              Intent="ButtonIntent.Add"
-                              Disabled="@(IsLoading || _isVisitFinalized)"
-                              Variant="ButtonVariant.Filled"
-                              Size="ButtonSize.Md">
-                    <Icon>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5">
-                            <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
-                        </svg>
-                    </Icon>
-                </ActionButton>
-            </div>
-        </div>
-
-        <!-- Contenido: Lista de problemas -->
-        <div class="p-5">
-            @if (VisitIssues == null || !VisitIssues.Any())
-            {
-                <div class="text-center py-12 px-4">
-                    <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/10 mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-8 h-8 text-muted">
-                            <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clip-rule="evenodd" />
-                        </svg>
-                    </div>
-                    <p class="text-sm text-muted font-medium">
-                        Aún no hay problemas registrados para esta visita
-                    </p>
-                    <p class="text-xs text-muted mt-1">
-                        Haz clic en "Agregar problema" para documentar problemas u observaciones
-                    </p>
-                </div>
-            }
-            else
-            {
-                <div class="space-y-4">
-                    @foreach (var issue in VisitIssues)
-                    {
-                        <div class="border border-border rounded-lg bg-background hover:border-primary-light hover:shadow-sm transition-all duration-200">
-                            <div class="p-4">
-                                <div class="flex items-start justify-between gap-4">
-                                    <!-- Contenido del problema -->
-                                    <div class="flex-1 min-w-0 space-y-3">
-                                        <!-- Descripción -->
-                                        <div>
-                                            <p class="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                                                @issue.Description
-                                            </p>
-                                        </div>
-
-                                        <!-- Metadata del problema -->
-                                        <div class="flex items-center gap-4 pt-2 border-t border-border/50">
-                                            <div class="flex items-center gap-2 text-xs text-muted">
-                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                                                    <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm.75-13a.75.75 0 0 0-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 0 0 0-1.5h-3.25V5Z" clip-rule="evenodd" />
-                                                </svg>
-                                                <span>Creado: @issue.CreatedAtUtc.ToString("MMM dd, yyyy HH:mm")</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Acciones: Editar y Eliminar -->
-                                    <div class="flex items-start gap-2 flex-shrink-0">
-                                        <ActionButton Execute="() => OnEditIssue.InvokeAsync((issue.VisitIssueId, issue))"
-                                                      Intent="ButtonIntent.Info"
-                                                      Disabled="@_isVisitFinalized"
-                                                      Variant="ButtonVariant.Ghost"
-                                                      Size="ButtonSize.Sm"
-                                                      Class="p-2 rounded-lg hover:bg-primary-subtle text-primary transition-colors">
-                                            <Icon>
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                </svg>
-                                            </Icon>
-                                        </ActionButton>
-
-                                        <ActionButton Execute="() => OnDeleteIssue.InvokeAsync(issue.VisitIssueId)"
-                                                      Disabled="@_isVisitFinalized"
-                                                      Intent="ButtonIntent.Delete"
-                                                      Variant="ButtonVariant.Ghost"
-                                                      Size="ButtonSize.Sm"
-                                                      ConfirmBeforeExecute="true"
-                                                      ConfirmTitle="Confirmar eliminación"
-                                                      ConfirmMessage="@($"¿Estás seguro de que deseas eliminar este problema? Esta acción no se puede deshacer.\n\nProblema: {(string.IsNullOrEmpty(issue.Description) ? "Sin descripción" : (issue.Description.Length > 100 ? issue.Description[..100] + "..." : issue.Description))}")"
-                                                      ConfirmButtonText="Eliminar"
-                                                      CancelButtonText="Cancelar"
-                                                      Class="p-2 rounded-lg hover:bg-error/10 text-error transition-colors">
-                                            <Icon>
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1 1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </Icon>
-                                        </ActionButton>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     }
                 </div>
+            </section>
 
-                <!-- Footer con contador -->
-                <div class="mt-4 pt-4 border-t border-border">
-                    <div class="flex items-center justify-between text-xs text-muted">
-                        <span>
-                            Total de problemas: <span class="font-semibold text-foreground">@VisitIssues.Count</span>
-                        </span>
+            <section class="rounded-xl border border-border bg-background shadow-sm">
+                <div class="border-b border-border px-4 py-3 md:px-5">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <h3 class="text-base font-bold text-foreground md:text-lg">
+                            Problemas y observaciones
+                        </h3>
+
+                        <div class="sm:shrink-0">
+                            <ActionButton Execute="OnAddIssue"
+                                          Text="Agregar problema"
+                                          Intent="ButtonIntent.Add"
+                                          Disabled="@(IsLoading || IsVisitLocked)"
+                                          Variant="ButtonVariant.Filled"
+                                          Size="ButtonSize.Md">
+                                <Icon>
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5">
+                                        <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+                                    </svg>
+                                </Icon>
+                            </ActionButton>
+                        </div>
                     </div>
                 </div>
-            }
+
+                <div class="p-4 md:p-5">
+                    @if (!HasVisitIssues)
+                    {
+                        <div class="rounded-xl border border-dashed border-border bg-muted/5 px-4 py-8 text-center text-sm text-muted">
+                            No hay problemas registrados para esta visita.
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="space-y-3">
+                            @foreach (var issue in OrderedVisitIssues)
+                            {
+                                <article @key="issue.VisitIssueId" class="rounded-lg border border-border bg-background transition-all duration-200 hover:border-primary-light hover:shadow-sm">
+                                    <div class="p-4">
+                                        <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                            <div class="min-w-0 flex-1">
+                                                <p class="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                                                    @issue.Description
+                                                </p>
+
+                                                <div class="mt-3 border-t border-border/50 pt-2 text-xs text-muted">
+                                                    @issue.CreatedAtUtc.ToString("dd/MM/yyyy HH:mm")
+                                                </div>
+                                            </div>
+
+                                            <div class="flex items-start gap-2 md:shrink-0">
+                                                <ActionButton Execute="() => OnEditIssue.InvokeAsync((issue.VisitIssueId, issue))"
+                                                              Intent="ButtonIntent.Info"
+                                                              Disabled="@IsVisitLocked"
+                                                              Variant="ButtonVariant.Ghost"
+                                                              Size="ButtonSize.Sm"
+                                                              Class="rounded-lg p-2 text-primary transition-colors hover:bg-primary-subtle"
+                                                              Title="Editar problema">
+                                                    <Icon>
+                                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                        </svg>
+                                                    </Icon>
+                                                </ActionButton>
+
+                                                <ActionButton Execute="() => OnDeleteIssue.InvokeAsync(issue.VisitIssueId)"
+                                                              Disabled="@IsVisitLocked"
+                                                              Intent="ButtonIntent.Delete"
+                                                              Variant="ButtonVariant.Ghost"
+                                                              Size="ButtonSize.Sm"
+                                                              ConfirmBeforeExecute="true"
+                                                              ConfirmTitle="Confirmar eliminación"
+                                                              ConfirmMessage="@BuildDeleteIssueMessage(issue)"
+                                                              ConfirmButtonText="Eliminar"
+                                                              CancelButtonText="Cancelar"
+                                                              Class="rounded-lg p-2 text-error transition-colors hover:bg-error/10"
+                                                              Title="Eliminar problema">
+                                                    <Icon>
+                                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1 1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </Icon>
+                                                </ActionButton>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+
+                        <div class="mt-4 border-t border-border pt-4 text-xs text-muted">
+                            Total de problemas: <span class="font-semibold text-foreground">@VisitIssues!.Count</span>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <section class="rounded-xl border border-border bg-background shadow-sm">
+                <div class="flex flex-col gap-3 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5">
+                    <p class="text-sm text-muted">
+                        Al finalizar, la visita quedará bloqueada para edición.
+                    </p>
+
+                    <div class="md:shrink-0">
+                        <ActionButton Text="@(_finalizingVisit ? "Finalizando..." : "Finalizar visita")"
+                                      Intent="ButtonIntent.Add"
+                                      Variant="ButtonVariant.Filled"
+                                      Size="ButtonSize.Md"
+                                      IsDisabled="@(IsLoading || IsVisitLocked)"
+                                      ConfirmBeforeExecute="true"
+                                      ConfirmTitle="Finalizar visita"
+                                      ConfirmMessage="¿Estás seguro de que deseas finalizar esta visita? Esto bloqueará todas las acciones."
+                                      ConfirmButtonText="Finalizar"
+                                      CancelButtonText="Cancelar"
+                                      Execute="FinalizeVisitAsync" />
+                    </div>
+                </div>
+            </section>
         </div>
     </div>
-
-    <!-- Footer actions -->
-    <div class="bg-background border border-border rounded-xl shadow-sm">
-        <div class="px-5 py-4 flex items-center justify-between gap-3">
-            <div class="text-sm text-muted">
-                Una vez finalizada, esta visita quedará bloqueada y no podrás editar actividades, productos ni problemas.
-            </div>
-
-            <div class="flex items-center gap-2">
-                <ActionButton Text="@(_finalizingVisit ? "Finalizando..." : "Finalizar visita")"
-                              Intent="ButtonIntent.Add"
-                              Variant="ButtonVariant.Filled"
-                              Size="ButtonSize.Md"
-                              IsDisabled="@(_finalizingVisit || IsLoading || _isVisitFinalized)"
-                              ConfirmBeforeExecute="true"
-                              ConfirmTitle="Finalizar visita"
-                              ConfirmMessage="¿Estás seguro de que deseas finalizar esta visita? Esto bloqueará todas las acciones."
-                              ConfirmButtonText="Finalizar"
-                              CancelButtonText="Cancelar"
-                              Execute="FinalizeVisitAsync" />
-            </div>
-        </div>
-    </div>
-
-
 </div>
-@* ===================== modal editar producto ===================== *@
+
 @if (_editProductModalOpen)
 {
-    <div class="fixed inset-0 z-50">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4">
         <div class="absolute inset-0 bg-black/50" @onclick="CloseEditProductModal"></div>
 
-        <div class="absolute inset-0 flex items-center justify-center p-4">
-            <div class="w-full max-w-3xl rounded-2xl border border-border bg-background shadow-xl overflow-hidden">
-                <div class="p-5 border-b border-border flex items-start justify-between gap-3">
+        <div class="relative z-10 flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl">
+            <div class="shrink-0 border-b border-border p-4 md:p-5">
+                <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <div class="text-lg font-semibold text-foreground">Editar producto</div>
                         <div class="text-sm text-muted">
@@ -358,18 +305,24 @@
                         </div>
                     </div>
 
-                    <button class="text-muted hover:text-foreground" @onclick="CloseEditProductModal" title="Cerrar">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <button type="button"
+                            class="text-muted transition-colors hover:text-foreground"
+                            @onclick="CloseEditProductModal"
+                            title="Cerrar"
+                            aria-label="Cerrar modal">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
+            </div>
 
-                <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+            <div class="flex-1 min-h-0 overflow-y-auto p-4 md:p-5">
+                <div class="space-y-4">
                     @if (_loadingEditModal)
                     {
-                        <div class="flex items-center gap-3 py-6">
-                            <div class="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        <div class="flex items-center gap-3 py-4">
+                            <div class="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
                             <span class="text-sm text-muted">Cargando producto...</span>
                         </div>
                     }
@@ -382,55 +335,55 @@
                             </div>
                         }
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                             <div>
-                                <label class="block text-sm font-medium text-foreground mb-1">Tipo de producto</label>
+                                <label class="mb-1 block text-sm font-medium text-foreground">Tipo de producto</label>
                                 <select class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
                                         disabled
                                         value="@_editSelectedProductTypeId">
-                                    @foreach (var t in _productTypes)
+                                    @foreach (var productType in _productTypes)
                                     {
-                                        <option value="@t.Id">@t.Name</option>
+                                        <option value="@productType.Id">@productType.Name</option>
                                     }
                                 </select>
-                                <div class="text-xs text-muted mt-1">
-                                    El tipo de producto está bloqueado para productos existentes.
-                                </div>
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-foreground mb-1">Título</label>
+                                <label class="mb-1 block text-sm font-medium text-foreground">Título</label>
                                 <input class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
                                        @bind="_editTitle" />
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-foreground mb-1">Descripción (opcional)</label>
-                            <textarea class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm min-h-[90px]"
+                            <label class="mb-1 block text-sm font-medium text-foreground">Descripción</label>
+                            <textarea class="min-h-[90px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
                                       @bind="_editDescription"></textarea>
                         </div>
 
-                        @if (_editDesign is not null && _editDesignDefinitions.Count > 0)
+                        @if (_editDesignDefinitions.Count > 0)
                         {
-                            <div class="pt-2">
-                                <div class="text-sm font-semibold text-foreground mb-2">Campos de plantilla</div>
+                            <div class="space-y-3 pt-1">
+                                <div class="text-sm font-semibold text-foreground">Campos</div>
 
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                                     @foreach (var def in _editDesignDefinitions)
                                     {
                                         <div class="rounded-xl border border-border p-3">
                                             <div class="flex items-center justify-between gap-2">
-                                                <div class="text-sm font-medium text-foreground truncate" title="@def.Label">
+                                                <div class="truncate text-sm font-medium text-foreground" title="@def.Label">
                                                     @def.Label
                                                 </div>
+
                                                 @if (def.IsRequired)
                                                 {
-                                                    <span class="text-xs px-2 py-0.5 rounded-full border border-error/30 bg-error/10 text-error">Obligatorio</span>
+                                                    <span class="rounded-full border border-error/30 bg-error/10 px-2 py-0.5 text-xs text-error">
+                                                        Obligatorio
+                                                    </span>
                                                 }
                                             </div>
 
-                                            <div class="text-xs text-muted mt-1">
+                                            <div class="mt-1 text-xs text-muted">
                                                 @def.DataTypeLabel
                                             </div>
 
@@ -444,7 +397,8 @@
                                                 }
                                                 else if (def.DataType == ProductAttributeDataType.Number)
                                                 {
-                                                    <input type="number" step="any"
+                                                    <input type="number"
+                                                           step="any"
                                                            class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
                                                            value="@GetEditFieldValue(def.AttributeDefinitionId)"
                                                            @onchange="(e) => SetEditFieldValue(def.AttributeDefinitionId, e.Value?.ToString())" />
@@ -472,13 +426,15 @@
                         else
                         {
                             <div class="rounded-xl border border-border bg-muted/10 p-3 text-sm text-muted">
-                                No se encontraron campos de plantilla para este tipo de producto.
+                                No hay campos de plantilla para este producto.
                             </div>
                         }
                     }
                 </div>
+            </div>
 
-                <div class="p-5 border-t border-border flex items-center justify-end gap-2">
+            <div class="shrink-0 border-t border-border p-4 md:p-5">
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <ActionButton Text="Cancelar"
                                   Intent="ButtonIntent.Neutral"
                                   Variant="ButtonVariant.Outline"
@@ -497,15 +453,14 @@
     </div>
 }
 
-@* ===================== modal crear producto (dentro del detail) ===================== *@
 @if (_productModalOpen)
 {
-    <div class="fixed inset-0 z-50">
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4">
         <div class="absolute inset-0 bg-black/50" @onclick="CloseCreateProductModal"></div>
 
-        <div class="absolute inset-0 flex items-center justify-center p-4">
-            <div class="w-full max-w-3xl rounded-2xl border border-border bg-background shadow-xl overflow-hidden">
-                <div class="p-5 border-b border-border flex items-start justify-between gap-3">
+        <div class="relative z-10 flex max-h-full w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl">
+            <div class="shrink-0 border-b border-border p-4 md:p-5">
+                <div class="flex items-start justify-between gap-3">
                     <div class="min-w-0">
                         <div class="text-lg font-semibold text-foreground">Crear producto</div>
                         <div class="text-sm text-muted">
@@ -513,18 +468,24 @@
                         </div>
                     </div>
 
-                    <button class="text-muted hover:text-foreground" @onclick="CloseCreateProductModal" title="Cerrar">
-                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <button type="button"
+                            class="text-muted transition-colors hover:text-foreground"
+                            @onclick="CloseCreateProductModal"
+                            title="Cerrar"
+                            aria-label="Cerrar modal">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
+            </div>
 
-                <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+            <div class="flex-1 min-h-0 overflow-y-auto p-4 md:p-5">
+                <div class="space-y-4">
                     @if (_loadingModal)
                     {
-                        <div class="flex items-center gap-3 py-6">
-                            <div class="w-6 h-6 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+                        <div class="flex items-center gap-3 py-4">
+                            <div class="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
                             <span class="text-sm text-muted">Cargando plantilla...</span>
                         </div>
                     }
@@ -537,55 +498,57 @@
                             </div>
                         }
 
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                             <div>
-                                <label class="block text-sm font-medium text-foreground mb-1">Tipo de producto</label>
+                                <label class="mb-1 block text-sm font-medium text-foreground">Tipo de producto</label>
                                 <select class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
                                         @onchange="OnProductTypeChanged"
                                         value="@_selectedProductTypeId">
-                                    <option value="0">-- Seleccionar --</option>
-                                    @foreach (var t in _productTypes)
+                                    <option value="0">Seleccionar</option>
+                                    @foreach (var productType in _productTypes)
                                     {
-                                        <option value="@t.Id">@t.Name</option>
+                                        <option value="@productType.Id">@productType.Name</option>
                                     }
                                 </select>
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-foreground mb-1">Título</label>
+                                <label class="mb-1 block text-sm font-medium text-foreground">Título</label>
                                 <input class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                                       placeholder="p. ej. Artículo, paper, capítulo..."
+                                       placeholder="Ej. artículo o paper"
                                        @bind="_title" />
                             </div>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-foreground mb-1">Descripción (opcional)</label>
-                            <textarea class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm min-h-[90px]"
-                                      placeholder="Descripción corta..."
+                            <label class="mb-1 block text-sm font-medium text-foreground">Descripción</label>
+                            <textarea class="min-h-[90px] w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
                                       @bind="_description"></textarea>
                         </div>
 
-                        @if (_design is not null && _designDefinitions.Count > 0)
+                        @if (_designDefinitions.Count > 0)
                         {
-                            <div class="pt-2">
-                                <div class="text-sm font-semibold text-foreground mb-2">Campos de plantilla</div>
+                            <div class="space-y-3 pt-1">
+                                <div class="text-sm font-semibold text-foreground">Campos</div>
 
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                                     @foreach (var def in _designDefinitions)
                                     {
                                         <div class="rounded-xl border border-border p-3">
                                             <div class="flex items-center justify-between gap-2">
-                                                <div class="text-sm font-medium text-foreground truncate" title="@def.Label">
+                                                <div class="truncate text-sm font-medium text-foreground" title="@def.Label">
                                                     @def.Label
                                                 </div>
+
                                                 @if (def.IsRequired)
                                                 {
-                                                    <span class="text-xs px-2 py-0.5 rounded-full border border-error/30 bg-error/10 text-error">Obligatorio</span>
+                                                    <span class="rounded-full border border-error/30 bg-error/10 px-2 py-0.5 text-xs text-error">
+                                                        Obligatorio
+                                                    </span>
                                                 }
                                             </div>
 
-                                            <div class="text-xs text-muted mt-1">
+                                            <div class="mt-1 text-xs text-muted">
                                                 @def.DataTypeLabel
                                             </div>
 
@@ -599,7 +562,8 @@
                                                 }
                                                 else if (def.DataType == ProductAttributeDataType.Number)
                                                 {
-                                                    <input type="number" step="any"
+                                                    <input type="number"
+                                                           step="any"
                                                            class="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
                                                            value="@GetFieldValue(def.AttributeDefinitionId)"
                                                            @onchange="(e) => SetFieldValue(def.AttributeDefinitionId, e.Value?.ToString())" />
@@ -628,13 +592,15 @@
                         else if (_selectedProductTypeId > 0)
                         {
                             <div class="rounded-xl border border-border bg-muted/10 p-3 text-sm text-muted">
-                                Este tipo no tiene campos de plantilla (o la plantilla no devolvió definiciones).
+                                Este tipo no tiene campos de plantilla.
                             </div>
                         }
                     }
                 </div>
+            </div>
 
-                <div class="p-5 border-t border-border flex items-center justify-end gap-2">
+            <div class="shrink-0 border-t border-border p-4 md:p-5">
+                <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <ActionButton Text="Cancelar"
                                   Intent="ButtonIntent.Neutral"
                                   Variant="ButtonVariant.Outline"
@@ -654,7 +620,8 @@
 }
 
 @code {
-    // ===== Parámetros para VisitIssues =====
+    private const int FinalizedVisitStateId = 3;
+
     [Parameter] public IReadOnlyList<VisitIssueResponseDTO>? VisitIssues { get; set; }
     [Parameter] public EventCallback OnAddIssue { get; set; }
     [Parameter] public EventCallback<(int issueId, VisitIssueResponseDTO issue)> OnEditIssue { get; set; }
@@ -666,32 +633,58 @@
     [Parameter] public string? ErrorMessage { get; set; }
     [Parameter] public EventCallback OnBack { get; set; }
     [Parameter] public EventCallback<(int visitId, int newStateId)> OnChangeVisitState { get; set; }
-
-    // ===== Objetivos del proyecto / actividades =====
-    [Parameter]
-    public IReadOnlyList<ProjectObjectiveWithActivitiesDTO> ProjectObjectives { get; set; }
-        = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
-
+    [Parameter] public IReadOnlyList<ProjectObjectiveWithActivitiesDTO> ProjectObjectives { get; set; } = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
     [Parameter] public EventCallback<ObjectiveActivityListItemDTO> OnSaveActivityRequested { get; set; }
-
-    // ===== Productos (solo del detalle) =====
     [Parameter] public IReadOnlyList<ProductListItemResponseDTO> Products { get; set; } = Array.Empty<ProductListItemResponseDTO>();
     [Parameter] public bool IsLoadingProducts { get; set; }
     [Parameter] public string? ProductsError { get; set; }
-    [Parameter] public EventCallback<int> OnProductCreated { get; set; } // visitId
-                                                                         // ===== Finalize visit =====
+    [Parameter] public EventCallback<int> OnProductCreated { get; set; }
+
     private bool _finalizingVisit;
     private bool _isVisitFinalized;
 
+    private bool _productModalOpen;
+    private bool _loadingModal;
+    private bool _savingProduct;
+    private string? _modalError;
+    private int _selectedProductTypeId;
+    private string _title = string.Empty;
+    private string? _description;
+    private List<CatalogListItemDTO> _productTypes = new();
+    private readonly Dictionary<int, string?> _fieldValues = new();
+    private readonly List<UiDesignField> _designDefinitions = new();
+
+    private bool _editProductModalOpen;
+    private bool _loadingEditModal;
+    private bool _savingEditProduct;
+    private string? _editModalError;
+    private int _editingProductId;
+    private int _editSelectedProductTypeId;
+    private string _editTitle = string.Empty;
+    private string? _editDescription;
+    private readonly Dictionary<int, string?> _editFieldValues = new();
+    private readonly List<UiDesignField> _editDesignDefinitions = new();
+
+    private bool HasProjectObjectives => ProjectObjectives.Count > 0;
+    private bool HasProducts => Products.Count > 0;
+    private bool HasVisitIssues => VisitIssues?.Count > 0;
+    private bool IsVisitLocked => _isVisitFinalized || _finalizingVisit;
+
+    private IEnumerable<ProductListItemResponseDTO> OrderedProducts =>
+        Products.OrderByDescending(x => x.CreatedAt);
+
+    private IEnumerable<VisitIssueResponseDTO> OrderedVisitIssues =>
+        (VisitIssues ?? Array.Empty<VisitIssueResponseDTO>())
+            .OrderByDescending(x => x.CreatedAtUtc);
+
     protected override void OnParametersSet()
     {
-        _isVisitFinalized = Value?.VisitStateId == 3;
+        _isVisitFinalized = _isVisitFinalized || Value?.VisitStateId == FinalizedVisitStateId;
     }
-
 
     private async Task FinalizeVisitAsync()
     {
-        if (_isVisitFinalized)
+        if (IsVisitLocked)
             return;
 
         if (VisitId <= 0)
@@ -704,21 +697,27 @@
 
         try
         {
-            var req = new FinalizeVisitRequestDTO
+            var request = new FinalizeVisitRequestDTO
             {
                 VisitId = VisitId,
-                FinalVisitStateId = 3 // ✅ tu estado final
+                FinalVisitStateId = FinalizedVisitStateId
             };
 
-            var res = await VisitService.FinalizeAsync(VisitId, req, CancellationToken.None);
+            var response = await VisitService.FinalizeAsync(VisitId, request, CancellationToken.None);
 
-            if (!res.Success || res.Response is null)
+            if (!response.Success || response.Response is null)
             {
-                Toast.ShowError(res.Error ?? "No se pudo finalizar la visita.");
+                Toast.ShowError(response.Error ?? "No se pudo finalizar la visita.");
                 return;
             }
 
-            _isVisitFinalized = true; // lock UI
+            _isVisitFinalized = true;
+
+            if (OnChangeVisitState.HasDelegate)
+            {
+                await OnChangeVisitState.InvokeAsync((VisitId, FinalizedVisitStateId));
+            }
+
             Toast.ShowSuccess("Visita finalizada.");
         }
         catch (Exception ex)
@@ -728,7 +727,6 @@
         finally
         {
             _finalizingVisit = false;
-            StateHasChanged();
         }
     }
 
@@ -740,349 +738,53 @@
         }
     }
 
-    // ===== Helpers de presentación =====
-    private string GetStatusBadgeClass(IssueStatus status)
-    {
-        return status switch
-        {
-            IssueStatus.Open => "px-3 py-1 text-xs font-semibold rounded-full bg-accent/10 text-accent border border-accent/20",
-            IssueStatus.InProgress => "px-3 py-1 text-xs font-semibold rounded-full bg-primary-subtle text-primary border border-primary-light",
-            IssueStatus.Resolved => "px-3 py-1 text-xs font-semibold rounded-full bg-secondary-subtle text-secondary border border-secondary-light",
-            _ => "px-3 py-1 text-xs font-semibold rounded-full bg-muted/10 text-muted border border-muted/20"
-        };
-    }
+    private string GetLockedContentClass() =>
+        IsVisitLocked ? "pointer-events-none opacity-60" : string.Empty;
 
-    private string GetStatusText(IssueStatus status)
-    {
-        return status switch
-        {
-            IssueStatus.Open => "Pendiente",
-            IssueStatus.InProgress => "En progreso",
-            IssueStatus.Resolved => "Resuelto",
-            _ => status.ToString()
-        };
-    }
+    private string GetFieldValue(int attributeDefinitionId) =>
+        _fieldValues.TryGetValue(attributeDefinitionId, out var value)
+            ? value ?? string.Empty
+            : string.Empty;
 
-    // =====================
-    // modal create product
-    // =====================
-    private bool _productModalOpen;
-    private bool _loadingModal;
-    private bool _savingProduct;
-    private string? _modalError;
+    private void SetFieldValue(int attributeDefinitionId, string? value) =>
+        _fieldValues[attributeDefinitionId] = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private int _selectedProductTypeId;
-    private string _title = string.Empty;
-    private string? _description;
+    private string GetEditFieldValue(int attributeDefinitionId) =>
+        _editFieldValues.TryGetValue(attributeDefinitionId, out var value)
+            ? value ?? string.Empty
+            : string.Empty;
 
-    private List<CatalogListItemDTO> _productTypes = new();
-    private ProductTypeDesignDetailDTO? _design;
-
-    private readonly Dictionary<int, string?> _fieldValues = new();
-    private readonly List<UiDesignField> _designDefinitions = new();
-    // =====================
-    // modal edit product
-    // =====================
-    private bool _editProductModalOpen;
-    private bool _loadingEditModal;
-    private bool _savingEditProduct;
-    private string? _editModalError;
-
-    private int _editingProductId;
-
-    private int _editSelectedProductTypeId;
-    private string _editTitle = string.Empty;
-    private string? _editDescription;
-
-    private ProductTypeDesignDetailDTO? _editDesign;
-    private readonly Dictionary<int, string?> _editFieldValues = new();
-    private readonly List<UiDesignField> _editDesignDefinitions = new();
-
-    private string GetEditFieldValue(int attributeDefinitionId)
-        => _editFieldValues.TryGetValue(attributeDefinitionId, out var v) ? (v ?? string.Empty) : string.Empty;
-
-    private void SetEditFieldValue(int attributeDefinitionId, string? value)
-        => _editFieldValues[attributeDefinitionId] = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-    private async Task OpenEditProductModal(int productId)
-    {
-        _editProductModalOpen = true;
-        _loadingEditModal = true;
-        _savingEditProduct = false;
-        _editModalError = null;
-
-        _editingProductId = productId;
-
-        _editSelectedProductTypeId = 0;
-        _editTitle = string.Empty;
-        _editDescription = null;
-
-        _editDesign = null;
-        _editFieldValues.Clear();
-        _editDesignDefinitions.Clear();
-
-        try
-        {
-            // 1) Asegura catálogo de tipos (para mostrar label en el select deshabilitado)
-            if (_productTypes.Count == 0)
-            {
-                var typesRes = await ProductTypeService.GetListAsync(CancellationToken.None);
-                if (!typesRes.Success || typesRes.Response is null)
-                {
-                    _editModalError = typesRes.Error ?? "No se pudieron cargar los tipos de producto.";
-                    return;
-                }
-
-                _productTypes = typesRes.Response
-                    .OrderBy(x => x.Name)
-                    .ToList();
-            }
-
-            // 2) Cargar detalle del producto (con Values)
-            var prodRes = await ProductService.GetByIdAsync(productId, CancellationToken.None);
-            if (!prodRes.Success || prodRes.Response is null)
-            {
-                _editModalError = prodRes.Error ?? "No se pudo cargar el producto.";
-                return;
-            }
-
-            var product = prodRes.Response;
-
-            _editSelectedProductTypeId = product.ProductTypeId;
-            _editTitle = product.Title ?? string.Empty;
-            _editDescription = product.Description;
-
-            // 3) Cargar template (definitions) del tipo
-            var designRes = await ProductTypeDesignService.GetByProductTypeIdAsync(
-                _editSelectedProductTypeId,
-                CancellationToken.None);
-
-            if (!designRes.Success || designRes.Response is null)
-            {
-                _editModalError = designRes.Error ?? "No se pudo cargar la plantilla del tipo de producto.";
-                return;
-            }
-
-            _editDesign = designRes.Response;
-
-            // 4) Construir fields UI + prefill desde product.Values
-            if (_editDesign.Definitions is not null && _editDesign.Definitions.Count > 0)
-            {
-                foreach (var def in _editDesign.Definitions.OrderBy(x => x.DisplayOrder))
-                {
-                    _editDesignDefinitions.Add(new UiDesignField
-                    {
-                        AttributeDefinitionId = def.Id,                 // ProductAttributeDefinitionId
-                        Label = def.ProductAttributeName,
-                        IsRequired = def.IsRequired,
-                        DisplayOrder = def.DisplayOrder,
-                        DataType = def.DataType,
-                        Unit = def.Unit,
-                        DataTypeLabel = def.DataType switch
-                        {
-                            ProductAttributeDataType.Number => "Número",
-                            ProductAttributeDataType.Date => "Fecha",
-                            ProductAttributeDataType.Url => "URL",
-                            _ => "Texto"
-                        }
-                    });
-
-                    // Prefill value
-                    var existing = product.Values
-                        .FirstOrDefault(v => v.AttributeDefinitionId == def.Id)
-                        ?.Value;
-
-                    _editFieldValues[def.Id] = string.IsNullOrWhiteSpace(existing) ? null : existing;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _editModalError = $"Error al abrir el modal de edición: {ex.Message}";
-        }
-        finally
-        {
-            _loadingEditModal = false;
-            StateHasChanged();
-        }
-    }
-
-
-    private void CloseEditProductModal()
-    {
-        _editProductModalOpen = false;
-        _editModalError = null;
-        _savingEditProduct = false;
-        _loadingEditModal = false;
-
-        _editingProductId = 0;
-        _editSelectedProductTypeId = 0;
-        _editTitle = string.Empty;
-        _editDescription = null;
-
-        _editDesign = null;
-        _editFieldValues.Clear();
-        _editDesignDefinitions.Clear();
-    }
-
-    private async Task SaveEditedProductAsync()
-    {
-        _editModalError = null;
-
-        if (_editingProductId <= 0)
-        {
-            _editModalError = "ProductId inválido.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(_editTitle))
-        {
-            _editModalError = "El título es obligatorio.";
-            return;
-        }
-
-        foreach (var req in _editDesignDefinitions.Where(x => x.IsRequired))
-        {
-            var v = GetEditFieldValue(req.AttributeDefinitionId);
-            if (string.IsNullOrWhiteSpace(v))
-            {
-                _editModalError = $"Completa el campo obligatorio: {req.Label}.";
-                return;
-            }
-        }
-
-        _savingEditProduct = true;
-
-        try
-        {
-            // Construimos Values SOLO con los campos que tienen valor.
-            // (Values = null => no tocar valores, Values con items => upsert esos valores)
-            var values = new List<ProductValueUpsertDTO>();
-
-            foreach (var f in _editDesignDefinitions.OrderBy(x => x.DisplayOrder))
-            {
-                var val = GetEditFieldValue(f.AttributeDefinitionId);
-                if (string.IsNullOrWhiteSpace(val))
-                    continue;
-
-                values.Add(new ProductValueUpsertDTO
-                {
-                    AttributeDefinitionId = f.AttributeDefinitionId,
-                    Value = val
-                });
-            }
-
-            var updateReq = new ProductUpdateRequestDTO
-            {
-                Id = _editingProductId,
-                Title = _editTitle.Trim(),
-                Description = string.IsNullOrWhiteSpace(_editDescription) ? null : _editDescription.Trim(),
-
-                // Si no estás editando autores desde este modal, déjalo en null para NO tocar.
-                AuthorUserIds = null,
-
-                // Si quieres que edición aplique cambios a Values cuando haya inputs:
-                Values = _editDesignDefinitions.Count == 0
-                    ? null                // no hay template => no tocar valores
-                    : values              // upsert solo los llenos (no borra los vacíos)
-            };
-
-            var res = await ProductService.UpdateAsync(updateReq, CancellationToken.None);
-
-            if (!res.Success)
-            {
-                Toast.ShowError(res.Error ?? "No se pudo actualizar el producto.");
-                return;
-            }
-
-            Toast.ShowSuccess("Producto actualizado correctamente.");
-            CloseEditProductModal();
-
-            // Para refrescar lista en el padre (si ya lo usas así)
-            if (OnProductCreated.HasDelegate)
-                await OnProductCreated.InvokeAsync(VisitId);
-        }
-        catch (Exception ex)
-        {
-            Toast.ShowError($"Error al actualizar el producto: {ex.Message}");
-        }
-        finally
-        {
-            _savingEditProduct = false;
-            StateHasChanged();
-        }
-    }
-
-
-    // =====================
-    // minimal local edit models (replace with your real DTO mapping)
-    // =====================
-    private sealed class ProductDetailForEdit
-    {
-        public int ProductTypeId { get; set; }
-        public string? Title { get; set; }
-        public string? Description { get; set; }
-        public List<ProductValueForEdit> Values { get; set; } = new();
-    }
-
-    private sealed class ProductValueForEdit
-    {
-        public int AttributeDefinitionId { get; set; }
-        public string? Value { get; set; }
-    }
-
-    // Fallback: si aún no tienes endpoint de detalle, usa lo que viene en la lista (sin values)
-    private ProductDetailForEdit? TryMapFromListItem(int productId)
-    {
-        var p = Products?.FirstOrDefault(x => x.Id == productId);
-        if (p is null) return null;
-
-        return new ProductDetailForEdit
-        {
-            ProductTypeId = p.ProductTypeId, // si tu ListItem no tiene ProductTypeId, quita esto y obliga endpoint detalle
-            Title = p.Title,
-            Description = p.Description,
-            Values = new List<ProductValueForEdit>()
-        };
-    }
-
-    private sealed class UiDesignField
-    {
-        public int AttributeDefinitionId { get; set; } // ProductAttributeDefinitionDetailDTO.Id
-        public string Label { get; set; } = string.Empty; // ProductAttributeName
-        public bool IsRequired { get; set; }
-        public int DisplayOrder { get; set; }
-        public ProductAttributeDataType DataType { get; set; } = ProductAttributeDataType.Text;
-        public string? Unit { get; set; }
-        public string DataTypeLabel { get; set; } = "Texto";
-    }
+    private void SetEditFieldValue(int attributeDefinitionId, string? value) =>
+        _editFieldValues[attributeDefinitionId] = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private async Task OpenCreateProductModal()
     {
+        if (IsVisitLocked)
+            return;
+
         _productModalOpen = true;
         _loadingModal = true;
         _savingProduct = false;
         _modalError = null;
-
         _selectedProductTypeId = 0;
         _title = string.Empty;
         _description = null;
 
-        _design = null;
         _fieldValues.Clear();
         _designDefinitions.Clear();
 
         try
         {
-            var typesRes = await ProductTypeService.GetListAsync(CancellationToken.None);
-            if (!typesRes.Success || typesRes.Response is null)
+            var typesResponse = await ProductTypeService.GetListAsync(CancellationToken.None);
+
+            if (!typesResponse.Success || typesResponse.Response is null)
             {
                 _productTypes = new();
-                _modalError = typesRes.Error ?? "No se pudieron cargar los tipos de producto.";
+                _modalError = typesResponse.Error ?? "No se pudieron cargar los tipos de producto.";
                 return;
             }
 
-            _productTypes = typesRes.Response
+            _productTypes = typesResponse.Response
                 .OrderBy(x => x.Name)
                 .ToList();
         }
@@ -1093,18 +795,19 @@
         finally
         {
             _loadingModal = false;
-            StateHasChanged();
         }
     }
 
     private void CloseCreateProductModal()
     {
         _productModalOpen = false;
-        _modalError = null;
-        _savingProduct = false;
         _loadingModal = false;
+        _savingProduct = false;
+        _modalError = null;
+        _selectedProductTypeId = 0;
+        _title = string.Empty;
+        _description = null;
 
-        _design = null;
         _fieldValues.Clear();
         _designDefinitions.Clear();
     }
@@ -1112,7 +815,6 @@
     private async Task OnProductTypeChanged(ChangeEventArgs e)
     {
         _modalError = null;
-        _design = null;
         _fieldValues.Clear();
         _designDefinitions.Clear();
 
@@ -1128,42 +830,34 @@
             return;
 
         _loadingModal = true;
+
         try
         {
-            var designRes = await ProductTypeDesignService.GetByProductTypeIdAsync(_selectedProductTypeId, CancellationToken.None);
-            if (!designRes.Success || designRes.Response is null)
+            var designResponse = await ProductTypeDesignService.GetByProductTypeIdAsync(_selectedProductTypeId, CancellationToken.None);
+
+            if (!designResponse.Success || designResponse.Response is null)
             {
-                _design = null;
-                _modalError = designRes.Error ?? "No se pudo cargar la plantilla del tipo de producto.";
+                _modalError = designResponse.Error ?? "No se pudo cargar la plantilla del tipo de producto.";
                 return;
             }
 
-            _design = designRes.Response;
+            if (designResponse.Response.Definitions is null)
+                return;
 
-            if (_design.Definitions is not null && _design.Definitions.Count > 0)
+            foreach (var definition in designResponse.Response.Definitions.OrderBy(x => x.DisplayOrder))
             {
-                foreach (var def in _design.Definitions.OrderBy(x => x.DisplayOrder))
+                _designDefinitions.Add(new UiDesignField
                 {
-                    _designDefinitions.Add(new UiDesignField
-                    {
-                        AttributeDefinitionId = def.Id,
-                        Label = def.ProductAttributeName,
-                        IsRequired = def.IsRequired,
-                        DisplayOrder = def.DisplayOrder,
-                        DataType = def.DataType,
-                        Unit = def.Unit,
-                        DataTypeLabel = def.DataType switch
-                        {
-                            ProductAttributeDataType.Number => "Número",
-                            ProductAttributeDataType.Date => "Fecha",
-                            ProductAttributeDataType.Url => "URL",
-                            _ => "Texto"
-                        }
-                    });
+                    AttributeDefinitionId = definition.Id,
+                    Label = definition.ProductAttributeName,
+                    IsRequired = definition.IsRequired,
+                    DisplayOrder = definition.DisplayOrder,
+                    DataType = definition.DataType,
+                    Unit = definition.Unit,
+                    DataTypeLabel = GetDataTypeLabel(definition.DataType)
+                });
 
-                    if (!_fieldValues.ContainsKey(def.Id))
-                        _fieldValues[def.Id] = null;
-                }
+                _fieldValues[definition.Id] = null;
             }
         }
         catch (Exception ex)
@@ -1173,15 +867,8 @@
         finally
         {
             _loadingModal = false;
-            StateHasChanged();
         }
     }
-
-    private string GetFieldValue(int attributeDefinitionId)
-        => _fieldValues.TryGetValue(attributeDefinitionId, out var v) ? (v ?? string.Empty) : string.Empty;
-
-    private void SetFieldValue(int attributeDefinitionId, string? value)
-        => _fieldValues[attributeDefinitionId] = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private async Task SaveProductAsync()
     {
@@ -1211,35 +898,30 @@
             return;
         }
 
-        foreach (var req in _designDefinitions.Where(x => x.IsRequired))
+        foreach (var requiredField in _designDefinitions.Where(x => x.IsRequired))
         {
-            var v = GetFieldValue(req.AttributeDefinitionId);
-            if (string.IsNullOrWhiteSpace(v))
+            if (string.IsNullOrWhiteSpace(GetFieldValue(requiredField.AttributeDefinitionId)))
             {
-                _modalError = $"Completa el campo obligatorio: {req.Label}.";
+                _modalError = $"Completa el campo obligatorio: {requiredField.Label}.";
                 return;
             }
         }
 
         _savingProduct = true;
+
         try
         {
-            var values = new List<ProductValueUpsertDTO>();
-
-            foreach (var f in _designDefinitions.OrderBy(x => x.DisplayOrder))
-            {
-                var val = GetFieldValue(f.AttributeDefinitionId);
-                if (string.IsNullOrWhiteSpace(val))
-                    continue;
-
-                values.Add(new ProductValueUpsertDTO
+            var values = _designDefinitions
+                .OrderBy(x => x.DisplayOrder)
+                .Select(field => new ProductValueUpsertDTO
                 {
-                    AttributeDefinitionId = f.AttributeDefinitionId,
-                    Value = val
-                });
-            }
+                    AttributeDefinitionId = field.AttributeDefinitionId,
+                    Value = GetFieldValue(field.AttributeDefinitionId)
+                })
+                .Where(value => !string.IsNullOrWhiteSpace(value.Value))
+                .ToList();
 
-            var req = new ProductCreateRequestDTO
+            var request = new ProductCreateRequestDTO
             {
                 ProjectId = ProjectId,
                 VisitId = VisitId,
@@ -1250,11 +932,11 @@
                 AuthorUserIds = new List<int>()
             };
 
-            var res = await ProductService.CreateAsync(req, CancellationToken.None);
+            var response = await ProductService.CreateAsync(request, CancellationToken.None);
 
-            if (!res.Success)
+            if (!response.Success)
             {
-                Toast.ShowError(res.Error ?? "No se pudo crear el producto.");
+                Toast.ShowError(response.Error ?? "No se pudo crear el producto.");
                 return;
             }
 
@@ -1262,7 +944,9 @@
             CloseCreateProductModal();
 
             if (OnProductCreated.HasDelegate)
+            {
                 await OnProductCreated.InvokeAsync(VisitId);
+            }
         }
         catch (Exception ex)
         {
@@ -1271,7 +955,215 @@
         finally
         {
             _savingProduct = false;
-            StateHasChanged();
         }
+    }
+
+    private async Task OpenEditProductModal(int productId)
+    {
+        if (IsVisitLocked)
+            return;
+
+        _editProductModalOpen = true;
+        _loadingEditModal = true;
+        _savingEditProduct = false;
+        _editModalError = null;
+        _editingProductId = productId;
+        _editSelectedProductTypeId = 0;
+        _editTitle = string.Empty;
+        _editDescription = null;
+
+        _editFieldValues.Clear();
+        _editDesignDefinitions.Clear();
+
+        try
+        {
+            if (_productTypes.Count == 0)
+            {
+                var typesResponse = await ProductTypeService.GetListAsync(CancellationToken.None);
+
+                if (!typesResponse.Success || typesResponse.Response is null)
+                {
+                    _editModalError = typesResponse.Error ?? "No se pudieron cargar los tipos de producto.";
+                    return;
+                }
+
+                _productTypes = typesResponse.Response
+                    .OrderBy(x => x.Name)
+                    .ToList();
+            }
+
+            var productResponse = await ProductService.GetByIdAsync(productId, CancellationToken.None);
+
+            if (!productResponse.Success || productResponse.Response is null)
+            {
+                _editModalError = productResponse.Error ?? "No se pudo cargar el producto.";
+                return;
+            }
+
+            var product = productResponse.Response;
+
+            _editSelectedProductTypeId = product.ProductTypeId;
+            _editTitle = product.Title ?? string.Empty;
+            _editDescription = product.Description;
+
+            var designResponse = await ProductTypeDesignService.GetByProductTypeIdAsync(_editSelectedProductTypeId, CancellationToken.None);
+
+            if (!designResponse.Success || designResponse.Response is null)
+            {
+                _editModalError = designResponse.Error ?? "No se pudo cargar la plantilla del tipo de producto.";
+                return;
+            }
+
+            if (designResponse.Response.Definitions is null)
+                return;
+
+            foreach (var definition in designResponse.Response.Definitions.OrderBy(x => x.DisplayOrder))
+            {
+                _editDesignDefinitions.Add(new UiDesignField
+                {
+                    AttributeDefinitionId = definition.Id,
+                    Label = definition.ProductAttributeName,
+                    IsRequired = definition.IsRequired,
+                    DisplayOrder = definition.DisplayOrder,
+                    DataType = definition.DataType,
+                    Unit = definition.Unit,
+                    DataTypeLabel = GetDataTypeLabel(definition.DataType)
+                });
+
+                var existingValue = product.Values
+                    .FirstOrDefault(x => x.AttributeDefinitionId == definition.Id)
+                    ?.Value;
+
+                _editFieldValues[definition.Id] = string.IsNullOrWhiteSpace(existingValue) ? null : existingValue;
+            }
+        }
+        catch (Exception ex)
+        {
+            _editModalError = $"Error al abrir el modal de edición: {ex.Message}";
+        }
+        finally
+        {
+            _loadingEditModal = false;
+        }
+    }
+
+    private void CloseEditProductModal()
+    {
+        _editProductModalOpen = false;
+        _loadingEditModal = false;
+        _savingEditProduct = false;
+        _editModalError = null;
+        _editingProductId = 0;
+        _editSelectedProductTypeId = 0;
+        _editTitle = string.Empty;
+        _editDescription = null;
+
+        _editFieldValues.Clear();
+        _editDesignDefinitions.Clear();
+    }
+
+    private async Task SaveEditedProductAsync()
+    {
+        _editModalError = null;
+
+        if (_editingProductId <= 0)
+        {
+            _editModalError = "ProductId inválido.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_editTitle))
+        {
+            _editModalError = "El título es obligatorio.";
+            return;
+        }
+
+        foreach (var requiredField in _editDesignDefinitions.Where(x => x.IsRequired))
+        {
+            if (string.IsNullOrWhiteSpace(GetEditFieldValue(requiredField.AttributeDefinitionId)))
+            {
+                _editModalError = $"Completa el campo obligatorio: {requiredField.Label}.";
+                return;
+            }
+        }
+
+        _savingEditProduct = true;
+
+        try
+        {
+            var values = _editDesignDefinitions
+                .OrderBy(x => x.DisplayOrder)
+                .Select(field => new ProductValueUpsertDTO
+                {
+                    AttributeDefinitionId = field.AttributeDefinitionId,
+                    Value = GetEditFieldValue(field.AttributeDefinitionId)
+                })
+                .Where(value => !string.IsNullOrWhiteSpace(value.Value))
+                .ToList();
+
+            var request = new ProductUpdateRequestDTO
+            {
+                Id = _editingProductId,
+                Title = _editTitle.Trim(),
+                Description = string.IsNullOrWhiteSpace(_editDescription) ? null : _editDescription.Trim(),
+                AuthorUserIds = null,
+                Values = _editDesignDefinitions.Count == 0 ? null : values
+            };
+
+            var response = await ProductService.UpdateAsync(request, CancellationToken.None);
+
+            if (!response.Success)
+            {
+                Toast.ShowError(response.Error ?? "No se pudo actualizar el producto.");
+                return;
+            }
+
+            Toast.ShowSuccess("Producto actualizado correctamente.");
+            CloseEditProductModal();
+
+            if (OnProductCreated.HasDelegate)
+            {
+                await OnProductCreated.InvokeAsync(VisitId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al actualizar el producto: {ex.Message}");
+        }
+        finally
+        {
+            _savingEditProduct = false;
+        }
+    }
+
+    private static string GetDataTypeLabel(ProductAttributeDataType dataType) =>
+        dataType switch
+        {
+            ProductAttributeDataType.Number => "Número",
+            ProductAttributeDataType.Date => "Fecha",
+            ProductAttributeDataType.Url => "URL",
+            _ => "Texto"
+        };
+
+    private static string BuildDeleteIssueMessage(VisitIssueResponseDTO issue)
+    {
+        var description = string.IsNullOrWhiteSpace(issue.Description)
+            ? "Sin descripción"
+            : issue.Description.Length > 100
+                ? $"{issue.Description[..100]}..."
+                : issue.Description;
+
+        return $"¿Estás seguro de que deseas eliminar este problema? Esta acción no se puede deshacer.\n\nProblema: {description}";
+    }
+
+    private sealed class UiDesignField
+    {
+        public int AttributeDefinitionId { get; set; }
+        public string Label { get; set; } = string.Empty;
+        public bool IsRequired { get; set; }
+        public int DisplayOrder { get; set; }
+        public ProductAttributeDataType DataType { get; set; } = ProductAttributeDataType.Text;
+        public string? Unit { get; set; }
+        public string DataTypeLabel { get; set; } = "Texto";
     }
 }

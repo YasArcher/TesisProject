@@ -50,9 +50,9 @@
 @inject IProjectStateClientService ProjectStateService
 @inject IExternalPeriodsClientService ExternalPeriodsService
 
-<div class="flex flex-col h-full">
-    <!-- Header sticky -->
-    <div class="sticky top-0 z-10 rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm shrink-0">
+<div class="h-full min-h-0 flex flex-col">
+    <!-- Header -->
+    <div class="shrink-0 rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
             <!-- Izquierda -->
             <div class="space-y-3 min-w-0 flex-1">
@@ -108,19 +108,21 @@
     </div>
 
     <!-- Body -->
-    <div class="flex-1 overflow-y-auto min-h-0">
+    <div class="flex-1 min-h-0 overflow-hidden">
         @if (_loadingPage)
         {
-            <div class="p-6">
-                <div class="flex items-center justify-center gap-4 p-8 bg-primary-subtle rounded-xl border border-primary/20">
-                    <div class="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full"></div>
-                    <div class="text-primary font-medium">Cargando editor...</div>
+            <div class="h-full min-h-0 p-6 flex flex-col">
+                <div class="flex-1 min-h-0 flex items-center justify-center">
+                    <div class="flex items-center justify-center gap-4 p-8 bg-primary-subtle rounded-xl border border-primary/20">
+                        <div class="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full"></div>
+                        <div class="text-primary font-medium">Cargando editor...</div>
+                    </div>
                 </div>
             </div>
         }
         else if (!string.IsNullOrEmpty(_error))
         {
-            <div class="p-6">
+            <div class="h-full min-h-0 p-6 flex flex-col">
                 <div class="p-6 rounded-2xl border border-error/20 bg-error/10 text-error">
                     @_error
                 </div>
@@ -128,7 +130,7 @@
         }
         else if (_project is null)
         {
-            <div class="p-6">
+            <div class="h-full min-h-0 p-6 flex flex-col">
                 <div class="p-6 rounded-2xl border border-border bg-background">
                     No se encontró el proyecto.
                 </div>
@@ -136,89 +138,93 @@
         }
         else
         {
-            <div class="p-6">
-                <Tabs ActiveKey="@_activeTab" OnChange="OnTabChanged">
+            <div class="h-full min-h-0 p-6 flex flex-col">
+                <div class="flex-1 min-h-0 overflow-hidden">
+                    <Tabs ActiveKey="@_activeTab" OnChange="OnTabChanged">
 
-                    <Tab Key="general" Title="General">
-                        <ChildContent>
-                            <ProjectEditGeneralTab ProjectId="@ProjectId"
-                                                   Project="@_project"
-                                                   Dto="@_generalDto"
-                                                   ProjectTypes="@_projectTypes"
-                                                   ProjectStates="@_projectStates"
-                                                   Convocations="@_convocations"
-                                                   IsLoading="@_loadingGeneral"
-                                                   IsSaving="@_savingGeneral"
-                                                   ErrorMessage="@_generalError"
-                                                   ProjectOriginTypes="@_projectOriginTypes"
-                                                   OnSaveRequested="HandleSaveGeneralAsync"
-                                                   OnEditDocument="HandleEditDocument" />
-                        </ChildContent>
-                    </Tab>
+                        <Tab Key="general" Title="General">
+                            <ChildContent>
+                                <ProjectEditGeneralTab ProjectId="@ProjectId"
+                                                       Project="@_project"
+                                                       Dto="@_generalDto"
+                                                       ProjectTypes="@_projectTypes"
+                                                       ProjectStates="@_projectStates"
+                                                       Convocations="@_convocations"
+                                                       IsLoading="@_loadingGeneral"
+                                                       IsSaving="@_savingGeneral"
+                                                       ErrorMessage="@_generalError"
+                                                       ProjectOriginTypes="@_projectOriginTypes"
+                                                       OnSaveRequested="HandleSaveGeneralAsync"
+                                                       OnEditDocument="HandleEditDocument" />
+                            </ChildContent>
+                        </Tab>
 
-                    <Tab Key="categories" Title="Categorías">
-                        <ChildContent>
-                            <ProjectEditCategoriesTab ProjectId="@ProjectId"
+                        <Tab Key="categories" Title="Categorías">
+                            <ChildContent>
+                                <ProjectEditCategoriesTab ProjectId="@ProjectId"
+                                                          Project="@_project"
+                                                          IsLoading="@_loadingCategories"
+                                                          IsSaving="@_savingCategories"
+                                                          ErrorMessage="@_categoriesError"
+                                                          ResearchCategoryTree="@_researchCategoryTree"
+                                                          ResearchCategoryTypes="@_researchCategoryTypes"
+                                                          ResearchCategoryGroups="@_researchCategoryGroups"
+                                                          OnSaveRequested="HandleSaveCategoriesAsync" />
+                            </ChildContent>
+                        </Tab>
+
+                        <Tab Key="budget" Title="Presupuesto">
+                            <ChildContent>
+                                <ProjectEditBudgetTab ProjectId="@ProjectId"
                                                       Project="@_project"
-                                                      IsLoading="@_loadingCategories"
-                                                      IsSaving="@_savingCategories"
-                                                      ErrorMessage="@_categoriesError"
-                                                      ResearchCategoryTree="@_researchCategoryTree"
-                                                      ResearchCategoryTypes="@_researchCategoryTypes"
-                                                      ResearchCategoryGroups="@_researchCategoryGroups"
-                                                      OnSaveRequested="HandleSaveCategoriesAsync" />
-                        </ChildContent>
-                    </Tab>
+                                                      IsLoading="@_loadingBudget"
+                                                      ErrorMessage="@_budgetError"
+                                                      Budgets="@_budgets"
+                                                      BudgetTransactionsByBudgetId="@_budgetTransactions"
+                                                      TransactionTypes="@_transactionTypes"
+                                                      FundingTypes="@_fundingTypes"
+                                                      SavingBudgetIds="@_savingBudgetIds"
+                                                      CreatingBudgetProjectIds="@_creatingBudgetProjectIds"
+                                                      UpdatingTransactionIds="@_updatingTransactionIds"
+                                                      DeletingBudgetIds="@_deletingBudgetIds"
+                                                      OnCreateBudgetRequested="HandleCreateBudgetAsync"
+                                                      OnSaveBudgetRequested="HandleSaveBudgetAsync"
+                                                      OnUpdateTransactionRequested="HandleUpdateTransactionAsync"
+                                                      OnDeleteBudgetRequested="HandleDeleteBudgetAsync" />
+                            </ChildContent>
+                        </Tab>
 
-                    <Tab Key="budget" Title="Presupuesto">
-                        <ChildContent>
-                            <ProjectEditBudgetTab ProjectId="@ProjectId"
-                                                  Project="@_project"
-                                                  IsLoading="@_loadingBudget"
-                                                  ErrorMessage="@_budgetError"
-                                                  Budgets="@_budgets"
-                                                  BudgetTransactionsByBudgetId="@_budgetTransactions"
-                                                  TransactionTypes="@_transactionTypes"
-                                                  FundingTypes="@_fundingTypes"
-                                                  SavingBudgetIds="@_savingBudgetIds"
-                                                  CreatingBudgetProjectIds="@_creatingBudgetProjectIds"
-                                                  UpdatingTransactionIds="@_updatingTransactionIds"
-                                                  DeletingBudgetIds="@_deletingBudgetIds"
-                                                  OnCreateBudgetRequested="HandleCreateBudgetAsync"
-                                                  OnSaveBudgetRequested="HandleSaveBudgetAsync"
-                                                  OnUpdateTransactionRequested="HandleUpdateTransactionAsync"
-                                                  OnDeleteBudgetRequested="HandleDeleteBudgetAsync" />
-                        </ChildContent>
-                    </Tab>
+                        <Tab Key="objectives" Title="Objetivos">
+                            <ChildContent>
+                                <ProjectEditObjectivesTab ProjectId="@ProjectId"
+                                                          IsLoading="@_loadingObjectives"
+                                                          IsSaving="@_savingObjectives"
+                                                          ErrorMessage="@_objectivesError"
+                                                          OnSaveRequested="HandleSaveObjectivesAsync" />
+                            </ChildContent>
+                        </Tab>
 
-                    <Tab Key="objectives" Title="Objetivos">
-                        <ChildContent>
-                            <ProjectEditObjectivesTab ProjectId="@ProjectId"
-                                                      IsLoading="@_loadingObjectives"
-                                                      IsSaving="@_savingObjectives"
-                                                      ErrorMessage="@_objectivesError"
-                                                      OnSaveRequested="HandleSaveObjectivesAsync" />
-                        </ChildContent>
-                    </Tab>
-                    <Tab Key="visits" Title="Visitas">
-                        <ChildContent>
-                            <ProjectEditVisitsTab IsLoading="@_loadingVisits"
-                                                  ErrorMessage="@_visitsError"
-                                                  Items="@_visits"
-                                                  VisitStates="@_visitStates"
-                                                  SavingVisitIds="@_savingVisitIds"
-                                                  DeletingVisitIds="@_deletingVisitIds"
-                                                  IsCreating="@_creatingVisit"
-                                                  OnSaveRequested="HandleSaveVisitStateAsync"
-                                                  OnCreateRequested="HandleCreateVisitAsync"
-                                                  OnDeleteRequested="HandleDeleteVisitAsync" />
-                        </ChildContent>
-                    </Tab>
-                </Tabs>
+                        <Tab Key="visits" Title="Visitas">
+                            <ChildContent>
+                                <ProjectEditVisitsTab IsLoading="@_loadingVisits"
+                                                      ErrorMessage="@_visitsError"
+                                                      Items="@_visits"
+                                                      VisitStates="@_visitStates"
+                                                      SavingVisitIds="@_savingVisitIds"
+                                                      DeletingVisitIds="@_deletingVisitIds"
+                                                      IsCreating="@_creatingVisit"
+                                                      OnSaveRequested="HandleSaveVisitStateAsync"
+                                                      OnCreateRequested="HandleCreateVisitAsync"
+                                                      OnDeleteRequested="HandleDeleteVisitAsync" />
+                            </ChildContent>
+                        </Tab>
+                    </Tabs>
+                </div>
             </div>
         }
     </div>
 </div>
+
 <DocumentEditModal Id="document-edit-modal"
                    Title="Editar documento inicial del Proyecto"
                    DocumentId="@_editingDocumentId"
@@ -227,6 +233,7 @@
                    ErrorMessage="@_docEditError"
                    ErrorMessageChanged="v => _docEditError = v"
                    OnSaved="HandleDocumentSaved" />
+
 @code {
     [Parameter] public int ProjectId { get; set; }
 

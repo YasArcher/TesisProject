@@ -1,46 +1,52 @@
 ﻿@typeparam TItem
-<div class="relative h-full min-h-0">
-    <div class="bg-background border border-border rounded-xl shadow-lg shadow-[color-mix(in_srgb,var(--color-foreground)_10%,transparent)] overflow-hidden flex flex-col h-full min-h-0"
+
+@{
+    var itemsList = Items?.ToList() ?? new List<TItem>();
+    var hasItems = itemsList.Count > 0;
+    var showHeader = ShowItemCount || !string.IsNullOrWhiteSpace(Title);
+    var count = TotalCount ?? itemsList.Count;
+}
+
+<div class="relative h-full min-h-0 min-w-0">
+    <div class="bg-background border border-border rounded-xl shadow-lg shadow-[color-mix(in_srgb,var(--color-foreground)_10%,transparent)] overflow-hidden flex flex-col h-full min-h-0 min-w-0"
          style="@GetContainerStyle()">
 
-        @if (Items is not null && Items.Any())
+        @if (showHeader)
         {
-            @if (ShowItemCount || !string.IsNullOrEmpty(Title))
-            {
-                <div class="px-6 py-4 bg-primary-subtle border-b border-border flex-shrink-0">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            @if (HeaderIcon is not null)
-                            {
-                                <span class="inline-flex items-center justify-center text-muted">
-                                    @HeaderIcon
-                                </span>
-                            }
-
-                            @if (!string.IsNullOrEmpty(Title))
-                            {
-                                <h3 class="text-sm font-semibold text-foreground">
-                                    @Title
-                                </h3>
-                            }
-                        </div>
-
-                        @if (ShowItemCount)
+            <div class="px-6 py-4 bg-primary-subtle border-b border-border flex-shrink-0">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 min-w-0">
+                        @if (HeaderIcon is not null)
                         {
-                            var count = TotalCount ?? Items.Count();
-
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-subtle text-foreground">
-                                @count @(count == 1 ? "elemento" : "elementos")
+                            <span class="inline-flex items-center justify-center text-muted flex-shrink-0">
+                                @HeaderIcon
                             </span>
                         }
-                    </div>
-                </div>
-            }
 
-            <div class="@GetScrollClasses() flex-1 min-h-0">
-                <div class="p-4 sm:p-6">
+                        @if (!string.IsNullOrWhiteSpace(Title))
+                        {
+                            <h3 class="text-sm font-semibold text-foreground truncate">
+                                @Title
+                            </h3>
+                        }
+                    </div>
+
+                    @if (ShowItemCount)
+                    {
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-subtle text-foreground flex-shrink-0">
+                            @count @(count == 1 ? "elemento" : "elementos")
+                        </span>
+                    }
+                </div>
+            </div>
+        }
+
+        @if (hasItems)
+        {
+            <div class="@($"{GetScrollClasses()} flex-1 min-h-0 min-w-0")">
+                <div class="p-4 sm:p-6 min-w-0">
                     <div class="@GridClasses">
-                        @foreach (var item in Items)
+                        @foreach (var item in itemsList)
                         {
                             <div class="transform transition-all duration-200 hover:scale-[1.02] hover:shadow-md rounded-lg">
                                 @ChildContent(item)
@@ -52,7 +58,7 @@
         }
         else
         {
-            <div class="flex flex-col items-center justify-center py-16 px-6 flex-1 min-h-0">
+            <div class="flex flex-col items-center justify-center py-16 px-6 flex-1 min-h-0 min-w-0">
                 <div class="w-16 h-16 mb-4 text-muted">
                     @if (EmptyStateIcon is not null)
                     {
@@ -66,12 +72,15 @@
                         </svg>
                     }
                 </div>
-                <h3 class="text-lg font-medium text-foreground mb-2">
+
+                <h3 class="text-lg font-medium text-foreground mb-2 text-center">
                     @EmptyStateTitle
                 </h3>
+
                 <p class="text-sm text-muted text-center max-w-sm mb-6">
                     @EmptyStateDescription
                 </p>
+
                 @if (EmptyStateAction is not null)
                 {
                     <div class="flex gap-3">

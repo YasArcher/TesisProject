@@ -20,5 +20,12 @@ namespace tesisproject.backend.Services.Interfaces
         /// in the same order as the input.
         /// </summary>
         Task<ServiceResult<List<int>>> EnsureAppUsersAsync(IEnumerable<RegisterRequest> dtos, CancellationToken ct = default);
+
+        /// <summary>
+        /// Resolves the internal AppUser IdUser from an LocalASP user id.
+        /// </summary>
+        Task<ServiceResult<int>> GetAppUserIdByLocalIdAsync(int localUserId, CancellationToken ct = default);
+
+
     }
 }

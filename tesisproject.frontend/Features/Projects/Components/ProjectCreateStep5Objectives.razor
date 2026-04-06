@@ -1,30 +1,24 @@
 ﻿@using Microsoft.AspNetCore.Components
 @using tesisproject.shared.DTOs.Algorithms.Response
-@using tesisproject.shared.DTOs.Catalog.Common.Response
-@using tesisproject.shared.DTOs.Filters
 
-<div class="w-full flex flex-col gap-6">
-    <!-- Editor de objetivos y actividades -->
-    <section class="mt-2">
-        <h4 class="text-sm font-semibold mb-3">Objetivos y Actividades</h4>
-
-        <ObjectivesActivitiesEditor Objectives="DideModel.Objectives"
-                                    ObjectivesChanged="HandleObjectivesChanged" />
-
-        @* Si luego quieres usar ObjectiveTypeOptions aquí, solo hay que pasárselos al editor *@
-    </section>
+<div class="w-full min-w-0">
+    <ObjectivesActivitiesEditor Objectives="DideModel.Objectives"
+                                ObjectivesChanged="HandleObjectivesChanged" />
 </div>
 
 @code {
     [Parameter] public EventCallback OnObjectivesChanged { get; set; }
     [Parameter] public DideProjectFormInfo DideModel { get; set; } = new();
-    [Parameter] public bool IsBusy { get; set; }
 
-    [Parameter] public IReadOnlyList<CatalogListItemDTO> ObjectiveTypeOptions { get; set; } = Array.Empty<CatalogListItemDTO>();
-
-    private async Task HandleObjectivesChanged()
+    protected override void OnParametersSet()
     {
-        if (OnObjectivesChanged.HasDelegate)
-            await OnObjectivesChanged.InvokeAsync();
+        DideModel.Objectives ??= new List<DideObjectiveInfo>();
+    }
+
+    private Task HandleObjectivesChanged()
+    {
+        return OnObjectivesChanged.HasDelegate
+            ? OnObjectivesChanged.InvokeAsync()
+            : Task.CompletedTask;
     }
 }

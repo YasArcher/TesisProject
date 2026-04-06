@@ -5,11 +5,7 @@
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.shared.DTOs.Group.Request
 @using tesisproject.shared.DTOs.Group.Response
-@using tesisproject.shared.DTOs.External
 @using tesisproject.shared.DTOs.AppUser
-@using tesisproject.shared.Enums
-@using tesisproject.shared.Responses
-@using tesisproject.frontend.Services
 @using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
 
 @inject IToastService Toast
@@ -17,30 +13,37 @@
 @inject IExternalUserService ExternalUserService
 @inject IMemberRoleTypeClientService MemberRoleTypeService
 
-<div class="space-y-4">
+<div class="flex flex-col h-full min-h-0 gap-4 overflow-hidden">
     <!-- Header -->
-    <div class="flex items-center justify-between px-6 py-4 rounded-lg shadow-sm bg-primary text-white">
-        <h1 class="text-xl font-bold tracking-tight">Grupos de Investigacion</h1>
+    <div class="rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm shrink-0">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div class="space-y-2">
+                <h1 class="text-2xl font-bold text-foreground">
+                    Grupos de investigación
+                </h1>
+            </div>
 
-        <ActionButton Text="Crear"
-                      Execute="@OnCreateClick"
-                      Intent="ButtonIntent.Add"
-                      Variant="ButtonVariant.Outline"
-                      Size="ButtonSize.Md"
-                      Class="btn-primary-solid">
-            <Icon>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                    <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clip-rule="evenodd" />
-                </svg>
-            </Icon>
-        </ActionButton>
+            <div class="lg:shrink-0">
+                <ActionButton Text="Crear"
+                              Execute="OnCreateClick"
+                              Intent="ButtonIntent.Add"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Sm">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clip-rule="evenodd" />
+                        </svg>
+                    </Icon>
+                </ActionButton>
+            </div>
+        </div>
     </div>
 
     <!-- Content -->
-    <div>
+    <div class="flex-1 min-h-0 overflow-hidden">
         <GroupTabContent Groups="@groups"
                          SelectedGroupId="@selectedGroupId"
-                         OnGroupSelected="@(gid => HandleGroupSelected(gid))"
+                         OnGroupSelected="HandleGroupSelected"
                          GroupMembers="@members"
                          IsLoading="@isLoading"
                          IsLoadingMembers="@isLoadingMembers"
@@ -50,12 +53,9 @@
                          OnRequestRemoveMember="HandleRemoveMember"
                          OnAskCandidates="HandleAskCandidates"
                          MemberRoles="@_memberRoleTypes" />
-
     </div>
-
 </div>
 
-<!-- Modal “dumb child” -->
 <GroupCreateModal @key="_modalKey"
                   ModalId="group-create-modal"
                   IsEdit="false"
@@ -65,11 +65,9 @@
                   OnCancel="HandleCancel" />
 
 @code {
-    // ====== Estado UI ======
     private bool _openCreate;
-    private int _modalKey = 0;
+    private int _modalKey;
 
-    // ====== Estado de datos ======
     private List<GroupResponseDTO> groups = new();
     private int? selectedGroupId;
     private List<ResolvedUserProfileDTO> members = new();
@@ -77,9 +75,7 @@
     private bool isLoading;
     private bool isLoadingMembers;
 
-    // ====== Roles de miembro (FLAG = 2) ======
     private List<MemberRoleTypeDetailDTO> _memberRoleTypes = new();
-    private int? _selectedRoleId; // usado por GroupTabContent + UserPickerModal
 
     protected override async Task OnInitializedAsync()
     {
@@ -92,7 +88,6 @@
     {
         _modalKey++;
         _openCreate = true;
-        StateHasChanged();
     }
 
     private async Task HandleCreate(AddGroupRequestDTO dto)
@@ -108,13 +103,11 @@
 
                 _openCreate = false;
 
-                // Refrescar lista y seleccionar el recién creado
                 await LoadGroupsAsync();
 
                 if (createdId.HasValue)
                     await HandleGroupSelected(createdId.Value);
 
-                StateHasChanged();
                 return;
             }
 
@@ -129,22 +122,22 @@
     private Task HandleCancel()
     {
         _openCreate = false;
-        StateHasChanged();
         return Task.CompletedTask;
     }
 
-    // ====== Carga de datos ======
     private async Task LoadGroupsAsync()
     {
-        isLoading = true; StateHasChanged();
+        isLoading = true;
+        StateHasChanged();
+
         try
         {
-            var resp = await GroupService.GetListAsync(2);
-            groups = resp.Response ?? new();
+            var response = await GroupService.GetListAsync(2);
+            groups = response.Response ?? new();
         }
         finally
         {
-            isLoading = false; StateHasChanged();
+            isLoading = false;
         }
     }
 
@@ -166,33 +159,48 @@
 
     private async Task LoadMembersFor(int groupId)
     {
-        isLoadingMembers = true; StateHasChanged();
+        isLoadingMembers = true;
+        StateHasChanged();
 
-        var res = await GroupService.GetMembersByGroupIdAsync(groupId);
-        members = res.Response ?? new();
-
-        isLoadingMembers = false; StateHasChanged();
+        try
+        {
+            var response = await GroupService.GetMembersByGroupIdAsync(groupId);
+            members = response.Response ?? new();
+        }
+        finally
+        {
+            isLoadingMembers = false;
+        }
     }
 
     private async Task ReloadAfterMemberChange()
     {
-        if (selectedGroupId is int gid)
-            await LoadMembersFor(gid);
+        if (selectedGroupId is int groupId)
+            await LoadMembersFor(groupId);
     }
 
-    // ====== CRUD (desde hijos) ======
     private async Task HandleAddMember(AddGroupMemberRequestDTO dto)
     {
-        var res = await GroupService.AddMemberAsync(dto);
-        if (!res.Success) { Toast.ShowError(res.Error ?? "No se pudo agregar el miembro."); return; }
+        var response = await GroupService.AddMemberAsync(dto);
+        if (!response.Success)
+        {
+            Toast.ShowError(response.Error ?? "No se pudo agregar el miembro.");
+            return;
+        }
+
         Toast.ShowSuccess("Miembro agregado.");
         await ReloadAfterMemberChange();
     }
 
     private async Task HandleUpdateGroup(UpdateGroupRequestDTO dto)
     {
-        var res = await GroupService.UpdateAsync(dto);
-        if (!res.Success) { Toast.ShowError(res.Error ?? "No se pudo actualizar el grupo."); return; }
+        var response = await GroupService.UpdateAsync(dto);
+        if (!response.Success)
+        {
+            Toast.ShowError(response.Error ?? "No se pudo actualizar el grupo.");
+            return;
+        }
+
         Toast.ShowSuccess("Grupo actualizado.");
         await LoadGroupsAsync();
         await ReloadAfterMemberChange();
@@ -200,25 +208,29 @@
 
     private async Task HandleRemoveMember(int userGroupId)
     {
-        // TODO: reemplazar por tu endpoint real cuando exista:
+        _ = userGroupId;
+
+        // TODO: reemplazar por tu endpoint real cuando exista
         Toast.ShowInfo("Miembro eliminado");
         await Task.CompletedTask;
     }
 
     private async Task<List<ResolvedUserProfileDTO>> HandleAskCandidates(int groupId)
     {
-        var all = await ExternalUserService.GetListAsync();
-        if (!all.Success)
+        _ = groupId;
+
+        var response = await ExternalUserService.GetListAsync();
+        if (!response.Success)
         {
-            Toast.ShowError(all.Error ?? "No se pudieron cargar usuarios.");
+            Toast.ShowError(response.Error ?? "No se pudieron cargar usuarios.");
             return new();
         }
 
         var existingIds = new HashSet<int>(members.Select(m => m.UserId));
 
-        return (all.Response ?? new())
-            .Where(u => !existingIds.Contains(u.UserId))
-            .OrderBy(u => u.FullName)
+        return (response.Response ?? new())
+            .Where(user => !existingIds.Contains(user.UserId))
+            .OrderBy(user => user.FullName)
             .ToList();
     }
 
@@ -226,22 +238,22 @@
     {
         try
         {
-            var resp = await MemberRoleTypeService.GetListAsync(onlyActives: true);
-            if (!resp.Success || resp.Response is null)
+            var response = await MemberRoleTypeService.GetListAsync(onlyActives: true);
+            if (!response.Success || response.Response is null)
             {
-                Toast.ShowError(resp.Error ?? "No se pudieron cargar los roles de miembro.");
+                Toast.ShowError(response.Error ?? "No se pudieron cargar los roles de miembro.");
                 _memberRoleTypes = new();
                 return;
             }
 
-            _memberRoleTypes = resp.Response
-                .Where(r => r.Flag == 2) // SOLO roles de grupo
-                .Select(r => new MemberRoleTypeDetailDTO
+            _memberRoleTypes = response.Response
+                .Where(role => role.Flag == 2)
+                .Select(role => new MemberRoleTypeDetailDTO
                 {
-                    Id = r.Id,
-                    Name = r.Name,
-                    IsActive = r.IsActive,
-                    Flag = r.Flag
+                    Id = role.Id,
+                    Name = role.Name,
+                    IsActive = role.IsActive,
+                    Flag = role.Flag
                 })
                 .ToList();
         }

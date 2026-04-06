@@ -6,11 +6,13 @@
 @using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
 
-<section class="space-y-6 bg-background border-2 border-border rounded-3xl p-6 shadow-sm">
-    <div class="flex items-center justify-between gap-4 pb-4 border-b-2 border-border">
-        <div class="flex items-center gap-3">
-            <div class="w-1 h-6 bg-primary rounded-full"></div>
-            <h3 class="text-base font-bold text-foreground tracking-tight">Categorías de investigación</h3>
+<section class="h-full min-h-0 flex flex-col bg-background border-2 border-border rounded-3xl shadow-sm overflow-hidden">
+    <div class="shrink-0 flex items-center justify-between gap-4 px-6 py-5 border-b-2 border-border">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-1 h-6 bg-primary rounded-full shrink-0"></div>
+            <h3 class="text-base font-bold text-foreground tracking-tight truncate">
+                Categorías de investigación
+            </h3>
         </div>
 
         <ActionButton Execute="OnSaveClicked"
@@ -25,51 +27,62 @@
                       CancelButtonText="Cancelar" />
     </div>
 
-    @if (IsLoading)
-    {
-        <div class="text-sm text-muted">Cargando catálogos...</div>
-    }
-    else if (!string.IsNullOrEmpty(ErrorMessage))
-    {
-        <div class="text-sm text-error">@ErrorMessage</div>
-    }
-    else if (Project is null)
-    {
-        <div class="text-sm text-muted">No se encontró el proyecto.</div>
-    }
-    else
-    {
-        <div class="rounded-lg border border-border bg-background p-4">
-            <p class="text-xs text-muted mb-3">
-                Selecciona categorías por grupo. Se guardarán exactamente los IDs seleccionados.
-            </p>
-
-            <div class="space-y-4">
-                @if (ResearchCategoryGroups is not null && ResearchCategoryGroups.Any())
-                {
-                    @foreach (var group in ResearchCategoryGroups)
-                    {
-                        <div class="border border-border rounded-2xl p-3 bg-background/60">
-                            <ResearchCategoryMultiLevelSelector Title="@group.Name"
-                                                                ResearchCategoryGroupId="@group.Id"
-                                                                Categories="@ResearchCategoryTree"
-                                                                CategoryTypes="@ResearchCategoryTypes"
-                                                                SelectedCategoryIds="@((IReadOnlyCollection<int>)GetSelectedIdsForGroup(group.Id).ToArray())"
-                                                                OnSelectionChanged="(selection) => HandleGroupSelectionChanged(group.Id, selection)" />
-                        </div>
-                    }
-                }
-                else
-                {
-                    <ResearchCategoryMultiLevelSelector Categories="@ResearchCategoryTree"
-                                                        CategoryTypes="@ResearchCategoryTypes"
-                                                        SelectedCategoryIds="@((IReadOnlyCollection<int>)(Project.ResearchCategoryIds?.ToArray() ?? Array.Empty<int>()))"
-                                                        OnSelectionChanged="HandleGlobalSelectionChanged"
-                                                        Title="Categorías de investigación" />
-                }
+    <div class="flex-1 min-h-0 overflow-y-auto p-6">
+        @if (IsLoading)
+        {
+            <div class="h-full min-h-0 flex items-center justify-center">
+                <div class="flex items-center justify-center gap-4 p-8 bg-primary-subtle rounded-xl border border-primary/20">
+                    <div class="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full"></div>
+                    <div class="text-primary font-medium">Cargando catálogos...</div>
+                </div>
             </div>
-        </div>
-    }
+        }
+        else if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="p-4 rounded-2xl border border-error/20 bg-error/10 text-error">
+                @ErrorMessage
+            </div>
+        }
+        else if (Project is null)
+        {
+            <div class="p-4 rounded-2xl border border-border bg-background text-muted">
+                No se encontró el proyecto.
+            </div>
+        }
+        else
+        {
+            <div class="rounded-lg border border-border bg-background p-4 min-w-0">
+                <p class="text-xs text-muted mb-3">
+                    Selecciona categorías por grupo. Se guardarán exactamente los IDs seleccionados.
+                </p>
+
+                <div class="space-y-4 min-w-0">
+                    @if (ResearchCategoryGroups is not null && ResearchCategoryGroups.Any())
+                    {
+                        @foreach (var group in ResearchCategoryGroups)
+                        {
+                            <div class="border border-border rounded-2xl p-3 bg-background/60 min-w-0 overflow-hidden">
+                                <ResearchCategoryMultiLevelSelector Title="@group.Name"
+                                                                    ResearchCategoryGroupId="@group.Id"
+                                                                    Categories="@ResearchCategoryTree"
+                                                                    CategoryTypes="@ResearchCategoryTypes"
+                                                                    SelectedCategoryIds="@((IReadOnlyCollection<int>)GetSelectedIdsForGroup(group.Id).ToArray())"
+                                                                    OnSelectionChanged="(selection) => HandleGroupSelectionChanged(group.Id, selection)" />
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <ResearchCategoryMultiLevelSelector Categories="@ResearchCategoryTree"
+                                                            CategoryTypes="@ResearchCategoryTypes"
+                                                            SelectedCategoryIds="@((IReadOnlyCollection<int>)(Project.ResearchCategoryIds?.ToArray() ?? Array.Empty<int>()))"
+                                                            OnSelectionChanged="HandleGlobalSelectionChanged"
+                                                            Title="Categorías de investigación" />
+                    }
+                </div>
+            </div>
+        }
+    </div>
 </section>
 
 @code {

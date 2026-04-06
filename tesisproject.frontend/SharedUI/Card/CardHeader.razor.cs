@@ -10,17 +10,18 @@ namespace tesisproject.frontend.SharedUI.Card
         [Parameter] public string? Class { get; set; }
 
         protected string HeaderClasses =>
-            $"px-4 py-2 rounded-t-2xl font-semibold {ToneBg()} {Class}";
+            $"px-5 py-4 border-b border-border shrink-0 {ToneBg()} {Class}".Trim();
 
         private string ToneBg()
         {
-            if (Parent is null) return "bg-gray-50";
+            if (Parent is null) return "bg-background/50 text-foreground";
+
             return Parent.Tone switch
             {
-                CardTone.Info => "bg-gradient-to-r from-blue-100 to-blue-200 text-blue-800",
-                CardTone.Warning => "bg-gradient-to-r from-yellow-100 to-yellow-200 text-yellow-800",
-                CardTone.Danger => "bg-gradient-to-r from-red-100 to-red-200 text-red-800",
-                _ => "bg-gray-50 text-gray-700"
+                CardTone.Info => "bg-primary/5 text-foreground",
+                CardTone.Warning => "bg-accent/10 text-foreground",
+                CardTone.Danger => "bg-error/5 text-foreground",
+                _ => "bg-background/50 text-foreground"
             };
         }
     }

@@ -1,197 +1,165 @@
-﻿@using tesisproject.frontend.SharedUI.ActionButton
+﻿@using Microsoft.AspNetCore.Components
+@using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.DTOs.Project.Response
 @using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
 
-<div class="p-6 max-w-7xl mx-auto space-y-8">
+<div class="w-full min-w-0 flex flex-col gap-4 p-4 md:p-5">
     @if (IsLoading || (!_loadFinishedOnce && Item is null))
     {
-        <div class="flex items-center justify-center gap-4 p-8 bg-primary-subtle rounded-xl border border-primary/20">
-            <div class="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full"></div>
-            <div class="text-primary font-medium">Cargando detalles del proyecto...</div>
+        <div class="flex items-center justify-center gap-3 rounded-lg border border-primary/20 bg-primary-subtle px-4 py-6">
+            <div class="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full"></div>
+            <div class="text-sm font-medium text-primary">Cargando proyecto...</div>
         </div>
     }
     else if (Item is null)
     {
-        <div class="flex items-center justify-center gap-4 p-8 bg-error/10 border border-error/20 rounded-xl">
-            <div class="w-10 h-10 bg-error/20 rounded-full flex items-center justify-center">
-                <span class="text-error text-xl">⚠️</span>
+        <div class="flex items-center gap-3 rounded-lg border border-error/20 bg-error/10 px-4 py-5">
+            <div class="w-9 h-9 rounded-full bg-error/15 flex items-center justify-center shrink-0">
+                <span class="text-error text-lg">⚠</span>
             </div>
-            <div>
-                <div class="font-semibold text-error">No se encontraron datos</div>
-                <div class="text-sm text-error/75">El proyecto solicitado no está disponible</div>
+            <div class="min-w-0">
+                <div class="font-semibold text-error">Proyecto no disponible</div>
+                <div class="text-sm text-error/80">No se encontraron datos.</div>
             </div>
         </div>
     }
     else
     {
-        <!-- Grid principal -->
-        <div class="grid gap-8 lg:grid-cols-3">
-
-            <!-- Columna izquierda: Información principal -->
-            <div class="lg:col-span-2 space-y-8">
-
-                <!-- Fechas del proyecto -->
-                <div class="bg-background border border-border rounded-xl p-6 shadow-sm">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008ZM12 15h.008v.008H12V15Zm0 2.25h.008v.008H12v-.008ZM9.75 15h.008v.008H9.75V15Zm0 2.25h.008v.008H9.75v-.008ZM7.5 15h.008v.008H7.5V15Zm0 2.25h.008v.008H7.5v-.008Zm6.75-4.5h.008v.008h-.008v-.008Zm0 2.25h.008v.008h-.008V15Zm0 2.25h.008v.008h-.008v-.008Zm2.25-4.5h.008v.008H16.5v-.008Zm0 2.25h.008v.008H16.5V15Z" />
-                            </svg>
+        <div class="grid gap-4 xl:grid-cols-[minmax(0,2fr)_320px]">
+            <!-- Columna principal -->
+            <div class="min-w-0 flex flex-col gap-4">
+                <!-- Fechas + documento -->
+                <div class="bg-background border border-border rounded-xl p-4 shadow-sm">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                                </svg>
+                            </div>
+                            <h3 class="text-base font-semibold text-foreground truncate">Fechas</h3>
                         </div>
-                        <h3 class="text-lg font-semibold text-foreground">Fechas Clave del Proyecto</h3>
+
+                        <ActionButton Text="Ver documento inicial"
+                                      Intent="ButtonIntent.Info"
+                                      Variant="ButtonVariant.Filled"
+                                      Size="ButtonSize.Sm"
+                                      Execute="ViewMainDocumentAsync"
+                                      Disabled="@(!CanViewMainDocument)" />
                     </div>
 
-                    <div class="grid gap-6 sm:grid-cols-3">
-                        <div class="relative">
-                            <div class="absolute left-0 top-0 w-1 h-full bg-primary/20 rounded-full"></div>
-                            <div class="pl-4">
-                                <div class="text-xs text-primary font-semibold mb-2 uppercase tracking-wide">Inicio</div>
-                                <div class="font-semibold text-lg">
-                                    @if (Item.StartDate.HasValue)
-                                    {
-                                        <span class="text-foreground">@Item.StartDate.ToSpanishDate()</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted italic">No definida</span>
-                                    }
-                                </div>
-                            </div>
+                    <div class="mt-4 grid gap-3 sm:grid-cols-3">
+                        <div class="rounded-lg border border-border bg-page-bg px-3 py-3">
+                            <div class="text-[11px] font-semibold uppercase tracking-wide text-primary mb-1">Inicio</div>
+                            @if (Item.StartDate.HasValue)
+                            {
+                                <div class="text-sm font-medium text-foreground">@Item.StartDate.ToSpanishDate()</div>
+                            }
+                            else
+                            {
+                                <div class="text-sm text-muted italic">No definida</div>
+                            }
                         </div>
 
-                        <div class="relative">
-                            <div class="absolute left-0 top-0 w-1 h-full bg-secondary/20 rounded-full"></div>
-                            <div class="pl-4">
-                                <div class="text-xs text-secondary font-semibold mb-2 uppercase tracking-wide">Fin Previsto</div>
-                                <div class="font-semibold text-lg">
-                                    @if (Item.TentativeEndDate.HasValue)
-                                    {
-                                        <span class="text-foreground">@Item.TentativeEndDate.ToSpanishDate()</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted italic">No definida</span>
-                                    }
-                                </div>
-                            </div>
+                        <div class="rounded-lg border border-border bg-page-bg px-3 py-3">
+                            <div class="text-[11px] font-semibold uppercase tracking-wide text-secondary mb-1">Fin previsto</div>
+                            @if (Item.TentativeEndDate.HasValue)
+                            {
+                                <div class="text-sm font-medium text-foreground">@Item.TentativeEndDate.ToSpanishDate()</div>
+                            }
+                            else
+                            {
+                                <div class="text-sm text-muted italic">No definida</div>
+                            }
                         </div>
 
-                        <div class="relative">
-                            <div class="absolute left-0 top-0 w-1 h-full bg-accent/20 rounded-full"></div>
-                            <div class="pl-4">
-                                <div class="text-xs text-accent font-semibold mb-2 uppercase tracking-wide">Fin Real</div>
-                                <div class="font-semibold text-lg">
-                                    @if (Item.RealEndDate.HasValue)
-                                    {
-                                        <span class="text-foreground">@Item.RealEndDate.ToSpanishDate()</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="text-muted italic">En progreso</span>
-                                    }
-                                </div>
-                            </div>
+                        <div class="rounded-lg border border-border bg-page-bg px-3 py-3">
+                            <div class="text-[11px] font-semibold uppercase tracking-wide text-accent mb-1">Fin real</div>
+                            @if (Item.RealEndDate.HasValue)
+                            {
+                                <div class="text-sm font-medium text-foreground">@Item.RealEndDate.ToSpanishDate()</div>
+                            }
+                            else
+                            {
+                                <div class="text-sm text-muted italic">En progreso</div>
+                            }
                         </div>
                     </div>
                 </div>
-                <div class="mt-6 pt-6 border-t border-border">
-                    <ActionButton Text="Ver documento inicial"
-                                  Intent="ButtonIntent.Info"
-                                  Variant="ButtonVariant.Filled"
-                                  Size="ButtonSize.Md"
-                                  Execute="ViewMainDocumentAsync"
-                                  Disabled="@(!CanViewMainDocument)" />
 
-                </div>
                 <!-- Descripción -->
-                <div class="bg-background border border-border rounded-xl p-6 shadow-sm">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center">
+                <div class="bg-background border border-border rounded-xl p-4 shadow-sm">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-9 h-9 bg-accent/10 rounded-lg flex items-center justify-center shrink-0">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                                 fill="currentColor" class="w-6 h-6" aria-hidden="true">
+                                 fill="currentColor" class="w-5 h-5" aria-hidden="true">
                                 <path fill-rule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5H5.625ZM7.5 15a.75.75 0 0 1 .75-.75h7.5a.75.75 0 0 1 0 1.5h-7.5A.75.75 0 0 1 7.5 15Zm.75 2.25a.75.75 0 0 0 0 1.5H12a.75.75 0 0 0 0-1.5H8.25Z" clip-rule="evenodd" />
                                 <path d="M12.971 1.816A5.23 5.23 0 0 1 14.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 0 1 3.434 1.279 9.768 9.768 0 0 0-6.963-6.963Z" />
                             </svg>
                         </div>
-                        <h3 class="text-lg font-semibold text-foreground">Descripción del Proyecto</h3>
-                  </div>
+                        <h3 class="text-base font-semibold text-foreground">Descripción</h3>
+                    </div>
 
-                    <div class="space-y-6">
+                    <div class="space-y-4">
                         <!-- Objetivo -->
                         <div>
-                            <div class="flex items-center gap-3 mb-4">
-                                <div class="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                                         fill="currentColor" class="w-6 h-6" aria-hidden="true">
-                                        <path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054A8.25 8.25 0 0 0 18 4.524l3.11-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.77l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" />
-                                    </svg>
-                                </div>
-                                <h4 class="text-sm font-semibold text-muted uppercase tracking-wide">Objetivo</h4>
-                            </div>
-                            <div class="bg-page-bg border border-border rounded-lg p-4">
-                                @if (Item.ProjectObjectives != null && Item.ProjectObjectives.Any(o => o.ObjectiveTypeId == 1))
+                            <h4 class="text-xs font-semibold text-muted uppercase tracking-wide mb-2">Objetivo</h4>
+                            <div class="bg-page-bg border border-border rounded-lg p-3">
+                                @if (!string.IsNullOrWhiteSpace(GetGeneralObjectiveText()))
                                 {
-                                    @foreach (var obj in Item.ProjectObjectives.Where(o => o.ObjectiveTypeId == 1))
-                                    {
-                                        <p class="text-foreground leading-relaxed">@obj.Objective</p>
-                                    }
+                                    <p class="text-sm text-foreground leading-relaxed break-words">
+                                        @GetGeneralObjectiveText()
+                                    </p>
                                 }
                                 else
                                 {
-                                    <p class="text-muted italic">Sin objetivo definido</p>
+                                    <p class="text-sm text-muted italic">Sin objetivo definido</p>
                                 }
                             </div>
                         </div>
-                        <!-- Línea de investigación -->
+
+                        <!-- Categorías -->
                         <div>
-                            <div class="flex items-center gap-3 mb-2">
-                                <div class="w-10 h-10 bg-accent/10 rounded-xl flex items-center justify-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
-                                         fill="currentColor" class="w-6 h-6" aria-hidden="true">
-                                        <path fill-rule="evenodd" d="M10.5 3.798v5.02a3 3 0 0 1-.879 2.121l-2.377 2.377a9.845 9.845 0 0 1 5.091 1.013 8.315 8.25 0 0 0 5.713.636l.285-.071-3.954-3.955a3 3 0 0 1-.879-2.121v-5.02a23.614 23.614 0 0 0-3 0Zm4.5.138a.75.75 0 0 0 .093-1.495A24.837 24.837 0 0 0 12 2.25a25.048 25.048 0 0 0-3.093.191A.75.75 0 0 0 9 3.936v4.882a1.5 1.5 0 0 1-.44 1.06l-6.293 6.294c-1.62 1.621-.903 4.475 1.471 4.88 2.686.46 5.447.698 8.262.698 2.816 0 5.576-.239 8.262-.697 2.373-.406 3.092-3.26 1.47-4.881L15.44 9.879A1.5 1.5 0 0 1 15 8.818V3.936Z" clip-rule="evenodd" />
-                                    </svg>
-                                </div>
-                                <h4 class="text-sm font-semibold text-muted uppercase tracking-wide">
-                                    Clasificación de Categorías de Investigación
-                                </h4>
-                            </div>
+                            <h4 class="text-xs font-semibold text-muted uppercase tracking-wide mb-2">
+                                Categorías de investigación
+                            </h4>
 
                             @if (_projectTreeRoots.Count == 0)
                             {
-                                <span class="text-muted italic">Sin categorías de investigación definidas</span>
+                                <div class="bg-page-bg border border-border rounded-lg p-3">
+                                    <span class="text-sm text-muted italic">Sin categorías definidas</span>
+                                </div>
                             }
                             else if (ResearchCategoryGroups is not null && ResearchCategoryGroups.Any()
-                            && ResearchCategoryTypes is not null && ResearchCategoryTypes.Any())
+                                  && ResearchCategoryTypes is not null && ResearchCategoryTypes.Any())
                             {
                                 var projectRoots = _projectTreeRoots;
 
                                 @foreach (var group in ResearchCategoryGroups)
                                 {
-                                    // tipos que pertenecen a este grupo
                                     var typeIdsInGroup = ResearchCategoryTypes
-                                    .Where(t => t.ResearchCategoryGroupId == group.Id)
-                                    .Select(t => t.Id)
-                                    .ToHashSet();
+                                        .Where(t => t.ResearchCategoryGroupId == group.Id)
+                                        .Select(t => t.Id)
+                                        .ToHashSet();
 
-                                    // raíces del proyecto cuya rama contiene al menos un nodo de esos tipos
                                     var rootsInGroup = projectRoots
-                                    .Where(r => ContainsTypeInGroup(r, typeIdsInGroup))
-                                    .ToList();
+                                        .Where(r => ContainsTypeInGroup(r, typeIdsInGroup))
+                                        .ToList();
 
                                     if (!rootsInGroup.Any())
                                     {
                                         continue;
                                     }
 
-                                    <div class="mb-4">
-                                        <div class="text-xs font-semibold text-muted uppercase mb-2">
+                                    <div class="mb-3">
+                                        <div class="text-[11px] font-semibold text-muted uppercase mb-2">
                                             @group.Name
                                         </div>
 
-                                        <div class="bg-page-bg border border-border rounded-lg p-4">
+                                        <div class="bg-page-bg border border-border rounded-lg p-3">
                                             @foreach (var root in rootsInGroup)
                                             {
                                                 @RenderCategoryNode(root, 0)
@@ -202,7 +170,7 @@
                             }
                             else
                             {
-                                <div class="bg-page-bg border border-border rounded-lg p-4">
+                                <div class="bg-page-bg border border-border rounded-lg p-3">
                                     @foreach (var root in _projectTreeRoots)
                                     {
                                         @RenderCategoryNode(root, 0)
@@ -214,64 +182,45 @@
                 </div>
             </div>
 
-            <!-- Columna derecha: Información complementaria -->
-            <div class="space-y-8">
-
-                <!-- Presupuesto -->
-                <div class="bg-background border border-border rounded-xl p-6 shadow-sm">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-10 h-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+            <!-- Columna lateral -->
+            <div class="min-w-0">
+                <div class="bg-background border border-border rounded-xl p-4 shadow-sm">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-9 h-9 bg-primary/10 rounded-lg flex items-center justify-center shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5">
                                 <path d="M12 7.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z" />
                                 <path fill-rule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v9.75c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 14.625v-9.75ZM8.25 9.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM18.75 9a.75.75 0 0 0-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75V9.75a.75.75 0 0 0-.75-.75h-.008ZM4.5 9.75A.75.75 0 0 1 5.25 9h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V9.75Z" clip-rule="evenodd" />
                                 <path d="M2.25 18a.75.75 0 0 0 0 1.5c5.4 0 10.63.722 15.6 2.075 1.19.324 2.4-.558 2.4-1.82V18.75a.75.75 0 0 0-.75-.75H2.25Z" />
                             </svg>
                         </div>
-                        <h3 class="text-lg font-semibold text-foreground">Presupuestos</h3>
+                        <h3 class="text-base font-semibold text-foreground">Presupuesto</h3>
                     </div>
+
                     @if (Item.Budgets is not null && Item.Budgets.Any())
                     {
-                        <div class="space-y-4">
+                        <div class="space-y-3">
                             @foreach (var budget in Item.Budgets)
                             {
-                                <div class="bg-page-bg border border-border rounded-lg p-4">
-                                    <div class="text-xs font-semibold text-muted mb-2 uppercase tracking-wide">
-                                        Monto Inicial
+                                <div class="rounded-lg border border-border bg-page-bg p-3">
+                                    <div class="text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">
+                                        Monto inicial
                                     </div>
-                                    <div class="text-3xl font-bold text-foreground">
+                                    <div class="text-2xl font-bold text-foreground break-words">
                                         @budget.InitialAmount.ToString("C", new System.Globalization.CultureInfo("es-EC"))
                                     </div>
-                                </div>
 
-                                <div class="bg-page-bg border border-border rounded-lg p-4">
-                                    <div class="text-xs font-semibold text-muted mb-1 uppercase tracking-wide">
-                                        Tipo de financiamiento
-                                    </div>
+                                    <div class="mt-2 text-xs text-muted">Tipo de financiamiento</div>
                                     <div class="text-sm text-foreground">
-                                        @budget.FundingTypeName
+                                        @DisplayOrDash(budget.FundingTypeName)
                                     </div>
                                 </div>
                             }
-
-                            <div class="bg-primary/5 border border-primary/20 rounded-lg p-4">
-                                <div class="flex items-start gap-3">
-                                    <span class="text-primary text-lg flex-shrink-0">💡</span>
-                                    <div class="text-sm text-primary">
-                                        <strong>Información completa:</strong> Para ver detalles del presupuesto
-                                        (certificado, ejecutado, transacciones), accede a la pestaña "Presupuesto".
-                                    </div>
-                                </div>
-                            </div>
                         </div>
                     }
                     else
                     {
-                        <div class="bg-muted/10 border border-muted/20 rounded-lg p-6 text-center">
-                            <div class="w-16 h-16 bg-muted/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <span class="text-muted text-2xl">💰</span>
-                            </div>
-                            <div class="font-semibold text-muted mb-2">Sin presupuesto asignado</div>
-                            <div class="text-sm text-muted/75">Este proyecto aún no tiene un presupuesto configurado</div>
+                        <div class="rounded-lg border border-dashed border-border bg-background/50 px-4 py-6 text-center">
+                            <div class="text-sm font-medium text-muted">Sin presupuesto</div>
                         </div>
                     }
                 </div>
@@ -291,29 +240,20 @@
     [Parameter] public EventCallback<int> OnViewDocument { get; set; }
 
     private const int DOC_MEMORANDO_INICIAL = 1;
-    private const int DOC_CONTRATO_AUSPICIO = 5;
-    private const int DOC_RESOLUCION_PRORROGA = 3;
-    private const int DOC_RESOLUCION_FINAL = 4;
 
-    // ✅ NUEVO: tracking para evitar flash de error
     private bool _wasLoading;
     private bool _loadFinishedOnce;
 
-    // índice para no recorrer el árbol mil veces
     private readonly Dictionary<int, ResearchCategoryTreeItemDTO> _allItems = new();
-
-    // subárbol mínimo solo con las categorías del proyecto
     private readonly List<ResearchCategoryTreeItemDTO> _projectTreeRoots = new();
 
     protected override void OnParametersSet()
     {
-        base.OnParametersSet();
-
-        // ✅ NUEVO: marca que ya terminó al menos una carga (true -> false)
         if (_wasLoading && !IsLoading)
         {
             _loadFinishedOnce = true;
         }
+
         _wasLoading = IsLoading;
 
         _allItems.Clear();
@@ -339,29 +279,23 @@
         }
     }
 
+    private string? GetGeneralObjectiveText()
+    {
+        return Item?.ProjectObjectives?
+            .FirstOrDefault(o => o.ObjectiveTypeId == 1)?
+            .Objective;
+    }
+
     private async Task ViewMainDocumentAsync()
     {
-        if (Item?.Documents is null || Item.Documents.Count == 0)
-            return;
+        var doc = Item?.Documents?
+            .FirstOrDefault(d => d.DocumentTypeId == DOC_MEMORANDO_INICIAL && d.DocumentId > 0);
 
-        // Prioridad: el “principal” primero
-        var doc = Item.Documents
-            .OrderBy(d => d.DocumentTypeId switch
-            {
-                DOC_MEMORANDO_INICIAL => 0,
-                DOC_CONTRATO_AUSPICIO => 1,
-                DOC_RESOLUCION_PRORROGA => 2,
-                DOC_RESOLUCION_FINAL => 3,
-                _ => 99
-            })
-            .FirstOrDefault();
-
-        if (doc is null || doc.DocumentId <= 0)
+        if (doc is null)
             return;
 
         await OnViewDocument.InvokeAsync(doc.DocumentId);
     }
-
 
     private bool ContainsTypeInGroup(ResearchCategoryTreeItemDTO node, HashSet<int> typeIdsInGroup)
     {
@@ -391,15 +325,10 @@
         }
     }
 
-    /// <summary>
-    /// Inserta un nodo (hoja) en el árbol del proyecto, reconstruyendo toda la cadena
-    /// padre → ... → hoja. No duplica padres ni hojas si ya existen.
-    /// </summary>
     private void InsertIntoProjectTree(ResearchCategoryTreeItemDTO node)
     {
         if (!node.ParentCategoryId.HasValue)
         {
-            // Es raíz
             var existingRoot = _projectTreeRoots.FirstOrDefault(r => r.Id == node.Id);
             if (existingRoot is null)
             {
@@ -408,7 +337,6 @@
             return;
         }
 
-        // Asegurar que el padre está en el subárbol
         if (!_allItems.TryGetValue(node.ParentCategoryId.Value, out var parent))
             return;
 
@@ -435,15 +363,15 @@
             if (found is not null)
                 return found;
         }
+
         return null;
     }
 
     private bool CanViewMainDocument =>
-    Item?.Documents?.Any(d =>
-        d.DocumentTypeId == DOC_MEMORANDO_INICIAL &&
-        d.DocumentId > 0
-    ) == true;
+        Item?.Documents?.Any(d => d.DocumentTypeId == DOC_MEMORANDO_INICIAL && d.DocumentId > 0) == true;
 
+    private static string DisplayOrDash(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "-" : value;
 
     private ResearchCategoryTreeItemDTO CloneWithoutChildren(ResearchCategoryTreeItemDTO src)
     {
@@ -459,9 +387,6 @@
         };
     }
 
-    /// <summary>
-    /// Render recursivo del árbol (visual anidado).
-    /// </summary>
     private RenderFragment RenderCategoryNode(ResearchCategoryTreeItemDTO node, int depth) => builder =>
     {
         var seq = 0;
@@ -469,44 +394,37 @@
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", "mb-1");
 
-        // Contenedor del nodo
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class",
             $"flex items-start gap-2 text-sm text-foreground {(depth == 0 ? "font-semibold" : "font-normal")}");
 
         if (depth > 0)
         {
-            // bolita de nivel
             builder.OpenElement(seq++, "span");
             builder.AddAttribute(seq++, "class", "mt-1 inline-block w-1.5 h-1.5 rounded-full bg-accent");
-            builder.CloseElement(); // span
+            builder.CloseElement();
         }
 
-        // Bloque texto: nombre + tipo
         builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "flex flex-col gap-0.5");
+        builder.AddAttribute(seq++, "class", "flex flex-col gap-0.5 min-w-0");
 
-        // Nombre de la categoría
         builder.OpenElement(seq++, "span");
-        builder.AddAttribute(seq++, "class", "leading-tight");
+        builder.AddAttribute(seq++, "class", "leading-tight break-words");
         builder.AddContent(seq++, node.Name);
-        builder.CloseElement(); // span
+        builder.CloseElement();
 
         if (!string.IsNullOrWhiteSpace(node.ResearchCategoryTypeName))
         {
             builder.OpenElement(seq++, "span");
             builder.AddAttribute(seq++, "class",
-                "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] " +
-                "bg-muted/20 text-muted font-medium uppercase tracking-wide");
+                "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] bg-muted/20 text-muted font-medium uppercase tracking-wide w-fit");
             builder.AddContent(seq++, node.ResearchCategoryTypeName);
-            builder.CloseElement(); // span
+            builder.CloseElement();
         }
 
-        builder.CloseElement(); // div (texto)
+        builder.CloseElement();
+        builder.CloseElement();
 
-        builder.CloseElement(); // div (contenedor nodo)
-
-        // Hijos
         if (node.Children.Any())
         {
             builder.OpenElement(seq++, "div");
@@ -517,9 +435,9 @@
                 builder.AddContent(seq++, RenderCategoryNode(child, depth + 1));
             }
 
-            builder.CloseElement(); // div hijos
+            builder.CloseElement();
         }
 
-        builder.CloseElement(); // div wrapper
+        builder.CloseElement();
     };
 }

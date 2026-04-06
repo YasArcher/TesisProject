@@ -1,9 +1,9 @@
 ﻿@using tesisproject.frontend.Features.Components
 @using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.SharedUI.Catalog
 @using tesisproject.frontend.SharedUI.SearchInput
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.Services.Interfaces
-@using tesisproject.shared.DTOs.External
 @using tesisproject.shared.DTOs.Group.Request
 @using tesisproject.shared.DTOs.AppUser
 @using tesisproject.shared.DTOs.Group.Response
@@ -11,88 +11,66 @@
 
 @inject IToastService Toast
 
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[570px]">
-
-    <!-- Panel izquierdo: Lista de Grupos -->
-    <div class="flex-1 min-h-0 overflow-y-auto flex flex-col">
-        <!-- Buscador de grupos -->
-        <SearchInput Class="mb-4"
+<div class="h-full min-h-0 grid grid-cols-1 gap-4 overflow-hidden lg:grid-cols-2">
+    <div class="min-h-0 flex flex-col overflow-hidden">
+        <SearchInput Class="mb-3 shrink-0"
                      Placeholder="Buscar grupos..."
-                     AriaLabel="Search groups"
+                     AriaLabel="Buscar grupos"
                      @bind-Value="searchTerm"
                      DebounceMs="200" />
 
-        <div class="flex-1 min-h-0 overflow-y-auto">
+        <div class="flex-1 min-h-0 overflow-hidden">
             <Container TItem="GroupResponseDTO"
                        Items="@FilteredGroups"
                        Title="Grupos"
                        ShowItemCount="true"
-                       GridClasses="grid grid-cols-1 gap-4"
+                       GridClasses="grid grid-cols-1 gap-3"
                        EmptyStateTitle="No hay grupos"
                        EmptyStateDescription="Aún no existen grupos."
                        IsLoading="@IsLoading">
 
                 <ChildContent Context="group">
-                    <button type="button"
-                            class="w-full block text-left"
-                            @onclick="() => SelectGroupAsync(group.GroupId)">
-                        <GroupCard Item="@group" Selected="@(group.GroupId == SelectedGroupId)" />
-                    </button>
+                    <SelectableCard TItem="GroupResponseDTO"
+                                    Item="group"
+                                    IsSelected="@(SelectedGroupId == group.GroupId)"
+                                    OnSelected="@(item => OnGroupSelected.InvokeAsync(item.GroupId))"
+                                    GetTitle="@(item => item.Name)"
+                                    ShowActions="false" />
                 </ChildContent>
-
-                <EmptyStateAction>
-                    <ActionButton Text="Crear Grupo"
-                                  Execute="@( () => Task.CompletedTask )"
-                                  Intent="ButtonIntent.Info"
-                                  Variant="ButtonVariant.Filled"
-                                  Size="ButtonSize.Sm"
-                                  Disabled="true"
-                                  Class="btn-primary-solid text-sm" >
-                        <Icon>
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                <path fill-rule="evenodd" d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z" clip-rule="evenodd" />
-                                <path d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z" />
-                            </svg>
-                        </Icon>
-                    </ActionButton>
-                </EmptyStateAction>
-
             </Container>
         </div>
     </div>
 
-    <!-- Panel derecho: Detalles del grupo seleccionado -->
-    <div class="flex flex-col min-h-0">
+    <div class="min-h-0 flex flex-col overflow-hidden">
         @if (SelectedGroup is not null)
         {
-            <div class="mb-4 p-4 bg-primary-subtle border border-border rounded-xl">
-                <div class="flex items-start justify-between">
-                    <div class="flex items-start gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+            <div class="mb-3 shrink-0 rounded-xl border border-border bg-primary-subtle p-4">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex min-w-0 items-start gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6 shrink-0">
                             <path fill-rule="evenodd" d="M1.5 7.125c0-1.036.84-1.875 1.875-1.875h6c1.036 0 1.875.84 1.875 1.875v3.75c0 1.036-.84 1.875-1.875 1.875h-6A1.875 1.875 0 0 1 1.5 10.875v-3.75Zm12 1.5c0-1.036.84-1.875 1.875-1.875h5.25c1.035 0 1.875.84 1.875 1.875v8.25c0 1.035-.84 1.875-1.875 1.875h-5.25a1.875 1.875 0 0 1-1.875-1.875v-8.25ZM3 16.125c0-1.036.84-1.875 1.875-1.875h5.25c1.036 0 1.875.84 1.875 1.875v2.25c0 1.035-.84 1.875-1.875 1.875h-5.25A1.875 1.875 0 0 1 3 18.375v-2.25Z" clip-rule="evenodd" />
                         </svg>
-                        <div>
-                            <h2 class="text-xl font-semibold text-foreground mb-1">@SelectedGroup.Name</h2>
+
+                        <div class="min-w-0">
+                            <h2 class="truncate text-lg font-semibold text-foreground">@SelectedGroup.Name</h2>
                             <p class="text-sm text-muted">@GroupMembers.Count miembros</p>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-success text-success-foreground">
-                            ● Activo
-                        </span>
-                    </div>
+
+                    <span class="inline-flex items-center rounded-full bg-success px-2 py-1 text-xs font-medium text-success-foreground">
+                        ● Activo
+                    </span>
                 </div>
             </div>
 
-            <div class="flex-1 min-h-0 flex flex-col">
-                <!-- Buscador de miembros -->
-                <SearchInput Class="mb-3"
+            <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
+                <SearchInput Class="mb-3 shrink-0"
                              Placeholder="Buscar miembros..."
-                             AriaLabel="Search members"
+                             AriaLabel="Buscar miembros"
                              @bind-Value="memberSearchTerm"
                              DebounceMs="200" />
 
-                <div class="flex-1 min-h-0 overflow-y-auto">
+                <div class="flex-1 min-h-0 overflow-hidden">
                     <Container TItem="ResolvedUserProfileDTO"
                                Items="@FilteredMembers"
                                Title="Integrantes"
@@ -110,21 +88,11 @@
                         <ChildContent Context="member">
                             <MemberCard Item="@member" OnRemoved="HandleMemberRemoved" />
                         </ChildContent>
-
-                        <EmptyStateAction>
-                            <ActionButton Text="Agregar Miembro"
-                                          Intent="ButtonIntent.Info"
-                                          Variant="ButtonVariant.Outline"
-                                          Size="ButtonSize.Sm"
-                                          Class="text-sm"
-                                          Execute="OnAddMemberClick" />
-                        </EmptyStateAction>
                     </Container>
-
                 </div>
 
-                <div class="mt-4 flex gap-3">
-                    <ActionButton Text="Agregar Miembro"
+                <div class="mt-3 shrink-0 flex flex-col gap-2 sm:flex-row">
+                    <ActionButton Text="Agregar miembro"
                                   Intent="ButtonIntent.Info"
                                   Variant="ButtonVariant.Outline"
                                   Size="ButtonSize.Sm"
@@ -136,7 +104,8 @@
                             </svg>
                         </Icon>
                     </ActionButton>
-                    <ActionButton Text="Configurar Grupo"
+
+                    <ActionButton Text="Configurar grupo"
                                   Intent="ButtonIntent.Neutral"
                                   Variant="ButtonVariant.Ghost"
                                   Size="ButtonSize.Sm"
@@ -154,17 +123,16 @@
         }
         else
         {
-            <div class="flex-1 flex items-center justify-center p-8 border-2 border-dashed border-border rounded-xl">
+            <div class="flex flex-1 items-center justify-center rounded-xl border border-dashed border-border bg-muted/5 p-8">
                 <div class="text-center">
-                    <h3 class="text-lg font-medium text-foreground mb-2">Selecciona un grupo</h3>
-                    <p class="text-sm text-muted">Elige un grupo de la lista para ver sus integrantes y detalles</p>
+                    <h3 class="mb-2 text-lg font-medium text-foreground">Selecciona un grupo</h3>
+                    <p class="text-sm text-muted">Elige un grupo de la lista para ver sus integrantes y detalles.</p>
                 </div>
             </div>
         }
     </div>
 </div>
 
-<!-- MODAL: User Picker -->
 <UserPickerModal ModalId="user-picker"
                  IsOpen="@_showUserPicker"
                  IsOpenChanged="(bool v) => _showUserPicker = v"
@@ -175,7 +143,6 @@
                  Roles="MemberRoles"
                  @bind-SelectedRoleId="_selectedRoleId" />
 
-<!-- MODAL: Group (Edit) -->
 @if (SelectedGroup is not null)
 {
     <GroupCreateModal ModalId="group-edit-modal"
@@ -185,11 +152,10 @@
                       GroupToEdit="@SelectedGroup"
                       GroupTypeId="1"
                       OnUpdate="HandleUpdateGroupAsync"
-                      OnCancel="@(()=> _showGroupModal = false)" />
+                      OnCancel="@(() => _showGroupModal = false)" />
 }
 
 @code {
-    /* ===== Parámetros públicos ===== */
     [Parameter] public EventCallback OnReloadGroups { get; set; }
     [Parameter] public List<GroupResponseDTO> Groups { get; set; } = new();
     [Parameter] public int? SelectedGroupId { get; set; }
@@ -197,54 +163,41 @@
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public bool IsLoadingMembers { get; set; }
     [Parameter] public List<ResolvedUserProfileDTO> GroupMembers { get; set; } = new();
-
-    // NUEVO: roles de miembro (ya filtrados por Flag = 2 en el padre)
     [Parameter] public IEnumerable<MemberRoleTypeDetailDTO>? MemberRoles { get; set; }
-
-    // === Eventos hacia el padre (CRUD + candidatos) ===
     [Parameter] public EventCallback<AddGroupMemberRequestDTO> OnRequestAddMember { get; set; }
     [Parameter] public EventCallback<UpdateGroupRequestDTO> OnRequestUpdateGroup { get; set; }
     [Parameter] public EventCallback<int> OnRequestRemoveMember { get; set; }
     [Parameter] public Func<int, Task<List<ResolvedUserProfileDTO>>> OnAskCandidates { get; set; } = default!;
 
-    /* ===== Estado local UI ===== */
-    private string searchTerm = "";
-    private string memberSearchTerm = "";
+    private string searchTerm = string.Empty;
+    private string memberSearchTerm = string.Empty;
 
-    // Picker state
     private bool _showUserPicker;
     private List<ResolvedUserProfileDTO> _candidates = new();
     private int? _preselectedUserId;
-
-    // Group edit modal state
     private bool _showGroupModal;
-
-    // Role seleccionado en el UserPickerModal
     private int? _selectedRoleId;
 
-    /* ===== Computados ===== */
     private GroupResponseDTO? SelectedGroup =>
         Groups.FirstOrDefault(g => g.GroupId == SelectedGroupId);
 
     private List<GroupResponseDTO> FilteredGroups =>
         string.IsNullOrWhiteSpace(searchTerm)
             ? Groups
-            : Groups.Where(g => g.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)).ToList();
+            : Groups
+                .Where(g => g.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
     private List<ResolvedUserProfileDTO> FilteredMembers =>
         string.IsNullOrWhiteSpace(memberSearchTerm)
             ? GroupMembers
-            : GroupMembers.Where(m =>
-                   (!string.IsNullOrWhiteSpace(m.FullName) && m.FullName.Contains(memberSearchTerm, StringComparison.OrdinalIgnoreCase)) ||
-                   (!string.IsNullOrWhiteSpace(m.Email) && m.Email.Contains(memberSearchTerm, StringComparison.OrdinalIgnoreCase))
-              ).ToList();
-
-    /* ===== Acciones ===== */
-    private async Task SelectGroupAsync(int groupId)
-    {
-        if (OnGroupSelected.HasDelegate)
-            await OnGroupSelected.InvokeAsync(groupId);
-    }
+            : GroupMembers
+                .Where(m =>
+                    (!string.IsNullOrWhiteSpace(m.FullName) &&
+                     m.FullName.Contains(memberSearchTerm, StringComparison.OrdinalIgnoreCase)) ||
+                    (!string.IsNullOrWhiteSpace(m.Email) &&
+                     m.Email.Contains(memberSearchTerm, StringComparison.OrdinalIgnoreCase)))
+                .ToList();
 
     private async Task HandleMemberRemoved(int userGroupId)
     {
@@ -259,7 +212,7 @@
     {
         if (SelectedGroupId is null)
         {
-            Toast.ShowWarning("Select a group first.");
+            Toast.ShowWarning("Selecciona un grupo primero.");
             return;
         }
 
@@ -268,12 +221,12 @@
 
         if (_candidates.Count == 0)
         {
-            Toast.ShowInfo("No available users to add.");
+            Toast.ShowInfo("No hay usuarios disponibles para agregar.");
             return;
         }
 
         _preselectedUserId = null;
-        _selectedRoleId = null; // reset rol
+        _selectedRoleId = null;
         _showUserPicker = true;
     }
 
@@ -281,7 +234,7 @@
     {
         if (SelectedGroupId is null)
         {
-            Toast.ShowWarning("Select a group first.");
+            Toast.ShowWarning("Selecciona un grupo primero.");
             return;
         }
 
@@ -294,14 +247,14 @@
         var selected = _candidates.FirstOrDefault(u => u.UserId == userId);
         if (selected is null)
         {
-            Toast.ShowError("Selected user not found in candidates.");
+            Toast.ShowError("No se encontró el usuario seleccionado.");
             return;
         }
 
         var request = new AddGroupMemberRequestDTO
         {
             GroupId = SelectedGroupId.Value,
-            MemberRole = _selectedRoleId.Value,  // <-- AQUÍ VA EL ID DEL ROL
+            MemberRole = _selectedRoleId.Value,
             Email = selected.Email,
             Document = selected.Document,
             AspUserId = selected.AspNetUserId
@@ -311,12 +264,11 @@
         _showUserPicker = false;
     }
 
-
     private Task OnConfigureGroupClick()
     {
         if (SelectedGroup is null)
         {
-            Toast.ShowWarning("Select a group first.");
+            Toast.ShowWarning("Selecciona un grupo primero.");
             return Task.CompletedTask;
         }
 

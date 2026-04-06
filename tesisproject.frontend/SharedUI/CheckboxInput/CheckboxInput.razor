@@ -1,0 +1,19 @@
+﻿@using Microsoft.AspNetCore.Components
+
+<div class="@BuildContainerClass()">
+    <label class="@BuildWrapperClass()" @onclick="ToggleAsync" @onclick:preventDefault="true">
+        <span class="@BuildTrackClass()">
+            <span class="@BuildKnobClass()"></span>
+        </span>
+
+        @if (!string.IsNullOrWhiteSpace(Label))
+        {
+            <span class="@BuildLabelClass()">@Label</span>
+        }
+    </label>
+
+    @if (!Dense && !string.IsNullOrWhiteSpace(HelpText))
+    {
+        <p class="mt-1 text-xs text-muted pl-8">@HelpText</p>
+    }
+</div>

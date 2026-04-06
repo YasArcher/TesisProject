@@ -6,140 +6,134 @@
 @using tesisproject.frontend.SharedUI.Tabs
 @using tesisproject.shared.DTOs.Budgets.Request
 @using tesisproject.shared.DTOs.Catalog.Common.Response
-@using tesisproject.shared.Enums
 
-
-<div class="p-6 space-y-4">
-    <div class="flex justify-between items-center">
-        <h3 class="text-base font-semibold">Resumen financiero</h3>
+<div class="h-full min-h-0 flex flex-col overflow-hidden">
+    <div class="shrink-0 border-b border-border px-4 py-4 md:px-6">
+        <h3 class="text-base font-semibold text-foreground">Resumen financiero</h3>
     </div>
 
-    @if (IsLoading)
-    {
-        <div class="text-sm text-muted">Cargando presupuestos y transacciones…</div>
-    }
-    else if (Budgets is null || Budgets.Count == 0)
-    {
-        <div class="text-sm text-muted">Este proyecto no tiene presupuestos registrados.</div>
-    }
-    else
-    {
-        <Tabs ActiveKey="@_activeBudgetKey" OnChange="HandleBudgetTabChange">
-            @foreach (var b in Budgets)
+    <div class="flex-1 min-h-0 overflow-y-auto">
+        <div class="px-4 py-4 md:px-6">
+            @if (IsLoading)
             {
-                var transactions = GetTransactionsForBudget(b.BudgetId);
-                var tabKey = b.BudgetId.ToString();
-
-                <Tab Key="@tabKey" Title="@GetBudgetTabTitle(b)">
-                    <ChildContent>
-                        <div class="space-y-4 mt-4">
-                            <div class="flex justify-between items-center">
-                                <div class="flex gap-2">
-                                    <ActionButton Text="Nueva certificación"
-                                                  Intent="ButtonIntent.Accept"
-                                                  Variant="ButtonVariant.Filled"
-                                                  Size="ButtonSize.Sm"
-                                                  Execute="@(() => OnAddCertification.InvokeAsync(b.BudgetId))" />
-                                </div>
-                            </div>
-
-                            <!-- Summary stats -->
-                            <div class="grid md:grid-cols-3 gap-3">
-                                <StatCard Title="Presupuesto"
-                                          FormattedValue="@FormatMoney(b.InitialAmount)"
-                                          Variant="StatCardVariant.Outlined"
-                                          Emphasis="StatCardEmphasis.Normal"
-                                          Size="StatCardSize.Md">
-                                    <Icon>
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                            <path d="M12 7.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z" />
-                                            <path fill-rule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v9.75c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 14.625v-9.75ZM8.25 9.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM18.75 9a.75.75 0 0 0-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75V9.75a.75.75 0 0 0-.75-.75h-.008ZM4.5 9.75A.75.75 0 0 1 5.25 9h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V9.75Z" clip-rule="evenodd" />
-                                            <path d="M2.25 18a.75.75 0 0 0 0 1.5c5.4 0 10.63.722 15.6 2.075 1.19.324 2.4-.558 2.4-1.82V18.75a.75.75 0 0 0-.75-.75H2.25Z" />
-                                        </svg>
-                                    </Icon>
-                                </StatCard>
-
-                                <StatCard Title="Certificado"
-                                          FormattedValue="@FormatMoney(b.CertifiedAmount)"
-                                          Variant="StatCardVariant.Outlined"
-                                          Emphasis="StatCardEmphasis.Normal"
-                                          Size="StatCardSize.Md">
-                                    <Icon>
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                            <path fill-rule="evenodd" d="M9 1.5H5.625c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5Zm6.61 10.936a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 14.47a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
-                                            <path d="M12.971 1.816A5.23 5.23 0 0 1 14.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 0 1 3.434 1.279 9.768 9.768 0 0 0-6.963-6.963Z" />
-                                        </svg>
-                                    </Icon>
-                                </StatCard>
-
-                                <StatCard Title="Devengado"
-                                          FormattedValue="@FormatMoney(b.ExecutedAmount)"
-                                          Variant="StatCardVariant.Outlined"
-                                          Emphasis="StatCardEmphasis.Normal"
-                                          Size="StatCardSize.Md">
-                                    <Icon>
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                            <path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75ZM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 0 1-1.875-1.875V8.625ZM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 0 1 3 19.875v-6.75Z" />
-                                        </svg>
-                                    </Icon>
-                                </StatCard>
-                            </div>
-
-                            <div class="flex justify-between items-center mt-4">
-                                <h4 class="text-sm font-medium">Transacciones</h4>
-                                <div class="text-xs text-muted">
-                                    @if (transactions?.Count > 0)
-                                    {
-                                        <span>Total: @transactions.Count transacciones</span>
-                                    }
-                                    else
-                                    {
-                                        <span>Sin transacciones.</span>
-                                    }
-                                </div>
-                            </div>
-
-                            <BudgetTransactionTable Transactions="@transactions"
-                                                    TransactionTypes="@TransactionTypes"
-                                                    OnExecuteDevengado="@OnExecuteDevengado"
-                                                    OnCancelTransaction="@OnCancelTransaction"
-                                                    PageSize="@TransactionPageSize" />
-
-
-                        </div>
-                    </ChildContent>
-                </Tab>
+                <div class="rounded-xl border border-border bg-background px-4 py-6 text-sm text-muted">
+                    Cargando presupuestos y transacciones…
+                </div>
             }
-        </Tabs>
-    }
+            else if (Budgets is null || Budgets.Count == 0)
+            {
+                <div class="rounded-xl border border-dashed border-border bg-muted/5 px-4 py-8 text-sm text-muted">
+                    Este proyecto no tiene presupuestos registrados.
+                </div>
+            }
+            else
+            {
+                <Tabs ActiveKey="@_activeBudgetKey" OnChange="HandleBudgetTabChange">
+                    @foreach (var budget in Budgets)
+                    {
+                        var transactions = GetTransactionsForBudget(budget.BudgetId);
+                        var tabKey = budget.BudgetId.ToString();
+
+                        <Tab Key="@tabKey" Title="@GetBudgetTabTitle(budget)">
+                            <ChildContent>
+                                <div class="space-y-4 pt-4">
+                                    <div class="flex justify-end">
+                                        <ActionButton Text="Nueva certificación"
+                                                      Intent="ButtonIntent.Accept"
+                                                      Variant="ButtonVariant.Filled"
+                                                      Size="ButtonSize.Sm"
+                                                      Execute="@(() => OnAddCertification.InvokeAsync(budget.BudgetId))" />
+                                    </div>
+
+                                    <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                        <StatCard Title="Presupuesto"
+                                                  FormattedValue="@FormatMoney(budget.InitialAmount)"
+                                                  Variant="StatCardVariant.Outlined"
+                                                  Emphasis="StatCardEmphasis.Normal"
+                                                  Size="StatCardSize.Md">
+                                            <Icon>
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                                    <path d="M12 7.5a2.25 2.25 0 1 0 0 4.5 2.25 2.25 0 0 0 0-4.5Z" />
+                                                    <path fill-rule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v9.75c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 0 1 1.5 14.625v-9.75ZM8.25 9.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM18.75 9a.75.75 0 0 0-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 0 0 .75-.75V9.75a.75.75 0 0 0-.75-.75h-.008ZM4.5 9.75A.75.75 0 0 1 5.25 9h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H5.25a.75.75 0 0 1-.75-.75V9.75Z" clip-rule="evenodd" />
+                                                    <path d="M2.25 18a.75.75 0 0 0 0 1.5c5.4 0 10.63.722 15.6 2.075 1.19.324 2.4-.558 2.4-1.82V18.75a.75.75 0 0 0-.75-.75H2.25Z" />
+                                                </svg>
+                                            </Icon>
+                                        </StatCard>
+
+                                        <StatCard Title="Certificado"
+                                                  FormattedValue="@FormatMoney(budget.CertifiedAmount)"
+                                                  Variant="StatCardVariant.Outlined"
+                                                  Emphasis="StatCardEmphasis.Normal"
+                                                  Size="StatCardSize.Md">
+                                            <Icon>
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                                    <path fill-rule="evenodd" d="M9 1.5H5.625c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5Zm6.61 10.936a.75.75 0 1 0-1.22-.872l-3.236 4.53L9.53 14.47a.75.75 0 0 0-1.06 1.06l2.25 2.25a.75.75 0 0 0 1.14-.094l3.75-5.25Z" clip-rule="evenodd" />
+                                                    <path d="M12.971 1.816A5.23 5.23 0 0 1 14.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 0 1 3.434 1.279 9.768 9.768 0 0 0-6.963-6.963Z" />
+                                                </svg>
+                                            </Icon>
+                                        </StatCard>
+
+                                        <StatCard Title="Devengado"
+                                                  FormattedValue="@FormatMoney(budget.ExecutedAmount)"
+                                                  Variant="StatCardVariant.Outlined"
+                                                  Emphasis="StatCardEmphasis.Normal"
+                                                  Size="StatCardSize.Md">
+                                            <Icon>
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                                    <path d="M18.375 2.25c-1.035 0-1.875.84-1.875 1.875v15.75c0 1.035.84 1.875 1.875 1.875h.75c1.035 0 1.875-.84 1.875-1.875V4.125c0-1.036-.84-1.875-1.875-1.875h-.75ZM9.75 8.625c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-.75a1.875 1.875 0 0 1-1.875-1.875V8.625ZM3 13.125c0-1.036.84-1.875 1.875-1.875h.75c1.036 0 1.875.84 1.875 1.875v6.75c0 1.035-.84 1.875-1.875 1.875h-.75A1.875 1.875 0 0 1 3 19.875v-6.75Z" />
+                                                </svg>
+                                            </Icon>
+                                        </StatCard>
+                                    </div>
+
+                                    <div class="space-y-3">
+                                        <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                                            <h4 class="text-sm font-medium text-foreground">Transacciones</h4>
+
+                                            <div class="text-xs text-muted">
+                                                @if (transactions?.Count > 0)
+                                                {
+                                                    <span>@transactions.Count transacciones</span>
+                                                }
+                                                else
+                                                {
+                                                    <span>Sin transacciones</span>
+                                                }
+                                            </div>
+                                        </div>
+
+                                        <BudgetTransactionTable Transactions="@transactions"
+                                                                TransactionTypes="@TransactionTypes"
+                                                                OnExecuteDevengado="@OnExecuteDevengado"
+                                                                OnCancelTransaction="@OnCancelTransaction"
+                                                                PageSize="@TransactionPageSize" />
+                                    </div>
+                                </div>
+                            </ChildContent>
+                        </Tab>
+                    }
+                </Tabs>
+            }
+        </div>
+    </div>
 </div>
 
 @code {
-    // ===== Datos (nuevo modelo) =====
     [Parameter] public List<BudgetDTO> Budgets { get; set; } = new();
     [Parameter] public Dictionary<int, List<BudgetTransactionDTO>> BudgetTransactionsByBudgetId { get; set; } = new();
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public IReadOnlyList<CatalogListItemDTO> TransactionTypes { get; set; } = Array.Empty<CatalogListItemDTO>();
     [Parameter] public EventCallback<int> OnCancelTransaction { get; set; }
-
-
-    // ===== Configuración de paginación =====
     [Parameter] public int TransactionPageSize { get; set; } = 15;
-
-    // ===== Eventos (padre) =====
-    // Ahora enviamos el BudgetId al padre
     [Parameter] public EventCallback<int> OnAddCertification { get; set; }
-    // Ya enviábamos BudgetTransactionId al padre, se mantiene igual
     [Parameter] public EventCallback<int> OnExecuteDevengado { get; set; }
 
-    // ===== Estado interno =====
     private string _activeBudgetKey = string.Empty;
 
     protected override void OnParametersSet()
     {
         if (Budgets is { Count: > 0 })
         {
-            // Si la pestaña activa no existe o está vacía, tomamos el primer presupuesto
             if (string.IsNullOrEmpty(_activeBudgetKey) ||
                 !Budgets.Any(b => b.BudgetId.ToString() == _activeBudgetKey))
             {
@@ -157,7 +151,6 @@
         _activeBudgetKey = newKey;
     }
 
-    // ===== Utilidades =====
     private List<BudgetTransactionDTO> GetTransactionsForBudget(int budgetId)
     {
         if (BudgetTransactionsByBudgetId is null)
@@ -169,12 +162,12 @@
         return list;
     }
 
-    private static string GetBudgetTabTitle(BudgetDTO b)
+    private static string GetBudgetTabTitle(BudgetDTO budget)
     {
-        if (!string.IsNullOrWhiteSpace(b.FundingTypeName))
-            return b.FundingTypeName!;
+        if (!string.IsNullOrWhiteSpace(budget.FundingTypeName))
+            return budget.FundingTypeName!;
 
-        return $"Presupuesto #{b.BudgetId}";
+        return $"Presupuesto #{budget.BudgetId}";
     }
 
     private static string FormatMoney(decimal amount)

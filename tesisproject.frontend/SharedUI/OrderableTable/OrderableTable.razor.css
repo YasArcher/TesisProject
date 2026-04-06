@@ -10,3 +10,6 @@
 .sortable-chosen {
     background-color: color-mix(in srgb, var(--color-primary) 5%, transparent);
 }
+.bg-primary-subtle-solid {
+    background-color: color-mix(in srgb, var(--color-primary) 10%, var(--color-background));
+}
