@@ -1,183 +1,204 @@
-﻿@using tesisproject.shared.DTOs.Project.Request
+﻿@using System.Globalization
+@using tesisproject.shared.DTOs.Project.Request
 @using tesisproject.shared.DTOs.Project.Response
-@using tesisproject.shared.DTOs.Visit.Response
 @using tesisproject.shared.DTOs.Products.Product.Response
 @using tesisproject.shared.DTOs.Budgets.Request
-@using tesisproject.shared.DTOs.ExternalResearcherProject.Response
-@using tesisproject.shared.DTOs.AppUser
-@using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.shared.DTOs.Group.Response
-@using tesisproject.frontend.Services.Interfaces
-@using System.Globalization
+@using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.StatCard
+@using tesisproject.frontend.Services.Interfaces
 
 @inject IProjectClientService ProjectService
 @inject IGroupService GroupService
 
-<section class="space-y-6 bg-background border-2 border-border rounded-3xl p-6 shadow-sm">
-    <div class="flex items-center justify-between gap-4 pb-4 border-b-2 border-border">
-        <div class="space-y-1">
-            <h3 class="text-base font-bold text-foreground tracking-tight">Finalización del Proyecto</h3>
-            <div class="text-sm text-muted">Resumen general de lo ejecutado</div>
-        </div>
+<div class="h-full min-h-0 flex flex-col overflow-hidden">
+    <div class="flex-1 min-h-0 overflow-y-auto p-4 md:p-6">
+        <section class="rounded-2xl border border-border bg-background shadow-sm">
+            <div class="border-b border-border px-4 py-4 md:px-6">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                        <h3 class="text-base font-bold text-foreground">Finalización del proyecto</h3>
+                    </div>
 
-        <div class="flex items-center gap-2">
-            <ActionButton Execute="OnRefresh"
-                          Text="Refrescar"
-                          Variant="ButtonVariant.Filled"
-                          Intent="ButtonIntent.Info"
-                          Disabled="@(IsLoading)" />
+                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:shrink-0">
+                        <ActionButton Execute="OnRefresh"
+                                      Text="Refrescar"
+                                      Variant="ButtonVariant.Filled"
+                                      Intent="ButtonIntent.Info"
+                                      Disabled="@(IsLoading || FinalizeLoading)" />
 
-            <ActionButton Execute="FinalizeProject"
-                          Text="Finalizar"
-                          Variant="ButtonVariant.Filled"
-                          Intent="ButtonIntent.Danger"
-                          Disabled="@(IsLoading || FinalizeLoading || Project is null || IsProjectFinalized)" />
-        </div>
-    </div>
-
-    @if (!string.IsNullOrWhiteSpace(FinalizeError))
-    {
-        <div class="text-sm text-red-600">@FinalizeError</div>
-    }
-
-    @if (IsLoading)
-    {
-        <div class="text-sm text-muted">Cargando resumen...</div>
-    }
-    else if (!string.IsNullOrWhiteSpace(ErrorMessage))
-    {
-        <div class="text-sm text-red-600">@ErrorMessage</div>
-    }
-    else
-    {
-        <div class="grid grid-cols-1 gap-4">
-            <div class="rounded-2xl border border-border p-4">
-                <ProjectProductsEditor ProjectId="@(Project?.ProjectId ?? 0)"
-                                       VisitId="0"
-                                       Products="@(Products ?? new List<ProductListItemResponseDTO>())"
-                                       Disabled="@(IsLoading || Project is null)"
-                                       Loading="@(IsLoading)"
-                                       Error="@(ErrorMessage)"
-                                       OnChanged="OnProductsChanged" />
-            </div>
-        </div>
-
-        <div class="rounded-2xl border border-border p-4 space-y-3">
-            <div class="flex items-center justify-between gap-4">
-                <div>
-                    <div class="text-sm text-muted">Presupuesto</div>
-                    <div class="text-xs text-muted">Certificado, devengado y porcentaje ejecutado</div>
-                </div>
-
-                <div class="text-xs text-muted">
-                    Presupuestos: <span class="font-semibold">@(Budgets?.Count ?? 0)</span>
+                        <ActionButton Execute="FinalizeProject"
+                                      Text="Finalizar"
+                                      Variant="ButtonVariant.Filled"
+                                      Intent="ButtonIntent.Danger"
+                                      Disabled="@(IsLoading || FinalizeLoading || Project is null || IsProjectFinalized)" />
+                    </div>
                 </div>
             </div>
 
-            @if (Budgets is null || Budgets.Count == 0)
-            {
-                <div class="text-sm text-muted">Este proyecto no tiene presupuestos registrados.</div>
-            }
-            else
-            {
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    @foreach (var b in Budgets)
-                    {
-                        var executedPct = CalcExecutedPct(b);
+            <div class="space-y-4 p-4 md:p-6">
+                @if (!string.IsNullOrWhiteSpace(FinalizeError))
+                {
+                    <div class="rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error">
+                        @FinalizeError
+                    </div>
+                }
 
-                        <div class="rounded-2xl border border-border p-4 space-y-3">
-                            <div class="flex items-start justify-between gap-3">
-                                <div class="min-w-0">
-                                    <div class="text-xs text-muted">Tipo de financiamiento</div>
-                                    <div class="font-semibold text-foreground truncate">
-                                        @GetBudgetTitle(b)
-                                    </div>
+                @if (IsLoading)
+                {
+                    <div class="rounded-xl border border-border bg-muted/5 px-4 py-6 text-sm text-muted">
+                        Cargando resumen...
+                    </div>
+                }
+                else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                {
+                    <div class="rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error">
+                        @ErrorMessage
+                    </div>
+                }
+                else
+                {
+                    <div class="rounded-2xl border border-border p-4">
+                        @if (Project is null)
+                        {
+                            <div class="text-sm text-muted">No hay proyecto cargado.</div>
+                        }
+                        else
+                        {
+                            <ProjectProductsEditor ProjectId="@Project.ProjectId"
+                                                   VisitId="0"
+                                                   Products="@(Products ?? new List<ProductListItemResponseDTO>())"
+                                                   Disabled="@IsReadOnly"
+                                                   Loading="@IsLoading"
+                                                   Error="@ErrorMessage"
+                                                   OnChanged="OnProductsChanged" />
+                        }
+                    </div>
+
+                    <div class="rounded-2xl border border-border p-4 space-y-4">
+                        <div class="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <div class="text-sm font-medium text-foreground">Presupuesto</div>
+                                <div class="text-xs text-muted">
+                                    @(Budgets?.Count ?? 0) presupuesto(s)
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <StatCard Title="Certificado"
-                                          FormattedValue="@FormatMoney(b.CertifiedAmount)"
-                                          Variant="StatCardVariant.Outlined"
-                                          Emphasis="StatCardEmphasis.Normal"
-                                          Size="StatCardSize.Md" />
+                        @if (Budgets is null || Budgets.Count == 0)
+                        {
+                            <div class="text-sm text-muted">Este proyecto no tiene presupuestos registrados.</div>
+                        }
+                        else
+                        {
+                            <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                                @foreach (var budget in Budgets)
+                                {
+                                    var executedPct = CalcExecutedPct(budget);
 
-                                <StatCard Title="Devengado"
-                                          FormattedValue="@FormatMoney(b.ExecutedAmount)"
-                                          Variant="StatCardVariant.Outlined"
-                                          Emphasis="StatCardEmphasis.Normal"
-                                          Size="StatCardSize.Md" />
+                                    <div class="rounded-2xl border border-border p-4 space-y-3">
+                                        <div class="min-w-0">
+                                            <div class="font-semibold text-foreground truncate">
+                                                @GetBudgetTitle(budget)
+                                            </div>
+                                        </div>
 
-                                <StatCard Title="% ejecutado"
-                                          FormattedValue="@($"{executedPct:F1}%")"
-                                          Variant="StatCardVariant.Outlined"
-                                          Emphasis="StatCardEmphasis.Normal"
-                                          Size="StatCardSize.Md" />
+                                        <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                            <StatCard Title="Certificado"
+                                                      FormattedValue="@FormatMoney(budget.CertifiedAmount)"
+                                                      Variant="StatCardVariant.Outlined"
+                                                      Emphasis="StatCardEmphasis.Normal"
+                                                      Size="StatCardSize.Md" />
+
+                                            <StatCard Title="Devengado"
+                                                      FormattedValue="@FormatMoney(budget.ExecutedAmount)"
+                                                      Variant="StatCardVariant.Outlined"
+                                                      Emphasis="StatCardEmphasis.Normal"
+                                                      Size="StatCardSize.Md" />
+
+                                            <StatCard Title="% ejecutado"
+                                                      FormattedValue="@($"{executedPct:F1}%")"
+                                                      Variant="StatCardVariant.Outlined"
+                                                      Emphasis="StatCardEmphasis.Normal"
+                                                      Size="StatCardSize.Md" />
+                                        </div>
+
+                                        <div class="text-xs text-muted">
+                                            Base: @(budget.CertifiedAmount > 0 ? "Devengado / Certificado" : "Devengado / Presupuesto")
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <div class="rounded-2xl border border-border p-4">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <div class="text-sm font-medium text-foreground">Reporte de integrantes</div>
                             </div>
 
-                            <div class="text-xs text-muted">
-                                Base %: @(b.CertifiedAmount > 0 ? "Devengado / Certificado" : "Devengado / Presupuesto")
+                            <div class="sm:shrink-0">
+                                <ActionButton Execute="ReloadMembersReport"
+                                              Text="Cargar reporte"
+                                              Variant="ButtonVariant.Filled"
+                                              Intent="ButtonIntent.Info"
+                                              Disabled="@(ReportLoading || Project is null)" />
                             </div>
                         </div>
-                    }
-                </div>
-            }
-        </div>
-    }
 
-    <div class="rounded-2xl border border-border p-4">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <div class="text-sm text-muted">Reporte de integrantes</div>
-                <div class="text-xs text-muted">Incluye prórrogas y filtrado por reglas del reporte</div>
+                        <div class="mt-4">
+                            @if (Project is null)
+                            {
+                                <div class="text-sm text-muted">No hay proyecto cargado.</div>
+                            }
+                            else if (ReportLoading)
+                            {
+                                <div class="text-sm text-muted">Cargando reporte...</div>
+                            }
+                            else if (!string.IsNullOrWhiteSpace(ReportError))
+                            {
+                                <div class="rounded-xl border border-error/30 bg-error/10 p-3 text-sm text-error">
+                                    @ReportError
+                                </div>
+                            }
+                            else
+                            {
+                                <ProjectMembersReport Report="@MembersReport" />
+                            }
+                        </div>
+                    </div>
+                }
             </div>
-
-            <ActionButton Execute="ReloadMembersReport"
-                          Text="Cargar reporte"
-                          Variant="ButtonVariant.Filled"
-                          Intent="ButtonIntent.Info"
-                          Disabled="@(ReportLoading || Project is null)" />
-        </div>
-
-        <div class="mt-4">
-            @if (Project is null)
-            {
-                <div class="text-sm text-muted">No hay proyecto cargado.</div>
-            }
-            else if (ReportLoading)
-            {
-                <div class="text-sm text-muted">Cargando reporte...</div>
-            }
-            else if (!string.IsNullOrWhiteSpace(ReportError))
-            {
-                <div class="text-sm text-red-600">@ReportError</div>
-            }
-            else
-            {
-                <ProjectMembersReport Report="@MembersReport" />
-            }
-        </div>
+        </section>
     </div>
-</section>
+</div>
 
 @code {
-    [Parameter] public ProjectDetailResponseDTO? Project { get; set; }
-    [Parameter] public List<ResolvedUserProfileDTO>? Members { get; set; }
-    [Parameter] public List<ExternalResearcherProjectListItemDTO>? ExternalResearchersProjects { get; set; }
-    [Parameter] public List<VisitListResponseDTO>? Visits { get; set; }
-    [Parameter] public List<BudgetDTO>? Budgets { get; set; }
-    [Parameter] public Dictionary<int, List<BudgetTransactionDTO>>? BudgetTransactionsByBudgetId { get; set; }
-    [Parameter] public List<ProductListItemResponseDTO>? Products { get; set; }
+    private const int FinalizedProjectStateId = 1;
 
+    [Parameter] public ProjectDetailResponseDTO? Project { get; set; }
+    [Parameter] public List<BudgetDTO>? Budgets { get; set; }
+    [Parameter] public List<ProductListItemResponseDTO>? Products { get; set; }
     [Parameter] public bool IsLoading { get; set; }
     [Parameter] public string? ErrorMessage { get; set; }
-
     [Parameter] public EventCallback OnRefresh { get; set; }
 
     private ProjectMembersReportDTO? MembersReport;
     private bool ReportLoading;
     private string? ReportError;
+    private int? _reportProjectId;
+
+    private bool FinalizeLoading;
+    private string? FinalizeError;
+    private int? _finalizedProjectId;
+
+    private bool IsProjectFinalized =>
+        Project is not null &&
+        (Project.ProjectStateId == FinalizedProjectStateId || _finalizedProjectId == Project.ProjectId);
+
+    private bool IsReadOnly =>
+        IsLoading || FinalizeLoading || Project is null || IsProjectFinalized;
 
     private async Task OnProductsChanged()
     {
@@ -185,11 +206,22 @@
             await OnRefresh.InvokeAsync();
     }
 
-
     protected override async Task OnParametersSetAsync()
     {
-        if (Project?.ProjectId > 0 && MembersReport is null && !ReportLoading)
+        var currentProjectId = Project?.ProjectId;
+
+        if (currentProjectId is null || currentProjectId <= 0)
+        {
+            MembersReport = null;
+            ReportError = null;
+            _reportProjectId = null;
+            return;
+        }
+
+        if (_reportProjectId != currentProjectId && !ReportLoading)
+        {
             await ReloadMembersReport();
+        }
     }
 
     private async Task ReloadMembersReport()
@@ -201,17 +233,18 @@
         {
             ReportLoading = true;
             ReportError = null;
+            _reportProjectId = Project.ProjectId;
 
-            var res = await GroupService.GetProjectMembersReportAsync(Project.ProjectId);
+            var response = await GroupService.GetProjectMembersReportAsync(Project.ProjectId);
 
-            if (!res.Success || res.Response is null)
+            if (!response.Success || response.Response is null)
             {
-                ReportError = res.Error ?? "No se pudo obtener el reporte de integrantes.";
+                ReportError = response.Error ?? "No se pudo obtener el reporte de integrantes.";
                 MembersReport = null;
                 return;
             }
 
-            MembersReport = res.Response;
+            MembersReport = response.Response;
         }
         catch (Exception ex)
         {
@@ -225,40 +258,33 @@
     }
 
     private static string FormatMoney(decimal amount)
-    => amount.ToString("N2", CultureInfo.InvariantCulture);
+        => amount.ToString("N2", CultureInfo.InvariantCulture);
 
-    private static string GetBudgetTitle(BudgetDTO b)
+    private static string GetBudgetTitle(BudgetDTO budget)
     {
-        if (!string.IsNullOrWhiteSpace(b.FundingTypeName))
-            return b.FundingTypeName!;
+        if (!string.IsNullOrWhiteSpace(budget.FundingTypeName))
+            return budget.FundingTypeName!;
 
-        return b.FundingTypeId > 0
-            ? $"Financiamiento #{b.FundingTypeId}"
-            : $"Presupuesto #{b.BudgetId}";
+        return budget.FundingTypeId > 0
+            ? $"Financiamiento #{budget.FundingTypeId}"
+            : $"Presupuesto #{budget.BudgetId}";
     }
 
-    private static decimal CalcExecutedPct(BudgetDTO b)
+    private static decimal CalcExecutedPct(BudgetDTO budget)
     {
-        // Prioridad: Certified como base; si no hay certified, usa Initial
-        var denom = b.CertifiedAmount > 0
-            ? b.CertifiedAmount
-            : (b.InitialAmount > 0 ? b.InitialAmount : 0m);
+        var denominator = budget.CertifiedAmount > 0
+            ? budget.CertifiedAmount
+            : (budget.InitialAmount > 0 ? budget.InitialAmount : 0m);
 
-        if (denom <= 0) return 0m;
+        if (denominator <= 0)
+            return 0m;
 
-        return (b.ExecutedAmount / denom) * 100m;
+        return (budget.ExecutedAmount / denominator) * 100m;
     }
-
-    private bool FinalizeLoading;
-    private string? FinalizeError;
-
-    private bool IsProjectFinalized
-        => Project is not null
-           && (Project.ProjectStateId == 1);
 
     private async Task FinalizeProject()
     {
-        if (Project?.ProjectId is null || Project.ProjectId <= 0)
+        if (Project?.ProjectId is null || Project.ProjectId <= 0 || IsProjectFinalized)
             return;
 
         try
@@ -266,20 +292,21 @@
             FinalizeLoading = true;
             FinalizeError = null;
 
-            var req = new UpdateProjectRequestDTO
+            var request = new UpdateProjectRequestDTO
             {
-                ProjectStateId = 1
+                ProjectStateId = FinalizedProjectStateId
             };
 
-            var res = await ProjectService.UpdateAsync(Project.ProjectId, req);
+            var response = await ProjectService.UpdateAsync(Project.ProjectId, request);
 
-            if (!res.Success)
+            if (!response.Success)
             {
-                FinalizeError = res.Error ?? "No se pudo finalizar el proyecto.";
+                FinalizeError = response.Error ?? "No se pudo finalizar el proyecto.";
                 return;
             }
 
-            // Recargar datos (el padre normalmente vuelve a pedir Project/Products/etc.)
+            _finalizedProjectId = Project.ProjectId;
+
             if (OnRefresh.HasDelegate)
                 await OnRefresh.InvokeAsync();
         }

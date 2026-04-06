@@ -1,165 +1,188 @@
 ﻿@* Features/Projects/Components/ProjectVisitsTab.razor *@
-@using tesisproject.frontend.SharedUI
-@using System.Text.Json;
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.Utils
-@using tesisproject.frontend.Services.Interfaces
-@using tesisproject.shared.DTOs.Visit.Request
 @using tesisproject.shared.DTOs.Visit.Response
-@inject NavigationManager Nav
 
-<div class="p-6 flex flex-col h-full">
-    <!-- Header fijo -->
-    <div class="flex-shrink-0 pb-4 border-b border-border">
-        <div class="flex justify-between items-center gap-4">
-            <div>
-                <h3 class="text-lg font-semibold text-foreground">Visitas del Proyecto</h3>
-                @if (Items?.Count > 0)
+<div class="h-full min-h-0 flex flex-col overflow-hidden">
+    <div class="shrink-0 border-b border-border px-4 py-4 md:px-6">
+        <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0">
+                <h3 class="text-lg font-semibold text-foreground">Visitas del proyecto</h3>
+
+                @if (HasItems)
                 {
-                    <p class="text-sm text-muted mt-0.5">@Items.Count @(Items.Count == 1 ? "visita registrada" : "visitas registradas")</p>
+                    <p class="mt-0.5 text-sm text-muted">
+                        @SafeItems.Count @(SafeItems.Count == 1 ? "visita" : "visitas")
+                    </p>
                 }
             </div>
         </div>
     </div>
 
-    <!-- Contenido con scroll -->
-    <div class="flex-1 overflow-y-auto py-4 -mx-1 px-1">
-        @if (IsLoading)
-        {
-            <div class="flex flex-col items-center justify-center py-12 gap-3">
-                <div class="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                <p class="text-sm text-muted">Cargando visitas...</p>
-            </div>
-        }
-        else if (Items?.Count is 0 or null)
-        {
-            <div class="flex flex-col items-center justify-center py-12 px-4 text-center">
-                <div class="w-16 h-16 rounded-full bg-primary-subtle flex items-center justify-center mb-4">
-                    <svg class="w-8 h-8 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+    <div class="flex-1 min-h-0 overflow-y-auto">
+        <div class="space-y-3 px-4 py-4 md:px-6">
+            @if (IsLoading)
+            {
+                <div class="flex flex-col items-center justify-center gap-3 py-12">
+                    <div class="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                    <p class="text-sm text-muted">Cargando visitas...</p>
                 </div>
-                <h4 class="text-base font-semibold text-foreground mb-2">Sin visitas registradas</h4>
-            </div>
-        }
-        else
-        {
-            <div class="space-y-3">
-                @for (var i = 0; i < (Items?.Count ?? 0); i++)
+            }
+            else if (!HasItems)
+            {
+                <div class="flex flex-col items-center justify-center px-4 py-12 text-center">
+                    <div class="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary-subtle">
+                        <svg class="h-7 w-7 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+
+                    <h4 class="text-base font-semibold text-foreground">
+                        Sin visitas registradas
+                    </h4>
+                </div>
+            }
+            else
+            {
+                @for (var i = 0; i < SafeItems.Count; i++)
                 {
-                    var v = Items![i];
+                    var visit = SafeItems[i];
                     var displayIndex = i + 1;
 
-                    <article class="group relative rounded-xl border border-border bg-background p-4 transition-all duration-200 hover:border-primary hover:shadow-md">
-                        <!-- Indicador de estado lateral -->
-                        <div class="absolute left-0 top-4 bottom-4 w-1 rounded-r-full @GetStateColorClass(v.VisitStateId)"></div>
+                    <article @key="visit.VisitId"
+                             class="group relative rounded-xl border border-border bg-background p-4 transition-all duration-200 hover:border-primary hover:shadow-md">
+                        <div class="absolute bottom-4 left-0 top-4 w-1 rounded-r-full @GetStateColorClass(visit.VisitStateId)"></div>
 
                         <div class="flex flex-col gap-3 pl-3">
-                            <!-- Header -->
-                            <div class="flex flex-wrap items-start justify-between gap-3">
-                                <div class="flex-1 min-w-0">
-                                    <div class="flex items-center gap-2 mb-1">
-                                        <h4 class="font-semibold text-foreground truncate">
+                            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                                <div class="min-w-0 flex-1">
+                                    <div class="mb-1 flex flex-wrap items-center gap-2">
+                                        <h4 class="truncate font-semibold text-foreground">
                                             Visita #@displayIndex
                                         </h4>
-                                        @StateBadge(v.VisitStateId, v.VisitStateName)
+
+                                        @StateBadge(visit.VisitStateId, visit.VisitStateName)
                                     </div>
 
                                     <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
                                         <span class="flex items-center gap-1.5">
-                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2z" />
                                             </svg>
-                                            @v.VisitDate.ToSpanishShortDate()
+                                            @visit.VisitDate.ToSpanishShortDate()
                                         </span>
 
-                                        @if (v.DocumentId is int docId)
+                                        @if (visit.DocumentId is int documentId)
                                         {
-                                            <span class="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-secondary-subtle text-secondary border border-secondary/20">
-                                                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <span class="inline-flex items-center gap-1.5 rounded-full border border-secondary/20 bg-secondary-subtle px-2 py-0.5 text-secondary">
+                                                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                 </svg>
-                                                Doc #@docId
+                                                Doc #@documentId
                                             </span>
                                         }
                                     </div>
                                 </div>
 
-                                <!-- Botón Revisar -->
-                                <div class="flex items-center gap-2 shrink-0">
+                                <div class="shrink-0">
                                     <ActionButton Text="Revisar"
                                                   Intent="ButtonIntent.Info"
                                                   Variant="ButtonVariant.Outline"
                                                   Size="ButtonSize.Sm"
-                                                  Execute="@(() => OnOpenVisit.InvokeAsync(v.VisitId))">
+                                                  Execute="@(() => OnOpenVisit.InvokeAsync(visit.VisitId))">
                                         <Icon>
-                                            <!-- icono -->
+                                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0Z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7Z" />
+                                            </svg>
                                         </Icon>
                                     </ActionButton>
                                 </div>
                             </div>
 
-
-                            <!-- Notas -->
-                            @if (!string.IsNullOrWhiteSpace(v.Notes))
+                            @if (!string.IsNullOrWhiteSpace(visit.Notes))
                             {
-                                <div class="rounded-lg bg-primary-subtle/50 border border-primary/10 p-3">
+                                <div class="rounded-lg border border-primary/10 bg-primary-subtle/50 p-3">
                                     <div class="flex items-start gap-2">
-                                        <svg class="w-4 h-4 text-primary mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <svg class="mt-0.5 h-4 w-4 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
-                                        <p class="text-sm text-foreground/90 leading-relaxed flex-1">@v.Notes</p>
+
+                                        <p class="flex-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                                            @visit.Notes
+                                        </p>
                                     </div>
                                 </div>
                             }
                         </div>
                     </article>
                 }
-            </div>
-        }
+            }
+        </div>
     </div>
 </div>
 
 @code {
-    // ===== Parámetros =====
-    [Parameter] public int ProjectId { get; set; }
-    [Parameter] public List<VisitListResponseDTO>? Items { get; set; }
+    [Parameter] public IReadOnlyList<VisitListResponseDTO>? Items { get; set; }
     [Parameter] public bool IsLoading { get; set; }
-    [Parameter] public EventCallback OnAddVisit { get; set; }
     [Parameter] public EventCallback<int> OnOpenVisit { get; set; }
-    [Parameter] public EventCallback<(int visitId, int newStateId)> OnChangeVisitState { get; set; }
 
-    // ===== Colores y badge (se conservan) =====
-    private string GetStateColorClass(int stateId) => stateId switch
+    private IReadOnlyList<VisitListResponseDTO> SafeItems => Items ?? Array.Empty<VisitListResponseDTO>();
+    private bool HasItems => SafeItems.Count > 0;
+
+    private static string GetStateColorClass(int stateId) => stateId switch
     {
-        1 => "bg-secondary",      // Scheduled
-        3 => "bg-primary",        // In Progress
-        2 => "bg-accent",         // Completed
-        4 => "bg-error",          // Cancelled
+        1 => "bg-secondary",
+        3 => "bg-primary",
+        2 => "bg-accent",
+        4 => "bg-error",
         _ => "bg-muted"
     };
 
-    private RenderFragment StateBadge(int id, string name) => builder =>
+    private static RenderFragment StateBadge(int id, string name) => builder =>
     {
         var (bgClass, textClass, borderClass, icon) = id switch
         {
-            1 => ("bg-secondary-subtle", "text-secondary", "border-secondary/20",
-                  "<svg class='w-3 h-3' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'/></svg>"),
-            3 => ("bg-primary-subtle", "text-primary", "border-primary/20",
-                  "<svg class='w-3 h-3' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M13 10V3L4 14h7v7l9-11h-7z'/></svg>"),
-            2 => ("bg-accent/20", "text-accent", "border-accent/30",
-                  "<svg class='w-3 h-3' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M5 13l4 4L19 7'/></svg>"),
-            4 => ("bg-error/10", "text-error", "border-error/30",
-                  "<svg class='w-3 h-3' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M6 18L18 6M6 6l12 12'/></svg>"),
-            _ => ("bg-muted/20", "text-muted", "border-muted/30", "")
+            1 => (
+                "bg-secondary-subtle",
+                "text-secondary",
+                "border-secondary/20",
+                "<svg class='w-3 h-3' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'/></svg>"
+            ),
+            3 => (
+                "bg-primary-subtle",
+                "text-primary",
+                "border-primary/20",
+                "<svg class='w-3 h-3' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M13 10V3L4 14h7v7l9-11h-7z'/></svg>"
+            ),
+            2 => (
+                "bg-accent/20",
+                "text-accent",
+                "border-accent/30",
+                "<svg class='w-3 h-3' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M5 13l4 4L19 7'/></svg>"
+            ),
+            4 => (
+                "bg-error/10",
+                "text-error",
+                "border-error/30",
+                "<svg class='w-3 h-3' fill='none' viewBox='0 0 24 24' stroke='currentColor' stroke-width='2'><path stroke-linecap='round' stroke-linejoin='round' d='M6 18L18 6M6 6l12 12'/></svg>"
+            ),
+            _ => (
+                "bg-muted/20",
+                "text-muted",
+                "border-muted/30",
+                ""
+            )
         };
 
         builder.OpenElement(0, "span");
-        builder.AddAttribute(1, "class", $"inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border {bgClass} {textClass} {borderClass}");
+        builder.AddAttribute(1, "class", $"inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium {bgClass} {textClass} {borderClass}");
+
         if (!string.IsNullOrEmpty(icon))
         {
             builder.AddMarkupContent(2, icon);
         }
+
         builder.AddContent(3, name);
         builder.CloseElement();
     };

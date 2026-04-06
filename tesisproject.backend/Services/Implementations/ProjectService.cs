@@ -206,7 +206,10 @@ namespace tesisproject.backend.Services.Implementations
 
         // ================= WRITES =================
 
-        public async Task<ServiceResult<ProjectListResponseDTO>> CreateAsync(AddProjectRequestDTO dto, int currentUserId, CancellationToken ct = default)
+        public async Task<ServiceResult<ProjectListResponseDTO>> CreateAsync(
+    AddProjectRequestDTO dto,
+    int currentUserId,
+    CancellationToken ct = default)
         {
             try
             {
@@ -214,21 +217,25 @@ namespace tesisproject.backend.Services.Implementations
                     .AnyAsync(p => p.ProjectName == dto.ProjectName && p.ProjectGroupId == dto.ProjectGroupId, ct);
 
                 if (duplicate)
+                {
                     return ServiceResult<ProjectListResponseDTO>.Fail(
                         "A project with the same name already exists in this group.",
                         ErrorType.Conflict
                     );
+                }
 
-                var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
-                if (user is null)
+                var appUserResult = await _appUsers.GetAppUserIdByLocalIdAsync(currentUserId, ct);
+                if (!appUserResult.Success || appUserResult.Data <= 0)
                 {
                     return ServiceResult<ProjectListResponseDTO>.Fail(
-                        "User not found.",
-                        ErrorType.NotFound
+                        appUserResult.Message ?? "User not found.",
+                        appUserResult.Error
                     );
                 }
 
-                var entity = MapToEntity(dto, user.IdUser);
+                var createdByUserId = appUserResult.Data;
+
+                var entity = MapToEntity(dto, createdByUserId);
                 await _uow.Projects.AddAsync(entity, ct);
                 await _uow.SaveChangesAsync(ct);
 
@@ -511,20 +518,20 @@ namespace tesisproject.backend.Services.Implementations
                     return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid ProjectStateId.");
                 }
 
-                var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
-                if (user is null)
+                var appUserResult = await _appUsers.GetAppUserIdByLocalIdAsync(currentUserId, ct);
+                if (!appUserResult.Success || appUserResult.Data <= 0)
                 {
+                    PhaseLog(
+                        "Fase 1 - Validación",
+                        $"CreatedByUserId unresolved from AspUserId={currentUserId}. Error={appUserResult.Error}, Msg={appUserResult.Message}");
+
                     return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        "User not found.",
-                        ErrorType.NotFound
+                        appUserResult.Message ?? "User not found.",
+                        appUserResult.Error
                     );
                 }
 
-                if (user.IdUser <= 0)
-                {
-                    PhaseLog("Fase 1 - Validación", "CreatedByUserId <= 0");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid CreatedByUserId.");
-                }
+                var createdByUserId = appUserResult.Data;
 
                 if (p.FacultyId <= 0)
                 {
@@ -590,7 +597,7 @@ namespace tesisproject.backend.Services.Implementations
                 var projectEntity = new Project
                 {
                     ProjectCode = generatedCode,
-                    CreatedByUserId = user.IdUser,
+                    CreatedByUserId = createdByUserId,
                     ProjectTypeId = p.ProjectTypeId,
                     ProjectNumber = nextNumber,
                     ProjectStateId = ProjectStateIds.EnEjecucion,
@@ -731,7 +738,7 @@ namespace tesisproject.backend.Services.Implementations
                         .Select(b => new Budget
                         {
                             Project = projectEntity,
-                            ApprovedByUserId = user.IdUser,
+                            ApprovedByUserId = createdByUserId,
                             InitialAmount = b.InitialAmount,
                             CertifiedAmount = 0,
                             ExecutedAmount = 0,
@@ -799,7 +806,7 @@ namespace tesisproject.backend.Services.Implementations
                                 Project = projectEntity,
                                 Role = ExternalResearcherRole,
                                 CreatedAtUtc = DateTime.UtcNow,
-                                CreatedByUserId = user.IdUser,
+                                CreatedByUserId = createdByUserId,
                                 ExitDate = null
                             });
                         }
@@ -1151,14 +1158,22 @@ namespace tesisproject.backend.Services.Implementations
 
                 PhaseLog("Init", $"ImportedProjects in summary: {summary.ImportedProjects.Count}");
 
-                var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
-                if (user is null || user.IdUser <= 0)
+                var appUserResult = await _appUsers.GetAppUserIdByLocalIdAsync(currentUserId, ct);
+                if (!appUserResult.Success || appUserResult.Data <= 0)
                 {
-                    PhaseLog("Init", $"User not found or invalid. currentUserId={currentUserId}");
-                    return ServiceResult<int>.Fail("User not found or invalid.", ErrorType.NotFound);
+                    PhaseLog(
+                        "Init",
+                        $"AppUser resolve failed. AspUserId={currentUserId}, Error={appUserResult.Error}, Msg={appUserResult.Message}");
+
+                    return ServiceResult<int>.Fail(
+                        appUserResult.Message ?? "User not found or invalid.",
+                        appUserResult.Error
+                    );
                 }
 
-                PhaseLog("Init", $"Import executed by UserId={user.IdUser}");
+                var createdByUserId = appUserResult.Data;
+
+                PhaseLog("Init", $"Import executed by AppUserId={createdByUserId} (AspUserId={currentUserId})");
 
                 var directoryResult = await _externalDirectory.GetAllAsync(ct);
                 if (!directoryResult.Success || directoryResult.Data is null || directoryResult.Data.Count == 0)
@@ -1326,7 +1341,7 @@ namespace tesisproject.backend.Services.Implementations
                         ProjectCode = $"{dto.ProjectCode}-{dto.Number.Value}",
                         ProjectNumber = dto.Number.Value,
                         ProjectName = dto.ProjectName ?? string.Empty,
-                        CreatedByUserId = user.IdUser,
+                        CreatedByUserId = createdByUserId,
                         ProjectTypeId = ProjectTypeIds.Aplicada,
                         FacultyId = facultyId.Value,
                         ConvocationId = convocationId,
@@ -1352,7 +1367,7 @@ namespace tesisproject.backend.Services.Implementations
                             Project = projectEntity,
                             Role = ExternalResearcherRole,
                             CreatedAtUtc = DateTime.UtcNow,
-                            CreatedByUserId = user.IdUser,
+                            CreatedByUserId = createdByUserId,
                             ExitDate = null
                         };
 
@@ -1375,7 +1390,7 @@ namespace tesisproject.backend.Services.Implementations
                             ResolutionCode = finalResolutionDoc.Code,
                             ResolutionDate = finalResolutionDoc.Date,
                             CreatedAt = DateTime.UtcNow,
-                            CreatedByUserId = user.IdUser
+                            CreatedByUserId = createdByUserId
                         };
 
                         await _uow.Documents.AddAsync(finalDocument, ct);
@@ -1395,7 +1410,7 @@ namespace tesisproject.backend.Services.Implementations
                         var budgetEntity = new Budget
                         {
                             Project = projectEntity,
-                            ApprovedByUserId = user.IdUser,
+                            ApprovedByUserId = createdByUserId,
                             FundingTypeId = FundingTypeIds.Interno,
                             InitialAmount = dto.AssignedValue.Value,
                             CertifiedAmount = 0,
@@ -1521,7 +1536,7 @@ namespace tesisproject.backend.Services.Implementations
                                 ResolutionCode = docDto.Code,
                                 ResolutionDate = docDto.Date,
                                 CreatedAt = DateTime.UtcNow,
-                                CreatedByUserId = user.IdUser
+                                CreatedByUserId = createdByUserId
                             };
 
                             await _uow.Documents.AddAsync(document, ct);
@@ -1558,7 +1573,7 @@ namespace tesisproject.backend.Services.Implementations
                                 ResolutionCode = ext.ResolutionCode,
                                 ResolutionDate = ext.NewEndDate,
                                 CreatedAt = nowUtc,
-                                CreatedByUserId = user.IdUser
+                                CreatedByUserId = createdByUserId
                             };
 
                             await _uow.Documents.AddAsync(extensionDocument, ct);
@@ -1618,7 +1633,7 @@ namespace tesisproject.backend.Services.Implementations
                                     ResolutionCode = x.raw,
                                     ResolutionDate = null,
                                     CreatedAt = nowUtc,
-                                    CreatedByUserId = user.IdUser
+                                    CreatedByUserId = createdByUserId   
                                 };
 
                                 await _uow.Documents.AddAsync(visitDocument, ct);

@@ -5,11 +5,11 @@
 @using tesisproject.shared.DTOs.ProjectObjective.Response
 @using tesisproject.shared.Responses
 
-<section class="space-y-6 bg-background border-2 border-border rounded-3xl p-6 shadow-sm">
-    <div class="flex items-center justify-between gap-4 pb-4 border-b-2 border-border">
-        <div class="flex items-center gap-3">
-            <div class="w-1 h-6 bg-primary rounded-full"></div>
-            <h3 class="text-base font-bold text-foreground tracking-tight">Objetivos</h3>
+<section class="h-full min-h-0 flex flex-col bg-background border-2 border-border rounded-3xl shadow-sm overflow-hidden">
+    <div class="shrink-0 flex items-center justify-between gap-4 px-6 py-5 border-b-2 border-border">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-1 h-6 bg-primary rounded-full shrink-0"></div>
+            <h3 class="text-base font-bold text-foreground tracking-tight truncate">Objetivos</h3>
         </div>
 
         <ActionButton Execute="OnSaveClicked"
@@ -24,34 +24,45 @@
                       CancelButtonText="Cancelar" />
     </div>
 
-    @if (IsLoading)
-    {
-        <div class="text-sm text-muted">Cargando objetivos...</div>
-    }
-    else if (!string.IsNullOrEmpty(ErrorMessage))
-    {
-        <div class="text-sm text-error">@ErrorMessage</div>
-    }
-    else
-    {
-        <ObjectivesActivitiesEditorVM Objectives="_vmObjectives"
-                                      ObjectivesChanged="HandleObjectivesChanged" />
-
-        @if (!string.IsNullOrWhiteSpace(_validationMessage))
+    <div class="flex-1 min-h-0 overflow-y-auto p-6">
+        @if (IsLoading)
         {
-            <div class="text-xs text-error">
-                @_validationMessage
+            <div class="h-full min-h-0 flex items-center justify-center">
+                <div class="flex items-center justify-center gap-4 p-8 bg-primary-subtle rounded-xl border border-primary/20">
+                    <div class="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full"></div>
+                    <div class="text-primary font-medium">Cargando objetivos...</div>
+                </div>
             </div>
         }
-
-        <!-- Debug opcional -->
-        <div class="p-4 rounded-2xl border border-border bg-background">
-            <div class="text-sm font-semibold text-foreground">Estado</div>
-            <div class="text-xs text-muted">
-                Objetivos cargados: @_vmObjectives.Count
+        else if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <div class="p-4 rounded-2xl border border-error/20 bg-error/10 text-error">
+                @ErrorMessage
             </div>
-        </div>
-    }
+        }
+        else
+        {
+            <div class="space-y-6 min-w-0">
+                <ObjectivesActivitiesEditorVM Objectives="_vmObjectives"
+                                              ObjectivesChanged="HandleObjectivesChanged" />
+
+                @if (!string.IsNullOrWhiteSpace(_validationMessage))
+                {
+                    <div class="p-4 rounded-2xl border border-error/20 bg-error/10 text-error text-sm">
+                        @_validationMessage
+                    </div>
+                }
+
+                <!-- Debug opcional -->
+                <div class="p-4 rounded-2xl border border-border bg-background">
+                    <div class="text-sm font-semibold text-foreground">Estado</div>
+                    <div class="text-xs text-muted">
+                        Objetivos cargados: @_vmObjectives.Count
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
 </section>
 
 @code {

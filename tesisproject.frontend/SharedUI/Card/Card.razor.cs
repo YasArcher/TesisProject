@@ -8,15 +8,28 @@ namespace tesisproject.frontend.SharedUI.Card
         [Parameter] public string? Class { get; set; }
         [Parameter] public CardTone Tone { get; set; } = CardTone.Default;
 
-        // Captura de atributos adicionales (onclick, tabindex, aria-label, etc.)
+        [Parameter] public bool Interactive { get; set; } = false;
+        [Parameter] public bool Compact { get; set; } = false;
+
         [Parameter(CaptureUnmatchedValues = true)]
         public Dictionary<string, object>? AdditionalAttributes { get; set; }
 
-        // Clases principales del card
         private string ContainerBase =>
-            "rounded-2xl shadow border transition-shadow";
+            "rounded-xl border-2 bg-background shadow-sm overflow-hidden min-h-0";
 
-        // Clases finales que combinan base + tono + clases externas
+        private string ToneBorder() => Tone switch
+        {
+            CardTone.Info => "border-primary/30",
+            CardTone.Warning => "border-accent/40",
+            CardTone.Danger => "border-error/40",
+            _ => "border-border"
+        };
+
+        private string InteractionClasses() =>
+            Interactive
+                ? "transition-all duration-150 hover:border-primary/40 hover:bg-primary/5"
+                : string.Empty;
+
         protected IDictionary<string, object> MergedAttributes
         {
             get
@@ -25,24 +38,22 @@ namespace tesisproject.frontend.SharedUI.Card
                     ? new Dictionary<string, object>()
                     : new Dictionary<string, object>(AdditionalAttributes);
 
-                var toneBorder = ToneBorder();
+                var finalClass =
+                    $"{ContainerBase} {ToneBorder()} {InteractionClasses()} {Class}".Trim();
 
-                if (dict.TryGetValue("class", out var clsObj) && clsObj is string cls && !string.IsNullOrWhiteSpace(cls))
-                    dict["class"] = $"{ContainerBase} {toneBorder} {cls}";
+                if (dict.TryGetValue("class", out var clsObj) &&
+                    clsObj is string cls &&
+                    !string.IsNullOrWhiteSpace(cls))
+                {
+                    dict["class"] = $"{finalClass} {cls}".Trim();
+                }
                 else
-                    dict["class"] = $"{ContainerBase} {toneBorder} {Class}";
+                {
+                    dict["class"] = finalClass;
+                }
 
                 return dict;
             }
         }
-
-        // Define colores de borde por tono
-        private string ToneBorder() => Tone switch
-        {
-            CardTone.Info => "border-blue-300",
-            CardTone.Warning => "border-yellow-400",
-            CardTone.Danger => "border-red-400",
-            _ => "border-border" // usa tu token global institucional
-        };
     }
 }

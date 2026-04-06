@@ -4,206 +4,217 @@
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.shared.DTOs.Matrices.Response
 
-<div class="space-y-6 px-3 py-6 max-h-[calc(100vh-280px)] overflow-y-auto overflow-x-hidden">
-
-    <!-- Área de carga de archivo con diseño card -->
-    <div class="bg-background border-2 border-border rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200">
-        <div class="p-6 space-y-4">
-            <div class="flex items-center gap-2 mb-3">
-                <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<div class="w-full h-full min-h-0 flex flex-col gap-4 p-6 overflow-hidden">
+    <div class="border-b border-primary pb-3 shrink-0">
+        <div class="flex items-start gap-3 min-w-0">
+            <div class="rounded-lg bg-primary-subtle p-2 shrink-0">
+                <svg class="h-5 w-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                <label class="text-base font-semibold text-foreground">
-                    Seleccionar Archivo de Matriz
-                </label>
             </div>
 
-            <FileUpload AcceptedTypes=".xlsx,.xls"
-                        MaxFileSizeMB="50"
-                        IsUploading="@IsUploading"
-                        UploadText="Click para cargar o arrastre y suelte el archivo de matriz"
-                        OnFileSelected="OnFileSelected" />
-
-            @if (!string.IsNullOrWhiteSpace(SelectedFileName))
-            {
-                <div class="flex items-center gap-2 px-4 py-3 bg-secondary-subtle rounded-lg border border-secondary/20">
-                    <svg class="w-5 h-5 text-secondary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div class="flex-1">
-                        <p class="text-xs text-muted font-medium">Archivo seleccionado</p>
-                        <p class="text-sm text-foreground font-semibold">@SelectedFileName</p>
-                    </div>
-                </div>
-            }
+            <div class="min-w-0">
+                <h3 class="text-lg font-bold text-foreground">Importación de matriz</h3>
+                <p class="mt-1 text-xs text-muted">
+                    Carga el archivo y revisa el resultado del procesamiento.
+                </p>
+            </div>
         </div>
     </div>
 
-    <!-- Botón de carga con diseño mejorado -->
-    <div class="flex items-center gap-3">
-        <ActionButton Text="@(IsUploading ? "Cargando..." : "Cargar Matriz")"
-                      Execute="OnUploadClick"
-                      Intent="ButtonIntent.Accept"
-                      Variant="ButtonVariant.Filled"
-                      Size="ButtonSize.Md"
-                      Disabled="@IsUploading" />
+    <div class="flex-1 min-h-0 overflow-y-auto pr-1 space-y-4">
+        <div class="rounded-xl border border-border bg-background shadow-sm overflow-hidden">
+            <div class="border-b border-border bg-primary-subtle/40 px-4 py-3">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <svg class="h-5 w-5 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <h4 class="text-sm font-semibold text-foreground">Seleccionar archivo</h4>
+                    </div>
 
-        @if (IsUploading)
-        {
-            <div class="flex items-center gap-2 px-3 py-2 bg-primary-subtle rounded-lg border border-primary-light">
-                <div class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
-                <span class="text-xs font-medium text-primary">Procesando archivo...</span>
-            </div>
-        }
-    </div>
+                    <div class="flex flex-wrap items-center gap-2 shrink-0">
+                        <ActionButton Text="@(IsUploading ? "Cargando..." : "Cargar matriz")"
+                                      Execute="OnUploadClick"
+                                      Intent="ButtonIntent.Accept"
+                                      Variant="ButtonVariant.Filled"
+                                      Size="ButtonSize.Sm"
+                                      Disabled="@IsUploading" />
 
-    <!-- Resultados con diseño mejorado -->
-    @if (Summary is not null)
-    {
-        <div class="bg-background border-2 border-border rounded-xl shadow-lg overflow-hidden">
-            <!-- Header del resumen -->
-            <div class="bg-gradient-to-r from-primary-subtle to-secondary-subtle px-6 py-4 border-b-2 border-border">
-                <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                    </svg>
-                    <h4 class="text-base font-semibold text-foreground">Resumen de Importación</h4>
+                        @if (IsUploading)
+                        {
+                            <div class="flex items-center gap-2 rounded-lg border border-primary-light bg-primary-subtle px-3 py-2">
+                                <div class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
+                                <span class="text-xs font-medium text-primary">Procesando archivo...</span>
+                            </div>
+                        }
+                    </div>
                 </div>
             </div>
 
-            <!-- Contenido del resumen con scroll interno (lo dejamos como lo tenías) -->
-            <div class="p-6 max-h-96 overflow-y-auto space-y-6">
+            <div class="space-y-4 p-4">
+                <FileUpload AcceptedTypes=".xlsx,.xls"
+                            MaxFileSizeMB="50"
+                            IsUploading="@IsUploading"
+                            UploadText="Haz clic o arrastra el archivo de matriz"
+                            OnFileSelected="OnFileSelected" />
 
-                <!-- Estadísticas principales -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div class="bg-primary-subtle border border-primary/20 rounded-lg p-4">
-                        <div class="flex items-center gap-3">
-                            <div class="p-2 bg-primary rounded-lg">
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-xs text-muted font-medium">Total de Filas</p>
-                                <p class="text-2xl font-bold text-primary">@Summary.TotalRows</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-secondary-subtle border border-secondary/20 rounded-lg p-4">
-                        <div class="flex items-center gap-3">
-                            <div class="p-2 bg-secondary rounded-lg">
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-xs text-muted font-medium">Filas Importadas</p>
-                                <p class="text-2xl font-bold text-secondary">@Summary.DataRows</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-accent/10 border border-accent/20 rounded-lg p-4">
-                        <div class="flex items-center gap-3">
-                            <div class="p-2 bg-accent rounded-lg">
-                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <p class="text-xs text-muted font-medium">Filas Omitidas</p>
-                                <p class="text-2xl font-bold text-accent">@Summary.SkippedRows</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Errores -->
-                @if (Summary.Errors is not null && Summary.Errors.Any())
+                @if (!string.IsNullOrWhiteSpace(SelectedFileName))
                 {
-                    <div class="bg-error-subtle border-2 border-error rounded-xl p-5">
-                        <div class="flex items-start gap-3 mb-3">
-                            <div class="flex-shrink-0 p-2 bg-error rounded-lg">
-                                <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd"
-                                          d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
-                                          clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                            <div class="flex-1">
-                                <h5 class="font-semibold text-error text-base">Errores Encontrados</h5>
-                                <p class="text-xs text-muted mt-1">Se encontraron @Summary.Errors.Count errores durante la importación</p>
+                    <div class="flex items-center gap-2 rounded-lg border border-secondary/20 bg-secondary-subtle px-4 py-3">
+                        <svg class="h-5 w-5 shrink-0 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div class="min-w-0 flex-1">
+                            <p class="text-[11px] font-medium text-muted">Archivo seleccionado</p>
+                            <p class="truncate text-sm font-semibold text-foreground">@SelectedFileName</p>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @if (Summary is not null)
+        {
+            <div class="overflow-hidden rounded-xl border border-border bg-background shadow-sm">
+                <div class="border-b border-border bg-primary-subtle px-4 py-3 shrink-0">
+                    <div class="flex items-center gap-2">
+                        <svg class="h-5 w-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <h4 class="text-sm font-semibold text-foreground">Resumen de importación</h4>
+                    </div>
+                </div>
+
+                <div class="p-4 space-y-4">
+                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                        <div class="rounded-lg border border-primary/20 bg-primary-subtle p-3">
+                            <div class="flex items-center gap-3">
+                                <div class="rounded-lg bg-primary p-2">
+                                    <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-[11px] font-medium text-muted">Total de filas</p>
+                                    <p class="text-xl font-bold text-primary">@Summary.TotalRows</p>
+                                </div>
                             </div>
                         </div>
-                        <ul class="space-y-2 mt-4">
-                            @foreach (var err in Summary.Errors)
-                            {
-                                <li class="flex items-start gap-2 text-sm text-foreground/90 bg-background rounded-lg p-3">
-                                    <svg class="w-4 h-4 text-error flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+
+                        <div class="rounded-lg border border-secondary/20 bg-secondary-subtle p-3">
+                            <div class="flex items-center gap-3">
+                                <div class="rounded-lg bg-secondary p-2">
+                                    <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-[11px] font-medium text-muted">Importadas</p>
+                                    <p class="text-xl font-bold text-secondary">@Summary.DataRows</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="rounded-lg border border-accent/20 bg-accent/10 p-3">
+                            <div class="flex items-center gap-3">
+                                <div class="rounded-lg bg-accent p-2">
+                                    <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-[11px] font-medium text-muted">Omitidas</p>
+                                    <p class="text-xl font-bold text-accent">@Summary.SkippedRows</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @if (Summary.Errors is not null && Summary.Errors.Any())
+                    {
+                        <div class="rounded-xl border border-error bg-error-subtle p-4">
+                            <div class="mb-3 flex items-start gap-3">
+                                <div class="shrink-0 rounded-lg bg-error p-2">
+                                    <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
                                         <path fill-rule="evenodd"
                                               d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
                                               clip-rule="evenodd" />
                                     </svg>
-                                    <span><strong class="font-semibold">Fila @err.RowNumber:</strong> @err.Message</span>
-                                </li>
-                            }
-                        </ul>
-                    </div>
-                }
-
-                <!-- Proyectos importados -->
-                @if (Summary.ImportedProjects is not null && Summary.ImportedProjects.Count > 0)
-                {
-                    <div class="bg-background border-2 border-border rounded-xl p-5">
-                        <div class="flex items-center gap-2 mb-4">
-                            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                            </svg>
-                            <h5 class="font-semibold text-foreground text-base">
-                                Proyectos Importados (Vista Previa)
-                            </h5>
-                        </div>
-
-                        <div class="space-y-2 max-h-64 overflow-y-auto">
-                            @foreach (var p in Summary.ImportedProjects)
-                            {
-                                <div class="flex items-start gap-3 p-3 bg-primary-subtle/30 hover:bg-primary-subtle/50 rounded-lg border border-primary/10 transition-colors duration-200">
-                                    <div class="flex-shrink-0 w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="font-semibold text-sm text-primary">@p.ProjectCode</p>
-                                        <p class="text-sm text-foreground/80 truncate">@p.ProjectName</p>
-                                    </div>
                                 </div>
-                            }
-                        </div>
+                                <div class="min-w-0 flex-1">
+                                    <h5 class="text-sm font-semibold text-error">Errores encontrados</h5>
+                                    <p class="mt-1 text-xs text-muted">@Summary.Errors.Count error(es) durante la importación</p>
+                                </div>
+                            </div>
 
-                        <div class="mt-4 pt-4 border-t border-border">
-                            <p class="text-xs text-muted flex items-center gap-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                Mostrando resumen de @Summary.TotalRows filas procesadas
-                            </p>
+                            <ul class="max-h-64 space-y-2 overflow-y-auto">
+                                @foreach (var err in Summary.Errors)
+                                {
+                                    <li class="flex items-start gap-2 rounded-lg bg-background p-3 text-sm text-foreground/90">
+                                        <svg class="mt-0.5 h-4 w-4 shrink-0 text-error" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd"
+                                                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                                  clip-rule="evenodd" />
+                                        </svg>
+                                        <span><strong>Fila @err.RowNumber:</strong> @err.Message</span>
+                                    </li>
+                                }
+                            </ul>
                         </div>
-                    </div>
-                }
+                    }
+
+                    @if (Summary.ImportedProjects is not null && Summary.ImportedProjects.Count > 0)
+                    {
+                        <div class="rounded-xl border border-border p-4">
+                            <div class="mb-3 flex items-center gap-2">
+                                <svg class="h-5 w-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                                </svg>
+                                <h5 class="text-sm font-semibold text-foreground">Proyectos importados</h5>
+                            </div>
+
+                            <div class="max-h-64 space-y-2 overflow-y-auto">
+                                @foreach (var p in Summary.ImportedProjects)
+                                {
+                                    <div class="flex items-start gap-3 rounded-lg border border-primary/10 bg-primary-subtle/30 p-3 transition-colors duration-200 hover:bg-primary-subtle/50">
+                                        <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary">
+                                            <svg class="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-sm font-semibold text-primary">@p.ProjectCode</p>
+                                            <p class="truncate text-sm text-foreground/80">@p.ProjectName</p>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="mt-3 border-t border-border pt-3">
+                                <p class="flex items-center gap-2 text-xs text-muted">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    @Summary.TotalRows filas procesadas
+                                </p>
+                            </div>
+                        </div>
+                    }
+                </div>
             </div>
-        </div>
-    }
+        }
+    </div>
 </div>
 
 @code {

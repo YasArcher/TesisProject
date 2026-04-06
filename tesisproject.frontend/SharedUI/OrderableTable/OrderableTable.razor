@@ -1,0 +1,95 @@
+﻿@typeparam TItem
+@using tesisproject.frontend.SharedUI.OrderableTable
+
+<div class="w-full h-full min-h-0 min-w-0 overflow-auto">
+    <table class="@TableClass">
+        @if (Columns.Count > 0)
+        {
+            <thead class="@HeaderClass">
+                <tr>
+                    <th scope="col" class="@HandleHeaderCellClass"></th>
+
+                    @foreach (var col in Columns)
+                    {
+                        <th scope="col"
+                            class="@BuildHeaderCellClass(col)"
+                            style="@GetColumnStyle(col)">
+                            @col.Title
+                        </th>
+                    }
+                </tr>
+            </thead>
+        }
+
+        <tbody id="@_tbodyId" class="@BodyClass">
+            @if (_viewItems.Count == 0)
+            {
+                <tr class="@RowClass">
+                    <td class="@EmptyCellClass" colspan="@ResolvedColumnCount">
+                        @EmptyText
+                    </td>
+                </tr>
+            }
+            else
+            {
+                @foreach (var item in _viewItems)
+                {
+                    var key = GetKey(item);
+                    var canDrag = CanDrag(item);
+
+                    <tr @key="key"
+                        data-key="@key"
+                        class="@RowClass">
+
+                        <td class="@HandleCellClass">
+                            @if (canDrag)
+                            {
+                                <span class="@HandleWrapperClass"
+                                      data-drag-handle
+                                      title="@HandleTitle">
+                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                         viewBox="0 0 24 24"
+                                         fill="currentColor"
+                                         class="size-5"
+                                         style="pointer-events:none;">
+                                        <path fill-rule="evenodd"
+                                              d="M10.5 6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm6-12a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"
+                                              clip-rule="evenodd" />
+                                    </svg>
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="@HandleWrapperDisabledClass">
+                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                         viewBox="0 0 24 24"
+                                         fill="currentColor"
+                                         class="size-5"
+                                         style="pointer-events:none;">
+                                        <path fill-rule="evenodd"
+                                              d="M10.5 6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm6-12a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Zm0 6a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z"
+                                              clip-rule="evenodd" />
+                                    </svg>
+                                </span>
+                            }
+                        </td>
+
+                        @foreach (var col in Columns)
+                        {
+                            <td class="@BuildBodyCellClass(col)">
+                                @if (col.CellTemplate is not null)
+                                {
+                                    @col.CellTemplate(item)
+                                }
+                                else
+                                {
+                                    @col.ValueSelector?.Invoke(item)
+                                }
+                            </td>
+                        }
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+</div>

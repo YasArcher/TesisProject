@@ -1,27 +1,20 @@
 ﻿@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Card
+@using tesisproject.frontend.SharedUI.Catalog
 @using tesisproject.frontend.SharedUI.SelectInput
 @using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.frontend.SharedUI
 @using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.DTOs.Catalog.ProductAttribute.Response
 @using tesisproject.shared.DTOs.Products.ProductAttributeDefinition.Request
 @using tesisproject.shared.DTOs.Products.ProductTypeDesign.Response
+@using tesisproject.frontend.SharedUI.OrderableTable
 
-<div class="p-6 max-w-[1600px] mx-auto">
-    <!-- Header -->
-    <div class="mb-8">
-        <div class="flex items-start justify-between">
-            <div class="space-y-1">
-                <h2 class="text-2xl font-bold text-foreground">Diseñador de Tipos de Producto</h2>
-                <p class="text-sm text-muted max-w-2xl">
-                    Configure la estructura y definiciones de atributos para cada tipo de producto en su catálogo.
-                </p>
-            </div>
-        </div>
-    </div>
+<div class="h-full min-h-0 overflow-hidden flex flex-col p-6 max-w-[1600px] mx-auto w-full">
 
     @if (Loading)
     {
-        <div class="flex items-center justify-center py-12">
+        <div class="flex-1 min-h-0 flex items-center justify-center py-12">
             <div class="text-center space-y-3">
                 <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
                 <p class="text-sm text-muted">Cargando diseñador de tipos de producto...</p>
@@ -30,7 +23,7 @@
     }
     else if (!string.IsNullOrWhiteSpace(Error))
     {
-        <div class="rounded-lg border-2 border-error bg-error/5 p-4">
+        <div class="shrink-0 rounded-lg border-2 border-error bg-error/5 p-4">
             <div class="flex items-start gap-3">
                 <svg class="h-5 w-5 text-error flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -44,91 +37,84 @@
     }
     else
     {
-        <div class="grid gap-6 lg:grid-cols-[320px_1fr]">
+        <div class="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] flex-1 min-h-0 overflow-hidden">
             <!-- LEFT SIDEBAR: Product Types List -->
-            <div class="rounded-xl border-2 border-border bg-background shadow-sm">
-                <div class="p-4 border-b border-border bg-background/50">
-                    <div class="flex items-center justify-between mb-1">
-                        <div class="flex items-center gap-2">
+            <!-- LEFT SIDEBAR: Product Types List -->
+            <div class="min-h-0 h-full flex flex-col overflow-hidden">
+                <div class="flex-1 min-h-0 overflow-hidden">
+                    <Container TItem="CatalogListItemDTO"
+                               Items="ProductTypes"
+                               Title="Tipos de Producto"
+                               ShowItemCount="true"
+                               TotalCount="ProductTypes.Count"
+                               EnableScroll="true"
+                               MaxHeight="100%"
+                               ScrollbarType="ScrollbarType.Thin"
+                               GridClasses="space-y-2"
+                               EmptyStateTitle="No hay tipos de producto"
+                               EmptyStateDescription="Créelos primero en la pestaña de catálogos">
+
+                        <HeaderIcon>
                             <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                             </svg>
-                            <h3 class="text-base font-semibold text-foreground">Tipos de Producto</h3>
-                        </div>
-                    </div>
-                    <p class="text-xs text-muted">Seleccione un tipo para configurar</p>
-                </div>
+                        </HeaderIcon>
 
-                <div class="p-4">
-                    @if (ProductTypes.Count == 0)
-                    {
-                        <div class="text-center py-8 px-4">
+                        <EmptyStateIcon>
                             <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                             </svg>
-                            <p class="mt-3 text-sm text-muted">No hay tipos de producto</p>
-                            <p class="mt-1 text-xs text-muted/70">Créelos primero en la pestaña de catálogos</p>
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-                            @foreach (var t in ProductTypes)
-                            {
+                        </EmptyStateIcon>
+
+                        <ChildContent Context="t">
+                            @{
                                 var isSelected = CurrentDesign?.ProductType?.Id == t.Id;
-                                <div class="group rounded-lg border @(isSelected ? "border-primary bg-primary/5" : "border-border bg-background hover:border-primary/40 hover:bg-primary/5") transition-all duration-150">
-                                    <button type="button"
-                                            @onclick="() => ConfigureProductTypeClicked(t.Id)"
-                                            class="w-full text-left p-3">
-                                        <div class="flex items-start justify-between gap-2">
-                                            <div class="flex-1 min-w-0">
-                                                <span class="block truncate font-medium text-sm text-foreground mb-1.5">@t.Name</span>
-                                                <div class="flex items-center gap-1.5 flex-wrap">
-                                                    @if (t.IsActive)
-                                                    {
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
-                                                            Activo
-                                                        </span>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
-                                                            Inactivo
-                                                        </span>
-                                                    }
-
-                                                    @if (t.IsLocked)
-                                                    {
-                                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-accent/15 text-accent border border-accent/30">
-                                                            <svg class="h-3 w-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                                                            </svg>
-                                                            Bloqueado
-                                                        </span>
-                                                    }
-                                                </div>
-                                            </div>
-
-                                            @if (isSelected)
-                                            {
-                                                <svg class="h-5 w-5 text-primary flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
-                                                </svg>
-                                            }
-                                        </div>
-                                    </button>
-                                </div>
                             }
-                        </div>
-                    }
+
+                            <SelectableCard TItem="CatalogListItemDTO"
+                                            Item="t"
+                                            IsSelected="@isSelected"
+                                            OnSelected="@(item => ConfigureProductTypeClicked(item.Id))"
+                                            GetTitle="item => item.Name"
+                                            GetIsActive="item => item.IsActive"
+                                            GetIsLocked="item => item.IsLocked"
+                                            ShowActions="false">
+
+                                <ItemMeta Context="item">
+                                    @if (item.IsActive)
+                                    {
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
+                                            Activo
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
+                                            Inactivo
+                                        </span>
+                                    }
+
+                                    @if (item.IsLocked)
+                                    {
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-accent/15 text-accent border border-accent/30">
+                                            <svg class="h-3 w-3 mr-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                            </svg>
+                                            Bloqueado
+                                        </span>
+                                    }
+                                </ItemMeta>
+                            </SelectableCard>
+                        </ChildContent>
+                    </Container>
                 </div>
             </div>
 
             <!-- RIGHT PANEL: Designer -->
-            <div class="rounded-xl border-2 border-border bg-background shadow-sm min-h-[600px]">
+            <Card Class="h-full min-h-0 min-w-0 flex flex-col overflow-hidden">
                 @if (CurrentDesign is null)
                 {
-                    <div class="flex items-center justify-center h-full p-12">
+                    <CardBody Scroll="false" Class="flex-1 min-h-0 flex items-center justify-center p-12">
                         <div class="text-center max-w-md">
                             <svg class="mx-auto h-16 w-16 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -138,170 +124,62 @@
                                 Seleccione un tipo de producto de la barra lateral izquierda para configurar sus atributos y estructura.
                             </p>
                         </div>
-                    </div>
+                    </CardBody>
                 }
                 else
                 {
-                    <!-- Header Section -->
-                    <div class="p-6 border-b border-border bg-background/50">
-                        <div class="space-y-4">
-                            <div class="flex items-start gap-4">
-                                <div class="flex-1">
-                                    <TextInput TValue="string"
-                                               Label="Nombre del tipo de producto"
-                                               @bind-Value="CurrentDesign.ProductType.Name"
-                                               Placeholder="ej. Producción científica"
-                                               Disabled="true"
-                                               Required="true" />
+                    <CardBody Scroll="false" Class="p-0 flex-1 min-h-0 flex flex-col overflow-hidden">
+                        <!-- Attribute Definitions Section -->
+                        <div class="p-1 flex-1 min-h-0 flex flex-col gap-4 overflow-hidden">
+                            <div class="flex items-center justify-between shrink-0">
+                                <div>
+                                    <h3 class="text-base font-semibold text-foreground">Definiciones de Atributos</h3>
                                 </div>
+
+                                <ActionButton Text="Agregar definición"
+                                              Intent="ButtonIntent.Add"
+                                              Variant="ButtonVariant.Outline"
+                                              Size="ButtonSize.Sm"
+                                              Execute="AddDefinitionClicked" />
                             </div>
 
-                            @if (CurrentDesign.ProductType.IsLocked)
+                            <!-- Table Container -->
+                            <div class="rounded-xl border-2 border-border bg-background flex-1 min-h-0 min-w-0 overflow-hidden">
+                                <OrderableTable TItem="ProductAttributeDefinitionUpsertDTO"
+                                                Items="DefinitionRows"
+                                                Columns="@DefinitionColumns"
+                                                GetKey="GetDefinitionRowKey"
+                                                GetOrder="@(x => x.DisplayOrder)"
+                                                SetOrder="@((x, order) => x.DisplayOrder = order)"
+                                                Disabled="@(CurrentDesign?.ProductType?.IsLocked ?? true)"
+                                                OnOrderChanged="HandleDefinitionRowsReordered" />
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(DesignError))
                             {
-                                <div class="flex items-start gap-2 p-3 rounded-lg bg-accent/10 border border-accent/30">
-                                    <svg class="h-4 w-4 text-accent flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                                <div class="shrink-0 flex items-start gap-2 p-3 rounded-lg bg-error/10 border border-error/30">
+                                    <svg class="h-4 w-4 text-error flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
-                                    <p class="text-xs text-accent/90">
-                                        Este tipo de producto está bloqueado. Puede ver su diseño pero no modificarlo.
-                                    </p>
+                                    <p class="text-sm text-error">@DesignError</p>
                                 </div>
                             }
                         </div>
-                    </div>
 
-                    <!-- Attribute Definitions Section -->
-                    <div class="p-6 space-y-4">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <h3 class="text-base font-semibold text-foreground">Definiciones de Atributos</h3>
-                                <p class="text-xs text-muted mt-1">
-                                    Define qué atributos pertenecen a este tipo de producto y su configuración.
-                                </p>
-                            </div>
-
-                            <ActionButton Text="Agregar definición"
-                                          Intent="ButtonIntent.Add"
-                                          Variant="ButtonVariant.Outline"
-                                          Size="ButtonSize.Sm"
-                                          Execute="AddDefinitionClicked" />
-                        </div>
-
-                        <!-- Table Container -->
-                        <div class="rounded-xl border-2 border-border overflow-hidden bg-background">
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full divide-y divide-border">
-                                    <thead class="bg-primary">
-                                        <tr>
-                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
-                                                Atributo
-                                            </th>
-                                            <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-white">
-                                                Requerido
-                                            </th>
-                                            <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-white">
-                                                Orden de Visualización
-                                            </th>
-                                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white">
-                                                Acciones
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-background divide-y divide-border">
-                                        @if (DefinitionRows.Count == 0)
-                                        {
-                                            <tr>
-                                                <td class="px-4 py-12 text-center" colspan="4">
-                                                    <div class="flex flex-col items-center justify-center">
-                                                        <svg class="h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                        </svg>
-                                                        <p class="mt-3 text-sm text-muted">Aún no hay definiciones</p>
-                                                        <p class="mt-1 text-xs text-muted/70">Agregue atributos para configurar este tipo de producto</p>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        }
-                                        else
-                                        {
-                                            @foreach (var row in DefinitionRows.OrderBy(d => d.DisplayOrder).ToList())
-                                            {
-                                                <tr class="hover:bg-primary/5 transition-colors duration-150">
-                                                    <td class="px-4 py-3 align-middle">
-                                                        <SelectInput TItem="ProductAttributeDetailDTO"
-                                                                     Items="AvailableAttributes"
-                                                                     Value="@GetSelectedAttribute(row)"
-                                                                     ValueChanged="@(attr => OnAttributeChanged(row, attr))"
-                                                                     GetText="@(a => $"{a.Name} ({a.DataType})")"
-                                                                     GetKey="@(a => a.Id.ToString())"
-                                                                     Placeholder="Seleccionar atributo"
-                                                                     Size="SelectSize.Sm" />
-                                                    </td>
-
-                                                    <td class="px-4 py-3 text-center align-middle">
-                                                        <label class="inline-flex items-center justify-center cursor-pointer">
-                                                            <input type="checkbox"
-                                                                   class="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/30 cursor-pointer"
-                                                                   @bind="row.IsRequired" />
-                                                            <span class="sr-only">Marcar como requerido</span>
-                                                        </label>
-                                                    </td>
-
-                                                    <td class="px-4 py-3 align-middle">
-                                                        <div class="flex justify-center">
-                                                            <div class="w-20">
-                                                                <TextInput TValue="int"
-                                                                           InputType="number"
-                                                                           @bind-Value="row.DisplayOrder" />
-                                                            </div>
-                                                        </div>
-                                                    </td>
-
-                                                    <td class="px-4 py-3 text-right align-middle">
-                                                        <ActionButton Intent="ButtonIntent.Delete"
-                                                                      Variant="ButtonVariant.Outline"
-                                                                      Size="ButtonSize.Xs"
-                                                                      Execute="@(() => RemoveDefinitionClicked(row))">
-                                                            <Icon>
-                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                                                                    <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
-                                                                </svg>
-
-                                                            </Icon>
-                                                        </ActionButton>
-                                                    </td>
-                                                </tr>
-                                            }
-                                        }
-                                    </tbody>
-                                </table>
+                        <!-- Footer Actions -->
+                        <div class="p-6 border-t border-border bg-background/50 shrink-0">
+                            <div class="flex items-center justify-end gap-3">
+                                <ActionButton Text="Guardar Diseño"
+                                              Intent="ButtonIntent.Accept"
+                                              Variant="ButtonVariant.Filled"
+                                              Size="ButtonSize.Sm"
+                                              IsBusy="Saving"
+                                              Execute="SaveDesignClicked" />
                             </div>
                         </div>
-
-                        @if (!string.IsNullOrWhiteSpace(DesignError))
-                        {
-                            <div class="flex items-start gap-2 p-3 rounded-lg bg-error/10 border border-error/30">
-                                <svg class="h-4 w-4 text-error flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                                <p class="text-sm text-error">@DesignError</p>
-                            </div>
-                        }
-                    </div>
-
-                    <!-- Footer Actions -->
-                    <div class="p-6 border-t border-border bg-background/50">
-                        <div class="flex items-center justify-end gap-3">
-                            <ActionButton Text="Guardar Diseño"
-                                          Intent="ButtonIntent.Accept"
-                                          Variant="ButtonVariant.Filled"
-                                          Size="ButtonSize.Sm"
-                                          IsBusy="Saving"
-                                          Execute="SaveDesignClicked" />
-                        </div>
-                    </div>
+                    </CardBody>
                 }
-            </div>
+            </Card>
         </div>
     }
 </div>
@@ -319,11 +197,29 @@
     [Parameter] public bool Saving { get; set; }
     [Parameter] public string? DesignError { get; set; }
 
-    // Eventos hacia el padre
     [Parameter] public EventCallback<int> OnProductTypeSelected { get; set; }
     [Parameter] public EventCallback OnAddDefinitionRequested { get; set; }
     [Parameter] public EventCallback<ProductAttributeDefinitionUpsertDTO> OnRemoveDefinitionRequested { get; set; }
     [Parameter] public EventCallback OnSaveDesignRequested { get; set; }
+    [Parameter] public EventCallback<List<ProductAttributeDefinitionUpsertDTO>> OnDefinitionRowsReordered { get; set; }
+
+    private readonly Dictionary<ProductAttributeDefinitionUpsertDTO, string> _rowKeys = new();
+
+    private string GetDefinitionRowKey(ProductAttributeDefinitionUpsertDTO row)
+    {
+        if (_rowKeys.TryGetValue(row, out var key))
+            return key;
+
+        key = Guid.NewGuid().ToString("N");
+        _rowKeys[row] = key;
+        return key;
+    }
+
+    private async Task HandleDefinitionRowsReordered(IReadOnlyList<ProductAttributeDefinitionUpsertDTO> rows)
+    {
+        DefinitionRows = rows.ToList();
+        await OnDefinitionRowsReordered.InvokeAsync(DefinitionRows);
+    }
 
     private Task ConfigureProductTypeClicked(int productTypeId)
         => OnProductTypeSelected.InvokeAsync(productTypeId);
@@ -344,4 +240,72 @@
     {
         row.ProductAttributeId = attr?.Id ?? 0;
     }
+
+    protected override void OnParametersSet()
+    {
+        var activeRows = DefinitionRows.ToHashSet();
+        var orphanKeys = _rowKeys.Keys.Where(k => !activeRows.Contains(k)).ToList();
+        foreach (var orphan in orphanKeys)
+            _rowKeys.Remove(orphan);
+    }
+
+    private IReadOnlyList<OrderableColumnDef<ProductAttributeDefinitionUpsertDTO>> DefinitionColumns => new[]
+    {
+        new OrderableColumnDef<ProductAttributeDefinitionUpsertDTO>(
+            Title: "Atributo",
+            Width: "45%",
+            HeaderClass: "text-left",
+            CellTemplate: row => @<SelectInput TItem="ProductAttributeDetailDTO"
+                                               Items="AvailableAttributes"
+                                               Value="@GetSelectedAttribute(row)"
+                                               ValueChanged="@(attr => OnAttributeChanged(row, attr))"
+                                               GetText="@(a => $"{a.Name} ({a.DataType})")"
+                                               GetKey="@(a => a.Id.ToString())"
+                                               Placeholder="Seleccionar atributo"
+                                               Size="SelectSize.Sm" />
+        ),
+
+        new OrderableColumnDef<ProductAttributeDefinitionUpsertDTO>(
+            Title: "Requerido",
+            Width: "15%",
+            HeaderClass: "text-center",
+            CellClass: "text-center",
+            CellTemplate: row => @<label class="inline-flex items-center justify-center cursor-pointer">
+                                      <input type="checkbox"
+                                             class="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                                             @bind="row.IsRequired" />
+                                      <span class="sr-only">Marcar como requerido</span>
+                                  </label>
+        ),
+
+        new OrderableColumnDef<ProductAttributeDefinitionUpsertDTO>(
+            Title: "Orden de Visualización",
+            Width: "20%",
+            HeaderClass: "text-center",
+            CellClass: "text-center font-medium text-muted",
+            ValueSelector: row => row.DisplayOrder
+        ),
+
+        new OrderableColumnDef<ProductAttributeDefinitionUpsertDTO>(
+            Title: "Acciones",
+            Width: "20%",
+            HeaderClass: "text-right",
+            CellClass: "text-right",
+            CellTemplate: row => @<ActionButton Intent="ButtonIntent.Delete"
+                                                Variant="ButtonVariant.Outline"
+                                                Size="ButtonSize.Xs"
+                                                Execute="@(() => RemoveDefinitionClicked(row))">
+                                      <Icon>
+                                          <svg xmlns="http://www.w3.org/2000/svg"
+                                               viewBox="0 0 24 24"
+                                               fill="currentColor"
+                                               class="size-6">
+                                              <path fill-rule="evenodd"
+                                                    d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z"
+                                                    clip-rule="evenodd" />
+                                          </svg>
+                                      </Icon>
+                                  </ActionButton>
+        )
+    };
 }

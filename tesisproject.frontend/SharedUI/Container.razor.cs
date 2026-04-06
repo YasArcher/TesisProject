@@ -153,12 +153,8 @@ namespace tesisproject.frontend.SharedUI
         /// </summary>
         private string GetContainerStyle()
         {
-            if (!EnableScroll || string.IsNullOrEmpty(MaxHeight))
+            if (!EnableScroll || string.IsNullOrWhiteSpace(MaxHeight))
                 return "";
-
-            // Si MaxHeight es "100%", usar altura completa del contenedor padre
-            if (MaxHeight == "100%")
-                return "height: 100%; display: flex; flex-direction: column;";
 
             return $"max-height: {MaxHeight};";
         }

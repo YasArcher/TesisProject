@@ -18,10 +18,10 @@
 @inject IExternalAcademicsClientService ExternalAcademics
 @inject IToastService Toast
 
-<div class="space-y-4 p-4 planner-table">
+<div class="h-full min-h-0 w-full flex flex-col gap-4 p-4 planner-table overflow-hidden">
 
-    <!-- Filtros + Selector (solo plan) / Label (pending) + Acciones -->
-    <section class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+    <!-- Filtros + Selector / Acciones -->
+    <section class="shrink-0 min-w-0 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div class="flex-1 min-w-[280px]">
             <FilterBar Config="@_filterConfig"
                        OnApply="@HandleApplyFilters"
@@ -42,10 +42,9 @@
                                ValueChanged="@OnFilterExecutionDateChanged"
                                Required="false" />
                 </div>
+
                 <span class="text-xs text-muted whitespace-nowrap">
-                    @(_filterExecutionDate is null
-                                    ? "Mostrando hasta hoy"
-                                    : "")
+                    @(_filterExecutionDate is null ? "Mostrando hasta hoy" : "")
                 </span>
             }
 
@@ -53,12 +52,12 @@
                 Sel: <span class="font-semibold text-foreground">@_selectedProjectIds.Count</span>
             </div>
 
-            <ActionButton Text="@(IsPendingMode ? "Replanificar": "Planificar")"
+            <ActionButton Text="@(IsPendingMode ? "Replanificar" : "Planificar")"
                           Execute="@OpenPlanModal"
                           Intent="ButtonIntent.Accept"
                           Variant="ButtonVariant.Filled"
                           Size="ButtonSize.Sm"
-                          Disabled="@(isLoading ||_selectedProjectIds.Count == 0)" />
+                          Disabled="@(isLoading || _selectedProjectIds.Count == 0)" />
 
             <ActionButton Text="Limpiar"
                           Execute="@ClearSelection"
@@ -70,76 +69,77 @@
     </section>
 
     <!-- Tabla -->
-    <div class="rounded-lg border border-border bg-background overflow-x-auto">
-        <DataTable TItem="VisitPlannedForExecutionListDTO"
-                   Items="filteredItems"
-                   Columns="columns"
-                   PageSize="_pageSize"
-                   Total="filteredItems.Count"
-                   CurrentPage="_page"
-                   OnPageChanged="OnPageChanged"
-                   EmptyText="@GetEmptyStateDescription()">
+    <div class="flex-1 min-h-0 min-w-0 rounded-lg border border-border bg-background overflow-hidden">
+        <div class="h-full min-h-0 min-w-0 overflow-auto">
+            <DataTable TItem="VisitPlannedForExecutionListDTO"
+                       Items="filteredItems"
+                       Columns="columns"
+                       PageSize="_pageSize"
+                       Total="filteredItems.Count"
+                       CurrentPage="_page"
+                       OnPageChanged="OnPageChanged"
+                       EmptyText="@GetEmptyStateDescription()">
 
-            <RowTemplate Context="v">
-                @{
-                    var selected = _selectedProjectIds.Contains(v.ProjectId);
-                    var selCls = selected ? "row-selected" : "";
-                }
+                <RowTemplate Context="v">
+                    @{
+                        var selected = _selectedProjectIds.Contains(v.ProjectId);
+                        var selCls = selected ? "row-selected" : "";
+                    }
 
-                <!-- Sel -->
-                <td class="cell cell-sel @selCls">
-                    <input type="checkbox"
-                           checked="@selected"
-                           @onclick:stopPropagation="true"
-                           @onchange="@(_ => ToggleSelected(v.ProjectId))" />
-                </td>
-
-                <!-- # -->
-                <td class="cell cell-num @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
-                    @GetRowNumberForCurrentPage(v)
-                </td>
-
-                <!-- Código -->
-                <td class="cell cell-code @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
-                    @v.ProjectCode
-                </td>
-
-                <!-- Proyecto -->
-                <td class="cell cell-proj @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
-                    <span class="truncate block" title="@v.ProjectName">
-                        @v.ProjectName
-                    </span>
-                </td>
-
-                <!-- N° visita -->
-                <td class="cell cell-visit @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
-                    @v.VisitNumber
-                </td>
-
-                <!-- Facultad -->
-                <td class="cell cell-fac @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
-                    <span class="truncate block" title="@GetFacultyName(v.FacultyId)">
-                        @GetFacultyName(v.FacultyId)
-                    </span>
-                </td>
-
-                @if (IsPendingMode)
-                {
-                    <!-- Fecha (solo editor) -->
-                    <td class="cell cell-date @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
-                        @(v.VisitDate?.ToString("yyyy-MM-dd") ?? "-")
+                    <!-- Sel -->
+                    <td class="cell cell-sel @selCls">
+                        <input type="checkbox"
+                               checked="@selected"
+                               @onclick:stopPropagation="true"
+                               @onchange="@(_ => ToggleSelected(v.ProjectId))" />
                     </td>
 
-                    <!-- Estado (solo editor) -->
-                    <td class="cell cell-state @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
-                        <span class="truncate block" title="@v.VisitStateName">
-                            @v.VisitStateName
+                    <!-- # -->
+                    <td class="cell cell-num @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                        @GetRowNumberForCurrentPage(v)
+                    </td>
+
+                    <!-- Código -->
+                    <td class="cell cell-code @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                        @v.ProjectCode
+                    </td>
+
+                    <!-- Proyecto -->
+                    <td class="cell cell-proj @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                        <span class="truncate block" title="@v.ProjectName">
+                            @v.ProjectName
                         </span>
                     </td>
-                }
-            </RowTemplate>
 
-        </DataTable>
+                    <!-- N° visita -->
+                    <td class="cell cell-visit @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                        @v.VisitNumber
+                    </td>
+
+                    <!-- Facultad -->
+                    <td class="cell cell-fac @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                        <span class="truncate block" title="@GetFacultyName(v.FacultyId)">
+                            @GetFacultyName(v.FacultyId)
+                        </span>
+                    </td>
+
+                    @if (IsPendingMode)
+                    {
+                        <!-- Fecha -->
+                        <td class="cell cell-date @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                            @(v.VisitDate?.ToString("yyyy-MM-dd") ?? "-")
+                        </td>
+
+                        <!-- Estado -->
+                        <td class="cell cell-state @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                            <span class="truncate block" title="@v.VisitStateName">
+                                @v.VisitStateName
+                            </span>
+                        </td>
+                    }
+                </RowTemplate>
+            </DataTable>
+        </div>
     </div>
 </div>
 
@@ -183,7 +183,7 @@
                           Intent="ButtonIntent.Add"
                           Variant="ButtonVariant.Filled"
                           Size="ButtonSize.Sm"
-                          Disabled="@(_isSubmittingPlan ||  _selectedProjectIds.Count == 0 || _plannedDate is null)"
+                          Disabled="@(_isSubmittingPlan || _selectedProjectIds.Count == 0 || _plannedDate is null)"
                           ConfirmBeforeExecute="true"
                           ConfirmTitle="Confirmar planificación"
                           ConfirmMessage="@BuildConfirmMessage()"
@@ -215,13 +215,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _mode = NormalizeMode(Mode);
 
-        BuildColumns();
         await LoadFacultiesAsync();
         BuildFilterConfig();
-
-        // initial load according to Mode (if provided)
-        _mode = NormalizeMode(Mode);
+        BuildColumns();
 
         await LoadVisitsAsync();
         _initialized = true;
@@ -235,11 +233,10 @@
 
         _mode = next;
         BuildColumns();
-        // reset selection + pagination
+
         _selectedProjectIds.Clear();
         _page = 1;
 
-        // avoid reloading before initialized
         if (_initialized)
             await LoadVisitsAsync();
     }
@@ -261,21 +258,20 @@
     private async Task OnFilterExecutionDateChanged(DateOnly? value)
     {
         _filterExecutionDate = value;
-
-        // reset selección + paginación
         _selectedProjectIds.Clear();
         _page = 1;
 
         await LoadVisitsAsync();
     }
 
-
     private void ToggleSelected(int projectId)
     {
         if (projectId <= 0) return;
 
-        if (_selectedProjectIds.Contains(projectId)) _selectedProjectIds.Remove(projectId);
-        else _selectedProjectIds.Add(projectId);
+        if (_selectedProjectIds.Contains(projectId))
+            _selectedProjectIds.Remove(projectId);
+        else
+            _selectedProjectIds.Add(projectId);
 
         StateHasChanged();
     }
@@ -331,11 +327,9 @@
     private List<VisitPlannedForExecutionListDTO> allItems = new();
     private List<VisitPlannedForExecutionListDTO> filteredItems = new();
 
-    // Facultades externas
     private List<ExternalFacultyDTO> _faculties = new();
     private Dictionary<int, string> _facultyNameById = new();
 
-    // Filtros/búsqueda
     private FilterQuery? currentFilters;
     private string? currentSearch;
 
@@ -480,17 +474,17 @@
     private void BuildColumns()
     {
         var cols = new List<ColumnDef<VisitPlannedForExecutionListDTO>>
-    {
-        new("Sel", _ => string.Empty, "3rem",  Sortable: false),
-        new("#",   _ => string.Empty, "2.5rem", Sortable: false),
-        new("Cod", _ => string.Empty, "5.5rem", Sortable: true),
-        new("Proyecto", _ => string.Empty, "14rem", Sortable: true),
-        new("# Vis", _ => string.Empty, "3.5rem", Sortable: true),
-        new("Facultad", _ => string.Empty, "9rem", Sortable: true),
-    };
+        {
+            new("Sel", _ => string.Empty, "3rem", Sortable: false),
+            new("#", _ => string.Empty, "2.5rem", Sortable: false),
+            new("Cod", x => x.ProjectCode, "5.5rem", Sortable: true),
+            new("Proyecto", x => x.ProjectName, "14rem", Sortable: true),
+            new("# Vis", x => x.VisitNumber, "3.5rem", Sortable: true),
+            new("Facultad", x => GetFacultyName(x.FacultyId), "9rem", Sortable: true),
+        };
 
-        AddIf(cols, IsPendingMode, new("Fecha", _ => string.Empty, "6.2rem", Sortable: true));
-        AddIf(cols, IsPendingMode, new("Estado", _ => string.Empty, "7.5rem", Sortable: true));
+        AddIf(cols, IsPendingMode, new("Fecha", x => x.VisitDate, "6.2rem", Sortable: true));
+        AddIf(cols, IsPendingMode, new("Estado", x => x.VisitStateName, "7.5rem", Sortable: true));
 
         columns = cols;
     }
@@ -648,70 +642,3 @@
         }
     }
 }
-
-<style>
-    .planner-table table th {
-        padding: .35rem .45rem !important;
-        font-size: .70rem !important;
-    }
-
-    .planner-table table td {
-        padding: .35rem .45rem !important;
-        font-size: .78rem !important;
-    }
-
-    .planner-table table {
-        table-layout: fixed;
-        width: 100%;
-    }
-
-    .planner-table .cell {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        cursor: pointer;
-    }
-
-    .planner-table .cell-sel {
-        width: 3rem;
-        cursor: default;
-    }
-
-    .planner-table .cell-num {
-        width: 2.5rem;
-        text-align: center;
-    }
-
-    .planner-table .cell-code {
-        width: 5.5rem;
-    }
-
-    .planner-table .cell-proj {
-        width: 14rem;
-    }
-
-    .planner-table .cell-visit {
-        width: 3.5rem;
-        text-align: center;
-    }
-
-    .planner-table .cell-fac {
-        width: 9rem;
-    }
-
-    .planner-table .cell-date {
-        width: 6.2rem;
-    }
-
-    .planner-table .cell-state {
-        width: 7.5rem;
-    }
-
-    .planner-table .row-selected {
-        background-color: rgba(99, 102, 241, 0.10) !important;
-    }
-
-    .confirm-dialog-message {
-        white-space: pre-line;
-    }
-</style>

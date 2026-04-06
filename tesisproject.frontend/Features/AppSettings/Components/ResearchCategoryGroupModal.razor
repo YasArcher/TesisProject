@@ -1,0 +1,57 @@
+﻿@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+
+<Modal Id="research-group-modal"
+       IsOpen="IsOpen"
+       IsOpenChanged="IsOpenChanged"
+       Title="@(IsEdit ? "Editar Grupo de Categoría" : "Nuevo Grupo de Categoría")"
+       Size="ModalSize.Sm">
+    <ChildContent>
+        <div class="space-y-4">
+            <TextInput @bind-Value="Model.Name"
+                       Label="Nombre del Grupo"
+                       Placeholder="Ej: Campos del Conocimiento, Áreas de Investigación"
+                       Required="true" />
+
+            @if (IsEdit)
+            {
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox"
+                           class="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                           @bind="Model.IsActive" />
+                    <span class="text-sm text-foreground">Activo</span>
+                </label>
+            }
+
+            <div class="flex justify-end gap-2 pt-4 border-t border-border">
+                <ActionButton Execute="HandleCancel"
+                              Text="Cancelar"
+                              Intent="ButtonIntent.Neutral"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Sm" />
+
+                <ActionButton Execute="HandleSave"
+                              Text="Guardar"
+                              Intent="ButtonIntent.Accept"
+                              Size="ButtonSize.Sm" />
+            </div>
+        </div>
+    </ChildContent>
+</Modal>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+
+    [Parameter, EditorRequired]
+    public CatalogDetailDTO Model { get; set; } = new();
+
+    [Parameter] public EventCallback OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private Task HandleSave() => OnSave.InvokeAsync();
+    private Task HandleCancel() => OnCancel.InvokeAsync();
+}

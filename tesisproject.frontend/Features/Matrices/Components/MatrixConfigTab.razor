@@ -5,54 +5,49 @@
 @using tesisproject.shared.DTOs.Matrices.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
 
-<div class="space-y-6 px-3 py-6 max-h-[calc(100vh-280px)] overflow-y-auto overflow-x-hidden">
-
-    <!-- Encabezado con estilo mejorado -->
-    <div class="space-y-3 pb-4 border-b-2 border-primary">
-        <div class="flex items-center gap-3">
-            <div class="p-2 bg-primary-subtle rounded-lg">
-                <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-            </div>
-            <div>
-                <h3 class="text-2xl font-bold text-foreground">Informe Plano</h3>
-                <p class="text-sm text-muted mt-1 max-w-3xl leading-relaxed">
-                    Revise cómo se interpretan los proyectos en la matriz: detección de tipo de proyecto,
-                    categorías de investigación, presupuestos, productos y más información relevante.
-                </p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Barra de acciones con diseño card -->
-    <div class="bg-background border-2 border-border rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200">
-        <div class="p-5">
-            <div class="flex flex-wrap items-center justify-between gap-4">
-                <div class="flex flex-wrap items-center gap-3">
-                    <ActionButton Text="Recargar Informe"
-                                  Execute="HandleReloadClick"
-                                  Intent="ButtonIntent.Info"
-                                  Variant="ButtonVariant.Filled"
-                                  Size="ButtonSize.Sm"
-                                  Disabled="@IsLoading" />
-
-                    @if (IsLoading)
-                    {
-                        <div class="flex items-center gap-2 px-3 py-2 bg-primary-subtle rounded-lg border border-primary-light">
-                            <div class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
-                            <span class="text-xs font-medium text-primary">Cargando informe plano...</span>
-                        </div>
-                    }
+<div class="w-full h-full min-h-0 flex flex-col gap-4 p-6 overflow-hidden">
+    <div class="border-b border-primary pb-3 shrink-0">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div class="flex items-start gap-3 min-w-0">
+                <div class="rounded-lg bg-primary-subtle p-2 shrink-0">
+                    <svg class="h-5 w-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
                 </div>
+
+                <div class="min-w-0">
+                    <h3 class="text-lg font-bold text-foreground">Informe plano</h3>
+                    <p class="mt-1 text-xs text-muted">
+                        Vista resumida de cómo se interpreta la matriz de proyectos.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
+                <ActionButton Text="Recargar informe"
+                              Execute="HandleReloadClick"
+                              Intent="ButtonIntent.Info"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Sm"
+                              Disabled="@IsLoading" />
+
+                @if (IsLoading)
+                {
+                    <div class="flex items-center gap-2 rounded-lg border border-primary-light bg-primary-subtle px-3 py-2">
+                        <div class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
+                        <span class="text-xs font-medium text-primary">Cargando...</span>
+                    </div>
+                }
 
                 @if (CategoryTree is not null && CategoryTree.Count > 0)
                 {
-                    <div class="flex items-center gap-2 px-4 py-2 bg-secondary-subtle rounded-lg border border-secondary/20">
-                        <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    <div class="flex items-center gap-2 rounded-lg border border-secondary/20 bg-secondary-subtle px-3 py-2">
+                        <svg class="h-4 w-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                         </svg>
-                        <span class="text-sm text-foreground">
+                        <span class="text-xs text-foreground">
                             <strong class="font-semibold text-secondary">@CategoryTree.Count</strong>
                             <span class="text-muted">categorías raíz</span>
                         </span>
@@ -62,100 +57,82 @@
         </div>
     </div>
 
-    <!-- Mensajes de error con diseño destacado -->
     @if (!string.IsNullOrWhiteSpace(ErrorMessage))
     {
-        <div class="bg-error-subtle border-2 border-error rounded-xl p-5 shadow-lg animate-shake">
-            <div class="flex items-start gap-4">
-                <div class="flex-shrink-0 p-2 bg-error rounded-lg">
-                    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+        <div class="rounded-xl border border-error bg-error-subtle p-4 shrink-0">
+            <div class="flex items-start gap-3">
+                <div class="shrink-0 rounded-lg bg-error p-2">
+                    <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                              clip-rule="evenodd" />
                     </svg>
                 </div>
-                <div class="flex-1 space-y-1">
-                    <p class="text-base font-semibold text-error">Error al cargar datos</p>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-error">Error al cargar datos</p>
                     <p class="text-sm text-foreground/80">@ErrorMessage</p>
                 </div>
             </div>
         </div>
     }
 
-    <!-- Estado de carga inicial con animación -->
     @if (IsLoading && (Projects is null || Projects.Count == 0))
     {
-        <div class="bg-background border-2 border-dashed border-primary rounded-xl p-16">
-            <div class="flex flex-col items-center justify-center space-y-6">
-                <div class="relative">
-                    <div class="absolute inset-0 bg-primary-subtle rounded-full animate-ping"></div>
-                    <div class="relative inline-block h-16 w-16 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
-                </div>
-                <div class="text-center space-y-2">
-                    <p class="text-lg font-semibold text-foreground">Cargando informe de proyectos</p>
-                    <p class="text-sm text-muted max-w-md">
-                        Por favor espere mientras se procesa la información de la matriz...
-                    </p>
+        <div class="rounded-xl border border-dashed border-primary bg-background p-10 flex-1 min-h-0 flex items-center justify-center">
+            <div class="flex flex-col items-center justify-center gap-4 text-center">
+                <div class="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+                <div>
+                    <p class="text-base font-semibold text-foreground">Cargando informe</p>
+                    <p class="text-sm text-muted">Procesando información de la matriz...</p>
                 </div>
             </div>
         </div>
     }
     else if (!IsLoading && (Projects is null || Projects.Count == 0) && string.IsNullOrWhiteSpace(ErrorMessage))
     {
-        <div class="bg-background border-2 border-dashed border-border rounded-xl p-12 hover:border-primary transition-colors duration-200">
-            <div class="text-center space-y-4">
-                <div class="inline-flex p-4 bg-muted/10 rounded-full">
-                    <svg class="w-16 h-16 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        <div class="rounded-xl border border-dashed border-border bg-background p-10 text-center flex-1 min-h-0 flex items-center justify-center">
+            <div class="space-y-3">
+                <div class="inline-flex rounded-full bg-muted/10 p-4">
+                    <svg class="h-12 w-12 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                 </div>
-                <div class="space-y-2">
+                <div>
                     <p class="text-lg font-semibold text-foreground">No hay datos disponibles</p>
-                    <p class="text-sm text-muted max-w-md mx-auto">
-                        Intente recargar el informe plano para visualizar los proyectos de la matriz.
-                    </p>
+                    <p class="text-sm text-muted">Recarga el informe para visualizar los proyectos.</p>
                 </div>
             </div>
         </div>
     }
     else if (Projects is not null && Projects.Count > 0)
     {
-        <!-- Resumen de datos sin gradiente -->
-        <div class="bg-primary rounded-xl shadow-md">
-            <div class="flex items-center gap-3 px-6 py-4">
-                <div class="flex-shrink-0 p-3 bg-white/20 rounded-lg">
-                    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                        <path fill-rule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <div class="flex-1">
-                    <p class="text-sm font-medium text-white/90">Total de proyectos</p>
-                    <p class="text-2xl font-bold text-white">
-                        @Projects.Count
-                        <span class="text-base font-normal text-white/80">
-                            @(Projects.Count == 1 ? "proyecto" : "proyectos") en el informe
-                        </span>
-                    </p>
-                </div>
-            </div>
-        </div>
+        <div class="overflow-hidden rounded-xl border border-border bg-background shadow-sm flex-1 min-h-0 flex flex-col">
+            <div class="border-b border-border bg-primary-subtle px-4 py-3 shrink-0">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <svg class="h-5 w-5 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <h4 class="text-sm font-semibold text-foreground">Datos de proyectos</h4>
+                    </div>
 
-        <!-- Tabla de datos con diseño mejorado -->
-        <div class="bg-background border-2 border-border rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
-            <div class="bg-primary-subtle px-6 py-4 border-b-2 border-border">
-                <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    <h4 class="text-base font-semibold text-foreground">Datos de Proyectos</h4>
+                    <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-background text-foreground border border-border shrink-0">
+                        @Projects.Count @(Projects.Count == 1 ? "proyecto" : "proyectos")
+                    </div>
                 </div>
             </div>
-            <div class="p-4">
-                <DataTable TItem="ProjectFlatReportDTO"
-                           Items="Projects"
-                           Columns="@_columns"
-                           PageSize="1"
-                           Total="@(Projects?.Count ?? 0)"
-                           EmptyText="No hay proyectos en el informe plano." />
+
+            <div class="p-4 flex-1 min-h-0 overflow-hidden">
+                <div class="w-full h-full min-h-0 overflow-auto">
+                    <DataTable TItem="ProjectFlatReportDTO"
+                               Items="Projects"
+                               Columns="@_columns"
+                               PageSize="1"
+                               Total="@(Projects?.Count ?? 0)"
+                               EmptyText="No hay proyectos en el informe plano." />
+                </div>
             </div>
         </div>
     }
@@ -178,43 +155,36 @@
     {
         _baseColumns.AddRange(new[]
         {
-            // Información básica del proyecto
-            new ColumnDef<ProjectFlatReportDTO>("Código",              p => p.ProjectCode,                         Width: "120px", Sortable: true),
-            new ColumnDef<ProjectFlatReportDTO>("Proyecto",            p => p.ProjectName,                         Width: "260px", Sortable: true),
-            new ColumnDef<ProjectFlatReportDTO>("Tipo",                p => p.ProjectTypeName ?? string.Empty,    Width: "160px", Sortable: true),
-            new ColumnDef<ProjectFlatReportDTO>("Estado",              p => p.ProjectStateName ?? string.Empty,   Width: "140px", Sortable: true),
-            new ColumnDef<ProjectFlatReportDTO>("Convocatoria",        p => p.ConvocationName ?? string.Empty,    Width: "200px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("Código",              p => p.ProjectCode,                       Width: "120px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("Proyecto",            p => p.ProjectName,                       Width: "260px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("Tipo",                p => p.ProjectTypeName ?? string.Empty,  Width: "160px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("Estado",              p => p.ProjectStateName ?? string.Empty, Width: "140px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("Convocatoria",        p => p.ConvocationName ?? string.Empty,  Width: "200px", Sortable: true),
 
-            // Fechas
-            new ColumnDef<ProjectFlatReportDTO>("F. Aprobación",       p => FormatDate(p.ApprovalDate),           Width: "120px", Sortable: true),
-            new ColumnDef<ProjectFlatReportDTO>("F. Inicio",           p => FormatDate(p.StartDate),              Width: "120px", Sortable: true),
-            new ColumnDef<ProjectFlatReportDTO>("Duración (m)",        p => p.DurationInMonths,                   Width: "90px",  Sortable: true),
-            new ColumnDef<ProjectFlatReportDTO>("F. Tentativa Fin",    p => FormatDate(p.TentativeEndDate),       Width: "140px", Sortable: true),
-            new ColumnDef<ProjectFlatReportDTO>("F. Real Fin",         p => FormatDate(p.RealEndDate),            Width: "140px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("F. Aprobación",       p => FormatDate(p.ApprovalDate),         Width: "120px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("F. Inicio",           p => FormatDate(p.StartDate),            Width: "120px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("Duración (m)",        p => p.DurationInMonths,                 Width: "90px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("F. Tentativa Fin",    p => FormatDate(p.TentativeEndDate),     Width: "140px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("F. Real Fin",         p => FormatDate(p.RealEndDate),          Width: "140px", Sortable: true),
 
-            new ColumnDef<ProjectFlatReportDTO>("Facultad",            p => p.FacultyName ?? string.Empty,        Width: "220px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("Facultad",            p => p.FacultyName ?? string.Empty,      Width: "220px", Sortable: true),
 
-            // Coordinador / Director
-            new ColumnDef<ProjectFlatReportDTO>("Coordinador",         p => p.CoordinatorName ?? string.Empty,    Width: "220px", Sortable: false),
-            new ColumnDef<ProjectFlatReportDTO>("Email Coord.",        p => p.CoordinatorEmail ?? string.Empty,   Width: "220px", Sortable: false),
-            new ColumnDef<ProjectFlatReportDTO>("Teléfono Coord.",     p => p.CoordinatorPhone ?? string.Empty,   Width: "160px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Coordinador",         p => p.CoordinatorName ?? string.Empty,  Width: "220px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Email Coord.",        p => p.CoordinatorEmail ?? string.Empty, Width: "220px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Teléfono Coord.",     p => p.CoordinatorPhone ?? string.Empty, Width: "160px", Sortable: false),
 
-            // Presupuestos
-            new ColumnDef<ProjectFlatReportDTO>("Presup. Inicial",     p => GetBudgetInitialSummary(p),           Width: "180px", Sortable: false),
-            new ColumnDef<ProjectFlatReportDTO>("Tipo Financiamiento", p => GetBudgetFundingTypesSummary(p),      Width: "200px", Sortable: false),
-            new ColumnDef<ProjectFlatReportDTO>("Presup. Certificado", p => GetBudgetCertifiedSummary(p),         Width: "180px", Sortable: false),
-            new ColumnDef<ProjectFlatReportDTO>("Presup. Ejecutado",   p => GetBudgetExecutedSummary(p),          Width: "180px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Presup. Inicial",     p => GetBudgetInitialSummary(p),         Width: "180px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Tipo Financiamiento", p => GetBudgetFundingTypesSummary(p),    Width: "200px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Presup. Certificado", p => GetBudgetCertifiedSummary(p),       Width: "180px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Presup. Ejecutado",   p => GetBudgetExecutedSummary(p),        Width: "180px", Sortable: false),
 
-            // Productos
-            new ColumnDef<ProjectFlatReportDTO>("Productos (Títulos)", p => GetProductTitlesSummary(p),          Width: "220px", Sortable: false),
-            new ColumnDef<ProjectFlatReportDTO>("Productos (Tipos)",   p => GetProductTypesSummary(p),           Width: "200px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Productos (Títulos)", p => GetProductTitlesSummary(p),         Width: "220px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Productos (Tipos)",   p => GetProductTypesSummary(p),          Width: "200px", Sortable: false),
 
-            // Investigadores externos
-            new ColumnDef<ProjectFlatReportDTO>("Nombres Externos",          p => GetExternalNamesSummary(p),        Width: "220px", Sortable: false),
-            new ColumnDef<ProjectFlatReportDTO>("Instituciones Externas",    p => GetExternalInstitutionsSummary(p), Width:"220px", Sortable:false),
+            new ColumnDef<ProjectFlatReportDTO>("Nombres Externos",       p => GetExternalNamesSummary(p),        Width: "220px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Instituciones Externas", p => GetExternalInstitutionsSummary(p), Width: "220px", Sortable: false),
 
-            // Investigadores acreditados SENESCYT
-            new ColumnDef<ProjectFlatReportDTO>("Investigadores SENESCYT",   p => GetSenescytNamesSummary(p),        Width:"260px", Sortable:false)
+            new ColumnDef<ProjectFlatReportDTO>("Investigadores SENESCYT", p => GetSenescytNamesSummary(p),     Width: "260px", Sortable: false)
         });
 
         _columns = _baseColumns.ToList();
@@ -259,7 +229,8 @@
     {
         _categoryById[node.Id] = node;
 
-        if (node.Children is null) return;
+        if (node.Children is null)
+            return;
 
         foreach (var child in node.Children)
         {
@@ -360,14 +331,14 @@
             .OrderBy(x => x.TypeId)
             .ToList();
 
-        foreach (var ot in objectiveTypes)
+        foreach (var objectiveType in objectiveTypes)
         {
-            var baseLabel = GetObjectiveTypeLabel(ot.TypeId, ot.TypeName);
+            var baseLabel = GetObjectiveTypeLabel(objectiveType.TypeId, objectiveType.TypeName);
 
-            for (var idx = 1; idx <= ot.MaxCount; idx++)
+            for (var idx = 1; idx <= objectiveType.MaxCount; idx++)
             {
                 var header = $"{baseLabel} {idx}";
-                var localTypeId = ot.TypeId;
+                var localTypeId = objectiveType.TypeId;
                 var localIndex = idx;
 
                 yield return new ColumnDef<ProjectFlatReportDTO>(
@@ -380,14 +351,12 @@
         }
     }
 
-    private static string GetObjectiveTypeLabel(int typeId, string? defaultName)
-        => typeId switch
+    private static string GetObjectiveTypeLabel(int typeId, string? defaultName) =>
+        typeId switch
         {
             1 => "Objetivo general",
             2 => "Objetivo específico",
-            _ => string.IsNullOrWhiteSpace(defaultName)
-                    ? $"Tipo {typeId}"
-                    : defaultName!
+            _ => string.IsNullOrWhiteSpace(defaultName) ? $"Tipo {typeId}" : defaultName!
         };
 
     private string GetObjectiveText(ProjectFlatReportDTO project, int typeId, int index)
@@ -403,15 +372,14 @@
         if (index <= 0 || index > objectives.Count)
             return "-";
 
-        var obj = objectives[index - 1];
-        return string.IsNullOrWhiteSpace(obj.Objective)
-            ? "-"
-            : obj.Objective;
+        var objective = objectives[index - 1];
+        return string.IsNullOrWhiteSpace(objective.Objective) ? "-" : objective.Objective;
     }
 
     private static string GetBudgetInitialSummary(ProjectFlatReportDTO project)
     {
-        if (project.Budgets is null || project.Budgets.Count == 0) return "-";
+        if (project.Budgets is null || project.Budgets.Count == 0)
+            return "-";
 
         var values = project.Budgets
             .Select(b => b.InitialAmount)
@@ -424,7 +392,8 @@
 
     private static string GetBudgetFundingTypesSummary(ProjectFlatReportDTO project)
     {
-        if (project.Budgets is null || project.Budgets.Count == 0) return "-";
+        if (project.Budgets is null || project.Budgets.Count == 0)
+            return "-";
 
         var names = project.Budgets
             .Select(b => b.FundingTypeName ?? string.Empty)
@@ -437,7 +406,8 @@
 
     private static string GetBudgetCertifiedSummary(ProjectFlatReportDTO project)
     {
-        if (project.Budgets is null || project.Budgets.Count == 0) return "-";
+        if (project.Budgets is null || project.Budgets.Count == 0)
+            return "-";
 
         var values = project.Budgets
             .Select(b => b.CertifiedAmount)
@@ -450,7 +420,8 @@
 
     private static string GetBudgetExecutedSummary(ProjectFlatReportDTO project)
     {
-        if (project.Budgets is null || project.Budgets.Count == 0) return "-";
+        if (project.Budgets is null || project.Budgets.Count == 0)
+            return "-";
 
         var values = project.Budgets
             .Select(b => b.ExecutedAmount)
@@ -463,7 +434,8 @@
 
     private static string GetProductTitlesSummary(ProjectFlatReportDTO project)
     {
-        if (project.Products is null || project.Products.Count == 0) return "-";
+        if (project.Products is null || project.Products.Count == 0)
+            return "-";
 
         var titles = project.Products
             .Select(p => p.Title)
@@ -475,7 +447,8 @@
 
     private static string GetProductTypesSummary(ProjectFlatReportDTO project)
     {
-        if (project.Products is null || project.Products.Count == 0) return "-";
+        if (project.Products is null || project.Products.Count == 0)
+            return "-";
 
         var types = project.Products
             .Select(p => p.ProductTypeName ?? string.Empty)
@@ -488,7 +461,8 @@
 
     private static string GetExternalNamesSummary(ProjectFlatReportDTO project)
     {
-        if (project.ExternalResearchers is null || project.ExternalResearchers.Count == 0) return "-";
+        if (project.ExternalResearchers is null || project.ExternalResearchers.Count == 0)
+            return "-";
 
         var names = project.ExternalResearchers
             .Select(r => r.FullName)
@@ -500,20 +474,22 @@
 
     private static string GetExternalInstitutionsSummary(ProjectFlatReportDTO project)
     {
-        if (project.ExternalResearchers is null || project.ExternalResearchers.Count == 0) return "-";
+        if (project.ExternalResearchers is null || project.ExternalResearchers.Count == 0)
+            return "-";
 
-        var insts = project.ExternalResearchers
+        var institutions = project.ExternalResearchers
             .Select(r => r.InstitutionName ?? string.Empty)
             .Where(n => !string.IsNullOrWhiteSpace(n))
             .Distinct()
             .ToList();
 
-        return insts.Count == 0 ? "-" : string.Join(" | ", insts);
+        return institutions.Count == 0 ? "-" : string.Join(" | ", institutions);
     }
 
     private static string GetSenescytNamesSummary(ProjectFlatReportDTO project)
     {
-        if (project.SenescytMembers is null || project.SenescytMembers.Count == 0) return "-";
+        if (project.SenescytMembers is null || project.SenescytMembers.Count == 0)
+            return "-";
 
         var names = project.SenescytMembers
             .Select(m => m.FullName)
@@ -524,8 +500,8 @@
         return names.Count == 0 ? "-" : string.Join(" | ", names);
     }
 
-    private static string FormatDate(DateTime? date)
-        => date.HasValue ? date.Value.ToString("yyyy-MM-dd") : "-";
+    private static string FormatDate(DateTime? date) =>
+        date.HasValue ? date.Value.ToString("yyyy-MM-dd") : "-";
 
     private IEnumerable<ResearchCategoryTreeItemDTO> GetCategoryPathToRoot(ResearchCategoryTreeItemDTO leaf)
     {

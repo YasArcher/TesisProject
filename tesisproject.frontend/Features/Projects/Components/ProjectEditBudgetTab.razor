@@ -11,201 +11,212 @@
 
 @inject IModalService ModalService
 
-<section class="space-y-6 bg-background border-2 border-border rounded-3xl p-6 shadow-sm">
-    <div class="flex items-center gap-3 pb-4 border-b-2 border-border">
-        <div class="w-1 h-6 bg-primary rounded-full"></div>
-        <h3 class="text-base font-bold text-foreground tracking-tight">Presupuesto</h3>
+<section class="h-full min-h-0 flex flex-col bg-background border-2 border-border rounded-3xl shadow-sm overflow-hidden">
+    <div class="shrink-0 flex items-center gap-3 px-6 py-5 border-b-2 border-border">
+        <div class="w-1 h-6 bg-primary rounded-full shrink-0"></div>
+        <h3 class="text-base font-bold text-foreground tracking-tight truncate">Presupuesto</h3>
     </div>
 
-    @if (IsLoading)
-    {
-        <div class="text-sm text-muted">Cargando presupuesto...</div>
-    }
-    else
-    {
-        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    <div class="flex-1 min-h-0 overflow-y-auto p-6">
+        @if (IsLoading)
         {
-            <div class="p-4 rounded-2xl border border-error/20 bg-error/10 text-error text-sm">
-                @ErrorMessage
-            </div>
-        }
-
-        <!-- =========================
-             CREAR NUEVO PRESUPUESTO
-        ========================== -->
-        <div class="rounded-2xl border-2 border-border bg-primary-subtle/20 p-5 space-y-4">
-            <div class="flex items-center justify-between gap-3">
-                <div class="text-sm font-bold text-foreground">Nuevo presupuesto</div>
-            </div>
-
-            <EditForm Model="@_createBudgetModel" OnValidSubmit="SubmitCreateBudgetAsync">
-                <DataAnnotationsValidator />
-
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                    <div class="w-full">
-                        <label class="block text-sm font-medium text-foreground mb-1">
-                            Tipo de financiamiento <span class="text-error">*</span>
-                        </label>
-                        <select class="w-full rounded-md border border-border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                                @bind="_createBudgetModel.FundingTypeId"
-                                disabled="@IsCreateBudgetBusy">
-                            <option value="0">Seleccione...</option>
-                            @foreach (var ft in FundingTypes ?? Array.Empty<CatalogListItemDTO>())
-                            {
-                                <option value="@ft.Id">@ft.Name</option>
-                            }
-                        </select>
-                        @if (_createBudgetModel.FundingTypeId <= 0)
-                        {
-                            <p class="mt-1 text-sm text-muted">Debes seleccionar un tipo.</p>
-                        }
-                    </div>
-
-                    <TextInput TValue="decimal"
-                               Label="Monto (Presupuesto)"
-                               InputType="number"
-                               @bind-Value="_createBudgetModel.InitialAmount"
-                               For="() => _createBudgetModel.InitialAmount"
-                               Placeholder="0.00"
-                               Disabled="@IsCreateBudgetBusy"
-                               Required="true" />
-
-                    <div class="flex items-end justify-end">
-                        <ActionButton Text="Crear"
-                                      Execute="SubmitCreateBudgetAsync"
-                                      Intent="ButtonIntent.Add"
-                                      Variant="ButtonVariant.Filled"
-                                      Disabled="@(IsCreateBudgetBusy || _createBudgetModel.FundingTypeId <= 0)" />
-                    </div>
+            <div class="h-full min-h-0 flex items-center justify-center">
+                <div class="flex items-center justify-center gap-4 p-8 bg-primary-subtle rounded-xl border border-primary/20">
+                    <div class="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full"></div>
+                    <div class="text-primary font-medium">Cargando presupuesto...</div>
                 </div>
-            </EditForm>
-        </div>
-
-        <!-- =========================
-             LISTA DE PRESUPUESTOS
-        ========================== -->
-        @if (Budgets is null || Budgets.Count == 0)
-        {
-            <div class="text-sm text-muted">Este proyecto no tiene presupuestos registrados.</div>
+            </div>
         }
         else
         {
-            <div class="text-sm text-muted">
-                Presupuestos: <span class="font-semibold text-foreground">@Budgets.Count</span>
-            </div>
+            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+            {
+                <div class="p-4 rounded-2xl border border-error/20 bg-error/10 text-error text-sm mb-6">
+                    @ErrorMessage
+                </div>
+            }
 
-            <div class="grid grid-cols-1 gap-6">
-                @foreach (var b in Budgets.OrderBy(x => x.BudgetId))
+            <div class="space-y-6 min-w-0">
+                <!-- =========================
+                     CREAR NUEVO PRESUPUESTO
+                ========================== -->
+                <div class="rounded-2xl border-2 border-border bg-primary-subtle/20 p-5 space-y-4 min-w-0">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-bold text-foreground">Nuevo presupuesto</div>
+                    </div>
+
+                    <EditForm Model="@_createBudgetModel" OnValidSubmit="SubmitCreateBudgetAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-end">
+                            <div class="w-full min-w-0">
+                                <label class="block text-sm font-medium text-foreground mb-1">
+                                    Tipo de financiamiento <span class="text-error">*</span>
+                                </label>
+                                <select class="w-full rounded-md border border-border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                                        @bind="_createBudgetModel.FundingTypeId"
+                                        disabled="@IsCreateBudgetBusy">
+                                    <option value="0">Seleccione...</option>
+                                    @foreach (var ft in FundingTypes ?? Array.Empty<CatalogListItemDTO>())
+                                    {
+                                        <option value="@ft.Id">@ft.Name</option>
+                                    }
+                                </select>
+                                @if (_createBudgetModel.FundingTypeId <= 0)
+                                {
+                                    <p class="mt-1 text-sm text-muted">Debes seleccionar un tipo.</p>
+                                }
+                            </div>
+
+                            <TextInput TValue="decimal"
+                                       Label="Monto (Presupuesto)"
+                                       InputType="number"
+                                       @bind-Value="_createBudgetModel.InitialAmount"
+                                       For="() => _createBudgetModel.InitialAmount"
+                                       Placeholder="0.00"
+                                       Disabled="@IsCreateBudgetBusy"
+                                       Required="true" />
+
+                            <div class="flex items-end justify-end">
+                                <ActionButton Text="Crear"
+                                              Execute="SubmitCreateBudgetAsync"
+                                              Intent="ButtonIntent.Add"
+                                              Variant="ButtonVariant.Filled"
+                                              Disabled="@(IsCreateBudgetBusy || _createBudgetModel.FundingTypeId <= 0)" />
+                            </div>
+                        </div>
+                    </EditForm>
+                </div>
+
+                <!-- =========================
+                     LISTA DE PRESUPUESTOS
+                ========================== -->
+                @if (Budgets is null || Budgets.Count == 0)
                 {
-                    var budgetId = b.BudgetId;
-                    var budgetModel = GetBudgetEditModel(b);
+                    <div class="p-4 rounded-2xl border border-border bg-background text-sm text-muted">
+                        Este proyecto no tiene presupuestos registrados.
+                    </div>
+                }
+                else
+                {
+                    <div class="text-sm text-muted">
+                        Presupuestos: <span class="font-semibold text-foreground">@Budgets.Count</span>
+                    </div>
 
-                    var txCount = GetTxCount(budgetId);
-                    var canDeleteBudget = txCount == 0;
-                    var isDeletingBudget = DeletingBudgetIds?.Contains(budgetId) == true;
-
-                    <div class="border-2 border-border rounded-2xl p-5 bg-background shadow-sm space-y-5">
-                        <div class="flex items-start justify-between gap-3">
-                            <div class="min-w-0">
-                                <div class="text-sm font-bold text-foreground truncate">
-                                    @(string.IsNullOrWhiteSpace(b.FundingTypeName) ? $"Presupuesto #{b.BudgetId}" : b.FundingTypeName)
-                                </div>
-                            </div>
-
-                            <div class="flex items-center gap-2 shrink-0">
-                                <ActionButton Text="Eliminar"
-                                              Variant="ButtonVariant.Outline"
-                                              Intent="ButtonIntent.Danger"
-                                              ConfirmBeforeExecute="true"
-                                              ConfirmTitle="Eliminar presupuesto"
-                                              ConfirmMessage="¿Seguro que deseas eliminar este presupuesto? Esta acción no se puede deshacer."
-                                              ConfirmButtonText="Eliminar"
-                                              CancelButtonText="Cancelar"
-                                              Execute="@(() => RequestDeleteBudgetAsync(budgetId))"
-                                              Disabled="@(!canDeleteBudget || isDeletingBudget || IsBudgetBusy(budgetId))" />
-                            </div>
-                        </div>
-
-                        @if (!canDeleteBudget)
+                    <div class="grid grid-cols-1 gap-6 min-w-0">
+                        @foreach (var b in Budgets.OrderBy(x => x.BudgetId))
                         {
-                            <div class="text-xs text-muted">
-                                No se puede eliminar este presupuesto porque tiene transacciones registradas.
+                            var budgetId = b.BudgetId;
+                            var budgetModel = GetBudgetEditModel(b);
+
+                            var txCount = GetTxCount(budgetId);
+                            var canDeleteBudget = txCount == 0;
+                            var isDeletingBudget = DeletingBudgetIds?.Contains(budgetId) == true;
+
+                            <div class="border-2 border-border rounded-2xl p-5 bg-background shadow-sm space-y-5 min-w-0 overflow-hidden">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <div class="text-sm font-bold text-foreground truncate">
+                                            @(string.IsNullOrWhiteSpace(b.FundingTypeName) ? $"Presupuesto #{b.BudgetId}" : b.FundingTypeName)
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <ActionButton Text="Eliminar"
+                                                      Variant="ButtonVariant.Outline"
+                                                      Intent="ButtonIntent.Danger"
+                                                      ConfirmBeforeExecute="true"
+                                                      ConfirmTitle="Eliminar presupuesto"
+                                                      ConfirmMessage="¿Seguro que deseas eliminar este presupuesto? Esta acción no se puede deshacer."
+                                                      ConfirmButtonText="Eliminar"
+                                                      CancelButtonText="Cancelar"
+                                                      Execute="@(() => RequestDeleteBudgetAsync(budgetId))"
+                                                      Disabled="@(!canDeleteBudget || isDeletingBudget || IsBudgetBusy(budgetId))" />
+                                    </div>
+                                </div>
+
+                                @if (!canDeleteBudget)
+                                {
+                                    <div class="text-xs text-muted">
+                                        No se puede eliminar este presupuesto porque tiene transacciones registradas.
+                                    </div>
+                                }
+
+                                @if (isDeletingBudget)
+                                {
+                                    <div class="text-xs text-muted">
+                                        Eliminando presupuesto...
+                                    </div>
+                                }
+
+                                <!-- ========== EDITAR PRESUPUESTO (FundingType + InitialAmount) ========== -->
+                                <EditForm Model="@budgetModel" OnValidSubmit="@(() => SubmitBudgetAsync(budgetId))">
+                                    <DataAnnotationsValidator />
+
+                                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-end">
+                                        <div class="w-full min-w-0">
+                                            <label class="block text-sm font-medium text-foreground mb-1">
+                                                Tipo de financiamiento <span class="text-error">*</span>
+                                            </label>
+                                            <select class="w-full rounded-md border border-border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                                                    @bind="budgetModel.FundingTypeId"
+                                                    disabled="@(IsBudgetBusy(budgetId) || isDeletingBudget)">
+                                                <option value="0">Seleccione...</option>
+                                                @foreach (var ft in FundingTypes ?? Array.Empty<CatalogListItemDTO>())
+                                                {
+                                                    <option value="@ft.Id">@ft.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+
+                                        <TextInput TValue="decimal"
+                                                   Label="Presupuesto"
+                                                   InputType="number"
+                                                   @bind-Value="budgetModel.InitialAmount"
+                                                   For="() => budgetModel.InitialAmount"
+                                                   Placeholder="0.00"
+                                                   Disabled="@(IsBudgetBusy(budgetId) || isDeletingBudget)"
+                                                   Required="true" />
+
+                                        <div class="flex items-end justify-end">
+                                            <ActionButton Text="Guardar"
+                                                          Execute="@(() => SubmitBudgetAsync(budgetId))"
+                                                          Intent="ButtonIntent.Accept"
+                                                          Variant="ButtonVariant.Filled"
+                                                          ConfirmBeforeExecute="true"
+                                                          ConfirmTitle="Confirmar guardado"
+                                                          ConfirmMessage="¿Deseas guardar los cambios de este presupuesto?"
+                                                          ConfirmButtonText="Guardar"
+                                                          CancelButtonText="Cancelar"
+                                                          Disabled="@(IsBudgetBusy(budgetId) || isDeletingBudget || budgetModel.FundingTypeId <= 0)" />
+                                        </div>
+                                    </div>
+
+                                    @if (IsBudgetBusy(budgetId))
+                                    {
+                                        <div class="text-xs text-muted pt-1">Guardando...</div>
+                                    }
+                                </EditForm>
+
+                                <!-- ========== TRANSACCIONES (solo edición) ========== -->
+                                <div class="pt-4 border-t border-border space-y-4 min-w-0 overflow-hidden">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div class="text-sm font-bold text-foreground">Transacciones</div>
+                                    </div>
+
+                                    <DataTable TItem="BudgetTransactionDTO"
+                                               Items="@GetTransactions(budgetId)"
+                                               Columns="@_txColumns"
+                                               EmptyText="No hay transacciones registradas."
+                                               RowTemplate="@(tx => RenderTransactionRow(budgetId, tx))" />
+                                </div>
                             </div>
                         }
-
-                        @if (isDeletingBudget)
-                        {
-                            <div class="text-xs text-muted">
-                                Eliminando presupuesto...
-                            </div>
-                        }
-
-                        <!-- ========== EDITAR PRESUPUESTO (FundingType + InitialAmount) ========== -->
-                        <EditForm Model="@budgetModel" OnValidSubmit="@(() => SubmitBudgetAsync(budgetId))">
-                            <DataAnnotationsValidator />
-
-                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                <div class="w-full">
-                                    <label class="block text-sm font-medium text-foreground mb-1">
-                                        Tipo de financiamiento <span class="text-error">*</span>
-                                    </label>
-                                    <select class="w-full rounded-md border border-border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-                                            @bind="budgetModel.FundingTypeId"
-                                            disabled="@(IsBudgetBusy(budgetId) || isDeletingBudget)">
-                                        <option value="0">Seleccione...</option>
-                                        @foreach (var ft in FundingTypes ?? Array.Empty<CatalogListItemDTO>())
-                                        {
-                                            <option value="@ft.Id">@ft.Name</option>
-                                        }
-                                    </select>
-                                </div>
-
-                                <TextInput TValue="decimal"
-                                           Label="Presupuesto"
-                                           InputType="number"
-                                           @bind-Value="budgetModel.InitialAmount"
-                                           For="() => budgetModel.InitialAmount"
-                                           Placeholder="0.00"
-                                           Disabled="@(IsBudgetBusy(budgetId) || isDeletingBudget)"
-                                           Required="true" />
-
-                                <div class="flex items-end justify-end">
-                                    <ActionButton Text="Guardar"
-                                                  Execute="@(() => SubmitBudgetAsync(budgetId))"
-                                                  Intent="ButtonIntent.Accept"
-                                                  Variant="ButtonVariant.Filled"
-                                                  ConfirmBeforeExecute="true"
-                                                  ConfirmTitle="Confirmar guardado"
-                                                  ConfirmMessage="¿Deseas guardar los cambios de este presupuesto?"
-                                                  ConfirmButtonText="Guardar"
-                                                  CancelButtonText="Cancelar"
-                                                  Disabled="@(IsBudgetBusy(budgetId) || isDeletingBudget || budgetModel.FundingTypeId <= 0)" />
-                                </div>
-                            </div>
-
-                            @if (IsBudgetBusy(budgetId))
-                            {
-                                <div class="text-xs text-muted pt-1">Guardando...</div>
-                            }
-                        </EditForm>
-
-                        <!-- ========== TRANSACCIONES (solo edición) ========== -->
-                        <div class="pt-4 border-t border-border space-y-4">
-                            <div class="flex items-center justify-between gap-3">
-                                <div class="text-sm font-bold text-foreground">Transacciones</div>
-                            </div>
-
-                            <DataTable TItem="BudgetTransactionDTO"
-                                       Items="@GetTransactions(budgetId)"
-                                       Columns="@_txColumns"
-                                       EmptyText="No hay transacciones registradas."
-                                       RowTemplate="@(tx => RenderTransactionRow(budgetId, tx))" />
-                        </div>
                     </div>
                 }
             </div>
         }
-    }
+    </div>
 </section>
 
 <!-- =========================
@@ -317,7 +328,6 @@
                                   ConfirmButtonText="Guardar"
                                   CancelButtonText="Cancelar"
                                   Disabled="@(UpdatingTransactionIds.Contains(_editingTxId.Value))" />
-
                 </div>
             </EditForm>
         }

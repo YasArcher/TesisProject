@@ -1,4 +1,5 @@
 ﻿@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.SharedUI.Catalog
 @using tesisproject.shared.DTOs.FacultyScope.Request
 @using tesisproject.shared.DTOs.FacultyScope.Response
 @using tesisproject.shared.DTOs.External
@@ -17,15 +18,8 @@
 @inject IExternalAcademicsClientService ExternalAcademicsClient
 @inject IExternalUserService ExternalUserClient
 
-<div class="p-6 max-w-7xl mx-auto">
-    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div class="space-y-1">
-            <h2 class="text-2xl font-bold text-foreground">Grupos de técnicos</h2>
-            <p class="text-sm text-muted max-w-2xl">
-                Cree grupos, asigne facultades permitidas y asigne/desasigne técnicos a cada grupo.
-            </p>
-        </div>
-
+<div class="h-full min-h-0 flex flex-col p-6 max-w-7xl mx-auto w-full">
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between shrink-0">
         <div class="flex gap-2">
             <ActionButton Execute="ReloadAsync"
                           Text="Refrescar"
@@ -43,7 +37,7 @@
 
     @if (_loading)
     {
-        <div class="flex items-center justify-center py-12">
+        <div class="flex-1 min-h-0 flex items-center justify-center py-12">
             <div class="text-center space-y-3">
                 <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
                 <p class="text-sm text-muted">Cargando grupos...</p>
@@ -52,69 +46,73 @@
     }
     else if (!string.IsNullOrWhiteSpace(_error))
     {
-        <div class="rounded-lg border-2 border-error bg-error/5 p-4">
-            <div class="flex items-start gap-3">
-                <svg class="h-5 w-5 text-error flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div class="flex-1">
-                    <h3 class="text-sm font-semibold text-error mb-1">Error al cargar datos</h3>
-                    <p class="text-sm text-error/80">@_error</p>
+        <div class="flex-1 min-h-0">
+            <div class="rounded-lg border-2 border-error bg-error/5 p-4">
+                <div class="flex items-start gap-3">
+                    <svg class="h-5 w-5 text-error flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div class="flex-1">
+                        <h3 class="text-sm font-semibold text-error mb-1">Error al cargar datos</h3>
+                        <p class="text-sm text-error/80">@_error</p>
+                    </div>
                 </div>
             </div>
         </div>
     }
     else
     {
-        <div class="grid gap-6 lg:grid-cols-12">
-            <div class="lg:col-span-5">
-                <Container TItem="FacultyScopeResponseDTO"
-                           Items="OrderedGroups"
-                           Title="Grupos"
-                           ShowItemCount="true"
-                           TotalCount="_groups.Count"
-                           EnableScroll="true"
-                           MaxHeight="42rem"
-                           ScrollbarType="ScrollbarType.Thin"
-                           GridClasses="space-y-2"
-                           EmptyStateTitle="No hay grupos creados"
-                           EmptyStateDescription="Cree su primer grupo para comenzar.">
+        <div class="grid gap-6 lg:grid-cols-12 flex-1 min-h-0">
 
-                    <EmptyStateAction>
-                        <ActionButton Execute="OpenNewModal"
-                                      Text="Nuevo grupo"
-                                      Variant="ButtonVariant.Filled"
-                                      Intent="ButtonIntent.Accept" />
-                    </EmptyStateAction>
+            <div class="lg:col-span-5 h-full min-h-0 flex flex-col overflow-hidden">
+                <div class="flex-1 min-h-0 overflow-hidden">
+                    <Container TItem="FacultyScopeResponseDTO"
+                               Items="OrderedGroups"
+                               Title="Grupos"
+                               ShowItemCount="true"
+                               TotalCount="_groups.Count"
+                               EnableScroll="true"
+                               ScrollbarType="ScrollbarType.Thin"
+                               GridClasses="space-y-2"
+                               EmptyStateTitle="No hay grupos creados"
+                               EmptyStateDescription="Cree su primer grupo para comenzar.">
 
-                    <ChildContent Context="g">
-                        @{
-                            var selected = _selected?.FacultyScopeId == g.FacultyScopeId;
-                        }
+                        <EmptyStateAction>
+                            <ActionButton Execute="OpenNewModal"
+                                          Text="Nuevo grupo"
+                                          Variant="ButtonVariant.Filled"
+                                          Intent="ButtonIntent.Accept" />
+                        </EmptyStateAction>
 
-                        <Card Class="@($"cursor-pointer p-4 {GetGroupCardClass(selected)}")"
-                              @onclick="() => SelectGroup(g)"
-                              tabindex="0"
-                              role="button"
-                              aria-label="@($"Seleccionar grupo {g.Name}")">
-                            <div class="flex items-start justify-between gap-2">
-                                <div class="min-w-0">
-                                    <p class="font-semibold text-foreground truncate">@g.Name</p>
-                                    <p class="text-xs text-muted">
-                                        Facultades: @g.Faculties.Count • Técnicos: @g.AssignedUserIds.Count
-                                    </p>
-                                </div>
+                        <ChildContent Context="g">
+                            <SelectableCard TItem="FacultyScopeResponseDTO"
+                                            Item="g"
+                                            IsSelected="@(_selected?.FacultyScopeId == g.FacultyScopeId)"
+                                            OnSelected="SelectGroup"
+                                            GetTitle="item => item.Name"
+                                            GetIsActive="item => item.IsActive"
+                                            ShowActions="false">
 
-                                <span class="@($"text-xs rounded-full px-2 py-1 {(g.IsActive ? "bg-success/15 text-success" : "bg-muted text-muted-foreground")}")">
-                                    @(g.IsActive ? "Activo" : "Inactivo")
-                                </span>
-                            </div>
-                        </Card>
-                    </ChildContent>
-                </Container>
+                                <ItemMeta Context="item">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
+                                        Facultades: @item.Faculties.Count
+                                    </span>
+
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
+                                        Técnicos: @item.AssignedUserIds.Count
+                                    </span>
+
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium @(item.IsActive ? "bg-success/15 text-success border border-success/30" : "bg-muted/15 text-muted border border-border")">
+                                        @(item.IsActive ? "Activo" : "Inactivo")
+                                    </span>
+                                </ItemMeta>
+                            </SelectableCard>
+                        </ChildContent>
+                    </Container>
+                </div>
             </div>
 
-            <Card Class="lg:col-span-7 flex flex-col h-[22rem] min-h-0 overflow-hidden">
+            <Card Class="lg:col-span-7 h-full min-h-0 flex flex-col overflow-hidden">
                 <CardHeader>
                     Administración del grupo
                 </CardHeader>
@@ -151,8 +149,8 @@
                                                   ConfirmBeforeExecute="true"
                                                   ConfirmTitle="@(_selected.IsActive ? "Desactivar grupo" : "Activar grupo")"
                                                   ConfirmMessage="@(_selected.IsActive
-                                                                                                                                            ? "¿Seguro que deseas desactivar este grupo?"
-                                                                                                                                            : "¿Seguro que deseas activar este grupo?")"
+                                                                                                                                                                                                                                  ? "¿Seguro que deseas desactivar este grupo?"
+                                                                                                                                                                                                                                  : "¿Seguro que deseas activar este grupo?")"
                                                   ConfirmButtonText="@(_selected.IsActive ? "Desactivar" : "Activar")"
                                                   CancelButtonText="Cancelar" />
                                 </div>
@@ -254,9 +252,6 @@
                                            Title="Técnicos asignados"
                                            ShowItemCount="true"
                                            TotalCount="_selected.AssignedUserIds.Count"
-                                           EnableScroll="true"
-                                           MaxHeight="26rem"
-                                           ScrollbarType="ScrollbarType.Thin"
                                            GridClasses="space-y-2"
                                            EmptyStateTitle="No hay técnicos asignados"
                                            EmptyStateDescription="Asigne técnicos a este grupo para comenzar.">
@@ -553,13 +548,6 @@
         return string.IsNullOrWhiteSpace(email)
             ? $"{fullName} ({userId})"
             : $"{fullName} - {email} ({userId})";
-    }
-
-    private string GetGroupCardClass(bool selected)
-    {
-        return selected
-            ? "border-primary bg-primary-subtle/40 ring-1 ring-primary"
-            : "border-border hover:bg-muted/40";
     }
 
     private Task OnFacultyToAddChanged(ExternalFacultyDTO? value)

@@ -15,10 +15,10 @@
 @inject IJSRuntime JS
 @inject IToastService Toast
 
-<div class="space-y-6 p-4">
+<div class="h-full min-h-0 flex flex-col gap-6 p-4 w-full">
     <!-- Filtros + Botón Crear -->
-    <section class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div class="flex-1">
+    <section class="shrink-0 flex flex-col gap-3 md:flex-row md:items-center md:justify-between min-w-0">
+        <div class="flex-1 min-w-0">
             <FilterBar Config="@_filterConfig"
                        OnApply="@HandleApplyFilters"
                        OnClear="@HandleClearFilters"
@@ -42,14 +42,16 @@
                           Class="px-4 py-2 rounded-md" />
         </div>
     </section>
+
     @if (showExportPanel)
     {
-        <div class="mt-3 p-3 border border-border rounded-lg bg-background flex flex-col gap-3">
+        <div class="shrink-0 p-3 border border-border rounded-lg bg-background flex flex-col gap-3 overflow-hidden">
             <div class="flex flex-col md:flex-row md:items-start gap-3">
-                <div class="flex-1">
+                <div class="flex-1 min-w-0">
                     <label class="block text-xs font-semibold text-muted mb-1">
                         Seleccione una plantilla de exportación
                     </label>
+
                     @if (isExportTemplatesLoading)
                     {
                         <div class="text-xs text-muted">Cargando plantillas...</div>
@@ -76,7 +78,7 @@
                     }
                 </div>
 
-                <div class="flex items-center gap-2">
+                <div class="shrink-0 flex items-center gap-2">
                     <ActionButton Text="Cancelar"
                                   Execute="@CloseExportPanel"
                                   Intent="ButtonIntent.Accept"
@@ -90,15 +92,14 @@
                                   Variant="ButtonVariant.Filled"
                                   Size="ButtonSize.Xs"
                                   Disabled="@(isExporting
-                                                                                                                                                || exportTemplates == null
-                                                                                                                                                || exportTemplates.Count == 0
-                                                                                                                                                || selectedTemplateId is null
-                                                                                                                                                || selectedFieldKeys.Count == 0)" />
+                                                                                                    || exportTemplates == null
+                                                                                                    || exportTemplates.Count == 0
+                                                                                                    || selectedTemplateId is null
+                                                                                                    || selectedFieldKeys.Count == 0)" />
+                </div>
             </div>
-        </div>
 
-            @* 👇 Bloque nuevo: selección de características *@
-        @if (availableColumns?.Count > 0)
+            @if (availableColumns?.Count > 0)
             {
                 <div>
                     <label class="block text-xs font-semibold text-muted mb-1">
@@ -122,65 +123,78 @@
         </div>
     }
 
-
-
-    <!-- Projects Container - Simple layout, with scroll enabled -->
-    <Container TItem="ProjectListResponseDTO"
-               Items="pagedProjects"
-               TotalCount="_totalItems"
-               Title="Mis Proyectos"
-               ShowItemCount="true"
-               IsLoading="@isLoading"
-               GridClasses="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6"
-               EmptyStateTitle="No se encontraron proyectos"
-               EmptyStateDescription="@GetEmptyStateDescription()"
-               EnableScroll="true"
-               MaxHeight="calc(100vh - 250px)"
-               ScrollbarType="ScrollbarType.Thin">
-
-        <EmptyStateAction>
-            <ActionButton Text="Crear Nuevo Proyecto"
-                          Execute="CreateNewProject"
-                          Intent="ButtonIntent.Accept"
-                          Variant="ButtonVariant.Filled"
-                          Size="ButtonSize.Sm"
-                          Disabled="@isLoading"
-                          Class="px-4 py-2 rounded-md" />
-        </EmptyStateAction>
-        <ChildContent Context="project">
-            <div @key="project.ProjectId">
-                <ProjectCard Item="project"
-                             OnOpen="HandleOpen" />
-            </div>
-        </ChildContent>
-    </Container>
-    @if ((filteredProjects?.Count ?? 0) > 0)
+    @if (isLoading)
     {
-        <div class="flex items-center justify-between gap-3">
-            <div class="text-xs text-muted">
-                Mostrando @pagedProjects.Count de @_totalItems
-                (Página @_page de @_totalPages)
-            </div>
-
-            <div class="flex items-center gap-2">
-                <ActionButton Text="Anterior"
-                              Execute="@PrevPage"
-                              Intent="ButtonIntent.Accept"
-                              Variant="ButtonVariant.Outline"
-                              Size="ButtonSize.Xs"
-                              Disabled="@(_page <= 1 || isLoading)" />
-
-                <ActionButton Text="Siguiente"
-                              Execute="@NextPage"
-                              Intent="ButtonIntent.Accept"
-                              Variant="ButtonVariant.Outline"
-                              Size="ButtonSize.Xs"
-                              Disabled="@(_page >= _totalPages || isLoading)" />
+        <div class="flex-1 min-h-0 flex items-center justify-center">
+            <div class="text-center space-y-3">
+                <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+                <p class="text-sm text-muted">Cargando proyectos...</p>
             </div>
         </div>
     }
-</div>
+    else
+    {
+        <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <div class="flex-1 min-h-0 overflow-hidden">
+                <Container TItem="ProjectListResponseDTO"
+                           Items="pagedProjects"
+                           TotalCount="_totalItems"
+                           Title="Mis Proyectos"
+                           ShowItemCount="true"
+                           IsLoading="@isLoading"
+                           GridClasses="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6"
+                           EmptyStateTitle="No se encontraron proyectos"
+                           EmptyStateDescription="@GetEmptyStateDescription()"
+                           EnableScroll="true"
+                           ScrollbarType="ScrollbarType.Thin">
 
+                    <EmptyStateAction>
+                        <ActionButton Text="Crear Nuevo Proyecto"
+                                      Execute="CreateNewProject"
+                                      Intent="ButtonIntent.Accept"
+                                      Variant="ButtonVariant.Filled"
+                                      Size="ButtonSize.Sm"
+                                      Disabled="@isLoading"
+                                      Class="px-4 py-2 rounded-md" />
+                    </EmptyStateAction>
+
+                    <ChildContent Context="project">
+                        <div @key="project.ProjectId">
+                            <ProjectCard Item="project"
+                                         OnOpen="HandleOpen" />
+                        </div>
+                    </ChildContent>
+                </Container>
+            </div>
+
+            @if ((filteredProjects?.Count ?? 0) > 0)
+            {
+                <div class="shrink-0 pt-3 flex items-center justify-between gap-3">
+                    <div class="text-xs text-muted">
+                        Mostrando @pagedProjects.Count de @_totalItems
+                        (Página @_page de @_totalPages)
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <ActionButton Text="Anterior"
+                                      Execute="@PrevPage"
+                                      Intent="ButtonIntent.Accept"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Xs"
+                                      Disabled="@(_page <= 1 || isLoading)" />
+
+                        <ActionButton Text="Siguiente"
+                                      Execute="@NextPage"
+                                      Intent="ButtonIntent.Accept"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Xs"
+                                      Disabled="@(_page >= _totalPages || isLoading)" />
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
 
 @code {
     // Paging

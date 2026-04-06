@@ -1,7 +1,7 @@
 ﻿@using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
-@using tesisproject.frontend.SharedUI.Modal
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Modal
 @using tesisproject.frontend.SharedUI.SelectInput
 @using tesisproject.frontend.SharedUI.Table
 @using tesisproject.frontend.SharedUI.SearchInput
@@ -11,7 +11,7 @@
 @using tesisproject.frontend.Utils
 
 <Modal Id="@ModalId"
-       Title="Agregar miembro al grupo"
+       Title="Agregar miembro"
        IsOpen="@IsOpen"
        IsOpenChanged="IsOpenChanged"
        ShowCloseButton="true"
@@ -21,24 +21,30 @@
        OnClose="HandleClose">
 
     <ChildContent>
-        <div class="space-y-4">
-
+        <div class="space-y-3">
             <SearchInput Value="@search"
                          ValueChanged="OnSearchChanged"
                          Placeholder="Buscar por nombre o correo"
                          AriaLabel="Buscar usuario por nombre o correo"
                          Class="w-full"
-                         DebounceMs="10" />
+                         DebounceMs="200" />
 
-            <div class="max-h-[350px] overflow-y-auto pr-1 border border-border rounded-xl">
+            <div class="max-h-[320px] overflow-y-auto pr-1 border border-border rounded-xl">
                 <DataTable TItem="ResolvedUserProfileDTO"
                            Items="FilteredUsers ?? Enumerable.Empty<ResolvedUserProfileDTO>()"
                            Columns="@UserColumns"
                            RowTemplate="UserRowTemplate"
-                           PageSize="4"
+                           PageSize="5"
                            Total="@(FilteredUsers?.Count() ?? 0)"
                            EmptyText="No se encontraron usuarios." />
             </div>
+
+            @if (ShowUserValidation && SelectedUserId is null)
+            {
+                <p class="text-sm text-[color:var(--color-error)]">
+                    Por favor, seleccione un usuario.
+                </p>
+            }
 
             @if (RequireRoleSelection)
             {
@@ -60,18 +66,19 @@
 
                         @if (ShowRoleValidation && (SelectedRoleId is null || SelectedRoleId <= 0))
                         {
-                            <p class="text-sm text-[color:var(--color-error)]">Por favor, seleccione un rol.</p>
+                            <p class="text-sm text-[color:var(--color-error)]">
+                                Por favor, seleccione un rol.
+                            </p>
                         }
                     </div>
                 }
                 else
                 {
                     <p class="text-sm text-muted">
-                        No hay roles disponibles para seleccionar.
+                        No hay roles disponibles.
                     </p>
                 }
             }
-
         </div>
     </ChildContent>
 
@@ -82,6 +89,7 @@
                           Variant="ButtonVariant.Ghost"
                           Size="ButtonSize.Sm"
                           Class="inline-flex items-center justify-center rounded-xl px-4 py-2" />
+
             <ActionButton Text="Agregar"
                           Execute="Submit"
                           Variant="ButtonVariant.Soft"
@@ -98,34 +106,20 @@
 </Modal>
 
 @code {
-    /* ========== Public API ========== */
     [Parameter] public string ModalId { get; set; } = "user-picker-modal";
     [Parameter] public bool IsOpen { get; set; }
     [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
 
-    /// <summary>Users to list.</summary>
     [Parameter] public IEnumerable<ResolvedUserProfileDTO>? Users { get; set; }
-
-    /// <summary>Emits the selected UserId when confirming.</summary>
     [Parameter] public EventCallback<int> OnSubmit { get; set; }
-
-    /// <summary>Notifies cancel/close.</summary>
     [Parameter] public EventCallback OnCancel { get; set; }
-
-    /// <summary>Optional preselected user.</summary>
     [Parameter] public int? InitialSelectedUserId { get; set; }
 
-    /// <summary>Lista de roles (ya filtrados por Flag == 2 en el padre).</summary>
     [Parameter] public IEnumerable<MemberRoleTypeDetailDTO>? Roles { get; set; }
-
-    /// <summary>Id del rol seleccionado (bind desde el padre).</summary>
     [Parameter] public int? SelectedRoleId { get; set; }
-
     [Parameter] public bool RequireRoleSelection { get; set; } = true;
-
     [Parameter] public EventCallback<int?> SelectedRoleIdChanged { get; set; }
 
-    /* ========== State ========== */
     private int? SelectedUserId;
     private string search = string.Empty;
     private bool ShowUserValidation;
@@ -143,6 +137,7 @@
             if (SelectedRoleId != newId)
             {
                 SelectedRoleId = newId;
+                ShowRoleValidation = false;
                 _ = SelectedRoleIdChanged.InvokeAsync(newId);
             }
         }
@@ -151,17 +146,11 @@
     private static readonly IReadOnlyList<ColumnDef<ResolvedUserProfileDTO>> UserColumns =
         new[]
         {
-            // Columna de selección (no ordenable)
             new ColumnDef<ResolvedUserProfileDTO>("", u => u.UserId, "3rem", Sortable: false),
-
-            // Nombre
             new ColumnDef<ResolvedUserProfileDTO>("Nombre", u => u.FullName ?? string.Empty, "16rem"),
-
-            // Email
             new ColumnDef<ResolvedUserProfileDTO>("Correo", u => u.Email ?? string.Empty, "18rem"),
         };
 
-    // Filtro por nombre (puedes ampliar a email si quieres)
     private IEnumerable<ResolvedUserProfileDTO>? FilteredUsers
     {
         get
@@ -172,20 +161,17 @@
             if (string.IsNullOrWhiteSpace(search))
                 return Users;
 
-            // Normalizamos el query
             var q = Normalizers.NormalizeForSearch(search);
 
             return Users.Where(u =>
             {
                 var name = Normalizers.NormalizeForSearch(u.FullName);
                 var email = Normalizers.NormalizeForSearch(u.Email);
-
                 return name.Contains(q) || email.Contains(q);
             });
         }
     }
 
-    // RowTemplate: solo <td>, el <tr> lo genera DataTable
     private RenderFragment<ResolvedUserProfileDTO> UserRowTemplate => user => @<text>
         @{
             var selected = SelectedUserId == user.UserId;
@@ -194,82 +180,79 @@
             var cellClass = baseCell + selectedBg;
         }
 
-            <td class="@cellClass">
-                <button type="button"
-                        class="inline-flex items-center justify-center rounded-full border border-border w-5 h-5
-                                   @(selected ? " bg-primary-subtle text-[color:var(--color-uta-header)]" : " bg-background")"
-                        aria-pressed="@selected"
-                        @onclick="() => SelectUser(user.UserId)">
-                    @if (selected)
-                    {
-                        <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none">
-                            <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                  d="M20 6 9 17l-5-5" />
-                        </svg>
-                    }
-                </button>
-            </td>
+        <td class="@cellClass">
+            <button type="button"
+                    class="inline-flex items-center justify-center rounded-full border border-border w-5 h-5 @(selected ? " bg-primary-subtle text-[color:var(--color-uta-header)]" : " bg-background")"
+                    aria-pressed="@selected"
+                    @onclick="() => SelectUser(user.UserId)">
+                @if (selected)
+                {
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none">
+                        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                              d="M20 6 9 17l-5-5" />
+                    </svg>
+                }
+            </button>
+        </td>
 
-            <td class="@cellClass">
-                @user.FullName
-            </td>
+        <td class="@cellClass">
+            @user.FullName
+        </td>
 
-            <td class="@($"{cellClass} text-muted")">
-                @user.Email
-            </td>
+        <td class="@($"{cellClass} text-muted")">
+            @user.Email
+        </td>
     </text>;
 
-protected override void OnParametersSet()
-{
-if (IsOpen && SelectedUserId is null && InitialSelectedUserId is not null)
-SelectedUserId = InitialSelectedUserId;
+    protected override void OnParametersSet()
+    {
+        if (IsOpen && SelectedUserId is null && InitialSelectedUserId is not null)
+            SelectedUserId = InitialSelectedUserId;
 
-// Sincronizar rol seleccionado desde SelectedRoleId
-if (Roles is not null && Roles.Any() && SelectedRoleId.HasValue)
-{
-_selectedRole = Roles.FirstOrDefault(r => r.Id == SelectedRoleId.Value);
-}
-else if (!SelectedRoleId.HasValue)
-{
-_selectedRole = null;
-}
-}
+        if (Roles is not null && Roles.Any() && SelectedRoleId.HasValue)
+        {
+            _selectedRole = Roles.FirstOrDefault(r => r.Id == SelectedRoleId.Value);
+        }
+        else if (!SelectedRoleId.HasValue)
+        {
+            _selectedRole = null;
+        }
+    }
 
-private void SelectUser(int userId)
-{
-SelectedUserId = userId;
-ShowUserValidation = false;
-StateHasChanged();
-}
+    private void SelectUser(int userId)
+    {
+        SelectedUserId = userId;
+        ShowUserValidation = false;
+        StateHasChanged();
+    }
 
-private Task OnSearchChanged(string value)
-{
-search = value;
-// FilteredUsers se recalcula en el getter; solo forzamos render
-StateHasChanged();
-return Task.CompletedTask;
-}
+    private Task OnSearchChanged(string value)
+    {
+        search = value;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
 
-private async Task Submit()
-{
-if (SelectedUserId is null)
-{
-ShowUserValidation = true;
-return;
-}
+    private async Task Submit()
+    {
+        if (SelectedUserId is null)
+        {
+            ShowUserValidation = true;
+            return;
+        }
 
-if (RequireRoleSelection && (SelectedRoleId is null || SelectedRoleId <= 0))
-{
-ShowRoleValidation = true;
-return;
-}
+        if (RequireRoleSelection && (SelectedRoleId is null || SelectedRoleId <= 0))
+        {
+            ShowRoleValidation = true;
+            return;
+        }
 
-ShowUserValidation = false;
-ShowRoleValidation = false;
+        ShowUserValidation = false;
+        ShowRoleValidation = false;
 
-await OnSubmit.InvokeAsync(SelectedUserId.Value);
-}
+        await OnSubmit.InvokeAsync(SelectedUserId.Value);
+    }
 
-private async Task OnCancelClicked() => await OnCancel.InvokeAsync();
-private async Task HandleClose() => await OnCancel.InvokeAsync();
+    private async Task OnCancelClicked() => await OnCancel.InvokeAsync();
+    private async Task HandleClose() => await OnCancel.InvokeAsync();
 }

@@ -4,37 +4,29 @@ namespace tesisproject.frontend.SharedUI.Table
 {
     public partial class DataTable<TItem> : ComponentBase
     {
-        // Data & columns
         [Parameter] public IEnumerable<TItem>? Items { get; set; }
         [Parameter] public IReadOnlyList<ColumnDef<TItem>> Columns { get; set; } = Array.Empty<ColumnDef<TItem>>();
-
-        // Optional row template
         [Parameter] public RenderFragment<TItem>? RowTemplate { get; set; }
 
-        // Sorting state
         private int? _sortIndex = null;
         private SortDirection _sortDirection = SortDirection.None;
 
-        // Pager (client-driven por defecto; compatible con server-side si lo usas)
         [Parameter] public int? PageSize { get; set; }
-        [Parameter] public int? Total { get; set; } // total rows
-        [Parameter] public int CurrentPage { get; set; } = 1; // 1-based
+        [Parameter] public int? Total { get; set; }
+        [Parameter] public int CurrentPage { get; set; } = 1;
         [Parameter] public EventCallback<int> OnPageChanged { get; set; }
 
-        // UI
         [Parameter] public string EmptyText { get; set; } = "No records found.";
 
-        // Derived
         protected IEnumerable<TItem> ViewItems { get; private set; } = Enumerable.Empty<TItem>();
-        private bool ShowPager => PageSize.HasValue && Total.HasValue && PageSize.Value > 0 && Total.Value > 0;
-        private int TotalPages => ShowPager ? Math.Max(1, (int)Math.Ceiling((double)Total!.Value / PageSize!.Value)) : 1;
+        protected bool ShowPager => PageSize.HasValue && Total.HasValue && PageSize.Value > 0 && Total.Value > 0;
+        protected int TotalPages => ShowPager ? Math.Max(1, (int)Math.Ceiling((double)Total!.Value / PageSize!.Value)) : 1;
 
-        private bool _isFirstPage => CurrentPage <= 1;
-        private bool _isLastPage => CurrentPage >= TotalPages;
+        protected bool _isFirstPage => CurrentPage <= 1;
+        protected bool _isLastPage => CurrentPage >= TotalPages;
 
         protected override void OnParametersSet()
         {
-            // Clamp de página si cambian Total/PageSize desde el padre
             if (ShowPager && CurrentPage > TotalPages) CurrentPage = TotalPages;
             if (CurrentPage < 1) CurrentPage = 1;
 
@@ -55,7 +47,6 @@ namespace tesisproject.frontend.SharedUI.Table
 
             var col = Columns[_sortIndex.Value];
 
-            // Orden ascendente usando IComparable cuando sea posible
             var asc = source.OrderBy(
                 item => col.ValueSelector(item),
                 new AscObjectComparer()
@@ -77,16 +68,15 @@ namespace tesisproject.frontend.SharedUI.Table
             public int Compare(object? x, object? y)
             {
                 if (ReferenceEquals(x, y)) return 0;
-                if (x is null) return 1;        // nulls last
+                if (x is null) return 1;
                 if (y is null) return -1;
 
                 if (x is IComparable cx && (y is null || x.GetType().IsAssignableFrom(y.GetType()) || y.GetType().IsAssignableFrom(x.GetType())))
                 {
                     try { return cx.CompareTo(y); }
-                    catch { /* fall through */ }
+                    catch { }
                 }
 
-                // Fallback a string ordinal
                 return string.CompareOrdinal(x.ToString(), y.ToString());
             }
         }
@@ -111,7 +101,6 @@ namespace tesisproject.frontend.SharedUI.Table
                 };
             }
 
-            // Si se cambia el sort, volvemos a la página 1
             if (ShowPager) CurrentPage = 1;
 
             RecomputeView();
@@ -124,7 +113,7 @@ namespace tesisproject.frontend.SharedUI.Table
             return _sortDirection == SortDirection.Asc ? "▲" : "▼";
         }
 
-        private IEnumerable<int> VisiblePages
+        protected IEnumerable<int> VisiblePages
         {
             get
             {
@@ -140,7 +129,7 @@ namespace tesisproject.frontend.SharedUI.Table
                 if (start > 1)
                 {
                     pages.Add(1);
-                    if (start > 2) pages.Add(-1); // …
+                    if (start > 2) pages.Add(-1);
                 }
 
                 for (var p = start; p <= end; p++) pages.Add(p);
@@ -155,9 +144,10 @@ namespace tesisproject.frontend.SharedUI.Table
             }
         }
 
-        private async void ChangePage(int page)
+        private async Task ChangePageAsync(int page)
         {
             if (!ShowPager) return;
+
             page = Math.Min(Math.Max(1, page), TotalPages);
             if (page == CurrentPage) return;
 
@@ -165,11 +155,10 @@ namespace tesisproject.frontend.SharedUI.Table
             RecomputeView();
             StateHasChanged();
 
-            // Opcional: notifica al padre si lo necesita
             await OnPageChanged.InvokeAsync(page);
         }
 
-        private void PrevPage() => ChangePage(CurrentPage - 1);
-        private void NextPage() => ChangePage(CurrentPage + 1);
+        private Task PrevPageAsync() => ChangePageAsync(CurrentPage - 1);
+        private Task NextPageAsync() => ChangePageAsync(CurrentPage + 1);
     }
 }

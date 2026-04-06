@@ -1,56 +1,55 @@
 ﻿@using tesisproject.shared.DTOs.Algorithms.Response
 @using tesisproject.frontend.SharedUI.ActionButton
 
-<div class="w-full grid grid-cols-2 gap-6" style="height: 500px;">
-    <!-- COLUMNA IZQUIERDA: Objetivo general + lista de objetivos específicos -->
-    <section class="h-full flex flex-col gap-4 border-2 border-border rounded-2xl bg-background p-5 shadow-sm min-h-0">
-        <!-- Objetivo general - ALTURA FIJA -->
-        <div class="flex flex-col gap-2 flex-shrink-0" style="height: 160px;">
-            <div class="flex items-center gap-2 pb-2 border-b-2 border-primary/20">
-                <div class="w-1 h-6 bg-primary rounded-full"></div>
-                <h3 class="text-base font-bold text-foreground tracking-tight">
-                    Objetivo general
-                </h3>
-            </div>
+<div class="w-full min-w-0 flex flex-col gap-3">
+    <div class="grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] gap-3 min-w-0">
 
-            @if (GeneralObjective is not null)
-            {
-                <textarea class="w-full h-[40px] rounded-xl border-2 border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 resize-none"
-                          value="@GeneralObjective.ObjectiveText"
-                          @oninput="OnGeneralObjectiveTextChanged"
-                          placeholder="Escriba aquí el objetivo general..."></textarea>
+        <!-- Columna izquierda -->
+        <section class="min-w-0 flex flex-col gap-3 rounded-xl border border-border bg-background p-3 shadow-sm">
+            <!-- Objetivo general -->
+            <div class="flex flex-col gap-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-1 h-5 bg-primary rounded-full"></div>
+                    <h3 class="text-sm font-semibold text-foreground">
+                        Objetivo general
+                    </h3>
+                </div>
 
-                <div class="flex flex-col gap-1">
-                    <label class="text-xs font-semibold text-muted uppercase tracking-wide">
-                        Resultado esperado
-                    </label>
-                    <textarea class="w-full h-[50px] rounded-xl border-2 border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all duration-200 resize-none"
+                @if (GeneralObjective is not null)
+                {
+                    <textarea class="w-full min-h-[72px] rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-y"
+                              value="@GeneralObjective.ObjectiveText"
+                              @oninput="OnGeneralObjectiveTextChanged"
+                              placeholder="Escriba el objetivo general..."></textarea>
+
+                    <textarea class="w-full min-h-[72px] rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary resize-y"
                               value="@GeneralObjective.ObjetiveResult"
                               @oninput="OnGeneralObjectiveResultChanged"
-                              placeholder="Describa el resultado esperado o producto principal..."></textarea>
-                </div>
-            }
-            else
-            {
-                <div class="bg-accent/10 border border-accent/30 rounded-xl p-3">
-                    <p class="text-sm text-muted text-center">
-                        No se encontró el objetivo general. Se espera un objetivo general con tipo 1.
-                    </p>
-                </div>
-            }
-        </div>
+                              placeholder="Resultado esperado..."></textarea>
+                }
+                else
+                {
+                    <div class="rounded-lg border border-accent/30 bg-accent/10 px-3 py-2">
+                        <p class="text-xs text-muted">
+                            No se encontró el objetivo general.
+                        </p>
+                    </div>
+                }
+            </div>
 
-        <!-- Lista de objetivos específicos con ALTURA CONTROLADA -->
-        <div class="flex flex-col gap-2 flex-1" style="min-height: 0;">
-            <div class="flex items-center justify-between pb-2 border-b-2 border-secondary/20 flex-shrink-0">
-                <div class="flex items-center gap-2">
+            <!-- Objetivos específicos -->
+            <div class="flex items-center justify-between gap-2 pt-1">
+                <div class="flex items-center gap-2 min-w-0">
                     <div class="w-1 h-5 bg-secondary rounded-full"></div>
-                    <h4 class="text-sm font-bold text-foreground tracking-tight">
-                        Objetivos específicos
+                    <h4 class="text-sm font-semibold text-foreground truncate">
+                        Específicos
                     </h4>
+                    <span class="px-2 py-0.5 text-[11px] font-medium rounded-full bg-secondary text-white whitespace-nowrap">
+                        @SpecificObjectives.Count
+                    </span>
                 </div>
 
-                <ActionButton Text="Agregar objetivo"
+                <ActionButton Text="Agregar"
                               Intent="ButtonIntent.Add"
                               Variant="ButtonVariant.Filled"
                               Size="ButtonSize.Sm"
@@ -63,10 +62,9 @@
                 </ActionButton>
             </div>
 
-            <!-- ÁREA CON SCROLL para objetivos -->
-            <div class="flex-1 overflow-y-auto pr-2 space-y-2" style="min-height: 0;">
-                @if (SpecificObjectives.Any())
-                {
+            @if (SpecificObjectives.Count > 0)
+            {
+                <div class="space-y-2">
                     @foreach (var objective in SpecificObjectives)
                     {
                         var isSelected = ReferenceEquals(objective, _selectedObjective);
@@ -74,183 +72,139 @@
                         <button type="button"
                                 class="@GetObjectiveItemClass(isSelected)"
                                 @onclick="@(() => SelectObjective(objective))">
-                            <div class="flex flex-col items-start gap-2 w-full">
+                            <div class="flex flex-col items-start gap-1.5 w-full min-w-0">
                                 <span class="text-sm font-medium text-foreground text-left line-clamp-2">
                                     @Shorten(objective.ObjectiveText, 80)
                                 </span>
-                                <div class="flex items-center gap-3 w-full">
-                                    <span class="text-xs text-muted flex items-center gap-1">
-                                        <span class="font-semibold">@objective.Activities.Count</span> actividades
+
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-[11px] text-muted">
+                                        @objective.Activities.Count actividad(es)
                                     </span>
-                                    <span class="text-xs px-3 py-1 rounded-full bg-primary/10 text-primary font-bold border border-primary/30">
+
+                                    <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold border border-primary/20">
                                         @objective.ObjetivePercentage%
                                     </span>
                                 </div>
                             </div>
                         </button>
                     }
-                }
-                else
-                {
-                    <div class="bg-muted/10 border border-border rounded-xl p-4 text-center">
-                        <p class="text-sm text-muted">
-                            Aún no hay objetivos específicos. Agrega uno usando el botón de arriba.
-                        </p>
-                    </div>
-                }
-            </div>
+                </div>
+            }
+            else
+            {
+                <div class="rounded-lg border border-dashed border-border bg-background/50 px-3 py-4 text-center">
+                    <p class="text-xs text-muted">
+                        No hay objetivos específicos.
+                    </p>
+                </div>
+            }
 
-            <!-- Resumen - FIJO ABAJO -->
-            <div class="pt-2 border-t-2 border-border/60 bg-background rounded-lg p-2 flex-shrink-0">
-                <div class="flex items-center justify-between">
-                    <span class="text-xs font-bold text-foreground uppercase tracking-wide">Porcentaje total:</span>
-                    <span class="text-lg font-bold @(TotalSpecificPercentage > 100 ? "text-error" : "text-secondary")">
+            <div class="rounded-lg border border-border/60 bg-muted/10 px-3 py-2">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-medium text-muted">Porcentaje total</span>
+                    <span class="text-sm font-bold @(TotalSpecificPercentage > 100 ? "text-error" : "text-secondary")">
                         @TotalSpecificPercentage%
                     </span>
                 </div>
 
                 @if (TotalSpecificPercentage > 100)
                 {
-                    <div class="mt-1 bg-error/10 border border-error/30 rounded-lg p-2">
-                        <p class="text-xs text-error font-medium">
-                            ⚠ El porcentaje total no debe exceder 100%
-                        </p>
-                    </div>
-                }
-                else if (TotalSpecificPercentage == 100)
-                {
-                    <div class="mt-1 bg-secondary/10 border border-secondary/30 rounded-lg p-2">
-                        <p class="text-xs text-secondary font-medium">
-                            ✓ ¡Perfecto! Todos los objetivos están asignados
-                        </p>
-                    </div>
-                }
-            </div>
-        </div>
-    </section>
-
-    <!-- COLUMNA DERECHA: Objetivo específico seleccionado + actividades -->
-    <section class="h-full flex flex-col gap-4 border-2 border-border rounded-2xl bg-background p-5 shadow-sm min-h-0">
-        @if (_selectedObjective is null)
-        {
-            <div class="h-full flex flex-col items-center justify-center gap-4 text-center p-8">
-                <div class="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center">
-                    <svg class="w-10 h-10 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                    </svg>
-                </div>
-                <div>
-                    <h4 class="text-base font-bold text-foreground mb-2">Ningún objetivo seleccionado</h4>
-                    <p class="text-sm text-muted max-w-xs">
-                        Selecciona un objetivo específico del panel izquierdo para editar sus detalles y gestionar actividades.
+                    <p class="mt-1 text-[11px] text-error">
+                        El total no debe exceder 100%.
                     </p>
-                </div>
+                }
+                else if (TotalSpecificPercentage == 100 && SpecificObjectives.Count > 0)
+                {
+                    <p class="mt-1 text-[11px] text-secondary">
+                        Total completo.
+                    </p>
+                }
             </div>
-        }
-        else
-        {
-            <!-- Vista COLAPSADA/EXPANDIDA del objetivo seleccionado - ALTURA FIJA -->
-            <div class="flex flex-col gap-2 flex-shrink-0" style="@(_isObjectiveExpanded ? "height: 225px;" : "height: 100px;")">
-                <div class="flex items-center justify-between pb-2 border-b-2 border-secondary/20">
-                    <div class="flex items-center gap-2 flex-1 min-w-0">
-                        <div class="w-1 h-6 bg-secondary rounded-full flex-shrink-0"></div>
-                        <h3 class="text-base font-bold text-foreground tracking-tight truncate">
+        </section>
+
+        <!-- Columna derecha -->
+        <section class="min-w-0 flex flex-col gap-3 rounded-xl border border-border bg-background p-3 shadow-sm">
+            @if (_selectedObjective is null)
+            {
+                <div class="flex flex-col items-center justify-center gap-3 text-center rounded-lg border border-dashed border-border bg-background/50 px-4 py-8">
+                    <div class="w-12 h-12 rounded-full bg-muted/20 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                    </div>
+
+                    <div>
+                        <p class="text-sm font-medium text-foreground">Ningún objetivo seleccionado</p>
+                        <p class="text-xs text-muted mt-1">
+                            Selecciona uno del panel izquierdo.
+                        </p>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div class="w-1 h-5 bg-secondary rounded-full"></div>
+                        <h3 class="text-sm font-semibold text-foreground truncate">
                             Objetivo seleccionado
                         </h3>
                     </div>
 
-                    <!-- ✅ NUEVO: Acciones (Eliminar objetivo específico + Colapsar/Expandir) -->
-                    <div class="flex items-center gap-2 flex-shrink-0">
-                        <ActionButton Text="Eliminar objetivo"
-                                      Intent="ButtonIntent.Delete"
-                                      Variant="ButtonVariant.Outline"
-                                      Size="ButtonSize.Xs"
-                                      ConfirmBeforeExecute="true"
-                                      ConfirmTitle="Eliminar objetivo"
-                                      ConfirmMessage="¿Está seguro de que desea eliminar este objetivo específico? Se eliminarán también sus actividades."
-                                      Execute="RemoveSelectedObjective">
-                            <Icon>
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                </svg>
-                            </Icon>
-                        </ActionButton>
+                    <ActionButton Text="Eliminar"
+                                  Intent="ButtonIntent.Delete"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Xs"
+                                  ConfirmBeforeExecute="true"
+                                  ConfirmTitle="Eliminar objetivo"
+                                  ConfirmMessage="¿Está seguro de que desea eliminar este objetivo específico?"
+                                  Execute="RemoveSelectedObjective">
+                        <Icon>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </Icon>
+                    </ActionButton>
+                </div>
 
-                        <button type="button"
-                                class="p-2 rounded-lg border border-border hover:bg-muted/10 transition-all"
-                                @onclick="ToggleObjectiveExpanded">
-                            @if (_isObjectiveExpanded)
-                            {
-                                <svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
-                                </svg>
-                            }
-                            else
-                            {
-                                <svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
-                            }
-                        </button>
+                <textarea class="w-full min-h-[88px] rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary resize-y"
+                          value="@_selectedObjective.ObjectiveText"
+                          @oninput="OnSelectedObjectiveTextChanged"
+                          placeholder="Escriba aquí el objetivo específico..."></textarea>
+
+                <div class="grid grid-cols-1 md:grid-cols-[120px_minmax(0,1fr)] gap-3">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-medium text-foreground">Porcentaje</label>
+                        <input type="number"
+                               min="0"
+                               max="100"
+                               class="w-full rounded-lg border border-border px-3 py-2 text-sm font-semibold bg-background text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                               value="@_selectedObjective.ObjetivePercentage"
+                               @oninput="OnSelectedObjectivePercentageChanged" />
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-medium text-foreground">Resultado esperado</label>
+                        <textarea class="w-full min-h-[88px] rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary resize-y"
+                                  value="@_selectedObjective.ObjetiveResult"
+                                  @oninput="OnSelectedObjectiveResultChanged"
+                                  placeholder="Describa el resultado esperado..."></textarea>
                     </div>
                 </div>
 
-                <!-- Mostrar vista previa SOLO cuando está colapsado -->
-                @if (!_isObjectiveExpanded)
-                {
-                    <div class="text-sm text-foreground font-medium line-clamp-2 px-2">
-                        @(_selectedObjective.ObjectiveText ?? "(Objetivo vacío)")
-                    </div>
-                }
-
-                <!-- Detalles EXPANDIDOS (colapsable) -->
-                @if (_isObjectiveExpanded)
-                {
-                    <div class="flex flex-col gap-2 overflow-y-auto pr-2 animate-fadeIn" style="min-height: 0;">
-                        <textarea class="w-full h-[85px] rounded-xl border-2 border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all duration-200 resize-none"
-                                  value="@_selectedObjective.ObjectiveText"
-                                  @oninput="OnSelectedObjectiveTextChanged"
-                                  placeholder="Escriba aquí el objetivo específico..."></textarea>
-
-                        <!-- Porcentaje + resultado esperado -->
-                        <div class="grid grid-cols-3 gap-3">
-                            <div class="flex flex-col gap-1">
-                                <label class="text-xs font-semibold text-muted uppercase tracking-wide">
-                                    Porcentaje
-                                </label>
-                                <input type="number"
-                                       min="0"
-                                       max="100"
-                                       class="border-2 border-border rounded-xl px-3 py-2 text-base font-bold bg-background text-primary focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200"
-                                       value="@_selectedObjective.ObjetivePercentage"
-                                       @oninput="OnSelectedObjectivePercentageChanged" />
-                            </div>
-
-                            <div class="col-span-2 flex flex-col gap-1">
-                                <label class="text-xs font-semibold text-muted uppercase tracking-wide">
-                                    Resultado esperado
-                                </label>
-                                <textarea class="w-full h-[60px] rounded-xl border-2 border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all duration-200 resize-none"
-                                          value="@_selectedObjective.ObjetiveResult"
-                                          @oninput="OnSelectedObjectiveResultChanged"
-                                          placeholder="Describa el producto/resultado esperado..."></textarea>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-
-            <!-- Sección de actividades -->
-            <div class="flex flex-col gap-2 flex-1" style="min-height: 0;">
-                <div class="flex items-center justify-between pb-2 border-b-2 border-accent/20 flex-shrink-0">
-                    <div class="flex items-center gap-2">
+                <div class="flex items-center justify-between gap-2 pt-1">
+                    <div class="flex items-center gap-2 min-w-0">
                         <div class="w-1 h-5 bg-accent rounded-full"></div>
-                        <h4 class="text-sm font-bold text-foreground tracking-tight">
-                            Actividades
-                        </h4>
+                        <h4 class="text-sm font-semibold text-foreground truncate">Actividades</h4>
+                        <span class="px-2 py-0.5 text-[11px] font-medium rounded-full bg-accent/15 text-accent border border-accent/20 whitespace-nowrap">
+                            @_selectedObjective.Activities.Count
+                        </span>
                     </div>
 
-                    <ActionButton Text="Agregar actividad"
+                    <ActionButton Text="Agregar"
                                   Intent="ButtonIntent.Add"
                                   Variant="ButtonVariant.Outline"
                                   Size="ButtonSize.Sm"
@@ -263,34 +217,23 @@
                     </ActionButton>
                 </div>
 
-                <!-- Fila de encabezado -->
-                <div class="grid grid-cols-[3fr_2fr_auto] gap-3 text-xs font-bold text-muted uppercase tracking-wide pb-1 flex-shrink-0">
-                    <span>Actividad</span>
-                    <span>Resultado esperado</span>
-                    <span class="text-right">Acciones</span>
-                </div>
-
-                <!-- ÁREA CON SCROLL para actividades -->
-                <div class="flex-1 overflow-y-auto pr-2 space-y-2" style="min-height: 0;">
-                    @if (_selectedObjective.Activities.Any())
-                    {
+                @if (_selectedObjective.Activities.Any())
+                {
+                    <div class="space-y-2">
                         @foreach (var activity in _selectedObjective.Activities)
                         {
-                            <div class="grid grid-cols-[3fr_2fr_auto] gap-3 items-start p-2 bg-background border-2 border-border rounded-xl hover:border-accent/50 transition-all duration-200" @key="activity">
-                                <!-- Texto de actividad -->
-                                <textarea class="w-full h-[60px] rounded-lg border border-border bg-background px-2 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 resize-none"
+                            <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_auto] gap-2 items-start p-2 bg-background border border-border rounded-lg" @key="activity">
+                                <textarea class="w-full min-h-[72px] rounded-lg border border-border bg-background px-2 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent resize-y"
                                           value="@activity.ActivityText"
                                           @oninput="@(e => OnActivityTextChanged(activity, e))"
-                                          placeholder="Descripción de la actividad..."></textarea>
+                                          placeholder="Actividad..."></textarea>
 
-                                <!-- Resultado de actividad -->
-                                <textarea class="w-full h-[60px] rounded-lg border border-border bg-background px-2 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all duration-200 resize-none"
+                                <textarea class="w-full min-h-[72px] rounded-lg border border-border bg-background px-2 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent resize-y"
                                           value="@activity.ActivityResult"
                                           @oninput="@(e => OnActivityResultChanged(activity, e))"
                                           placeholder="Resultado esperado..."></textarea>
 
-                                <!-- Acciones -->
-                                <div class="flex justify-end items-start pt-1">
+                                <div class="flex justify-end lg:justify-start">
                                     <ActionButton Text="Eliminar"
                                                   Intent="ButtonIntent.Delete"
                                                   Variant="ButtonVariant.Outline"
@@ -301,72 +244,86 @@
                                                   Execute="@(() => RemoveActivity(activity))">
                                         <Icon>
                                             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                             </svg>
                                         </Icon>
                                     </ActionButton>
                                 </div>
                             </div>
                         }
-                    }
-                    else
-                    {
-                        <div class="bg-muted/10 border border-border rounded-xl p-6 text-center">
-                            <p class="text-sm text-muted">
-                                Aún no hay actividades. Agrega una usando el botón de arriba.
-                            </p>
-                        </div>
-                    }
-                </div>
-
-                <!-- Pie - FIJO ABAJO -->
-                <div class="pt-2 border-t-2 border-border/60 bg-background rounded-lg p-2 flex-shrink-0">
-                    <div class="flex items-center justify-between">
-                        <span class="text-xs font-bold text-muted uppercase tracking-wide">Total de actividades:</span>
-                        <span class="text-lg font-bold text-accent">@_selectedObjective.Activities.Count</span>
                     </div>
-                </div>
-            </div>
-        }
-    </section>
+                }
+                else
+                {
+                    <div class="rounded-lg border border-dashed border-border bg-background/50 px-3 py-5 text-center">
+                        <p class="text-xs text-muted">
+                            No hay actividades aún.
+                        </p>
+                    </div>
+                }
+            }
+        </section>
+    </div>
 </div>
 
-<style>
-    @@keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .animate-fadeIn {
-        animation: fadeIn 0.2s ease-out;
-    }
-</style>
-
 @code {
-    [Parameter]
-    public List<DideObjectiveInfo> Objectives { get; set; } = new();
+    [Parameter] public List<DideObjectiveInfo> Objectives { get; set; } = new();
     [Parameter] public EventCallback ObjectivesChanged { get; set; }
 
-    // Objetivo general = ObjectiveType == 1
     private DideObjectiveInfo? GeneralObjective =>
         Objectives.FirstOrDefault(o => o.ObjectiveType == 1);
 
-    // Específicos = cualquiera que no sea general (por ahora te interesan los de tipo 2)
-    private IEnumerable<DideObjectiveInfo> SpecificObjectives =>
-        Objectives.Where(o => o.ObjectiveType != 1);
+    private List<DideObjectiveInfo> SpecificObjectives =>
+        Objectives.Where(o => o.ObjectiveType != 1).ToList();
 
     private DideObjectiveInfo? _selectedObjective;
-    private bool _isObjectiveExpanded = false;
 
     private int TotalSpecificPercentage =>
         SpecificObjectives.Sum(o => o.ObjetivePercentage);
+
+    protected override void OnParametersSet()
+    {
+        Objectives ??= new List<DideObjectiveInfo>();
+
+        foreach (var obj in Objectives)
+        {
+            obj.Activities ??= new List<DideObjectiveActivityInfo>();
+        }
+
+        if (GeneralObjective is null)
+        {
+            Objectives.Insert(0, new DideObjectiveInfo
+            {
+                ObjectiveType = 1,
+                ObjectiveText = string.Empty,
+                ObjetivePercentage = 0,
+                ObjetiveResult = string.Empty,
+                Activities = new List<DideObjectiveActivityInfo>()
+            });
+        }
+
+        if (_selectedObjective is null || !SpecificObjectives.Contains(_selectedObjective))
+        {
+            _selectedObjective = SpecificObjectives.FirstOrDefault();
+        }
+    }
+
+    private Task NotifyObjectivesChanged()
+    {
+        return ObjectivesChanged.HasDelegate
+            ? ObjectivesChanged.InvokeAsync()
+            : Task.CompletedTask;
+    }
+
+    private async Task OnGeneralObjectiveTextChanged(ChangeEventArgs e)
+    {
+        if (GeneralObjective is null)
+            return;
+
+        GeneralObjective.ObjectiveText = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
+    }
 
     private async Task OnGeneralObjectiveResultChanged(ChangeEventArgs e)
     {
@@ -374,18 +331,6 @@
             return;
 
         GeneralObjective.ObjetiveResult = e.Value?.ToString() ?? string.Empty;
-        await NotifyObjectivesChanged();
-    }
-
-    private async Task OnActivityTextChanged(DideObjectiveActivityInfo activity, ChangeEventArgs e)
-    {
-        activity.ActivityText = e.Value?.ToString() ?? string.Empty;
-        await NotifyObjectivesChanged();
-    }
-
-    private async Task OnActivityResultChanged(DideObjectiveActivityInfo activity, ChangeEventArgs e)
-    {
-        activity.ActivityResult = e.Value?.ToString() ?? string.Empty;
         await NotifyObjectivesChanged();
     }
 
@@ -404,10 +349,11 @@
             return;
 
         if (int.TryParse(e.Value?.ToString(), out var value))
-        {
-            _selectedObjective.ObjetivePercentage = value;
-            await NotifyObjectivesChanged();
-        }
+            _selectedObjective.ObjetivePercentage = Math.Clamp(value, 0, 100);
+        else
+            _selectedObjective.ObjetivePercentage = 0;
+
+        await NotifyObjectivesChanged();
     }
 
     private async Task OnSelectedObjectiveResultChanged(ChangeEventArgs e)
@@ -419,67 +365,24 @@
         await NotifyObjectivesChanged();
     }
 
-    protected override void OnParametersSet()
+    private async Task OnActivityTextChanged(DideObjectiveActivityInfo activity, ChangeEventArgs e)
     {
-        if (Objectives is null)
-        {
-            Objectives = new List<DideObjectiveInfo>();
-        }
-
-        foreach (var obj in Objectives)
-        {
-            obj.Activities ??= new List<DideObjectiveActivityInfo>();
-        }
-
-        // 1) Garantizar que exista objetivo general (type 1)
-        if (GeneralObjective is null)
-        {
-            var newGeneral = new DideObjectiveInfo
-            {
-                ObjectiveType = 1,
-                ObjectiveText = string.Empty,
-                ObjetivePercentage = 0,
-                ObjetiveResult = string.Empty,
-                Activities = new List<DideObjectiveActivityInfo>()
-            };
-
-            Objectives.Insert(0, newGeneral);
-        }
-
-        // 2) Seleccionar siempre algún objetivo específico si existe
-        if (_selectedObjective is null || !SpecificObjectives.Contains(_selectedObjective))
-        {
-            _selectedObjective = SpecificObjectives.FirstOrDefault();
-        }
+        activity.ActivityText = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
     }
 
-    private async Task NotifyObjectivesChanged()
+    private async Task OnActivityResultChanged(DideObjectiveActivityInfo activity, ChangeEventArgs e)
     {
-        if (ObjectivesChanged.HasDelegate)
-            await ObjectivesChanged.InvokeAsync();
-    }
-
-    private async Task OnGeneralObjectiveTextChanged(ChangeEventArgs e)
-    {
-        if (GeneralObjective is null)
-            return;
-
-        GeneralObjective.ObjectiveText = e.Value?.ToString() ?? string.Empty;
+        activity.ActivityResult = e.Value?.ToString() ?? string.Empty;
         await NotifyObjectivesChanged();
     }
 
     private void SelectObjective(DideObjectiveInfo objective)
     {
         _selectedObjective = objective;
-        _isObjectiveExpanded = false; // Colapsar al seleccionar nuevo objetivo
     }
 
-    private void ToggleObjectiveExpanded()
-    {
-        _isObjectiveExpanded = !_isObjectiveExpanded;
-    }
-
-    private async void AddSpecificObjective()
+    private async Task AddSpecificObjective()
     {
         var newObjective = new DideObjectiveInfo
         {
@@ -492,12 +395,11 @@
 
         Objectives.Add(newObjective);
         _selectedObjective = newObjective;
-        _isObjectiveExpanded = true;
 
         await NotifyObjectivesChanged();
     }
 
-    private async void AddActivity()
+    private async Task AddActivity()
     {
         if (_selectedObjective is null)
             return;
@@ -511,7 +413,7 @@
         await NotifyObjectivesChanged();
     }
 
-    private async void RemoveActivity(DideObjectiveActivityInfo activity)
+    private async Task RemoveActivity(DideObjectiveActivityInfo activity)
     {
         if (_selectedObjective is null)
             return;
@@ -520,21 +422,13 @@
         await NotifyObjectivesChanged();
     }
 
-    private async void RemoveSelectedObjective()
+    private async Task RemoveSelectedObjective()
     {
-        if (_selectedObjective is null)
+        if (_selectedObjective is null || _selectedObjective.ObjectiveType == 1)
             return;
 
-        // Seguridad extra: nunca eliminar el objetivo general
-        if (_selectedObjective.ObjectiveType == 1)
-            return;
-
-        var toRemove = _selectedObjective;
-
-        Objectives.Remove(toRemove);
-
+        Objectives.Remove(_selectedObjective);
         _selectedObjective = SpecificObjectives.FirstOrDefault();
-        _isObjectiveExpanded = false;
 
         await NotifyObjectivesChanged();
     }
@@ -553,14 +447,12 @@
     private string GetObjectiveItemClass(bool isSelected)
     {
         var baseClass =
-            "w-full text-left rounded-xl border-2 px-4 py-3 transition-all duration-200 " +
-            "flex items-start justify-between gap-2 shadow-sm";
+            "w-full text-left rounded-lg border px-3 py-2 transition-all duration-200 " +
+            "flex items-start justify-between gap-2";
 
         if (isSelected)
-        {
-            return baseClass + " border-secondary bg-secondary/10 ring-2 ring-secondary/30";
-        }
+            return baseClass + " border-secondary bg-secondary/10 ring-2 ring-secondary/20";
 
-        return baseClass + " border-border bg-background hover:bg-background/60 hover:border-secondary/50 hover:shadow-md";
+        return baseClass + " border-border bg-background hover:bg-background/60 hover:border-secondary/40";
     }
 }

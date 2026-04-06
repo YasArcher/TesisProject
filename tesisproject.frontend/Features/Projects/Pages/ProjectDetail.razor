@@ -1,4 +1,5 @@
 ﻿@page "/projects/{ProjectId:int}"
+
 @using tesisproject.frontend.Features.Components
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI
@@ -53,7 +54,7 @@
 @inject IProjectExtensionTypeClientService ProjectExtensionTypeService
 
 
-<div class="flex flex-col h-full">
+<div class="h-full min-h-0 flex flex-col overflow-hidden">
     <!-- Header -->
     <div class="sticky top-0 z-10 rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm shrink-0">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
@@ -108,155 +109,145 @@
                     </span>
                 </div>
             </div>
-
         </div>
     </div>
 
     <!-- Tabs -->
-    <div class="flex-1 overflow-y-auto min-h-0">
-        <Tabs ActiveKey="@_activeTab" OnChange="OnTabChanged">
+    <div class="flex-1 min-h-0 overflow-hidden">
+        <div class="h-full min-h-0 flex flex-col overflow-hidden">
+            <Tabs ActiveKey="@_activeTab" OnChange="OnTabChanged">
 
-            <Tab Key="overview" Title="Detalles">
-                <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                        <path d="M11.625 16.5a1.875 1.875 0 1 0 0-3.75 1.875 1.875 0 0 0 0 3.75Z" />
-                        <path fill-rule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875Zm6 16.5c.66 0 1.277-.19 1.797-.518l1.048 1.048a.75.75 0 0 0 1.06-1.06l-1.047-1.048A3.375 3.375 0 1 0 11.625 18Z" clip-rule="evenodd" />
-                        <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
-                    </svg>
-                </Icon>
-                <ChildContent>
-                    <ProjectOverviewTab Item="_project"
-                                        IsLoading="@_loadingOverview"
-                                        ResearchCategoryTree="_researchCategoryTree"
-                                        ResearchCategoryTypes="_researchCategoryTypes"
-                                        ResearchCategoryGroups="_researchCategoryGroups"
-                                        OnViewDocument="HandleViewDocument" />
-                </ChildContent>
-            </Tab>
+                <Tab Key="overview" Title="Detalles">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                            <path d="M11.625 16.5a1.875 1.875 0 1 0 0-3.75 1.875 1.875 0 0 0 0 3.75Z" />
+                            <path fill-rule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875Zm6 16.5c.66 0 1.277-.19 1.797-.518l1.048 1.048a.75.75 0 0 0 1.06-1.06l-1.047-1.048A3.375 3.375 0 1 0 11.625 18Z" clip-rule="evenodd" />
+                            <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>
+                        <ProjectOverviewTab Item="_project"
+                                            IsLoading="@_loadingOverview"
+                                            ResearchCategoryTree="_researchCategoryTree"
+                                            ResearchCategoryTypes="_researchCategoryTypes"
+                                            ResearchCategoryGroups="_researchCategoryGroups"
+                                            OnViewDocument="HandleViewDocument" />
+                    </ChildContent>
+                </Tab>
 
-            <Tab Key="members" Title="Miembros">
-                <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                        <path fill-rule="evenodd" d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z" clip-rule="evenodd" />
-                        <path d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z" />
-                    </svg>
-                </Icon>
-                <ChildContent>
-                    <ProjectMembersTab Members="_members"
-                                       Faculties="_faculties"
-                                       IsLoading="@_loadingMembers"
-                                       ExternalResearchersProjects="_externalResearchers"
-                                       IsLoadingExternalResearchers="@_loadingExternalResearchers"
-                                       OnInviteMember="HandleInviteMember"
-                                       OnRemoveMember="HandleRemoveMember"
-                                       OnAddExternalResearcher="HandleOpenExternalResearcherPicker"
-                                       OnRemoveExternalResearcher="HandleRemoveExternalResearcher" />
-                </ChildContent>
-            </Tab>
+                <Tab Key="members" Title="Miembros">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                            <path fill-rule="evenodd" d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z" clip-rule="evenodd" />
+                            <path d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>
+                        <ProjectMembersTab Members="_members"
+                                           Faculties="_faculties"
+                                           IsLoading="@_loadingMembers"
+                                           ExternalResearchersProjects="_externalResearchers"
+                                           IsLoadingExternalResearchers="@_loadingExternalResearchers"
+                                           OnInviteMember="HandleInviteMember"
+                                           OnRemoveMember="HandleRemoveMember"
+                                           OnAddExternalResearcher="HandleOpenExternalResearcherPicker"
+                                           OnRemoveExternalResearcher="HandleRemoveExternalResearcher" />
+                    </ChildContent>
+                </Tab>
 
-            <Tab Key="visits" Title="Visitas">
-                <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                        <path fill-rule="evenodd" d="M7.502 6h7.128A3.375 3.375 0 0 1 18 9.375v9.375a3 3 0 0 0 3-3V6.108c0-1.505-1.125-2.811-2.664-2.94a48.972 48.972 0 0 0-.673-.05A3 3 0 0 0 15 1.5h-1.5a3 3 0 0 0-2.663 1.618c-.225.015-.45.032-.673.05C8.662 3.295 7.554 4.542 7.502 6ZM13.5 3A1.5 1.5 0 0 0 12 4.5h4.5A1.5 1.5 0 0 0 15 3h-1.5Z" clip-rule="evenodd" />
-                        <path fill-rule="evenodd" d="M3 9.375C3 8.339 3.84 7.5 4.875 7.5h9.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 0 1 3 20.625V9.375ZM6 12a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V12Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75ZM6 15a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V15Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
-                    </svg>
-                </Icon>
-                <ChildContent>
-                    @if (_openVisitId is int vid)
-                    {
-                        <VisitDetailPanel @key="vid"
-                                          ProjectId="@ProjectId"
-                                          VisitId="@vid"
-                                          Value="@_visitDetail"
-                                          VisitIssues="@_visitIssues"
-                                          IsLoading="@_loadingVisitDetail"
-                                          ErrorMessage="@_visitDetailError"
-                                          ProjectObjectives="@_projectObjectives"
-                                          Products="@_visitProducts"
-                                          IsLoadingProducts="@_loadingProducts"
-                                          ProductsError="@_productsError"
-                                          OnProductCreated="HandleProductCreated"
-                                          OnSaveActivityRequested="HandleSaveSingleActivityAsync"
-                                          OnBack="HandleCloseVisit"
-                                          OnAddIssue="HandleAddIssue"
-                                          OnEditIssue="HandleEditIssue"
-                                          OnDeleteIssue="HandleDeleteIssue"
-                                          OnChangeVisitState="HandleChangeVisitStateAsync" />
+                <Tab Key="visits" Title="Visitas">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                            <path fill-rule="evenodd" d="M7.502 6h7.128A3.375 3.375 0 0 1 18 9.375v9.375a3 3 0 0 0 3-3V6.108c0-1.505-1.125-2.811-2.664-2.94a48.972 48.972 0 0 0-.673-.05A3 3 0 0 0 15 1.5h-1.5a3 3 0 0 0-2.663 1.618c-.225.015-.45.032-.673.05C8.662 3.295 7.554 4.542 7.502 6ZM13.5 3A1.5 1.5 0 0 0 12 4.5h4.5A1.5 1.5 0 0 0 15 3h-1.5Z" clip-rule="evenodd" />
+                            <path fill-rule="evenodd" d="M3 9.375C3 8.339 3.84 7.5 4.875 7.5h9.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 0 1 3 20.625V9.375ZM6 12a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V12Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75ZM6 15a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V15Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>
+                        @if (_openVisitId is int vid)
+                        {
+                            <VisitDetailPanel @key="vid"
+                                              ProjectId="@ProjectId"
+                                              VisitId="@vid"
+                                              Value="@_visitDetail"
+                                              VisitIssues="@_visitIssues"
+                                              IsLoading="@_loadingVisitDetail"
+                                              ErrorMessage="@_visitDetailError"
+                                              ProjectObjectives="@_projectObjectives"
+                                              Products="@_visitProducts"
+                                              IsLoadingProducts="@_loadingProducts"
+                                              ProductsError="@_productsError"
+                                              OnProductCreated="HandleProductCreated"
+                                              OnSaveActivityRequested="HandleSaveSingleActivityAsync"
+                                              OnBack="HandleCloseVisit"
+                                              OnAddIssue="HandleAddIssue"
+                                              OnEditIssue="HandleEditIssue"
+                                              OnDeleteIssue="HandleDeleteIssue"
+                                              OnChangeVisitState="HandleChangeVisitStateAsync" />
+                        }
+                        else
+                        {
+                            <ProjectVisitsTab Items="@_visits"
+                                              IsLoading="@_loadingVisits"
+                                              OnOpenVisit="HandleOpenVisit" />
+                        }
+                    </ChildContent>
+                </Tab>
 
-                    }
-                    else
-                    {
-                        <ProjectVisitsTab ProjectId="@ProjectId"
-                                          Items="@_visits"
-                                          IsLoading="@_loadingVisits"
-                                          OnAddVisit="HandleAddVisit"
-                                          OnOpenVisit="HandleOpenVisit"
-                                          OnChangeVisitState="HandleChangeVisitStateAsync" />
-                    }
-                </ChildContent>
-            </Tab>
+                <Tab Key="financial" Title="Presupuesto">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                            <path fill-rule="evenodd" d="M3.75 3.375c0-1.036.84-1.875 1.875-1.875H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375Zm10.5 1.875a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25ZM12 10.5a.75.75 0 0 1 .75.75v.028a9.727 9.727 0 0 1 1.687.28.75.75 0 1 1-.374 1.452 8.207 8.207 0 0 0-1.313-.226v1.68l.969.332c.67.23 1.281.85 1.281 1.704 0 .158-.007.314-.02.468-.083.931-.83 1.582-1.669 1.695a9.776 9.776 0 0 1-.561.059v.028a.75.75 0 0 1-1.5 0v-.029a9.724 9.724 0 0 1-1.687-.278.75.75 0 0 1 .374-1.453c.425.11.864.186 1.313.226v-1.68l-.968-.332C9.612 14.974 9 14.354 9 13.5c0-.158.007-.314.02-.468.083-.931.831-1.582 1.67-1.694.185-.025.372-.045.56-.06v-.028a.75.75 0 0 1 .75-.75Zm-1.11 2.324c.119-.016.239-.03.36-.04v1.166l-.482-.165c-.208-.072-.268-.211-.268-.285 0-.113.005-.225.015-.336.013-.146.14-.309.374-.34Zm1.86 4.392V16.05l.482.165c.208.072.268.211.268.285 0 .113-.005.225.015.336-.012.146-.14.309-.374.34-.12.016-.24.03-.361.04Z" clip-rule="evenodd" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>
+                        <ProjectFinancialTab @key="_budgetRefreshToken"
+                                             Budgets="_budgets"
+                                             BudgetTransactionsByBudgetId="_budgetTransactions"
+                                             IsLoading="_loadingBudget"
+                                             TransactionTypes="_transactionTypes"
+                                             OnAddCertification="HandleAddCertification"
+                                             OnExecuteDevengado="HandleExecuteDevengado"
+                                             OnCancelTransaction="HandleCancelTransaction"
+                                             TransactionPageSize="15" />
+                    </ChildContent>
+                </Tab>
 
-            <Tab Key="financial" Title="Presupuesto">
-                <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                        <path fill-rule="evenodd" d="M3.75 3.375c0-1.036.84-1.875 1.875-1.875H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375Zm10.5 1.875a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25ZM12 10.5a.75.75 0 0 1 .75.75v.028a9.727 9.727 0 0 1 1.687.28.75.75 0 1 1-.374 1.452 8.207 8.207 0 0 0-1.313-.226v1.68l.969.332c.67.23 1.281.85 1.281 1.704 0 .158-.007.314-.02.468-.083.931-.83 1.582-1.669 1.695a9.776 9.776 0 0 1-.561.059v.028a.75.75 0 0 1-1.5 0v-.029a9.724 9.724 0 0 1-1.687-.278.75.75 0 0 1 .374-1.453c.425.11.864.186 1.313.226v-1.68l-.968-.332C9.612 14.974 9 14.354 9 13.5c0-.158.007-.314.02-.468.083-.931.831-1.582 1.67-1.694.185-.025.372-.045.56-.06v-.028a.75.75 0 0 1 .75-.75Zm-1.11 2.324c.119-.016.239-.03.36-.04v1.166l-.482-.165c-.208-.072-.268-.211-.268-.285 0-.113.005-.225.015-.336.013-.146.14-.309.374-.34Zm1.86 4.392V16.05l.482.165c.208.072.268.211.268.285 0 .113-.005.225-.015.336-.012.146-.14.309-.374.34-.12.016-.24.03-.361.04Z" clip-rule="evenodd" />
-                    </svg>
-                </Icon>
-                <ChildContent>
-                    <ProjectFinancialTab @key="_budgetRefreshToken"
-                                         Budgets="_budgets"
-                                         BudgetTransactionsByBudgetId="_budgetTransactions"
-                                         IsLoading="_loadingBudget"
-                                         TransactionTypes="_transactionTypes"
-                                         OnAddCertification="HandleAddCertification"
-                                         OnExecuteDevengado="HandleExecuteDevengado"
-                                         OnCancelTransaction="HandleCancelTransaction"
-                                         TransactionPageSize="15" />
+                <Tab Key="extensions" Title="Prórrogas">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>
+                        <ProjectExtensionsTab Items="_extensions"
+                                              IsLoading="_loadingExtensions"
+                                              OnRequestNew="HandleRequestExtension"
+                                              OnOpen="HandleOpenExtension" />
+                    </ChildContent>
+                </Tab>
 
-                </ChildContent>
-            </Tab>
-            <Tab Key="extensions" Title="Prórrogas">
-                <Icon>
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                        <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
-                    </svg>
-                </Icon>
-                <ChildContent>
-                    <ProjectExtensionsTab Items="_extensions"
-                                          ExtensionTypes="_extensionTypes"
-                                          IsLoading="_loadingExtensions"
-                                          OnRequestNew="HandleRequestExtension"
-                                          OnOpen="HandleOpenExtension" />
-                </ChildContent>
-            </Tab>
+                @if (CanShowFinalizationTab)
+                {
+                    <Tab Key="finalization" Title="Finalización">
+                        <Icon>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path fill-rule="evenodd" d="M2.25 12a9.75 9.75 0 1 1 19.5 0 9.75 9.75 0 0 1-19.5 0Zm14.03-2.47a.75.75 0 0 0-1.06-1.06l-4.97 4.97-1.97-1.97a.75.75 0 1 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5.5-5.5Z" clip-rule="evenodd" />
+                            </svg>
+                        </Icon>
 
-            @* ... al final de tus tabs, después de "extensions" *@
+                        <ChildContent>
+                            <ProjectFinalizationTab Project="_project"
+                                                    Budgets="_budgets"
+                                                    Products="_projectProducts"
+                                                    IsLoading="@_loadingFinalization"
+                                                    ErrorMessage="@_finalizationError"
+                                                    OnRefresh="HandleRefreshFinalization" />
+                        </ChildContent>
+                    </Tab>
+                }
 
-@if (CanShowFinalizationTab)
-{
-    <Tab Key="finalization" Title="Finalización">
-        <Icon>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
-                <path fill-rule="evenodd" d="M2.25 12a9.75 9.75 0 1 1 19.5 0 9.75 9.75 0 0 1-19.5 0Zm14.03-2.47a.75.75 0 0 0-1.06-1.06l-4.97 4.97-1.97-1.97a.75.75 0 1 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5.5-5.5Z" clip-rule="evenodd" />
-            </svg>
-        </Icon>
-
-        <ChildContent>
-            <ProjectFinalizationTab Project="_project"
-                                   Members="_members"
-                                   ExternalResearchersProjects="_externalResearchers"
-                                   Visits="_visits"
-                                   Budgets="_budgets"
-                                   BudgetTransactionsByBudgetId="_budgetTransactions"
-                                   Products="_projectProducts"
-                                   IsLoading="@_loadingFinalization"
-                                   ErrorMessage="@_finalizationError"
-                                   OnRefresh="HandleRefreshFinalization" />
-        </ChildContent>
-    </Tab>
-}
-
-        </Tabs>
+            </Tabs>
+        </div>
     </div>
 </div>
 
@@ -370,11 +361,11 @@
     private bool _loadingVisits;
     private string? _visitsError;
 
-    // ======= Visitas (detalle para swap) =======
-    private int? _openVisitId;                            // << NUEVO
-    private VisitDetailResponseDTO? _visitDetail;         // << NUEVO
-    private bool _loadingVisitDetail;                     // << NUEVO
-    private string? _visitDetailError;                    // << NUEVO
+    // ======= Visitas (detalle) =======
+    private int? _openVisitId;
+    private VisitDetailResponseDTO? _visitDetail;
+    private bool _loadingVisitDetail;
+    private string? _visitDetailError;
     private List<VisitIssueResponseDTO>? _visitIssues;
     private bool _loadingIssues;
     private bool _issueModalOpen;
@@ -408,14 +399,12 @@
     private List<ProjectExtensionListResponseDTO>? _extensions;
     private bool _loadingExtensions;
     private string? _extensionsError;
-    // Agregar esta variable al inicio del @code
     private bool _showCreateExtensionModal;
 
     // ======= Finalización =======
     private bool _loadingFinalization;
     private string? _finalizationError;
 
-    // Reemplazar los handlers existentes:
     private Task HandleRequestExtension()
     {
         _showCreateExtensionModal = true;
@@ -583,32 +572,47 @@
 
     private async Task HandleProductCreated(int visitId)
     {
+        await LoadVisitProductsAsync(visitId);
+    }
+
+
+    private async Task LoadVisitProductsAsync(int visitId)
+    {
         try
         {
+            _loadingProducts = true;
+            _productsError = null;
+
             var productsRes = await ProductService.ListByProjectAsync(ProjectId, CancellationToken.None);
 
             if (productsRes.Success && productsRes.Response is not null)
             {
                 _projectProducts = productsRes.Response.ToList();
-
                 _visitProducts = _projectProducts
                     .Where(p => p.VisitId == visitId)
                     .OrderByDescending(p => p.CreatedAt)
                     .ToList();
-
-                StateHasChanged();
             }
             else
             {
-                Toast.ShowWarning(productsRes.Error ?? "No se pudieron recargar los productos.");
+                _projectProducts = new();
+                _visitProducts = new();
+                _productsError = productsRes.Error ?? "No se pudieron cargar los productos del proyecto.";
+                Toast.ShowWarning(_productsError);
             }
         }
         catch (Exception ex)
         {
-            Toast.ShowError($"Error recargando productos: {ex.Message}");
+            _projectProducts = new();
+            _visitProducts = new();
+            _productsError = $"Error recargando productos: {ex.Message}";
+            Toast.ShowError(_productsError);
+        }
+        finally
+        {
+            _loadingProducts = false;
         }
     }
-
 
     private void HandleOpenExternalResearcherCreateModal()
     {
@@ -766,7 +770,7 @@
                 ExternalResearcherId = existing.ExternalResearcherId,
                 ProjectId = existing.ProjectId,
                 Role = existing.Role,
-                ExitDate = DateTime.UtcNow 
+                ExitDate = DateTime.UtcNow
             };
 
             // 3) Enviar actualización
@@ -1035,7 +1039,7 @@
                 try
                 {
                     var res = await VisitService.GetByProjectAsync(ProjectId);
-                    if (res.Success && res.Success == true)
+                    if (res.Success)
                         _visits = res.Response?.ToList() ?? new();
                     else
                     {
@@ -1470,7 +1474,7 @@
                 var backendMessage = res.Error ?? "No se pudo crear la certificación.";
                 Toast.ShowError(backendMessage);
 
-                return; 
+                return;
             }
 
             Toast.ShowSuccess("Certificación creada correctamente.");
@@ -1597,9 +1601,6 @@
         StateHasChanged();
     }
 
-    // ===== Acciones visitas =====
-    private Task HandleAddVisit() => Task.CompletedTask;
-
     // >>> SWAP: abrir detalle (ya NO navegamos a /visits/{id})
     private async Task HandleOpenVisit(int visitId)
     {
@@ -1608,21 +1609,19 @@
         _visitDetailError = null;
         _productsError = null;
 
-        await EnsureProjectObjectivesAsync(forceRefresh: true); // o EnsureProjectObjectivesAsync(forceRefresh: false)
+        await EnsureProjectObjectivesAsync(forceRefresh: true);
 
         try
         {
             var detailTask = VisitService.GetVisitDetailAsync(visitId);
             var issuesTask = VisitIssueService.ListByVisitAsync(visitId);
-            var productsTask = ProductService.ListByProjectAsync(ProjectId, CancellationToken.None);
+            var productsTask = LoadVisitProductsAsync(visitId);
 
             await Task.WhenAll(detailTask, issuesTask, productsTask);
 
             var detailRes = await detailTask;
             var issuesRes = await issuesTask;
-            var productsRes = await productsTask;
 
-            // ===== Detalle =====
             if (detailRes.Success)
                 _visitDetail = detailRes.Response;
             else
@@ -1631,28 +1630,10 @@
                 _visitDetailError = detailRes.Error ?? "No se pudo cargar el detalle de la visita.";
             }
 
-            // ===== Issues =====
             if (issuesRes.Success)
                 _visitIssues = issuesRes.Response?.ToList() ?? new();
             else
-                _visitIssues = new(); // si quieres, aquí también podrías guardar un error
-
-            // ===== Productos (filtrados por visita) =====
-            if (productsRes.Success && productsRes.Response is not null)
-            {
-                _projectProducts = productsRes.Response.ToList();
-
-                _visitProducts = _projectProducts
-                    .Where(p => p.VisitId == visitId)
-                    .OrderByDescending(p => p.CreatedAt)
-                    .ToList();
-            }
-            else
-            {
-                _projectProducts = new();
-                _visitProducts = new();
-                _productsError = productsRes.Error ?? "No se pudieron cargar los productos del proyecto.";
-            }
+                _visitIssues = new();
         }
         catch (Exception ex)
         {
@@ -1666,8 +1647,6 @@
         {
             _loadingVisitDetail = false;
         }
-
-        StateHasChanged();
     }
 
     // >>> SWAP: cerrar detalle y volver a la lista
@@ -1680,53 +1659,6 @@
         await EnsureTabDataAsync("visits");
         StateHasChanged();
     }
-
-    private async Task HandleSaveObjectivesAsync(IEnumerable<ObjectiveActivityListItemDTO> activities)
-    {
-        var list = activities?.ToList() ?? new();
-        if (list.Count == 0)
-        {
-            Toast.ShowInfo("No hay actividades para guardar.");
-            return;
-        }
-
-        try
-        {
-            // Actualiza cada actividad (ProgressPercentage 0..100)
-            var tasks = list.Select(a =>
-            {
-                var dto = new UpdateObjectiveActivityRequestDTO
-                {
-                    // ✅ Mapea estos campos con los nombres reales de tu DTO de UI
-                    ObjectiveActivityId = a.ObjectiveActivityId,
-                    ObjectiveId = a.ObjectiveId,
-                    ActionText = a.ActionText ?? string.Empty,
-                    ActivityResult = a.ActivityResult,
-                };
-
-                return ObjectiveActivityService.UpdateAsync(a.ObjectiveActivityId, dto, CancellationToken.None);
-            }).ToList();
-
-            var results = await Task.WhenAll(tasks);
-
-            var firstFail = results.FirstOrDefault(r => !r.Success);
-            if (firstFail is not null)
-            {
-                Toast.ShowError(firstFail.Error ?? "No se pudieron guardar algunos cambios.");
-                return;
-            }
-
-            Toast.ShowSuccess("Avance guardado correctamente.");
-
-            // ✅ Refresh parcial del tab visits (no recarga toda la página)
-            await RefreshVisitsTabAsync(refreshVisitList: false, refreshVisitDetail: false);
-        }
-        catch (Exception ex)
-        {
-            Toast.ShowError($"Error al guardar actividades: {ex.Message}");
-        }
-    }
-
 
 
     // <<<< AGREGAR: Handlers para VisitIssues
@@ -1765,22 +1697,21 @@
     {
         try
         {
-             var res = await VisitIssueService.DeleteAsync(issueId);
+            var res = await VisitIssueService.DeleteAsync(issueId);
 
-             if (!res.Success)
-             {
-                 Toast.ShowError(res.Error ?? "No se pudo eliminar el problema.");
-                 return;
-             }
+            if (!res.Success)
+            {
+                Toast.ShowError(res.Error ?? "No se pudo eliminar el problema.");
+                return;
+            }
 
-             Toast.ShowSuccess("Problema eliminado correctamente.");
+            Toast.ShowSuccess("Problema eliminado correctamente.");
 
-             //Refrescar lista de issues
-             if (_openVisitId.HasValue)
-             {
-                 await ReloadVisitIssuesAsync(_openVisitId.Value);
-             }
-            await Task.Delay(500); // Simular eliminación
+            //Refrescar lista de issues
+            if (_openVisitId.HasValue)
+            {
+                await ReloadVisitIssuesAsync(_openVisitId.Value);
+            }
         }
         catch (Exception ex)
         {
@@ -1807,13 +1738,13 @@
                     Description = form.Description
                 };
 
-                 var res = await VisitIssueService.UpdateAsync(_editingIssueId.Value, updateDto);
+                var res = await VisitIssueService.UpdateAsync(_editingIssueId.Value, updateDto);
 
-                 if (!res.Success)
-                 {
-                     _issueError = res.Error ?? "No se pudo actualizar el problema.";
-                     return;
-                 }
+                if (!res.Success)
+                {
+                    _issueError = res.Error ?? "No se pudo actualizar el problema.";
+                    return;
+                }
 
                 Toast.ShowSuccess("Problema actualizado correctamente.");
             }
@@ -1826,13 +1757,13 @@
                     Description = form.Description,
                 };
 
-                 var res = await VisitIssueService.CreateAsync(createDto);
+                var res = await VisitIssueService.CreateAsync(createDto);
 
-                 if (!res.Success)
-                 {
-                     _issueError = res.Error ?? "No se pudo crear el problema.";
-                     return;
-                 }
+                if (!res.Success)
+                {
+                    _issueError = res.Error ?? "No se pudo crear el problema.";
+                    return;
+                }
 
                 Toast.ShowSuccess("Problema registrado correctamente.");
             }
@@ -1868,13 +1799,12 @@
         try
         {
             _loadingIssues = true;
-             var res = await VisitIssueService.ListByVisitAsync(visitId);
+            var res = await VisitIssueService.ListByVisitAsync(visitId);
 
-             if (res.Success)
-                 _visitIssues = res.Response?.ToList() ?? new();
-             else
-                 Toast.ShowWarning("No se pudieron recargar los problemas.");
-            await Task.Delay(500); // Simular carga
+            if (res.Success)
+                _visitIssues = res.Response?.ToList() ?? new();
+            else
+                Toast.ShowWarning("No se pudieron recargar los problemas.");
         }
         catch (Exception ex)
         {
@@ -1909,6 +1839,12 @@
             _showUserPicker = false;
             return;
         }
+        if (_selectedRoleIdForProject is null || _selectedRoleIdForProject <= 0)
+        {
+            Toast.ShowWarning("Seleccione un rol para el miembro.");
+            return;
+        }
+
         var selectedRole = _memberRoles?.FirstOrDefault(r => r.Id == _selectedRoleIdForProject.Value);
         if (selectedRole is null)
         {
@@ -1916,20 +1852,9 @@
             return;
         }
 
-        if (IsCoordinatorRole(selectedRole.Name))
+        if (IsCoordinatorRole(selectedRole.Name) && ProjectAlreadyHasRole(selectedRole.Id))
         {
-            var alreadyHasRole = ProjectAlreadyHasRole(selectedRole.Id);
-            if (alreadyHasRole)
-            {
-                Toast.ShowWarning($"Ya existe un miembro con el rol '{selectedRole.Name}' en este proyecto.");
-                return;
-            }
-        }
-
-
-        if (_selectedRoleIdForProject is null || _selectedRoleIdForProject <= 0)
-        {
-            Toast.ShowWarning("Seleccione un rol para el miembro.");
+            Toast.ShowWarning($"Ya existe un miembro con el rol '{selectedRole.Name}' en este proyecto.");
             return;
         }
 
@@ -2012,19 +1937,6 @@
         return name.Contains("coordinador", StringComparison.OrdinalIgnoreCase)
             && (name.Contains("principal", StringComparison.OrdinalIgnoreCase)
                 || name.Contains("subrogante", StringComparison.OrdinalIgnoreCase));
-    }
-
-    private async Task<bool> GroupAlreadyHasRoleAsync(int roleId)
-    {
-        if (_project?.ProjectGroupId is null or 0)
-            return false;
-
-        var res = await GroupService.GetMembersByGroupIdAsync(_project.ProjectGroupId);
-
-        if (!res.Success || res.Response is null)
-            return false;
-
-        return res.Response.Any(m => m.MemberRoleId == roleId);
     }
 
     private async Task EnsureTransactionTypesAsync()

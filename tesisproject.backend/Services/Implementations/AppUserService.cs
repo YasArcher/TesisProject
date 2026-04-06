@@ -86,6 +86,36 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
+        public async Task<ServiceResult<int>> GetAppUserIdByLocalIdAsync(int localUserId, CancellationToken ct = default)
+        {
+            try
+            {
+                if (localUserId <= 0)
+                {
+                    return ServiceResult<int>.Fail(
+                        "Invalid local user id.",
+                        ErrorType.Validation
+                    );
+                }
+
+                var appUser = await _appUsers.GetByLocalIdAsync(localUserId, ct);
+
+                if (appUser is null || appUser.IdUser <= 0)
+                {
+                    return ServiceResult<int>.Fail(
+                        "App user not found.",
+                        ErrorType.NotFound
+                    );
+                }
+
+                return ServiceResult<int>.Ok(appUser.IdUser, "App user resolved.");
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<int>.Fail(ex.Message, ErrorType.Unexpected);
+            }
+        }
+
         private async Task<int> EnsureSingleInternalAsync(RegisterRequest dto, CancellationToken ct)
         {
             // 1) Buscar IdentityUser por email

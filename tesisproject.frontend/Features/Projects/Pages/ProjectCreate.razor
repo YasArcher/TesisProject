@@ -26,7 +26,6 @@
 @using tesisproject.shared.DTOs.ExternalResearcher.Response
 @using tesisproject.shared.DTOs.Institution.Response
 
-
 @using Microsoft.AspNetCore.Components.Forms
 @using System.Net.Http
 @using System.Net.Http.Headers
@@ -53,59 +52,52 @@
 @inject IInstitutionClientService InstitutionClient
 @inject IProjectOriginTypeClientService ProjectOriginTypeClient
 
-
-<div class="w-full h-full flex flex-col bg-page-bg">
-    <!-- Header Principal -->
-    <header class="px-6 py-3 border-b bg-background border-border">
-        <div class="max-w-7xl mx-auto">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-lg flex items-center justify-center bg-primary">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+<div class="w-full h-full min-h-0 flex flex-col overflow-hidden bg-page-bg">
+    <!-- Header -->
+    <header class="shrink-0 px-4 md:px-6 py-3 border-b bg-background border-border">
+        <div class="max-w-7xl mx-auto w-full">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-primary shrink-0">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                 </div>
-                <div>
-                    <h1 class="text-2xl font-bold text-foreground">Crear Nuevo Proyecto</h1>
-                    <p class="text-sm text-muted">
-                        Proceso guiado para crear un proyecto utilizando el documento inicial y el formulario DIDE.
-                    </p>
+
+                <div class="min-w-0">
+                    <h1 class="text-xl md:text-2xl font-bold text-foreground truncate">
+                        Crear Nuevo Proyecto
+                    </h1>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Contenedor Principal -->
-    <div class="flex-1 overflow-hidden">
-        <div class="max-w-7xl mx-auto h-full flex flex-col px-6 py-3 gap-3">
+    <!-- Contenedor principal -->
+    <div class="flex-1 min-h-0 overflow-hidden">
+        <div class="max-w-7xl mx-auto w-full h-full min-h-0 flex flex-col px-4 md:px-6 py-3 gap-3">
 
-            <!-- Barra de Progreso Mejorada -->
-            <section class="rounded-xl p-4 shadow-sm bg-background border border-border">
-                <div class="flex justify-between items-center mb-2">
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm font-semibold text-foreground">
-                            Paso @CurrentStep de 6
-                        </span>
-                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-primary text-white">
-                            @Progress% completado
-                        </span>
-                    </div>
+            <!-- Progreso -->
+            <section class="shrink-0 rounded-xl p-3 shadow-sm bg-background border border-border">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-semibold text-foreground">
+                        Paso @CurrentStep de 6
+                    </span>
                 </div>
 
-                <!-- Barra de progreso -->
-                <div class="rounded-full h-2.5 mb-3 overflow-hidden bg-border">
-                    <div class="h-2.5 rounded-full transition-all duration-500 ease-out bg-primary"
+                <div class="rounded-full h-2 mb-3 overflow-hidden bg-border">
+                    <div class="h-2 rounded-full transition-all duration-500 ease-out bg-primary"
                          style="width:@($"{Progress}%")"></div>
                 </div>
 
-                <!-- Steps visuales -->
-                <div class="flex justify-between items-start gap-2">
+                <div class="flex justify-between items-start gap-1 md:gap-2">
                     @foreach (var step in GetSteps())
                     {
                         <div class="flex flex-col items-center flex-1 min-w-0">
-                            <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mb-2 transition-all duration-300 @GetStepCircleClass(step.Number)">
+                            <div class="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[11px] md:text-xs font-bold mb-1.5 transition-all duration-300 @GetStepCircleClass(step.Number)">
                                 @if (CurrentStep > step.Number)
                                 {
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
                                     </svg>
                                 }
@@ -114,7 +106,8 @@
                                     @step.Number
                                 }
                             </div>
-                            <span class="text-xs text-center leading-tight transition-all duration-300 @GetStepTextClass(step.Number)">
+
+                            <span class="hidden md:block text-[11px] text-center leading-tight transition-all duration-300 @GetStepTextClass(step.Number)">
                                 @step.Label
                             </span>
                         </div>
@@ -122,17 +115,15 @@
                 </div>
             </section>
 
-            <!-- Contenido del Step (scrollable) -->
+            <!-- Contenido -->
             <section class="flex-1 min-h-0 rounded-xl shadow-sm overflow-hidden bg-background border border-border">
-                <div class="h-full overflow-y-auto p-6">
-                    <!-- STEP 1: Carga de documentos -->
+                <div class="h-full min-h-0 overflow-y-auto p-4 md:p-5">
                     <div class="@(CurrentStep == 1 ? "block" : "hidden")">
                         <ProjectCreateStep1Documents IsBusy="@IsStep1Busy"
                                                      OnResolutionFileSelected="@HandleInitialFileSelected"
                                                      OnDideFileSelected="@HandleDideFileSelected" />
                     </div>
 
-                    <!-- STEP 2: Resolución + presupuesto -->
                     <div class="@(CurrentStep == 2 ? "block" : "hidden")">
                         <ProjectCreateStep2ResolutionBudget ResolutionModel="@ResolutionData"
                                                             DideModel="@DideData"
@@ -147,25 +138,21 @@
                                                             ProjectOriginTypes="@_projectOriginTypes"
                                                             ProjectOriginTypeId="@_selectedProjectOriginTypeId"
                                                             ProjectOriginTypeIdChanged="id => _selectedProjectOriginTypeId = id" />
-
                     </div>
 
-                    <!-- STEP 3: Proyecto + miembros -->
                     <div class="@(CurrentStep == 3 ? "block" : "hidden")">
-                        <div class="@(CurrentStep == 3 ? "block" : "hidden")">
-                            <ProjectCreateStep3ProjectTeam DideModel="@DideData"
-                                                           IsBusy="false"
-                                                           MemberRoleTypeOptions="@_memberRoleTypeOptions"
-                                                           Faculties="@_faculties"
-                                                           SingleInstanceRoleIds="@_singleInstanceRoleIds"
-                                                           OnAddResearcherRequested="HandleOpenResearcherPicker"
-                                                           OnAddExternalResearcherRequested="HandleOpenExternalResearcherPicker"
-                                                           OnResearchersChanged="@HandleResearchersChanged"
-                                                           ExternalResearchers="@_selectedExternalResearchers"
-                                                           OnRemoveExternalResearcherRequested="HandleRemoveExternalResearcher" />
-
-                        </div>
+                        <ProjectCreateStep3ProjectTeam DideModel="@DideData"
+                                                       IsBusy="false"
+                                                       MemberRoleTypeOptions="@_memberRoleTypeOptions"
+                                                       Faculties="@_faculties"
+                                                       SingleInstanceRoleIds="@_singleInstanceRoleIds"
+                                                       OnAddResearcherRequested="HandleOpenResearcherPicker"
+                                                       OnAddExternalResearcherRequested="HandleOpenExternalResearcherPicker"
+                                                       OnResearchersChanged="@HandleResearchersChanged"
+                                                       ExternalResearchers="@_selectedExternalResearchers"
+                                                       OnRemoveExternalResearcherRequested="HandleRemoveExternalResearcher" />
                     </div>
+
                     <UserPickerModal ModalId="wizard-user-picker"
                                      IsOpen="@_showUserPicker"
                                      IsOpenChanged="v => _showUserPicker = v"
@@ -192,32 +179,22 @@
                                                    InstitutionSuggestions="@_institutionSuggestions"
                                                    OnInstitutionSearchRequested="HandleInstitutionSearchAsync" />
 
-
-                    <!-- STEP 4: Categorías de investigación -->
                     <div class="@(CurrentStep == 4 ? "block" : "hidden")">
                         <ProjectCreateStep4ResearchCategories DideModel="@DideData"
-                                                              IsBusy="false"
                                                               ResearchCategoryTree="@_researchCategoryTree"
                                                               ResearchCategoryTypes="@_researchCategoryTypes"
                                                               ResearchCategoryGroups="@_researchCategoryGroups"
                                                               OnResearchCategoriesChanged="@HandleResearchCategoriesChanged" />
                     </div>
 
-                    <!-- STEP 5: Objetivos y actividades -->
                     <div class="@(CurrentStep == 5 ? "block" : "hidden")">
                         <ProjectCreateStep5Objectives DideModel="@DideData"
-                                                      ObjectiveTypeOptions="@_objectiveTypeOptions"
-                                                      IsBusy="false"
                                                       OnObjectivesChanged="@HandleObjectivesChanged" />
-
-
                     </div>
 
-                    <!-- STEP 6: Resumen final -->
                     <div class="@(CurrentStep == 6 ? "block" : "hidden")">
                         <ProjectCreateStep6Summary ResolutionModel="@ResolutionData"
                                                    DideModel="@DideData"
-                                                   IsSaving="@IsSaving"
                                                    DocumentTypeOptions="@_documentTypeOptions"
                                                    ResearchTypeOptions="@_researchTypeOptions"
                                                    MemberRoleTypeOptions="@_memberRoleTypeOptions"
@@ -226,18 +203,15 @@
                                                    FundingTypeOptions="@_fundingTypeOptions"
                                                    Budgets="@_budgets"
                                                    SelectedResearchCategories="@_selectedResearchCategories"
-                                                   OnPrevious="@GoPrevious"
-                                                   OnSave="@HandleSaveAsync"
                                                    CoordinatorRoleId="@_coordinatorRoleId"
                                                    ConvocationName="@_activeConvocation?.Name" />
                     </div>
                 </div>
             </section>
 
-            <!-- Footer de Navegación -->
-            <footer class="rounded-xl p-3 shadow-sm flex justify-between items-center gap-4 bg-background border border-border">
-                <!-- Botones izquierda -->
-                <div class="flex gap-3">
+            <!-- Footer -->
+            <footer class="shrink-0 rounded-xl p-3 shadow-sm flex justify-between items-center gap-3 bg-background border border-border">
+                <div class="flex gap-2 md:gap-3">
                     <ActionButton Text="Cancelar"
                                   Execute="HandleCancel"
                                   Intent="ButtonIntent.Neutral"
@@ -253,12 +227,6 @@
                                   Disabled="@(CurrentStep == 1 || IsSaving)" />
                 </div>
 
-                <!-- Indicador central -->
-                <div class="hidden md:block text-sm font-medium text-muted">
-                    @GetCurrentStepLabel()
-                </div>
-
-                <!-- Botones derecha -->
                 @if (CurrentStep < 6)
                 {
                     <ActionButton Text="Siguiente"
@@ -388,29 +356,20 @@
     private string GetStepCircleClass(int stepNumber)
     {
         if (CurrentStep > stepNumber)
-        {
             return "bg-secondary text-white";
-        }
-        else if (CurrentStep == stepNumber)
-        {
+
+        if (CurrentStep == stepNumber)
             return "bg-primary text-white ring-4 ring-primary-subtle";
-        }
-        else
-        {
-            return "bg-border text-muted";
-        }
+
+        return "bg-border text-muted";
     }
 
     private string GetStepTextClass(int stepNumber)
     {
         if (CurrentStep >= stepNumber)
-        {
             return "text-foreground font-semibold";
-        }
-        else
-        {
-            return "text-muted font-normal";
-        }
+
+        return "text-muted font-normal";
     }
 
     private string GetCurrentStepLabel()
