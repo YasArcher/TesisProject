@@ -12,10 +12,12 @@ using tesisproject.shared.Responses;
 namespace tesisproject.backend.Services.Implementations
 {
     /// <summary>
-    /// Genera un Excel con la misma lógica de columnas de la matriz
-    /// (base + dinámicas de categorías + dinámicas de objetivos),
-    /// pero permitiendo seleccionar columnas y encabezados mediante ExportRequestDTO.
-    /// Usa EPPlus igual que MatrixExcelExportService.
+    /// Genera un Excel de matriz a partir de una plantilla persistida en BD.
+    /// La plantilla define headers, orden y campos base; la UI solo envía:
+    /// - TemplateId
+    /// - ProjectIds
+    /// - IncludedTemplateColumnIds
+    /// - NameOverride
     /// </summary>
     public class MatrixTemplateExcelExportService : IMatrixTemplateExcelExportService
     {
@@ -29,65 +31,140 @@ namespace tesisproject.backend.Services.Implementations
         private const string CategoryTypePrefix = "CATEGORY_TYPE_";
         private const string ObjectivePrefix = "OBJECTIVE_";
 
-        private const int CategoryColumnsBaseOrder = 1000; // después de base
-        private const int ObjectiveColumnsBaseOrder = 2000; // después de categorías
+        private const int CategoryColumnsBaseOrder = 1000;
+        private const int ObjectiveColumnsBaseOrder = 2000;
 
         private const int ObjectiveTypeGeneralId = 1;
         private const int ObjectiveTypeSpecificId = 2;
 
         private readonly IProjectFlatReportService _flatService;
         private readonly IResearchCategoryService _categoryService;
+        private readonly IExportTemplateService _templateService;
         private readonly ILogger<MatrixTemplateExcelExportService> _logger;
 
         public MatrixTemplateExcelExportService(
             IProjectFlatReportService flatService,
             IResearchCategoryService categoryService,
+            IExportTemplateService templateService,
             ILogger<MatrixTemplateExcelExportService> logger)
         {
             _flatService = flatService;
             _categoryService = categoryService;
+            _templateService = templateService;
             _logger = logger;
         }
 
         public async Task<ServiceResult<byte[]>> GenerateExcelAsync(
-            ExportRequestDTO request,
+            ExportByTemplateRequestDTO request,
             CancellationToken ct = default)
         {
-            if (request == null)
+            if (request is null)
                 return ServiceResult<byte[]>.Fail(
                     "La solicitud de exportación es nula.",
                     ErrorType.Validation);
 
-            if (request.Columns is null || request.Columns.Count == 0)
+            if (request.TemplateId <= 0)
                 return ServiceResult<byte[]>.Fail(
-                    "No se han definido columnas para la exportación.",
+                    "Debe especificar una plantilla válida.",
                     ErrorType.Validation);
 
-            // 1) Cargar dataset plano (igual que MatrixExcelExportService)
+            var includedColumnIds = request.IncludedTemplateColumnIds?
+                .Distinct()
+                .ToList() ?? new List<int>();
+
+            if (includedColumnIds.Count == 0)
+                return ServiceResult<byte[]>.Fail(
+                    "Debe seleccionar al menos una columna para exportar.",
+                    ErrorType.Validation);
+
+            // 1) Cargar plantilla desde BD
+            var templateResult = await _templateService.GetTemplateAsync(request.TemplateId, ct);
+            if (!templateResult.Success || templateResult.Data is null)
+                return ServiceResult<byte[]>.Fail(
+                    templateResult.Message ?? "No se pudo recuperar la plantilla.",
+                    ErrorType.Validation);
+
+            var template = templateResult.Data;
+
+            if (!template.IsActive)
+                return ServiceResult<byte[]>.Fail(
+                    "La plantilla seleccionada está inactiva.",
+                    ErrorType.Validation);
+
+            if (template.Columns is null || template.Columns.Count == 0)
+                return ServiceResult<byte[]>.Fail(
+                    "La plantilla no tiene columnas configuradas.",
+                    ErrorType.Validation);
+
+            var templateColumns = template.Columns
+                .OrderBy(c => c.OrderIndex)
+                .ToList();
+
+            var templateColumnIds = templateColumns
+                .Select(c => c.Id)
+                .ToHashSet();
+
+            var invalidIncludedIds = includedColumnIds
+                .Where(id => !templateColumnIds.Contains(id))
+                .ToList();
+
+            if (invalidIncludedIds.Count > 0)
+                return ServiceResult<byte[]>.Fail(
+                    "La selección contiene columnas que no pertenecen a la plantilla.",
+                    ErrorType.Validation);
+
+            var requiredNotIncluded = templateColumns
+                .Where(c => c.IsRequired && !includedColumnIds.Contains(c.Id))
+                .Select(c => c.TargetHeader)
+                .ToList();
+
+            if (requiredNotIncluded.Count > 0)
+                return ServiceResult<byte[]>.Fail(
+                    "Faltan columnas obligatorias requeridas por la plantilla.",
+                    ErrorType.Validation);
+
+            var selectedTemplateColumns = templateColumns
+                .Where(c => includedColumnIds.Contains(c.Id))
+                .OrderBy(c => c.OrderIndex)
+                .ToList();
+
+            if (selectedTemplateColumns.Count == 0)
+                return ServiceResult<byte[]>.Fail(
+                    "No hay columnas válidas seleccionadas para exportar.",
+                    ErrorType.Validation);
+
+            // 2) Cargar dataset plano
             var flatResult = await _flatService.GetFlatReportAsync(request.ProjectIds, ct);
             if (!flatResult.Success || flatResult.Data is null || flatResult.Data.Count == 0)
-                return ServiceResult<byte[]>.Fail(flatResult.Message ?? "No hay datos para exportar.");
+                return ServiceResult<byte[]>.Fail(
+                    flatResult.Message ?? "No hay datos para exportar.");
 
             var projects = flatResult.Data.ToList();
 
-            // 2) Cargar árbol de categorías
+            // 3) Cargar árbol de categorías
             var catResult = await _categoryService.GetTreeAsync(onlyActives: true, ct);
             var categoryTree = catResult.Success && catResult.Data is not null
                 ? catResult.Data.ToList()
                 : new List<ResearchCategoryTreeItemDTO>();
 
-            // 3) Lookups de categorías
             var categoryById = BuildCategoryLookups(categoryTree);
 
             try
             {
-                var bytes = GenerateExcelInternal(request, projects, categoryById);
+                var bytes = GenerateExcelInternal(
+                    request,
+                    selectedTemplateColumns,
+                    projects,
+                    categoryById);
+
                 return ServiceResult<byte[]>.Ok(bytes);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex,
-                    "Error al generar el Excel de matriz basado en plantilla dinámica.");
+                _logger.LogError(
+                    ex,
+                    "Error al generar el Excel de matriz basado en plantilla persistida. TemplateId={TemplateId}",
+                    request.TemplateId);
 
                 return ServiceResult<byte[]>.Fail(
                     "Error al generar el archivo Excel.",
@@ -101,16 +178,9 @@ namespace tesisproject.backend.Services.Implementations
 
         private sealed class ColumnDef
         {
-            /// <summary>Clave lógica del campo para cruzar con ExportColumnDTO.FieldKey.</summary>
             public string FieldKey { get; init; } = string.Empty;
-
-            /// <summary>Encabezado por defecto (igual que en MatrixExcelExportService).</summary>
             public string Header { get; init; } = string.Empty;
-
-            /// <summary>Orden base (como Order en MatrixExcelExportService).</summary>
             public int Order { get; init; }
-
-            /// <summary>Selector de valor desde el DTO plano.</summary>
             public Func<ProjectFlatReportDTO, object?> Selector { get; init; } = _ => null;
         }
 
@@ -124,34 +194,31 @@ namespace tesisproject.backend.Services.Implementations
             };
 
         private byte[] GenerateExcelInternal(
-            ExportRequestDTO request,
+            ExportByTemplateRequestDTO request,
+            List<ExportTemplateColumnDTO> selectedTemplateColumns,
             List<ProjectFlatReportDTO> projects,
             Dictionary<int, ResearchCategoryTreeItemDTO> categoryById)
         {
-            // 1) Construir TODAS las columnas (base + categorías + objetivos)
+            // 1) Construir TODAS las columnas disponibles del motor
             var allColumns = new List<ColumnDef>();
             allColumns.AddRange(GetBaseColumns());
             allColumns.AddRange(BuildCategoryColumnsMetadata(categoryById));
             allColumns.AddRange(BuildObjectiveColumnsMetadata(projects));
 
-            // 2) Resolver columnas a partir del DTO (filtrado + casos especiales)
-            var orderedRequestedColumns = request.Columns
-                .OrderBy(c => c.OrderIndex)
-                .ToList();
-
+            // 2) Resolver columnas seleccionadas desde la plantilla
             var selectedColumns = new List<ColumnDef>();
 
-            foreach (var dtoCol in orderedRequestedColumns)
+            foreach (var templateCol in selectedTemplateColumns)
             {
-                if (string.IsNullOrWhiteSpace(dtoCol.FieldKey))
-                    continue;
+                var resolvedFieldKey = NormalizeTemplateFieldKey(templateCol.FieldKey);
 
-                var key = dtoCol.FieldKey.ToUpperInvariant();
+                if (string.IsNullOrWhiteSpace(resolvedFieldKey))
+                    continue;
 
                 // ==============================
                 // CASO ESPECIAL: TODAS CATEGORÍAS DINÁMICAS
                 // ==============================
-                if (key == DynamicCategoriesKey)
+                if (resolvedFieldKey == DynamicCategoriesKey)
                 {
                     var dynamicCategoryColumns = allColumns
                         .Where(c => c.FieldKey.StartsWith(CategoryTypePrefix, StringComparison.OrdinalIgnoreCase))
@@ -159,15 +226,15 @@ namespace tesisproject.backend.Services.Implementations
                         .ToList();
 
                     foreach (var def in dynamicCategoryColumns)
-                        selectedColumns.Add(CloneColumn(def, def.Header)); // usamos header por defecto
+                        selectedColumns.Add(CloneColumn(def, def.Header));
 
-                    continue; // siguiente dtoCol
+                    continue;
                 }
 
                 // ==============================
                 // CASO ESPECIAL: TODOS OBJETIVOS DINÁMICOS
                 // ==============================
-                if (key == DynamicObjectivesKey)
+                if (resolvedFieldKey == DynamicObjectivesKey)
                 {
                     var dynamicObjectiveColumns = allColumns
                         .Where(c => c.FieldKey.StartsWith(ObjectivePrefix, StringComparison.OrdinalIgnoreCase))
@@ -181,48 +248,50 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 // ==============================
-                // CASO NORMAL: 1 fieldKey → 1 columna
+                // CASO NORMAL: 1 FieldKey -> 1 columna
                 // ==============================
                 var defNormal = allColumns.FirstOrDefault(c =>
-                    string.Equals(c.FieldKey, dtoCol.FieldKey, StringComparison.OrdinalIgnoreCase));
+                    string.Equals(c.FieldKey, resolvedFieldKey, StringComparison.OrdinalIgnoreCase));
 
                 if (defNormal is null)
                 {
-                    _logger.LogDebug("FieldKey {FieldKey} no encontrado en columnas de matriz.", dtoCol.FieldKey);
+                    _logger.LogDebug(
+                        "FieldKey {FieldKey} no encontrado en columnas disponibles de matriz.",
+                        templateCol.FieldKey);
                     continue;
                 }
 
-                var header = string.IsNullOrWhiteSpace(dtoCol.Header)
+                var header = string.IsNullOrWhiteSpace(templateCol.TargetHeader)
                     ? defNormal.Header
-                    : dtoCol.Header!;
+                    : templateCol.TargetHeader.Trim();
 
                 selectedColumns.Add(CloneColumn(defNormal, header));
             }
 
             if (selectedColumns.Count == 0)
                 throw new InvalidOperationException(
-                    "Ninguna de las columnas solicitadas coincide con las columnas disponibles de la matriz.");
+                    "Ninguna de las columnas seleccionadas coincide con las columnas disponibles de la matriz.");
 
-            // 3) Generar Excel con EPPlus (igual estilo que MatrixExcelExportService)
+            // 3) Generar Excel
             using var package = new ExcelPackage();
 
-            var worksheetName = string.IsNullOrWhiteSpace(request.Name)
+            var worksheetName = string.IsNullOrWhiteSpace(request.NameOverride)
                 ? DefaultWorksheetName
-                : request.Name;
+                : request.NameOverride;
 
             var worksheet = package.Workbook.Worksheets.Add(worksheetName);
 
             var row = 1;
             var col = 1;
 
-            // 3.1) Encabezados (en orden del DTO expandido)
+            // 3.1) Encabezados
             foreach (var column in selectedColumns)
             {
                 worksheet.Cells[row, col].Value = column.Header;
                 col++;
             }
 
-            // 3.2) Filas de datos
+            // 3.2) Datos
             row = 2;
             foreach (var project in projects)
             {
@@ -235,16 +304,27 @@ namespace tesisproject.backend.Services.Implementations
                 row++;
             }
 
-            // Ajustar ancho
             if (worksheet.Dimension != null)
                 worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
 
             return package.GetAsByteArray();
         }
 
+        private static string NormalizeTemplateFieldKey(string? fieldKey)
+        {
+            if (string.IsNullOrWhiteSpace(fieldKey))
+                return string.Empty;
+
+            return fieldKey.Trim().ToUpperInvariant() switch
+            {
+                "CASES_OBJETIVOS" => DynamicObjectivesKey,
+                "CASES_RESEARCH_CATEGORIES" => DynamicCategoriesKey,
+                _ => fieldKey.Trim().ToUpperInvariant()
+            };
+        }
+
         // =========================================================
-        //          Metadata de columnas (como en MatrixExcelExportService)
-        //          + FieldKey para filtrado por DTO
+        //          Metadata de columnas del motor
         // =========================================================
 
         private static IEnumerable<ColumnDef> GetBaseColumns()
@@ -252,7 +332,6 @@ namespace tesisproject.backend.Services.Implementations
             var list = new List<ColumnDef>();
             var i = 1;
 
-            // 1  PROJECT_CODE
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -261,7 +340,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.ProjectCode ?? EmptyPlaceholder
             });
 
-            // 2  PROJECT_NAME
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -270,7 +348,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.ProjectName ?? EmptyPlaceholder
             });
 
-            // 3  PROJECT_NUMBER
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -279,7 +356,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.ProjectNumber
             });
 
-            // 4  PROJECT_TYPE
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -288,7 +364,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.ProjectTypeName ?? EmptyPlaceholder
             });
 
-            // 5  PROJECT_STATE
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -297,7 +372,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.ProjectStateName ?? EmptyPlaceholder
             });
 
-            // 6  CONVOCATION_NAME
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -306,7 +380,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.ConvocationName ?? EmptyPlaceholder
             });
 
-            // 7  APPROVAL_DATE
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -315,7 +388,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => FormatDate(p.ApprovalDate)
             });
 
-            // 8  START_DATE
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -324,7 +396,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => FormatDate(p.StartDate)
             });
 
-            // 9  DURATION_MONTHS
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -333,7 +404,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.DurationInMonths
             });
 
-            // 10 TENTATIVE_END_DATE
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -342,7 +412,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => FormatDate(p.TentativeEndDate)
             });
 
-            // 11 REAL_END_DATE
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -351,7 +420,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => FormatDate(p.RealEndDate)
             });
 
-            // 12 EXECUTION_PERCENTAGE
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -360,7 +428,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.ExecutionPercentage?.ToString("N2") ?? EmptyPlaceholder
             });
 
-            // 13 FACULTY_NAME
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -369,7 +436,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.FacultyName ?? EmptyPlaceholder
             });
 
-            // 14 COORDINATOR_NAME
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -378,7 +444,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.CoordinatorName ?? EmptyPlaceholder
             });
 
-            // 15 COORDINATOR_EMAIL
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -387,7 +452,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.CoordinatorEmail ?? EmptyPlaceholder
             });
 
-            // 16 COORDINATOR_PHONE
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -396,7 +460,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.CoordinatorPhone ?? EmptyPlaceholder
             });
 
-            // 17 SENESCYT_MEMBERS
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -405,7 +468,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => GetSenescytNamesSummary(p)
             });
 
-            // 18 EXTERNAL_RESEARCHER_NAMES
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -414,7 +476,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => GetExternalNamesSummary(p)
             });
 
-            // 19 EXTERNAL_INSTITUTIONS
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -423,7 +484,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => GetExternalInstitutionsSummary(p)
             });
 
-            // 20 BUDGET_INITIAL_SUMMARY
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -432,7 +492,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => GetBudgetInitialSummary(p)
             });
 
-            // 21 BUDGET_FUNDINGTYPES_SUMMARY
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -441,7 +500,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => GetBudgetFundingTypesSummary(p)
             });
 
-            // 22 BUDGET_CERTIFIED_SUMMARY
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -450,7 +508,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => GetBudgetCertifiedSummary(p)
             });
 
-            // 23 BUDGET_EXECUTED_SUMMARY
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -459,7 +516,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => GetBudgetExecutedSummary(p)
             });
 
-            // 24 PRODUCT_TITLES
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -468,7 +524,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => GetProductTitlesSummary(p)
             });
 
-            // 25 PRODUCT_TYPES_SUMMARY
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -477,7 +532,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => GetProductTypesSummary(p)
             });
 
-            // 26 CASES_OBJETIVOS (bundle)
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -486,7 +540,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => ResolveObjetivosBundle(p)
             });
 
-            // 27 CASES_RESEARCH_CATEGORIES (bundle)
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -495,7 +548,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => ResolveResearchCategoriesBundle(p)
             });
 
-            // SUBROGANT_NAME
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -504,7 +556,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.SubrogantName ?? EmptyPlaceholder
             });
 
-            // SUBROGANT_EMAIL
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -513,7 +564,6 @@ namespace tesisproject.backend.Services.Implementations
                 Selector = p => p.SubrogantEmail ?? EmptyPlaceholder
             });
 
-            // SUBROGANT_PHONE
             list.Add(new ColumnDef
             {
                 Order = i++,
@@ -530,7 +580,6 @@ namespace tesisproject.backend.Services.Implementations
             if (project.Objectives is null || project.Objectives.Count == 0)
                 return EmptyPlaceholder;
 
-            // Objetivo general (typeId == 1)
             var general = project.Objectives
                 .Where(o => o.ObjectiveTypeId == ObjectiveTypeGeneralId)
                 .OrderBy(o => o.ObjectiveId)
@@ -626,7 +675,7 @@ namespace tesisproject.backend.Services.Implementations
                 list.Add(new ColumnDef
                 {
                     Order = CategoryColumnsBaseOrder + (offset++),
-                    FieldKey = $"{CategoryTypePrefix}{localTypeId}", // clave para DTO
+                    FieldKey = $"{CategoryTypePrefix}{localTypeId}",
                     Header = header,
                     Selector = p => GetCategoriesForTypeSummary(p, localTypeId, categoryById)
                 });
@@ -740,7 +789,7 @@ namespace tesisproject.backend.Services.Implementations
                     list.Add(new ColumnDef
                     {
                         Order = ObjectiveColumnsBaseOrder + (offset++),
-                        FieldKey = $"{ObjectivePrefix}{localTypeId}_{localIndex}", // clave para DTO
+                        FieldKey = $"{ObjectivePrefix}{localTypeId}_{localIndex}",
                         Header = header,
                         Selector = p => GetObjectiveText(p, localTypeId, localIndex)
                     });
@@ -781,7 +830,7 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         // =========================================================
-        //   Helpers de resumen (idénticos al MatrixExcelExportService)
+        //   Helpers de resumen
         // =========================================================
 
         private static string FormatDate(DateTime? date)

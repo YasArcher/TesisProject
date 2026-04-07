@@ -32,7 +32,7 @@ namespace tesisproject.frontend.Services.Interfaces
             CancellationToken ct = default);
 
         Task<HttpResponseWrapper<FilePayloadDTO?>> ExportMatrixExcelAsync(
-            ExportRequestDTO request,
+            ExportByTemplateRequestDTO request,
             CancellationToken ct = default);
     }
 }

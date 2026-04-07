@@ -123,7 +123,7 @@ namespace tesisproject.frontend.Services.Implementations
         // =========================
         //   EXPORT MATRIX EXCEL
         // =========================
-        public Task<HttpResponseWrapper<FilePayloadDTO?>> ExportMatrixExcelAsync(ExportRequestDTO request, CancellationToken ct = default)
+        public Task<HttpResponseWrapper<FilePayloadDTO?>> ExportMatrixExcelAsync(ExportByTemplateRequestDTO request, CancellationToken ct = default)
         {
             if (request is null) throw new ArgumentNullException(nameof(request));
             return _api.PostFileAsync($"{_baseUrl}/matrix-excel", request, ct);

@@ -6,7 +6,7 @@ namespace tesisproject.backend.Services.Interfaces
     public interface IMatrixTemplateExcelExportService
     {
         Task<ServiceResult<byte[]>> GenerateExcelAsync(
-            ExportRequestDTO request,
+            ExportByTemplateRequestDTO request,
             CancellationToken ct = default);
     }
 }

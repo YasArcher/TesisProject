@@ -240,6 +240,19 @@
                             </label>
                         </div>
 
+                        @if (IsEditingNew)
+                        {
+                            <div class="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+                                Primero guarda la plantilla para poder exportarla.
+                            </div>
+                        }
+                        else if (HasUnsavedChanges)
+                        {
+                            <div class="rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-xs text-warning">
+                                Hay cambios sin guardar. Guarda la plantilla antes de exportar para que el backend use exactamente la versión persistida.
+                            </div>
+                        }
+
                         <div class="space-y-3">
                             <div class="flex items-center justify-between gap-3">
                                 <h5 class="text-sm font-semibold text-foreground">Columnas</h5>
@@ -249,7 +262,7 @@
                                               Intent="ButtonIntent.Add"
                                               Variant="ButtonVariant.Outline"
                                               Size="ButtonSize.Xs"
-                                              Disabled="@(IsBusy || Fields is null || Fields.Count == 0)" />
+                                              Disabled="@(IsBusy || !CanAddMoreColumns)" />
                             </div>
 
                             @if (Fields is null || Fields.Count == 0)
@@ -299,7 +312,7 @@
                                           Intent="ButtonIntent.Accept"
                                           Variant="ButtonVariant.Filled"
                                           Size="ButtonSize.Sm"
-                                          Disabled="@IsBusy" />
+                                          Disabled="@(IsBusy || !CanExportCurrentTemplate)" />
                         </div>
                     </div>
                 }
@@ -318,6 +331,26 @@
     private ExportTemplateEditModel? EditModel { get; set; }
     private bool IsEditingNew { get; set; }
 
+    private bool HasUnsavedChanges =>
+        SelectedTemplate is not null &&
+        EditModel is not null &&
+        !AreEquivalent(EditModel, ExportTemplateEditModel.FromDetail(SelectedTemplate));
+
+    private bool CanExportCurrentTemplate =>
+        SelectedTemplate is not null &&
+        EditModel is not null &&
+        !IsEditingNew &&
+        !HasUnsavedChanges &&
+        EditModel.Columns is not null &&
+        EditModel.Columns.Count > 0 &&
+        EditModel.Columns.All(c => c.Id > 0);
+
+    private bool CanAddMoreColumns =>
+        Fields is not null &&
+        Fields.Count > 0 &&
+        EditModel is not null &&
+        (EditModel.Columns?.Count ?? 0) < Fields.Count;
+
     private readonly Dictionary<ExportTemplateColumnEditModel, string> _columnRowKeys = new();
 
     protected override async Task OnInitializedAsync()
@@ -334,9 +367,9 @@
             return;
         }
 
-        if (Fields is null || Fields.Count == 0)
+        if (IsEditingNew || SelectedTemplate is null)
         {
-            Toast.ShowError("No se han cargado los campos exportables.");
+            Toast.ShowWarning("Primero guarde la plantilla antes de exportarla.");
             return;
         }
 
@@ -346,48 +379,38 @@
             return;
         }
 
-        NormalizeColumnOrder(EditModel.Columns);
+        if (HasUnsavedChanges)
+        {
+            Toast.ShowWarning("La plantilla tiene cambios sin guardar. Guárdala antes de exportar.");
+            return;
+        }
+
+        var includedColumnIds = EditModel.Columns
+            .OrderBy(c => c.OrderIndex)
+            .Select(c => c.Id)
+            .Where(id => id > 0)
+            .Distinct()
+            .ToList();
+
+        if (includedColumnIds.Count == 0)
+        {
+            Toast.ShowWarning("La plantilla no tiene columnas persistidas válidas para exportar.");
+            return;
+        }
 
         try
         {
             IsBusy = true;
 
-            var request = new ExportRequestDTO
+            var request = new ExportByTemplateRequestDTO
             {
-                Name = string.IsNullOrWhiteSpace(EditModel.Name) ? EditModel.Key : EditModel.Name,
-                Columns = new List<ExportColumnDTO>()
+                TemplateId = SelectedTemplate.Id,
+                IncludedTemplateColumnIds = includedColumnIds,
+                ProjectIds = null,
+                NameOverride = string.IsNullOrWhiteSpace(EditModel.Name)
+                    ? EditModel.Key
+                    : EditModel.Name
             };
-
-            foreach (var column in EditModel.Columns.OrderBy(c => c.OrderIndex))
-            {
-                var field = Fields.FirstOrDefault(f => f.Id == column.FieldId);
-                if (field is null)
-                    continue;
-
-                var fieldKey = field.Key;
-
-                if (fieldKey == "CASES_OBJETIVOS")
-                    fieldKey = "MATRIX_DYNAMIC_OBJECTIVES";
-                else if (fieldKey == "CASES_RESEARCH_CATEGORIES")
-                    fieldKey = "MATRIX_DYNAMIC_CATEGORIES";
-
-                var header = string.IsNullOrWhiteSpace(column.TargetHeader)
-                    ? field.DefaultHeader ?? field.Key
-                    : column.TargetHeader;
-
-                request.Columns.Add(new ExportColumnDTO
-                {
-                    FieldKey = fieldKey,
-                    Header = header,
-                    OrderIndex = column.OrderIndex
-                });
-            }
-
-            if (request.Columns.Count == 0)
-            {
-                Toast.ShowWarning("No se pudieron construir columnas válidas para la exportación.");
-                return;
-            }
 
             var response = await ExportTemplates.ExportMatrixExcelAsync(request);
 
@@ -405,7 +428,9 @@
                 file.ContentType);
 
             var fileName = string.IsNullOrWhiteSpace(file.FileName)
-                ? (string.IsNullOrWhiteSpace(request.Name) ? "matriz_proyectos.xlsx" : $"{request.Name}.xlsx")
+                ? (string.IsNullOrWhiteSpace(request.NameOverride)
+                    ? "matriz_proyectos.xlsx"
+                    : $"{request.NameOverride}.xlsx")
                 : file.FileName;
 
             await JS.InvokeVoidAsync("docViewer.downloadUrl", url, fileName);
@@ -540,11 +565,18 @@
         if (EditModel is null)
             return;
 
+        if (!CanAddMoreColumns)
+        {
+            Toast.ShowWarning("Ya agregaste todos los campos disponibles.");
+            return;
+        }
+
         EditModel.Columns ??= new List<ExportTemplateColumnEditModel>();
         NormalizeColumnOrder(EditModel.Columns);
 
         EditModel.Columns.Add(new ExportTemplateColumnEditModel
         {
+            Id = 0,
             FieldId = 0,
             TargetHeader = string.Empty,
             OrderIndex = EditModel.Columns.Count + 1,
@@ -562,6 +594,37 @@
         EditModel.Columns = rows.ToList();
         NormalizeColumnOrder(EditModel.Columns);
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleFieldChanged(ChangeEventArgs e, ExportTemplateColumnEditModel column)
+    {
+        if (column is null)
+            return;
+
+        if (int.TryParse(e?.Value?.ToString(), out var fieldId))
+            column.FieldId = fieldId;
+        else
+            column.FieldId = 0;
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private IReadOnlyList<ExportFieldListItemDTO> GetAvailableFieldsForColumn(ExportTemplateColumnEditModel currentColumn)
+    {
+        if (Fields is null || Fields.Count == 0)
+            return Array.Empty<ExportFieldListItemDTO>();
+
+        var usedFieldIds = (EditModel?.Columns ?? new List<ExportTemplateColumnEditModel>())
+            .Where(c => !ReferenceEquals(c, currentColumn))
+            .Select(c => c.FieldId)
+            .Where(id => id > 0)
+            .ToHashSet();
+
+        return Fields
+            .Where(f => f.Id == currentColumn.FieldId || !usedFieldIds.Contains(f.Id))
+            .OrderBy(f => f.DisplayName)
+            .ThenBy(f => f.Key)
+            .ToList();
     }
 
     private void HandleRemoveColumn(ExportTemplateColumnEditModel row)
@@ -602,6 +665,19 @@
         }
 
         NormalizeColumnOrder(EditModel.Columns);
+
+        var duplicatedFieldIds = (EditModel.Columns ?? new List<ExportTemplateColumnEditModel>())
+            .Where(c => c.FieldId > 0)
+            .GroupBy(c => c.FieldId)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        if (duplicatedFieldIds.Count > 0)
+        {
+            Toast.ShowWarning("No se puede repetir el mismo campo en la plantilla.");
+            return;
+        }
 
         try
         {
@@ -726,15 +802,60 @@
         columns.AddRange(ordered);
     }
 
+    private static bool AreEquivalent(
+        ExportTemplateEditModel left,
+        ExportTemplateEditModel right)
+    {
+        if (!string.Equals(Norm(left.Key), Norm(right.Key), StringComparison.Ordinal))
+            return false;
+
+        if (!string.Equals(Norm(left.Name), Norm(right.Name), StringComparison.Ordinal))
+            return false;
+
+        if (!string.Equals(Norm(left.TargetSystem), Norm(right.TargetSystem), StringComparison.Ordinal))
+            return false;
+
+        if (!string.Equals(Norm(left.Version), Norm(right.Version), StringComparison.Ordinal))
+            return false;
+
+        if (left.IsDefault != right.IsDefault || left.IsActive != right.IsActive)
+            return false;
+
+        var leftCols = (left.Columns ?? new()).OrderBy(c => c.OrderIndex).ToList();
+        var rightCols = (right.Columns ?? new()).OrderBy(c => c.OrderIndex).ToList();
+
+        if (leftCols.Count != rightCols.Count)
+            return false;
+
+        for (var i = 0; i < leftCols.Count; i++)
+        {
+            var a = leftCols[i];
+            var b = rightCols[i];
+
+            if (a.Id != b.Id) return false;
+            if (a.FieldId != b.FieldId) return false;
+            if (a.OrderIndex != b.OrderIndex) return false;
+            if (a.IsRequired != b.IsRequired) return false;
+            if (!string.Equals(Norm(a.TargetHeader), Norm(b.TargetHeader), StringComparison.Ordinal)) return false;
+            if (!string.Equals(Norm(a.Format), Norm(b.Format), StringComparison.Ordinal)) return false;
+            if (!string.Equals(Norm(a.Separator), Norm(b.Separator), StringComparison.Ordinal)) return false;
+        }
+
+        return true;
+    }
+
+    private static string Norm(string? value) => string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+
     private IReadOnlyList<OrderableColumnDef<ExportTemplateColumnEditModel>> TemplateColumnDefinitions => new[]
     {
         new OrderableColumnDef<ExportTemplateColumnEditModel>(
             Title: "Campo",
             Width: "32%",
             CellTemplate: column => @<select class="input-text w-full text-xs"
-                                             @bind="column.FieldId">
+                                             value="@column.FieldId"
+                                             @onchange="@(e => HandleFieldChanged(e, column))">
                                         <option value="0">-- Seleccione campo --</option>
-                                        @foreach (var field in Fields ?? Enumerable.Empty<ExportFieldListItemDTO>())
+                                        @foreach (var field in GetAvailableFieldsForColumn(column))
                                         {
                                             <option value="@field.Id">
                                                 @($"{field.DisplayName} ({field.Key})")

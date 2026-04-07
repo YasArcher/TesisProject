@@ -70,11 +70,10 @@ namespace tesisproject.frontend.Services.Implementations
         // =========================
         //          DELETE
         // =========================
-        public Task<HttpResponseWrapper<NoContent?>>
+        public Task<HttpResponseWrapper<bool?>>
             DeleteAsync(int id, CancellationToken ct = default)
         {
-            // DELETE: api/catalog/research-category-types/{id}
-            return _api.DeleteAsync(
+            return _api.DeleteAsync<bool?>(
                 $"{_baseUrl}/{id}",
                 ct
             );
