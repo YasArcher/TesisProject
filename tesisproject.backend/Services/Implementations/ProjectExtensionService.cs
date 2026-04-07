@@ -1,11 +1,12 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Linq.Expressions;
-using Microsoft.EntityFrameworkCore;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.ProjectExtensions.Request;
 using tesisproject.shared.DTOs.ProjectExtensions.Response;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -38,7 +39,6 @@ namespace tesisproject.backend.Services.Implementations
         private const string ProjectExtensionDeletedMessage = "ProjectExtension deleted";
 
         private const int ExtensionMonths = 6;
-        private const int PlannedVisitStateId = 1;
 
         private static readonly Expression<Func<ProjectExtension, ProjectExtensionListResponseDTO>> MapToListExpression = pe =>
             new ProjectExtensionListResponseDTO
@@ -113,7 +113,7 @@ namespace tesisproject.backend.Services.Implementations
                 var visit = new Visit
                 {
                     ProjectId = request.ProjectId,
-                    VisitStateId = PlannedVisitStateId,
+                    VisitStateId = VisitStateIds.Planned,
                     AcademicPeriodId = null,
 
                     ScheduledDate = null,

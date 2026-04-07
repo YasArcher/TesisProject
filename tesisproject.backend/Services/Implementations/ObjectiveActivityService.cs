@@ -4,6 +4,7 @@ using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.ObjectiveActivity.Request;
 using tesisproject.shared.DTOs.ObjectiveActivity.Response;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -24,12 +25,6 @@ namespace tesisproject.backend.Services.Implementations
 
         private const int CompletedThreshold = 100;
         private const int MaxTextLength = 1000;
-
-        private const int GeneralObjectiveTypeId = 1;
-
-        private const int ProjectStateCompletedId = 2;
-        private const int ProjectStateInProgressId = 3;
-
         private const decimal PercentMin = 0m;
         private const decimal PercentMax = 100m;
 
@@ -352,7 +347,7 @@ namespace tesisproject.backend.Services.Implementations
 
             // 2) Excluir objetivo general
             var scopedObjectives = objectives
-                .Where(o => o.ObjectiveTypeId != GeneralObjectiveTypeId)
+                .Where(o => o.ObjectiveTypeId != ObjectiveTypeIds.General)
                 .ToList();
 
             if (scopedObjectives.Count == 0)
@@ -411,7 +406,7 @@ namespace tesisproject.backend.Services.Implementations
             var clamped = ClampPercentage(execution);
 
             project.ExecutionPercentage = clamped;
-            project.ProjectStateId = (project.ExecutionPercentage >= PercentMax) ? ProjectStateCompletedId : ProjectStateInProgressId;
+            project.ProjectStateId = (project.ExecutionPercentage >= PercentMax) ? ProjectStateIds.Finalizado : ProjectStateIds.EnEjecucion;
 
             _uow.Projects.Update(project);
             await _uow.SaveChangesAsync(ct);

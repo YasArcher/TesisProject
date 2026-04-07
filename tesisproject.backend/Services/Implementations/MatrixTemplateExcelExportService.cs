@@ -1,12 +1,13 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using OfficeOpenXml;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Extensions.Logging;
-using OfficeOpenXml;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response;
 using tesisproject.shared.DTOs.Export;
 using tesisproject.shared.DTOs.Matrices.Response;
+using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -33,9 +34,6 @@ namespace tesisproject.backend.Services.Implementations
 
         private const int CategoryColumnsBaseOrder = 1000;
         private const int ObjectiveColumnsBaseOrder = 2000;
-
-        private const int ObjectiveTypeGeneralId = 1;
-        private const int ObjectiveTypeSpecificId = 2;
 
         private readonly IProjectFlatReportService _flatService;
         private readonly IResearchCategoryService _categoryService;
@@ -581,13 +579,13 @@ namespace tesisproject.backend.Services.Implementations
                 return EmptyPlaceholder;
 
             var general = project.Objectives
-                .Where(o => o.ObjectiveTypeId == ObjectiveTypeGeneralId)
+                .Where(o => o.ObjectiveTypeId == ObjectiveTypeIds.General)
                 .OrderBy(o => o.ObjectiveId)
                 .Select(o => o.Objective)
                 .FirstOrDefault();
 
             var especificos = project.Objectives
-                .Where(o => o.ObjectiveTypeId != ObjectiveTypeGeneralId)
+                .Where(o => o.ObjectiveTypeId != ObjectiveTypeIds.Specific)
                 .OrderBy(o => o.ObjectiveTypeId)
                 .ThenBy(o => o.ObjectiveId)
                 .Select(o => o.Objective)
@@ -802,8 +800,8 @@ namespace tesisproject.backend.Services.Implementations
         private static string GetObjectiveTypeLabel(int typeId, string? defaultName)
             => typeId switch
             {
-                ObjectiveTypeGeneralId => "Objetivo general",
-                ObjectiveTypeSpecificId => "Objetivo específico",
+                ObjectiveTypeIds.General => "Objetivo general",
+                ObjectiveTypeIds.Specific => "Objetivo específico",
                 _ => string.IsNullOrWhiteSpace(defaultName)
                         ? $"Tipo {typeId}"
                         : defaultName!

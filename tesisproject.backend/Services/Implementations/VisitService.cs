@@ -12,8 +12,6 @@ namespace tesisproject.backend.Services.Implementations
     public class VisitService : IVisitService
     {
         private const int PlanningMinMonths = 1;
-        private const int ProjectStateId_PlanningCandidate_1 = 6;
-        private const int ProjectStateId_PlanningCandidate_2 = 3;
 
         private const string MsgProjectIdRequired = "ProjectId is required.";
         private const string MsgProjectIdRequiredLower = "projectId is required.";
@@ -311,7 +309,7 @@ namespace tesisproject.backend.Services.Implementations
                 var rows = await _uow.Projects
                     .Query(asNoTracking: true)
                     .Where(p => p.StartDate != null)
-                    .Where(p => p.ProjectStateId == ProjectStateId_PlanningCandidate_1 || p.ProjectStateId == ProjectStateId_PlanningCandidate_2)
+                    .Where(p => p.ProjectStateId == ProjectStateIds.EnEjecucion || p.ProjectStateId == ProjectStateIds.Planificado)
                     .Select(p => new
                     {
                         p.ProjectId,
