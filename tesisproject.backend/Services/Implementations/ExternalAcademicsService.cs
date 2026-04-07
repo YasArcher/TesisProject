@@ -13,6 +13,21 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class ExternalAcademicsService : IExternalAcademicsService
     {
+        private const string MsgExternalApiError = "External API error.";
+        private const string MsgNoFacultiesFound = "No faculties found.";
+        private const string MsgFacultiesRetrieved = "Faculties retrieved";
+        private const string MsgFacultyRetrieved = "Faculty retrieved";
+        private const string MsgFacultyNotFound = "Faculty not found.";
+        private const string MsgNoProgramsFoundForFaculty = "No programs found for the specified faculty.";
+        private const string MsgProgramsRetrieved = "Programs retrieved";
+        private const string MsgProgramRetrieved = "Program retrieved";
+        private const string MsgProgramNotFound = "Program not found.";
+        private const string MsgFacultiesRetrievedWithPeriod = "Faculties retrieved.";
+        private const string MsgFacultiesKeyValuesRetrieved = "Faculties key-values retrieved.";
+        private const string MsgSnapshotBuilt = "Snapshot built";
+        private const string MsgFacultiesNotFound = "Faculties not found.";
+        private const string MsgUnexpectedError = "Unexpected error.";
+
         private readonly HttpClient _http;
         private readonly ILogger<ExternalAcademicsService> _logger;
         private readonly ExternalApiOptions _opts;
@@ -43,7 +58,7 @@ namespace tesisproject.backend.Services.Implementations
             var snap = await GetSnapshotAsync(ct);
             if (!snap.Success || snap.Data is null)
                 return ServiceResult<List<ExternalFacultyDTO>>.Fail(
-                    snap.Message ?? "External API error.",
+                    snap.Message ?? MsgExternalApiError,
                     snap.Error);
 
             var ordered = snap.Data.FacultiesById.Values
@@ -51,8 +66,8 @@ namespace tesisproject.backend.Services.Implementations
                 .ToList();
 
             return ordered.Count == 0
-                ? ServiceResult<List<ExternalFacultyDTO>>.Fail("No faculties found.", ErrorType.NotFound)
-                : ServiceResult<List<ExternalFacultyDTO>>.Ok(ordered, "Faculties retrieved");
+                ? ServiceResult<List<ExternalFacultyDTO>>.Fail(MsgNoFacultiesFound, ErrorType.NotFound)
+                : ServiceResult<List<ExternalFacultyDTO>>.Ok(ordered, MsgFacultiesRetrieved);
         }
 
         public async Task<ServiceResult<ExternalFacultyDTO>> GetFacultyByIdAsync(int facultyId, CancellationToken ct = default)
@@ -60,12 +75,12 @@ namespace tesisproject.backend.Services.Implementations
             var snap = await GetSnapshotAsync(ct);
             if (!snap.Success || snap.Data is null)
                 return ServiceResult<ExternalFacultyDTO>.Fail(
-                    snap.Message ?? "External API error.",
+                    snap.Message ?? MsgExternalApiError,
                     snap.Error);
 
             return snap.Data.FacultiesById.TryGetValue(facultyId, out var fac)
-                ? ServiceResult<ExternalFacultyDTO>.Ok(fac, "Faculty retrieved")
-                : ServiceResult<ExternalFacultyDTO>.Fail("Faculty not found.", ErrorType.NotFound);
+                ? ServiceResult<ExternalFacultyDTO>.Ok(fac, MsgFacultyRetrieved)
+                : ServiceResult<ExternalFacultyDTO>.Fail(MsgFacultyNotFound, ErrorType.NotFound);
         }
 
         public async Task<ServiceResult<List<ExternalProgramDTO>>> GetProgramsByFacultyIdAsync(int facultyId, CancellationToken ct = default)
@@ -73,7 +88,7 @@ namespace tesisproject.backend.Services.Implementations
             var facRes = await GetFacultyByIdAsync(facultyId, ct);
             if (!facRes.Success || facRes.Data is null)
                 return ServiceResult<List<ExternalProgramDTO>>.Fail(
-                    facRes.Message ?? "External API error.",
+                    facRes.Message ?? MsgExternalApiError,
                     facRes.Error);
 
             var list = facRes.Data.Programs
@@ -81,8 +96,8 @@ namespace tesisproject.backend.Services.Implementations
                 .ToList();
 
             return list.Count == 0
-                ? ServiceResult<List<ExternalProgramDTO>>.Fail("No programs found for the specified faculty.", ErrorType.NotFound)
-                : ServiceResult<List<ExternalProgramDTO>>.Ok(list, "Programs retrieved");
+                ? ServiceResult<List<ExternalProgramDTO>>.Fail(MsgNoProgramsFoundForFaculty, ErrorType.NotFound)
+                : ServiceResult<List<ExternalProgramDTO>>.Ok(list, MsgProgramsRetrieved);
         }
 
         public async Task<ServiceResult<ExternalProgramDTO>> GetProgramByIdAsync(int programId, CancellationToken ct = default)
@@ -90,12 +105,12 @@ namespace tesisproject.backend.Services.Implementations
             var snap = await GetSnapshotAsync(ct);
             if (!snap.Success || snap.Data is null)
                 return ServiceResult<ExternalProgramDTO>.Fail(
-                    snap.Message ?? "External API error.",
+                    snap.Message ?? MsgExternalApiError,
                     snap.Error);
 
             return snap.Data.ProgramsById.TryGetValue(programId, out var prog)
-                ? ServiceResult<ExternalProgramDTO>.Ok(prog, "Program retrieved")
-                : ServiceResult<ExternalProgramDTO>.Fail("Program not found.", ErrorType.NotFound);
+                ? ServiceResult<ExternalProgramDTO>.Ok(prog, MsgProgramRetrieved)
+                : ServiceResult<ExternalProgramDTO>.Fail(MsgProgramNotFound, ErrorType.NotFound);
         }
 
         public async Task<ServiceResult<List<ExternalFacultyDTO>>> GetFacultiesAsync(CancellationToken ct = default)
@@ -104,12 +119,12 @@ namespace tesisproject.backend.Services.Implementations
             var res = await GetFacultiesWithProgramsAsync(ct);
             if (!res.Success || res.Data is null)
                 return ServiceResult<List<ExternalFacultyDTO>>.Fail(
-                    res.Message ?? "External API error.",
+                    res.Message ?? MsgExternalApiError,
                     res.Error);
 
             return ServiceResult<List<ExternalFacultyDTO>>.Ok(
                 res.Data.OrderBy(f => f.Name).ToList(),
-                "Faculties retrieved.");
+                MsgFacultiesRetrievedWithPeriod);
         }
 
         public async Task<ServiceResult<List<KeyValueItemDTO>>> GetFacultiesKeyValuesAsync(CancellationToken ct = default)
@@ -117,7 +132,7 @@ namespace tesisproject.backend.Services.Implementations
             var res = await GetFacultiesAsync(ct);
             if (!res.Success || res.Data is null)
                 return ServiceResult<List<KeyValueItemDTO>>.Fail(
-                    res.Message ?? "External API error.",
+                    res.Message ?? MsgExternalApiError,
                     res.Error);
 
             var kv = res.Data
@@ -125,8 +140,8 @@ namespace tesisproject.backend.Services.Implementations
                 .ToList();
 
             return kv.Count == 0
-                ? ServiceResult<List<KeyValueItemDTO>>.Fail("No faculties found.", ErrorType.NotFound)
-                : ServiceResult<List<KeyValueItemDTO>>.Ok(kv, "Faculties key-values retrieved.");
+                ? ServiceResult<List<KeyValueItemDTO>>.Fail(MsgNoFacultiesFound, ErrorType.NotFound)
+                : ServiceResult<List<KeyValueItemDTO>>.Ok(kv, MsgFacultiesKeyValuesRetrieved);
         }
 
         // ================= PRIVATE SNAPSHOT =================
@@ -148,7 +163,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (payload.Count == 0)
                 {
                     _logger.LogWarning("No faculties/programs returned from external endpoint {Endpoint}", _opts.AcademicsEndpoint);
-                    return ServiceResult<AcademicsSnapshot>.Fail("No faculties found.", ErrorType.NotFound);
+                    return ServiceResult<AcademicsSnapshot>.Fail(MsgNoFacultiesFound, ErrorType.NotFound);
                 }
 
                 var snap = new AcademicsSnapshot();
@@ -190,17 +205,17 @@ namespace tesisproject.backend.Services.Implementations
                         _logger.LogWarning("Program {ProgramId} references missing FacultyId {FacultyId}", prog.ProgramId, prog.FacultyId);
                 }
 
-                return ServiceResult<AcademicsSnapshot>.Ok(snap, "Snapshot built");
+                return ServiceResult<AcademicsSnapshot>.Ok(snap, MsgSnapshotBuilt);
             }
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
                 _logger.LogWarning(ex, "External endpoint {Endpoint} returned 404", _opts.AcademicsEndpoint);
-                return ServiceResult<AcademicsSnapshot>.Fail("Faculties not found.", ErrorType.NotFound);
+                return ServiceResult<AcademicsSnapshot>.Fail(MsgFacultiesNotFound, ErrorType.NotFound);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error retrieving academics snapshot");
-                return ServiceResult<AcademicsSnapshot>.Fail("Unexpected error.", ErrorType.Unexpected);
+                return ServiceResult<AcademicsSnapshot>.Fail(MsgUnexpectedError, ErrorType.Unexpected);
             }
         }
 

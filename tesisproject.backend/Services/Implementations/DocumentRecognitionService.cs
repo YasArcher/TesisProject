@@ -17,6 +17,8 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class DocumentRecognitionService : IDocumentRecognitionService
     {
+        private const string MsgFileIsEmpty = "File is empty.";
+
         private readonly ILogger<IDocumentRecognitionService> _logger;
         private readonly IExternalDirectoryClient _externalDirectory;
         private readonly IMemberRoleTypeService _memberRoleTypeService;
@@ -51,7 +53,7 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (file is null || file.Length == 0)
-                return ServiceResult<ResolutionInfo>.Fail("File is empty.", ErrorType.Validation);
+                return ServiceResult<ResolutionInfo>.Fail(MsgFileIsEmpty, ErrorType.Validation);
 
             try
             {
@@ -77,7 +79,7 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (file is null || file.Length == 0)
-                return ServiceResult<DideProjectFormInfo>.Fail("File is empty.", ErrorType.Validation);
+                return ServiceResult<DideProjectFormInfo>.Fail(MsgFileIsEmpty, ErrorType.Validation);
 
             try
             {

@@ -16,6 +16,10 @@ namespace tesisproject.backend.Services.Implementations
 {
     public sealed class CatalogQueryService : ICatalogQueryService
     {
+        private const string MsgNoItemsFound = "No items found.";
+        private const string MsgCatalogItemsRetrieved = "Catalog items retrieved.";
+        private const string MsgOperationCanceled = "Operation was canceled.";
+
         private readonly IServiceProvider _sp;
         public CatalogQueryService(IServiceProvider sp) => _sp = sp;
 
@@ -49,13 +53,13 @@ namespace tesisproject.backend.Services.Implementations
                     .ToListAsync(ct);
 
                 if (list.Count == 0)
-                    return ServiceResult<List<KeyValueItemDTO>>.Fail("No items found.", ErrorType.NotFound);
+                    return ServiceResult<List<KeyValueItemDTO>>.Fail(MsgNoItemsFound, ErrorType.NotFound);
 
-                return ServiceResult<List<KeyValueItemDTO>>.Ok(list, "Catalog items retrieved.");
+                return ServiceResult<List<KeyValueItemDTO>>.Ok(list, MsgCatalogItemsRetrieved);
             }
             catch (OperationCanceledException)
             {
-                return ServiceResult<List<KeyValueItemDTO>>.Fail("Operation was canceled.", ErrorType.Unexpected);
+                return ServiceResult<List<KeyValueItemDTO>>.Fail(MsgOperationCanceled, ErrorType.Unexpected);
             }
             catch (Exception ex)
             {

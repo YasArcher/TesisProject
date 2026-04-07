@@ -13,6 +13,24 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class ConvocationService : IConvocationService
     {
+        private const string MsgRequestRequired = "Request is required.";
+        private const string MsgNameRequired = "Name is required.";
+        private const string MsgIdRequired = "Id is required.";
+        private const string MsgConvocationNotFound = "Convocation not found.";
+        private const string MsgNoConvocationsFound = "No convocations found.";
+        private const string MsgConvocationIdRequired = "ConvocationId is required.";
+        private const string MsgIdAndConvocationIdRequired = "Id and ConvocationId are required.";
+        private const string MsgConvocationIdAndRuleIdRequired = "ConvocationId and RuleId are required.";
+
+        private const string MsgConvocationCreatedAndActivated = "Convocation created and activated";
+        private const string MsgConvocationRetrieved = "Convocation retrieved";
+        private const string MsgConvocationsRetrieved = "Convocations retrieved";
+        private const string MsgConvocationUpdated = "Convocation updated";
+        private const string MsgConvocationActivatedExclusively = "Convocation activated exclusively";
+        private const string MsgRuleAdded = "Rule added";
+        private const string MsgRuleUpdated = "Rule updated";
+        private const string MsgRuleRemoved = "Rule removed";
+
         private readonly IUnitOfWork _uow;
 
         public ConvocationService(IUnitOfWork uow) => _uow = uow;
@@ -29,11 +47,11 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (request is null)
                     return ServiceResult<ConvocationDetailResponseDTO>
-                        .Fail("Request is required.", ErrorType.Validation);
+                        .Fail(MsgRequestRequired, ErrorType.Validation);
 
                 if (string.IsNullOrWhiteSpace(request.Name))
                     return ServiceResult<ConvocationDetailResponseDTO>
-                        .Fail("Name is required.", ErrorType.Validation);
+                        .Fail(MsgNameRequired, ErrorType.Validation);
 
                 var entity = new Convocation
                 {
@@ -59,7 +77,7 @@ namespace tesisproject.backend.Services.Implementations
                 };
 
                 return ServiceResult<ConvocationDetailResponseDTO>
-                    .Ok(dto, "Convocation created and activated");
+                    .Ok(dto, MsgConvocationCreatedAndActivated);
             }
             catch (DbUpdateException dbex)
             {
@@ -85,15 +103,15 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (id <= 0)
                     return ServiceResult<ConvocationDetailResponseDTO>
-                        .Fail("Id is required.", ErrorType.Validation);
+                        .Fail(MsgIdRequired, ErrorType.Validation);
 
                 var entity = await _uow.Convocations.GetByIdAsync(id, includeRules: true, ct);
                 if (entity is null)
                     return ServiceResult<ConvocationDetailResponseDTO>
-                        .Fail("Convocation not found.", ErrorType.NotFound);
+                        .Fail(MsgConvocationNotFound, ErrorType.NotFound);
 
                 return ServiceResult<ConvocationDetailResponseDTO>
-                    .Ok(MapToDetailDTO(entity), "Convocation retrieved");
+                    .Ok(MapToDetailDTO(entity), MsgConvocationRetrieved);
             }
             catch (Exception ex)
             {
@@ -118,11 +136,11 @@ namespace tesisproject.backend.Services.Implementations
 
                 if (items.Count == 0)
                     return ServiceResult<IReadOnlyList<ConvocationListItemResponseDTO>>
-                        .Fail("No convocations found.", ErrorType.NotFound);
+                        .Fail(MsgNoConvocationsFound, ErrorType.NotFound);
 
                 var dtos = items.Select(MapToListDTO).ToList();
                 return ServiceResult<IReadOnlyList<ConvocationListItemResponseDTO>>
-                    .Ok(dtos, "Convocations retrieved");
+                    .Ok(dtos, MsgConvocationsRetrieved);
             }
             catch (Exception ex)
             {
@@ -143,16 +161,16 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (request is null || request.Id <= 0)
                     return ServiceResult<ConvocationDetailResponseDTO>
-                        .Fail("Id is required.", ErrorType.Validation);
+                        .Fail(MsgIdRequired, ErrorType.Validation);
 
                 if (string.IsNullOrWhiteSpace(request.Name))
                     return ServiceResult<ConvocationDetailResponseDTO>
-                        .Fail("Name is required.", ErrorType.Validation);
+                        .Fail(MsgNameRequired, ErrorType.Validation);
 
                 var entity = await _uow.Convocations.GetByIdAsync(request.Id, includeRules: false, ct);
                 if (entity is null)
                     return ServiceResult<ConvocationDetailResponseDTO>
-                        .Fail("Convocation not found.", ErrorType.NotFound);
+                        .Fail(MsgConvocationNotFound, ErrorType.NotFound);
 
                 entity.Name = request.Name.Trim();
                 entity.Code = request.Code?.Trim();
@@ -167,7 +185,7 @@ namespace tesisproject.backend.Services.Implementations
                 await _uow.SaveChangesAsync(ct);
 
                 return ServiceResult<ConvocationDetailResponseDTO>
-                    .Ok(MapToDetailDTO(entity), "Convocation updated");
+                    .Ok(MapToDetailDTO(entity), MsgConvocationUpdated);
             }
             catch (DbUpdateException dbex)
             {
@@ -193,18 +211,18 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (id <= 0)
                     return ServiceResult<NoContent>
-                        .Fail("Id is required.", ErrorType.Validation);
+                        .Fail(MsgIdRequired, ErrorType.Validation);
 
                 var entity = await _uow.Convocations.GetByIdAsync(id, includeRules: false, ct);
                 if (entity is null)
                     return ServiceResult<NoContent>
-                        .Fail("Convocation not found.", ErrorType.NotFound);
+                        .Fail(MsgConvocationNotFound, ErrorType.NotFound);
 
                 await _uow.Convocations.SetActiveExclusiveAsync(id, ct);
                 await _uow.SaveChangesAsync(ct);
 
                 return ServiceResult<NoContent>
-                    .Ok(new NoContent(), "Convocation activated exclusively");
+                    .Ok(new NoContent(), MsgConvocationActivatedExclusively);
             }
             catch (Exception ex)
             {
@@ -225,12 +243,12 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (request is null || request.ConvocationId <= 0)
                     return ServiceResult<ConvocationRuleResponseDTO>
-                        .Fail("ConvocationId is required.", ErrorType.Validation);
+                        .Fail(MsgConvocationIdRequired, ErrorType.Validation);
 
                 var conv = await _uow.Convocations.GetByIdAsync(request.ConvocationId, includeRules: false, ct);
                 if (conv is null)
                     return ServiceResult<ConvocationRuleResponseDTO>
-                        .Fail("Convocation not found.", ErrorType.NotFound);
+                        .Fail(MsgConvocationNotFound, ErrorType.NotFound);
 
                 var rule = new ConvocationRule
                 {
@@ -251,7 +269,7 @@ namespace tesisproject.backend.Services.Implementations
                 await _uow.SaveChangesAsync(ct);
 
                 return ServiceResult<ConvocationRuleResponseDTO>
-                    .Ok(MapRuleToDTO(rule), "Rule added");
+                    .Ok(MapRuleToDTO(rule), MsgRuleAdded);
             }
             catch (Exception ex)
             {
@@ -268,7 +286,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (request is null || request.Id <= 0 || request.ConvocationId <= 0)
                     return ServiceResult<ConvocationRuleResponseDTO>
-                        .Fail("Id and ConvocationId are required.", ErrorType.Validation);
+                        .Fail(MsgIdAndConvocationIdRequired, ErrorType.Validation);
 
                 var rule = new ConvocationRule
                 {
@@ -290,7 +308,7 @@ namespace tesisproject.backend.Services.Implementations
                 await _uow.SaveChangesAsync(ct);
 
                 return ServiceResult<ConvocationRuleResponseDTO>
-                    .Ok(MapRuleToDTO(rule), "Rule updated");
+                    .Ok(MapRuleToDTO(rule), MsgRuleUpdated);
             }
             catch (Exception ex)
             {
@@ -308,13 +326,13 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (convocationId <= 0 || ruleId <= 0)
                     return ServiceResult<NoContent>
-                        .Fail("ConvocationId and RuleId are required.", ErrorType.Validation);
+                        .Fail(MsgConvocationIdAndRuleIdRequired, ErrorType.Validation);
 
                 await _uow.Convocations.RemoveRuleAsync(convocationId, ruleId, ct);
                 await _uow.SaveChangesAsync(ct);
 
                 return ServiceResult<NoContent>
-                    .Ok(new NoContent(), "Rule removed");
+                    .Ok(new NoContent(), MsgRuleRemoved);
             }
             catch (Exception ex)
             {

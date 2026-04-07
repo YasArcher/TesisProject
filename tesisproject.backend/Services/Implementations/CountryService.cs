@@ -10,6 +10,14 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class CountryService : ICountryService
     {
+        private const string MsgInvalidId = "Invalid id.";
+        private const string MsgCountryNotFound = "Country not found.";
+        private const string MsgInvalidRequest = "Invalid request.";
+        private const string MsgNameRequired = "Name is required.";
+        private const string MsgIsoCodeMustHave2Characters = "IsoCode must have 2 characters.";
+        private const string MsgIsoAlpha3MustHave3Characters = "IsoAlpha3 must have 3 characters.";
+        private const string MsgNameAlreadyExists = "Name already exists.";
+
         private readonly IUnitOfWork _uow;
 
         public CountryService(IUnitOfWork uow)
@@ -47,11 +55,11 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<CountryDetailDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return ServiceResult<CountryDetailDTO>.Fail(MsgInvalidId, ErrorType.Validation);
 
             var entity = await _uow.Countries.GetByIdAsync(new object[] { id }, ct);
             if (entity is null)
-                return ServiceResult<CountryDetailDTO>.Fail("Country not found.", ErrorType.NotFound);
+                return ServiceResult<CountryDetailDTO>.Fail(MsgCountryNotFound, ErrorType.NotFound);
 
             var dto = new CountryDetailDTO
             {
@@ -82,25 +90,25 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null)
-                return ServiceResult<CountryDetailDTO>.Fail("Invalid request.", ErrorType.Validation);
+                return ServiceResult<CountryDetailDTO>.Fail(MsgInvalidRequest, ErrorType.Validation);
 
             var name = (request.Name ?? string.Empty).Trim();
             var isoCode = (request.IsoCode ?? string.Empty).Trim().ToUpper();
             var isoAlpha3 = (request.IsoAlpha3 ?? string.Empty).Trim().ToUpper();
 
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<CountryDetailDTO>.Fail("Name is required.", ErrorType.Validation);
+                return ServiceResult<CountryDetailDTO>.Fail(MsgNameRequired, ErrorType.Validation);
 
             if (string.IsNullOrWhiteSpace(isoCode) || isoCode.Length != 2)
-                return ServiceResult<CountryDetailDTO>.Fail("IsoCode must have 2 characters.", ErrorType.Validation);
+                return ServiceResult<CountryDetailDTO>.Fail(MsgIsoCodeMustHave2Characters, ErrorType.Validation);
 
             if (string.IsNullOrWhiteSpace(isoAlpha3) || isoAlpha3.Length != 3)
-                return ServiceResult<CountryDetailDTO>.Fail("IsoAlpha3 must have 3 characters.", ErrorType.Validation);
+                return ServiceResult<CountryDetailDTO>.Fail(MsgIsoAlpha3MustHave3Characters, ErrorType.Validation);
 
             // Reutiliza NameExistsAsync del ICatalogRepository
             var nameExists = await _uow.Countries.NameExistsAsync(name, excludeId: null, ct);
             if (nameExists)
-                return ServiceResult<CountryDetailDTO>.Fail("Name already exists.", ErrorType.Validation);
+                return ServiceResult<CountryDetailDTO>.Fail(MsgNameAlreadyExists, ErrorType.Validation);
 
             var entity = new Country
             {
@@ -130,28 +138,28 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null || request.Id <= 0)
-                return ServiceResult<CountryDetailDTO>.Fail("Invalid id.", ErrorType.Validation);
+                return ServiceResult<CountryDetailDTO>.Fail(MsgInvalidId, ErrorType.Validation);
 
             var name = (request.Name ?? string.Empty).Trim();
             var isoCode = (request.IsoCode ?? string.Empty).Trim().ToUpper();
             var isoAlpha3 = (request.IsoAlpha3 ?? string.Empty).Trim().ToUpper();
 
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<CountryDetailDTO>.Fail("Name is required.", ErrorType.Validation);
+                return ServiceResult<CountryDetailDTO>.Fail(MsgNameRequired, ErrorType.Validation);
 
             if (string.IsNullOrWhiteSpace(isoCode) || isoCode.Length != 2)
-                return ServiceResult<CountryDetailDTO>.Fail("IsoCode must have 2 characters.", ErrorType.Validation);
+                return ServiceResult<CountryDetailDTO>.Fail(MsgIsoCodeMustHave2Characters, ErrorType.Validation);
 
             if (string.IsNullOrWhiteSpace(isoAlpha3) || isoAlpha3.Length != 3)
-                return ServiceResult<CountryDetailDTO>.Fail("IsoAlpha3 must have 3 characters.", ErrorType.Validation);
+                return ServiceResult<CountryDetailDTO>.Fail(MsgIsoAlpha3MustHave3Characters, ErrorType.Validation);
 
             var entity = await _uow.Countries.GetByIdAsync(new object[] { request.Id }, ct);
             if (entity is null)
-                return ServiceResult<CountryDetailDTO>.Fail("Country not found.", ErrorType.NotFound);
+                return ServiceResult<CountryDetailDTO>.Fail(MsgCountryNotFound, ErrorType.NotFound);
 
             var nameExists = await _uow.Countries.NameExistsAsync(name, excludeId: request.Id, ct);
             if (nameExists)
-                return ServiceResult<CountryDetailDTO>.Fail("Name already exists.", ErrorType.Validation);
+                return ServiceResult<CountryDetailDTO>.Fail(MsgNameAlreadyExists, ErrorType.Validation);
 
             entity.Name = name;
             entity.IsoCode = isoCode;
