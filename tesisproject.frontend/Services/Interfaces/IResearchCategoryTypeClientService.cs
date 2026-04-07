@@ -23,7 +23,7 @@ namespace tesisproject.frontend.Services.Interfaces
             UpdateAsync(int id, ResearchCategoryTypeUpdateRequestDTO dto, CancellationToken ct = default);
 
         // DELETE  -> NoContent (ya coincide con IApiClient.DeleteAsync)
-        Task<HttpResponseWrapper<NoContent?>>
+        Task<HttpResponseWrapper<bool?>>
             DeleteAsync(int id, CancellationToken ct = default);
     }
 }

@@ -5,8 +5,8 @@
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.FilterBar
 @using tesisproject.shared.DTOs.Export
-@using tesisproject.shared.DTOs.Project.Response
 @using tesisproject.shared.DTOs.Filters
+@using tesisproject.shared.DTOs.Project.Response
 
 @inject IProjectClientService ProjectService
 @inject IProjectFiltersClientService ProjectFiltersService
@@ -16,7 +16,6 @@
 @inject IToastService Toast
 
 <div class="h-full min-h-0 flex flex-col gap-6 p-4 w-full">
-    <!-- Filtros + Botón Crear -->
     <section class="shrink-0 flex flex-col gap-3 md:flex-row md:items-center md:justify-between min-w-0">
         <div class="flex-1 min-w-0">
             <FilterBar Config="@_filterConfig"
@@ -26,12 +25,33 @@
         </div>
 
         <div class="shrink-0 flex flex-wrap items-center gap-2">
-            <ActionButton Text="Exportar matriz"
-                          Execute="@OpenExportPanelAsync"
-                          Intent="ButtonIntent.Accept"
-                          Variant="ButtonVariant.Outline"
-                          Size="ButtonSize.Sm"
-                          Disabled="@isLoading" />
+            <div class="relative">
+                <ActionButton Text="Exportar matriz"
+                              Execute="@OpenExportPanelAsync"
+                              Intent="ButtonIntent.Accept"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Sm"
+                              Disabled="@isLoading" />
+
+                <ExportTemplateExpandablePanel TColumn="ColumnOption"
+                                               IsOpen="showExportPanel"
+                                               IsTemplatesLoading="isExportTemplatesLoading"
+                                               IsExporting="isExporting"
+                                               Templates="exportTemplates"
+                                               SelectedTemplateId="selectedTemplateId"
+                                               Columns="availableColumns"
+                                               SelectedColumnIds="selectedTemplateColumnIds"
+                                               TemplateChanged="OnTemplateChanged"
+                                               ColumnSelected="AddSelectedColumn"
+                                               ColumnUnselected="RemoveSelectedColumn"
+                                               CloseRequested="CloseExportPanel"
+                                               ExportRequested="ExportWithSelectedTemplateAsync"
+                                               GetColumnId="c => c.TemplateColumnId"
+                                               GetColumnLabel="c => c.DisplayLabel"
+                                               GetColumnOrder="c => c.OrderIndex"
+                                               GetColumnRequired="c => c.IsRequired"
+                                               EmptyTemplatesText="No hay plantillas de exportación configuradas. Cree una en la sección de Matriz > Exportar." />
+            </div>
 
             <ActionButton Text="Crear Nuevo Proyecto"
                           Execute="CreateNewProject"
@@ -42,86 +62,6 @@
                           Class="px-4 py-2 rounded-md" />
         </div>
     </section>
-
-    @if (showExportPanel)
-    {
-        <div class="shrink-0 p-3 border border-border rounded-lg bg-background flex flex-col gap-3 overflow-hidden">
-            <div class="flex flex-col md:flex-row md:items-start gap-3">
-                <div class="flex-1 min-w-0">
-                    <label class="block text-xs font-semibold text-muted mb-1">
-                        Seleccione una plantilla de exportación
-                    </label>
-
-                    @if (isExportTemplatesLoading)
-                    {
-                        <div class="text-xs text-muted">Cargando plantillas...</div>
-                    }
-                    else if (exportTemplates is null || exportTemplates.Count == 0)
-                    {
-                        <div class="text-xs text-muted">
-                            No hay plantillas de exportación configuradas. Cree una en la sección de Matriz &gt; Exportar.
-                        </div>
-                    }
-                    else
-                    {
-                        <select class="w-full input-text text-sm"
-                                value="@selectedTemplateId"
-                                @onchange="OnTemplateChanged">
-                            <option value="">-- Seleccione una plantilla --</option>
-                            @foreach (var t in exportTemplates)
-                            {
-                                <option value="@t.Id">
-                                    @($"{t.Name} ({t.Key})")
-                                </option>
-                            }
-                        </select>
-                    }
-                </div>
-
-                <div class="shrink-0 flex items-center gap-2">
-                    <ActionButton Text="Cancelar"
-                                  Execute="@CloseExportPanel"
-                                  Intent="ButtonIntent.Accept"
-                                  Variant="ButtonVariant.Outline"
-                                  Size="ButtonSize.Xs"
-                                  Disabled="@isExporting" />
-
-                    <ActionButton Text="Exportar"
-                                  Execute="@ExportWithSelectedTemplateAsync"
-                                  Intent="ButtonIntent.Add"
-                                  Variant="ButtonVariant.Filled"
-                                  Size="ButtonSize.Xs"
-                                  Disabled="@(isExporting
-                                                                                                    || exportTemplates == null
-                                                                                                    || exportTemplates.Count == 0
-                                                                                                    || selectedTemplateId is null
-                                                                                                    || selectedFieldKeys.Count == 0)" />
-                </div>
-            </div>
-
-            @if (availableColumns?.Count > 0)
-            {
-                <div>
-                    <label class="block text-xs font-semibold text-muted mb-1">
-                        Seleccione las características a incluir en la exportación
-                    </label>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 max-h-64 overflow-y-auto border border-border rounded-md p-2">
-                        @foreach (var col in availableColumns.OrderBy(c => c.OrderIndex))
-                        {
-                            <label class="inline-flex items-center gap-2 text-xs">
-                                <input type="checkbox"
-                                       value="@col.FieldKey"
-                                       checked="@selectedFieldKeys.Contains(col.FieldKey)"
-                                       @onchange="@((ChangeEventArgs e) => ToggleColumn(col.FieldKey, e))" />
-                                <span>@col.Header</span>
-                            </label>
-                        }
-                    </div>
-                </div>
-            }
-        </div>
-    }
 
     @if (isLoading)
     {
@@ -197,36 +137,90 @@
 </div>
 
 @code {
-    // Paging
     private int _page = 1;
-    private int _pageSize = 12;
+    private readonly int _pageSize = 12;
     private int _totalItems = 0;
     private int _totalPages = 1;
 
-    private List<ProjectListResponseDTO> pagedProjects = new();
-
-
-    // =========================
-    //    EXPORT CON PLANTILLAS
-    // =========================
+    private bool isLoading = true;
     private bool showExportPanel = false;
     private bool isExportTemplatesLoading = false;
     private bool isExporting = false;
 
-    // 👇 Solo estas se marcarán por defecto
-    private static readonly HashSet<string> _defaultSelectedKeys =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-        "PROJECT_CODE",
-        "PROJECT_NAME",
-        "PROJECT_STATE",
-        };
+    private string? errorMessage;
+    private string? currentSearch;
+    private int? selectedTemplateId;
 
+    private FilterQuery? currentFilters;
+
+    private List<ProjectListResponseDTO>? allProjects;
+    private List<ProjectListResponseDTO>? filteredProjects;
+    private List<ProjectListResponseDTO> pagedProjects = new();
+
+    private List<ExportTemplateListItemDTO>? exportTemplates;
+    private List<ColumnOption> availableColumns = new();
+    private HashSet<int> selectedTemplateColumnIds = new();
+
+    private FilterBarConfig _filterConfig = new()
+    {
+        SearchPlaceholder = "Buscar proyectos por nombre o código...",
+        DebounceMs = 400,
+        ShowChips = true,
+        Items = new List<FilterItemDescriptor>()
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFilterBootstrap();
+        await LoadProjects();
+    }
+
+    private async Task OpenExportPanelAsync()
+    {
+        showExportPanel = true;
+
+        if (exportTemplates is { Count: > 0 })
+            return;
+
+        try
+        {
+            isExportTemplatesLoading = true;
+
+            var resp = await ExportTemplates.ListTemplatesAsync();
+
+            if (!resp.Success)
+            {
+                Toast.ShowError(resp.Error ?? "No se pudieron cargar las plantillas de exportación.");
+                exportTemplates = new List<ExportTemplateListItemDTO>();
+                return;
+            }
+
+            exportTemplates = resp.Response ?? new List<ExportTemplateListItemDTO>();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error al cargar plantillas: " + ex.Message);
+            exportTemplates = new List<ExportTemplateListItemDTO>();
+        }
+        finally
+        {
+            isExportTemplatesLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseExportPanel()
+    {
+        showExportPanel = false;
+        selectedTemplateId = null;
+        availableColumns.Clear();
+        selectedTemplateColumnIds.Clear();
+    }
 
     private async Task OnTemplateChanged(ChangeEventArgs e)
     {
         availableColumns.Clear();
-        selectedFieldKeys.Clear();
+        selectedTemplateColumnIds.Clear();
 
         if (e?.Value is null || string.IsNullOrWhiteSpace(e.Value.ToString()))
         {
@@ -264,122 +258,41 @@
                 .OrderBy(c => c.OrderIndex)
                 .Select(c =>
                 {
-                    // Este es el identificador REAL que se manda al backend
-                    var fieldKey = string.IsNullOrWhiteSpace(c.FieldKey)
-                        ? (c.TargetHeader ?? string.Empty)
-                        : c.FieldKey;
-
-                    // 👇 Nombre amigable que quieres ver en los checkboxes
-                    // 1) FieldDisplayName (viene de DisplayName en BD)
-                    // 2) TargetHeader (si el usuario la sobreescribió en la plantilla)
-                    // 3) FieldKey (fallback)
-                    var displayName =
+                    var displayLabel =
                         !string.IsNullOrWhiteSpace(c.FieldDisplayName)
                             ? c.FieldDisplayName
-                            : (!string.IsNullOrWhiteSpace(c.TargetHeader)
+                            : !string.IsNullOrWhiteSpace(c.TargetHeader)
                                 ? c.TargetHeader
-                                : (c.FieldKey ?? string.Empty));
+                                : c.FieldKey ?? string.Empty;
 
                     return new ColumnOption
                     {
-                        FieldKey = fieldKey,
-                        Header = displayName,   // 👈 ESTO es lo que se muestra en el checkbox
-                        OrderIndex = c.OrderIndex
+                        TemplateColumnId = c.Id,
+                        FieldKey = c.FieldKey ?? string.Empty,
+                        DisplayLabel = displayLabel,
+                        OrderIndex = c.OrderIndex,
+                        IsRequired = c.IsRequired
                     };
                 })
                 .ToList();
-
-            // marcar solo las de la whitelist
-            selectedFieldKeys = availableColumns
-                .Select(c => c.FieldKey)
-                .Where(k => !string.IsNullOrWhiteSpace(k))
-                .Where(k => _defaultSelectedKeys.Contains(k))
-                .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
         }
         catch (Exception ex)
         {
             Toast.ShowError("Error al cargar columnas de la plantilla: " + ex.Message);
         }
     }
-    private Task PrevPage()
+
+    private Task AddSelectedColumn(int templateColumnId)
     {
-        if (_page > 1) _page--;
-        ApplyPaging();
-        StateHasChanged();
+        selectedTemplateColumnIds.Add(templateColumnId);
         return Task.CompletedTask;
     }
 
-    private Task NextPage()
+    private Task RemoveSelectedColumn(int templateColumnId)
     {
-        if (_page < _totalPages) _page++;
-        ApplyPaging();
-        StateHasChanged();
+        selectedTemplateColumnIds.Remove(templateColumnId);
         return Task.CompletedTask;
     }
-
-    private void ApplyPaging()
-    {
-        var source = filteredProjects ?? new List<ProjectListResponseDTO>();
-
-        _totalItems = source.Count;
-        _totalPages = Math.Max(1, (int)Math.Ceiling(_totalItems / (double)_pageSize));
-
-        // Clamp por si la página quedó fuera de rango
-        if (_page > _totalPages) _page = _totalPages;
-        if (_page < 1) _page = 1;
-
-        pagedProjects = source
-            .Skip((_page - 1) * _pageSize)
-            .Take(_pageSize)
-            .ToList();
-    }
-
-
-    private void ToggleColumn(string fieldKey, ChangeEventArgs e)
-    {
-        // Blazor suele mandar "true"/"false" como string
-        var isChecked =
-            e.Value is bool b && b ||
-            string.Equals(e.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
-
-        if (isChecked)
-            selectedFieldKeys.Add(fieldKey);
-        else
-            selectedFieldKeys.Remove(fieldKey);
-    }
-
-
-    // 🔹 ViewModel interno para las columnas seleccionables
-    private class ColumnOption
-    {
-        public string FieldKey { get; set; } = string.Empty;
-        public string Header { get; set; } = string.Empty;
-        public int OrderIndex { get; set; }
-    }
-
-
-
-    // Todas las características posibles de la plantilla elegida
-    private List<ColumnOption> availableColumns = new();
-
-    // Conjunto de FieldKey seleccionados por el usuario
-    private HashSet<string> selectedFieldKeys = new();
-
-    // Data
-    private List<ProjectListResponseDTO>? allProjects;
-    private List<ProjectListResponseDTO>? filteredProjects;
-    private bool isLoading = true;
-    private string? errorMessage;
-    private FilterQuery? currentFilters;
-    private string? currentSearch;
-
-    // =========================
-    //   EXPORT CON PLANTILLAS
-    // =========================
-
-    private List<ExportTemplateListItemDTO>? exportTemplates;
-    private int? selectedTemplateId;
 
     private async Task ExportWithSelectedTemplateAsync()
     {
@@ -389,13 +302,13 @@
             return;
         }
 
-        if (availableColumns is null || availableColumns.Count == 0)
+        if (availableColumns.Count == 0)
         {
             Toast.ShowWarning("La plantilla seleccionada no tiene características disponibles.");
             return;
         }
 
-        if (selectedFieldKeys.Count == 0)
+        if (selectedTemplateColumnIds.Count == 0)
         {
             Toast.ShowWarning("Seleccione al menos una característica para exportar.");
             return;
@@ -405,13 +318,11 @@
         {
             isExporting = true;
 
-            // 1) Obtener la plantilla solo para el nombre
             var tmpl = exportTemplates?.FirstOrDefault(t => t.Id == selectedTemplateId.Value);
             var exportName = string.IsNullOrWhiteSpace(tmpl?.Name) ? "Proyectos" : tmpl!.Name;
 
-            // 2) Quedarnos solo con las columnas que el usuario seleccionó
             var selectedColumns = availableColumns
-                .Where(c => selectedFieldKeys.Contains(c.FieldKey))
+                .Where(c => selectedTemplateColumnIds.Contains(c.TemplateColumnId))
                 .OrderBy(c => c.OrderIndex)
                 .ToList();
 
@@ -421,21 +332,6 @@
                 return;
             }
 
-            // 3) Construir ExportRequestDTO
-            var exportRequest = new ExportRequestDTO
-            {
-                Name = exportName,
-                Columns = selectedColumns
-                    .Select(c => new ExportColumnDTO
-                    {
-                        FieldKey = c.FieldKey,
-                        Header = c.Header,
-                        OrderIndex = c.OrderIndex
-                    })
-                    .ToList()
-            };
-
-            // 👇 IDs de los proyectos actualmente visibles en el dashboard
             var projectsSource = filteredProjects ?? allProjects ?? new List<ProjectListResponseDTO>();
 
             var ids = projectsSource
@@ -443,9 +339,17 @@
                 .Distinct()
                 .ToList();
 
-            exportRequest.ProjectIds = ids.Any() ? ids : null;
+            var exportRequest = new ExportByTemplateRequestDTO
+            {
+                TemplateId = selectedTemplateId.Value,
+                ProjectIds = ids.Any() ? ids : null,
+                IncludedTemplateColumnIds = selectedColumns
+                    .Select(c => c.TemplateColumnId)
+                    .Distinct()
+                    .ToList(),
+                NameOverride = exportName
+            };
 
-            // 4) Llamar al endpoint de matriz-excel (AHORA WRAPPER)
             var r = await ExportTemplates.ExportMatrixExcelAsync(exportRequest);
 
             if (!r.Success || r.Response is null)
@@ -454,26 +358,26 @@
                 return;
             }
 
-            var file = r.Response; // FilePayload(Bytes, ContentType, FileName)
+            var file = r.Response;
 
-            // 5) Descargar con Blob
             var url = await JS.InvokeAsync<string>(
                 "docViewer.bytesToBlobUrl",
                 file.Bytes,
                 file.ContentType);
 
+            var fallbackName = string.IsNullOrWhiteSpace(exportRequest.NameOverride)
+                ? "proyectos.xlsx"
+                : $"{exportRequest.NameOverride}.xlsx";
+
             var fileName = string.IsNullOrWhiteSpace(file.FileName)
-                ? (string.IsNullOrWhiteSpace(exportRequest.Name) ? "proyectos.xlsx" : $"{exportRequest.Name}.xlsx")
+                ? fallbackName
                 : file.FileName;
 
             await JS.InvokeVoidAsync("docViewer.downloadUrl", url, fileName);
             await JS.InvokeVoidAsync("docViewer.revoke", url);
 
             Toast.ShowSuccess("Exportación generada correctamente.");
-            showExportPanel = false;
-            selectedTemplateId = null;
-            availableColumns.Clear();
-            selectedFieldKeys.Clear();
+            CloseExportPanel();
         }
         catch (Exception ex)
         {
@@ -486,164 +390,33 @@
         }
     }
 
-
-    private async Task OpenExportPanelAsync()
+    private async Task LoadProjects()
     {
-        Console.WriteLine(">>> OpenExportPanelAsync CALLED");
-        showExportPanel = true;
-
-        // Si ya cargaste antes, no vuelves a llamar
-        if (exportTemplates != null && exportTemplates.Count > 0)
-            return;
+        isLoading = true;
+        errorMessage = null;
 
         try
         {
-            isExportTemplatesLoading = true;
-
-            var resp = await ExportTemplates.ListTemplatesAsync();
+            var resp = await ProjectService.GetListAsync(onlyActive: true);
+            allProjects = resp.Success ? resp.Response ?? new() : new();
 
             if (!resp.Success)
-            {
-                Toast.ShowError(resp.Error ?? "No se pudieron cargar las plantillas de exportación.");
-                exportTemplates = new List<ExportTemplateListItemDTO>();
-                return;
-            }
+                errorMessage = resp.Error ?? "Error desconocido al cargar proyectos";
 
-            exportTemplates = resp.Response ?? new List<ExportTemplateListItemDTO>();
+            _page = 1;
+            ApplyFilters();
         }
         catch (Exception ex)
         {
-            Toast.ShowError("Error al cargar plantillas: " + ex.Message);
-            exportTemplates = new List<ExportTemplateListItemDTO>();
-        }
-        finally
-        {
-            isExportTemplatesLoading = false;
-            StateHasChanged();
-        }
-    }
-
-    private void CloseExportPanel()
-    {
-        showExportPanel = false;
-        selectedTemplateId = null;
-    }
-
-
-    // Filter Configuration
-    private FilterBarConfig _filterConfig = new()
-    {
-        SearchPlaceholder = "Buscar proyectos por nombre o código...",
-        DebounceMs = 400,
-        ShowChips = true,
-        Items = new List<FilterItemDescriptor>()
-    };
-
-
-    private async Task ExportProjectsMatrixAsync()
-    {
-        try
-        {
-            isLoading = true;
-
-            // 1) Construir request
-            var request = new ExportRequestDTO
-            {
-                Name = "Proyectos",
-                Columns = new List<ExportColumnDTO>
-            {
-                new()
-                {
-                    FieldKey = "PROJECT_CODE",
-                    Header = "Código",
-                    OrderIndex = 1
-                },
-                new()
-                {
-                    FieldKey = "PROJECT_NAME",
-                    Header = "Proyecto",
-                    OrderIndex = 2
-                },
-                new()
-                {
-                    FieldKey = "PROJECT_TYPE_NAME",
-                    Header = "Tipo",
-                    OrderIndex = 3
-                },
-                new()
-                {
-                    FieldKey = "PROJECT_STATE_NAME",
-                    Header = "Estado",
-                    OrderIndex = 4
-                },
-                new()
-                {
-                    FieldKey = "FACULTY_NAME",
-                    Header = "Facultad",
-                    OrderIndex = 5
-                },
-
-                // dinámicas
-                new()
-                {
-                    FieldKey = "MATRIX_DYNAMIC_OBJECTIVES",
-                    Header = "OBJ_",
-                    OrderIndex = 100
-                },
-                new()
-                {
-                    FieldKey = "MATRIX_DYNAMIC_CATEGORIES",
-                    Header = "CAT_",
-                    OrderIndex = 200
-                },
-            }
-            };
-
-            // 2) Llamar al backend (AHORA WRAPPER)
-            var r = await ExportTemplates.ExportMatrixExcelAsync(request);
-
-            if (!r.Success || r.Response is null)
-            {
-                Toast.ShowError(r.Error ?? "Error al generar el archivo de exportación.");
-                return;
-            }
-
-            // 3) Descargar (Blob)
-            var file = r.Response; // FilePayload(Bytes, ContentType, FileName)
-
-            var url = await JS.InvokeAsync<string>(
-                "docViewer.bytesToBlobUrl",
-                file.Bytes,
-                file.ContentType);
-
-            var fallbackName = string.IsNullOrWhiteSpace(request.Name)
-                ? "proyectos.xlsx"
-                : $"{request.Name}.xlsx";
-
-            var fileName = string.IsNullOrWhiteSpace(file.FileName)
-                ? fallbackName
-                : file.FileName;
-
-            await JS.InvokeVoidAsync("docViewer.downloadUrl", url, fileName);
-            await JS.InvokeVoidAsync("docViewer.revoke", url);
-
-            Toast.ShowSuccess("Exportación de proyectos generada correctamente.");
-        }
-        catch (Exception ex)
-        {
-            Toast.ShowError("Error al exportar proyectos: " + ex.Message);
+            errorMessage = $"Error de conexión: {ex.Message}";
+            allProjects = new();
+            filteredProjects = new();
         }
         finally
         {
             isLoading = false;
             StateHasChanged();
         }
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadFilterBootstrap();
-        await LoadProjects();
     }
 
     private async Task LoadFilterBootstrap()
@@ -656,10 +429,8 @@
             {
                 var bootstrap = bootstrapResp.Response;
 
-                // Construir la configuración de filtros dinámicamente
                 _filterConfig.Items = new List<FilterItemDescriptor>();
 
-                // Estado del Proyecto
                 if (bootstrap.ProjectStates?.Any() == true)
                 {
                     _filterConfig.Items.Add(new()
@@ -677,7 +448,6 @@
                     });
                 }
 
-                // Siempre agregar filtros de fechas y porcentaje (no dependen del bootstrap)
                 _filterConfig.Items.Add(new()
                 {
                     Key = "projectDate",
@@ -687,15 +457,14 @@
                     Placeholder = "Filtrar por…",
                     HelpText = "Seleccione cual tipo de fecha desea filtrar",
                     Options = new List<OptionItem>
-                        {
-                            new() { Value = "ApprovalDate",         Label = "Fecha de aprobación" },
-                            new() { Value = "StartDate",            Label = "Fecha de inicio" },
-                            new() { Value = "TentativeEndDate",     Label = "Fecha tentativa de fin" },
-                            new() { Value = "RealEndtDate",         Label = "Fecha de finalización" }
-                        }
+                    {
+                        new() { Value = "ApprovalDate", Label = "Fecha de aprobación" },
+                        new() { Value = "StartDate", Label = "Fecha de inicio" },
+                        new() { Value = "TentativeEndDate", Label = "Fecha tentativa de fin" },
+                        new() { Value = "RealEndtDate", Label = "Fecha de finalización" }
+                    }
                 });
 
-                // Tipo de Proyecto
                 if (bootstrap.ProjectTypes?.Any() == true)
                 {
                     _filterConfig.Items.Add(new()
@@ -717,20 +486,19 @@
                 {
                     _filterConfig.Items.Add(new()
                     {
-                        Key = "funding",                      // 👈 que NO sea "type", para no chocar con ProjectType
+                        Key = "funding",
                         Label = "Tipo de financiamiento",
                         Type = "select",
-                        EntityField = "FundingTypeId",        // 👈 esto es lo que llega como filter.Field
+                        EntityField = "FundingTypeId",
                         Placeholder = "Todos los financiamientos",
                         Options = bootstrap.Funding.Select(f => new OptionItem
                         {
-                            Value = f.Id.ToString(),          // 👈 ID en string
+                            Value = f.Id.ToString(),
                             Label = f.Name ?? string.Empty
                         }).ToList()
                     });
                 }
 
-                // Facultad (desde API externa, mapeada en bootstrap.Faculties)
                 if (bootstrap.Faculties?.Any() == true)
                 {
                     _filterConfig.Items.Add(new()
@@ -746,20 +514,6 @@
                             Label = f.Name
                         }).ToList()
                     });
-
-                    // (Opcional) Preparar un segundo filtro para Carrera/Programa en cascada.
-                    // Déjalo vacío por ahora; lo poblas cuando el usuario seleccione una Facultad.
-                    /*
-                    _filterConfig.Items.Add(new()
-                    {
-                        Key = "program",
-                        Label = "Carrera/Programa",
-                        Type = "select",
-                        EntityField = "ProgramId",
-                        Placeholder = "Todas las carreras",
-                        Options = new List<OptionItem>()           // se cargará dinámicamente
-                    });
-                    */
                 }
 
                 if (bootstrap.ResearchCategoryTypes?.Any() == true)
@@ -777,8 +531,8 @@
                             {
                                 Key = $"researchType_{type.Id}",
                                 GroupKey = group.Key.ResearchCategoryGroupId.ToString(),
-                                GroupLabel = groupLabel,    // 👈 título de la “card”: ÁREAS DE INVESTIGACIÓN
-                                Label = type.Name,          // 👈 solo “Dominio”, “Línea de investigación”, etc.
+                                GroupLabel = groupLabel,
+                                Label = type.Name,
                                 Type = "select",
                                 EntityField = "ResearchCategoryId",
                                 Placeholder = $"Todas las {type.Name}",
@@ -812,76 +566,43 @@
                     TrueLabel = "Sí",
                     FalseLabel = "No"
                 });
-
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading filter bootstrap: {ex.Message}");
-            // En caso de error, mantener filtros básicos sin opciones select
+
             _filterConfig.Items = new List<FilterItemDescriptor>
-{
-    new()
-    {
-        Key = "projectDate",
-        Label = "Fecha",
-        Type = "datefieldrange",
-        Operators = new() { "between" },
-        Placeholder = "Filtrar por…",
-        HelpText = "Seleccione si desea filtrar por fecha de inicio o fecha tentativa de fin",
-        Options = new List<OptionItem>
-        {
-            new() { Value = "StartDate",        Label = "Fecha de inicio" },
-            new() { Value = "TentativeEndDate", Label = "Fecha tentativa de fin" }
-        }
-    },
-    new()
-    {
-        Key = "executionPercentage",
-        Label = "% de Ejecución",
-        Type = "numberrange",
-        EntityField = "ExecutionPercentage",
-        HelpText = "Rango de porcentaje de ejecución (0-100)"
-    }
-};
-
-        }
-    }
-
-    private async Task LoadProjects()
-    {
-        isLoading = true;
-        errorMessage = null;
-
-        try
-        {
-            var resp = await ProjectService.GetListAsync(onlyActive: true);
-            allProjects = resp.Success ? resp.Response ?? new() : new();
-
-            if (!resp.Success)
-                errorMessage = resp.Error ?? "Error desconocido al cargar proyectos";
-
-            _page = 1;
-            ApplyFilters();
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Error de conexión: {ex.Message}";
-            allProjects = new();
-            filteredProjects = new();
-        }
-        finally
-        {
-            isLoading = false;
-            StateHasChanged();
+            {
+                new()
+                {
+                    Key = "projectDate",
+                    Label = "Fecha",
+                    Type = "datefieldrange",
+                    Operators = new() { "between" },
+                    Placeholder = "Filtrar por…",
+                    HelpText = "Seleccione si desea filtrar por fecha de inicio o fecha tentativa de fin",
+                    Options = new List<OptionItem>
+                    {
+                        new() { Value = "StartDate", Label = "Fecha de inicio" },
+                        new() { Value = "TentativeEndDate", Label = "Fecha tentativa de fin" }
+                    }
+                },
+                new()
+                {
+                    Key = "executionPercentage",
+                    Label = "% de Ejecución",
+                    Type = "numberrange",
+                    EntityField = "ExecutionPercentage",
+                    HelpText = "Rango de porcentaje de ejecución (0-100)"
+                }
+            };
         }
     }
 
     private Task HandleApplyFilters(FilterQuery query)
     {
-        // Guardamos solo las reglas de filtro (el search ahora viene por canal separado)
         currentFilters = query;
-        // Asegúrate que no arrastre un Search viejo del query:
         currentFilters.Search = null;
         _page = 1;
         ApplyFilters();
@@ -917,29 +638,28 @@
 
         var query = allProjects.AsQueryable();
 
-        // 1) aplicar búsqueda instantánea (si hay)
         if (!string.IsNullOrWhiteSpace(currentSearch))
         {
             var searchTerm = currentSearch.Trim().ToLowerInvariant();
+
             query = query.Where(p =>
                 (p.ProjectName ?? string.Empty).ToLowerInvariant().Contains(searchTerm) ||
                 (p.ProjectCode ?? string.Empty).ToLowerInvariant().Contains(searchTerm));
         }
 
-        // 2) aplicar filtros confirmados con Apply
         foreach (var filter in currentFilters?.Filters ?? new())
         {
-            // Primero, manejar genéricamente las categorías
             if (filter.Field == "ResearchCategoryId" &&
                 filter.Value is string catStr &&
                 int.TryParse(catStr, out var catId))
             {
-                query = query.Where(p => p.ResearchCategoryIds != null &&
-                                         p.ResearchCategoryIds.Contains(catId));
+                query = query.Where(p =>
+                    p.ResearchCategoryIds != null &&
+                    p.ResearchCategoryIds.Contains(catId));
+
                 continue;
             }
 
-            // Resto del switch como ya lo tienes
             query = filter.Field switch
             {
                 "ProjectStateName" when filter.Value is string state =>
@@ -948,13 +668,13 @@
                 "ProjectTypeName" when filter.Value is string type =>
                     query.Where(p => p.ProjectTypeName == type),
 
-                "FundingTypeId" when filter.Value is string fundingIdStr
-                                  && int.TryParse(fundingIdStr, out var fundingId) =>
+                "FundingTypeId" when filter.Value is string fundingIdStr &&
+                                   int.TryParse(fundingIdStr, out var fundingId) =>
                     query.Where(p => p.FundingTypeId != null &&
                                      p.FundingTypeId.Contains(fundingId)),
 
-                "PrincipalCoordinatorFacultyId" when filter.Value is string facultyStr
-                                                   && int.TryParse(facultyStr, out var facultyId) =>
+                "PrincipalCoordinatorFacultyId" when filter.Value is string facultyStr &&
+                                                   int.TryParse(facultyStr, out var facultyId) =>
                     query.Where(p => p.PrincipalCoordinatorFacultyId == facultyId),
 
                 "StartDate" when filter.Value is string?[] dateRange && dateRange.Length == 2 =>
@@ -973,9 +693,44 @@
             };
         }
 
-
         filteredProjects = query.ToList();
         ApplyPaging();
+    }
+
+    private void ApplyPaging()
+    {
+        var source = filteredProjects ?? new List<ProjectListResponseDTO>();
+
+        _totalItems = source.Count;
+        _totalPages = Math.Max(1, (int)Math.Ceiling(_totalItems / (double)_pageSize));
+
+        if (_page > _totalPages) _page = _totalPages;
+        if (_page < 1) _page = 1;
+
+        pagedProjects = source
+            .Skip((_page - 1) * _pageSize)
+            .Take(_pageSize)
+            .ToList();
+    }
+
+    private Task PrevPage()
+    {
+        if (_page > 1)
+            _page--;
+
+        ApplyPaging();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task NextPage()
+    {
+        if (_page < _totalPages)
+            _page++;
+
+        ApplyPaging();
+        StateHasChanged();
+        return Task.CompletedTask;
     }
 
     private IQueryable<ProjectListResponseDTO> ApplyDateRangeFilter(
@@ -988,11 +743,13 @@
 
         if (fromDate.HasValue && toDate.HasValue)
             return query.Where(p => dateSelector(p).HasValue &&
-                                   dateSelector(p) >= fromDate &&
-                                   dateSelector(p) <= toDate);
-        else if (fromDate.HasValue)
+                                    dateSelector(p) >= fromDate &&
+                                    dateSelector(p) <= toDate);
+
+        if (fromDate.HasValue)
             return query.Where(p => dateSelector(p).HasValue && dateSelector(p) >= fromDate);
-        else if (toDate.HasValue)
+
+        if (toDate.HasValue)
             return query.Where(p => dateSelector(p).HasValue && dateSelector(p) <= toDate);
 
         return query;
@@ -1008,11 +765,13 @@
 
         if (minValue.HasValue && maxValue.HasValue)
             return query.Where(p => numberSelector(p).HasValue &&
-                                   numberSelector(p) >= minValue &&
-                                   numberSelector(p) <= maxValue);
-        else if (minValue.HasValue)
+                                    numberSelector(p) >= minValue &&
+                                    numberSelector(p) <= maxValue);
+
+        if (minValue.HasValue)
             return query.Where(p => numberSelector(p).HasValue && numberSelector(p) >= minValue);
-        else if (maxValue.HasValue)
+
+        if (maxValue.HasValue)
             return query.Where(p => numberSelector(p).HasValue && numberSelector(p) <= maxValue);
 
         return query;
@@ -1029,21 +788,23 @@
         return "Comienza creando tu primer proyecto para organizar tu trabajo.";
     }
 
-    // Navegación y acciones (sin cambios)
     private Task HandleOpen(ProjectListResponseDTO item)
     {
         Nav.NavigateTo($"/projects/{item.ProjectId}");
         return Task.CompletedTask;
     }
 
-    private Task HandleShowDetails(ProjectListResponseDTO item)
-    {
-        Console.WriteLine($"Show details for {item.ProjectName}");
-        return Task.CompletedTask;
-    }
-
     private void CreateNewProject()
     {
         Nav.NavigateTo("/projects/create");
+    }
+
+    private sealed class ColumnOption
+    {
+        public int TemplateColumnId { get; set; }
+        public string FieldKey { get; set; } = string.Empty;
+        public string DisplayLabel { get; set; } = string.Empty;
+        public int OrderIndex { get; set; }
+        public bool IsRequired { get; set; }
     }
 }

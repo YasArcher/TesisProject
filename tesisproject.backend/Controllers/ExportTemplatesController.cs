@@ -147,8 +147,8 @@ namespace tesisproject.backend.Controllers
         // POST: api/ExportTemplates/matrix-excel
         [HttpPost("matrix-excel")]
         public async Task<IActionResult> ExportMatrixToExcel(
-            [FromBody] ExportRequestDTO request,
-            CancellationToken ct)
+    [FromBody] ExportByTemplateRequestDTO request,
+    CancellationToken ct)
         {
             var result = await _matrixTemplateExcelService.GenerateExcelAsync(request, ct);
 
@@ -158,9 +158,9 @@ namespace tesisproject.backend.Controllers
                 return BadRequest(message);
             }
 
-            var fileName = string.IsNullOrWhiteSpace(request.Name)
+            var fileName = string.IsNullOrWhiteSpace(request.NameOverride)
                 ? "matriz_proyectos.xlsx"
-                : $"{request.Name}.xlsx";
+                : $"{request.NameOverride}.xlsx";
 
             return File(
                 fileContents: result.Data,
