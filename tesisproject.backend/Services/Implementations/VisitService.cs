@@ -16,6 +16,7 @@ namespace tesisproject.backend.Services.Implementations
         private const string MsgProjectIdRequired = "ProjectId is required.";
         private const string MsgProjectIdRequiredLower = "projectId is required.";
         private const string MsgVisitStateIdRequired = "VisitStateId is required.";
+        private const string MsgVisitStateIdRequiredLower = "visitStateId is required.";
         private const string MsgVisitStateIdInvalid = "VisitStateId is invalid.";
         private const string MsgVisitIdRequired = "VisitId is required.";
         private const string MsgFinalVisitStateIdRequired = "FinalVisitStateId is required.";
@@ -384,7 +385,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (visitStateId <= 0)
                     return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
-                        .Fail("visitStateId is required.", ErrorType.Validation);
+                        .Fail(MsgVisitStateIdRequiredLower, ErrorType.Validation);
 
                 var list = await _uow.Visits
                     .QueryWithRefs()
