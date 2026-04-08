@@ -15,12 +15,17 @@ namespace tesisproject.backend.Services.Implementations
     {
         private readonly IUnitOfWork _uow;
         private readonly IAppUserService _appUsers;
+        private readonly ICurrentUserService _currentUser;
         private const string TemporaryPassword = "Temp123*";
 
-        public FacultyScopeService(IUnitOfWork uow, IAppUserService appUsers)
+        public FacultyScopeService(
+            IUnitOfWork uow,
+            IAppUserService appUsers,
+            ICurrentUserService currentUser)
         {
             _uow = uow;
             _appUsers = appUsers;
+            _currentUser = currentUser;
         }
 
         public async Task<ServiceResult<IReadOnlyList<FacultyScopeResponseDTO>>> GetAllAsync(
@@ -61,12 +66,10 @@ namespace tesisproject.backend.Services.Implementations
             if (string.IsNullOrWhiteSpace(name))
                 return ServiceResult<FacultyScopeResponseDTO>.Fail("Name is required.", ErrorType.Validation);
 
-            // evita duplicado por nombre (tienes índice unique)
             var exists = await _uow.FacultyScopes.ExistsAsync(x => x.Name == name, ct);
             if (exists)
                 return ServiceResult<FacultyScopeResponseDTO>.Fail("A scope with the same name already exists.", ErrorType.Conflict);
 
-            // normaliza faculties iniciales
             var facultyIds = NormalizeFacultyIds(request.FacultyIds);
             if (facultyIds.Invalid.Count > 0)
                 return ServiceResult<FacultyScopeResponseDTO>.Fail(
@@ -80,9 +83,8 @@ namespace tesisproject.backend.Services.Implementations
             };
 
             await _uow.FacultyScopes.AddAsync(scope, ct);
-            await _uow.SaveChangesAsync(ct); // para obtener FacultyScopeId
+            await _uow.SaveChangesAsync(ct);
 
-            // Cargar faculties iniciales (si vienen)
             if (facultyIds.Ids.Count > 0)
             {
                 var rows = facultyIds.Ids.Select(fid => new FacultyScopeFaculty
@@ -123,7 +125,6 @@ namespace tesisproject.backend.Services.Implementations
             if (string.IsNullOrWhiteSpace(name))
                 return ServiceResult<FacultyScopeResponseDTO>.Fail("Name is required.", ErrorType.Validation);
 
-            // si cambia el nombre, valida duplicado
             if (!string.Equals(e.Name, name, StringComparison.Ordinal))
             {
                 var exists = await _uow.FacultyScopes.ExistsAsync(x => x.Name == name, ct);
@@ -146,10 +147,6 @@ namespace tesisproject.backend.Services.Implementations
             return ServiceResult<FacultyScopeResponseDTO>.Ok(Map(refreshed!, includeAssignments: false));
         }
 
-        /// <summary>
-        /// Reemplazo/bulk: deja EXACTAMENTE las FacultyIds enviadas como activas,
-        /// desactiva las demás, y crea las nuevas si no existían.
-        /// </summary>
         public async Task<ServiceResult<FacultyScopeResponseDTO>> SetFacultiesAsync(
             int facultyScopeId,
             SetFacultyScopeFacultiesRequestDTO request,
@@ -173,13 +170,11 @@ namespace tesisproject.backend.Services.Implementations
 
             var target = normalized.Ids;
 
-            // Trae existentes (activos e inactivos) para ese scope
             var existing = await _uow.FacultyScopeFaculties
                 .GetAllAsync(x => x.FacultyScopeId == facultyScopeId, ct);
 
             var byId = existing.ToDictionary(x => x.FacultyId);
 
-            // 1) activar los target, crear los que no existan
             foreach (var fid in target)
             {
                 if (byId.TryGetValue(fid, out var row))
@@ -197,7 +192,6 @@ namespace tesisproject.backend.Services.Implementations
                 }
             }
 
-            // 2) desactivar los que ya no están en target
             var targetSet = new HashSet<int>(target);
             foreach (var row in existing)
             {
@@ -216,9 +210,9 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         public async Task<ServiceResult<bool>> AssignScopeToUserAsync(
-                    int facultyScopeId,
-                    AssignFacultyScopeUserRequestDTO request,
-                    CancellationToken ct = default)
+            int facultyScopeId,
+            AssignFacultyScopeUserRequestDTO request,
+            CancellationToken ct = default)
         {
             try
             {
@@ -240,8 +234,6 @@ namespace tesisproject.backend.Services.Implementations
                 if (scope is null)
                     return ServiceResult<bool>.Fail("Faculty scope not found.", ErrorType.NotFound);
 
-                // Igual que en GroupService.AddMemberAsync:
-                // resuelve/crea AppUser local a partir de Email + Document + AspUserId
                 var registerDto = new RegisterRequest
                 {
                     Email = email,
@@ -265,8 +257,6 @@ namespace tesisproject.backend.Services.Implementations
                 if (appUser is null)
                     return ServiceResult<bool>.Fail("Unable to resolve AppUser.", ErrorType.Unexpected);
 
-                // Ojo: aunque la columna se llama IdentityUserId,
-                // el valor real que estás guardando aquí es AppUsers.IdUser
                 var identityUserId = appUser.IdUser;
 
                 var key = new object[] { identityUserId, facultyScopeId };
@@ -325,22 +315,40 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         public async Task<ServiceResult<IReadOnlyList<int>>> GetAllowedFacultyIdsForUserAsync(
-            int identityUserId,
             CancellationToken ct = default)
         {
-            if (identityUserId <= 0)
-                return ServiceResult<IReadOnlyList<int>>.Fail("IdentityUserId is required.", ErrorType.Validation);
+            try
+            {
+                var actorUserId = await GetExistingActorUserIdAsync(ct);
+                if (!actorUserId.HasValue)
+                {
+                    return ServiceResult<IReadOnlyList<int>>.Fail(
+                        "User not found.",
+                        ErrorType.NotFound);
+                }
 
-            var user = await _uow.AppUsers.GetByIdUserAsync(identityUserId, ct);
-            if (user is null)
-                return ServiceResult<IReadOnlyList<int>>.Fail("User not found.", ErrorType.NotFound);
+                var ids = await _uow.UserFacultyScopeAssignments
+                    .GetActiveFacultyIdsByUserAsync(actorUserId.Value, ct);
 
-            // Debe devolver IReadOnlyList<int> desde el repo
-            var ids = await _uow.UserFacultyScopeAssignments.GetActiveFacultyIdsByUserAsync(identityUserId, ct);
-            return ServiceResult<IReadOnlyList<int>>.Ok(ids);
+                return ServiceResult<IReadOnlyList<int>>.Ok(ids);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return ServiceResult<IReadOnlyList<int>>.Fail(
+                    "User not authenticated.",
+                    ErrorType.Unauthorized,
+                    "AUTH_USER_NOT_AUTHENTICATED");
+            }
         }
 
         // ========================= Helpers =========================
+
+        private async Task<int?> GetExistingActorUserIdAsync(CancellationToken ct)
+        {
+            var currentUserId = _currentUser.GetRequiredUserId();
+            var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+            return user?.IdUser;
+        }
 
         private sealed record NormalizedFacultyIds(List<int> Ids, List<string> Invalid);
 
@@ -371,7 +379,7 @@ namespace tesisproject.backend.Services.Implementations
                 Faculties = e.Faculties?
                     .Select(f => new FacultyScopeFacultyItemDTO
                     {
-                        FacultyId = f.FacultyId, // int
+                        FacultyId = f.FacultyId,
                         IsActive = f.IsActive
                     })
                     .OrderBy(x => x.FacultyId)

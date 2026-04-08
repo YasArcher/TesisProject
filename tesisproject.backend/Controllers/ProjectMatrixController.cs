@@ -28,7 +28,7 @@ namespace tesisproject.backend.Controllers
         /// Sube un archivo de matriz de proyectos (Excel/CSV) y devuelve un resumen inicial.
         /// </summary>
         [HttpPost("upload")]
-        public async Task<ActionResult<ApiResponse<ProjectMatrixUploadSummaryDTO>>> UploadAsync(
+        public async Task<ActionResult<ServiceResult<ProjectMatrixUploadSummaryDTO>>> UploadAsync(
             IFormFile? file,
             CancellationToken ct)
         {
@@ -37,16 +37,32 @@ namespace tesisproject.backend.Controllers
 
             if (userId is null)
             {
-                return Unauthorized(ApiResponse<ProjectMatrixUploadSummaryDTO>.Fail(
-                    "User is not authenticated."
-                ));
+                var authResult = new ServiceResult<ProjectMatrixUploadSummaryDTO>
+                {
+                    Success = false,
+                    Message = "User is not authenticated.",
+                    Error = ErrorType.Unauthorized,
+                    ErrorCode = "AUTH_USER_NOT_AUTHENTICATED"
+                };
+
+                return authResult.ToActionResult();
             }
 
             if (file is null || file.Length == 0)
             {
-                return BadRequest(ApiResponse<ProjectMatrixUploadSummaryDTO>.Fail(
-                    "Excel file is required."
-                ));
+                var validationResult = new ServiceResult<ProjectMatrixUploadSummaryDTO>
+                {
+                    Success = false,
+                    Message = "Excel file is required.",
+                    Error = ErrorType.Validation,
+                    ErrorCode = "MATRIX_FILE_REQUIRED",
+                    ValidationErrors = new Dictionary<string, string[]>
+                    {
+                        ["file"] = new[] { "Excel file is required." }
+                    }
+                };
+
+                return validationResult.ToActionResult();
             }
 
             await using var stream = file.OpenReadStream();
@@ -55,10 +71,8 @@ namespace tesisproject.backend.Controllers
                 stream,
                 file.FileName,
                 file.ContentType ?? "application/octet-stream",
-                userId.Value,
                 ct);
 
-            // ServiceResult<ProjectMatrixUploadSummaryDTO> → ApiResponse<ProjectMatrixUploadSummaryDTO>
             return result.ToActionResult();
         }
 
@@ -66,11 +80,10 @@ namespace tesisproject.backend.Controllers
         /// Returns a flat report of all projects with aggregated details.
         /// </summary>
         [HttpGet("flat")]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<ProjectFlatReportDTO>>>> GetFlatReport(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<ProjectFlatReportDTO>>>> GetFlatReport(
             CancellationToken ct)
         {
-            var result = await _service.GetFlatReportAsync(null,ct);
-
+            var result = await _service.GetFlatReportAsync(null, ct);
             return result.ToActionResult();
         }
     }

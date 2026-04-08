@@ -13,15 +13,18 @@ namespace tesisproject.backend.Services.Implementations
         private readonly IVisitIssueRepository _issueRepo;
         private readonly IVisitRepository _visitRepo;
         private readonly IUnitOfWork _uow;
+        private readonly ICurrentUserService _currentUser;
 
         public VisitIssueService(
             IVisitIssueRepository issueRepo,
             IVisitRepository visitRepo,
-            IUnitOfWork uow)
+            IUnitOfWork uow,
+            ICurrentUserService currentUser)
         {
             _issueRepo = issueRepo;
             _visitRepo = visitRepo;
             _uow = uow;
+            _currentUser = currentUser;
         }
 
         // =========================
@@ -29,30 +32,38 @@ namespace tesisproject.backend.Services.Implementations
         // =========================
         public async Task<ServiceResult<VisitIssueResponseDTO>> CreateAsync(
             VisitIssueCreateRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default)
         {
-            // Validar existencia de Visit
-            var visitExists = await VisitExistsAsync(request.VisitId, ct);
-            if (!visitExists)
-                return FailVisitNotFound<VisitIssueResponseDTO>(request.VisitId);
-
-            var (userFound, reporterUserId) = await TryGetCurrentUserIdAsync(currentUserId, ct);
-            if (!userFound)
-                return FailUserNotFound<VisitIssueResponseDTO>();
-
-            var entity = new VisitIssue
+            try
             {
-                VisitId = request.VisitId,
-                Description = request.Description,
-                CreatedAtUtc = DateTime.UtcNow,
-                ReportedByUserId = reporterUserId
-            };
+                var visitExists = await VisitExistsAsync(request.VisitId, ct);
+                if (!visitExists)
+                    return FailVisitNotFound<VisitIssueResponseDTO>(request.VisitId);
 
-            await _issueRepo.AddAsync(entity, ct);
-            await _uow.SaveChangesAsync(ct);
+                var reporterUserId = await GetExistingActorUserIdAsync(ct);
+                if (!reporterUserId.HasValue)
+                    return FailUserNotFound<VisitIssueResponseDTO>();
 
-            return ServiceResult<VisitIssueResponseDTO>.Ok(ToResponse(entity));
+                var entity = new VisitIssue
+                {
+                    VisitId = request.VisitId,
+                    Description = request.Description,
+                    CreatedAtUtc = DateTime.UtcNow,
+                    ReportedByUserId = reporterUserId.Value
+                };
+
+                await _issueRepo.AddAsync(entity, ct);
+                await _uow.SaveChangesAsync(ct);
+
+                return ServiceResult<VisitIssueResponseDTO>.Ok(ToResponse(entity));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return ServiceResult<VisitIssueResponseDTO>.Fail(
+                    "User not authenticated.",
+                    ErrorType.Unauthorized,
+                    "AUTH_USER_NOT_AUTHENTICATED");
+            }
         }
 
         // =========================
@@ -92,26 +103,36 @@ namespace tesisproject.backend.Services.Implementations
         public async Task<ServiceResult<VisitIssueResponseDTO>> UpdateAsync(
             int id,
             VisitIssueUpdateRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default)
         {
-            var entity = await _issueRepo.FirstOrDefaultAsync(x => x.VisitIssueId == id, ct);
-            if (entity is null)
-                return FailVisitIssueNotFound<VisitIssueResponseDTO>(id);
+            try
+            {
+                var entity = await _issueRepo.FirstOrDefaultAsync(x => x.VisitIssueId == id, ct);
+                if (entity is null)
+                    return FailVisitIssueNotFound<VisitIssueResponseDTO>(id);
 
-            var (userFound, reporterUserId) = await TryGetCurrentUserIdAsync(currentUserId, ct);
-            if (!userFound)
-                return FailUserNotFound<VisitIssueResponseDTO>();
+                var reporterUserId = await GetExistingActorUserIdAsync(ct);
+                if (!reporterUserId.HasValue)
+                    return FailUserNotFound<VisitIssueResponseDTO>();
 
-            // Aplicar solo campos no nulos (PATCH-like)
-            if (request.Description is not null) entity.Description = request.Description;
-            entity.ReportedByUserId = reporterUserId;
-            entity.UpdatedAtUtc = DateTime.UtcNow;
+                if (request.Description is not null)
+                    entity.Description = request.Description;
 
-            _issueRepo.Update(entity);
-            await _uow.SaveChangesAsync(ct);
+                entity.ReportedByUserId = reporterUserId.Value;
+                entity.UpdatedAtUtc = DateTime.UtcNow;
 
-            return ServiceResult<VisitIssueResponseDTO>.Ok(ToResponse(entity));
+                _issueRepo.Update(entity);
+                await _uow.SaveChangesAsync(ct);
+
+                return ServiceResult<VisitIssueResponseDTO>.Ok(ToResponse(entity));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return ServiceResult<VisitIssueResponseDTO>.Fail(
+                    "User not authenticated.",
+                    ErrorType.Unauthorized,
+                    "AUTH_USER_NOT_AUTHENTICATED");
+            }
         }
 
         // =========================
@@ -134,12 +155,11 @@ namespace tesisproject.backend.Services.Implementations
         private Task<bool> VisitExistsAsync(int visitId, CancellationToken ct)
             => _visitRepo.ExistsAsync(v => v.VisitId == visitId, ct);
 
-        private async Task<(bool Found, int IdUser)> TryGetCurrentUserIdAsync(int currentUserId, CancellationToken ct)
+        private async Task<int?> GetExistingActorUserIdAsync(CancellationToken ct)
         {
+            var currentUserId = _currentUser.GetRequiredUserId();
             var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
-            return user is null
-                ? (false, default)
-                : (true, user.IdUser);
+            return user?.IdUser;
         }
 
         private static ServiceResult<T> FailVisitNotFound<T>(int visitId)

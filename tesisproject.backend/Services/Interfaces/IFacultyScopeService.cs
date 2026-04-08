@@ -44,7 +44,6 @@ namespace tesisproject.backend.Services.Interfaces
         /// (assignments activos + faculties activas).
         /// </summary>
         Task<ServiceResult<IReadOnlyList<int>>> GetAllowedFacultyIdsForUserAsync(
-            int identityUserId, // AppUser.IdUser
             CancellationToken ct = default);
     }
 }

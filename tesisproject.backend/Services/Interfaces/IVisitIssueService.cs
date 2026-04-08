@@ -8,7 +8,6 @@ namespace tesisproject.backend.Services.Interfaces
     {
         Task<ServiceResult<VisitIssueResponseDTO>> CreateAsync(
             VisitIssueCreateRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default);
 
         Task<ServiceResult<VisitIssueResponseDTO>> GetByIdAsync(
@@ -22,7 +21,6 @@ namespace tesisproject.backend.Services.Interfaces
         Task<ServiceResult<VisitIssueResponseDTO>> UpdateAsync(
             int id,
             VisitIssueUpdateRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default);
 
         Task<ServiceResult<NoContent>> DeleteAsync(

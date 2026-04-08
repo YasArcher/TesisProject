@@ -19,25 +19,25 @@ namespace tesisproject.backend.Controllers
             => _service = service;
 
         [HttpGet("by-objective/{objectiveId:int}")]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<ObjectiveActivityListItemDTO>>>> GetByObjective(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>>> GetByObjective(
             int objectiveId,
             CancellationToken ct = default)
             => (await _service.ListByObjectiveAsync(objectiveId, ct)).ToActionResult();
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<ObjectiveActivityDetailDTO>>> GetById(
+        public async Task<ActionResult<ServiceResult<ObjectiveActivityDetailDTO>>> GetById(
             int id,
             CancellationToken ct = default)
             => (await _service.GetByIdAsync(id, ct)).ToActionResult();
 
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<ObjectiveActivityDetailDTO>>> Create(
+        public async Task<ActionResult<ServiceResult<ObjectiveActivityDetailDTO>>> Create(
             [FromBody] AddObjectiveActivityRequestDTO request,
             CancellationToken ct = default)
             => (await _service.CreateAsync(request, ct)).ToActionResult();
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<ObjectiveActivityDetailDTO>>> Update(
+        public async Task<ActionResult<ServiceResult<ObjectiveActivityDetailDTO>>> Update(
             int id,
             [FromBody] UpdateObjectiveActivityRequestDTO request,
             CancellationToken ct = default)
@@ -47,19 +47,18 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpDelete("{id:int}")]
-        public async Task<ActionResult<ApiResponse<bool>>> Delete(
+        public async Task<ActionResult<ServiceResult<bool>>> Delete(
             int id,
             CancellationToken ct = default)
             => (await _service.DeleteAsync(id, ct)).ToActionResult();
 
-        // PUT: api/objectiveactivities/{id}/progress?visitId=123&value=50&observation=...
+        // PUT: api/objectiveactivities/{id}/progress?visitId=123&value=50
         [HttpPut("{id:int}/progress")]
-        public async Task<ActionResult<ApiResponse<bool>>> SetProgress(
+        public async Task<ActionResult<ServiceResult<bool>>> SetProgress(
             int id,
             [FromQuery] int visitId,
             [FromQuery] int value,
             CancellationToken ct = default)
             => (await _service.SetProgressAsync(visitId, id, value, ct)).ToActionResult();
-
     }
 }

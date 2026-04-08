@@ -12,13 +12,11 @@ namespace tesisproject.backend.Services.Interfaces
         // 👉 Agregamos currentUserId para que coincida con BudgetService
         Task<ServiceResult<BudgetDTO>> CreateAsync(
             CreateBudgetRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default);
 
         Task<ServiceResult<BudgetDTO>> UpdateAsync(
             int budgetId,
             UpdateBudgetRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default);
 
         Task<ServiceResult<NoContent>> DeleteAsync(int budgetId, CancellationToken ct = default);
@@ -26,12 +24,10 @@ namespace tesisproject.backend.Services.Interfaces
         // ------- NUEVOS ----------
         Task<ServiceResult<BudgetTransactionDTO>> AddCertificationAsync(
             AddCertificationRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default);
 
         Task<ServiceResult<BudgetTransactionDTO>> ExecuteDevengadoAsync(
             ExecuteDevengadoRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default);
 
         // ======= NEW: Cancel Transaction =======
@@ -46,7 +42,6 @@ namespace tesisproject.backend.Services.Interfaces
         Task<ServiceResult<BudgetTransactionDTO>> UpdateTransactionAsync(
     int budgetTransactionId,
     UpdateBudgetTransactionRequestDTO request,
-    int currentUserId,
     CancellationToken ct = default);
     }
 }

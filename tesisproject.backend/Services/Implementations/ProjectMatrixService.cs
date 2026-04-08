@@ -44,7 +44,6 @@ namespace tesisproject.backend.Services.Implementations
             Stream fileStream,
             string fileName,
             string contentType,
-            int currentUserId,
             CancellationToken ct = default)
         {
             try
@@ -273,7 +272,6 @@ namespace tesisproject.backend.Services.Implementations
                     // ============================
                     var importResult = await _projectService.ImportFromMatrixAsync(
                         summary,
-                        currentUserId,
                         ct);
 
                     if (!importResult.Success)

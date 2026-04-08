@@ -25,33 +25,30 @@ namespace tesisproject.backend.Controllers
         // ====================== LIST ======================
 
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<CatalogListItemDTO>>>> List(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<CatalogListItemDTO>>>> List(
             CancellationToken ct = default)
             => (await _service.ListAsync(ct)).ToActionResult();
-
 
         // ====================== GET BY ID ======================
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<CatalogDetailDTO>>> GetById(
+        public async Task<ActionResult<ServiceResult<CatalogDetailDTO>>> GetById(
             int id,
             CancellationToken ct = default)
             => (await _service.GetByIdAsync(id, ct)).ToActionResult();
 
-
         // ====================== CREATE ======================
 
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<CatalogDetailDTO>>> Create(
+        public async Task<ActionResult<ServiceResult<CatalogDetailDTO>>> Create(
             [FromBody] AddCatalogRequestDTO request,
             CancellationToken ct = default)
             => (await _service.CreateAsync(request, ct)).ToActionResult();
 
-
         // ====================== UPDATE ======================
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<CatalogDetailDTO>>> Update(
+        public async Task<ActionResult<ServiceResult<CatalogDetailDTO>>> Update(
             int id,
             [FromBody] UpdateCatalogRequestDTO request,
             CancellationToken ct = default)
@@ -60,11 +57,10 @@ namespace tesisproject.backend.Controllers
             return (await _service.UpdateAsync(request, ct)).ToActionResult();
         }
 
-
         // ====================== DELETE ======================
 
         [HttpDelete("{id:int}")]
-        public async Task<ActionResult<ApiResponse<NoContent>>> Delete(
+        public async Task<ActionResult<ServiceResult<NoContent>>> Delete(
             int id,
             CancellationToken ct = default)
             => (await _service.DeleteAsync(id, ct)).ToActionResult();

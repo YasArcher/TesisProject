@@ -24,6 +24,7 @@ namespace tesisproject.backend.Services.Implementations
     public class ProjectService : IProjectService
     {
         private readonly IUnitOfWork _uow;
+        private readonly ICurrentUserService _currentUser;
         private readonly IExternalPeriodsClient _externalPeriods;
         private readonly IAppUserService _appUsers;
         private readonly IExternalAcademicsService _externalAcademics;
@@ -64,6 +65,7 @@ namespace tesisproject.backend.Services.Implementations
 
         public ProjectService(
             IUnitOfWork uow,
+            ICurrentUserService currentUser,
             IAppUserService appUsers,
             IExternalAcademicsService externalAcademics,
             IResearchCategoryService researchCategoryService,
@@ -73,6 +75,7 @@ namespace tesisproject.backend.Services.Implementations
             IExternalDistributivosService externalDistributivosRaw)
         {
             _uow = uow;
+            _currentUser = currentUser;
             _appUsers = appUsers;
             _externalAcademics = externalAcademics;
             _researchCategoryService = researchCategoryService;
@@ -208,7 +211,6 @@ namespace tesisproject.backend.Services.Implementations
 
         public async Task<ServiceResult<ProjectListResponseDTO>> CreateAsync(
     AddProjectRequestDTO dto,
-    int currentUserId,
     CancellationToken ct = default)
         {
             try
@@ -224,16 +226,15 @@ namespace tesisproject.backend.Services.Implementations
                     );
                 }
 
-                var appUserResult = await _appUsers.GetAppUserIdByLocalIdAsync(currentUserId, ct);
-                if (!appUserResult.Success || appUserResult.Data <= 0)
+                var actorUserId = await GetExistingActorUserIdAsync(ct);
+                if (!actorUserId.HasValue)
                 {
                     return ServiceResult<ProjectListResponseDTO>.Fail(
-                        appUserResult.Message ?? "User not found.",
-                        appUserResult.Error
-                    );
+                        "User not found.",
+                        ErrorType.NotFound);
                 }
 
-                var createdByUserId = appUserResult.Data;
+                var createdByUserId = actorUserId.Value;
 
                 var entity = MapToEntity(dto, createdByUserId);
                 await _uow.Projects.AddAsync(entity, ct);
@@ -259,6 +260,13 @@ namespace tesisproject.backend.Services.Implementations
                     .FirstAsync(ct);
 
                 return ServiceResult<ProjectListResponseDTO>.Ok(created, ProjectCreatedMessage);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return ServiceResult<ProjectListResponseDTO>.Fail(
+                    "User not authenticated.",
+                    ErrorType.Unauthorized,
+                    "AUTH_USER_NOT_AUTHENTICATED");
             }
             catch (DbUpdateException dbex)
             {
@@ -393,7 +401,6 @@ namespace tesisproject.backend.Services.Implementations
 
         public async Task<ServiceResult<ProjectDetailResponseDTO>> CreateFullAsync(
             AddProjectFullRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default)
         {
             void PhaseLog(string phase, string message)
@@ -518,20 +525,16 @@ namespace tesisproject.backend.Services.Implementations
                     return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid ProjectStateId.");
                 }
 
-                var appUserResult = await _appUsers.GetAppUserIdByLocalIdAsync(currentUserId, ct);
-                if (!appUserResult.Success || appUserResult.Data <= 0)
+                var actorUserId = await GetExistingActorUserIdAsync(ct);
+                if (!actorUserId.HasValue)
                 {
-                    PhaseLog(
-                        "Fase 1 - Validación",
-                        $"CreatedByUserId unresolved from AspUserId={currentUserId}. Error={appUserResult.Error}, Msg={appUserResult.Message}");
-
+                    PhaseLog("Fase 1 - Validación", "CreatedByUserId unresolved from current authenticated user.");
                     return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        appUserResult.Message ?? "User not found.",
-                        appUserResult.Error
-                    );
+                        "User not found.",
+                        ErrorType.NotFound);
                 }
 
-                var createdByUserId = appUserResult.Data;
+                var createdByUserId = actorUserId.Value;
 
                 if (p.FacultyId <= 0)
                 {
@@ -833,6 +836,13 @@ namespace tesisproject.backend.Services.Implementations
 
                 return ServiceResult<ProjectDetailResponseDTO>.Ok(detail.Data!);
             }
+            catch (UnauthorizedAccessException)
+            {
+                return ServiceResult<ProjectDetailResponseDTO>.Fail(
+                    "User not authenticated.",
+                    ErrorType.Unauthorized,
+                    "AUTH_USER_NOT_AUTHENTICATED");
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"[DEBUG] EXCEPCIÓN → {ex}");
@@ -1090,7 +1100,6 @@ namespace tesisproject.backend.Services.Implementations
 
         public async Task<ServiceResult<int>> ImportFromMatrixAsync(
             ProjectMatrixUploadSummaryDTO summary,
-            int currentUserId,
             CancellationToken ct = default)
         {
             void PhaseLog(string phase, string message)
@@ -1158,22 +1167,18 @@ namespace tesisproject.backend.Services.Implementations
 
                 PhaseLog("Init", $"ImportedProjects in summary: {summary.ImportedProjects.Count}");
 
-                var appUserResult = await _appUsers.GetAppUserIdByLocalIdAsync(currentUserId, ct);
-                if (!appUserResult.Success || appUserResult.Data <= 0)
+                var actorUserId = await GetExistingActorUserIdAsync(ct);
+                if (!actorUserId.HasValue)
                 {
-                    PhaseLog(
-                        "Init",
-                        $"AppUser resolve failed. AspUserId={currentUserId}, Error={appUserResult.Error}, Msg={appUserResult.Message}");
-
+                    PhaseLog("Init", "AppUser resolve failed for current authenticated user.");
                     return ServiceResult<int>.Fail(
-                        appUserResult.Message ?? "User not found or invalid.",
-                        appUserResult.Error
-                    );
+                        "User not found or invalid.",
+                        ErrorType.NotFound);
                 }
 
-                var createdByUserId = appUserResult.Data;
+                var createdByUserId = actorUserId.Value;
 
-                PhaseLog("Init", $"Import executed by AppUserId={createdByUserId} (AspUserId={currentUserId})");
+                PhaseLog("Init", $"Import executed by AppUserId={createdByUserId}");
 
                 var directoryResult = await _externalDirectory.GetAllAsync(ct);
                 if (!directoryResult.Success || directoryResult.Data is null || directoryResult.Data.Count == 0)
@@ -1682,6 +1687,13 @@ namespace tesisproject.backend.Services.Implementations
 
                 return ServiceResult<int>.Ok(createdCount);
             }
+            catch (UnauthorizedAccessException)
+            {
+                return ServiceResult<int>.Fail(
+                    "User not authenticated.",
+                    ErrorType.Unauthorized,
+                    "AUTH_USER_NOT_AUTHENTICATED");
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"[IMPORT] EXCEPTION → {ex}");
@@ -1703,6 +1715,12 @@ namespace tesisproject.backend.Services.Implementations
             };
         }
 
+        private async Task<int?> GetExistingActorUserIdAsync(CancellationToken ct)
+        {
+            var currentUserId = _currentUser.GetRequiredUserId();
+            var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+            return user?.IdUser;
+        }
         private static int? ResolveDocumentTypeId(
             IReadOnlyList<DocumentType> documentTypes,
             string? documentTypeKey)

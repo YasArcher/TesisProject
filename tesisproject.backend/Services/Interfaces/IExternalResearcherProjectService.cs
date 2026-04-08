@@ -16,7 +16,6 @@ namespace tesisproject.backend.Services.Interfaces
 
         Task<ServiceResult<ExternalResearcherProjectDetailDTO>> CreateAsync(
             ExternalResearcherProjectCreateRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default);
 
         Task<ServiceResult<ExternalResearcherProjectDetailDTO>> UpdateAsync(

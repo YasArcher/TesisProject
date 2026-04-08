@@ -13,6 +13,7 @@ namespace tesisproject.backend.Services.Implementations
     public class DocumentService : IDocumentService
     {
         private readonly IUnitOfWork _uow;
+        private readonly ICurrentUserService _currentUser;
         private readonly IWebHostEnvironment _env; // se mantiene por compatibilidad, pero ya no se usa para rutas
         private readonly FileExtensionContentTypeProvider _contentTypeProvider = new();
 
@@ -24,10 +25,12 @@ namespace tesisproject.backend.Services.Implementations
 
         public DocumentService(
             IUnitOfWork uow,
+            ICurrentUserService currentUser,
             IWebHostEnvironment env,
             IOptions<StorageOptions> storageOptions)
         {
             _uow = uow;
+            _currentUser = currentUser;
             _env = env;
 
             var root = storageOptions.Value.RootPath;
@@ -37,7 +40,9 @@ namespace tesisproject.backend.Services.Implementations
             _storageRootFullPath = Path.GetFullPath(root);
         }
 
-        public async Task<ServiceResult<DocumentResponseDTO>> GetByIdAsync(int documentId, CancellationToken ct = default)
+        public async Task<ServiceResult<DocumentResponseDTO>> GetByIdAsync(
+            int documentId,
+            CancellationToken ct = default)
         {
             var e = await _uow.Documents.GetByIdWithRefsAsync(documentId, ct);
             if (e is null)
@@ -49,101 +54,145 @@ namespace tesisproject.backend.Services.Implementations
         public async Task<ServiceResult<DocumentResponseDTO>> UpdateAsync(
             int documentId,
             UpdateDocumentRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default)
         {
-            if (request.DocumentTypeId <= 0)
-                return ServiceResult<DocumentResponseDTO>.Fail("DocumentTypeId is required.", ErrorType.Validation);
+            try
+            {
+                if (request.DocumentTypeId <= 0)
+                    return ServiceResult<DocumentResponseDTO>.Fail("DocumentTypeId is required.", ErrorType.Validation);
 
-            var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
-            if (user is null)
-                return ServiceResult<DocumentResponseDTO>.Fail("User not found.", ErrorType.NotFound);
+                var actorUserId = await GetExistingActorUserIdAsync(ct);
+                if (!actorUserId.HasValue)
+                {
+                    return ServiceResult<DocumentResponseDTO>.Fail(
+                        "User not found.",
+                        ErrorType.NotFound);
+                }
 
-            var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
-            if (e is null)
-                return ServiceResult<DocumentResponseDTO>.Fail("Document not found.", ErrorType.NotFound);
+                var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
+                if (e is null)
+                    return ServiceResult<DocumentResponseDTO>.Fail("Document not found.", ErrorType.NotFound);
 
-            e.DocumentTypeId = request.DocumentTypeId;
-            e.ResolutionCode = request.ResolutionCode;
-            e.ResolutionDate = request.ResolutionDate;
+                e.DocumentTypeId = request.DocumentTypeId;
+                e.ResolutionCode = request.ResolutionCode;
+                e.ResolutionDate = request.ResolutionDate;
+                e.UpdatedAt = DateTime.UtcNow;
+                e.UpdatedByUserId = actorUserId.Value;
 
-            e.UpdatedAt = DateTime.UtcNow;
-            e.UpdatedByUserId = user.IdUser;
+                await _uow.SaveChangesAsync(ct);
 
-            await _uow.SaveChangesAsync(ct);
-
-            var refreshed = await _uow.Documents.GetByIdWithRefsAsync(documentId, ct);
-            return ServiceResult<DocumentResponseDTO>.Ok(Map(refreshed!));
+                var refreshed = await _uow.Documents.GetByIdWithRefsAsync(documentId, ct);
+                return ServiceResult<DocumentResponseDTO>.Ok(Map(refreshed!));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return ServiceResult<DocumentResponseDTO>.Fail(
+                    "User not authenticated.",
+                    ErrorType.Unauthorized,
+                    "AUTH_USER_NOT_AUTHENTICATED");
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<DocumentResponseDTO>.Fail(
+                    ex.Message,
+                    ErrorType.Unexpected);
+            }
         }
 
         public async Task<ServiceResult<DocumentResponseDTO>> ReplaceFileAsync(
             int documentId,
             ReplaceDocumentFileRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default)
         {
-            if (request.File is null || request.File.Length == 0)
-                return ServiceResult<DocumentResponseDTO>.Fail("File is empty.", ErrorType.Validation);
-
-            var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
-            if (user is null)
-                return ServiceResult<DocumentResponseDTO>.Fail("User not found.", ErrorType.NotFound);
-
-            var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
-            if (e is null)
-                return ServiceResult<DocumentResponseDTO>.Fail("Document not found.", ErrorType.NotFound);
-
-            var oldPhysicalPath = ResolvePhysicalPath(e.DocumentPath);
-
-            var (newRelativePath, newPhysicalPath) = BuildNewFilePath(request.File.FileName);
-
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(newPhysicalPath)!);
+                if (request.File is null || request.File.Length == 0)
+                    return ServiceResult<DocumentResponseDTO>.Fail("File is empty.", ErrorType.Validation);
 
-                await using (var stream = new FileStream(
-                    newPhysicalPath,
-                    FileMode.Create,
-                    FileAccess.Write,
-                    FileShare.None,
-                    bufferSize: 81920,
-                    useAsync: true))
+                var actorUserId = await GetExistingActorUserIdAsync(ct);
+                if (!actorUserId.HasValue)
                 {
-                    await request.File.CopyToAsync(stream, ct);
+                    return ServiceResult<DocumentResponseDTO>.Fail(
+                        "User not found.",
+                        ErrorType.NotFound);
                 }
 
-                e.DocumentPath = newRelativePath;
-                e.UpdatedAt = DateTime.UtcNow;
-                e.UpdatedByUserId = user.IdUser;
+                var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
+                if (e is null)
+                    return ServiceResult<DocumentResponseDTO>.Fail("Document not found.", ErrorType.NotFound);
 
-                await _uow.SaveChangesAsync(ct);
+                var oldPhysicalPath = ResolvePhysicalPath(e.DocumentPath);
+                var (newRelativePath, newPhysicalPath) = BuildNewFilePath(request.File.FileName);
 
-                // Best-effort delete del archivo anterior
                 try
                 {
-                    if (File.Exists(oldPhysicalPath))
-                        File.Delete(oldPhysicalPath);
-                }
-                catch { /* best-effort */ }
+                    Directory.CreateDirectory(Path.GetDirectoryName(newPhysicalPath)!);
 
-                var refreshed = await _uow.Documents.GetByIdWithRefsAsync(documentId, ct);
-                return ServiceResult<DocumentResponseDTO>.Ok(Map(refreshed!));
+                    await using (var stream = new FileStream(
+                        newPhysicalPath,
+                        FileMode.Create,
+                        FileAccess.Write,
+                        FileShare.None,
+                        bufferSize: 81920,
+                        useAsync: true))
+                    {
+                        await request.File.CopyToAsync(stream, ct);
+                    }
+
+                    e.DocumentPath = newRelativePath;
+                    e.UpdatedAt = DateTime.UtcNow;
+                    e.UpdatedByUserId = actorUserId.Value;
+
+                    await _uow.SaveChangesAsync(ct);
+
+                    // Best-effort delete del archivo anterior
+                    try
+                    {
+                        if (File.Exists(oldPhysicalPath))
+                            File.Delete(oldPhysicalPath);
+                    }
+                    catch
+                    {
+                        // Best-effort
+                    }
+
+                    var refreshed = await _uow.Documents.GetByIdWithRefsAsync(documentId, ct);
+                    return ServiceResult<DocumentResponseDTO>.Ok(Map(refreshed!));
+                }
+                catch (Exception ex)
+                {
+                    // Best-effort cleanup del nuevo archivo si falló algo
+                    try
+                    {
+                        if (File.Exists(newPhysicalPath))
+                            File.Delete(newPhysicalPath);
+                    }
+                    catch
+                    {
+                        // Best-effort
+                    }
+
+                    return ServiceResult<DocumentResponseDTO>.Fail(ex.Message, ErrorType.Conflict);
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return ServiceResult<DocumentResponseDTO>.Fail(
+                    "User not authenticated.",
+                    ErrorType.Unauthorized,
+                    "AUTH_USER_NOT_AUTHENTICATED");
             }
             catch (Exception ex)
             {
-                // Best-effort cleanup del nuevo archivo si falló algo
-                try
-                {
-                    if (File.Exists(newPhysicalPath))
-                        File.Delete(newPhysicalPath);
-                }
-                catch { /* best-effort */ }
-
-                return ServiceResult<DocumentResponseDTO>.Fail(ex.Message, ErrorType.Conflict);
+                return ServiceResult<DocumentResponseDTO>.Fail(
+                    ex.Message,
+                    ErrorType.Unexpected);
             }
         }
 
-        public async Task<ServiceResult<bool>> DeleteAsync(int documentId, CancellationToken ct = default)
+        public async Task<ServiceResult<bool>> DeleteAsync(
+            int documentId,
+            CancellationToken ct = default)
         {
             var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
             if (e is null)
@@ -190,67 +239,93 @@ namespace tesisproject.backend.Services.Implementations
 
         public async Task<ServiceResult<DocumentResponseDTO>> UploadAsync(
             UploadDocumentRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default)
         {
-            if (request.File is null || request.File.Length == 0)
-                return ServiceResult<DocumentResponseDTO>.Fail("File is empty.", ErrorType.Validation);
-
-            if (request.DocumentTypeId <= 0)
-                return ServiceResult<DocumentResponseDTO>.Fail("DocumentTypeId is required.", ErrorType.Validation);
-
-            var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
-            if (user is null)
-                return ServiceResult<DocumentResponseDTO>.Fail("User not found.", ErrorType.NotFound);
-
-            var (relativePath, physicalPath) = BuildNewFilePath(request.File.FileName);
-
             try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(physicalPath)!);
+                if (request.File is null || request.File.Length == 0)
+                    return ServiceResult<DocumentResponseDTO>.Fail("File is empty.", ErrorType.Validation);
 
-                await using (var stream = new FileStream(
-                    physicalPath,
-                    FileMode.Create,
-                    FileAccess.Write,
-                    FileShare.None,
-                    bufferSize: 81920,
-                    useAsync: true))
+                if (request.DocumentTypeId <= 0)
+                    return ServiceResult<DocumentResponseDTO>.Fail("DocumentTypeId is required.", ErrorType.Validation);
+
+                var actorUserId = await GetExistingActorUserIdAsync(ct);
+                if (!actorUserId.HasValue)
                 {
-                    await request.File.CopyToAsync(stream, ct);
+                    return ServiceResult<DocumentResponseDTO>.Fail(
+                        "User not found.",
+                        ErrorType.NotFound);
                 }
 
-                var nowUtc = DateTime.UtcNow;
+                var (relativePath, physicalPath) = BuildNewFilePath(request.File.FileName);
 
-                var entity = new Document
+                try
                 {
-                    DocumentTypeId = request.DocumentTypeId,
-                    DocumentPath = relativePath,
-                    ResolutionCode = request.ResolutionCode,
-                    ResolutionDate = request.ResolutionDate,
-                    CreatedAt = nowUtc,
-                    CreatedByUserId = user.IdUser
-                };
+                    Directory.CreateDirectory(Path.GetDirectoryName(physicalPath)!);
 
-                await _uow.Documents.AddAsync(entity, ct);
-                await _uow.SaveChangesAsync(ct);
+                    await using (var stream = new FileStream(
+                        physicalPath,
+                        FileMode.Create,
+                        FileAccess.Write,
+                        FileShare.None,
+                        bufferSize: 81920,
+                        useAsync: true))
+                    {
+                        await request.File.CopyToAsync(stream, ct);
+                    }
 
-                return ServiceResult<DocumentResponseDTO>.Ok(Map(entity));
+                    var nowUtc = DateTime.UtcNow;
+
+                    var entity = new Document
+                    {
+                        DocumentTypeId = request.DocumentTypeId,
+                        DocumentPath = relativePath,
+                        ResolutionCode = request.ResolutionCode,
+                        ResolutionDate = request.ResolutionDate,
+                        CreatedAt = nowUtc,
+                        CreatedByUserId = actorUserId.Value
+                    };
+
+                    await _uow.Documents.AddAsync(entity, ct);
+                    await _uow.SaveChangesAsync(ct);
+
+                    return ServiceResult<DocumentResponseDTO>.Ok(Map(entity));
+                }
+                catch (Exception ex)
+                {
+                    try
+                    {
+                        if (File.Exists(physicalPath))
+                            File.Delete(physicalPath);
+                    }
+                    catch
+                    {
+                        // Best-effort delete
+                    }
+
+                    return ServiceResult<DocumentResponseDTO>.Fail(ex.Message, ErrorType.Conflict);
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return ServiceResult<DocumentResponseDTO>.Fail(
+                    "User not authenticated.",
+                    ErrorType.Unauthorized,
+                    "AUTH_USER_NOT_AUTHENTICATED");
             }
             catch (Exception ex)
             {
-                try
-                {
-                    if (File.Exists(physicalPath))
-                        File.Delete(physicalPath);
-                }
-                catch
-                {
-                    // Best-effort delete
-                }
-
-                return ServiceResult<DocumentResponseDTO>.Fail(ex.Message, ErrorType.Conflict);
+                return ServiceResult<DocumentResponseDTO>.Fail(
+                    ex.Message,
+                    ErrorType.Unexpected);
             }
+        }
+
+        private async Task<int?> GetExistingActorUserIdAsync(CancellationToken ct)
+        {
+            var currentUserId = _currentUser.GetRequiredUserId();
+            var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+            return user?.IdUser;
         }
 
         private DocumentResponseDTO Map(Document e)

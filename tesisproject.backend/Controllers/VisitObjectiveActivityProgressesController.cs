@@ -21,15 +21,16 @@ namespace tesisproject.backend.Controllers
         // PUT: api/visitobjectiveactivityprogresses
         // Guarda/actualiza el progreso de UNA actividad en UNA visita (UPSERT unitario)
         [HttpPut]
-        public async Task<ActionResult<ApiResponse<VisitObjectiveActivityProgressSingleResponseDTO>>> UpsertSingle(
+        public async Task<ActionResult<ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>>> UpsertSingle(
             [FromBody] UpsertSingleVisitObjectiveActivityProgressRequestDTO body,
             CancellationToken ct)
             => (await _service.UpsertSingleAsync(body, ct)).ToActionResult();
 
         // DELETE: api/visitobjectiveactivityprogresses/{id}
         [HttpDelete("{id:int}")]
-        public async Task<ActionResult<ApiResponse<NoContent>>> Delete(int id, CancellationToken ct)
+        public async Task<ActionResult<ServiceResult<NoContent>>> Delete(
+            int id,
+            CancellationToken ct)
             => (await _service.DeleteAsync(id, ct)).ToActionResult();
-
     }
 }

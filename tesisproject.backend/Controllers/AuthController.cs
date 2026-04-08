@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using tesisproject.backend.Controllers.Extensions;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Auth;
@@ -41,16 +42,36 @@ namespace tesisproject.backend.Controllers
             });
         }
 
+        private static Dictionary<string, string[]> ToValidationErrors(ModelStateDictionary modelState)
+        {
+            return modelState
+                .Where(x => x.Value is not null && x.Value.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value!.Errors
+                        .Select(e => string.IsNullOrWhiteSpace(e.ErrorMessage) ? "Invalid value." : e.ErrorMessage)
+                        .ToArray()
+                );
+        }
+
         // =============== REGISTER ===============
 
         [HttpPost("register")]
-        [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<AuthResponse>>> Register(
+        [ProducesResponseType(typeof(ServiceResult<AuthResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ServiceResult<AuthResponse>), StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<ServiceResult<AuthResponse>>> Register(
             [FromBody] RegisterRequest dto,
             CancellationToken ct)
         {
             if (!ModelState.IsValid)
-                return ValidationProblem(ModelState);
+            {
+                return ServiceResult<AuthResponse>.Fail(
+                    message: "Validation error.",
+                    error: ErrorType.Validation,
+                    errorCode: "AUTH_REGISTER_INVALID_MODEL",
+                    validation: ToValidationErrors(ModelState))
+                    .ToActionResult();
+            }
 
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var (result, cookie) = await _auth.RegisterAsync(dto, ip, ct);
@@ -65,13 +86,22 @@ namespace tesisproject.backend.Controllers
 
         [HttpPost("login")]
         [AllowAnonymous]
-        [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<AuthResponse>>> Login(
+        [ProducesResponseType(typeof(ServiceResult<AuthResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ServiceResult<AuthResponse>), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ServiceResult<AuthResponse>), StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<ServiceResult<AuthResponse>>> Login(
             [FromBody] LoginRequest dto,
             CancellationToken ct)
         {
             if (!ModelState.IsValid)
-                return ValidationProblem(ModelState);
+            {
+                return ServiceResult<AuthResponse>.Fail(
+                    message: "Validation error.",
+                    error: ErrorType.Validation,
+                    errorCode: "AUTH_LOGIN_INVALID_MODEL",
+                    validation: ToValidationErrors(ModelState))
+                    .ToActionResult();
+            }
 
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
             var (result, cookie) = await _auth.LoginAsync(dto, ip, ct);
@@ -86,8 +116,9 @@ namespace tesisproject.backend.Controllers
 
         [HttpPost("refresh")]
         [AllowAnonymous]
-        [ProducesResponseType(typeof(ApiResponse<AuthResponse>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<AuthResponse>>> Refresh(
+        [ProducesResponseType(typeof(ServiceResult<AuthResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ServiceResult<AuthResponse>), StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<ServiceResult<AuthResponse>>> Refresh(
             CancellationToken ct)
         {
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();
@@ -104,9 +135,10 @@ namespace tesisproject.backend.Controllers
         // =============== LOGOUT ===============
 
         [HttpPost("logout")]
-        [Authorize] // opcional
-        [ProducesResponseType(typeof(ApiResponse<NoContent>), StatusCodes.Status200OK)]
-        public async Task<ActionResult<ApiResponse<NoContent>>> Logout(
+        [Authorize]
+        [ProducesResponseType(typeof(ServiceResult<NoContent>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ServiceResult<NoContent>), StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<ServiceResult<NoContent>>> Logout(
             CancellationToken ct)
         {
             var ip = HttpContext.Connection.RemoteIpAddress?.ToString();

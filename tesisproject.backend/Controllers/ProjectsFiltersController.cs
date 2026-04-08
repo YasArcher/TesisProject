@@ -14,6 +14,7 @@ namespace tesisproject.backend.Controllers
     public sealed class ProjectsFiltersController : ControllerBase
     {
         private readonly IProjectsFiltersService _svc;
+
         public ProjectsFiltersController(IProjectsFiltersService svc) => _svc = svc;
 
         /// <summary>
@@ -23,7 +24,7 @@ namespace tesisproject.backend.Controllers
         /// <param name="include">Secciones a incluir (coma separadas)</param>
         /// <param name="ct">CancellationToken</param>
         [HttpGet("bootstrap")]
-        public async Task<ActionResult<ApiResponse<ProjectsFilterBootstrapDTO>>> Bootstrap(
+        public async Task<ActionResult<ServiceResult<ProjectsFilterBootstrapDTO>>> Bootstrap(
             CancellationToken ct = default)
             => (await _svc.GetBootstrapAsync(ct)).ToActionResult();
     }
