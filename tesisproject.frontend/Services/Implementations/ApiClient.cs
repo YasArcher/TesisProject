@@ -35,7 +35,7 @@ namespace tesisproject.frontend.Services.Implementations
             {
                 using var req = await CreateRequestAsync(HttpMethod.Get, url, content: null, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseApiResponseAsync<T>(resp, ct);
+                return await ParseServiceResultAsync<T>(resp, ct);
             }
             catch (Exception ex)
             {
@@ -54,7 +54,7 @@ namespace tesisproject.frontend.Services.Implementations
                 using var content = JsonContent(body);
                 using var req = await CreateRequestAsync(HttpMethod.Post, url, content, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseApiResponseAsync<TResponse>(resp, ct);
+                return await ParseServiceResultAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
@@ -73,7 +73,7 @@ namespace tesisproject.frontend.Services.Implementations
                 using var content = JsonContent(body);
                 using var req = await CreateRequestAsync(HttpMethod.Put, url, content, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseApiResponseAsync<TResponse>(resp, ct);
+                return await ParseServiceResultAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
@@ -92,7 +92,7 @@ namespace tesisproject.frontend.Services.Implementations
                 using var content = JsonContent(body);
                 using var req = await CreateRequestAsync(HttpMethod.Patch, url, content, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseApiResponseAsync<TResponse>(resp, ct);
+                return await ParseServiceResultAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
@@ -109,7 +109,7 @@ namespace tesisproject.frontend.Services.Implementations
             {
                 using var req = await CreateRequestAsync(HttpMethod.Delete, url, content: null, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseApiResponseAsync<TResponse>(resp, ct);
+                return await ParseServiceResultAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
@@ -125,7 +125,7 @@ namespace tesisproject.frontend.Services.Implementations
             {
                 using var req = await CreateRequestAsync(HttpMethod.Delete, url, content: null, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseApiResponseAsync<NoContent?>(resp, ct);
+                return await ParseServiceResultAsync<NoContent?>(resp, ct);
             }
             catch (Exception ex)
             {
@@ -141,10 +141,9 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
-                // content lo administra el caller normalmente; NO lo disponemos aquí
                 using var req = await CreateRequestAsync(HttpMethod.Post, url, content, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseApiResponseAsync<TResponse>(resp, ct);
+                return await ParseServiceResultAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
@@ -168,13 +167,15 @@ namespace tesisproject.frontend.Services.Implementations
 
                 if (!resp.IsSuccessStatusCode)
                 {
-                    var err = await TryReadApiErrorMessage(resp, ct)
-                              ?? $"HTTP {(int)resp.StatusCode}";
+                    var errorResult = await TryReadServiceResultAsync<object>(resp, ct);
 
                     return new HttpResponseWrapper<FilePayloadDTO?>(
                         success: false,
                         response: null,
-                        error: err,
+                        message: errorResult?.Message ?? $"HTTP {(int)resp.StatusCode}",
+                        errorType: errorResult?.Error ?? ErrorType.Unexpected,
+                        errorCode: errorResult?.ErrorCode,
+                        validationErrors: errorResult?.ValidationErrors,
                         httpResponse: Snapshot(resp));
                 }
 
@@ -187,7 +188,10 @@ namespace tesisproject.frontend.Services.Implementations
                 return new HttpResponseWrapper<FilePayloadDTO?>(
                     success: true,
                     response: new FilePayloadDTO(bytes, contentType, fileName),
-                    error: null,
+                    message: null,
+                    errorType: ErrorType.None,
+                    errorCode: null,
+                    validationErrors: null,
                     httpResponse: Snapshot(resp));
             }
             catch (Exception ex)
@@ -217,13 +221,15 @@ namespace tesisproject.frontend.Services.Implementations
 
                 if (!resp.IsSuccessStatusCode)
                 {
-                    var err = await TryReadApiErrorMessage(resp, ct)
-                              ?? $"HTTP {(int)resp.StatusCode}";
+                    var errorResult = await TryReadServiceResultAsync<object>(resp, ct);
 
                     return new HttpResponseWrapper<FilePayloadDTO?>(
                         success: false,
                         response: null,
-                        error: err,
+                        message: errorResult?.Message ?? $"HTTP {(int)resp.StatusCode}",
+                        errorType: errorResult?.Error ?? ErrorType.Unexpected,
+                        errorCode: errorResult?.ErrorCode,
+                        validationErrors: errorResult?.ValidationErrors,
                         httpResponse: Snapshot(resp));
                 }
 
@@ -236,7 +242,10 @@ namespace tesisproject.frontend.Services.Implementations
                 return new HttpResponseWrapper<FilePayloadDTO?>(
                     success: true,
                     response: new FilePayloadDTO(bytes, contentType, fileName),
-                    error: null,
+                    message: null,
+                    errorType: ErrorType.None,
+                    errorCode: null,
+                    validationErrors: null,
                     httpResponse: Snapshot(resp));
             }
             catch (Exception ex)
@@ -246,7 +255,7 @@ namespace tesisproject.frontend.Services.Implementations
         }
 
         // ==================== CORE JSON PARSER ====================
-        private static async Task<HttpResponseWrapper<T?>> ParseApiResponseAsync<T>(
+        private static async Task<HttpResponseWrapper<T?>> ParseServiceResultAsync<T>(
             HttpResponseMessage resp,
             CancellationToken ct)
         {
@@ -261,14 +270,14 @@ namespace tesisproject.frontend.Services.Implementations
                 // Si no se puede leer, igual devolvemos status.
             }
 
-            ApiResponse<T>? api = null;
+            ServiceResult<T>? result = null;
 
-            // 1) intenta ApiResponse<T>
+            // 1) intenta ServiceResult<T>
             if (!string.IsNullOrWhiteSpace(raw))
             {
                 try
                 {
-                    api = JsonSerializer.Deserialize<ApiResponse<T>>(raw, _jsonOptions);
+                    result = JsonSerializer.Deserialize<ServiceResult<T>>(raw, _jsonOptions);
                 }
                 catch
                 {
@@ -276,30 +285,26 @@ namespace tesisproject.frontend.Services.Implementations
                 }
             }
 
-            if (api is not null)
+            if (result is not null)
             {
-                if (resp.IsSuccessStatusCode && api.Success)
-                {
-                    return new HttpResponseWrapper<T?>(
-                        success: true,
-                        response: api.Data,
-                        error: api.Message,
-                        httpResponse: Snapshot(resp));
-                }
+                var ok = resp.IsSuccessStatusCode && result.Success;
 
                 return new HttpResponseWrapper<T?>(
-                    success: false,
-                    response: default,
-                    error: api.Message ?? $"HTTP {(int)resp.StatusCode}",
+                    success: ok,
+                    response: ok ? result.Data : default,
+                    message: result.Message ?? $"HTTP {(int)resp.StatusCode}",
+                    errorType: result.Error,
+                    errorCode: result.ErrorCode,
+                    validationErrors: result.ValidationErrors,
                     httpResponse: Snapshot(resp));
             }
 
-            // 2) fallback ApiResponse<object> para extraer Message
+            // 2) fallback ServiceResult<object> para extraer metadata
             if (!string.IsNullOrWhiteSpace(raw))
             {
                 try
                 {
-                    var generic = JsonSerializer.Deserialize<ApiResponse<object>>(raw, _jsonOptions);
+                    var generic = JsonSerializer.Deserialize<ServiceResult<object>>(raw, _jsonOptions);
                     if (generic is not null)
                     {
                         var ok = resp.IsSuccessStatusCode && generic.Success;
@@ -307,7 +312,10 @@ namespace tesisproject.frontend.Services.Implementations
                         return new HttpResponseWrapper<T?>(
                             success: ok,
                             response: default,
-                            error: generic.Message ?? $"HTTP {(int)resp.StatusCode}",
+                            message: generic.Message ?? $"HTTP {(int)resp.StatusCode}",
+                            errorType: generic.Error,
+                            errorCode: generic.ErrorCode,
+                            validationErrors: generic.ValidationErrors,
                             httpResponse: Snapshot(resp));
                     }
                 }
@@ -325,7 +333,10 @@ namespace tesisproject.frontend.Services.Implementations
             return new HttpResponseWrapper<T?>(
                 success: resp.IsSuccessStatusCode,
                 response: default,
-                error: msg,
+                message: msg,
+                errorType: resp.IsSuccessStatusCode ? ErrorType.None : ErrorType.Unexpected,
+                errorCode: null,
+                validationErrors: null,
                 httpResponse: Snapshot(resp));
         }
 
@@ -359,7 +370,10 @@ namespace tesisproject.frontend.Services.Implementations
             => new(
                 success: false,
                 response: default,
-                error: ex.Message,
+                message: ex.Message,
+                errorType: ErrorType.Unexpected,
+                errorCode: "CLIENT_UNHANDLED_EXCEPTION",
+                validationErrors: null,
                 httpResponse: new HttpResponseMessage(HttpStatusCode.InternalServerError)
                 {
                     ReasonPhrase = ex.Message
@@ -371,7 +385,7 @@ namespace tesisproject.frontend.Services.Implementations
                 ReasonPhrase = resp.ReasonPhrase
             };
 
-        private static async Task<string?> TryReadApiErrorMessage(
+        private static async Task<ServiceResult<T>?> TryReadServiceResultAsync<T>(
             HttpResponseMessage resp,
             CancellationToken ct)
         {
@@ -383,12 +397,11 @@ namespace tesisproject.frontend.Services.Implementations
 
                 try
                 {
-                    var generic = JsonSerializer.Deserialize<ApiResponse<object>>(raw, _jsonOptions);
-                    return generic?.Message ?? raw;
+                    return JsonSerializer.Deserialize<ServiceResult<T>>(raw, _jsonOptions);
                 }
                 catch
                 {
-                    return raw;
+                    return null;
                 }
             }
             catch
@@ -399,14 +412,12 @@ namespace tesisproject.frontend.Services.Implementations
 
         private static string? TryGetFileName(HttpResponseMessage resp)
         {
-            // 1) Content.Headers.ContentDisposition
             var cd = resp.Content.Headers.ContentDisposition;
             var fromContent = cd?.FileNameStar ?? cd?.FileName;
 
             if (!string.IsNullOrWhiteSpace(fromContent))
                 return fromContent.Trim('"');
 
-            // 2) Resp.Headers o Content.Headers por si viene como header normal
             if (resp.Headers.TryGetValues("Content-Disposition", out var values) ||
                 resp.Content.Headers.TryGetValues("Content-Disposition", out values))
             {
