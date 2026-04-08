@@ -12,6 +12,7 @@ namespace tesisproject.shared.Errors
         {
             public const string UnexpectedError = "COMMON_UNEXPECTED_ERROR";
             public const string PersistenceConflict = "COMMON_PERSISTENCE_CONFLICT";
+            public const string NotFound = "COMMON_NOT_FOUND";
             public const string InvalidId = "COMMON_INVALID_ID";
             public const string NameRequired = "COMMON_NAME_REQUIRED";
             public const string NameAlreadyExists = "COMMON_NAME_ALREADY_EXISTS";
@@ -158,6 +159,27 @@ namespace tesisproject.shared.Errors
             public const string RoleRequired = "EXTERNAL_RESEARCHER_PROJECT_ROLE_REQUIRED";
             public const string ExternalResearcherNotFound = "EXTERNAL_RESEARCHER_PROJECT_EXTERNAL_RESEARCHER_NOT_FOUND";
             public const string AlreadyAssigned = "EXTERNAL_RESEARCHER_PROJECT_ALREADY_ASSIGNED";
+        }
+
+        public static class ExternalResearcher
+        {
+            public const string InvalidId = "EXTERNAL_RESEARCHER_INVALID_ID";
+            public const string InvalidRequest = "EXTERNAL_RESEARCHER_INVALID_REQUEST";
+            public const string FullNameRequired = "EXTERNAL_RESEARCHER_FULL_NAME_REQUIRED";
+            public const string EmailRequired = "EXTERNAL_RESEARCHER_EMAIL_REQUIRED";
+            public const string EmailAlreadyExists = "EXTERNAL_RESEARCHER_EMAIL_ALREADY_EXISTS";
+            public const string NotFound = "EXTERNAL_RESEARCHER_NOT_FOUND";
+        }
+
+        public static class Visit
+        {
+            public const string NotFound = "VISIT_NOT_FOUND";
+        }
+
+        public static class VisitIssue
+        {
+            public const string NotFound = "VISIT_ISSUE_NOT_FOUND";
+            public const string ReporterUserNotFound = "VISIT_ISSUE_REPORTER_USER_NOT_FOUND";
         }
     }
 }

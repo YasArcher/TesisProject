@@ -6,6 +6,7 @@ using tesisproject.shared.DTOs.Institution.Request;
 using tesisproject.shared.DTOs.Institution.Response;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -47,12 +48,12 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<InstitutionDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             // Para detalle, podemos usar GetByIdAsync + rehidratado manual
             var entity = await _uow.Institutions.GetByIdAsync(new object[] { id }, ct);
             if (entity is null)
-                return ServiceResult<InstitutionDetailDTO>.Fail(InstitutionNotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<InstitutionDetailDTO>.Fail(InstitutionNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             // Si necesitas CountryName aquí, puedes cargarlo con Countries.GetByIdAsync
             var countryName = await ResolveCountryNameAsync(entity.CountryId, ct);
@@ -76,17 +77,17 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null)
-                return ServiceResult<InstitutionDetailDTO>.Fail(InvalidRequestMessage, ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(InvalidRequestMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var name = (request.Name ?? string.Empty).Trim();
 
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<InstitutionDetailDTO>.Fail(NameRequiredMessage, ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(NameRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             // Valida nombre único usando NameExistsAsync del ICatalogRepository
             var nameExists = await _uow.Institutions.NameExistsAsync(name, excludeId: null, ct);
             if (nameExists)
-                return ServiceResult<InstitutionDetailDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var entity = new Institution
             {
@@ -108,20 +109,20 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null || request.Id <= 0)
-                return ServiceResult<InstitutionDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var name = (request.Name ?? string.Empty).Trim();
 
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<InstitutionDetailDTO>.Fail(NameRequiredMessage, ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(NameRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var entity = await _uow.Institutions.GetByIdAsync(new object[] { request.Id }, ct);
             if (entity is null)
-                return ServiceResult<InstitutionDetailDTO>.Fail(InstitutionNotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<InstitutionDetailDTO>.Fail(InstitutionNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             var nameExists = await _uow.Institutions.NameExistsAsync(name, excludeId: request.Id, ct);
             if (nameExists)
-                return ServiceResult<InstitutionDetailDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation);
+                return ServiceResult<InstitutionDetailDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             entity.Name = name;
             entity.CountryId = request.CountryId;

@@ -6,6 +6,7 @@ using tesisproject.shared.DTOs.ObjectiveActivity.Response;
 using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -43,7 +44,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             if (objectiveId <= 0)
                 return ServiceResult<IReadOnlyList<ObjectiveActivityListItemDTO>>
-                    .Fail(ObjectiveIdRequiredMessage, ErrorType.Validation);
+                    .Fail(ObjectiveIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var activities = await _uow.ObjectiveActivities.GetByObjectiveAsync(objectiveId, ct);
 
@@ -84,12 +85,12 @@ namespace tesisproject.backend.Services.Implementations
         {
             if (activityId <= 0)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail(InvalidIdMessage, ErrorType.Validation);
+                    .Fail(InvalidIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var entity = await _uow.ObjectiveActivities.GetByIdWithRefsAsync(activityId, ct);
             if (entity is null)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail(ObjectiveActivityNotFoundMessage, ErrorType.NotFound);
+                    .Fail(ObjectiveActivityNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             var map = await _uow.VisitObjectiveActivityProgresses
                 .GetTotalProgressByActivityIdsAsync(SingleIdArray(entity.ObjectiveActivityId), ct);
@@ -108,11 +109,11 @@ namespace tesisproject.backend.Services.Implementations
         {
             if (request is null)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail(RequestRequiredMessage, ErrorType.Validation);
+                    .Fail(RequestRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             if (request.ObjectiveId <= 0)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail(ObjectiveIdRequiredMessage, ErrorType.Validation);
+                    .Fail(ObjectiveIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             // Validar que el ProjectObjective exista
             var objective = await _uow.ProjectObjectives.GetByIdAsync(
@@ -120,7 +121,7 @@ namespace tesisproject.backend.Services.Implementations
 
             if (objective is null)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail(ProjectObjectiveNotFoundMessage, ErrorType.Validation);
+                    .Fail(ProjectObjectiveNotFoundMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var entity = new ObjectiveActivity
             {
@@ -147,22 +148,22 @@ namespace tesisproject.backend.Services.Implementations
         {
             if (request is null || request.ObjectiveActivityId <= 0)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail(InvalidIdMessage, ErrorType.Validation);
+                    .Fail(InvalidIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             if (request.ObjectiveId <= 0)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail(ObjectiveIdRequiredMessage, ErrorType.Validation);
+                    .Fail(ObjectiveIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             // Validaciones StringLength
             var activityResult = (request.ActivityResult ?? string.Empty).Trim();
             if (activityResult.Length > MaxTextLength)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail(ActivityResultMaxLengthMessage, ErrorType.Validation);
+                    .Fail(ActivityResultMaxLengthMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var actionText = (request.ActionText ?? string.Empty).Trim();
             if (actionText.Length > MaxTextLength)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail(ActionTextMaxLengthMessage, ErrorType.Validation);
+                    .Fail(ActionTextMaxLengthMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             // 1) Cargar actividad
             var entity = await _uow.ObjectiveActivities.GetByIdAsync(
@@ -170,7 +171,7 @@ namespace tesisproject.backend.Services.Implementations
 
             if (entity is null)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail(ObjectiveActivityNotFoundMessage, ErrorType.NotFound);
+                    .Fail(ObjectiveActivityNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             // 2) Validar objetivo
             var objective = await _uow.ProjectObjectives.GetByIdAsync(
@@ -178,7 +179,7 @@ namespace tesisproject.backend.Services.Implementations
 
             if (objective is null)
                 return ServiceResult<ObjectiveActivityDetailDTO>
-                    .Fail(ProjectObjectiveNotFoundMessage, ErrorType.Validation);
+                    .Fail(ProjectObjectiveNotFoundMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             // 3) Update actividad (solo metadata/textos)
             entity.ObjectiveId = request.ObjectiveId;
@@ -209,13 +210,13 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (activityId <= 0)
-                return ServiceResult<bool>.Fail(InvalidIdMessage, ErrorType.Validation);
+                return ServiceResult<bool>.Fail(InvalidIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var entity = await _uow.ObjectiveActivities.GetByIdAsync(
                 new object[] { activityId }, ct);
 
             if (entity is null)
-                return ServiceResult<bool>.Fail(ObjectiveActivityNotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<bool>.Fail(ObjectiveActivityNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             _uow.ObjectiveActivities.Remove(entity);
             await _uow.SaveChangesAsync(ct);
@@ -230,23 +231,23 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (visitId <= 0)
-                return ServiceResult<bool>.Fail(InvalidVisitIdMessage, ErrorType.Validation);
+                return ServiceResult<bool>.Fail(InvalidVisitIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             if (activityId <= 0)
-                return ServiceResult<bool>.Fail(InvalidActivityIdMessage, ErrorType.Validation);
+                return ServiceResult<bool>.Fail(InvalidActivityIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             if (progressPercentage < 0 || progressPercentage > 100)
-                return ServiceResult<bool>.Fail(ProgressRangeMessage, ErrorType.Validation);
+                return ServiceResult<bool>.Fail(ProgressRangeMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             // 1) Validar Visit
             var visit = await _uow.Visits.GetByIdAsync(new object[] { visitId }, ct);
             if (visit is null)
-                return ServiceResult<bool>.Fail(VisitNotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<bool>.Fail(VisitNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             // 2) Validar Activity
             var activity = await _uow.ObjectiveActivities.GetByIdAsync(new object[] { activityId }, ct);
             if (activity is null)
-                return ServiceResult<bool>.Fail(ObjectiveActivityNotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<bool>.Fail(ObjectiveActivityNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             // 3) Calcular progreso acumulado ANTES de esta visita (VisitId < visitId)
             //    Nota: aquí asumimos que VisitId es incremental y define el orden temporal.
@@ -265,7 +266,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 return ServiceResult<bool>.Fail(
                     $"You cannot set progress below {totalBeforeThisVisit}% because that was achieved before this visit.",
-                    ErrorType.Validation);
+                    ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
             }
 
             // 5) Nuevo delta de ESTA visita (lo que aporta esta visita para llegar al total deseado)

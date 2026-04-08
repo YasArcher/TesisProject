@@ -9,6 +9,7 @@ using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.Auth;
 using tesisproject.shared.Entities.Auth;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 
 namespace tesisproject.backend.Services.Implementations
@@ -49,16 +50,16 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (InvalidOperationException invEx)
             {
-                return ServiceResult<int>.Fail(invEx.Message, ErrorType.Validation);
+                return ServiceResult<int>.Fail(invEx.Message, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
             }
             catch (DbUpdateException dbEx)
             {
                 var msg = dbEx.InnerException?.Message ?? dbEx.Message;
-                return ServiceResult<int>.Fail(msg, ErrorType.Conflict);
+                return ServiceResult<int>.Fail(msg, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<int>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<int>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -79,16 +80,16 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (InvalidOperationException invEx)
             {
-                return ServiceResult<List<int>>.Fail(invEx.Message, ErrorType.Validation);
+                return ServiceResult<List<int>>.Fail(invEx.Message, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
             }
             catch (DbUpdateException dbEx)
             {
                 var msg = dbEx.InnerException?.Message ?? dbEx.Message;
-                return ServiceResult<List<int>>.Fail(msg, ErrorType.Conflict);
+                return ServiceResult<List<int>>.Fail(msg, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<List<int>>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<List<int>>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -118,7 +119,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<int>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<int>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 

@@ -10,6 +10,7 @@ using tesisproject.shared.DTOs.Products.Product.Response;
 using tesisproject.shared.Entities.Core.Products;
 using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -66,21 +67,21 @@ namespace tesisproject.backend.Services.Implementations
             {
                 // Basic validations
                 if (request is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 if (request.ProjectId <= 0)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProjectIdRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProjectIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 if (string.IsNullOrWhiteSpace(request.Title))
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(TitleRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(TitleRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 if (request.ProductTypeId <= 0)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductTypeIdRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductTypeIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 // ProductType exists
                 var type = await _uow.ProductTypes.GetByIdAsync(Key(request.ProductTypeId), ct);
                 if (type is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductTypeNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductTypeNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 // Load definitions for this type (include ProductAttribute to validate DataType/Unit/Name)
                 var defs = await _uow.ProductAttributeDefinitions
@@ -92,7 +93,7 @@ namespace tesisproject.backend.Services.Implementations
                 // Validate + normalize values (by definition)
                 var normalizedValuesResult = ValidateAndNormalizeValues(defs, request.Values);
                 if (!normalizedValuesResult.Success)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(normalizedValuesResult.Message!, ErrorType.Validation);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(normalizedValuesResult.Message!, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var normalizedValues = normalizedValuesResult.Data!; // Dictionary<int defId, string? value>
 
@@ -132,7 +133,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (withRefs is null)
                     return ServiceResult<ProductDetailResponseDTO>.Fail(
                         ProductCouldNotLoadAfterCreationMessage,
-                        ErrorType.Unexpected);
+                        ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
 
                 return ServiceResult<ProductDetailResponseDTO>.Ok(MapToDetailDTO(withRefs), ProductCreatedMessage);
             }
@@ -140,11 +141,11 @@ namespace tesisproject.backend.Services.Implementations
             {
                 return ServiceResult<ProductDetailResponseDTO>.Fail(
                     dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                    ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<ProductDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<ProductDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -156,13 +157,13 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var prod = await _uow.Products.GetByIdWithRefsAsync(id, ct);
                 if (prod is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 return ServiceResult<ProductDetailResponseDTO>.Ok(MapToDetailDTO(prod), ProductRetrievedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<ProductDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<ProductDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -180,13 +181,13 @@ namespace tesisproject.backend.Services.Implementations
                     .ToListAsync(ct);
 
                 if (items.Count == 0)
-                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(NoProductsFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(NoProductsFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Ok(items, ProductsRetrievedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -197,11 +198,11 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (projectId <= 0)
-                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(ProjectIdRequiredLowercaseMessage, ErrorType.Validation);
+                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(ProjectIdRequiredLowercaseMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var entities = await _uow.Products.GetByProjectAsync(projectId, ct); // includes ProductType
                 if (entities.Count == 0)
-                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(NoProductsFoundForProjectMessage, ErrorType.NotFound);
+                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(NoProductsFoundForProjectMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 var dtos = entities
                     .OrderByDescending(p => p.CreatedAt)
@@ -212,7 +213,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -225,14 +226,14 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var entity = await _uow.Products.GetByIdAsync(Key(request.Id), ct);
                 if (entity is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 if (string.IsNullOrWhiteSpace(request.Title))
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(TitleRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(TitleRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 // Update header
                 entity.Title = NormalizeRequiredText(request.Title);
@@ -257,7 +258,7 @@ namespace tesisproject.backend.Services.Implementations
 
                     var normalizedValuesResult = ValidateAndNormalizeValues(defs, request.Values);
                     if (!normalizedValuesResult.Success)
-                        return ServiceResult<ProductDetailResponseDTO>.Fail(normalizedValuesResult.Message!, ErrorType.Validation);
+                        return ServiceResult<ProductDetailResponseDTO>.Fail(normalizedValuesResult.Message!, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                     var normalizedValues = normalizedValuesResult.Data!; // Dictionary<int defId, string? value>
 
@@ -268,7 +269,7 @@ namespace tesisproject.backend.Services.Implementations
 
                 var withRefs = await _uow.Products.GetByIdWithRefsAsync(entity.Id, ct);
                 if (withRefs is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductCouldNotLoadAfterUpdateMessage, ErrorType.Unexpected);
+                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductCouldNotLoadAfterUpdateMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
 
                 return ServiceResult<ProductDetailResponseDTO>.Ok(MapToDetailDTO(withRefs), ProductUpdatedMessage);
             }
@@ -276,11 +277,11 @@ namespace tesisproject.backend.Services.Implementations
             {
                 return ServiceResult<ProductDetailResponseDTO>.Fail(
                     dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                    ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<ProductDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<ProductDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -292,7 +293,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var entity = await _uow.Products.GetByIdAsync(Key(id), ct);
                 if (entity is null)
-                    return ServiceResult<NoContent>.Fail(ProductNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<NoContent>.Fail(ProductNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 // Remove children first if no cascade
                 var authors = await _uow.ProductAuthors.GetByProductAsync(id, ct);
@@ -310,11 +311,11 @@ namespace tesisproject.backend.Services.Implementations
             {
                 return ServiceResult<NoContent>.Fail(
                     dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                    ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -444,7 +445,7 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     return ServiceResult<Dictionary<int, string?>>.Fail(
                         $"AttributeDefinitionId {defId} does not belong to the selected ProductType.",
-                        ErrorType.Validation);
+                        ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
                 }
 
                 var dt = def.ProductAttribute?.DataType ?? ProductAttributeDataType.Text;
@@ -454,7 +455,7 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     return ServiceResult<Dictionary<int, string?>>.Fail(
                         $"Invalid value for AttributeDefinitionId={defId}: {check.Error}",
-                        ErrorType.Validation);
+                        ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
                 }
 
                 normalized[defId] = NormalizeValue(dt, dto.Value);

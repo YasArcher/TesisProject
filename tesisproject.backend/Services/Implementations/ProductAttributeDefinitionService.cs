@@ -5,6 +5,7 @@ using tesisproject.shared.DTOs.Products.ProductAttributeDefinition.Request;
 using tesisproject.shared.DTOs.Products.ProductAttributeDefinition.Response;
 using tesisproject.shared.Entities.Core.Products;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -31,7 +32,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             if (productTypeId <= 0)
                 return ServiceResult<IReadOnlyList<ProductAttributeDefinitionListItemDTO>>
-                    .Fail(InvalidProductTypeIdMessage, ErrorType.Validation);
+                    .Fail(InvalidProductTypeIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var query = QueryWithRefs()
                 .Where(x => x.ProductTypeId == productTypeId)
@@ -61,13 +62,13 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<ProductAttributeDefinitionDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
+                return ServiceResult<ProductAttributeDefinitionDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var entity = await QueryWithRefs()
                 .FirstOrDefaultAsync(x => x.Id == id, ct);
 
             if (entity is null)
-                return ServiceResult<ProductAttributeDefinitionDetailDTO>.Fail(DefinitionNotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<ProductAttributeDefinitionDetailDTO>.Fail(DefinitionNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             var dto = MapToDetailDto(entity);
             return ServiceResult<ProductAttributeDefinitionDetailDTO>.Ok(dto);
@@ -85,7 +86,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 return ServiceResult<ProductAttributeDefinitionDetailDTO>.Fail(
                     ProductTypeAndAttributeRequiredMessage,
-                    ErrorType.Validation);
+                    ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
             }
 
             // Validar que no exista ya la combinación (ProductType, ProductAttribute)
@@ -99,7 +100,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 return ServiceResult<ProductAttributeDefinitionDetailDTO>.Fail(
                     AttributeAlreadyAssignedMessage,
-                    ErrorType.Validation);
+                    ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
             }
 
             var entity = new ProductAttributeDefinition
@@ -126,13 +127,13 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null || request.Id <= 0)
-                return ServiceResult<ProductAttributeDefinitionDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
+                return ServiceResult<ProductAttributeDefinitionDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var entity = await _uow.ProductAttributeDefinitions
                 .GetByIdAsync(Key(request.Id), ct);
 
             if (entity is null)
-                return ServiceResult<ProductAttributeDefinitionDetailDTO>.Fail(DefinitionNotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<ProductAttributeDefinitionDetailDTO>.Fail(DefinitionNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             // Validar duplicado (ProductTypeId + ProductAttributeId) excluyendo el propio Id
             var duplicated = await _uow.ProductAttributeDefinitions
@@ -146,7 +147,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 return ServiceResult<ProductAttributeDefinitionDetailDTO>.Fail(
                     AttributeAlreadyAssignedMessage,
-                    ErrorType.Validation);
+                    ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
             }
 
             entity.ProductTypeId = request.ProductTypeId;
@@ -170,13 +171,13 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<bool>.Fail(InvalidIdMessage, ErrorType.Validation);
+                return ServiceResult<bool>.Fail(InvalidIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var entity = await _uow.ProductAttributeDefinitions
                 .GetByIdAsync(Key(id), ct);
 
             if (entity is null)
-                return ServiceResult<bool>.Fail(DefinitionNotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<bool>.Fail(DefinitionNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             _uow.ProductAttributeDefinitions.Remove(entity);
             await _uow.SaveChangesAsync(ct);

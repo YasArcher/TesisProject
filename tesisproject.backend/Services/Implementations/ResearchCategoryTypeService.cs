@@ -5,6 +5,7 @@ using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Request;
 using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -104,12 +105,12 @@ namespace tesisproject.backend.Services.Implementations
         {
             var entity = await _uow.ResearchCategoryTypes.GetByIdAsync(new object[] { id }, ct);
             if (entity == null)
-                return ServiceResult<bool>.Fail(MsgItemNotFound, ErrorType.NotFound);
+                return ServiceResult<bool>.Fail(MsgItemNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             // Validate name
             var nameExists = await _uow.ResearchCategoryTypes.NameExistsAsync(dto.Name, id, ct);
             if (nameExists)
-                return ServiceResult<bool>.Fail(MsgNameAlreadyExists, ErrorType.Conflict);
+                return ServiceResult<bool>.Fail(MsgNameAlreadyExists, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
 
             entity.Name = dto.Name;
             entity.IsActive = dto.IsActive;
@@ -131,7 +132,7 @@ namespace tesisproject.backend.Services.Implementations
             var entity = await _uow.ResearchCategoryTypes.GetByIdAsync(new object[] { id }, ct);
 
             if (entity == null)
-                return ServiceResult<bool>.Fail(MsgItemNotFound, ErrorType.NotFound);
+                return ServiceResult<bool>.Fail(MsgItemNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             _uow.ResearchCategoryTypes.Remove(entity);
             await _uow.SaveChangesAsync(ct);
