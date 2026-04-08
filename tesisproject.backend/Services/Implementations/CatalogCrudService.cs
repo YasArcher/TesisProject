@@ -17,6 +17,22 @@ namespace tesisproject.backend.Services.Implementations
     public class CatalogCrudService<TCatalog> : ICatalogCrudService<TCatalog>
         where TCatalog : CatalogEntityBase, new()
     {
+        private const string NoItemsFoundMessage = "No items found for this catalog.";
+        private const string CatalogItemsRetrievedMessage = "Catalog items retrieved.";
+        private const string IdRequiredMessage = "Id is required.";
+        private const string ItemNotFoundMessage = "Item not found.";
+        private const string CatalogItemRetrievedMessage = "Catalog item retrieved.";
+        private const string NameRequiredMessage = "Name is required.";
+        private const string NameAlreadyExistsMessage = "Name already exists.";
+        private const string CatalogItemCreatedMessage = "Catalog item created.";
+        private const string CatalogItemLockedForModifyMessage = "Catalog item is locked and cannot be modified.";
+        private const string CatalogItemUpdatedMessage = "Catalog item updated.";
+        private const string NameAlreadyExistsDetailedMessage = "Name already exists. Please review the catalog to avoid duplicates.";
+        private const string SimilarNameCandidatesTemplate = "This name looks very similar to existing items. Please review before saving. Candidates: {0}";
+        private const string CatalogItemRenamedByCloneMessage = "Catalog item renamed by creating a new item and deactivating the previous one.";
+        private const string CatalogItemLockedForDeleteMessage = "Catalog item is locked and cannot be deleted.";
+        private const string CatalogItemDeletedMessage = "Catalog item deleted.";
+
         private readonly IUnitOfWork _uow;
         private readonly ICatalogRepository<TCatalog> _repo;
 
@@ -51,8 +67,8 @@ namespace tesisproject.backend.Services.Implementations
                     .AsReadOnly();
 
                 var message = dto.Count == 0
-                    ? "No items found for this catalog."
-                    : "Catalog items retrieved.";
+                    ? NoItemsFoundMessage
+                    : CatalogItemsRetrievedMessage;
 
                 return ServiceResult<IReadOnlyList<CatalogListItemDTO>>.Ok(dto, message);
             }
@@ -73,16 +89,16 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (id <= 0)
                     return ServiceResult<CatalogDetailDTO>
-                        .Fail("Id is required.", ErrorType.Validation);
+                        .Fail(IdRequiredMessage, ErrorType.Validation);
 
                 var entity = await _repo.GetByIdAsync(new object[] { id }, ct);
                 if (entity is null)
                     return ServiceResult<CatalogDetailDTO>
-                        .Fail("Item not found.", ErrorType.NotFound);
+                        .Fail(ItemNotFoundMessage, ErrorType.NotFound);
 
                 return ServiceResult<CatalogDetailDTO>.Ok(
                     MapToDetail(entity),
-                    "Catalog item retrieved.");
+                    CatalogItemRetrievedMessage);
             }
             catch (Exception ex)
             {
@@ -102,12 +118,12 @@ namespace tesisproject.backend.Services.Implementations
                 var name = (request?.Name ?? string.Empty).Trim();
                 if (string.IsNullOrWhiteSpace(name))
                     return ServiceResult<CatalogDetailDTO>
-                        .Fail("Name is required.", ErrorType.Validation);
+                        .Fail(NameRequiredMessage, ErrorType.Validation);
 
                 var exists = await _repo.NameExistsAsync(name, excludeId: null, ct);
                 if (exists)
                     return ServiceResult<CatalogDetailDTO>
-                        .Fail("Name already exists.", ErrorType.Validation);
+                        .Fail(NameAlreadyExistsMessage, ErrorType.Validation);
 
                 var entity = new TCatalog
                 {
@@ -121,7 +137,7 @@ namespace tesisproject.backend.Services.Implementations
 
                 return ServiceResult<CatalogDetailDTO>.Ok(
                     MapToDetail(entity),
-                    "Catalog item created.");
+                    CatalogItemCreatedMessage);
             }
             catch (DbUpdateException dbex)
             {
@@ -145,21 +161,21 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (request is null || request.Id <= 0)
                     return ServiceResult<CatalogDetailDTO>
-                        .Fail("Id is required.", ErrorType.Validation);
+                        .Fail(IdRequiredMessage, ErrorType.Validation);
 
                 var entity = await _repo.GetByIdAsync(new object[] { request.Id }, ct);
                 if (entity is null)
                     return ServiceResult<CatalogDetailDTO>
-                        .Fail("Item not found.", ErrorType.NotFound);
+                        .Fail(ItemNotFoundMessage, ErrorType.NotFound);
 
                 if (entity.IsLocked)
                     return ServiceResult<CatalogDetailDTO>
-                        .Fail("Catalog item is locked and cannot be modified.", ErrorType.Conflict);
+                        .Fail(CatalogItemLockedForModifyMessage, ErrorType.Conflict);
 
                 var newName = (request.Name ?? string.Empty).Trim();
                 if (string.IsNullOrWhiteSpace(newName))
                     return ServiceResult<CatalogDetailDTO>
-                        .Fail("Name is required.", ErrorType.Validation);
+                        .Fail(NameRequiredMessage, ErrorType.Validation);
 
                 var nameChanged = !string.Equals(
                     entity.Name?.Trim(),
@@ -170,7 +186,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (!nameChanged)
                 {
                     entity.IsActive = request.IsActive;
-                    return await SaveAndOkAsync(entity, "Catalog item updated.", ct);
+                    return await SaveAndOkAsync(entity, CatalogItemUpdatedMessage, ct);
                 }
 
                 // ====== Si cambió el nombre ======
@@ -180,7 +196,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (duplicated)
                 {
                     return ServiceResult<CatalogDetailDTO>
-                        .Fail("Name already exists. Please review the catalog to avoid duplicates.", ErrorType.Validation);
+                        .Fail(NameAlreadyExistsDetailedMessage, ErrorType.Validation);
                 }
 
                 // 2) Posible duplicado (Levenshtein) -> bloquear y sugerir
@@ -206,7 +222,7 @@ namespace tesisproject.backend.Services.Implementations
                         $"{s.Name} (Id: {s.Id}, Similarity: {s.Similarity:0.0}%, Active: {s.IsActive})"));
 
                     return ServiceResult<CatalogDetailDTO>.Fail(
-                        $"This name looks very similar to existing items. Please review before saving. Candidates: {hint}",
+                        string.Format(SimilarNameCandidatesTemplate, hint),
                         ErrorType.Validation);
                 }
 
@@ -230,14 +246,14 @@ namespace tesisproject.backend.Services.Implementations
 
                     return ServiceResult<CatalogDetailDTO>.Ok(
                         MapToDetail(newEntity),
-                        "Catalog item renamed by creating a new item and deactivating the previous one.");
+                        CatalogItemRenamedByCloneMessage);
                 }
 
                 // 4) Si NO tiene referencias -> update in-place
                 entity.Name = newName;
                 entity.IsActive = request.IsActive;
 
-                return await SaveAndOkAsync(entity, "Catalog item updated.", ct);
+                return await SaveAndOkAsync(entity, CatalogItemUpdatedMessage, ct);
             }
             catch (DbUpdateException dbex)
             {
@@ -261,22 +277,22 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (id <= 0)
                     return ServiceResult<NoContent>
-                        .Fail("Id is required.", ErrorType.Validation);
+                        .Fail(IdRequiredMessage, ErrorType.Validation);
 
                 var entity = await _repo.GetByIdAsync(new object[] { id }, ct);
                 if (entity is null)
                     return ServiceResult<NoContent>
-                        .Fail("Item not found.", ErrorType.NotFound);
+                        .Fail(ItemNotFoundMessage, ErrorType.NotFound);
 
                 if (entity.IsLocked)
                     return ServiceResult<NoContent>
-                        .Fail("Catalog item is locked and cannot be deleted.", ErrorType.Conflict);
+                        .Fail(CatalogItemLockedForDeleteMessage, ErrorType.Conflict);
 
                 _repo.Remove(entity);
                 await _uow.SaveChangesAsync(ct);
 
                 return ServiceResult<NoContent>
-                    .Ok(new NoContent(), "Catalog item deleted.");
+                    .Ok(new NoContent(), CatalogItemDeletedMessage);
             }
             catch (DbUpdateException dbex)
             {

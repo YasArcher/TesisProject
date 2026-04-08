@@ -23,6 +23,7 @@ namespace tesisproject.backend.Services.Implementations
         private const string MsgIdRequired = "id is required.";
         private const string MsgProgressRecordNotFound = "Progress record not found.";
         private const string MsgActivityProgressDeleted = "Activity progress deleted";
+        private const string MsgProgressExceedsRemainingTemplate = "Progress exceeds 100%. Remaining allowed for this activity in this project is {0}%.";
 
         private readonly IUnitOfWork _uow;
 
@@ -83,7 +84,7 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     var remaining = MaxProgressPercentage - sumOther;
                     return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(
-                        $"Progress exceeds 100%. Remaining allowed for this activity in this project is {remaining}%.",
+                        string.Format(MsgProgressExceedsRemainingTemplate, remaining),
                         ErrorType.Validation);
                 }
 
