@@ -1,4 +1,5 @@
 using tesisproject.shared.DTOs.Articles;
+using tesisproject.shared.DTOs.Imports;
 
 namespace tesisproject.backend.Services.Interfaces
 {
@@ -6,6 +7,10 @@ namespace tesisproject.backend.Services.Interfaces
     {
         Task<RegisterArticleAggregateResponse> RegisterArticleAggregateAsync(
             RegisterArticleAggregateRequest request,
+            CancellationToken ct = default);
+        Task<BulkImportActionResultDto> SubmitArticleAggregateForReviewAsync(
+            RegisterArticleAggregateRequest request,
+            string? userId,
             CancellationToken ct = default);
     }
 }

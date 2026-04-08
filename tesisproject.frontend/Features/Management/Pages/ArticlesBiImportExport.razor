@@ -1,6 +1,8 @@
 @page "/management/exportinformation"
+@page "/management/article-review-staging"
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.Utils
 @using tesisproject.frontend.Features.Management.Components
@@ -11,15 +13,29 @@
 @inject IFormConfigurationClient FormConfigurationClient
 @inject IBulkImportClient BulkImportClient
 @inject ExportJsInterop ExportJs
+@inject NavigationManager NavManager
+@inject AuthenticationStateProvider AuthStateProvider
 
-<PageTitle>Carga masiva dinámica</PageTitle>
+<PageTitle>@PageTitleText</PageTitle>
 
 <div class="app-page-shell app-shell-warm bulk-import-page">
     <div class="app-module-hero mb-3 rounded-[1.4rem] px-4 py-3 text-white shadow-lg">
         <div class="flex items-center justify-between gap-3">
             <div>
-                <h1 class="text-xl font-black md:text-2xl">Carga masiva dinámica</h1>
+                <div class="text-xs font-semibold uppercase tracking-[0.2em] text-white/75">@PageEyebrow</div>
+                <h1 class="text-xl font-black md:text-2xl">@PageHeading</h1>
+                <div class="mt-1 text-sm text-white/80">@PageSummary</div>
             </div>
+            @if (IsReviewStagingMode)
+            {
+                <div class="flex flex-wrap gap-2">
+                    <span class="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold">@ReviewModeAudience</span>
+                    @if (CurrentBatch is not null)
+                    {
+                        <span class="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold">@CurrentBatch.Summary.BatchCode</span>
+                    }
+                </div>
+            }
         </div>
     </div>
 
@@ -55,45 +71,87 @@
 
     @if (IsLoading)
     {
-        <div class="rounded-3xl border bg-white p-6 text-center text-slate-600 shadow-sm">Cargando configuración de campos y lotes recientes...</div>
+        <div class="rounded-3xl border bg-white p-6 text-center text-slate-600 shadow-sm">@LoadingMessage</div>
     }
     else
     {
-        <BulkImportOverviewPanel SelectedArticleFieldsCount="@SelectedArticleFieldIds.Count"
-                                 SelectedParticipantFieldsCount="@SelectedParticipantFieldIds.Count"
-                                 CurrentBatchCode="@(CurrentBatch?.Summary.BatchCode ?? "Sin lote")"
-                                 RecentBatchesCount="@RecentBatches.Count" />
+        @if (!IsReviewStagingMode)
+        {
+            <BulkImportOverviewPanel SelectedArticleFieldsCount="@SelectedArticleFieldIds.Count"
+                                     SelectedParticipantFieldsCount="@SelectedParticipantFieldIds.Count"
+                                     CurrentBatchCode="@(CurrentBatch?.Summary.BatchCode ?? "Sin lote")"
+                                     RecentBatchesCount="@RecentBatches.Count" />
+        }
 
-        <div class="grid grid-cols-1 gap-6 2xl:grid-cols-[1.15fr_0.85fr]">
-            <section class="space-y-6">
-                <BulkImportTemplateDesigner ArticleFields="FilteredArticleFields.ToList()"
-                                            ParticipantFields="FilteredParticipantFields.ToList()"
-                                            SelectedArticleFieldIds="SelectedArticleFieldIds"
-                                            SelectedParticipantFieldIds="SelectedParticipantFieldIds"
-                                            ArticleSearchTerm="ArticleFieldSearchTerm"
-                                            ParticipantSearchTerm="ParticipantFieldSearchTerm"
-                                            IsGeneratingTemplate="IsGeneratingTemplate"
-                                            OnUseActiveForms="UseActiveFormsAsync"
-                                            OnSelectRequiredOnly="SelectRequiredOnly"
-                                            OnDownloadTemplate="DownloadTemplateAsync"
-                                            ArticleSearchTermChanged="HandleArticleFieldSearchChanged"
-                                            ParticipantSearchTermChanged="HandleParticipantFieldSearchChanged"
-                                            OnArticleFieldToggled="HandleArticleFieldToggled"
-                                            OnParticipantFieldToggled="HandleParticipantFieldToggled" />
+        <div class="grid grid-cols-1 gap-6 @(IsReviewStagingMode ? "2xl:grid-cols-[1.3fr_0.7fr]" : "2xl:grid-cols-[1.15fr_0.85fr]")">
+            @if (!IsReviewStagingMode)
+            {
+                <section class="space-y-6">
+                    <BulkImportTemplateDesigner ArticleFields="FilteredArticleFields.ToList()"
+                                                ParticipantFields="FilteredParticipantFields.ToList()"
+                                                SelectedArticleFieldIds="SelectedArticleFieldIds"
+                                                SelectedParticipantFieldIds="SelectedParticipantFieldIds"
+                                                ArticleSearchTerm="ArticleFieldSearchTerm"
+                                                ParticipantSearchTerm="ParticipantFieldSearchTerm"
+                                                IsGeneratingTemplate="IsGeneratingTemplate"
+                                                OnUseActiveForms="UseActiveFormsAsync"
+                                                OnSelectRequiredOnly="SelectRequiredOnly"
+                                                OnDownloadTemplate="DownloadTemplateAsync"
+                                                ArticleSearchTermChanged="HandleArticleFieldSearchChanged"
+                                                ParticipantSearchTermChanged="HandleParticipantFieldSearchChanged"
+                                                OnArticleFieldToggled="HandleArticleFieldToggled"
+                                                OnParticipantFieldToggled="HandleParticipantFieldToggled" />
 
-                <BulkImportUploadPanel SelectedFile="SelectedFile"
-                                       SelectedSourceType="SelectedSourceType"
-                                       UploadNotes="UploadNotes"
-                                       IsUploading="IsUploading"
-                                       OnFileSelected="OnFileSelected"
-                                       SelectedSourceTypeChanged="HandleSourceTypeChanged"
-                                       UploadNotesChanged="HandleUploadNotesChanged"
-                                       OnRequestUpload="RequestUpload" />
+                    <BulkImportUploadPanel SelectedFile="SelectedFile"
+                                           SelectedSourceType="SelectedSourceType"
+                                           UploadNotes="UploadNotes"
+                                           IsUploading="IsUploading"
+                                           OnFileSelected="OnFileSelected"
+                                           SelectedSourceTypeChanged="HandleSourceTypeChanged"
+                                           UploadNotesChanged="HandleUploadNotesChanged"
+                                           OnRequestUpload="RequestUpload" />
 
-                <BulkImportRecentBatches Batches="RecentBatches"
-                                         OnRefresh="LoadRecentBatchesAsync"
-                                         OnOpenBatch="OpenRecentBatchAsync" />
-            </section>
+                    <BulkImportRecentBatches Batches="RecentBatches"
+                                             OnRefresh="LoadRecentBatchesAsync"
+                                             OnOpenBatch="OpenRecentBatchAsync" />
+                </section>
+            }
+            else
+            {
+                <section class="space-y-4">
+                    <div class="rounded-[1.7rem] border border-[#d9e5e8] bg-white p-5 shadow-sm">
+                        <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Staging del módulo</div>
+                        <h2 class="mt-1 text-lg font-black text-[#12343b]">Revisión y corrección del envío</h2>
+                        <p class="mt-2 text-sm text-slate-500">Esta vista usa el mismo motor de staging y validación, pero está enfocada solo en los envíos de autores que pasan por UODIDE y Área Técnica.</p>
+                    </div>
+
+                    @if (CurrentBatch is not null)
+                    {
+                        <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                            <article class="rounded-[1.5rem] border border-[#d9e5e8] bg-white p-4 shadow-sm">
+                                <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Estado</div>
+                                <div class="mt-2 text-base font-black text-[#12343b]">@GetReviewStatusLabel()</div>
+                                <div class="mt-1 text-sm text-slate-500">@GetCurrentStageLabel()</div>
+                            </article>
+                            <article class="rounded-[1.5rem] border border-[#d9e5e8] bg-white p-4 shadow-sm">
+                                <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Filas</div>
+                                <div class="mt-2 text-base font-black text-[#12343b]">@CurrentBatch.Summary.TotalRows</div>
+                                <div class="mt-1 text-sm text-slate-500">Errores: @CurrentBatch.Summary.ErrorRows · Procesadas: @CurrentBatch.Summary.ProcessedRows</div>
+                            </article>
+                            <article class="rounded-[1.5rem] border border-[#d9e5e8] bg-white p-4 shadow-sm">
+                                <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Siguiente paso</div>
+                                <div class="mt-2 text-base font-black text-[#12343b]">@GetReviewGuidanceTitle()</div>
+                                <div class="mt-1 text-sm text-slate-500">@GetOperationalGuidance()</div>
+                            </article>
+                        </div>
+                    }
+
+                    @if (CurrentBatch is null)
+                    {
+                        <AppEmptyState Title="Sin envío seleccionado" Message="Abre este staging desde la bandeja de revisión para cargar el lote que necesita corrección." />
+                    }
+                </section>
+            }
 
             <aside class="space-y-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-auto">
                 <BulkImportCurrentBatchSidebar Batch="CurrentBatch"
@@ -111,10 +169,10 @@
                                                IsGeneratingTemplate="IsGeneratingTemplate"
                                                IsValidatingBatch="IsValidatingBatch"
                                                IsProcessingBatch="IsProcessingBatch"
-                                               CanDownloadTemplate="@(CurrentBatch?.Template is not null)"
-                                               CanProcess="@CanProcessCurrentBatch"
+                                               CanDownloadTemplate="@(CurrentBatch?.Template is not null && !IsReviewStagingMode)"
+                                               CanProcess="@CanProcessInCurrentContext"
                                                StageCards="CurrentBatchStageCards"
-                                               OnPrepareNextLoad="PrepareNextLoad"
+                                               OnPrepareNextLoad="@(IsReviewStagingMode ? NoOpPrepareNextLoad : PrepareNextLoad)"
                                                OnRefresh="RefreshCurrentBatchAsync"
                                                OnDownloadTemplate="DownloadTemplateFromBatchAsync"
                                                OnValidate="RequestValidateCurrentBatch"
@@ -517,6 +575,7 @@
     [SupplyParameterFromQuery(Name = "batchId")]
     public int? InitialBatchId { get; set; }
 
+    private HashSet<string> UserRoles { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     private List<FieldCatalogItemDto> ArticleFields = new();
     private List<FieldCatalogItemDto> ParticipantFields = new();
     private HashSet<int> SelectedArticleFieldIds = new();
@@ -697,6 +756,22 @@
         && CurrentBatch.Summary.TotalRows > 0
         && CurrentBatch.Summary.ErrorRows == 0
         && CurrentBatch.Summary.ValidRows > 0;
+    private bool IsReviewStagingMode => NavManager.Uri.Contains("/management/article-review-staging", StringComparison.OrdinalIgnoreCase);
+    private bool CanProcessInCurrentContext => CanProcessCurrentBatch && (!IsReviewStagingMode || UserRoles.Contains("Admin") || UserRoles.Contains("WorkflowProcessorAreaTecnica"));
+    private string PageTitleText => IsReviewStagingMode ? "Staging de revisión de artículos" : "Carga masiva dinámica";
+    private string PageHeading => IsReviewStagingMode ? "Staging de revisión de artículos" : "Carga masiva dinámica";
+    private string PageEyebrow => IsReviewStagingMode ? "Revisión institucional" : "Operación de carga";
+    private string PageSummary => IsReviewStagingMode
+        ? "Espacio de corrección y validación para envíos de autores dentro del flujo UODIDE y Área Técnica."
+        : "Plantillas, staging y procesamiento de lotes para el módulo de carga masiva.";
+    private string ReviewModeAudience => UserRoles.Contains("WorkflowProcessorAreaTecnica") || UserRoles.Contains("WorkflowReviewerAreaTecnica")
+        ? "Área Técnica"
+        : UserRoles.Contains("WorkflowReviewerUodide")
+            ? "UODIDE"
+            : "Revisión";
+    private string LoadingMessage => IsReviewStagingMode
+        ? "Cargando staging de revisión y preparación del lote seleccionado..."
+        : "Cargando configuración de campos y lotes recientes...";
     private IReadOnlyList<string> RequiredContractFieldLabels
         => GetRequiredContractFieldIds()
             .Select(ResolveFieldLabel)
@@ -757,16 +832,26 @@
         {
             IsLoading = true;
             ClearMessages();
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            UserRoles = authState.User.Claims
+                .Where(x => x.Type == System.Security.Claims.ClaimTypes.Role && !string.IsNullOrWhiteSpace(x.Value))
+                .Select(x => x.Value)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
             ArticleFields = await FormConfigurationClient.GetFieldsAsync("Article");
             ParticipantFields = await FormConfigurationClient.GetFieldsAsync("ArticleParticipant");
             ArticleForm = await FormConfigurationClient.GetResolvedFormAsync("ArticleManualForm");
             ParticipantForm = await FormConfigurationClient.GetResolvedFormAsync("ArticleParticipantForm");
             await UseActiveFormsAsync();
-            await LoadRecentBatchesAsync();
+            if (!IsReviewStagingMode)
+            {
+                await LoadRecentBatchesAsync();
+            }
         }
         catch (Exception ex)
         {
-            ShowFeedback("error", "No pude cargar la pantalla", "Error de carga", $"No pude cargar la configuración de carga masiva: {ex.Message}");
+            ShowFeedback("error", "No pude cargar la pantalla", "Error de carga", IsReviewStagingMode
+                ? $"No pude cargar el staging de revisión: {ex.Message}"
+                : $"No pude cargar la configuración de carga masiva: {ex.Message}");
         }
         finally
         {
@@ -930,6 +1015,10 @@
         RecentBatches = await BulkImportClient.GetBatchesAsync("Article", 50);
     }
 
+    private void NoOpPrepareNextLoad()
+    {
+    }
+
     private async Task OpenRecentBatchAsync(int batchId)
     {
         var safePreviewRows = 100;
@@ -1057,9 +1146,13 @@
         }
 
         PendingAction = PendingBulkAction.Validate;
-        PendingActionTitle = $"Validar lote {CurrentBatch.Summary.BatchCode}";
-        PendingActionMessage = "Voy a ejecutar la validación del staging para normalizar referencias y detectar errores fila por fila.";
-        PendingActionConfirmText = "Validar lote";
+        PendingActionTitle = IsReviewStagingMode
+            ? $"Validar envío {CurrentBatch.Summary.BatchCode}"
+            : $"Validar lote {CurrentBatch.Summary.BatchCode}";
+        PendingActionMessage = IsReviewStagingMode
+            ? "Voy a validar este envío para normalizar referencias, detectar observaciones por fila y dejar lista la revisión."
+            : "Voy a ejecutar la validación del staging para normalizar referencias y detectar errores fila por fila.";
+        PendingActionConfirmText = IsReviewStagingMode ? "Validar envío" : "Validar lote";
     }
 
     private async Task ValidateCurrentBatchAsync()
@@ -1076,14 +1169,22 @@
                 ExpandPreviewToWholeBatch(result.Batch.Summary.TotalRows);
                 await OpenBatchAsync(batchId);
                 SelectedPreviewRow = null;
-                ShowFeedback("success", "Validación completada", "Lote validado", $"{result.Message} Filas válidas: {CurrentBatch.Summary.ValidRows}. Filas con error: {CurrentBatch.Summary.ErrorRows}. Usa los filtros del preview para enfocarte en lo pendiente.");
+                ShowFeedback("success",
+                    "Validación completada",
+                    IsReviewStagingMode ? "Envío revisado" : "Lote validado",
+                    IsReviewStagingMode
+                        ? $"{result.Message} Filas sin observaciones: {CurrentBatch.Summary.ValidRows}. Filas con observaciones: {CurrentBatch.Summary.ErrorRows}. Usa las pestañas de revisión para enfocarte en lo pendiente."
+                        : $"{result.Message} Filas válidas: {CurrentBatch.Summary.ValidRows}. Filas con error: {CurrentBatch.Summary.ErrorRows}. Usa los filtros del preview para enfocarte en lo pendiente.");
                 ActiveBatchTab = CurrentBatch.Summary.ErrorRows > 0 ? "correction" : "preview";
                 await LoadRecentBatchesAsync();
             }
         }
         catch (Exception ex)
         {
-            ShowFeedback("error", "No pude validar el lote", "Error al validar", $"No pude validar el lote: {ex.Message}");
+            ShowFeedback("error",
+                IsReviewStagingMode ? "No pude validar el envío" : "No pude validar el lote",
+                "Error al validar",
+                IsReviewStagingMode ? $"No pude validar el envío en revisión: {ex.Message}" : $"No pude validar el lote: {ex.Message}");
         }
         finally
         {
@@ -1099,9 +1200,13 @@
         }
 
         PendingAction = PendingBulkAction.Process;
-        PendingActionTitle = $"Procesar lote {CurrentBatch.Summary.BatchCode}";
-        PendingActionMessage = "Voy a persistir en el modelo híbrido todas las filas válidas del lote actual. Conviene hacerlo solo cuando los errores pendientes estén controlados.";
-        PendingActionConfirmText = "Procesar lote";
+        PendingActionTitle = IsReviewStagingMode
+            ? $"Procesar envío {CurrentBatch.Summary.BatchCode}"
+            : $"Procesar lote {CurrentBatch.Summary.BatchCode}";
+        PendingActionMessage = IsReviewStagingMode
+            ? "Voy a procesar el envío ya aprobado para integrarlo en la base principal."
+            : "Voy a persistir en el modelo híbrido todas las filas válidas del lote actual. Conviene hacerlo solo cuando los errores pendientes estén controlados.";
+        PendingActionConfirmText = IsReviewStagingMode ? "Procesar envío" : "Procesar lote";
     }
 
     private async Task ProcessCurrentBatchAsync()
@@ -1120,14 +1225,29 @@
                 SelectedPreviewRow = null;
                 var processedRows = CurrentBatch.Summary.ProcessedRows;
                 var processedBatchCode = CurrentBatch.Summary.BatchCode;
-                ShowFeedback("success", "Procesamiento completado", "Lote procesado", $"{result.Message} Filas procesadas: {processedRows}. El staging conserva la trazabilidad para auditoría y revisión posterior. La pantalla se limpió para preparar una nueva carga después del lote {processedBatchCode}.");
-                PrepareNextLoad();
-                await LoadRecentBatchesAsync();
+                ShowFeedback("success",
+                    "Procesamiento completado",
+                    IsReviewStagingMode ? "Envío procesado" : "Lote procesado",
+                    IsReviewStagingMode
+                        ? $"{result.Message} Filas procesadas: {processedRows}. El envío {processedBatchCode} ya quedó integrado y el staging conserva la trazabilidad de revisión."
+                        : $"{result.Message} Filas procesadas: {processedRows}. El staging conserva la trazabilidad para auditoría y revisión posterior. La pantalla se limpió para preparar una nueva carga después del lote {processedBatchCode}.");
+                if (IsReviewStagingMode)
+                {
+                    await LoadRecentBatchesAsync();
+                }
+                else
+                {
+                    PrepareNextLoad();
+                    await LoadRecentBatchesAsync();
+                }
             }
         }
         catch (Exception ex)
         {
-            ShowFeedback("error", "No pude procesar el lote", "Error al procesar", $"No pude procesar el lote: {ex.Message}");
+            ShowFeedback("error",
+                IsReviewStagingMode ? "No pude procesar el envío" : "No pude procesar el lote",
+                "Error al procesar",
+                IsReviewStagingMode ? $"No pude procesar el envío aprobado: {ex.Message}" : $"No pude procesar el lote: {ex.Message}");
         }
         finally
         {
@@ -2058,25 +2178,35 @@
     {
         if (CurrentBatch is null)
         {
-            return "Abre o crea un lote para ver aquí el siguiente paso recomendado.";
+            return IsReviewStagingMode
+                ? "Abre un envío desde la bandeja de revisión para ver aquí el siguiente paso recomendado."
+                : "Abre o crea un lote para ver aquí el siguiente paso recomendado.";
         }
 
         if (CurrentBatch.Summary.ErrorRows > 0)
         {
-            return "Conviene corregir primero las filas fallidas antes de procesar el lote.";
+            return IsReviewStagingMode
+                ? "Conviene corregir primero las observaciones detectadas antes de continuar con la validación."
+                : "Conviene corregir primero las filas fallidas antes de procesar el lote.";
         }
 
         if (CurrentBatch.Summary.ValidRows > 0 && CurrentBatch.Summary.ProcessedRows == 0)
         {
-            return "El lote ya pasó validación y está listo para persistirse en el modelo híbrido.";
+            return IsReviewStagingMode
+                ? "El envío ya superó la validación actual y está listo para el siguiente paso del workflow."
+                : "El lote ya pasó validación y está listo para persistirse en el modelo híbrido.";
         }
 
         if (CurrentBatch.Summary.TotalRows > 0)
         {
-            return "Revisa el preview y lanza la validación para detectar referencias y reglas pendientes.";
+            return IsReviewStagingMode
+                ? "Revisa el contenido del envío y valida nuevamente para confirmar que no quedan observaciones."
+                : "Revisa el preview y lanza la validación para detectar referencias y reglas pendientes.";
         }
 
-        return "Este lote todavía no tiene filas listas para revisión.";
+        return IsReviewStagingMode
+            ? "Este envío todavía no tiene información lista para revisión."
+            : "Este lote todavía no tiene filas listas para revisión.";
     }
 
     private string GetPreviewCoverageLabel()
@@ -2122,7 +2252,7 @@
     {
         if (IsOpeningBatch)
         {
-            return "Abriendo lote";
+            return IsReviewStagingMode ? "Abriendo envío" : "Abriendo lote";
         }
 
         if (IsUploading)
@@ -2132,12 +2262,12 @@
 
         if (IsValidatingBatch)
         {
-            return "Validando lote";
+            return IsReviewStagingMode ? "Validando envío" : "Validando lote";
         }
 
         if (IsProcessingBatch)
         {
-            return "Procesando lote";
+            return IsReviewStagingMode ? "Procesando envío" : "Procesando lote";
         }
 
         return "Sin operación en curso";
@@ -2147,7 +2277,9 @@
     {
         if (IsOpeningBatch)
         {
-            return "Estoy cargando la información del lote seleccionado para que puedas revisarlo sin bloquear el navegador con demasiadas filas.";
+            return IsReviewStagingMode
+                ? "Estoy cargando la información del envío seleccionado para que puedas revisarlo sin bloquear la pantalla."
+                : "Estoy cargando la información del lote seleccionado para que puedas revisarlo sin bloquear el navegador con demasiadas filas.";
         }
 
         if (IsUploading)
@@ -2157,12 +2289,16 @@
 
         if (IsValidatingBatch)
         {
-            return "La validación está normalizando valores, resolviendo referencias y registrando errores por fila.";
+            return IsReviewStagingMode
+                ? "La validación está revisando el envío, normalizando valores y registrando observaciones por fila."
+                : "La validación está normalizando valores, resolviendo referencias y registrando errores por fila.";
         }
 
         if (IsProcessingBatch)
         {
-            return "El sistema está persistiendo solo las filas limpias dentro del modelo híbrido definitivo.";
+            return IsReviewStagingMode
+                ? "El sistema está integrando el envío aprobado dentro de la base principal."
+                : "El sistema está persistiendo solo las filas limpias dentro del modelo híbrido definitivo.";
         }
 
         return "No hay tareas largas corriendo ahora mismo. Puedes revisar, validar o procesar según el estado del lote.";
@@ -2182,7 +2318,7 @@
     {
         if (IsOpeningBatch)
         {
-            return "Abriendo lote";
+            return IsReviewStagingMode ? "Abriendo envío" : "Abriendo lote";
         }
 
         if (IsUploading)
@@ -2192,12 +2328,12 @@
 
         if (IsValidatingBatch)
         {
-            return "Validando lote";
+            return IsReviewStagingMode ? "Validando envío" : "Validando lote";
         }
 
         if (IsProcessingBatch)
         {
-            return "Procesando lote";
+            return IsReviewStagingMode ? "Procesando envío" : "Procesando lote";
         }
 
         return "Procesando";
@@ -2207,7 +2343,9 @@
     {
         if (IsOpeningBatch)
         {
-            return "Estoy cargando el lote seleccionado y preparando una vista inicial de revisión.";
+            return IsReviewStagingMode
+                ? "Estoy cargando el envío seleccionado y preparando su vista de revisión."
+                : "Estoy cargando el lote seleccionado y preparando una vista inicial de revisión.";
         }
 
         if (IsUploading)
@@ -2217,12 +2355,16 @@
 
         if (IsValidatingBatch)
         {
-            return "Estoy ejecutando la normalización, las validaciones SQL y las reglas adicionales del cliente.";
+            return IsReviewStagingMode
+                ? "Estoy ejecutando la revisión técnica del envío, la normalización y las validaciones por fila."
+                : "Estoy ejecutando la normalización, las validaciones SQL y las reglas adicionales del cliente.";
         }
 
         if (IsProcessingBatch)
         {
-            return "Estoy persistiendo las filas válidas dentro del modelo híbrido definitivo.";
+            return IsReviewStagingMode
+                ? "Estoy integrando el envío aprobado dentro de la base principal."
+                : "Estoy persistiendo las filas válidas dentro del modelo híbrido definitivo.";
         }
 
         return "Estoy ejecutando una operación sobre el lote actual.";
@@ -2278,7 +2420,7 @@
     {
         if (CurrentBatch is null)
         {
-            return "Sin lote";
+            return IsReviewStagingMode ? "Sin envío" : "Sin lote";
         }
 
         if (CurrentBatch.Summary.ProcessedRows > 0)
@@ -2294,6 +2436,66 @@
         }
 
         return "Cargado";
+    }
+
+    private string GetReviewStatusLabel()
+    {
+        if (CurrentBatch is null)
+        {
+            return "Sin envío";
+        }
+
+        if (CurrentBatch.Summary.ProcessedRows > 0)
+        {
+            return "Procesado";
+        }
+
+        if (CurrentBatch.Summary.ErrorRows > 0)
+        {
+            return "Con observaciones";
+        }
+
+        if (CanProcessInCurrentContext)
+        {
+            return "Listo para procesar";
+        }
+
+        if (CurrentBatch.Summary.ValidRows > 0)
+        {
+            return "Validado";
+        }
+
+        return "En revisión";
+    }
+
+    private string GetReviewGuidanceTitle()
+    {
+        if (CurrentBatch is null)
+        {
+            return "Abre un envío";
+        }
+
+        if (CurrentBatch.Summary.ProcessedRows > 0)
+        {
+            return "Proceso completado";
+        }
+
+        if (CurrentBatch.Summary.ErrorRows > 0)
+        {
+            return "Corregir observaciones";
+        }
+
+        if (CanProcessInCurrentContext)
+        {
+            return "Procesar envío";
+        }
+
+        if (CurrentBatch.Summary.ValidRows > 0)
+        {
+            return "Confirmar revisión";
+        }
+
+        return "Validar revisión";
     }
 
     private string GetStageStatusText(string stageKey)

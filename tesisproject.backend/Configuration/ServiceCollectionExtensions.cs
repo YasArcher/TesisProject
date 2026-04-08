@@ -64,7 +64,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IVenuesService, VenuesService>();
         services.AddScoped<IConfigurationFormsService, ConfigurationFormsService>();
         services.AddScoped<IArticleRegistrationService, ArticleRegistrationService>();
+        services.AddScoped<IArticleAggregatePersistenceService, ArticleAggregatePersistenceService>();
         services.AddScoped<IBulkImportService, BulkImportService>();
+        services.AddScoped<IWorkflowService, WorkflowService>();
         services.AddScoped<IRegistrationMatrixService, RegistrationMatrixService>();
         services.AddScoped<IExternalApiExplorerService, ExternalApiExplorerService>();
         services.Configure<ExternalApiExplorerOptions>(config.GetSection("ExternalApis"));
@@ -75,8 +77,11 @@ public static class ServiceCollectionExtensions
         });
         services.AddHttpContextAccessor();
         services.AddScoped<IAuthService, IdentityAuthService>();
+        services.AddScoped<IIdentityAdministrationService, IdentityAdministrationService>();
+        services.AddScoped<IInstitutionAuthorDirectoryService, LocalInstitutionAuthorDirectoryService>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IAuditLogger, AuditLogger>();
+        services.Configure<InstitutionIdentityOptions>(config.GetSection("InstitutionIdentity"));
 
         return services;
     }
@@ -170,15 +175,51 @@ public static class ServiceCollectionExtensions
         services.AddAuthorization(options =>
         {
             options.FallbackPolicy = null;
-            options.DefaultPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
-                .RequireAssertion(_ => true)
-                .Build();
 
-            options.AddPolicy("ArticlesWrite", policy =>
-                policy.RequireAssertion(_ => true));
+            options.AddPolicy(AppPolicies.AuthenticatedUser, policy =>
+                policy.RequireAuthenticatedUser());
 
-            options.AddPolicy("OnlyAdmins", policy =>
-                policy.RequireAssertion(_ => true));
+            options.AddPolicy(AppPolicies.SecurityAdministration, policy =>
+                policy.RequireRole(AppRoles.Admin));
+
+            options.AddPolicy(AppPolicies.AuthorSubmission, policy =>
+                policy.RequireRole(AppRoles.Admin, AppRoles.Analyst, AppRoles.Author));
+
+            options.AddPolicy(AppPolicies.ArticlesWrite, policy =>
+                policy.RequireRole(AppRoles.Admin, AppRoles.Analyst));
+
+            options.AddPolicy(AppPolicies.WorkflowAccess, policy =>
+                policy.RequireRole(
+                    AppRoles.Admin,
+                    AppRoles.Author,
+                    AppRoles.WorkflowReviewerUodide,
+                    AppRoles.WorkflowReviewerAreaTecnica,
+                    AppRoles.WorkflowProcessorAreaTecnica));
+
+            options.AddPolicy(AppPolicies.WorkflowReview, policy =>
+                policy.RequireRole(
+                    AppRoles.Admin,
+                    AppRoles.WorkflowReviewerUodide,
+                    AppRoles.WorkflowReviewerAreaTecnica));
+
+            options.AddPolicy(AppPolicies.WorkflowProcess, policy =>
+                policy.RequireRole(
+                    AppRoles.Admin,
+                    AppRoles.WorkflowProcessorAreaTecnica));
+
+            options.AddPolicy(AppPolicies.BulkImportAccess, policy =>
+                policy.RequireRole(
+                    AppRoles.Admin,
+                    AppRoles.Analyst,
+                    AppRoles.WorkflowReviewerUodide,
+                    AppRoles.WorkflowReviewerAreaTecnica,
+                    AppRoles.WorkflowProcessorAreaTecnica));
+
+            options.AddPolicy(AppPolicies.ConfigurationAdministration, policy =>
+                policy.RequireRole(AppRoles.Admin, AppRoles.Analyst));
+
+            options.AddPolicy(AppPolicies.ExternalApiAccess, policy =>
+                policy.RequireRole(AppRoles.Admin, AppRoles.Analyst, AppRoles.Author));
         });
 
         return services;

@@ -1,11 +1,17 @@
-﻿@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using tesisproject.frontend.Features.Auth
 
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
-            <RouteView RouteData="@routeData"
-                       DefaultLayout="@(typeof(tesisproject.frontend.Features.Management.Layout.MainLayout))" />
+            <AuthorizeRouteView RouteData="@routeData"
+                                DefaultLayout="@(typeof(tesisproject.frontend.Features.Management.Layout.MainLayout))">
+                <NotAuthorized>
+                    <LayoutView Layout="@(typeof(tesisproject.frontend.Features.Management.Layout.AuthLayout))">
+                        <AuthAccessGate />
+                    </LayoutView>
+                </NotAuthorized>
+            </AuthorizeRouteView>
         </Found>
 
         <NotFound>

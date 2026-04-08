@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using tesisproject.backend.Identity;
 
 namespace tesisproject.backend.Data.Entities
 {
@@ -18,8 +19,11 @@ namespace tesisproject.backend.Data.Entities
         public DateTime StartedAt { get; set; }
         public DateTime? FinishedAt { get; set; }
         public string? CreatedBy { get; set; }
+        public string? CreatedByUserId { get; set; }
         public string? Notes { get; set; }
 
+        public ApplicationUser? CreatedByUser { get; set; }
+        public WorkflowInstance? WorkflowInstance { get; set; }
         public ICollection<ImportBatchRow> Rows { get; set; } = new List<ImportBatchRow>();
         public ICollection<ImportBatchError> Errors { get; set; } = new List<ImportBatchError>();
     }

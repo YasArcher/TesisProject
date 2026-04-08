@@ -1,8 +1,10 @@
 
 @page "/articulos/registrar"
 @page "/articulos/editar/{ArticleId:int}"
+@attribute [Authorize(Roles = "Admin,Analyst,Author")]
 
 @using Blazored.LocalStorage
+@using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components
 @using tesisproject.frontend.Features.Management.Components
 @using tesisproject.frontend.Models.Configuration
@@ -11,6 +13,7 @@
 @using tesisproject.shared.DTOs.Catalogs
 @using tesisproject.shared.DTOs.Configuration
 @using tesisproject.shared.DTOs.ExternalApis
+@using tesisproject.shared.DTOs.Imports
 
 @inject IFormConfigurationClient FormConfigurationClient
 @inject IApiClient ApiClient
@@ -179,6 +182,7 @@
             <RegisterArticleSidebarPanel IsSaving="IsSaving"
                                          OnCancel="GoBack"
                                          OnSave="SaveAsync"
+                                         OnSubmitForReview="SubmitForReviewAsync"
                                          OnReload="ReloadFormsFromConfigurationAsync"
                                          OnBack="GoBack"
                                          VisibleFieldCount="@GetVisibleFieldCount()"
@@ -376,19 +380,8 @@
     }
     private async Task SaveAsync()
     {
-        ErrorMessage = string.Empty;
-        SuccessMessage = string.Empty;
-
-        if (ArticleId > 0)
+        if (!await PrepareSubmissionAsync())
         {
-            ErrorMessage = "La edición del registro dinámico aún no está habilitada.";
-            return;
-        }
-
-        var validationError = ValidateForm();
-        if (!string.IsNullOrWhiteSpace(validationError))
-        {
-            ErrorMessage = validationError;
             return;
         }
 
@@ -396,16 +389,7 @@
         {
             IsSaving = true;
 
-            var request = new RegisterArticleAggregateRequest
-            {
-                FormKey = ArticleForm?.FormKey,
-                Article = BuildArticleCore(),
-                Venue = BuildVenueRequest(),
-                VenueMetric = BuildVenueMetricRequest(),
-                DynamicFields = BuildDynamicValues(ArticleSections),
-                Participants = Participants.Select(BuildParticipantRequest).ToList()
-            };
-
+            var request = BuildRegisterRequest();
             var result = await ApiClient.PostAsync<RegisterArticleAggregateRequest, RegisterArticleAggregateResponse>("api/articles/aggregate", request);
 
             if (result is null)
@@ -425,6 +409,75 @@
         {
             IsSaving = false;
         }
+    }
+
+    private async Task SubmitForReviewAsync()
+    {
+        if (!await PrepareSubmissionAsync())
+        {
+            return;
+        }
+
+        try
+        {
+            IsSaving = true;
+
+            var request = BuildRegisterRequest();
+            var result = await ApiClient.PostAsync<RegisterArticleAggregateRequest, BulkImportActionResultDto>("api/articles/aggregate/submit-for-review", request);
+
+            if (result?.Batch?.Summary is null)
+            {
+                ErrorMessage = "El backend no devolvió el lote de revisión esperado.";
+                return;
+            }
+
+            SuccessMessage = $"Envío enviado a revisión correctamente. Lote {result.Batch.Summary.BatchCode} creado para staging.";
+            WarningMessage = result.Message;
+            await ResetFormAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"No fue posible enviar el artículo a revisión: {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private Task<bool> PrepareSubmissionAsync()
+    {
+        ErrorMessage = string.Empty;
+        SuccessMessage = string.Empty;
+        WarningMessage = string.Empty;
+
+        if (ArticleId > 0)
+        {
+            ErrorMessage = "La edición del registro dinámico aún no está habilitada.";
+            return Task.FromResult(false);
+        }
+
+        var validationError = ValidateForm();
+        if (!string.IsNullOrWhiteSpace(validationError))
+        {
+            ErrorMessage = validationError;
+            return Task.FromResult(false);
+        }
+
+        return Task.FromResult(true);
+    }
+
+    private RegisterArticleAggregateRequest BuildRegisterRequest()
+    {
+        return new RegisterArticleAggregateRequest
+        {
+            FormKey = ArticleForm?.FormKey,
+            Article = BuildArticleCore(),
+            Venue = BuildVenueRequest(),
+            VenueMetric = BuildVenueMetricRequest(),
+            DynamicFields = BuildDynamicValues(ArticleSections),
+            Participants = Participants.Select(BuildParticipantRequest).ToList()
+        };
     }
 
     private async Task ResetFormAsync()

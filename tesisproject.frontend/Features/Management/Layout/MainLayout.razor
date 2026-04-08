@@ -1,6 +1,13 @@
 @namespace tesisproject.frontend.Features.Management.Layout
 @inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
 @using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.Services.Auth
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ITokenStore TokenStore
+@inject NavigationManager NavManager
 
 <div class="app-shell @(mobileMenuOpen ? "menu-open" : null) @(sidebarCollapsed ? "sidebar-collapsed" : null)">
     <aside class="layout-aside menu-bg text-white @(mobileMenuOpen ? "mobile-open" : null) @(sidebarCollapsed ? "collapsed" : null)" @onclick:stopPropagation="true">
@@ -24,7 +31,29 @@
 
                 <div class="fw-semibold brand-title">SISTEMA INTEGRADO</div>
 
-                <div class="d-lg-none" style="width: 40px;"></div>
+                <div class="brand-user-tools">
+                    @if (IsAuthenticated)
+                    {
+                        <div class="brand-user-chip">
+                            <div class="brand-user-chip__name">@DisplayName</div>
+                            @if (!string.IsNullOrWhiteSpace(PrimaryRole))
+                            {
+                                <div class="brand-user-chip__role">@PrimaryRole</div>
+                            }
+                        </div>
+
+                        <button type="button"
+                                class="btn btn-sm btn-outline-light brand-logout-btn"
+                                @onclick:stopPropagation="true"
+                                @onclick="LogoutAsync">
+                            Cerrar sesión
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="d-lg-none" style="width: 40px;"></div>
+                    }
+                </div>
             </div>
         </header>
 
@@ -42,6 +71,15 @@
     private bool mobileMenuOpen;
     private bool sidebarCollapsed;
     private SideBar? sidebarComponent;
+    private bool IsAuthenticated;
+    private string DisplayName { get; set; } = "Usuario";
+    private string? PrimaryRole { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserStateAsync();
+        AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+    }
 
     private void ToggleMobileMenu()
     {
@@ -59,5 +97,67 @@
     private void HandleSidebarCollapseChanged(bool collapsed)
     {
         sidebarCollapsed = collapsed;
+    }
+
+    private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
+    {
+        await LoadUserStateAsync(task);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadUserStateAsync(Task<AuthenticationState>? authStateTask = null)
+    {
+        var state = authStateTask is null
+            ? await AuthStateProvider.GetAuthenticationStateAsync()
+            : await authStateTask;
+
+        var user = state.User;
+        IsAuthenticated = user.Identity?.IsAuthenticated == true;
+
+        if (!IsAuthenticated)
+        {
+            DisplayName = "Usuario";
+            PrimaryRole = null;
+            return;
+        }
+
+        DisplayName = user.FindFirst("fullName")?.Value
+            ?? user.FindFirst(ClaimTypes.Name)?.Value
+            ?? user.FindFirst(ClaimTypes.Email)?.Value
+            ?? "Usuario";
+
+        PrimaryRole = user.Claims
+            .Where(x => x.Type == ClaimTypes.Role)
+            .Select(x => GetRoleDisplayName(x.Value))
+            .FirstOrDefault();
+    }
+
+    private async Task LogoutAsync()
+    {
+        await TokenStore.ClearAsync();
+        if (AuthStateProvider is JwtAuthStateProvider jwt)
+        {
+            jwt.NotifyUserChanged();
+        }
+
+        mobileMenuOpen = false;
+        NavManager.NavigateTo("/login", forceLoad: false);
+    }
+
+    private static string GetRoleDisplayName(string role)
+        => role switch
+        {
+            "Admin" => "Administrador",
+            "Analyst" => "Analista",
+            "Author" => "Autor",
+            "WorkflowReviewerUodide" => "Revisor UODIDE",
+            "WorkflowReviewerAreaTecnica" => "Revisor Área Técnica",
+            "WorkflowProcessorAreaTecnica" => "Procesador Área Técnica",
+            _ => role
+        };
+
+    public void Dispose()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
     }
 }

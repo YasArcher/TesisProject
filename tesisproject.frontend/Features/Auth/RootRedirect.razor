@@ -1,9 +1,15 @@
-﻿@page "/"
+@page "/"
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
 
 @code {
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        Nav.NavigateTo("/panel/principal", forceLoad: true);
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var target = authState.User.Identity?.IsAuthenticated == true
+            ? "/panel/principal"
+            : "/login";
+
+        Nav.NavigateTo(target, forceLoad: false);
     }
 }

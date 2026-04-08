@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using tesisproject.backend.Identity;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Catalogs;
 using tesisproject.shared.DTOs.Configuration;
@@ -8,7 +9,7 @@ namespace tesisproject.backend.Controllers
 {
     [ApiController]
     [Route("api/config")]
-    [AllowAnonymous]
+    [Authorize(Policy = AppPolicies.AuthenticatedUser)]
     public class ConfigurationController : ControllerBase
     {
         private readonly IConfigurationFormsService _configurationFormsService;
@@ -70,6 +71,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPost("fields/{fieldId:int}/options")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<DynamicFieldOptionDto>> CreateFieldOption(
             int fieldId,
             [FromBody] CreateDynamicFieldOptionRequest request,
@@ -87,6 +89,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPut("fields/{fieldId:int}/options/{optionId:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<DynamicFieldOptionDto>> UpdateFieldOption(
             int fieldId,
             int optionId,
@@ -103,6 +106,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpDelete("fields/{fieldId:int}/options/{optionId:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<IActionResult> DeleteFieldOption(int fieldId, int optionId, CancellationToken ct)
         {
             var deleted = await _configurationFormsService.DeleteFieldOptionAsync(fieldId, optionId, ct);
@@ -152,6 +156,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPost("forms")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<FormDefinitionAdminDto>> CreateForm(
             [FromBody] CreateFormDefinitionRequest request,
             CancellationToken ct)
@@ -168,6 +173,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPut("forms/{formId:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<FormDefinitionAdminDto>> UpdateForm(
             int formId,
             [FromBody] UpdateFormDefinitionRequest request,
@@ -190,6 +196,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpDelete("forms/{formId:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<IActionResult> DeleteForm(int formId, CancellationToken ct)
         {
             var deleted = await _configurationFormsService.DeleteFormAsync(formId, ct);
@@ -197,6 +204,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPost("fields/dynamic")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<FieldCatalogItemDto>> CreateDynamicField(
             [FromBody] CreateDynamicFieldRequest request,
             CancellationToken ct)
@@ -213,6 +221,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPut("fields/{fieldId:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<FieldCatalogItemDto>> UpdateField(
             int fieldId,
             [FromBody] UpdateFieldCatalogRequest request,
@@ -228,6 +237,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPost("forms/{formId:int}/fields")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<FormFieldAdminDto>> AddFieldToForm(
             int formId,
             [FromBody] AddFieldToFormRequest request,
@@ -245,6 +255,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPut("forms/{formId:int}/fields/{formFieldId:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<FormFieldAdminDto>> UpdateFormField(
             int formId,
             int formFieldId,
@@ -261,6 +272,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpDelete("forms/{formId:int}/fields/{formFieldId:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<IActionResult> DeleteFormField(int formId, int formFieldId, CancellationToken ct)
         {
             var deleted = await _configurationFormsService.RemoveFormFieldAsync(formId, formFieldId, ct);

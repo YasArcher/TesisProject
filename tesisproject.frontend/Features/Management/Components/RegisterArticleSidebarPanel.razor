@@ -18,6 +18,11 @@
                         @onclick="OnSave">
                     @(IsSaving ? "Guardando..." : "Registrar")
                 </button>
+                <button class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 disabled:opacity-60"
+                        disabled="@IsSaving"
+                        @onclick="OnSubmitForReview">
+                    @(IsSaving ? "Enviando..." : "Enviar a revisión")
+                </button>
                 <button class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700" @onclick="OnReload">Recargar</button>
                 <button class="rounded-xl border border-[#ead8bd] bg-[#fff7eb] px-3 py-2 text-sm font-semibold text-[#8b5a16]" @onclick="OnBack">Volver</button>
             </div>
@@ -105,6 +110,7 @@
     [Parameter] public bool IsSaving { get; set; }
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback OnSave { get; set; }
+    [Parameter] public EventCallback OnSubmitForReview { get; set; }
     [Parameter] public EventCallback OnReload { get; set; }
     [Parameter] public EventCallback OnBack { get; set; }
     [Parameter] public int VisibleFieldCount { get; set; }

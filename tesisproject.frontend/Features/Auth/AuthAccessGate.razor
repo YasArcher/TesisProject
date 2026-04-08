@@ -1,0 +1,35 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavigationManager
+
+@if (_isChecking)
+{
+    <div class="mx-auto mt-5 max-w-xl rounded-4 border bg-white p-5 shadow-sm text-center">
+        <h1 class="h4 mb-2">Verificando acceso</h1>
+        <p class="text-muted mb-0">Estamos validando tu sesión para continuar.</p>
+    </div>
+}
+else if (_isAuthenticated)
+{
+    <div class="mx-auto mt-5 max-w-xl rounded-4 border bg-white p-5 shadow-sm text-center">
+        <h1 class="h4 mb-2">Acceso restringido</h1>
+        <p class="text-muted mb-0">Tu sesión está activa, pero no tienes permisos para entrar a esta sección.</p>
+    </div>
+}
+
+@code {
+    private bool _isChecking = true;
+    private bool _isAuthenticated;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
+        _isChecking = false;
+
+        if (!_isAuthenticated)
+        {
+            NavigationManager.NavigateTo("/login", forceLoad: false);
+        }
+    }
+}

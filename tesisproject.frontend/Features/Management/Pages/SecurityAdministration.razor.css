@@ -1,0 +1,318 @@
+.security-admin-summary__card,
+.security-admin-card {
+    border-radius: 1.5rem;
+}
+
+.security-admin-summary__card {
+    height: 100%;
+    padding: 1.35rem 1.4rem;
+    border: 1px solid #dbe5e8;
+    background: linear-gradient(180deg, #ffffff, #f9fbfc);
+    box-shadow: 0 14px 30px rgba(28, 45, 59, 0.06);
+}
+
+.security-admin-summary__label {
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: #6b7880;
+}
+
+.security-admin-summary__value {
+    margin-top: 0.55rem;
+    font-size: 2rem;
+    font-weight: 900;
+    color: #12343b;
+}
+
+.security-admin-summary__note {
+    margin-top: 0.45rem;
+    color: #6d777f;
+    line-height: 1.6;
+}
+
+.security-admin-card {
+    border: 1px solid #dbe5e8 !important;
+    box-shadow: 0 18px 36px rgba(28, 45, 59, 0.07);
+}
+
+.security-admin-card__eyebrow {
+    margin-bottom: 0.45rem;
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #7f8a92;
+}
+
+.security-admin-role-create {
+    min-width: min(100%, 24rem);
+}
+
+.security-admin-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.security-admin-actions__button {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    width: 100%;
+    padding: 1rem 1.05rem;
+    border: 1px solid #dce5e9;
+    border-radius: 1.2rem;
+    background: linear-gradient(180deg, #fbfcfd, #ffffff);
+    text-align: left;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.security-admin-actions__button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(28, 45, 59, 0.08);
+    border-color: #b9ccd3;
+}
+
+.security-admin-actions__button--primary {
+    border-color: rgba(18, 52, 59, 0.18);
+    background: linear-gradient(180deg, #f7fafb, #eef5f7);
+}
+
+.security-admin-actions__icon {
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #12343b;
+    color: #ffffff;
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.security-admin-actions__title {
+    display: block;
+    font-weight: 800;
+    color: #12343b;
+}
+
+.security-admin-actions__description {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: #6f7980;
+}
+
+.security-role-card {
+    height: 100%;
+    padding: 1rem 1rem 0.95rem;
+    border-radius: 1.2rem;
+    border: 1px solid #e1e8eb;
+    background: #fafcfd;
+}
+
+.security-role-card__title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #12343b;
+}
+
+.security-role-card__code {
+    margin-top: 0.18rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #931d21;
+}
+
+.security-role-card__description {
+    margin-top: 0.7rem;
+    font-size: 0.92rem;
+    line-height: 1.65;
+    color: #637079;
+}
+
+.security-role-card__foot {
+    margin-top: 0.8rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #3e4b54;
+}
+
+.security-user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.security-user-card {
+    width: 100%;
+    border: 1px solid #dde6e9;
+    border-radius: 1.2rem;
+    background: #fbfcfd;
+    padding: 1rem;
+    text-align: left;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.security-user-card:hover,
+.security-user-card--selected {
+    border-color: #8faeb7;
+    box-shadow: 0 12px 26px rgba(28, 45, 59, 0.08);
+    transform: translateY(-1px);
+}
+
+.security-user-card__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.security-user-card__name {
+    font-weight: 800;
+    color: #12343b;
+}
+
+.security-user-card__email {
+    margin-top: 0.18rem;
+    color: #6c767d;
+    font-size: 0.92rem;
+}
+
+.security-user-card__roles {
+    margin-top: 0.85rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.security-selected-user {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 1.15rem;
+    background: linear-gradient(180deg, #f7fafb, #ffffff);
+    border: 1px solid #dbe5e8;
+}
+
+.security-selected-user__name {
+    font-weight: 800;
+    color: #12343b;
+}
+
+.security-selected-user__email {
+    margin-top: 0.25rem;
+    color: #6c767d;
+    font-size: 0.92rem;
+}
+
+.security-role-option {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 0.95rem 1rem;
+    border: 1px solid #dce5e9;
+    border-radius: 1.1rem;
+    background: #fbfcfd;
+}
+
+.security-role-option__title {
+    font-weight: 800;
+    color: #12343b;
+}
+
+.security-role-option__description {
+    margin-top: 0.2rem;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: #6f7980;
+}
+
+.security-admin-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: rgba(12, 24, 36, 0.52);
+    backdrop-filter: blur(6px);
+}
+
+.security-admin-modal {
+    width: min(100%, 58rem);
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+    border-radius: 1.6rem;
+    background: #ffffff;
+    border: 1px solid #dbe5e8;
+    box-shadow: 0 28px 56px rgba(12, 24, 36, 0.2);
+    padding: 1.45rem;
+}
+
+.security-admin-modal--compact {
+    width: min(100%, 36rem);
+}
+
+.security-admin-modal__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.security-admin-modal__close {
+    width: 2.2rem;
+    height: 2.2rem;
+    border: 1px solid #dbe5e8;
+    border-radius: 999px;
+    background: #f7fafb;
+    color: #4d5a63;
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.security-admin-modal__actions {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.security-modal-role-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.security-admin-note {
+    padding: 0.95rem 1rem;
+    border-radius: 1rem;
+    background: #f9fbfc;
+    border: 1px solid #dbe5e8;
+    color: #66737b;
+    line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+    .security-user-card__header,
+    .security-role-option,
+    .security-admin-modal__header,
+    .security-admin-modal__actions {
+        flex-direction: column;
+    }
+
+    .security-modal-role-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .security-admin-modal {
+        padding: 1.1rem;
+    }
+}

@@ -2,13 +2,14 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using tesisproject.backend.Identity;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Imports;
 
 namespace tesisproject.backend.Controllers
 {
     [ApiController]
-    [AllowAnonymous]
+    [Authorize(Policy = AppPolicies.BulkImportAccess)]
     [Route("api/import-batches")]
     public class BulkImportController : ControllerBase
     {
@@ -139,6 +140,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPost("{batchId:int}/process")]
+        [Authorize(Policy = AppPolicies.WorkflowProcess)]
         public async Task<ActionResult<BulkImportActionResultDto>> Process(int batchId, CancellationToken ct)
         {
             try

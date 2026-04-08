@@ -42,5 +42,17 @@ public class AuthClient : IAuthClient
     }
 
     public Task<AuthMeResponse?> GetCurrentAsync(CancellationToken ct = default)
-        => _http.GetFromJsonAsync<AuthMeResponse>("api/auth/me", ct);
+        => GetCurrentInternalAsync(ct);
+
+    private async Task<AuthMeResponse?> GetCurrentInternalAsync(CancellationToken ct)
+    {
+        using var response = await _http.GetAsync("api/auth/me", ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<AuthMeResponse>(cancellationToken: ct);
+    }
 }

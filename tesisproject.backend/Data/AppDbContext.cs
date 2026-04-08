@@ -44,6 +44,11 @@ namespace tesisproject.backend.Data
         public DbSet<ImportBatchRow> ImportBatchRows => Set<ImportBatchRow>();
         public DbSet<ImportBatchRowValue> ImportBatchRowValues => Set<ImportBatchRowValue>();
         public DbSet<ImportBatchError> ImportBatchErrors => Set<ImportBatchError>();
+        public DbSet<WorkflowDefinition> WorkflowDefinitions => Set<WorkflowDefinition>();
+        public DbSet<WorkflowStageDefinition> WorkflowStageDefinitions => Set<WorkflowStageDefinition>();
+        public DbSet<WorkflowInstance> WorkflowInstances => Set<WorkflowInstance>();
+        public DbSet<WorkflowStageInstance> WorkflowStageInstances => Set<WorkflowStageInstance>();
+        public DbSet<WorkflowActionLog> WorkflowActionLogs => Set<WorkflowActionLog>();
         public DbSet<RegistrationMatrix> RegistrationMatrices => Set<RegistrationMatrix>();
         public DbSet<RegistrationMatrixColumn> RegistrationMatrixColumns => Set<RegistrationMatrixColumn>();
         public DbSet<RegistrationMatrixRow> RegistrationMatrixRows => Set<RegistrationMatrixRow>();
@@ -399,6 +404,11 @@ namespace tesisproject.backend.Data
                 e.Property(x => x.CreatedBy).HasMaxLength(150);
                 e.Property(x => x.Notes).HasMaxLength(500);
 
+                e.HasOne(x => x.CreatedByUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.CreatedByUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
                 e.HasMany(x => x.Rows)
                     .WithOne(x => x.Batch)
                     .HasForeignKey(x => x.ImportBatchId)
@@ -426,6 +436,128 @@ namespace tesisproject.backend.Data
                     .WithOne(x => x.Row)
                     .HasForeignKey(x => x.ImportBatchRowId)
                     .OnDelete(DeleteBehavior.NoAction);
+            });
+
+            // =============== WorkflowDefinition ==========
+            m.Entity<WorkflowDefinition>(e =>
+            {
+                e.ToTable("WorkflowDefinition");
+                e.HasKey(x => x.WorkflowDefinitionId);
+                e.Property(x => x.Key).HasMaxLength(100).IsRequired();
+                e.Property(x => x.Name).HasMaxLength(150).IsRequired();
+                e.Property(x => x.EntityName).HasMaxLength(100).IsRequired();
+                e.Property(x => x.Description).HasMaxLength(500);
+                e.Property(x => x.IsActive).HasDefaultValue(true);
+                e.HasIndex(x => x.Key).IsUnique();
+            });
+
+            // =============== WorkflowStageDefinition =====
+            m.Entity<WorkflowStageDefinition>(e =>
+            {
+                e.ToTable("WorkflowStageDefinition");
+                e.HasKey(x => x.WorkflowStageDefinitionId);
+                e.Property(x => x.StageKey).HasMaxLength(100).IsRequired();
+                e.Property(x => x.StageName).HasMaxLength(150).IsRequired();
+                e.Property(x => x.StageGroupKey).HasMaxLength(100);
+                e.Property(x => x.StageGroupName).HasMaxLength(150);
+                e.Property(x => x.IsActive).HasDefaultValue(true);
+                e.Property(x => x.CanReturn).HasDefaultValue(true);
+                e.Property(x => x.CanApprove).HasDefaultValue(true);
+
+                e.HasOne(x => x.WorkflowDefinition)
+                    .WithMany(x => x.Stages)
+                    .HasForeignKey(x => x.WorkflowDefinitionId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasIndex(x => new { x.WorkflowDefinitionId, x.DisplayOrder }).IsUnique();
+                e.HasIndex(x => new { x.WorkflowDefinitionId, x.StageKey }).IsUnique();
+            });
+
+            // =============== WorkflowInstance ============
+            m.Entity<WorkflowInstance>(e =>
+            {
+                e.ToTable("WorkflowInstance");
+                e.HasKey(x => x.WorkflowInstanceId);
+                e.Property(x => x.Status).HasMaxLength(30).IsRequired();
+
+                e.HasOne(x => x.WorkflowDefinition)
+                    .WithMany(x => x.Instances)
+                    .HasForeignKey(x => x.WorkflowDefinitionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.Batch)
+                    .WithOne(x => x.WorkflowInstance)
+                    .HasForeignKey<WorkflowInstance>(x => x.ImportBatchId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(x => x.CurrentStageDefinition)
+                    .WithMany()
+                    .HasForeignKey(x => x.CurrentStageDefinitionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.SubmittedByUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.SubmittedByUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                e.HasIndex(x => x.ImportBatchId).IsUnique();
+            });
+
+            // =============== WorkflowStageInstance =======
+            m.Entity<WorkflowStageInstance>(e =>
+            {
+                e.ToTable("WorkflowStageInstance");
+                e.HasKey(x => x.WorkflowStageInstanceId);
+                e.Property(x => x.Status).HasMaxLength(30).IsRequired();
+                e.Property(x => x.Notes).HasMaxLength(1000);
+
+                e.HasOne(x => x.WorkflowInstance)
+                    .WithMany(x => x.StageInstances)
+                    .HasForeignKey(x => x.WorkflowInstanceId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(x => x.WorkflowStageDefinition)
+                    .WithMany(x => x.StageInstances)
+                    .HasForeignKey(x => x.WorkflowStageDefinitionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(x => x.AssignedToUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.AssignedToUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                e.HasOne(x => x.ApprovedByUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.ApprovedByUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
+
+                e.HasIndex(x => new { x.WorkflowInstanceId, x.WorkflowStageDefinitionId }).IsUnique();
+            });
+
+            // =============== WorkflowActionLog ===========
+            m.Entity<WorkflowActionLog>(e =>
+            {
+                e.ToTable("WorkflowActionLog");
+                e.HasKey(x => x.WorkflowActionLogId);
+                e.Property(x => x.ActionType).HasMaxLength(50).IsRequired();
+                e.Property(x => x.FromStatus).HasMaxLength(30);
+                e.Property(x => x.ToStatus).HasMaxLength(30);
+                e.Property(x => x.Comments).HasMaxLength(2000);
+
+                e.HasOne(x => x.WorkflowInstance)
+                    .WithMany(x => x.ActionLogs)
+                    .HasForeignKey(x => x.WorkflowInstanceId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(x => x.WorkflowStageInstance)
+                    .WithMany(x => x.ActionLogs)
+                    .HasForeignKey(x => x.WorkflowStageInstanceId)
+                    .OnDelete(DeleteBehavior.NoAction);
+
+                e.HasOne(x => x.PerformedByUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.PerformedByUserId)
+                    .OnDelete(DeleteBehavior.SetNull);
             });
 
             // =============== ImportBatchRowValue =======

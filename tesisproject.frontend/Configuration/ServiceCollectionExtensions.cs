@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using tesisproject.frontend.Services.Auth;
 using tesisproject.frontend.Services.Implementations;
 using tesisproject.frontend.Services.Interfaces;
+using tesisproject.frontend.Services.Platform.Auth;
 using tesisproject.frontend.Utils;
 
 namespace tesisproject.frontend.Configuration;
@@ -18,6 +19,7 @@ public static class ServiceCollectionExtensions
         services.AddBlazoredToast();
         services.AddScoped<ITokenStore, LocalTokenStore>();
         services.AddScoped<IAuthClient, AuthClient>();
+        services.AddScoped<IIdentityAdministrationClient, IdentityAdministrationClient>();
         services.AddTransient<AuthMessageHandler>();
         services.AddScoped<IInsightsService, InsightsService>();
         services.AddScoped<JwtAuthStateProvider>();
@@ -43,6 +45,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICatalogsService, CatalogsService>();
         services.AddScoped<IFormConfigurationClient, FormConfigurationClient>();
         services.AddScoped<IBulkImportClient, BulkImportClient>();
+        services.AddScoped<IWorkflowClient, WorkflowClient>();
         services.AddScoped<IRegistrationMatrixClient, RegistrationMatrixClient>();
         services.AddScoped<IExternalApiExplorerClient, ExternalApiExplorerClient>();
         services.AddScoped<ExportJsInterop>();

@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using tesisproject.backend.Identity;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.ExternalApis;
 
 namespace tesisproject.backend.Controllers
 {
     [ApiController]
-    [AllowAnonymous]
+    [Authorize(Policy = AppPolicies.ExternalApiAccess)]
     [Route("api/external-api-explorer")]
     public class ExternalApiExplorerController : ControllerBase
     {

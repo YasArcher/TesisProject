@@ -9,7 +9,7 @@ public static class SeedRoles
         var userMgr = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var roleMgr = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
 
-        foreach (var role in new[] { "Admin", "Analyst" })
+        foreach (var role in AppRoles.All)
         {
             if (!await roleMgr.RoleExistsAsync(role))
                 await roleMgr.CreateAsync(new ApplicationRole { Name = role });

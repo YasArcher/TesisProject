@@ -1,18 +1,28 @@
-﻿@namespace tesisproject.frontend.Features.Management.Layout
+@namespace tesisproject.frontend.Features.Management.Layout
 @inherits LayoutComponentBase
 
-<header class="brand-header text-white shadow-sm">
-    <div class="d-flex align-items-center justify-content-between px-4 py-3">
-        <div class="fw-semibold">SISTEMA INTEGRADO</div>
-    </div>
-</header>
+<div class="auth-layout-shell">
+    <div class="auth-layout-shell__backdrop"></div>
 
-<main class="d-flex justify-content-center align-items-start" style="min-height: calc(100vh - 120px);">
-    <div class="w-100" style="max-width: 480px; padding: 2rem;">
-        @Body
-    </div>
-</main>
+    <section class="auth-layout-shell__hero">
+        <div class="auth-layout-shell__hero-content">
+            <div class="auth-layout-shell__kicker">Universidad Técnica de Ambato</div>
+            <h1 class="auth-layout-shell__title">Sistema integrado para gestión y validación de artículos científicos</h1>
+            <p class="auth-layout-shell__copy">
+                Acceso institucional para autores, revisores UODIDE, Área Técnica y administración del sistema.
+            </p>
 
-<footer class="app-footer text-center py-2">
-    <small>© @DateTime.Now.Year — Sistema Integrado</small>
-</footer>
+            <div class="auth-layout-shell__badges">
+                <span>Autenticación segura</span>
+                <span>Workflow multinivel</span>
+                <span>Trazabilidad institucional</span>
+            </div>
+        </div>
+    </section>
+
+    <main class="auth-layout-shell__content">
+        <div class="auth-layout-shell__content-inner">
+            @Body
+        </div>
+    </main>
+</div>

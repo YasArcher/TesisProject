@@ -142,17 +142,25 @@ namespace tesisproject.backend.Controllers
         [HttpGet("indexing-sources")]
         public async Task<ActionResult<List<CatalogItemDto>>> GetIndexingSources(CancellationToken ct)
         {
-            var list = await _db.IndexingSources
-                .Where(x => x.IsActive)
-                .OrderBy(x => x.Name)
-                .Select(x => new CatalogItemDto
-                {
-                    Id = x.IndexingSourceId,
-                    Name = x.Name
-                })
-                .ToListAsync(ct);
+            try
+            {
+                var list = await _db.IndexingSources
+                    .Where(x => x.IsActive)
+                    .OrderBy(x => x.Name)
+                    .Select(x => new CatalogItemDto
+                    {
+                        Id = x.IndexingSourceId,
+                        Name = x.Name
+                    })
+                    .ToListAsync(ct);
 
-            return Ok(list);
+                return Ok(list);
+            }
+            catch (SqlException ex) when (ex.Number == 208 && ex.Message.Contains("IndexingSources", System.StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning(ex, "La tabla IndexingSources no existe en la base actual. Se devolverá un catálogo vacío.");
+                return Ok(new List<CatalogItemDto>());
+            }
         }
 
         // ========== Proyectos ==========

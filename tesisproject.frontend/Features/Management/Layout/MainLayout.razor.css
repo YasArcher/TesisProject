@@ -3,7 +3,7 @@
     --shell-sidebar-collapsed-width: 92px;
     --shell-header-height: 68px;
     min-height: 100vh;
-    background: #fbf5e7;
+    background: var(--app-color-shell);
     transition: background .2s ease;
 }
 
@@ -39,10 +39,11 @@
     top: 0;
     z-index: 1020;
     min-height: var(--shell-header-height);
-    background: #16324f !important;
+    background:
+        linear-gradient(135deg, rgba(67, 76, 84, 0.98), rgba(84, 89, 95, 0.94)) !important;
     backdrop-filter: blur(14px);
-    border-bottom: 1px solid rgba(151, 186, 214, 0.16);
-    box-shadow: 0 10px 24px rgba(12, 28, 44, 0.12);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 10px 24px rgba(36, 43, 49, 0.14);
 }
 
 .brand-header-inner {
@@ -53,9 +54,52 @@
     letter-spacing: 0.08em;
     text-transform: uppercase;
     font-size: 0.9rem;
+    font-weight: 800;
+    color: rgba(245, 249, 252, 0.96);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.brand-user-tools {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+}
+
+.brand-user-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 0;
+}
+
+.brand-user-chip__name {
+    font-size: .86rem;
+    font-weight: 700;
+    color: rgba(255,255,255,.96);
+    max-width: 240px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.brand-user-chip__role {
+    font-size: .7rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: rgba(205, 152, 46, 0.9);
+}
+
+.brand-logout-btn {
+    border-radius: .95rem;
+    white-space: nowrap;
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.16);
+}
+
+.brand-logout-btn:hover {
+    background: rgba(255,255,255,.12);
 }
 
 .mobile-menu-btn {
@@ -126,6 +170,10 @@
         font-size: 0.86rem;
         letter-spacing: 0.06em;
     }
+
+    .brand-user-chip {
+        display: none;
+    }
 }
 
 @media (max-width: 767.98px) {
@@ -139,5 +187,9 @@
 
     .app-footer {
         padding-inline: 0.75rem;
+    }
+
+    .brand-logout-btn {
+        padding-inline: .8rem;
     }
 }

@@ -17,10 +17,17 @@ namespace tesisproject.backend.Services.Implementations
     public class BulkImportService : IBulkImportService
     {
         private readonly AppDbContext _db;
+        private readonly IWorkflowService _workflowService;
+        private readonly IArticleAggregatePersistenceService _articleAggregatePersistenceService;
 
-        public BulkImportService(AppDbContext db)
+        public BulkImportService(
+            AppDbContext db,
+            IWorkflowService workflowService,
+            IArticleAggregatePersistenceService articleAggregatePersistenceService)
         {
             _db = db;
+            _workflowService = workflowService;
+            _articleAggregatePersistenceService = articleAggregatePersistenceService;
         }
 
         public async Task<List<BulkImportBatchSummaryDto>> GetBatchesAsync(string? entityName = null, int take = 20, CancellationToken ct = default)
@@ -162,6 +169,7 @@ namespace tesisproject.backend.Services.Implementations
 
             _db.ImportBatches.Add(batch);
             await _db.SaveChangesAsync(ct);
+            await TryCreateAuthorSubmissionWorkflowAsync(batch, userId, ct);
 
             var rowsToInsert = new List<ImportBatchRow>(parsed.Rows.Count);
             foreach (var parsedRow in parsed.Rows)
@@ -362,6 +370,7 @@ namespace tesisproject.backend.Services.Implementations
 
             _db.ImportBatches.Add(batch);
             await _db.SaveChangesAsync(ct);
+            await TryCreateAuthorSubmissionWorkflowAsync(batch, userId, ct);
             await AddExternalArticleRowAsync(batch.ImportBatchId, 1, request.ProviderName, request.Article, allFields, normalizer, now, ct);
 
             if (request.ValidateAfterCreate)
@@ -421,6 +430,7 @@ namespace tesisproject.backend.Services.Implementations
 
             _db.ImportBatches.Add(batch);
             await _db.SaveChangesAsync(ct);
+            await TryCreateAuthorSubmissionWorkflowAsync(batch, userId, ct);
 
             for (var index = 0; index < validArticles.Count; index++)
             {
@@ -437,6 +447,190 @@ namespace tesisproject.backend.Services.Implementations
             return new BulkImportActionResultDto
             {
                 Message = $"Se creó un lote externo con {validArticles.Count} artículos desde {request.ProviderName}.",
+                Batch = await GetBatchAsync(batch.ImportBatchId, 25, ct) ?? new BulkImportBatchDetailDto()
+            };
+        }
+
+        public async Task<BulkImportActionResultDto> CreateBatchFromAuthorSubmissionAsync(RegisterArticleAggregateRequest request, bool validateAfterCreate, string? userId, CancellationToken ct = default)
+        {
+            if (request is null || request.Article is null)
+            {
+                throw new InvalidOperationException("Debes enviar un registro de artículo válido para crear el envío del autor.");
+            }
+
+            await ArticleVenueModelHelper.EnsureVenueCompositeFieldsAsync(_db, ct);
+            var resolvedCreatedByUserId = await ResolveExistingUserIdAsync(userId, ct);
+
+            var articleFields = await ResolveTemplateFieldsAsync("Article", new List<int>(), true, ct);
+            var participantFields = await ResolveTemplateFieldsAsync("ArticleParticipant", new List<int>(), true, ct);
+            var allFields = articleFields
+                .Concat(participantFields)
+                .GroupBy(x => x.FieldKey, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
+            var requiredFieldContract = await BuildRequiredFieldContractAsync(ct);
+            var normalizer = await BulkImportNormalizerCache.CreateAsync(_db, ct);
+            var now = DateTime.UtcNow;
+            var primaryParticipant = request.Participants
+                .OrderByDescending(x => x.IsPrimaryAuthor)
+                .ThenBy(x => x.Index <= 0 ? int.MaxValue : x.Index)
+                .FirstOrDefault();
+
+            var batch = new ImportBatch
+            {
+                BatchCode = GenerateBatchCode("BATCH-AUTH"),
+                SourceType = "AuthorSubmission",
+                EntityName = "Article",
+                FileName = $"author-submission-{DateTime.UtcNow:yyyyMMddHHmmss}",
+                SourceReference = SerializeBatchMetadata(new BatchTemplateMetadata
+                {
+                    Origin = "author-registration",
+                    FileName = request.Article.Title,
+                    SourceType = "AuthorSubmission",
+                    ArticleFieldIds = articleFields.Select(x => x.FieldId).Distinct().ToList(),
+                    ParticipantFieldIds = participantFields.Select(x => x.FieldId).Distinct().ToList(),
+                    RequiredArticleFieldIds = requiredFieldContract.ArticleFieldIds,
+                    RequiredParticipantFieldIds = requiredFieldContract.ParticipantFieldIds
+                }, preserveRequiredContractOnlyWhenTrimmed: true),
+                TotalRows = 1,
+                SuccessfulRows = 0,
+                ErrorRows = 0,
+                Status = "Pending",
+                StartedAt = now,
+                CreatedBy = string.IsNullOrWhiteSpace(userId) ? "system" : userId,
+                CreatedByUserId = resolvedCreatedByUserId,
+                Notes = "Registro enviado por autor para revisión en workflow."
+            };
+
+            _db.ImportBatches.Add(batch);
+            await _db.SaveChangesAsync(ct);
+            await TryCreateAuthorSubmissionWorkflowAsync(batch, userId, ct);
+
+            var row = new ImportBatchRow
+            {
+                ImportBatchId = batch.ImportBatchId,
+                RowNumber = 1,
+                RowStatus = "Pending",
+                CreatedAt = now
+            };
+
+            _db.ImportBatchRows.Add(row);
+            await _db.SaveChangesAsync(ct);
+
+            var rawData = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+            var cellsToCreate = new List<ImportBatchRowValue>();
+
+            void AddCell(string fieldKey, string? rawValue)
+            {
+                if (string.IsNullOrWhiteSpace(rawValue) || !allFields.TryGetValue(fieldKey, out var field))
+                {
+                    return;
+                }
+
+                var cleaned = rawValue.Trim();
+                var normalized = NormalizeValue(field, cleaned, normalizer);
+                rawData[BuildHeaderKey(field)] = cleaned;
+                cellsToCreate.Add(new ImportBatchRowValue
+                {
+                    ImportBatchRowId = row.ImportBatchRowId,
+                    FieldId = field.FieldId,
+                    RawValue = cleaned,
+                    NormalizedValue = normalized.NormalizedValue,
+                    ValueType = normalized.ValueType,
+                    IsValid = normalized.IsValid,
+                    ValidationMessage = normalized.ValidationMessage,
+                    CreatedAt = now
+                });
+            }
+
+            AddCell("Title", request.Article.Title);
+            AddCell("Doi", request.Article.Doi);
+            AddCell("Year", request.Article.Year?.ToString(CultureInfo.InvariantCulture));
+            AddCell("PublishedAt", request.Article.PublishedAt?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+            AddCell("PageCount", request.Article.PageCount?.ToString(CultureInfo.InvariantCulture));
+            AddCell("PublicationUrl", request.Article.PublicationUrl);
+            AddCell("IsProjectResult", request.Article.IsProjectResult ? "true" : "false");
+            AddCell("HasInterculturalComponent", request.Article.HasInterculturalComponent ? "true" : "false");
+            AddCell("ProceedingsName", request.Article.ProceedingsName);
+            AddCell("Proceedings", request.Article.Proceedings);
+            AddCell("EventName", request.Article.EventName);
+            AddCell("GroupName", request.Article.GroupName);
+            AddCell("Filiacion", request.Article.Filiacion);
+            AddCell("AcademicTermId", request.Article.AcademicTermId?.ToString(CultureInfo.InvariantCulture));
+            AddCell("PublicationStatusId", request.Article.PublicationStatusId?.ToString(CultureInfo.InvariantCulture));
+            AddCell("ResearchLineId", request.Article.ResearchLineId?.ToString(CultureInfo.InvariantCulture));
+            AddCell("BroadFieldId", request.Article.BroadFieldId?.ToString(CultureInfo.InvariantCulture));
+            AddCell("SpecificFieldId", request.Article.SpecificFieldId?.ToString(CultureInfo.InvariantCulture));
+            AddCell("DetailedFieldId", request.Article.DetailedFieldId?.ToString(CultureInfo.InvariantCulture));
+            AddCell("IsOpenAccess", request.Article.IsOpenAccess ? "true" : "false");
+            AddCell("ExternalSource", request.Article.ExternalSource);
+            AddCell("ExternalId", request.Article.ExternalId);
+
+            AddCell("JournalName", request.Venue?.JournalName);
+            AddCell("IssnCode", request.Venue?.IssnCode);
+            AddCell("IssueNumber", request.Venue?.IssueNumber);
+            AddCell("VolumeNumber", request.Venue?.VolumeNumber);
+            AddCell("JournalUrl", request.Venue?.JournalUrl);
+            AddCell("Sjr", request.VenueMetric?.Sjr?.ToString(CultureInfo.InvariantCulture));
+            AddCell("Quartile", request.VenueMetric?.Quartile);
+
+            if (primaryParticipant is not null)
+            {
+                AddCell("Index", primaryParticipant.Index <= 0 ? "1" : primaryParticipant.Index.ToString(CultureInfo.InvariantCulture));
+                AddCell("Identificacion", primaryParticipant.Identificacion);
+                AddCell("Nombre", primaryParticipant.Nombre);
+                AddCell("Participacion", primaryParticipant.Participacion);
+                AddCell("ParticipantType", primaryParticipant.ParticipantType);
+                AddCell("InstitutionalPersonId", primaryParticipant.InstitutionalPersonId?.ToString(CultureInfo.InvariantCulture));
+                AddCell("IsPrimaryAuthor", primaryParticipant.IsPrimaryAuthor ? "true" : "false");
+                AddCell("Email", primaryParticipant.Email);
+                AddCell("Orcid", primaryParticipant.Orcid);
+                AddCell("Affiliation", primaryParticipant.Affiliation);
+                AddCell("ExternalAuthorId", primaryParticipant.ExternalAuthorId);
+            }
+
+            AddDynamicCells(request.DynamicFields, "Article", allFields, rawData, cellsToCreate, row.ImportBatchRowId, normalizer, now);
+            AddDynamicCells(primaryParticipant?.DynamicFields ?? new List<DynamicFieldValueInputDto>(), "ArticleParticipant", allFields, rawData, cellsToCreate, row.ImportBatchRowId, normalizer, now);
+
+            row.RawJson = JsonSerializer.Serialize(new
+            {
+                request.FormKey,
+                request.Article,
+                request.Venue,
+                request.VenueMetric,
+                request.DynamicFields,
+                request.Participants
+            });
+
+            if (cellsToCreate.Count > 0)
+            {
+                _db.ImportBatchRowValues.AddRange(cellsToCreate);
+            }
+
+            if (request.Participants.Count > 1)
+            {
+                _db.ImportBatchErrors.Add(new ImportBatchError
+                {
+                    ImportBatchId = batch.ImportBatchId,
+                    ImportBatchRowId = row.ImportBatchRowId,
+                    ErrorCode = "AUTHOR_SUBMISSION_PARTICIPANTS_PENDING",
+                    ErrorMessage = $"El envío incluye {request.Participants.Count} participantes. Esta fase inicial del workflow conserva el detalle completo en RawJson y expone como editable el participante principal mientras se completa la fase multiparicipante del staging.",
+                    Severity = "Warning",
+                    CreatedAt = now
+                });
+            }
+
+            await _db.SaveChangesAsync(ct);
+
+            if (validateAfterCreate)
+            {
+                var validated = await ValidateBatchAsync(batch.ImportBatchId, ct);
+                validated.Message = $"Se creó el envío del autor para revisión. {validated.Message}";
+                return validated;
+            }
+
+            return new BulkImportActionResultDto
+            {
+                Message = "Se creó el envío del autor para revisión.",
                 Batch = await GetBatchAsync(batch.ImportBatchId, 25, ct) ?? new BulkImportBatchDetailDto()
             };
         }
@@ -510,6 +704,7 @@ namespace tesisproject.backend.Services.Implementations
 
             _db.ImportBatches.Add(batch);
             await _db.SaveChangesAsync(ct);
+            await TryCreateAuthorSubmissionWorkflowAsync(batch, userId, ct);
 
             var batchRows = validRows.Select(row => new ImportBatchRow
             {
@@ -830,14 +1025,28 @@ namespace tesisproject.backend.Services.Implementations
         public async Task<BulkImportActionResultDto> ProcessBatchAsync(int batchId, CancellationToken ct = default)
         {
             var validation = await ValidateBatchAsync(batchId, ct);
+            var batchSourceType = validation.Batch.Summary.SourceType ?? string.Empty;
+            var isAuthorSubmission = string.Equals(batchSourceType, "AuthorSubmission", StringComparison.OrdinalIgnoreCase);
+
             if (validation.Batch.Summary.ErrorRows > 0)
             {
                 throw new InvalidOperationException($"El lote {validation.Batch.Summary.BatchCode} todavía tiene {validation.Batch.Summary.ErrorRows} fila(s) con error. Completa los campos obligatorios y corrige el staging antes de procesarlo.");
             }
 
-            if (validation.Batch.Summary.ValidRows <= 0)
+            if (!isAuthorSubmission && validation.Batch.Summary.ValidRows <= 0)
             {
                 throw new InvalidOperationException($"El lote {validation.Batch.Summary.BatchCode} no tiene filas listas para procesar.");
+            }
+
+            var canProcess = await _workflowService.CanProcessBatchAsync(batchId, null, ct);
+            if (!canProcess)
+            {
+                throw new InvalidOperationException("El lote todavía no completó el workflow de revisión requerido. Solo un lote aprobado por la validación técnica final puede procesarse.");
+            }
+
+            if (isAuthorSubmission)
+            {
+                return await ProcessAuthorSubmissionBatchAsync(batchId, ct);
             }
 
             await _db.Database.ExecuteSqlInterpolatedAsync($"EXEC dbo.sp_ProcessImportBatch_Article {batchId}", ct);
@@ -847,6 +1056,91 @@ namespace tesisproject.backend.Services.Implementations
             {
                 Message = BuildBatchActionMessage("procesamiento", batch),
                 Batch = batch
+            };
+        }
+
+        private async Task<BulkImportActionResultDto> ProcessAuthorSubmissionBatchAsync(int batchId, CancellationToken ct)
+        {
+            var batch = await _db.ImportBatches
+                .Include(x => x.Rows)
+                .FirstOrDefaultAsync(x => x.ImportBatchId == batchId, ct);
+
+            if (batch is null)
+            {
+                throw new InvalidOperationException("No se encontró el lote solicitado.");
+            }
+
+            var rows = await _db.ImportBatchRows
+                .Where(x => x.ImportBatchId == batchId)
+                .OrderBy(x => x.RowNumber)
+                .ToListAsync(ct);
+
+            var processed = 0;
+            var failed = 0;
+
+            foreach (var row in rows)
+            {
+                if (row.RowStatus == "Processed" && row.TargetArticleId.HasValue)
+                {
+                    processed++;
+                    continue;
+                }
+
+                try
+                {
+                    if (string.IsNullOrWhiteSpace(row.RawJson))
+                    {
+                        throw new InvalidOperationException("La fila no contiene el payload original del envío del autor.");
+                    }
+
+                    var request = JsonSerializer.Deserialize<RegisterArticleAggregateRequest>(
+                        row.RawJson,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    if (request is null)
+                    {
+                        throw new InvalidOperationException("No se pudo reconstruir el registro del autor desde el staging.");
+                    }
+
+                    var persistenceResult = await _articleAggregatePersistenceService.PersistAsync(request, ct);
+                    row.TargetArticleId = persistenceResult.ArticleId;
+                    row.TargetParticipantId = persistenceResult.ParticipantIds.FirstOrDefault();
+                    row.RowStatus = "Processed";
+                    row.UpdatedAt = DateTime.UtcNow;
+                    processed++;
+                }
+                catch (Exception ex)
+                {
+                    row.RowStatus = "Error";
+                    row.UpdatedAt = DateTime.UtcNow;
+                    failed++;
+
+                    _db.ImportBatchErrors.Add(new ImportBatchError
+                    {
+                        ImportBatchId = batchId,
+                        ImportBatchRowId = row.ImportBatchRowId,
+                        ErrorCode = "AUTHOR_SUBMISSION_PROCESSING_FAILED",
+                        ErrorMessage = ex.Message,
+                        Severity = "Error",
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+
+            batch.SuccessfulRows = processed;
+            batch.ErrorRows = failed;
+            batch.Status = failed > 0
+                ? (processed > 0 ? "ProcessedWithErrors" : "Error")
+                : "Processed";
+            batch.FinishedAt = DateTime.UtcNow;
+
+            await _db.SaveChangesAsync(ct);
+
+            var detail = await GetBatchAsync(batchId, 25, ct) ?? new BulkImportBatchDetailDto();
+            return new BulkImportActionResultDto
+            {
+                Message = BuildBatchActionMessage("procesamiento", detail),
+                Batch = detail
             };
         }
 
@@ -904,6 +1198,127 @@ namespace tesisproject.backend.Services.Implementations
                 .OrderBy(x => x.DisplayOrder)
                 .ThenBy(x => x.FieldId)
                 .ToListAsync(ct);
+        }
+
+        private void AddDynamicCells(
+            List<DynamicFieldValueInputDto> values,
+            string entityName,
+            Dictionary<string, FieldCatalogEntry> allFields,
+            Dictionary<string, string?> rawData,
+            List<ImportBatchRowValue> cellsToCreate,
+            int rowId,
+            BulkImportNormalizerCache normalizer,
+            DateTime createdAt)
+        {
+            if (values is null || values.Count == 0)
+            {
+                return;
+            }
+
+            var fieldsById = allFields.Values
+                .Where(x => x.EntityName == entityName && x.IsDynamic)
+                .ToDictionary(x => x.FieldId);
+
+            foreach (var value in values)
+            {
+                var field = ResolveDynamicField(value, entityName, allFields, fieldsById);
+                if (field is null)
+                {
+                    continue;
+                }
+
+                var raw = ExtractDynamicRawValue(value);
+                if (string.IsNullOrWhiteSpace(raw))
+                {
+                    continue;
+                }
+
+                var cleaned = raw.Trim();
+                var normalized = NormalizeValue(field, cleaned, normalizer);
+                rawData[BuildHeaderKey(field)] = cleaned;
+                cellsToCreate.Add(new ImportBatchRowValue
+                {
+                    ImportBatchRowId = rowId,
+                    FieldId = field.FieldId,
+                    RawValue = cleaned,
+                    NormalizedValue = normalized.NormalizedValue,
+                    ValueType = normalized.ValueType,
+                    IsValid = normalized.IsValid,
+                    ValidationMessage = normalized.ValidationMessage,
+                    CreatedAt = createdAt
+                });
+            }
+        }
+
+        private async Task TryCreateAuthorSubmissionWorkflowAsync(ImportBatch batch, string? userId, CancellationToken ct)
+        {
+            if (!string.Equals(batch.SourceType, "AuthorSubmission", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            await _workflowService.CreateWorkflowForBatchAsync(
+                batch.ImportBatchId,
+                WorkflowService.AuthorArticleSubmissionWorkflowKey,
+                userId,
+                ct);
+        }
+
+        private static FieldCatalogEntry? ResolveDynamicField(
+            DynamicFieldValueInputDto value,
+            string entityName,
+            Dictionary<string, FieldCatalogEntry> allFields,
+            Dictionary<int, FieldCatalogEntry> fieldsById)
+        {
+            if (value.FieldId.HasValue && fieldsById.TryGetValue(value.FieldId.Value, out var byId))
+            {
+                return byId;
+            }
+
+            if (!string.IsNullOrWhiteSpace(value.FieldKey) &&
+                allFields.TryGetValue(value.FieldKey.Trim(), out var byKey) &&
+                string.Equals(byKey.EntityName, entityName, StringComparison.OrdinalIgnoreCase) &&
+                byKey.IsDynamic)
+            {
+                return byKey;
+            }
+
+            return null;
+        }
+
+        private static string? ExtractDynamicRawValue(DynamicFieldValueInputDto value)
+        {
+            if (!string.IsNullOrWhiteSpace(value.ValueString))
+            {
+                return value.ValueString;
+            }
+
+            if (value.ValueInt.HasValue)
+            {
+                return value.ValueInt.Value.ToString(CultureInfo.InvariantCulture);
+            }
+
+            if (value.ValueDecimal.HasValue)
+            {
+                return value.ValueDecimal.Value.ToString(CultureInfo.InvariantCulture);
+            }
+
+            if (value.ValueDate.HasValue)
+            {
+                return value.ValueDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+            }
+
+            if (value.ValueBit.HasValue)
+            {
+                return value.ValueBit.Value ? "true" : "false";
+            }
+
+            if (!string.IsNullOrWhiteSpace(value.ValueJson))
+            {
+                return value.ValueJson;
+            }
+
+            return null;
         }
 
         private async Task<List<FieldCatalogEntry>> ResolveStoredTemplateFieldsAsync(string entityName, List<int>? fieldIds, CancellationToken ct)
@@ -1917,6 +2332,21 @@ namespace tesisproject.backend.Services.Implementations
             var stamp = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff", CultureInfo.InvariantCulture);
             var suffix = Guid.NewGuid().ToString("N")[..6].ToUpperInvariant();
             return $"{prefix}-{stamp}-{suffix}";
+        }
+
+        private async Task<string?> ResolveExistingUserIdAsync(string? userId, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return null;
+            }
+
+            var trimmed = userId.Trim();
+            return await _db.Users
+                .AsNoTracking()
+                .Where(x => x.Id == trimmed || x.UserName == trimmed || x.Email == trimmed)
+                .Select(x => x.Id)
+                .FirstOrDefaultAsync(ct);
         }
 
         private BulkImportTemplateDescriptorDto BuildTemplateFromHeaders(List<string> headers)

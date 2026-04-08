@@ -1,8 +1,10 @@
-﻿@page "/login"
+@page "/login"
 @attribute [AllowAnonymous]
 @layout tesisproject.frontend.Features.Management.Layout.AuthLayout
 
 @using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Auth
 @inject NavigationManager Nav
@@ -10,117 +12,117 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject Blazored.Toast.Services.IToastService Toast
 
-<div class="mx-auto max-w-md px-4 py-8">
-    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
-        <!-- Encabezado -->
-        <div class="bg-gradient-to-br from-[#7A1E19] to-[#8C2A24] px-6 py-6 text-white">
-            <h1 class="text-xl font-bold leading-tight">Bienvenido 👋</h1>
-            <p class="mt-1 text-white/90 text-sm">Ingresa con tus credenciales institucionales</p>
-        </div>
+<PageTitle>Ingreso institucional</PageTitle>
 
-        <!-- Form -->
-        <div class="px-6 pb-6 pt-5">
-            <EditForm Model="_model" OnValidSubmit="HandleLogin">
-                <DataAnnotationsValidator />
-                <ValidationSummary class="mb-3 text-sm text-rose-700" />
-
-                <!-- Correo -->
-                <div class="mb-4">
-                    <label class="mb-1.5 block text-sm font-medium text-slate-700">Correo</label>
-                    <div class="relative">
-                        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">✉️</span>
-                        <InputText
-                            @bind-Value="_model.Email"
-                            class="form-control w-full rounded-xl border border-slate-300 bg-white ps-10 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition
-                                   focus:border-[#7A1E19] focus:ring-2 focus:ring-[#7A1E19]/20" />
-                    </div>
-                </div>
-
-                <!-- Password -->
-                <div class="mb-2">
-                    <label class="mb-1.5 block text-sm font-medium text-slate-700">Contraseña</label>
-                    <div class="relative">
-                        <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔒</span>
-                        <InputText
-                            @bind-Value="_model.Password"
-                            type="password"
-                            class="form-control w-full rounded-xl border border-slate-300 bg-white ps-10 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition
-                                   focus:border-[#7A1E19] focus:ring-2 focus:ring-[#7A1E19]/20" />
-                    </div>
-                </div>
-
-                <!-- Ayuda / Recordatorio (solo visual) -->
-                <div class="mb-4 flex items-center justify-between text-xs text-slate-500">
-                    <span>Usa tu correo institucional</span>
-                    <span class="select-none">Mín. 6 caracteres</span>
-                </div>
-
-                <!-- Botón -->
-                <button class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#7A1E19] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition
-               hover:bg-[#8C2A24] disabled:cursor-not-allowed disabled:opacity-60"
-                        disabled="@_busy">
-                    @if (_busy)
-                    {
-                        <span class="inline-flex items-center gap-2">
-                            <svg class="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-                            </svg>
-                            Ingresando…
-                        </span>
-                    }
-                    else
-                    {
-                        <span>Ingresar</span>
-                    }
-                </button>
-            </EditForm>
-
-            @if (!string.IsNullOrEmpty(_error))
-            {
-                <div class="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 shadow-sm">
-                    @_error
-                </div>
-            }
+<div class="login-card">
+    <div class="login-card__brand">
+        <img src="/images/logo-uta.png" alt="Universidad Técnica de Ambato" class="login-card__brand-logo" />
+        <div>
+            <div class="login-card__brand-kicker">UTA</div>
+            <div class="login-card__brand-title">Acceso institucional</div>
         </div>
     </div>
 
-    <!-- Pie de página pequeño -->
-    <p class="mt-4 text-center text-xs text-slate-500">
-        Seguridad habilitada • Sesión cifrada • © @DateTime.Now.Year
-    </p>
+    <div class="login-card__header">
+        <h1>Inicia sesión</h1>
+        <p>Usa tus credenciales para ingresar al sistema y acceder al panel correspondiente a tu rol.</p>
+    </div>
+
+    <EditForm Model="_model" OnValidSubmit="HandleLogin">
+        <DataAnnotationsValidator />
+        <ValidationSummary class="login-card__validation" />
+
+        <div class="login-card__field">
+            <label>Correo institucional</label>
+            <div class="login-card__input-shell">
+                <span class="login-card__input-icon">✉</span>
+                <InputText
+                    @bind-Value="_model.Email"
+                    class="login-card__input"
+                    placeholder="usuario@uta.edu.ec" />
+            </div>
+        </div>
+
+        <div class="login-card__field">
+            <label>Contraseña</label>
+            <div class="login-card__input-shell">
+                <span class="login-card__input-icon">🔒</span>
+                <InputText
+                    @bind-Value="_model.Password"
+                    type="@(ShowPassword ? "text" : "password")"
+                    class="login-card__input login-card__input--password"
+                    placeholder="Ingresa tu contraseña" />
+                <button type="button" class="login-card__toggle" @onclick="TogglePassword">
+                    @(ShowPassword ? "Ocultar" : "Ver")
+                </button>
+            </div>
+        </div>
+
+        <div class="login-card__meta">
+            <span>Acceso protegido con JWT</span>
+            <span>Sesión institucional</span>
+        </div>
+
+        <button class="login-card__submit" disabled="@_busy">
+            @if (_busy)
+            {
+                <span>Ingresando…</span>
+            }
+            else
+            {
+                <span>Ingresar al sistema</span>
+            }
+        </button>
+    </EditForm>
+
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <div class="login-card__error">@_error</div>
+    }
 </div>
 
 @code {
     private LoginVm _model = new();
     private bool _busy;
+    private bool ShowPassword { get; set; }
     private string? _error;
 
     private async Task HandleLogin()
     {
-        _error = null; _busy = true;
+        _error = null;
+        _busy = true;
         try
         {
             var res = await Auth.LoginAsync(new LoguinRequest(_model.Email, _model.Password));
             if (res is null || string.IsNullOrWhiteSpace(res.AccessToken))
             {
-                _error = "Credenciales inválidas o backend no disponible.";
+                _error = "No pude iniciar sesión con esas credenciales.";
                 Toast.ShowError(_error);
                 return;
             }
 
             if (AuthStateProvider is JwtAuthStateProvider jwt)
+            {
                 jwt.NotifyUserChanged();
+            }
 
             await Task.Yield();
-            Nav.NavigateTo("/panel/principal");
+            Nav.NavigateTo("/panel/principal", forceLoad: false);
         }
         catch
         {
-            _error = "No se pudo contactar al servidor (¿http://localhost:5040?).";
+            _error = "No se pudo contactar al servidor de autenticación.";
             Toast.ShowError(_error);
         }
-        finally { _busy = false; }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void TogglePassword()
+    {
+        ShowPassword = !ShowPassword;
     }
 
     public class LoginVm

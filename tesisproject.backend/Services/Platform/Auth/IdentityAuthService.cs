@@ -62,13 +62,30 @@ public class IdentityAuthService : IAuthService
         return _tokens.CreateToken(user, roles, _jwt);
     }
 
-    public async Task<(string Email, string FullName, string[] Roles)> MeAsync(ClaimsPrincipal userClaims)
+    public Task<(string Email, string FullName, string[] Roles)> MeAsync(ClaimsPrincipal userClaims)
     {
-        var email = userClaims.FindFirstValue(ClaimTypes.Email) ?? "";
-        var user = await _users.FindByEmailAsync(email);
-        if (user == null) throw new UnauthorizedAccessException();
+        if (userClaims?.Identity?.IsAuthenticated != true)
+        {
+            throw new UnauthorizedAccessException();
+        }
 
-        var roles = await _users.GetRolesAsync(user);
-        return (user.Email!, user.FullName ?? "", roles.ToArray());
+        var email = userClaims.FindFirstValue(ClaimTypes.Email)
+            ?? userClaims.FindFirstValue(ClaimTypes.Name)
+            ?? userClaims.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? string.Empty;
+
+        var fullName = userClaims.FindFirst("fullName")?.Value
+            ?? userClaims.FindFirstValue(ClaimTypes.GivenName)
+            ?? userClaims.FindFirstValue(ClaimTypes.Name)
+            ?? userClaims.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? string.Empty;
+
+        var roles = userClaims.Claims
+            .Where(x => x.Type == ClaimTypes.Role && !string.IsNullOrWhiteSpace(x.Value))
+            .Select(x => x.Value)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return Task.FromResult((email, fullName, roles));
     }
 }

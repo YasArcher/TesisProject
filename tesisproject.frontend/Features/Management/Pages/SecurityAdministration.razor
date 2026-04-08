@@ -1,0 +1,571 @@
+@page "/management/security-administration"
+@attribute [Authorize(Roles = "Admin")]
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Authorization
+@using tesisproject.frontend.Services.Platform.Auth
+@using tesisproject.shared.DTOs.Auth
+@inject IIdentityAdministrationClient IdentityAdministrationClient
+
+<PageTitle>Usuarios y roles</PageTitle>
+
+<div class="module-shell py-4 security-admin-page">
+    <section class="module-hero module-hero--blue mb-4">
+        <div class="d-flex flex-column gap-3 flex-lg-row justify-content-between align-items-lg-center">
+            <div>
+                <div class="module-kicker">Administración institucional</div>
+                <h1 class="h3 mb-1">Usuarios y roles</h1>
+                <p class="mb-0 text-white-75">Organiza accesos, responsabilidades y permisos operativos del sistema.</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-outline-light fw-semibold" @onclick="OpenCreateRoleModal">
+                    Nuevo perfil
+                </button>
+                <button class="btn btn-light fw-semibold" @onclick="OpenCreateUserModal">
+                    Nuevo usuario
+                </button>
+                <button class="btn btn-light fw-semibold" @onclick="ReloadAsync" disabled="@IsBusy">
+                    @(IsBusy ? "Actualizando..." : "Actualizar panel")
+                </button>
+            </div>
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="alert alert-danger shadow-sm">@ErrorMessage</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(SuccessMessage))
+    {
+        <div class="alert alert-success shadow-sm">@SuccessMessage</div>
+    }
+
+    <section class="security-admin-summary row g-4 mb-4">
+        <div class="col-12 col-md-4">
+            <article class="security-admin-summary__card">
+                <div class="security-admin-summary__label">Usuarios</div>
+                <div class="security-admin-summary__value">@Users.Count</div>
+                <div class="security-admin-summary__note">Cuentas disponibles para acceso al sistema</div>
+            </article>
+        </div>
+        <div class="col-12 col-md-4">
+            <article class="security-admin-summary__card">
+                <div class="security-admin-summary__label">Roles</div>
+                <div class="security-admin-summary__value">@Roles.Count</div>
+                <div class="security-admin-summary__note">Perfiles administrativos y operativos configurados</div>
+            </article>
+        </div>
+        <div class="col-12 col-md-4">
+            <article class="security-admin-summary__card">
+                <div class="security-admin-summary__label">Vista actual</div>
+                <div class="security-admin-summary__value">Administrador</div>
+                <div class="security-admin-summary__note">Puedes crear accesos y reasignar permisos</div>
+            </article>
+        </div>
+    </section>
+
+    <div class="row g-4">
+        <div class="col-12 col-xl-4">
+            <div class="card shadow-sm border-0 h-100 security-admin-card">
+                <div class="card-body">
+                    <div class="security-admin-card__eyebrow">Acciones rápidas</div>
+                    <h2 class="h5 mb-1">Gestión institucional</h2>
+                    <p class="text-muted mb-4">Usa estos accesos para habilitar nuevas cuentas o sumar perfiles operativos sin recargar la pantalla principal.</p>
+
+                    <div class="security-admin-actions">
+                        <button type="button" class="security-admin-actions__button security-admin-actions__button--primary" @onclick="OpenCreateUserModal">
+                            <span class="security-admin-actions__icon">+</span>
+                            <span>
+                                <span class="security-admin-actions__title">Registrar usuario</span>
+                                <span class="security-admin-actions__description">Crear una cuenta institucional y asignar responsabilidades iniciales.</span>
+                            </span>
+                        </button>
+
+                        <button type="button" class="security-admin-actions__button" @onclick="OpenCreateRoleModal">
+                            <span class="security-admin-actions__icon">#</span>
+                            <span>
+                                <span class="security-admin-actions__title">Crear perfil</span>
+                                <span class="security-admin-actions__description">Agregar un nuevo perfil operativo para casos institucionales especiales.</span>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-8">
+            <div class="card shadow-sm border-0 h-100 security-admin-card">
+                <div class="card-body">
+                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+                        <div>
+                            <div class="security-admin-card__eyebrow">Perfiles disponibles</div>
+                            <h2 class="h5 mb-1">Roles del sistema</h2>
+                            <p class="text-muted mb-0">Estos perfiles determinan qué puede hacer cada usuario dentro del flujo de registro, validación y procesamiento.</p>
+                        </div>
+                        <div class="d-flex flex-column align-items-lg-end gap-2">
+                            <button class="btn btn-outline-primary" @onclick="ToggleAdvancedRoleEditor">
+                                @(ShowAdvancedRoleEditor ? "Ocultar edición avanzada" : "Mostrar edición avanzada")
+                            </button>
+                            @if (ShowAdvancedRoleEditor)
+                            {
+                                <button class="btn btn-outline-secondary" @onclick="OpenCreateRoleModal">Abrir editor de perfiles</button>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        @foreach (var role in Roles)
+                        {
+                            <div class="col-12 col-md-6">
+                                <article class="security-role-card">
+                                    <div class="security-role-card__title">@GetRoleDisplayName(role.Name)</div>
+                                    @if (ShowAdvancedRoleEditor)
+                                    {
+                                        <div class="security-role-card__code">@role.Name</div>
+                                    }
+                                    <div class="security-role-card__description">@GetRoleDescription(role.Name)</div>
+                                    <div class="security-role-card__foot">@role.UserCount usuario(s) asignado(s)</div>
+                                </article>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xxl-7">
+            <div class="card shadow-sm border-0 h-100 security-admin-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <div class="security-admin-card__eyebrow">Gestión de accesos</div>
+                            <h2 class="h5 mb-0">Usuarios registrados</h2>
+                        </div>
+                        <span class="badge text-bg-light border">@Users.Count cuenta(s)</span>
+                    </div>
+
+                    <div class="security-user-list">
+                        @if (Users.Count == 0)
+                        {
+                            <div class="text-center text-muted py-4">Todavía no hay usuarios registrados.</div>
+                        }
+                        else
+                        {
+                            @foreach (var user in Users)
+                            {
+                                <button type="button"
+                                        class="security-user-card @(SelectedUser?.UserId == user.UserId ? "security-user-card--selected" : null)"
+                                        @onclick="() => SelectUser(user)">
+                                    <div class="security-user-card__header">
+                                        <div>
+                                            <div class="security-user-card__name">@user.FullName</div>
+                                            <div class="security-user-card__email">@user.Email</div>
+                                        </div>
+                                        <span class="badge @(user.IsLockedOut ? "text-bg-danger" : "text-bg-success")">
+                                            @(user.IsLockedOut ? "Bloqueado" : "Activo")
+                                        </span>
+                                    </div>
+                                    <div class="security-user-card__roles">
+                                        @foreach (var role in user.Roles)
+                                        {
+                                            <span class="badge rounded-pill text-bg-light border">@GetRoleDisplayName(role)</span>
+                                        }
+                                    </div>
+                                </button>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xxl-5">
+            <div class="card shadow-sm border-0 h-100 security-admin-card">
+                <div class="card-body">
+                    <div class="security-admin-card__eyebrow">Asignación</div>
+                    <h2 class="h5 mb-3">Permisos del usuario</h2>
+
+                    @if (SelectedUser is null)
+                    {
+                        <div class="text-muted">Selecciona un usuario para actualizar sus responsabilidades dentro del sistema.</div>
+                    }
+                    else
+                    {
+                        <div class="security-selected-user">
+                            <div class="security-selected-user__name">@SelectedUser.FullName</div>
+                            <div class="security-selected-user__email">@SelectedUser.Email</div>
+                        </div>
+
+                        <div class="d-flex flex-column gap-2 mb-4">
+                            @foreach (var role in Roles)
+                            {
+                                <label class="security-role-option">
+                                    <div>
+                                        <div class="security-role-option__title">@GetRoleDisplayName(role.Name)</div>
+                                        <div class="security-role-option__description">@GetRoleDescription(role.Name)</div>
+                                    </div>
+                                    <input type="checkbox"
+                                           class="form-check-input"
+                                           checked="@SelectedUserRoles.Contains(role.Name)"
+                                           @onchange="args => ToggleSelectedUserRole(role.Name, args.Value as bool?)" />
+                                </label>
+                            }
+                        </div>
+
+                        <button class="btn btn-primary w-100" @onclick="SaveSelectedUserRolesAsync" disabled="@IsBusy">Guardar cambios de permisos</button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (ShowCreateUserModal)
+    {
+        <div class="security-admin-modal-backdrop" @onclick="CloseCreateUserModalAsync">
+            <div class="security-admin-modal" @onclick:stopPropagation="true">
+                <div class="security-admin-modal__header">
+                    <div>
+                        <div class="security-admin-card__eyebrow">Nuevo acceso</div>
+                        <h2 class="h4 mb-1">Registrar usuario</h2>
+                        <p class="text-muted mb-0">Completa los datos básicos y selecciona las responsabilidades iniciales.</p>
+                    </div>
+                    <button type="button" class="security-admin-modal__close" @onclick="CloseCreateUserModalAsync">×</button>
+                </div>
+
+                <EditForm Model="CreateUserModel" OnValidSubmit="CreateUserAsync">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger small mb-3" />
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Correo institucional</label>
+                            <InputText @bind-Value="CreateUserModel.Email" class="form-control" placeholder="usuario@uta.edu.ec" />
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label">Contraseña temporal</label>
+                            <InputText @bind-Value="CreateUserModel.Password" type="password" class="form-control" placeholder="Asignar contraseña inicial" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Nombre completo</label>
+                            <InputText @bind-Value="CreateUserModel.FullName" class="form-control" placeholder="Nombre del funcionario o docente" />
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="form-label d-block">Responsabilidades iniciales</label>
+                        <div class="security-modal-role-grid">
+                            @foreach (var role in Roles)
+                            {
+                                <label class="security-role-option">
+                                    <div>
+                                        <div class="security-role-option__title">@GetRoleDisplayName(role.Name)</div>
+                                        <div class="security-role-option__description">@GetRoleDescription(role.Name)</div>
+                                    </div>
+                                    <input type="checkbox"
+                                           class="form-check-input"
+                                           checked="@CreateUserRoles.Contains(role.Name)"
+                                           @onchange="args => ToggleCreateUserRole(role.Name, args.Value as bool?)" />
+                                </label>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="security-admin-modal__actions">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreateUserModalAsync">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" disabled="@IsBusy">@(IsBusy ? "Creando..." : "Crear usuario")</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+
+    @if (ShowCreateRoleModal)
+    {
+        <div class="security-admin-modal-backdrop" @onclick="CloseCreateRoleModalAsync">
+            <div class="security-admin-modal security-admin-modal--compact" @onclick:stopPropagation="true">
+                <div class="security-admin-modal__header">
+                    <div>
+                        <div class="security-admin-card__eyebrow">Edición avanzada</div>
+                        <h2 class="h4 mb-1">Crear perfil</h2>
+                        <p class="text-muted mb-0">Usa esta opción solo cuando necesites un perfil nuevo no cubierto por los perfiles actuales.</p>
+                    </div>
+                    <button type="button" class="security-admin-modal__close" @onclick="CloseCreateRoleModalAsync">×</button>
+                </div>
+
+                <EditForm Model="CreateRoleModel" OnValidSubmit="CreateRoleAsync">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary class="text-danger small mb-3" />
+
+                    <div class="mb-3">
+                        <label class="form-label">Nombre interno del perfil</label>
+                        <InputText @bind-Value="CreateRoleModel.Name" class="form-control" placeholder="Ejemplo: WorkflowAuditorInterno" />
+                    </div>
+
+                    <div class="security-admin-note">
+                        Este editor está pensado para ampliaciones controladas del sistema. Los perfiles institucionales habituales ya están disponibles en el panel principal.
+                    </div>
+
+                    <div class="security-admin-modal__actions">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreateRoleModalAsync">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" disabled="@IsBusy">@(IsBusy ? "Creando..." : "Crear perfil")</button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<IdentityUserListItemDto> Users = [];
+    private readonly List<IdentityRoleListItemDto> Roles = [];
+    private readonly HashSet<string> CreateUserRoles = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> SelectedUserRoles = new(StringComparer.OrdinalIgnoreCase);
+
+    private CreateUserFormModel CreateUserModel { get; set; } = new();
+    private CreateRoleFormModel CreateRoleModel { get; set; } = new();
+    private IdentityUserListItemDto? SelectedUser { get; set; }
+    private bool ShowAdvancedRoleEditor { get; set; }
+    private bool ShowCreateUserModal { get; set; }
+    private bool ShowCreateRoleModal { get; set; }
+    private bool IsBusy { get; set; }
+    private string? ErrorMessage { get; set; }
+    private string? SuccessMessage { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        SuccessMessage = null;
+        ErrorMessage = null;
+        IsBusy = true;
+        try
+        {
+            var roles = await IdentityAdministrationClient.GetRolesAsync();
+            var users = await IdentityAdministrationClient.GetUsersAsync();
+
+            Roles.Clear();
+            Roles.AddRange(roles.OrderBy(x => GetRoleDisplayName(x.Name)));
+
+            Users.Clear();
+            Users.AddRange(users.OrderBy(x => x.FullName).ThenBy(x => x.Email));
+
+            if (SelectedUser is not null)
+            {
+                SelectedUser = Users.FirstOrDefault(x => x.UserId == SelectedUser.UserId);
+                SyncSelectedUserRoles();
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"No pude cargar la administración de accesos: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private Task OpenCreateUserModal()
+    {
+        ErrorMessage = null;
+        SuccessMessage = null;
+        ShowCreateUserModal = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task CreateUserAsync()
+    {
+        ErrorMessage = null;
+        SuccessMessage = null;
+        IsBusy = true;
+        try
+        {
+            var user = await IdentityAdministrationClient.CreateUserAsync(new CreateIdentityUserRequest(
+                CreateUserModel.Email,
+                CreateUserModel.Password,
+                CreateUserModel.FullName,
+                CreateUserRoles.ToArray()));
+
+            CreateUserModel = new();
+            CreateUserRoles.Clear();
+            SuccessMessage = $"El usuario {user.Email} fue creado correctamente.";
+            ShowCreateUserModal = false;
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private Task OpenCreateRoleModal()
+    {
+        ErrorMessage = null;
+        SuccessMessage = null;
+        ShowCreateRoleModal = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task CreateRoleAsync()
+    {
+        ErrorMessage = null;
+        SuccessMessage = null;
+        IsBusy = true;
+        try
+        {
+            var role = await IdentityAdministrationClient.CreateRoleAsync(new CreateIdentityRoleRequest(CreateRoleModel.Name));
+            CreateRoleModel = new();
+            SuccessMessage = $"El rol {GetRoleDisplayName(role.Name)} ya quedó disponible para asignación.";
+            ShowCreateRoleModal = false;
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private Task CloseCreateUserModalAsync()
+    {
+        ShowCreateUserModal = false;
+        return Task.CompletedTask;
+    }
+
+    private Task CloseCreateRoleModalAsync()
+    {
+        ShowCreateRoleModal = false;
+        return Task.CompletedTask;
+    }
+
+    private void SelectUser(IdentityUserListItemDto user)
+    {
+        SelectedUser = user;
+        SyncSelectedUserRoles();
+    }
+
+    private void SyncSelectedUserRoles()
+    {
+        SelectedUserRoles.Clear();
+        if (SelectedUser is null)
+        {
+            return;
+        }
+
+        foreach (var role in SelectedUser.Roles)
+        {
+            SelectedUserRoles.Add(role);
+        }
+    }
+
+    private void ToggleCreateUserRole(string roleName, bool? isChecked)
+    {
+        if (isChecked == true)
+        {
+            CreateUserRoles.Add(roleName);
+        }
+        else
+        {
+            CreateUserRoles.Remove(roleName);
+        }
+    }
+
+    private void ToggleSelectedUserRole(string roleName, bool? isChecked)
+    {
+        if (isChecked == true)
+        {
+            SelectedUserRoles.Add(roleName);
+        }
+        else
+        {
+            SelectedUserRoles.Remove(roleName);
+        }
+    }
+
+    private async Task SaveSelectedUserRolesAsync()
+    {
+        if (SelectedUser is null)
+        {
+            return;
+        }
+
+        ErrorMessage = null;
+        SuccessMessage = null;
+        IsBusy = true;
+        try
+        {
+            var updated = await IdentityAdministrationClient.UpdateUserRolesAsync(
+                SelectedUser.UserId,
+                new UpdateIdentityUserRolesRequest(SelectedUserRoles.ToArray()));
+
+            SelectedUser = updated;
+            SuccessMessage = $"Los permisos de {updated.Email} fueron actualizados correctamente.";
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private void ToggleAdvancedRoleEditor()
+    {
+        ShowAdvancedRoleEditor = !ShowAdvancedRoleEditor;
+    }
+
+    private static string GetRoleDisplayName(string roleName)
+        => roleName switch
+        {
+            "Admin" => "Administrador",
+            "Analyst" => "Analista",
+            "Author" => "Autor",
+            "WorkflowReviewerUodide" => "Revisor UODIDE",
+            "WorkflowReviewerAreaTecnica" => "Revisor Área Técnica",
+            "WorkflowProcessorAreaTecnica" => "Procesador Área Técnica",
+            _ => roleName
+        };
+
+    private static string GetRoleDescription(string roleName)
+        => roleName switch
+        {
+            "Admin" => "Administra usuarios, accesos, seguridad y la operación general del sistema.",
+            "Analyst" => "Gestiona configuración, catálogos, formularios y módulos operativos de apoyo.",
+            "Author" => "Registra artículos y da seguimiento a sus observaciones y validaciones.",
+            "WorkflowReviewerUodide" => "Realiza la validación inicial institucional y puede corregir la información registrada.",
+            "WorkflowReviewerAreaTecnica" => "Ejecuta la validación técnica final antes del procesamiento definitivo.",
+            "WorkflowProcessorAreaTecnica" => "Procesa el envío aprobado hacia la base principal del sistema.",
+            _ => "Perfil disponible para asignación dentro del sistema."
+        };
+
+    private sealed class CreateUserFormModel
+    {
+        [Required, EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required, MinLength(6)]
+        public string Password { get; set; } = string.Empty;
+
+        [Required]
+        public string FullName { get; set; } = string.Empty;
+    }
+
+    private sealed class CreateRoleFormModel
+    {
+        [Required]
+        public string Name { get; set; } = string.Empty;
+    }
+}
