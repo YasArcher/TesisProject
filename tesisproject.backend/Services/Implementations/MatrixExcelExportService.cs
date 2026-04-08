@@ -2,6 +2,7 @@
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response;
 using tesisproject.shared.DTOs.Matrices.Response;
+using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -319,8 +320,8 @@ namespace tesisproject.backend.Services.Implementations
         private static string GetObjectiveTypeLabel(int typeId, string? defaultName)
             => typeId switch
             {
-                1 => "Objetivo general",
-                2 => "Objetivo específico",
+                ObjectiveTypeIds.General => "Objetivo general",
+                ObjectiveTypeIds.Specific => "Objetivo específico",
                 _ => string.IsNullOrWhiteSpace(defaultName)
                         ? $"Tipo {typeId}"
                         : defaultName!
