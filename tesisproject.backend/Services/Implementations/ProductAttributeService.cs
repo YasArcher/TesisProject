@@ -4,6 +4,7 @@ using tesisproject.shared.DTOs.Catalog.ProductAttribute.Request;
 using tesisproject.shared.DTOs.Catalog.ProductAttribute.Response;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -45,11 +46,11 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var entity = await _uow.ProductAttributes.GetByIdAsync(Key(id), ct);
             if (entity is null)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail(NotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(NotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             var dto = ToDetailDto(entity);
             return ServiceResult<ProductAttributeDetailDTO>.Ok(dto);
@@ -64,12 +65,12 @@ namespace tesisproject.backend.Services.Implementations
             var name = NormalizeName(request?.Name);
 
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<ProductAttributeDetailDTO>.Fail(NameRequiredMessage, ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(NameRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             // Evitar duplicados por Name
             var exists = await _uow.ProductAttributes.NameExistsAsync(name, excludeId: null, ct);
             if (exists)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var entity = new ProductAttribute
             {
@@ -92,23 +93,23 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null || request.Id <= 0)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var name = NormalizeName(request.Name);
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<ProductAttributeDetailDTO>.Fail(NameRequiredMessage, ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(NameRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var entity = await _uow.ProductAttributes.GetByIdAsync(Key(request.Id), ct);
             if (entity is null)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail(NotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(NotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             if (entity.IsLocked)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail(LockedCannotModifyMessage, ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(LockedCannotModifyMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             // Validar duplicado por Name, excluyendo el propio Id
             var duplicated = await _uow.ProductAttributes.NameExistsAsync(name, excludeId: request.Id, ct);
             if (duplicated)
-                return ServiceResult<ProductAttributeDetailDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation);
+                return ServiceResult<ProductAttributeDetailDTO>.Fail(NameAlreadyExistsMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             entity.Name = name;
             entity.IsActive = request.IsActive;
@@ -128,16 +129,16 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<NoContent>.Fail(InvalidIdMessage, ErrorType.Validation);
+                return ServiceResult<NoContent>.Fail(InvalidIdMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var entity = await _uow.ProductAttributes.GetByIdAsync(Key(id), ct);
             if (entity is null)
-                return ServiceResult<NoContent>.Fail(NotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<NoContent>.Fail(NotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             if (entity.IsLocked)
                 return ServiceResult<NoContent>.Fail(
                     LockedCannotDeleteMessage,
-                    ErrorType.Validation);
+                    ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             _uow.ProductAttributes.Remove(entity);
             await _uow.SaveChangesAsync(ct);

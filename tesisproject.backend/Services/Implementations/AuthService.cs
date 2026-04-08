@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Auth;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -77,14 +78,14 @@ namespace tesisproject.backend.Services.Implementations
             catch (DbUpdateException dbex)
             {
                 return (
-                    ServiceResult<AuthResponse>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict),
+                    ServiceResult<AuthResponse>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict),
                     null
                 );
             }
             catch (Exception ex)
             {
                 return (
-                    ServiceResult<AuthResponse>.Fail(ex.Message, ErrorType.Unexpected),
+                    ServiceResult<AuthResponse>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError),
                     null
                 );
             }
@@ -102,7 +103,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (user is null)
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail(InvalidCredentialsMessage, ErrorType.Validation),
+                        ServiceResult<AuthResponse>.Fail(InvalidCredentialsMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest),
                         null
                     );
                 }
@@ -115,7 +116,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (!check.Succeeded)
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail(InvalidCredentialsMessage, ErrorType.Validation),
+                        ServiceResult<AuthResponse>.Fail(InvalidCredentialsMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest),
                         null
                     );
                 }
@@ -144,14 +145,14 @@ namespace tesisproject.backend.Services.Implementations
             catch (DbUpdateException dbex)
             {
                 return (
-                    ServiceResult<AuthResponse>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict),
+                    ServiceResult<AuthResponse>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict),
                     null
                 );
             }
             catch (Exception ex)
             {
                 return (
-                    ServiceResult<AuthResponse>.Fail(ex.Message, ErrorType.Unexpected),
+                    ServiceResult<AuthResponse>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError),
                     null
                 );
             }
@@ -168,7 +169,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (string.IsNullOrWhiteSpace(refreshCookie))
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail(NoRefreshCookieMessage, ErrorType.Validation),
+                        ServiceResult<AuthResponse>.Fail(NoRefreshCookieMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest),
                         null
                     );
                 }
@@ -177,7 +178,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (current is null)
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail(InvalidOrInactiveRefreshTokenMessage, ErrorType.Validation),
+                        ServiceResult<AuthResponse>.Fail(InvalidOrInactiveRefreshTokenMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest),
                         null
                     );
                 }
@@ -186,7 +187,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (user is null)
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail(UserNotFoundMessage, ErrorType.NotFound),
+                        ServiceResult<AuthResponse>.Fail(UserNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound),
                         null
                     );
                 }
@@ -216,14 +217,14 @@ namespace tesisproject.backend.Services.Implementations
             catch (DbUpdateException dbex)
             {
                 return (
-                    ServiceResult<AuthResponse>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict),
+                    ServiceResult<AuthResponse>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict),
                     null
                 );
             }
             catch (Exception ex)
             {
                 return (
-                    ServiceResult<AuthResponse>.Fail(ex.Message, ErrorType.Unexpected),
+                    ServiceResult<AuthResponse>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError),
                     null
                 );
             }
@@ -263,11 +264,11 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<NoContent>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return ServiceResult<NoContent>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
     }

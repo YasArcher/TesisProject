@@ -18,6 +18,7 @@ using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Entities.External;
 using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -258,7 +259,7 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     return ServiceResult<ProjectListResponseDTO>.Fail(
                         UserNotFoundMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound, ErrorCodes.Common.NotFound);
                 }
 
                 var createdByUserId = actorUserId.Value;
@@ -458,7 +459,7 @@ namespace tesisproject.backend.Services.Implementations
                     PhaseLog("Fase 0 - Request", "Principal coordinator email not found");
                     return ServiceResult<ProjectDetailResponseDTO>.Fail(
                         PrincipalCoordinatorRequiredMessage,
-                        ErrorType.Validation);
+                        ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
                 }
 
                 var d = request.ProjectDocumentData;
@@ -471,7 +472,7 @@ namespace tesisproject.backend.Services.Implementations
                         $"External profile not found for email={principalCoordinatorEmail}. Error={profRes.Error}, Msg={profRes.Message}");
                     return ServiceResult<ProjectDetailResponseDTO>.Fail(
                         PrincipalCoordinatorExternalProfileNotFoundMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound, ErrorCodes.Common.NotFound);
                 }
 
                 var profile = profRes.Data[0];
@@ -483,7 +484,7 @@ namespace tesisproject.backend.Services.Implementations
                         $"External periods not available. Error={periodsRes.Error}, Msg={periodsRes.Message}");
                     return ServiceResult<ProjectDetailResponseDTO>.Fail(
                         ExternalAcademicPeriodsNotAvailableMessage,
-                        ErrorType.Unexpected);
+                        ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
                 }
 
                 var periods = periodsRes.Data;
@@ -498,7 +499,7 @@ namespace tesisproject.backend.Services.Implementations
                         $"No distributivos found for email={principalCoordinatorEmail}. Error={distRawRes.Error}, Msg={distRawRes.Message}");
                     return ServiceResult<ProjectDetailResponseDTO>.Fail(
                         NoDistributivoFoundForPrincipalCoordinatorMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound, ErrorCodes.Common.NotFound);
                 }
 
                 var distributivos = distRawRes.Data;
@@ -508,7 +509,7 @@ namespace tesisproject.backend.Services.Implementations
                     PhaseLog("Fase 1.2 - External Faculty Resolve", "Project StartDate is null");
                     return ServiceResult<ProjectDetailResponseDTO>.Fail(
                         ProjectStartDateRequiredMessage,
-                        ErrorType.Validation);
+                        ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
                 }
 
                 var selected = ExternalCareerSelector.SelectProjectCareer(
@@ -524,7 +525,7 @@ namespace tesisproject.backend.Services.Implementations
                         $"SelectProjectCareer returned null for email={principalCoordinatorEmail}, start={projectStartDate:O}");
                     return ServiceResult<ProjectDetailResponseDTO>.Fail(
                         UnableToResolveFacultyCareerMessage,
-                        ErrorType.Validation);
+                        ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
                 }
 
                 var resolvedFacultyId = selected.FacultyId ?? selected.FacultyCareerId;
@@ -558,7 +559,7 @@ namespace tesisproject.backend.Services.Implementations
                     PhaseLog("Fase 1 - Validación", "CreatedByUserId unresolved from current authenticated user.");
                     return ServiceResult<ProjectDetailResponseDTO>.Fail(
                         UserNotFoundMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound, ErrorCodes.Common.NotFound);
                 }
 
                 var createdByUserId = actorUserId.Value;
@@ -703,7 +704,7 @@ namespace tesisproject.backend.Services.Implementations
                         PhaseLog("Fase 5 - Miembros", $"Error asegurando AppUsers: {ensureResult.Error}");
                         return ServiceResult<ProjectDetailResponseDTO>.Fail(
                             ensureResult.Message ?? ErrorEnsuringAppUsersMessage,
-                            ErrorType.Unexpected);
+                            ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
                     }
 
                     var appUserIds = ensureResult.Data;
@@ -1175,7 +1176,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (!facultiesResult.Success || facultiesResult.Data is null || facultiesResult.Data.Count == 0)
                 {
                     PhaseLog("Init-Faculties", "Cannot retrieve faculties from external API.");
-                    return ServiceResult<int>.Fail(CannotRetrieveFacultiesMessage, ErrorType.Unexpected);
+                    return ServiceResult<int>.Fail(CannotRetrieveFacultiesMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
                 }
 
                 var externalFacultiesCache = facultiesResult.Data;
@@ -1200,7 +1201,7 @@ namespace tesisproject.backend.Services.Implementations
                     PhaseLog("Init", "AppUser resolve failed for current authenticated user.");
                     return ServiceResult<int>.Fail(
                         UserNotFoundOrInvalidMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound, ErrorCodes.Common.NotFound);
                 }
 
                 var createdByUserId = actorUserId.Value;
@@ -1209,7 +1210,7 @@ namespace tesisproject.backend.Services.Implementations
 
                 var directoryResult = await _externalDirectory.GetAllAsync(ct);
                 if (!directoryResult.Success || directoryResult.Data is null || directoryResult.Data.Count == 0)
-                    return ServiceResult<int>.Fail(CannotRetrieveExternalDirectoryMessage, ErrorType.Unexpected);
+                    return ServiceResult<int>.Fail(CannotRetrieveExternalDirectoryMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
 
                 var directoryCache = directoryResult.Data;
 
@@ -2081,12 +2082,12 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         private static ServiceResult<T> FailNotFound<T>(string message)
-            => ServiceResult<T>.Fail(message, ErrorType.NotFound);
+            => ServiceResult<T>.Fail(message, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
         private static ServiceResult<T> FailUnexpected<T>(string message)
-            => ServiceResult<T>.Fail(message, ErrorType.Unexpected);
+            => ServiceResult<T>.Fail(message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
 
         private static ServiceResult<T> FailConflict<T>(string message)
-            => ServiceResult<T>.Fail(message, ErrorType.Conflict);
+            => ServiceResult<T>.Fail(message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
     }
 } 

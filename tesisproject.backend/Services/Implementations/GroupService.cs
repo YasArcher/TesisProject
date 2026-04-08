@@ -12,6 +12,7 @@ using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Entities.External;
 using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -119,14 +120,14 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var group = await _uow.Groups.GetByIdAsync(id, includeMembers: false, ct);
                 if (group is null)
-                    return ServiceResult<GroupResponseDTO>.Fail(GroupNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<GroupResponseDTO>.Fail(GroupNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 var dto = ToGroupResponseDTO(group);
                 return ServiceResult<GroupResponseDTO>.Ok(dto, GroupRetrievedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<GroupResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<GroupResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -147,13 +148,13 @@ namespace tesisproject.backend.Services.Implementations
                     .ToListAsync(ct);
 
                 if (items.Count == 0)
-                    return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail(NoGroupsFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail(NoGroupsFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Ok(items, GroupsRetrievedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -164,7 +165,7 @@ namespace tesisproject.backend.Services.Implementations
                 var groups = await _uow.Groups.GetByProjectIdAsync(projectId, ct);
 
                 if (groups.Count == 0)
-                    return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail(ProjectNotFoundOrNoAssociatedGroupsMessage, ErrorType.NotFound);
+                    return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail(ProjectNotFoundOrNoAssociatedGroupsMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 var dtos = groups.Select(g => new GroupResponseDTO
                 {
@@ -177,7 +178,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<IReadOnlyList<GroupResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -189,17 +190,17 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var exists = await _uow.Groups.ExistsAsync(g => g.GroupId == groupId, ct);
                 if (!exists)
-                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(GroupNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(GroupNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 // 1) Miembros del grupo (tabla puente)
                 var members = await _uow.GroupMembers.GetMembersByGroupAsync(groupId, ct: ct);
                 if (members is null || members.Count == 0)
-                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(NoGroupMembersFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(NoGroupMembersFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 // Nota: en tu caso member.UserId = AppUser.IdUser (PK de APP_USER)
                 var appUserIds = members.Select(m => m.UserId).Distinct().ToList();
                 if (appUserIds.Count == 0)
-                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(NoAssociatedAppUsersFoundMessage, ErrorType.Validation);
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(NoAssociatedAppUsersFoundMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 // 2) Resolver IdLocal (IdentityUser.Id) desde AppUser para consultar emails institucionales
                 // Mapa: AppUser.IdUser -> AppUser.IdLocal
@@ -213,7 +214,7 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 if (identityIdByAppUserId.Count == 0)
-                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(NoLocalIdentityIdsForGroupMembersMessage, ErrorType.Validation);
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(NoLocalIdentityIdsForGroupMembersMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var identityUserIds = identityIdByAppUserId.Values.Distinct().ToList();
 
@@ -227,7 +228,7 @@ namespace tesisproject.backend.Services.Implementations
                     .ToList();
 
                 if (allEmails.Count == 0)
-                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(NoValidEmailsFoundForUsersMessage, ErrorType.Validation);
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(NoValidEmailsFoundForUsersMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 // 4) Rehidratar roles si faltan (evitar N+1) - misma lógica
                 await EnsureMemberRolesLoadedAsync(members, ct);
@@ -280,14 +281,14 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 if (result.Count == 0)
-                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(NoExternalUsersMatchedGroupMembersMessage, ErrorType.NotFound);
+                    return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(NoExternalUsersMatchedGroupMembersMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 return ServiceResult<List<ResolvedUserProfileDTO>>.Ok(result, ExternalUsersByGroupRetrievedMessage);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error retrieving external users for group {GroupId}", groupId);
-                return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(UnexpectedErrorMessage, ErrorType.Unexpected);
+                return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(UnexpectedErrorMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -297,16 +298,16 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var local = await _uow.AspNetUsers.GetEmailByUserIdAsync(userId, ct);
                 if (local is null)
-                    return ServiceResult<ResolvedUserProfileDTO>.Fail(AspNetUserNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<ResolvedUserProfileDTO>.Fail(AspNetUserNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 var email = (local.Value.Email ?? string.Empty).Trim().ToLowerInvariant();
                 if (string.IsNullOrWhiteSpace(email))
-                    return ServiceResult<ResolvedUserProfileDTO>.Fail(UserHasNoInstitutionalEmailMessage, ErrorType.Validation);
+                    return ServiceResult<ResolvedUserProfileDTO>.Fail(UserHasNoInstitutionalEmailMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var dirRes = await _directory.GetByEmailsAsync(new[] { email }, ct);
                 var profile = dirRes.Data?.FirstOrDefault();
                 if (profile is null)
-                    return ServiceResult<ResolvedUserProfileDTO>.Fail(ExternalUserNotFoundForGivenEmailMessage, ErrorType.NotFound);
+                    return ServiceResult<ResolvedUserProfileDTO>.Fail(ExternalUserNotFoundForGivenEmailMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 var extLoad = await LoadExternalPeriodsAndDistributivosAsync(new[] { email }, ct);
                 if (!extLoad.Success || extLoad.Data is null)
@@ -333,7 +334,7 @@ namespace tesisproject.backend.Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error resolving external user for ASP.NET user {UserId}", userId);
-                return ServiceResult<ResolvedUserProfileDTO>.Fail(UnexpectedErrorMessage, ErrorType.Unexpected);
+                return ServiceResult<ResolvedUserProfileDTO>.Fail(UnexpectedErrorMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -341,14 +342,14 @@ namespace tesisproject.backend.Services.Implementations
         {
             var email = (institutionalEmail ?? string.Empty).Trim().ToLowerInvariant();
             if (string.IsNullOrWhiteSpace(email))
-                return ServiceResult<ResolvedUserProfileDTO>.Fail(EmailIsRequiredMessage, ErrorType.Validation);
+                return ServiceResult<ResolvedUserProfileDTO>.Fail(EmailIsRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             try
             {
                 var dirRes = await _directory.GetByEmailsAsync(new[] { email }, ct);
                 var profile = dirRes.Data?.FirstOrDefault();
                 if (profile is null)
-                    return ServiceResult<ResolvedUserProfileDTO>.Fail(ExternalUserNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<ResolvedUserProfileDTO>.Fail(ExternalUserNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 var extLoad = await LoadExternalPeriodsAndDistributivosAsync(new[] { email }, ct);
                 if (!extLoad.Success || extLoad.Data is null)
@@ -373,7 +374,7 @@ namespace tesisproject.backend.Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error retrieving external user by email {Email}", email);
-                return ServiceResult<ResolvedUserProfileDTO>.Fail(UnexpectedErrorMessage, ErrorType.Unexpected);
+                return ServiceResult<ResolvedUserProfileDTO>.Fail(UnexpectedErrorMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -425,7 +426,7 @@ namespace tesisproject.backend.Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error retrieving all external users");
-                return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(UnexpectedErrorMessage, ErrorType.Unexpected);
+                return ServiceResult<List<ResolvedUserProfileDTO>>.Fail(UnexpectedErrorMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -437,11 +438,11 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var name = (request.Name ?? string.Empty).Trim();
                 if (string.IsNullOrWhiteSpace(name))
-                    return ServiceResult<GroupResponseDTO>.Fail(GroupNameRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<GroupResponseDTO>.Fail(GroupNameRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var exists = await _uow.Groups.NameExistsAsync(name, ct);
                 if (exists)
-                    return ServiceResult<GroupResponseDTO>.Fail(GroupNameAlreadyExistsMessage, ErrorType.Conflict);
+                    return ServiceResult<GroupResponseDTO>.Fail(GroupNameAlreadyExistsMessage, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
 
                 var entity = new Group { GroupTypeId = request.GroupTypeId, Name = name };
                 await _uow.Groups.AddAsync(entity, ct);
@@ -452,11 +453,11 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<GroupResponseDTO>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return ServiceResult<GroupResponseDTO>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<GroupResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<GroupResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -469,18 +470,18 @@ namespace tesisproject.backend.Services.Implementations
                 // 1) Validar grupo
                 var group = await _uow.Groups.GetByIdAsync(request.GroupId, includeMembers: false, ct);
                 if (group is null)
-                    return ServiceResult<GroupMemberResponseDTO>.Fail(GroupNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<GroupMemberResponseDTO>.Fail(GroupNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 if (request.MemberRole == 0)
-                    return ServiceResult<GroupMemberResponseDTO>.Fail(MemberRoleRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<GroupMemberResponseDTO>.Fail(MemberRoleRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
                 if (string.IsNullOrWhiteSpace(email))
-                    return ServiceResult<GroupMemberResponseDTO>.Fail(InstitutionalEmailRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<GroupMemberResponseDTO>.Fail(InstitutionalEmailRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var document = (request.Document ?? string.Empty).Trim();
                 if (string.IsNullOrWhiteSpace(document))
-                    return ServiceResult<GroupMemberResponseDTO>.Fail(DocumentRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<GroupMemberResponseDTO>.Fail(DocumentRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
 
 
@@ -515,14 +516,14 @@ namespace tesisproject.backend.Services.Implementations
                 // 4) Obtener AppUser para resolver el IdUser a persistir en GroupMember.UserId (tabla puente)
                 var appUser = await _uow.AppUsers.GetByIdAsync(new object[] { appUserPk }, ct);
                 if (appUser is null)
-                    return ServiceResult<GroupMemberResponseDTO>.Fail(UnableToResolveAspNetUserFromAppUserMessage, ErrorType.Unexpected);
+                    return ServiceResult<GroupMemberResponseDTO>.Fail(UnableToResolveAspNetUserFromAppUserMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
 
                 var appUserIdUser = appUser.IdUser; // Este es el valor que se guarda en GroupMember.UserId
 
                 // 5) Validar duplicado (GroupId + AppUser.IdUser)
                 var duplicated = await _uow.GroupMembers.ExistsAsync(request.GroupId, appUserIdUser, ct);
                 if (duplicated)
-                    return ServiceResult<GroupMemberResponseDTO>.Fail(UserAlreadyMemberOfGroupMessage, ErrorType.Conflict);
+                    return ServiceResult<GroupMemberResponseDTO>.Fail(UserAlreadyMemberOfGroupMessage, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
 
                 // 5.1) Regla: si agrega Coordinador Principal (1), actualizar facultad del proyecto
                 if (request.MemberRole == MemberRoleTypeIds.Coordinador)
@@ -535,7 +536,7 @@ namespace tesisproject.backend.Services.Implementations
                     if (facultyId is null || facultyId <= 0)
                         return ServiceResult<GroupMemberResponseDTO>.Fail(
                             FacultyIdRequiredForCoordinatorPrincipalMessage,
-                            ErrorType.Validation);
+                            ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                     // (B) Traer el proyecto asociado a este grupo (1 grupo -> 1 proyecto)
                     var project = await _uow.Projects
@@ -545,7 +546,7 @@ namespace tesisproject.backend.Services.Implementations
                     if (project is null)
                         return ServiceResult<GroupMemberResponseDTO>.Fail(
                             NoProjectAssociatedToGroupMessage,
-                            ErrorType.NotFound);
+                            ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                     // (C) Actualizar facultad del proyecto
                     project.FacultyId = facultyId.Value;
@@ -593,11 +594,11 @@ namespace tesisproject.backend.Services.Implementations
             {
                 return ServiceResult<GroupMemberResponseDTO>.Fail(
                     dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                    ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<GroupMemberResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<GroupMemberResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -607,11 +608,11 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var group = await _uow.Groups.GetByIdAsync(request.GroupId, includeMembers: false, ct);
                 if (group is null)
-                    return ServiceResult<GroupResponseDTO>.Fail(GroupNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<GroupResponseDTO>.Fail(GroupNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 var name = (request.Name ?? string.Empty).Trim();
                 if (string.IsNullOrWhiteSpace(name))
-                    return ServiceResult<GroupResponseDTO>.Fail(GroupNameRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<GroupResponseDTO>.Fail(GroupNameRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 group.Name = name;
                 group.GroupTypeId = request.GroupTypeId;
@@ -624,11 +625,11 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<GroupResponseDTO>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return ServiceResult<GroupResponseDTO>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<GroupResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<GroupResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -643,7 +644,7 @@ namespace tesisproject.backend.Services.Implementations
                 var member = await _uow.GroupMembers.GetByIdAsync(new object[] { memberId }, ct);
 
                 if (member is null || member.GroupId != groupId)
-                    return ServiceResult<NoContent>.Fail(GroupMemberNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<NoContent>.Fail(GroupMemberNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 if (member.LeftAt is not null)
                     return ServiceResult<NoContent>.Ok(new NoContent(), MemberAlreadyDisabledMessage);
@@ -658,11 +659,11 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<NoContent>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return ServiceResult<NoContent>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -868,17 +869,17 @@ namespace tesisproject.backend.Services.Implementations
                     .FirstOrDefaultAsync(ct);
 
                 if (projectInfo is null)
-                    return ServiceResult<ProjectMembersReportDTO>.Fail(ProjectNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<ProjectMembersReportDTO>.Fail(ProjectNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 if (projectInfo.GroupId <= 0)
                     return ServiceResult<ProjectMembersReportDTO>.Fail(
                         ProjectNotFoundOrNoAssociatedGroupMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 if (projectInfo.StartDate is null)
                     return ServiceResult<ProjectMembersReportDTO>.Fail(
                         ProjectStartDateRequiredForReportMessage,
-                        ErrorType.Validation);
+                        ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var projectStart = projectInfo.StartDate.Value.Date;
                 var realEnd = (projectInfo.EndDate ?? DateTime.UtcNow).Date;
@@ -896,7 +897,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (members.Count == 0)
                     return ServiceResult<ProjectMembersReportDTO>.Fail(
                         NoGroupMembersFoundForProjectMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 // =========================
                 // 3) Prórrogas (cada una equivale a 6 meses)
@@ -942,7 +943,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (distinctAppUserIds.Count == 0)
                     return ServiceResult<ProjectMembersReportDTO>.Fail(
                         NoAssociatedAppUsersForProjectMembersMessage,
-                        ErrorType.Validation);
+                        ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var identityIdByAppUserId = new Dictionary<int, int>();
                 var identityIds = new HashSet<int>();
@@ -962,7 +963,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (identityIds.Count == 0)
                     return ServiceResult<ProjectMembersReportDTO>.Fail(
                         NoLocalIdentityIdsForProjectMembersMessage,
-                        ErrorType.Validation);
+                        ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 // =========================
                 // 6) IdentityUser.Id -> Email (batch)
@@ -978,7 +979,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (emailsDistinct.Count == 0)
                     return ServiceResult<ProjectMembersReportDTO>.Fail(
                         NoInstitutionalEmailsForProjectMembersMessage,
-                        ErrorType.Validation);
+                        ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 // =========================
                 // 7) Directorio externo (FullName)
@@ -1121,7 +1122,7 @@ namespace tesisproject.backend.Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error generating project members report for project {ProjectId}", projectId);
-                return ServiceResult<ProjectMembersReportDTO>.Fail(UnexpectedErrorMessage, ErrorType.Unexpected);
+                return ServiceResult<ProjectMembersReportDTO>.Fail(UnexpectedErrorMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
 
             // =========================

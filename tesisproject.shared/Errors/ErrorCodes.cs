@@ -12,6 +12,7 @@ namespace tesisproject.shared.Errors
         {
             public const string UnexpectedError = "COMMON_UNEXPECTED_ERROR";
             public const string PersistenceConflict = "COMMON_PERSISTENCE_CONFLICT";
+            public const string NotFound = "COMMON_NOT_FOUND";
             public const string InvalidId = "COMMON_INVALID_ID";
             public const string NameRequired = "COMMON_NAME_REQUIRED";
             public const string NameAlreadyExists = "COMMON_NAME_ALREADY_EXISTS";

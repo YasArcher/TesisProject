@@ -5,6 +5,7 @@ using tesisproject.shared.DTOs.Visit.Request;
 using tesisproject.shared.DTOs.Visit.Response;
 using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Enums; // VisitStateIds
 
 namespace tesisproject.backend.Services.Implementations
@@ -72,7 +73,7 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request.ProjectId <= 0)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgProjectIdRequired, ErrorType.Validation);
+                    return ServiceResult<VisitListResponseDTO>.Fail(MsgProjectIdRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var entity = new Visit
                 {
@@ -96,7 +97,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<VisitListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<VisitListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -108,13 +109,13 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var visit = await _uow.Visits.GetByIdWithRefsAsync(visitId, ct);
                 if (visit is null)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound);
+                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 return ServiceResult<VisitListResponseDTO>.Ok(MapToListDTO(visit), MsgVisitRetrievedOk);
             }
             catch (Exception ex)
             {
-                return ServiceResult<VisitListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<VisitListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -139,13 +140,13 @@ namespace tesisproject.backend.Services.Implementations
                     .ToListAsync(ct);
 
                 if (items.Count == 0)
-                    return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(MsgNoVisitsFound, ErrorType.NotFound);
+                    return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(MsgNoVisitsFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Ok(items, MsgVisitsRetrievedOk);
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -154,18 +155,18 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (projectId <= 0)
-                    return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(MsgProjectIdRequiredLower, ErrorType.Validation);
+                    return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(MsgProjectIdRequiredLower, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var items = await _uow.Visits.GetByProjectAsync(projectId, ct);
                 if (items.Count == 0)
-                    return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(MsgNoVisitsFoundForProject, ErrorType.NotFound);
+                    return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(MsgNoVisitsFoundForProject, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 var dtos = items.Select(MapToListDTO).ToList();
                 return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Ok(dtos, MsgProjectVisitsRetrievedOk);
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -177,13 +178,13 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var entity = await _uow.Visits.GetByIdAsync(new object[] { request.VisitId }, ct);
                 if (entity is null)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound);
+                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 if (request.ProjectId <= 0)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgProjectIdRequired, ErrorType.Validation);
+                    return ServiceResult<VisitListResponseDTO>.Fail(MsgProjectIdRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 if (request.VisitStateId <= 0)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitStateIdRequired, ErrorType.Validation);
+                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitStateIdRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 entity.ProjectId = request.ProjectId;
                 entity.VisitStateId = request.VisitStateId;
@@ -205,7 +206,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<VisitListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<VisitListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -217,7 +218,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var entity = await _uow.Visits.GetByIdAsync(new object[] { visitId }, ct);
                 if (entity is null)
-                    return ServiceResult<NoContent>.Fail(MsgVisitNotFound, ErrorType.NotFound);
+                    return ServiceResult<NoContent>.Fail(MsgVisitNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 _uow.Visits.Remove(entity);
                 await _uow.SaveChangesAsync(ct);
@@ -230,7 +231,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -242,13 +243,13 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var visit = await _uow.Visits.GetByIdWithRefsAsync(visitId, ct);
                 if (visit is null)
-                    return ServiceResult<VisitDetailResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound);
+                    return ServiceResult<VisitDetailResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 return ServiceResult<VisitDetailResponseDTO>.Ok(MapToDetailDTO(visit), MsgVisitDetailRetrievedOk);
             }
             catch (Exception ex)
             {
-                return ServiceResult<VisitDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<VisitDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -257,18 +258,18 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request is null || request.VisitId <= 0)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitIdRequired, ErrorType.Validation);
+                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitIdRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 if (request.FinalVisitStateId <= 0)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgFinalVisitStateIdRequired, ErrorType.Validation);
+                    return ServiceResult<VisitListResponseDTO>.Fail(MsgFinalVisitStateIdRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var entity = await _uow.Visits.GetByIdAsync(new object[] { request.VisitId }, ct);
                 if (entity is null)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound);
+                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 var stateExists = await _uow.VisitStates.ExistsAsync(x => x.Id == request.FinalVisitStateId, ct);
                 if (!stateExists)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitStateIdInvalid, ErrorType.Validation);
+                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitStateIdInvalid, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 entity.VisitStateId = request.FinalVisitStateId;
                 entity.PerformedDate ??= DateTime.UtcNow;
@@ -288,7 +289,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<VisitListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<VisitListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -371,7 +372,7 @@ namespace tesisproject.backend.Services.Implementations
             catch (Exception ex)
             {
                 return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
-                    .Fail(ex.Message, ErrorType.Unexpected);
+                    .Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -385,7 +386,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (visitStateId <= 0)
                     return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
-                        .Fail(MsgVisitStateIdRequiredLower, ErrorType.Validation);
+                        .Fail(MsgVisitStateIdRequiredLower, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var list = await _uow.Visits
                     .QueryWithRefs()
@@ -412,7 +413,7 @@ namespace tesisproject.backend.Services.Implementations
 
                 if (list.Count == 0)
                     return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
-                        .Fail(MsgNoVisitsFoundForState, ErrorType.NotFound);
+                        .Fail(MsgNoVisitsFoundForState, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 var projectIds = list.Select(x => x.ProjectId).Distinct().ToList();
 
@@ -436,7 +437,7 @@ namespace tesisproject.backend.Services.Implementations
             catch (Exception ex)
             {
                 return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
-                    .Fail(ex.Message, ErrorType.Unexpected);
+                    .Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -504,14 +505,14 @@ namespace tesisproject.backend.Services.Implementations
         {
             var withRefs = await _uow.Visits.GetByIdWithRefsAsync(visitId, ct);
             if (withRefs is null)
-                return ServiceResult<VisitListResponseDTO>.Fail(failMessage, ErrorType.Unexpected);
+                return ServiceResult<VisitListResponseDTO>.Fail(failMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
 
             return ServiceResult<VisitListResponseDTO>.Ok(MapToListDTO(withRefs), okMessage);
         }
 
         private static ServiceResult<T> FailConflict<T>(DbUpdateException dbex)
         {
-            return ServiceResult<T>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+            return ServiceResult<T>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
         }
     }
 }

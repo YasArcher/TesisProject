@@ -8,6 +8,7 @@ using tesisproject.shared.DTOs.FacultyScope.Response;
 using tesisproject.shared.Entities.Auth;
 using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -62,11 +63,11 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (facultyScopeId <= 0)
-                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation);
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var e = await _uow.FacultyScopes.GetByIdWithRefsAsync(facultyScopeId, includeAssignments, ct);
             if (e is null)
-                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeNotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             return ServiceResult<FacultyScopeResponseDTO>.Ok(Map(e, includeAssignments));
         }
@@ -76,15 +77,15 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null)
-                return ServiceResult<FacultyScopeResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation);
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var name = (request.Name ?? "").Trim();
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<FacultyScopeResponseDTO>.Fail(NameRequiredMessage, ErrorType.Validation);
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(NameRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var exists = await _uow.FacultyScopes.ExistsAsync(x => x.Name == name, ct);
             if (exists)
-                return ServiceResult<FacultyScopeResponseDTO>.Fail(ScopeNameAlreadyExistsMessage, ErrorType.Conflict);
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(ScopeNameAlreadyExistsMessage, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
 
             var facultyIds = NormalizeFacultyIds(request.FacultyIds);
             if (facultyIds.Invalid.Count > 0)
@@ -128,24 +129,24 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (facultyScopeId <= 0)
-                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation);
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             if (request is null)
-                return ServiceResult<FacultyScopeResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation);
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var e = await _uow.FacultyScopes.GetByIdAsync(new object[] { facultyScopeId }, ct);
             if (e is null)
-                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeNotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             var name = (request.Name ?? "").Trim();
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<FacultyScopeResponseDTO>.Fail(NameRequiredMessage, ErrorType.Validation);
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(NameRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             if (!string.Equals(e.Name, name, StringComparison.Ordinal))
             {
                 var exists = await _uow.FacultyScopes.ExistsAsync(x => x.Name == name, ct);
                 if (exists)
-                    return ServiceResult<FacultyScopeResponseDTO>.Fail(ScopeNameAlreadyExistsMessage, ErrorType.Conflict);
+                    return ServiceResult<FacultyScopeResponseDTO>.Fail(ScopeNameAlreadyExistsMessage, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
 
                 e.Name = name;
             }
@@ -169,14 +170,14 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (facultyScopeId <= 0)
-                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation);
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             if (request is null)
-                return ServiceResult<FacultyScopeResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation);
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var scope = await _uow.FacultyScopes.GetByIdAsync(new object[] { facultyScopeId }, ct);
             if (scope is null)
-                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeNotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
             var normalized = NormalizeFacultyIds(request.FacultyIds);
             if (normalized.Invalid.Count > 0)
@@ -233,22 +234,22 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (facultyScopeId <= 0)
-                    return ServiceResult<bool>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<bool>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 if (request is null)
-                    return ServiceResult<bool>.Fail(RequestRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<bool>.Fail(RequestRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
                 if (string.IsNullOrWhiteSpace(email))
-                    return ServiceResult<bool>.Fail(InstitutionalEmailRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<bool>.Fail(InstitutionalEmailRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var document = (request.Document ?? string.Empty).Trim();
                 if (string.IsNullOrWhiteSpace(document))
-                    return ServiceResult<bool>.Fail(DocumentRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<bool>.Fail(DocumentRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var scope = await _uow.FacultyScopes.GetByIdAsync(new object[] { facultyScopeId }, ct);
                 if (scope is null)
-                    return ServiceResult<bool>.Fail(FacultyScopeNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<bool>.Fail(FacultyScopeNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 var registerDto = new RegisterRequest
                 {
@@ -271,7 +272,7 @@ namespace tesisproject.backend.Services.Implementations
 
                 var appUser = await _uow.AppUsers.GetByIdAsync(new object[] { appUserPk }, ct);
                 if (appUser is null)
-                    return ServiceResult<bool>.Fail(UnableToResolveAppUserMessage, ErrorType.Unexpected);
+                    return ServiceResult<bool>.Fail(UnableToResolveAppUserMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
 
                 var identityUserId = appUser.IdUser;
 
@@ -299,11 +300,11 @@ namespace tesisproject.backend.Services.Implementations
             {
                 return ServiceResult<bool>.Fail(
                     dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                    ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<bool>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<bool>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -313,10 +314,10 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (facultyScopeId <= 0)
-                return ServiceResult<bool>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation);
+                return ServiceResult<bool>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             if (identityUserId <= 0)
-                return ServiceResult<bool>.Fail(IdentityUserIdRequiredMessage, ErrorType.Validation);
+                return ServiceResult<bool>.Fail(IdentityUserIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
             var key = new object[] { identityUserId, facultyScopeId };
             var existing = await _uow.UserFacultyScopeAssignments.GetByIdAsync(key, ct);
@@ -340,7 +341,7 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     return ServiceResult<IReadOnlyList<int>>.Fail(
                         UserNotFoundMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound, ErrorCodes.Common.NotFound);
                 }
 
                 var ids = await _uow.UserFacultyScopeAssignments
