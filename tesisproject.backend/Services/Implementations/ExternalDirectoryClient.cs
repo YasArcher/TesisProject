@@ -23,6 +23,13 @@ public sealed class ExternalDirectoryClient : IExternalDirectoryClient
     private const string MsgUnexpectedError = "Unexpected error.";
     private const string MsgConfigEndpointMissing = "External API misconfiguration: UsersEndpoint is missing.";
     private const string MsgConfigParamMissing = "External API misconfiguration: query parameter name is missing.";
+    private const string MsgUnauthorizedExternalApi = "Unauthorized external API.";
+    private const string MsgForbiddenExternalApi = "Forbidden external API.";
+    private const string MsgAtLeastOneEmailRequired = "At least one email is required.";
+    private const string MsgProfilesRetrievedByEmails = "External profiles retrieved by emails";
+    private const string MsgAtLeastOneDocumentRequired = "At least one document is required.";
+    private const string MsgProfilesRetrievedByDocuments = "External profiles retrieved by documents";
+    private const string MsgAllProfilesRetrieved = "All external profiles retrieved";
 
     public ExternalDirectoryClient(
         HttpClient http,
@@ -43,8 +50,8 @@ public sealed class ExternalDirectoryClient : IExternalDirectoryClient
         => QueryByAsync(
             values: emails,
             queryParamName: _opts.UsersEmailQueryParam,
-            requiredMessage: "At least one email is required.",
-            successMessage: "External profiles retrieved by emails",
+            requiredMessage: MsgAtLeastOneEmailRequired,
+            successMessage: MsgProfilesRetrievedByEmails,
             ct: ct);
 
     public Task<ServiceResult<IReadOnlyList<ExternalUserProfileModel>>> GetByDocumentsAsync(
@@ -53,8 +60,8 @@ public sealed class ExternalDirectoryClient : IExternalDirectoryClient
         => QueryByAsync(
             values: documents,
             queryParamName: _opts.UsersDocumentQueryParam,
-            requiredMessage: "At least one document is required.",
-            successMessage: "External profiles retrieved by documents",
+            requiredMessage: MsgAtLeastOneDocumentRequired,
+            successMessage: MsgProfilesRetrievedByDocuments,
             ct: ct);
 
     public async Task<ServiceResult<IReadOnlyList<ExternalUserProfileModel>>> GetAllAsync(CancellationToken ct = default)
@@ -64,7 +71,7 @@ public sealed class ExternalDirectoryClient : IExternalDirectoryClient
 
         return await FetchAsync(
             url: endpoint,
-            successMessage: "All external profiles retrieved",
+            successMessage: MsgAllProfilesRetrieved,
             logContext: "GetAll",
             ct: ct);
     }
@@ -118,12 +125,12 @@ public sealed class ExternalDirectoryClient : IExternalDirectoryClient
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
         {
             _logger.LogWarning(ex, "Directory {Context}: 401", logContext);
-            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail("Unauthorized external API.", ErrorType.Unauthorized);
+            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(MsgUnauthorizedExternalApi, ErrorType.Unauthorized);
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Forbidden)
         {
             _logger.LogWarning(ex, "Directory {Context}: 403", logContext);
-            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail("Forbidden external API.", ErrorType.Forbidden);
+            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(MsgForbiddenExternalApi, ErrorType.Forbidden);
         }
         catch (Exception ex)
         {

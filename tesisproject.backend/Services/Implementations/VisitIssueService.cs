@@ -10,6 +10,12 @@ namespace tesisproject.backend.Services.Implementations
 {
     public sealed class VisitIssueService : IVisitIssueService
     {
+        private const string UserNotAuthenticatedMessage = "User not authenticated.";
+        private const string AuthUserNotAuthenticatedCode = "AUTH_USER_NOT_AUTHENTICATED";
+        private const string VisitNotFoundTemplate = "Visit {0} was not found.";
+        private const string VisitIssueNotFoundTemplate = "VisitIssue {0} was not found.";
+        private const string UserNotFoundMessage = "User not found.";
+
         private readonly IVisitIssueRepository _issueRepo;
         private readonly IVisitRepository _visitRepo;
         private readonly IUnitOfWork _uow;
@@ -60,9 +66,9 @@ namespace tesisproject.backend.Services.Implementations
             catch (UnauthorizedAccessException)
             {
                 return ServiceResult<VisitIssueResponseDTO>.Fail(
-                    "User not authenticated.",
+                    UserNotAuthenticatedMessage,
                     ErrorType.Unauthorized,
-                    "AUTH_USER_NOT_AUTHENTICATED");
+                    AuthUserNotAuthenticatedCode);
             }
         }
 
@@ -129,9 +135,9 @@ namespace tesisproject.backend.Services.Implementations
             catch (UnauthorizedAccessException)
             {
                 return ServiceResult<VisitIssueResponseDTO>.Fail(
-                    "User not authenticated.",
+                    UserNotAuthenticatedMessage,
                     ErrorType.Unauthorized,
-                    "AUTH_USER_NOT_AUTHENTICATED");
+                    AuthUserNotAuthenticatedCode);
             }
         }
 
@@ -163,13 +169,13 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         private static ServiceResult<T> FailVisitNotFound<T>(int visitId)
-            => ServiceResult<T>.Fail($"Visit {visitId} was not found.", ErrorType.NotFound);
+            => ServiceResult<T>.Fail(string.Format(VisitNotFoundTemplate, visitId), ErrorType.NotFound);
 
         private static ServiceResult<T> FailVisitIssueNotFound<T>(int id)
-            => ServiceResult<T>.Fail($"VisitIssue {id} was not found.", ErrorType.NotFound);
+            => ServiceResult<T>.Fail(string.Format(VisitIssueNotFoundTemplate, id), ErrorType.NotFound);
 
         private static ServiceResult<T> FailUserNotFound<T>()
-            => ServiceResult<T>.Fail("User not found.", ErrorType.NotFound);
+            => ServiceResult<T>.Fail(UserNotFoundMessage, ErrorType.NotFound);
 
         // =========================
         //     MAPEO A RESPONSE

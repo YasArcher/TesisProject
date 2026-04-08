@@ -15,6 +15,11 @@ namespace tesisproject.backend.Services.Implementations
         private readonly ILogger<ExportTemplateExcelService> _logger;
 
         private const string PipeSep = " | ";
+        private const string NullRequestMessage = "La solicitud de exportación es nula.";
+        private const string NoColumnsDefinedMessage = "No se han definido columnas para la exportación.";
+        private const string FlatReportUnavailableMessage = "No se pudo obtener el informe plano de proyectos.";
+        private const string NoProjectsInFlatReportMessage = "No hay proyectos en el informe plano.";
+        private const string ErrorGeneratingExcelMessage = "Error al generar el archivo Excel.";
 
         // ======= Tabla de resolvers (se busca 1 vez por columna; luego se ejecuta por fila) =======
         private static readonly IReadOnlyDictionary<string, Func<ProjectFlatReportDTO, string>> FieldResolvers
@@ -89,21 +94,21 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request == null)
-                return ServiceResult<byte[]>.Fail("La solicitud de exportación es nula.", ErrorType.Validation);
+                return ServiceResult<byte[]>.Fail(NullRequestMessage, ErrorType.Validation);
 
             if (request.Columns is null || request.Columns.Count == 0)
-                return ServiceResult<byte[]>.Fail("No se han definido columnas para la exportación.", ErrorType.Validation);
+                return ServiceResult<byte[]>.Fail(NoColumnsDefinedMessage, ErrorType.Validation);
 
             var flatResult = await _flatService.GetFlatReportAsync(null, ct);
             if (!flatResult.Success || flatResult.Data is null)
             {
-                return ServiceResult<byte[]>.Fail(flatResult.Message ?? "No se pudo obtener el informe plano de proyectos.");
+                return ServiceResult<byte[]>.Fail(flatResult.Message ?? FlatReportUnavailableMessage);
             }
 
             var projects = flatResult.Data.ToList();
             if (projects.Count == 0)
             {
-                return ServiceResult<byte[]>.Fail("No hay proyectos en el informe plano.", ErrorType.Validation);
+                return ServiceResult<byte[]>.Fail(NoProjectsInFlatReportMessage, ErrorType.Validation);
             }
 
             try
@@ -114,7 +119,7 @@ namespace tesisproject.backend.Services.Implementations
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al generar el Excel para la exportación solicitada.");
-                return ServiceResult<byte[]>.Fail("Error al generar el archivo Excel.", ErrorType.Unexpected);
+                return ServiceResult<byte[]>.Fail(ErrorGeneratingExcelMessage, ErrorType.Unexpected);
             }
         }
 
