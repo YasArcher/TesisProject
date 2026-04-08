@@ -4,18 +4,13 @@ using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.VisitIssues.Request;
 using tesisproject.shared.DTOs.VisitIssues.Response;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
 {
     public sealed class VisitIssueService : IVisitIssueService
     {
-        private const string UserNotAuthenticatedMessage = "User not authenticated.";
-        private const string AuthUserNotAuthenticatedCode = "AUTH_USER_NOT_AUTHENTICATED";
-        private const string VisitNotFoundTemplate = "Visit {0} was not found.";
-        private const string VisitIssueNotFoundTemplate = "VisitIssue {0} was not found.";
-        private const string UserNotFoundMessage = "User not found.";
-
         private readonly IVisitIssueRepository _issueRepo;
         private readonly IVisitRepository _visitRepo;
         private readonly IUnitOfWork _uow;
@@ -66,9 +61,9 @@ namespace tesisproject.backend.Services.Implementations
             catch (UnauthorizedAccessException)
             {
                 return ServiceResult<VisitIssueResponseDTO>.Fail(
-                    UserNotAuthenticatedMessage,
+                    ErrorMessages.Auth.UserNotAuthenticated,
                     ErrorType.Unauthorized,
-                    AuthUserNotAuthenticatedCode);
+                    ErrorCodes.Auth.UserNotAuthenticated);
             }
         }
 
@@ -135,9 +130,9 @@ namespace tesisproject.backend.Services.Implementations
             catch (UnauthorizedAccessException)
             {
                 return ServiceResult<VisitIssueResponseDTO>.Fail(
-                    UserNotAuthenticatedMessage,
+                    ErrorMessages.Auth.UserNotAuthenticated,
                     ErrorType.Unauthorized,
-                    AuthUserNotAuthenticatedCode);
+                    ErrorCodes.Auth.UserNotAuthenticated);
             }
         }
 
@@ -169,13 +164,22 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         private static ServiceResult<T> FailVisitNotFound<T>(int visitId)
-            => ServiceResult<T>.Fail(string.Format(VisitNotFoundTemplate, visitId), ErrorType.NotFound);
+            => ServiceResult<T>.Fail(
+                string.Format(ErrorMessages.Visit.NotFoundById, visitId),
+                ErrorType.NotFound,
+                ErrorCodes.Visit.NotFound);
 
         private static ServiceResult<T> FailVisitIssueNotFound<T>(int id)
-            => ServiceResult<T>.Fail(string.Format(VisitIssueNotFoundTemplate, id), ErrorType.NotFound);
+            => ServiceResult<T>.Fail(
+                string.Format(ErrorMessages.VisitIssue.NotFoundById, id),
+                ErrorType.NotFound,
+                ErrorCodes.VisitIssue.NotFound);
 
         private static ServiceResult<T> FailUserNotFound<T>()
-            => ServiceResult<T>.Fail(UserNotFoundMessage, ErrorType.NotFound);
+            => ServiceResult<T>.Fail(
+                ErrorMessages.VisitIssue.ReporterUserNotFound,
+                ErrorType.NotFound,
+                ErrorCodes.VisitIssue.ReporterUserNotFound);
 
         // =========================
         //     MAPEO A RESPONSE

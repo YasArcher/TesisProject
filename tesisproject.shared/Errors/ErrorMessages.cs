@@ -92,5 +92,26 @@ namespace tesisproject.shared.Errors
             public const string ExternalResearcherNotFound = "External researcher not found.";
             public const string AlreadyAssigned = "External researcher is already assigned to this project.";
         }
+
+        public static class ExternalResearcher
+        {
+            public const string InvalidId = "Invalid id.";
+            public const string InvalidRequest = "Invalid request.";
+            public const string FullNameRequired = "Full name is required.";
+            public const string EmailRequired = "Email is required.";
+            public const string EmailAlreadyExists = "Email already exists.";
+            public const string NotFound = "External researcher not found.";
+        }
+
+        public static class Visit
+        {
+            public const string NotFoundById = "Visit {0} was not found.";
+        }
+
+        public static class VisitIssue
+        {
+            public const string NotFoundById = "VisitIssue {0} was not found.";
+            public const string ReporterUserNotFound = "User not found.";
+        }
     }
 }
