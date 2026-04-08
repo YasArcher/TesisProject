@@ -15,6 +15,12 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class AppUserService : IAppUserService
     {
+        private const string AppUserEnsuredMessage = "App user ensured.";
+        private const string AppUsersEnsuredMessage = "App users ensured.";
+        private const string InvalidLocalUserIdMessage = "Invalid local user id.";
+        private const string AppUserNotFoundMessage = "App user not found.";
+        private const string AppUserResolvedMessage = "App user resolved.";
+
         private readonly UserManager<IdentityUser<int>> _userManager;
         private readonly IAppUserRepository _appUsers;
         private readonly IUnitOfWork _uow;
@@ -39,7 +45,7 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 var idUser = await EnsureSingleInternalAsync(dto, ct);
-                return ServiceResult<int>.Ok(idUser, "App user ensured.");
+                return ServiceResult<int>.Ok(idUser, AppUserEnsuredMessage);
             }
             catch (InvalidOperationException invEx)
             {
@@ -69,7 +75,7 @@ namespace tesisproject.backend.Services.Implementations
                     result.Add(idUser);
                 }
 
-                return ServiceResult<List<int>>.Ok(result, "App users ensured.");
+                return ServiceResult<List<int>>.Ok(result, AppUsersEnsuredMessage);
             }
             catch (InvalidOperationException invEx)
             {
@@ -93,7 +99,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (localUserId <= 0)
                 {
                     return ServiceResult<int>.Fail(
-                        "Invalid local user id.",
+                        InvalidLocalUserIdMessage,
                         ErrorType.Validation
                     );
                 }
@@ -103,12 +109,12 @@ namespace tesisproject.backend.Services.Implementations
                 if (appUser is null || appUser.IdUser <= 0)
                 {
                     return ServiceResult<int>.Fail(
-                        "App user not found.",
+                        AppUserNotFoundMessage,
                         ErrorType.NotFound
                     );
                 }
 
-                return ServiceResult<int>.Ok(appUser.IdUser, "App user resolved.");
+                return ServiceResult<int>.Ok(appUser.IdUser, AppUserResolvedMessage);
             }
             catch (Exception ex)
             {

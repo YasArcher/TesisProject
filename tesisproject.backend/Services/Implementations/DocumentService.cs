@@ -19,6 +19,15 @@ namespace tesisproject.backend.Services.Implementations
 
         // Se mantiene como carpeta relativa que va a BD
         private const string DocumentsFolder = "uploads/documents";
+        private const string DocumentNotFoundMessage = "Document not found.";
+        private const string DocumentTypeIdRequiredMessage = "DocumentTypeId is required.";
+        private const string UserNotFoundMessage = "User not found.";
+        private const string UserNotAuthenticatedMessage = "User not authenticated.";
+        private const string AuthUserNotAuthenticatedCode = "AUTH_USER_NOT_AUTHENTICATED";
+        private const string FileIsEmptyMessage = "File is empty.";
+        private const string DocumentDeletedMessage = "Document deleted.";
+        private const string FileNotFoundOnServerMessage = "File not found on server.";
+        private const string DefaultContentType = "application/octet-stream";
 
         // Root físico configurado (Storage:RootPath)
         private readonly string _storageRootFullPath;
@@ -46,7 +55,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             var e = await _uow.Documents.GetByIdWithRefsAsync(documentId, ct);
             if (e is null)
-                return ServiceResult<DocumentResponseDTO>.Fail("Document not found.", ErrorType.NotFound);
+                return ServiceResult<DocumentResponseDTO>.Fail(DocumentNotFoundMessage, ErrorType.NotFound);
 
             return ServiceResult<DocumentResponseDTO>.Ok(Map(e));
         }
@@ -59,19 +68,19 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request.DocumentTypeId <= 0)
-                    return ServiceResult<DocumentResponseDTO>.Fail("DocumentTypeId is required.", ErrorType.Validation);
+                    return ServiceResult<DocumentResponseDTO>.Fail(DocumentTypeIdRequiredMessage, ErrorType.Validation);
 
                 var actorUserId = await GetExistingActorUserIdAsync(ct);
                 if (!actorUserId.HasValue)
                 {
                     return ServiceResult<DocumentResponseDTO>.Fail(
-                        "User not found.",
+                        UserNotFoundMessage,
                         ErrorType.NotFound);
                 }
 
                 var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
                 if (e is null)
-                    return ServiceResult<DocumentResponseDTO>.Fail("Document not found.", ErrorType.NotFound);
+                    return ServiceResult<DocumentResponseDTO>.Fail(DocumentNotFoundMessage, ErrorType.NotFound);
 
                 e.DocumentTypeId = request.DocumentTypeId;
                 e.ResolutionCode = request.ResolutionCode;
@@ -87,9 +96,9 @@ namespace tesisproject.backend.Services.Implementations
             catch (UnauthorizedAccessException)
             {
                 return ServiceResult<DocumentResponseDTO>.Fail(
-                    "User not authenticated.",
+                    UserNotAuthenticatedMessage,
                     ErrorType.Unauthorized,
-                    "AUTH_USER_NOT_AUTHENTICATED");
+                    AuthUserNotAuthenticatedCode);
             }
             catch (Exception ex)
             {
@@ -107,19 +116,19 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request.File is null || request.File.Length == 0)
-                    return ServiceResult<DocumentResponseDTO>.Fail("File is empty.", ErrorType.Validation);
+                    return ServiceResult<DocumentResponseDTO>.Fail(FileIsEmptyMessage, ErrorType.Validation);
 
                 var actorUserId = await GetExistingActorUserIdAsync(ct);
                 if (!actorUserId.HasValue)
                 {
                     return ServiceResult<DocumentResponseDTO>.Fail(
-                        "User not found.",
+                        UserNotFoundMessage,
                         ErrorType.NotFound);
                 }
 
                 var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
                 if (e is null)
-                    return ServiceResult<DocumentResponseDTO>.Fail("Document not found.", ErrorType.NotFound);
+                    return ServiceResult<DocumentResponseDTO>.Fail(DocumentNotFoundMessage, ErrorType.NotFound);
 
                 var oldPhysicalPath = ResolvePhysicalPath(e.DocumentPath);
                 var (newRelativePath, newPhysicalPath) = BuildNewFilePath(request.File.FileName);
@@ -178,9 +187,9 @@ namespace tesisproject.backend.Services.Implementations
             catch (UnauthorizedAccessException)
             {
                 return ServiceResult<DocumentResponseDTO>.Fail(
-                    "User not authenticated.",
+                    UserNotAuthenticatedMessage,
                     ErrorType.Unauthorized,
-                    "AUTH_USER_NOT_AUTHENTICATED");
+                    AuthUserNotAuthenticatedCode);
             }
             catch (Exception ex)
             {
@@ -196,7 +205,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
             if (e is null)
-                return ServiceResult<bool>.Fail("Document not found.", ErrorType.NotFound);
+                return ServiceResult<bool>.Fail(DocumentNotFoundMessage, ErrorType.NotFound);
 
             var physicalPath = ResolvePhysicalPath(e.DocumentPath);
 
@@ -213,7 +222,7 @@ namespace tesisproject.backend.Services.Implementations
                 // Best-effort delete
             }
 
-            return ServiceResult<bool>.Ok(true, "Document deleted.");
+            return ServiceResult<bool>.Ok(true, DocumentDeletedMessage);
         }
 
         public async Task<ServiceResult<(Stream Stream, string ContentType, string FileName)>> GetContentAsync(
@@ -222,16 +231,16 @@ namespace tesisproject.backend.Services.Implementations
         {
             var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
             if (e is null)
-                return ServiceResult<(Stream, string, string)>.Fail("Document not found.", ErrorType.NotFound);
+                return ServiceResult<(Stream, string, string)>.Fail(DocumentNotFoundMessage, ErrorType.NotFound);
 
             var physicalPath = ResolvePhysicalPath(e.DocumentPath);
             if (!File.Exists(physicalPath))
-                return ServiceResult<(Stream, string, string)>.Fail("File not found on server.", ErrorType.NotFound);
+                return ServiceResult<(Stream, string, string)>.Fail(FileNotFoundOnServerMessage, ErrorType.NotFound);
 
             var fileName = Path.GetFileName(physicalPath);
 
             if (!_contentTypeProvider.TryGetContentType(fileName, out var contentType))
-                contentType = "application/octet-stream";
+                contentType = DefaultContentType;
 
             var stream = new FileStream(physicalPath, FileMode.Open, FileAccess.Read, FileShare.Read);
             return ServiceResult<(Stream, string, string)>.Ok((stream, contentType, fileName));
@@ -244,16 +253,16 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request.File is null || request.File.Length == 0)
-                    return ServiceResult<DocumentResponseDTO>.Fail("File is empty.", ErrorType.Validation);
+                    return ServiceResult<DocumentResponseDTO>.Fail(FileIsEmptyMessage, ErrorType.Validation);
 
                 if (request.DocumentTypeId <= 0)
-                    return ServiceResult<DocumentResponseDTO>.Fail("DocumentTypeId is required.", ErrorType.Validation);
+                    return ServiceResult<DocumentResponseDTO>.Fail(DocumentTypeIdRequiredMessage, ErrorType.Validation);
 
                 var actorUserId = await GetExistingActorUserIdAsync(ct);
                 if (!actorUserId.HasValue)
                 {
                     return ServiceResult<DocumentResponseDTO>.Fail(
-                        "User not found.",
+                        UserNotFoundMessage,
                         ErrorType.NotFound);
                 }
 
@@ -309,9 +318,9 @@ namespace tesisproject.backend.Services.Implementations
             catch (UnauthorizedAccessException)
             {
                 return ServiceResult<DocumentResponseDTO>.Fail(
-                    "User not authenticated.",
+                    UserNotAuthenticatedMessage,
                     ErrorType.Unauthorized,
-                    "AUTH_USER_NOT_AUTHENTICATED");
+                    AuthUserNotAuthenticatedCode);
             }
             catch (Exception ex)
             {

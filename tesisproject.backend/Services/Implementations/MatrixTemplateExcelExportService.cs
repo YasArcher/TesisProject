@@ -25,6 +25,17 @@ namespace tesisproject.backend.Services.Implementations
         private const string EmptyPlaceholder = "-";
         private const string PipeSeparator = " | ";
         private const string DefaultWorksheetName = "Matriz proyectos";
+        private const string NullRequestMessage = "La solicitud de exportación es nula.";
+        private const string InvalidTemplateMessage = "Debe especificar una plantilla válida.";
+        private const string AtLeastOneColumnMessage = "Debe seleccionar al menos una columna para exportar.";
+        private const string TemplateNotRecoveredMessage = "No se pudo recuperar la plantilla.";
+        private const string TemplateInactiveMessage = "La plantilla seleccionada está inactiva.";
+        private const string TemplateWithoutColumnsMessage = "La plantilla no tiene columnas configuradas.";
+        private const string IncludedColumnsNotInTemplateMessage = "La selección contiene columnas que no pertenecen a la plantilla.";
+        private const string MissingRequiredColumnsMessage = "Faltan columnas obligatorias requeridas por la plantilla.";
+        private const string NoValidSelectedColumnsMessage = "No hay columnas válidas seleccionadas para exportar.";
+        private const string NoDataToExportMessage = "No hay datos para exportar.";
+        private const string ErrorGeneratingExcelMessage = "Error al generar el archivo Excel.";
 
         private const string DynamicCategoriesKey = "MATRIX_DYNAMIC_CATEGORIES";
         private const string DynamicObjectivesKey = "MATRIX_DYNAMIC_OBJECTIVES";
@@ -58,12 +69,12 @@ namespace tesisproject.backend.Services.Implementations
         {
             if (request is null)
                 return ServiceResult<byte[]>.Fail(
-                    "La solicitud de exportación es nula.",
+                    NullRequestMessage,
                     ErrorType.Validation);
 
             if (request.TemplateId <= 0)
                 return ServiceResult<byte[]>.Fail(
-                    "Debe especificar una plantilla válida.",
+                    InvalidTemplateMessage,
                     ErrorType.Validation);
 
             var includedColumnIds = request.IncludedTemplateColumnIds?
@@ -72,26 +83,26 @@ namespace tesisproject.backend.Services.Implementations
 
             if (includedColumnIds.Count == 0)
                 return ServiceResult<byte[]>.Fail(
-                    "Debe seleccionar al menos una columna para exportar.",
+                    AtLeastOneColumnMessage,
                     ErrorType.Validation);
 
             // 1) Cargar plantilla desde BD
             var templateResult = await _templateService.GetTemplateAsync(request.TemplateId, ct);
             if (!templateResult.Success || templateResult.Data is null)
                 return ServiceResult<byte[]>.Fail(
-                    templateResult.Message ?? "No se pudo recuperar la plantilla.",
+                    templateResult.Message ?? TemplateNotRecoveredMessage,
                     ErrorType.Validation);
 
             var template = templateResult.Data;
 
             if (!template.IsActive)
                 return ServiceResult<byte[]>.Fail(
-                    "La plantilla seleccionada está inactiva.",
+                    TemplateInactiveMessage,
                     ErrorType.Validation);
 
             if (template.Columns is null || template.Columns.Count == 0)
                 return ServiceResult<byte[]>.Fail(
-                    "La plantilla no tiene columnas configuradas.",
+                    TemplateWithoutColumnsMessage,
                     ErrorType.Validation);
 
             var templateColumns = template.Columns
@@ -108,7 +119,7 @@ namespace tesisproject.backend.Services.Implementations
 
             if (invalidIncludedIds.Count > 0)
                 return ServiceResult<byte[]>.Fail(
-                    "La selección contiene columnas que no pertenecen a la plantilla.",
+                    IncludedColumnsNotInTemplateMessage,
                     ErrorType.Validation);
 
             var requiredNotIncluded = templateColumns
@@ -118,7 +129,7 @@ namespace tesisproject.backend.Services.Implementations
 
             if (requiredNotIncluded.Count > 0)
                 return ServiceResult<byte[]>.Fail(
-                    "Faltan columnas obligatorias requeridas por la plantilla.",
+                    MissingRequiredColumnsMessage,
                     ErrorType.Validation);
 
             var selectedTemplateColumns = templateColumns
@@ -128,14 +139,14 @@ namespace tesisproject.backend.Services.Implementations
 
             if (selectedTemplateColumns.Count == 0)
                 return ServiceResult<byte[]>.Fail(
-                    "No hay columnas válidas seleccionadas para exportar.",
+                    NoValidSelectedColumnsMessage,
                     ErrorType.Validation);
 
             // 2) Cargar dataset plano
             var flatResult = await _flatService.GetFlatReportAsync(request.ProjectIds, ct);
             if (!flatResult.Success || flatResult.Data is null || flatResult.Data.Count == 0)
                 return ServiceResult<byte[]>.Fail(
-                    flatResult.Message ?? "No hay datos para exportar.");
+                    flatResult.Message ?? NoDataToExportMessage);
 
             var projects = flatResult.Data.ToList();
 
@@ -165,7 +176,7 @@ namespace tesisproject.backend.Services.Implementations
                     request.TemplateId);
 
                 return ServiceResult<byte[]>.Fail(
-                    "Error al generar el archivo Excel.",
+                    ErrorGeneratingExcelMessage,
                     ErrorType.Unexpected);
             }
         }

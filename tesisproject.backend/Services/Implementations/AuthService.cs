@@ -8,6 +8,19 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class AuthService : IAuthService
     {
+        private const string NoneTokenType = "None";
+        private const string BearerTokenType = "Bearer";
+        private const string RegisterOkMessageTemplate = "User registered (AppUserId={0}, no login performed)";
+        private const string InvalidCredentialsMessage = "invalid_credentials";
+        private const string LoginSuccessfulMessage = "Login successful";
+        private const string NoRefreshCookieMessage = "no_refresh_cookie";
+        private const string InvalidOrInactiveRefreshTokenMessage = "invalid_or_inactive_refresh_token";
+        private const string UserNotFoundMessage = "user_not_found";
+        private const string TokenRefreshedMessage = "Token refreshed";
+        private const string NoRefreshCookieProvidedMessage = "No refresh cookie provided.";
+        private const string RefreshTokenAlreadyInactiveMessage = "Refresh token already inactive.";
+        private const string RefreshTokenRevokedMessage = "Refresh token revoked.";
+
         private readonly UserManager<IdentityUser<int>> _userManager;
         private readonly SignInManager<IdentityUser<int>> _signInManager;
         private readonly ITokenService _tokenService;
@@ -50,14 +63,14 @@ namespace tesisproject.backend.Services.Implementations
                 // No generamos tokens ni refresh: NO login automático
                 var resp = new AuthResponse
                 {
-                    TokenType = "None",
+                    TokenType = NoneTokenType,
                     AccessToken = string.Empty,
                     AccessTokenExpiresAtUtc = DateTime.UtcNow,
                     RefreshTokenExpiresAtUtc = DateTime.UtcNow
                 };
 
                 return (
-                    ServiceResult<AuthResponse>.Ok(resp, $"User registered (AppUserId={appUserId}, no login performed)"),
+                    ServiceResult<AuthResponse>.Ok(resp, string.Format(RegisterOkMessageTemplate, appUserId)),
                     null
                 );
             }
@@ -89,7 +102,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (user is null)
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail("invalid_credentials", ErrorType.Validation),
+                        ServiceResult<AuthResponse>.Fail(InvalidCredentialsMessage, ErrorType.Validation),
                         null
                     );
                 }
@@ -102,7 +115,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (!check.Succeeded)
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail("invalid_credentials", ErrorType.Validation),
+                        ServiceResult<AuthResponse>.Fail(InvalidCredentialsMessage, ErrorType.Validation),
                         null
                     );
                 }
@@ -117,14 +130,14 @@ namespace tesisproject.backend.Services.Implementations
 
                 var resp = new AuthResponse
                 {
-                    TokenType = "Bearer",
+                    TokenType = BearerTokenType,
                     AccessToken = access,
                     AccessTokenExpiresAtUtc = accessExp,
                     RefreshTokenExpiresAtUtc = refreshExp
                 };
 
                 return (
-                    ServiceResult<AuthResponse>.Ok(resp, "Login successful"),
+                    ServiceResult<AuthResponse>.Ok(resp, LoginSuccessfulMessage),
                     (refresh, refreshExp)
                 );
             }
@@ -155,7 +168,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (string.IsNullOrWhiteSpace(refreshCookie))
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail("no_refresh_cookie", ErrorType.Validation),
+                        ServiceResult<AuthResponse>.Fail(NoRefreshCookieMessage, ErrorType.Validation),
                         null
                     );
                 }
@@ -164,7 +177,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (current is null)
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail("invalid_or_inactive_refresh_token", ErrorType.Validation),
+                        ServiceResult<AuthResponse>.Fail(InvalidOrInactiveRefreshTokenMessage, ErrorType.Validation),
                         null
                     );
                 }
@@ -173,7 +186,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (user is null)
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail("user_not_found", ErrorType.NotFound),
+                        ServiceResult<AuthResponse>.Fail(UserNotFoundMessage, ErrorType.NotFound),
                         null
                     );
                 }
@@ -189,14 +202,14 @@ namespace tesisproject.backend.Services.Implementations
 
                 var resp = new AuthResponse
                 {
-                    TokenType = "Bearer",
+                    TokenType = BearerTokenType,
                     AccessToken = access,
                     AccessTokenExpiresAtUtc = accessExp,
                     RefreshTokenExpiresAtUtc = newRefreshExp
                 };
 
                 return (
-                    ServiceResult<AuthResponse>.Ok(resp, "Token refreshed"),
+                    ServiceResult<AuthResponse>.Ok(resp, TokenRefreshedMessage),
                     (newRefresh, newRefreshExp)
                 );
             }
@@ -228,25 +241,25 @@ namespace tesisproject.backend.Services.Implementations
                 if (string.IsNullOrWhiteSpace(refreshCookie))
                 {
                     // Lo tratamos como ya “cerrado”
-                    return ServiceResult<NoContent>.Ok(new NoContent(), "No refresh cookie provided.");
+                    return ServiceResult<NoContent>.Ok(new NoContent(), NoRefreshCookieProvidedMessage);
                 }
 
                 var active = await _refreshTokens.GetActiveByTokenAsync(refreshCookie, ct);
                 if (active is null)
                 {
-                    return ServiceResult<NoContent>.Ok(new NoContent(), "Refresh token already inactive.");
+                    return ServiceResult<NoContent>.Ok(new NoContent(), RefreshTokenAlreadyInactiveMessage);
                 }
 
                 var again = await _refreshTokens.GetActiveAsync(active.UserId, refreshCookie, ct);
                 if (again is null)
                 {
-                    return ServiceResult<NoContent>.Ok(new NoContent(), "Refresh token already inactive.");
+                    return ServiceResult<NoContent>.Ok(new NoContent(), RefreshTokenAlreadyInactiveMessage);
                 }
 
                 await _refreshTokens.RevokeAsync(again, byIp: ip, replacedByToken: null, ct: ct);
                 await _refreshTokens.SaveChangesAsync(ct);
 
-                return ServiceResult<NoContent>.Ok(new NoContent(), "Refresh token revoked.");
+                return ServiceResult<NoContent>.Ok(new NoContent(), RefreshTokenRevokedMessage);
             }
             catch (DbUpdateException dbex)
             {
