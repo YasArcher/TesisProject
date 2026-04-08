@@ -5,6 +5,7 @@ using tesisproject.shared.DTOs.ExternalResearcher.Request;
 using tesisproject.shared.DTOs.ExternalResearcher.Response;
 using tesisproject.shared.DTOs.Filters;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -12,13 +13,6 @@ namespace tesisproject.backend.Services.Implementations
     public class ExternalResearcherService : IExternalResearcherService
     {
         private readonly IUnitOfWork _uow;
-
-        private const string InvalidIdMessage = "Invalid id.";
-        private const string InvalidRequestMessage = "Invalid request.";
-        private const string FullNameRequiredMessage = "Full name is required.";
-        private const string EmailRequiredMessage = "Email is required.";
-        private const string EmailAlreadyExistsMessage = "Email already exists.";
-        private const string ExternalResearcherNotFoundMessage = "External researcher not found.";
 
         public ExternalResearcherService(IUnitOfWork uow)
         {
@@ -51,12 +45,18 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(
+                    ErrorMessages.ExternalResearcher.InvalidId,
+                    ErrorType.Validation,
+                    ErrorCodes.ExternalResearcher.InvalidId);
 
             var entity = await _uow.ExternalResearchers.GetByIdWithRefsAsync(id, ct);
 
             if (entity is null)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail(ExternalResearcherNotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(
+                    ErrorMessages.ExternalResearcher.NotFound,
+                    ErrorType.NotFound,
+                    ErrorCodes.ExternalResearcher.NotFound);
 
             var dto = ToDetailDTO(entity);
             return ServiceResult<ExternalResearcherDetailDTO>.Ok(dto);
@@ -96,24 +96,36 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail(InvalidRequestMessage, ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(
+                    ErrorMessages.ExternalResearcher.InvalidRequest,
+                    ErrorType.Validation,
+                    ErrorCodes.ExternalResearcher.InvalidRequest);
 
             var fullName = NormalizeRequired(request.FullName);
             var email = NormalizeRequired(request.Email);
             var phone = NormalizePhone(request.PhoneNumber);
 
             if (string.IsNullOrWhiteSpace(fullName))
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail(FullNameRequiredMessage, ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(
+                    ErrorMessages.ExternalResearcher.FullNameRequired,
+                    ErrorType.Validation,
+                    ErrorCodes.ExternalResearcher.FullNameRequired);
 
             if (string.IsNullOrWhiteSpace(email))
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail(EmailRequiredMessage, ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(
+                    ErrorMessages.ExternalResearcher.EmailRequired,
+                    ErrorType.Validation,
+                    ErrorCodes.ExternalResearcher.EmailRequired);
 
             var emailExists = await _uow.ExternalResearchers.ExistsAsync(
                 er => er.Email == email,
                 ct);
 
             if (emailExists)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail(EmailAlreadyExistsMessage, ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(
+                    ErrorMessages.ExternalResearcher.EmailAlreadyExists,
+                    ErrorType.Validation,
+                    ErrorCodes.ExternalResearcher.EmailAlreadyExists);
 
             var entity = new ExternalResearcher
             {
@@ -136,28 +148,43 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null || request.Id <= 0)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail(InvalidIdMessage, ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(
+                    ErrorMessages.ExternalResearcher.InvalidId,
+                    ErrorType.Validation,
+                    ErrorCodes.ExternalResearcher.InvalidId);
 
             var fullName = NormalizeRequired(request.FullName);
             var email = NormalizeRequired(request.Email);
             var phone = NormalizePhone(request.PhoneNumber);
 
             if (string.IsNullOrWhiteSpace(fullName))
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail(FullNameRequiredMessage, ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(
+                    ErrorMessages.ExternalResearcher.FullNameRequired,
+                    ErrorType.Validation,
+                    ErrorCodes.ExternalResearcher.FullNameRequired);
 
             if (string.IsNullOrWhiteSpace(email))
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail(EmailRequiredMessage, ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(
+                    ErrorMessages.ExternalResearcher.EmailRequired,
+                    ErrorType.Validation,
+                    ErrorCodes.ExternalResearcher.EmailRequired);
 
             var entity = await _uow.ExternalResearchers.GetByIdAsync(new object[] { request.Id }, ct);
             if (entity is null)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail(ExternalResearcherNotFoundMessage, ErrorType.NotFound);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(
+                    ErrorMessages.ExternalResearcher.NotFound,
+                    ErrorType.NotFound,
+                    ErrorCodes.ExternalResearcher.NotFound);
 
             var duplicatedEmail = await _uow.ExternalResearchers.ExistsAsync(
                 er => er.Email == email && er.ExternalResearcherId != request.Id,
                 ct);
 
             if (duplicatedEmail)
-                return ServiceResult<ExternalResearcherDetailDTO>.Fail(EmailAlreadyExistsMessage, ErrorType.Validation);
+                return ServiceResult<ExternalResearcherDetailDTO>.Fail(
+                    ErrorMessages.ExternalResearcher.EmailAlreadyExists,
+                    ErrorType.Validation,
+                    ErrorCodes.ExternalResearcher.EmailAlreadyExists);
 
             entity.FullName = fullName;
             entity.Email = email;
