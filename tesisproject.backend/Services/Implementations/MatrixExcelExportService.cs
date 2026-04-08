@@ -11,6 +11,7 @@ namespace tesisproject.backend.Services.Implementations
         private const string WorksheetName = "Matriz proyectos";
         private const string EmptyPlaceholder = "-";
         private const string PipeSeparator = " | ";
+        private const string NoDataToExportMessage = "No hay datos para exportar.";
         private const int CategoryColumnsBaseOrder = 1000; // para que vayan después de las base
         private const int ObjectiveColumnsBaseOrder = 2000; // después de categorías
 
@@ -37,7 +38,7 @@ namespace tesisproject.backend.Services.Implementations
             // 1) Cargar dataset plano
             var flatResult = await _flatService.GetFlatReportAsync(projectIds, ct);
             if (!flatResult.Success || flatResult.Data is null || flatResult.Data.Count == 0)
-                return ServiceResult<byte[]>.Fail(flatResult.Message ?? "No hay datos para exportar.");
+                return ServiceResult<byte[]>.Fail(flatResult.Message ?? NoDataToExportMessage);
 
             var projects = flatResult.Data.ToList();
 

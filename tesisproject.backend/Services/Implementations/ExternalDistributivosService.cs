@@ -26,6 +26,20 @@ namespace tesisproject.backend.Services.Implementations
         private const string MsgRetrieved = "Distributivos retrieved.";
         private const string MsgConfigEndpointMissing = "External API misconfiguration: DistributivosEndpoint is missing.";
         private const string MsgConfigParamMissing = "External API misconfiguration: query parameter name is missing.";
+        private const string MsgInvalidDistributivoId = "Invalid distributivoId.";
+        private const string MsgExternalApiError = "External API error.";
+        private const string MsgDistributivoNotFound = "Distributivo not found.";
+        private const string MsgDistributivoRetrieved = "Distributivo retrieved.";
+        private const string MsgUnauthorizedExternalApi = "Unauthorized external API.";
+        private const string MsgForbiddenExternalApi = "Forbidden external API.";
+        private const string MsgCedulasRequired = "Cedulas are required.";
+        private const string MsgNoDistributivosForCedulas = "No distributivos found for the specified cedulas.";
+        private const string MsgCorreosRequired = "Correos are required.";
+        private const string MsgNoDistributivosForCorreos = "No distributivos found for the specified correos.";
+        private const string MsgPeriodosRequired = "Periodos are required.";
+        private const string MsgNoDistributivosForPeriodos = "No distributivos found for the specified periodos.";
+        private const string MsgFacultadesRequired = "Facultades are required.";
+        private const string MsgNoDistributivosForFacultades = "No distributivos found for the specified facultades.";
 
         public ExternalDistributivosService(
             HttpClient http,
@@ -60,8 +74,8 @@ namespace tesisproject.backend.Services.Implementations
             => QueryByAsync(
                 values: cedulas,
                 queryParamName: _opts.DistributivosCedulasQueryParam,
-                requiredMessage: "Cedulas are required.",
-                notFoundMessage: "No distributivos found for the specified cedulas.",
+                requiredMessage: MsgCedulasRequired,
+                notFoundMessage: MsgNoDistributivosForCedulas,
                 logContext: "ByCedulas",
                 normalize: s => s, // tal cual
                 ct: ct);
@@ -72,8 +86,8 @@ namespace tesisproject.backend.Services.Implementations
             => QueryByAsync(
                 values: correos,
                 queryParamName: _opts.DistributivosCorreosQueryParam,
-                requiredMessage: "Correos are required.",
-                notFoundMessage: "No distributivos found for the specified correos.",
+                requiredMessage: MsgCorreosRequired,
+                notFoundMessage: MsgNoDistributivosForCorreos,
                 logContext: "ByCorreos",
                 normalize: s => s.ToLowerInvariant(), // si el API lo requiere
                 ct: ct);
@@ -84,8 +98,8 @@ namespace tesisproject.backend.Services.Implementations
             => QueryByAsync(
                 values: periodos,
                 queryParamName: _opts.DistributivosPeriodosQueryParam,
-                requiredMessage: "Periodos are required.",
-                notFoundMessage: "No distributivos found for the specified periodos.",
+                requiredMessage: MsgPeriodosRequired,
+                notFoundMessage: MsgNoDistributivosForPeriodos,
                 logContext: "ByPeriodos",
                 normalize: s => s,
                 ct: ct);
@@ -96,8 +110,8 @@ namespace tesisproject.backend.Services.Implementations
             => QueryByAsync(
                 values: facultades,
                 queryParamName: _opts.DistributivosFacultadesQueryParam,
-                requiredMessage: "Facultades are required.",
-                notFoundMessage: "No distributivos found for the specified facultades.",
+                requiredMessage: MsgFacultadesRequired,
+                notFoundMessage: MsgNoDistributivosForFacultades,
                 logContext: "ByFacultades",
                 normalize: s => s,
                 ct: ct);
@@ -105,20 +119,20 @@ namespace tesisproject.backend.Services.Implementations
         public async Task<ServiceResult<ExternalTeacherDistributivoModel>> GetDistributivoByIdAsync(int distributivoId, CancellationToken ct = default)
         {
             if (distributivoId <= 0)
-                return ServiceResult<ExternalTeacherDistributivoModel>.Fail("Invalid distributivoId.", ErrorType.Validation);
+                return ServiceResult<ExternalTeacherDistributivoModel>.Fail(MsgInvalidDistributivoId, ErrorType.Validation);
 
             try
             {
                 // Fallback mientras Node no tenga /api/distributivos/:id
                 var all = await GetDistributivosAsync(ct);
                 if (!all.Success || all.Data is null)
-                    return ServiceResult<ExternalTeacherDistributivoModel>.Fail(all.Message ?? "External API error.", all.Error);
+                    return ServiceResult<ExternalTeacherDistributivoModel>.Fail(all.Message ?? MsgExternalApiError, all.Error);
 
                 var item = all.Data.FirstOrDefault(x => x.DistributivoId == distributivoId);
 
                 return item is null
-                    ? ServiceResult<ExternalTeacherDistributivoModel>.Fail("Distributivo not found.", ErrorType.NotFound)
-                    : ServiceResult<ExternalTeacherDistributivoModel>.Ok(item, "Distributivo retrieved.");
+                    ? ServiceResult<ExternalTeacherDistributivoModel>.Fail(MsgDistributivoNotFound, ErrorType.NotFound)
+                    : ServiceResult<ExternalTeacherDistributivoModel>.Ok(item, MsgDistributivoRetrieved);
             }
             catch (Exception ex)
             {
@@ -190,12 +204,12 @@ namespace tesisproject.backend.Services.Implementations
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
             {
                 _logger.LogWarning(ex, "Distributivos {Context}: 401", logContext);
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Unauthorized external API.", ErrorType.Unauthorized);
+                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgUnauthorizedExternalApi, ErrorType.Unauthorized);
             }
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Forbidden)
             {
                 _logger.LogWarning(ex, "Distributivos {Context}: 403", logContext);
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail("Forbidden external API.", ErrorType.Forbidden);
+                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgForbiddenExternalApi, ErrorType.Forbidden);
             }
             catch (Exception ex)
             {

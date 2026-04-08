@@ -25,6 +25,8 @@ namespace tesisproject.backend.Services.Implementations
         private const string MsgProjectNotFound = "Project not found.";
         private const string MsgApiError = "API error.";
         private const string MsgExternalResearcherAlreadyAssigned = "External researcher is already assigned to this project.";
+        private const string MsgUserNotAuthenticated = "User not authenticated.";
+        private const string AuthUserNotAuthenticatedCode = "AUTH_USER_NOT_AUTHENTICATED";
 
         public ExternalResearcherProjectService(
             IUnitOfWork uow,
@@ -141,9 +143,9 @@ namespace tesisproject.backend.Services.Implementations
             catch (UnauthorizedAccessException)
             {
                 return ServiceResult<ExternalResearcherProjectDetailDTO>.Fail(
-                    "User not authenticated.",
+                    MsgUserNotAuthenticated,
                     ErrorType.Unauthorized,
-                    "AUTH_USER_NOT_AUTHENTICATED");
+                    AuthUserNotAuthenticatedCode);
             }
         }
 
