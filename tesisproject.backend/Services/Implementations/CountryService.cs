@@ -1,22 +1,20 @@
-﻿using tesisproject.backend.Services.Interfaces;
+﻿using Microsoft.EntityFrameworkCore;
+using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.Catalog.Country.Request;
 using tesisproject.shared.DTOs.Catalog.Country.Response;
 using tesisproject.shared.DTOs.Filters;
 using tesisproject.shared.Entities.Catalogs;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
 {
     public class CountryService : ICountryService
     {
-        private const string MsgInvalidId = "Invalid id.";
         private const string MsgCountryNotFound = "Country not found.";
-        private const string MsgInvalidRequest = "Invalid request.";
-        private const string MsgNameRequired = "Name is required.";
         private const string MsgIsoCodeMustHave2Characters = "IsoCode must have 2 characters.";
         private const string MsgIsoAlpha3MustHave3Characters = "IsoAlpha3 must have 3 characters.";
-        private const string MsgNameAlreadyExists = "Name already exists.";
 
         private readonly IUnitOfWork _uow;
 
@@ -31,46 +29,61 @@ namespace tesisproject.backend.Services.Implementations
             bool onlyActives = true,
             CancellationToken ct = default)
         {
-            // Usa el ICatalogRepository<Country>
-            var items = await _uow.Countries.ListAsync(
-                onlyActives: onlyActives,
-                where: null,
-                include: null,
-                ct: ct);
-
-            var dto = items.Select(x => new CountryListItemDTO
+            try
             {
-                Id = x.Id,
-                Name = x.Name,
-                IsoCode = x.IsoCode,
-                IsoAlpha3 = x.IsoAlpha3,
-                IsActive = x.IsActive
-            }).ToList();
+                var items = await _uow.Countries.ListAsync(
+                    onlyActives: onlyActives,
+                    where: null,
+                    include: null,
+                    ct: ct);
 
-            return ServiceResult<IReadOnlyList<CountryListItemDTO>>.Ok(dto);
+                var dto = items.Select(MapToListItem).ToList();
+
+                return ServiceResult<IReadOnlyList<CountryListItemDTO>>.Ok(dto);
+            }
+            catch (OperationCanceledException)
+            {
+                return FailOperationCanceled<IReadOnlyList<CountryListItemDTO>>();
+            }
+            catch (Exception)
+            {
+                return FailUnexpected<IReadOnlyList<CountryListItemDTO>>();
+            }
         }
 
         public async Task<ServiceResult<CountryDetailDTO>> GetByIdAsync(
             int id,
             CancellationToken ct = default)
         {
-            if (id <= 0)
-                return ServiceResult<CountryDetailDTO>.Fail(MsgInvalidId, ErrorType.Validation);
-
-            var entity = await _uow.Countries.GetByIdAsync(new object[] { id }, ct);
-            if (entity is null)
-                return ServiceResult<CountryDetailDTO>.Fail(MsgCountryNotFound, ErrorType.NotFound);
-
-            var dto = new CountryDetailDTO
+            try
             {
-                Id = entity.Id,
-                Name = entity.Name,
-                IsoCode = entity.IsoCode,
-                IsoAlpha3 = entity.IsoAlpha3,
-                IsActive = entity.IsActive
-            };
+                if (id <= 0)
+                {
+                    return ValidationFailure<CountryDetailDTO>(
+                        ErrorMessages.Common.InvalidId,
+                        ErrorCodes.Common.InvalidId,
+                        nameof(CountryDetailDTO.Id));
+                }
 
-            return ServiceResult<CountryDetailDTO>.Ok(dto);
+                var entity = await _uow.Countries.GetByIdAsync(new object[] { id }, ct);
+                if (entity is null)
+                {
+                    return ServiceResult<CountryDetailDTO>.Fail(
+                        MsgCountryNotFound,
+                        ErrorType.NotFound,
+                        ErrorCodes.Country.NotFound);
+                }
+
+                return ServiceResult<CountryDetailDTO>.Ok(MapToDetail(entity));
+            }
+            catch (OperationCanceledException)
+            {
+                return FailOperationCanceled<CountryDetailDTO>();
+            }
+            catch (Exception)
+            {
+                return FailUnexpected<CountryDetailDTO>();
+            }
         }
 
         public async Task<ServiceResult<List<KeyValueItemDTO>>> GetKeyValuesAsync(
@@ -78,9 +91,19 @@ namespace tesisproject.backend.Services.Implementations
             int? take = null,
             CancellationToken ct = default)
         {
-            // Usa GetKeyValuesAsync del ICatalogRepository
-            var list = await _uow.Countries.GetKeyValuesAsync(term, take, ct);
-            return ServiceResult<List<KeyValueItemDTO>>.Ok(list);
+            try
+            {
+                var list = await _uow.Countries.GetKeyValuesAsync(term, take, ct);
+                return ServiceResult<List<KeyValueItemDTO>>.Ok(list);
+            }
+            catch (OperationCanceledException)
+            {
+                return FailOperationCanceled<List<KeyValueItemDTO>>();
+            }
+            catch (Exception)
+            {
+                return FailUnexpected<List<KeyValueItemDTO>>();
+            }
         }
 
         // ================ WRITES ================
@@ -89,96 +112,228 @@ namespace tesisproject.backend.Services.Implementations
             AddCountryRequestDTO request,
             CancellationToken ct = default)
         {
-            if (request is null)
-                return ServiceResult<CountryDetailDTO>.Fail(MsgInvalidRequest, ErrorType.Validation);
-
-            var name = (request.Name ?? string.Empty).Trim();
-            var isoCode = (request.IsoCode ?? string.Empty).Trim().ToUpper();
-            var isoAlpha3 = (request.IsoAlpha3 ?? string.Empty).Trim().ToUpper();
-
-            if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<CountryDetailDTO>.Fail(MsgNameRequired, ErrorType.Validation);
-
-            if (string.IsNullOrWhiteSpace(isoCode) || isoCode.Length != 2)
-                return ServiceResult<CountryDetailDTO>.Fail(MsgIsoCodeMustHave2Characters, ErrorType.Validation);
-
-            if (string.IsNullOrWhiteSpace(isoAlpha3) || isoAlpha3.Length != 3)
-                return ServiceResult<CountryDetailDTO>.Fail(MsgIsoAlpha3MustHave3Characters, ErrorType.Validation);
-
-            // Reutiliza NameExistsAsync del ICatalogRepository
-            var nameExists = await _uow.Countries.NameExistsAsync(name, excludeId: null, ct);
-            if (nameExists)
-                return ServiceResult<CountryDetailDTO>.Fail(MsgNameAlreadyExists, ErrorType.Validation);
-
-            var entity = new Country
+            try
             {
-                Name = name,
-                IsoCode = isoCode,
-                IsoAlpha3 = isoAlpha3,
-                IsActive = true
-            };
+                if (request is null)
+                {
+                    return ServiceResult<CountryDetailDTO>.Fail(
+                        ErrorMessages.Common.InvalidRequest,
+                        ErrorType.Validation,
+                        ErrorCodes.Common.InvalidRequest,
+                        new Dictionary<string, string[]>
+                        {
+                            ["Request"] = new[] { ErrorMessages.Common.InvalidRequest }
+                        });
+                }
 
-            await _uow.Countries.AddAsync(entity, ct);
-            await _uow.SaveChangesAsync(ct);
+                var name = (request.Name ?? string.Empty).Trim();
+                var isoCode = (request.IsoCode ?? string.Empty).Trim().ToUpperInvariant();
+                var isoAlpha3 = (request.IsoAlpha3 ?? string.Empty).Trim().ToUpperInvariant();
 
-            var dto = new CountryDetailDTO
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    return ValidationFailure<CountryDetailDTO>(
+                        ErrorMessages.Common.NameRequired,
+                        ErrorCodes.Common.NameRequired,
+                        nameof(AddCountryRequestDTO.Name));
+                }
+
+                if (string.IsNullOrWhiteSpace(isoCode) || isoCode.Length != 2)
+                {
+                    return ValidationFailure<CountryDetailDTO>(
+                        MsgIsoCodeMustHave2Characters,
+                        ErrorCodes.Country.IsoCodeInvalidLength,
+                        nameof(AddCountryRequestDTO.IsoCode));
+                }
+
+                if (string.IsNullOrWhiteSpace(isoAlpha3) || isoAlpha3.Length != 3)
+                {
+                    return ValidationFailure<CountryDetailDTO>(
+                        MsgIsoAlpha3MustHave3Characters,
+                        ErrorCodes.Country.IsoAlpha3InvalidLength,
+                        nameof(AddCountryRequestDTO.IsoAlpha3));
+                }
+
+                var nameExists = await _uow.Countries.NameExistsAsync(name, excludeId: null, ct);
+                if (nameExists)
+                {
+                    return ValidationFailure<CountryDetailDTO>(
+                        ErrorMessages.Common.NameAlreadyExists,
+                        ErrorCodes.Common.NameAlreadyExists,
+                        nameof(AddCountryRequestDTO.Name));
+                }
+
+                var entity = new Country
+                {
+                    Name = name,
+                    IsoCode = isoCode,
+                    IsoAlpha3 = isoAlpha3,
+                    IsActive = true
+                };
+
+                await _uow.Countries.AddAsync(entity, ct);
+                await _uow.SaveChangesAsync(ct);
+
+                return ServiceResult<CountryDetailDTO>.Ok(MapToDetail(entity));
+            }
+            catch (OperationCanceledException)
             {
-                Id = entity.Id,
-                Name = entity.Name,
-                IsoCode = entity.IsoCode,
-                IsoAlpha3 = entity.IsoAlpha3,
-                IsActive = entity.IsActive
-            };
-
-            return ServiceResult<CountryDetailDTO>.Ok(dto);
+                return FailOperationCanceled<CountryDetailDTO>();
+            }
+            catch (DbUpdateException)
+            {
+                return FailConflict<CountryDetailDTO>();
+            }
+            catch (Exception)
+            {
+                return FailUnexpected<CountryDetailDTO>();
+            }
         }
 
         public async Task<ServiceResult<CountryDetailDTO>> UpdateAsync(
             UpdateCountryRequestDTO request,
             CancellationToken ct = default)
         {
-            if (request is null || request.Id <= 0)
-                return ServiceResult<CountryDetailDTO>.Fail(MsgInvalidId, ErrorType.Validation);
-
-            var name = (request.Name ?? string.Empty).Trim();
-            var isoCode = (request.IsoCode ?? string.Empty).Trim().ToUpper();
-            var isoAlpha3 = (request.IsoAlpha3 ?? string.Empty).Trim().ToUpper();
-
-            if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<CountryDetailDTO>.Fail(MsgNameRequired, ErrorType.Validation);
-
-            if (string.IsNullOrWhiteSpace(isoCode) || isoCode.Length != 2)
-                return ServiceResult<CountryDetailDTO>.Fail(MsgIsoCodeMustHave2Characters, ErrorType.Validation);
-
-            if (string.IsNullOrWhiteSpace(isoAlpha3) || isoAlpha3.Length != 3)
-                return ServiceResult<CountryDetailDTO>.Fail(MsgIsoAlpha3MustHave3Characters, ErrorType.Validation);
-
-            var entity = await _uow.Countries.GetByIdAsync(new object[] { request.Id }, ct);
-            if (entity is null)
-                return ServiceResult<CountryDetailDTO>.Fail(MsgCountryNotFound, ErrorType.NotFound);
-
-            var nameExists = await _uow.Countries.NameExistsAsync(name, excludeId: request.Id, ct);
-            if (nameExists)
-                return ServiceResult<CountryDetailDTO>.Fail(MsgNameAlreadyExists, ErrorType.Validation);
-
-            entity.Name = name;
-            entity.IsoCode = isoCode;
-            entity.IsoAlpha3 = isoAlpha3;
-            entity.IsActive = request.IsActive;
-
-            _uow.Countries.Update(entity);
-            await _uow.SaveChangesAsync(ct);
-
-            var dto = new CountryDetailDTO
+            try
             {
-                Id = entity.Id,
-                Name = entity.Name,
-                IsoCode = entity.IsoCode,
-                IsoAlpha3 = entity.IsoAlpha3,
-                IsActive = entity.IsActive
-            };
+                if (request is null || request.Id <= 0)
+                {
+                    return ValidationFailure<CountryDetailDTO>(
+                        ErrorMessages.Common.InvalidId,
+                        ErrorCodes.Common.InvalidId,
+                        nameof(UpdateCountryRequestDTO.Id));
+                }
 
-            return ServiceResult<CountryDetailDTO>.Ok(dto);
+                var name = (request.Name ?? string.Empty).Trim();
+                var isoCode = (request.IsoCode ?? string.Empty).Trim().ToUpperInvariant();
+                var isoAlpha3 = (request.IsoAlpha3 ?? string.Empty).Trim().ToUpperInvariant();
+
+                if (string.IsNullOrWhiteSpace(name))
+                {
+                    return ValidationFailure<CountryDetailDTO>(
+                        ErrorMessages.Common.NameRequired,
+                        ErrorCodes.Common.NameRequired,
+                        nameof(UpdateCountryRequestDTO.Name));
+                }
+
+                if (string.IsNullOrWhiteSpace(isoCode) || isoCode.Length != 2)
+                {
+                    return ValidationFailure<CountryDetailDTO>(
+                        MsgIsoCodeMustHave2Characters,
+                        ErrorCodes.Country.IsoCodeInvalidLength,
+                        nameof(UpdateCountryRequestDTO.IsoCode));
+                }
+
+                if (string.IsNullOrWhiteSpace(isoAlpha3) || isoAlpha3.Length != 3)
+                {
+                    return ValidationFailure<CountryDetailDTO>(
+                        MsgIsoAlpha3MustHave3Characters,
+                        ErrorCodes.Country.IsoAlpha3InvalidLength,
+                        nameof(UpdateCountryRequestDTO.IsoAlpha3));
+                }
+
+                var entity = await _uow.Countries.GetByIdAsync(new object[] { request.Id }, ct);
+                if (entity is null)
+                {
+                    return ServiceResult<CountryDetailDTO>.Fail(
+                        MsgCountryNotFound,
+                        ErrorType.NotFound,
+                        ErrorCodes.Country.NotFound);
+                }
+
+                var nameExists = await _uow.Countries.NameExistsAsync(name, excludeId: request.Id, ct);
+                if (nameExists)
+                {
+                    return ValidationFailure<CountryDetailDTO>(
+                        ErrorMessages.Common.NameAlreadyExists,
+                        ErrorCodes.Common.NameAlreadyExists,
+                        nameof(UpdateCountryRequestDTO.Name));
+                }
+
+                entity.Name = name;
+                entity.IsoCode = isoCode;
+                entity.IsoAlpha3 = isoAlpha3;
+                entity.IsActive = request.IsActive;
+
+                _uow.Countries.Update(entity);
+                await _uow.SaveChangesAsync(ct);
+
+                return ServiceResult<CountryDetailDTO>.Ok(MapToDetail(entity));
+            }
+            catch (OperationCanceledException)
+            {
+                return FailOperationCanceled<CountryDetailDTO>();
+            }
+            catch (DbUpdateException)
+            {
+                return FailConflict<CountryDetailDTO>();
+            }
+            catch (Exception)
+            {
+                return FailUnexpected<CountryDetailDTO>();
+            }
         }
+
+        // ================ HELPERS ================
+
+        private static ServiceResult<T> FailConflict<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.PersistenceConflict,
+                ErrorType.Conflict,
+                ErrorCodes.Common.PersistenceConflict);
+
+        private static ServiceResult<T> FailUnexpected<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.UnexpectedError,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.UnexpectedError);
+
+        private static ServiceResult<T> FailOperationCanceled<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.OperationCanceled,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.OperationCanceled);
+
+        private static ServiceResult<T> ValidationFailure<T>(
+            string message,
+            string errorCode,
+            params string[] fields)
+        {
+            Dictionary<string, string[]>? validation = null;
+
+            if (fields is { Length: > 0 })
+            {
+                validation = fields
+                    .Distinct(StringComparer.Ordinal)
+                    .ToDictionary(
+                        field => field,
+                        _ => new[] { message },
+                        StringComparer.Ordinal);
+            }
+
+            return ServiceResult<T>.Fail(
+                message,
+                ErrorType.Validation,
+                errorCode,
+                validation);
+        }
+
+        private static CountryListItemDTO MapToListItem(Country x) => new()
+        {
+            Id = x.Id,
+            Name = x.Name,
+            IsoCode = x.IsoCode,
+            IsoAlpha3 = x.IsoAlpha3,
+            IsActive = x.IsActive
+        };
+
+        private static CountryDetailDTO MapToDetail(Country x) => new()
+        {
+            Id = x.Id,
+            Name = x.Name,
+            IsoCode = x.IsoCode,
+            IsoAlpha3 = x.IsoAlpha3,
+            IsActive = x.IsActive
+        };
     }
 }

@@ -4,6 +4,7 @@ using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.Budgets.Request;
 using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Enums;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -11,24 +12,21 @@ namespace tesisproject.backend.Services.Implementations
     public class BudgetService : IBudgetService
     {
         private const string NoBudgetsFoundMessage = "No budgets found.";
-        private const string BudgetsRetrievedMessage = "Budgets retrieved";
+        private const string BudgetsRetrievedMessage = "Budgets retrieved.";
         private const string BudgetNotFoundMessage = "Budget not found.";
-        private const string BudgetRetrievedMessage = "Budget retrieved";
+        private const string BudgetRetrievedMessage = "Budget retrieved.";
         private const string NoBudgetsForProjectMessage = "No budgets found for project.";
-        private const string UserNotFoundMessage = "User not found.";
         private const string ProjectDoesNotExistMessage = "Project does not exist.";
-        private const string BudgetCreatedMessage = "Budget created";
-        private const string UserNotAuthenticatedMessage = "User not authenticated.";
-        private const string AuthUserNotAuthenticatedCode = "AUTH_USER_NOT_AUTHENTICATED";
-        private const string BudgetUpdatedMessage = "Budget updated";
+        private const string BudgetCreatedMessage = "Budget created.";
+        private const string BudgetUpdatedMessage = "Budget updated.";
         private const string BudgetDeletedMessage = "Budget deleted.";
         private const string CertificationExceedsInitialAmountMessage = "Certification exceeds initial amount.";
-        private const string CertificationRegisteredMessage = "Certification registered";
+        private const string CertificationRegisteredMessage = "Certification registered.";
         private const string BudgetTransactionNotFoundMessage = "Budget transaction not found.";
-        private const string TransactionAlreadyExecutedMessage = "This transaction has already been executed.";
+        private const string InvalidTransactionStateForExecutionMessage = "Only certification transactions can be executed.";
         private const string ExecutedExceedsCertifiedForTransactionMessage = "Executed amount cannot exceed certified amount for this transaction.";
         private const string ExecutedTotalExceedsCertifiedTotalMessage = "Executed total for this budget cannot exceed the certified total.";
-        private const string ExecutionRegisteredMessage = "Execution registered";
+        private const string ExecutionRegisteredMessage = "Execution registered.";
         private const string ExecutedTransactionsCannotBeCancelledMessage = "Executed transactions cannot be cancelled.";
         private const string TransactionAlreadyCancelledMessage = "This transaction is already cancelled.";
         private const string TransactionCancelledMessage = "Transaction cancelled.";
@@ -39,7 +37,7 @@ namespace tesisproject.backend.Services.Implementations
         private const string TotalCertifiedExceedsInitialMessage = "Total certified amount exceeds the budget initial amount.";
         private const string TotalExecutedExceedsCertifiedMessage = "Total executed amount cannot exceed the total certified amount.";
         private const string TransactionUpdatedMessage = "Transaction updated.";
-        private const string TransactionsRetrievedMessage = "Transactions retrieved";
+        private const string TransactionsRetrievedMessage = "Transactions retrieved.";
 
         private readonly IUnitOfWork _uow;
         private readonly ICurrentUserService _currentUser;
@@ -73,13 +71,18 @@ namespace tesisproject.backend.Services.Implementations
                     .ToListAsync(ct);
 
                 if (items.Count == 0)
-                    return ServiceResult<List<BudgetListItemDTO>>.Fail(NoBudgetsFoundMessage, ErrorType.NotFound);
+                {
+                    return ServiceResult<List<BudgetListItemDTO>>.Fail(
+                        NoBudgetsFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Budget.NoneFound);
+                }
 
                 return ServiceResult<List<BudgetListItemDTO>>.Ok(items, BudgetsRetrievedMessage);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<List<BudgetListItemDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<List<BudgetListItemDTO>>();
             }
         }
 
@@ -89,14 +92,19 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var e = await _uow.Budgets.GetByIdAsync(new object[] { budgetId }, ct);
                 if (e is null)
-                    return ServiceResult<BudgetDTO>.Fail(BudgetNotFoundMessage, ErrorType.NotFound);
+                {
+                    return ServiceResult<BudgetDTO>.Fail(
+                        BudgetNotFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Budget.NotFound);
+                }
 
                 var dto = MapToDTO(e);
                 return ServiceResult<BudgetDTO>.Ok(dto, BudgetRetrievedMessage);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<BudgetDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<BudgetDTO>();
             }
         }
 
@@ -117,7 +125,8 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     return ServiceResult<List<BudgetDTO>>.Fail(
                         NoBudgetsForProjectMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound,
+                        ErrorCodes.Budget.NoneFoundForProject);
                 }
 
                 var dtoList = list
@@ -126,11 +135,9 @@ namespace tesisproject.backend.Services.Implementations
 
                 return ServiceResult<List<BudgetDTO>>.Ok(dtoList, BudgetsRetrievedMessage);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<List<BudgetDTO>>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                return FailUnexpected<List<BudgetDTO>>();
             }
         }
 
@@ -145,9 +152,7 @@ namespace tesisproject.backend.Services.Implementations
                 var actorUserId = await GetExistingActorUserIdAsync(ct);
                 if (!actorUserId.HasValue)
                 {
-                    return ServiceResult<BudgetDTO>.Fail(
-                        UserNotFoundMessage,
-                        ErrorType.NotFound);
+                    return FailActorUserNotFound<BudgetDTO>();
                 }
 
                 var projectExists = await _uow.Projects
@@ -158,7 +163,8 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     return ServiceResult<BudgetDTO>.Fail(
                         ProjectDoesNotExistMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound,
+                        ErrorCodes.Project.NotFound);
                 }
 
                 var entity = new Budget
@@ -181,22 +187,15 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (UnauthorizedAccessException)
             {
-                return ServiceResult<BudgetDTO>.Fail(
-                    UserNotAuthenticatedMessage,
-                    ErrorType.Unauthorized,
-                    AuthUserNotAuthenticatedCode);
+                return FailUnauthorized<BudgetDTO>();
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
-                return ServiceResult<BudgetDTO>.Fail(
-                    dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                return FailConflict<BudgetDTO>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<BudgetDTO>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                return FailUnexpected<BudgetDTO>();
             }
         }
 
@@ -210,14 +209,17 @@ namespace tesisproject.backend.Services.Implementations
                 var actorUserId = await GetExistingActorUserIdAsync(ct);
                 if (!actorUserId.HasValue)
                 {
-                    return ServiceResult<BudgetDTO>.Fail(
-                        UserNotFoundMessage,
-                        ErrorType.NotFound);
+                    return FailActorUserNotFound<BudgetDTO>();
                 }
 
                 var e = await _uow.Budgets.GetByIdAsync(new object[] { budgetId }, ct);
                 if (e is null)
-                    return ServiceResult<BudgetDTO>.Fail(BudgetNotFoundMessage, ErrorType.NotFound);
+                {
+                    return ServiceResult<BudgetDTO>.Fail(
+                        BudgetNotFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Budget.NotFound);
+                }
 
                 e.ApprovedByUserId = actorUserId.Value;
                 e.InitialAmount = request.InitialAmount;
@@ -233,20 +235,15 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (UnauthorizedAccessException)
             {
-                return ServiceResult<BudgetDTO>.Fail(
-                    UserNotAuthenticatedMessage,
-                    ErrorType.Unauthorized,
-                    AuthUserNotAuthenticatedCode);
+                return FailUnauthorized<BudgetDTO>();
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
-                return ServiceResult<BudgetDTO>.Fail(
-                    dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                return FailConflict<BudgetDTO>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<BudgetDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<BudgetDTO>();
             }
         }
 
@@ -256,22 +253,25 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var e = await _uow.Budgets.GetByIdAsync(new object[] { budgetId }, ct);
                 if (e is null)
-                    return ServiceResult<NoContent>.Fail(BudgetNotFoundMessage, ErrorType.NotFound);
+                {
+                    return ServiceResult<NoContent>.Fail(
+                        BudgetNotFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Budget.NotFound);
+                }
 
                 _uow.Budgets.Remove(e);
                 await _uow.SaveChangesAsync(ct);
 
                 return ServiceResult<NoContent>.Ok(new NoContent(), BudgetDeletedMessage);
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
-                return ServiceResult<NoContent>.Fail(
-                    dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                return FailConflict<NoContent>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<NoContent>();
             }
         }
 
@@ -284,21 +284,25 @@ namespace tesisproject.backend.Services.Implementations
                 var actorUserId = await GetExistingActorUserIdAsync(ct);
                 if (!actorUserId.HasValue)
                 {
-                    return ServiceResult<BudgetTransactionDTO>.Fail(
-                        UserNotFoundMessage,
-                        ErrorType.NotFound);
+                    return FailActorUserNotFound<BudgetTransactionDTO>();
                 }
 
                 var budget = await _uow.Budgets.GetByIdAsync(new object[] { request.BudgetId }, ct);
                 if (budget is null)
-                    return ServiceResult<BudgetTransactionDTO>.Fail(BudgetNotFoundMessage, ErrorType.NotFound);
+                {
+                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                        BudgetNotFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Budget.NotFound);
+                }
 
                 var newCertified = budget.CertifiedAmount + request.CertifiedAmount;
                 if (newCertified > budget.InitialAmount)
                 {
-                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                    return ValidationFailure<BudgetTransactionDTO>(
                         CertificationExceedsInitialAmountMessage,
-                        ErrorType.Validation);
+                        ErrorCodes.Budget.CertificationExceedsInitialAmount,
+                        nameof(AddCertificationRequestDTO.CertifiedAmount));
                 }
 
                 var tx = new BudgetTransaction
@@ -324,22 +328,15 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (UnauthorizedAccessException)
             {
-                return ServiceResult<BudgetTransactionDTO>.Fail(
-                    UserNotAuthenticatedMessage,
-                    ErrorType.Unauthorized,
-                    AuthUserNotAuthenticatedCode);
+                return FailUnauthorized<BudgetTransactionDTO>();
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
-                return ServiceResult<BudgetTransactionDTO>.Fail(
-                    dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                return FailConflict<BudgetTransactionDTO>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<BudgetTransactionDTO>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                return FailUnexpected<BudgetTransactionDTO>();
             }
         }
 
@@ -352,9 +349,7 @@ namespace tesisproject.backend.Services.Implementations
                 var actorUserId = await GetExistingActorUserIdAsync(ct);
                 if (!actorUserId.HasValue)
                 {
-                    return ServiceResult<BudgetTransactionDTO>.Fail(
-                        UserNotFoundMessage,
-                        ErrorType.NotFound);
+                    return FailActorUserNotFound<BudgetTransactionDTO>();
                 }
 
                 var tx = await _uow.Budgets.GetTransactionByIdAsync(request.BudgetTransactionId, ct);
@@ -362,21 +357,23 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
                         BudgetTransactionNotFoundMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound,
+                        ErrorCodes.BudgetTransaction.NotFound);
                 }
 
                 if (tx.TransactionTypeId != BudgetTransactionTypeIds.Certification)
                 {
-                    return ServiceResult<BudgetTransactionDTO>.Fail(
-                        TransactionAlreadyExecutedMessage,
-                        ErrorType.Validation);
+                    return ValidationFailure<BudgetTransactionDTO>(
+                        InvalidTransactionStateForExecutionMessage,
+                        ErrorCodes.BudgetTransaction.InvalidStateForExecution);
                 }
 
                 if (request.ExecutedAmount > tx.CertifiedAmount)
                 {
-                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                    return ValidationFailure<BudgetTransactionDTO>(
                         ExecutedExceedsCertifiedForTransactionMessage,
-                        ErrorType.Validation);
+                        ErrorCodes.BudgetTransaction.ExecutedAmountExceedsCertifiedAmount,
+                        nameof(ExecuteDevengadoRequestDTO.ExecutedAmount));
                 }
 
                 var budget = await _uow.Budgets.GetByIdAsync(new object[] { tx.BudgetId }, ct);
@@ -384,15 +381,17 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
                         BudgetNotFoundMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound,
+                        ErrorCodes.Budget.NotFound);
                 }
 
                 var newExecutedTotal = budget.ExecutedAmount + request.ExecutedAmount;
                 if (newExecutedTotal > budget.CertifiedAmount)
                 {
-                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                    return ValidationFailure<BudgetTransactionDTO>(
                         ExecutedTotalExceedsCertifiedTotalMessage,
-                        ErrorType.Validation);
+                        ErrorCodes.BudgetTransaction.ExecutedTotalExceedsBudgetCertifiedAmount,
+                        nameof(ExecuteDevengadoRequestDTO.ExecutedAmount));
                 }
 
                 tx.ExecutedAmount = request.ExecutedAmount;
@@ -406,7 +405,9 @@ namespace tesisproject.backend.Services.Implementations
 
                 var newCertifiedTotal = budget.CertifiedAmount - tx.CertifiedAmount;
                 if (newCertifiedTotal < 0)
+                {
                     newCertifiedTotal = 0;
+                }
 
                 budget.CertifiedAmount = newCertifiedTotal;
                 _uow.Budgets.Update(budget);
@@ -419,22 +420,15 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (UnauthorizedAccessException)
             {
-                return ServiceResult<BudgetTransactionDTO>.Fail(
-                    UserNotAuthenticatedMessage,
-                    ErrorType.Unauthorized,
-                    AuthUserNotAuthenticatedCode);
+                return FailUnauthorized<BudgetTransactionDTO>();
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
-                return ServiceResult<BudgetTransactionDTO>.Fail(
-                    dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                return FailConflict<BudgetTransactionDTO>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<BudgetTransactionDTO>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                return FailUnexpected<BudgetTransactionDTO>();
             }
         }
 
@@ -446,16 +440,21 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var exists = await _uow.Budgets.GetByIdAsync(new object[] { budgetId }, ct);
                 if (exists is null)
-                    return ServiceResult<List<BudgetTransactionDTO>>.Fail(BudgetNotFoundMessage, ErrorType.NotFound);
+                {
+                    return ServiceResult<List<BudgetTransactionDTO>>.Fail(
+                        BudgetNotFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Budget.NotFound);
+                }
 
                 var list = await _uow.Budgets.GetTransactionsAsync(budgetId, ct);
                 var dto = list.Select(Map).ToList();
 
                 return ServiceResult<List<BudgetTransactionDTO>>.Ok(dto, TransactionsRetrievedMessage);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<List<BudgetTransactionDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<List<BudgetTransactionDTO>>();
             }
         }
 
@@ -471,21 +470,22 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
                         BudgetTransactionNotFoundMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound,
+                        ErrorCodes.BudgetTransaction.NotFound);
                 }
 
                 if (tx.TransactionTypeId == BudgetTransactionTypeIds.Executed || tx.ExecutedAt != null)
                 {
-                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                    return ValidationFailure<BudgetTransactionDTO>(
                         ExecutedTransactionsCannotBeCancelledMessage,
-                        ErrorType.Validation);
+                        ErrorCodes.BudgetTransaction.ExecutedTransactionsCannotBeCancelled);
                 }
 
                 if (tx.TransactionTypeId == BudgetTransactionTypeIds.Cancelled)
                 {
-                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                    return ValidationFailure<BudgetTransactionDTO>(
                         TransactionAlreadyCancelledMessage,
-                        ErrorType.Validation);
+                        ErrorCodes.BudgetTransaction.AlreadyCancelled);
                 }
 
                 var budget = await _uow.Budgets.GetByIdAsync(new object[] { tx.BudgetId }, ct);
@@ -493,7 +493,8 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
                         BudgetNotFoundMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound,
+                        ErrorCodes.Budget.NotFound);
                 }
 
                 if (tx.TransactionTypeId == BudgetTransactionTypeIds.Certification)
@@ -501,7 +502,9 @@ namespace tesisproject.backend.Services.Implementations
                     var newCertifiedTotal = budget.CertifiedAmount - tx.CertifiedAmount;
 
                     if (newCertifiedTotal < 0)
+                    {
                         newCertifiedTotal = 0;
+                    }
 
                     budget.CertifiedAmount = newCertifiedTotal;
                     _uow.Budgets.Update(budget);
@@ -515,17 +518,13 @@ namespace tesisproject.backend.Services.Implementations
                     Map(tx),
                     TransactionCancelledMessage);
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
-                return ServiceResult<BudgetTransactionDTO>.Fail(
-                    dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                return FailConflict<BudgetTransactionDTO>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<BudgetTransactionDTO>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                return FailUnexpected<BudgetTransactionDTO>();
             }
         }
 
@@ -539,9 +538,7 @@ namespace tesisproject.backend.Services.Implementations
                 var actorUserId = await GetExistingActorUserIdAsync(ct);
                 if (!actorUserId.HasValue)
                 {
-                    return ServiceResult<BudgetTransactionDTO>.Fail(
-                        UserNotFoundMessage,
-                        ErrorType.NotFound);
+                    return FailActorUserNotFound<BudgetTransactionDTO>();
                 }
 
                 var tx = await _uow.Budgets.GetTransactionByIdAsync(budgetTransactionId, ct);
@@ -549,14 +546,15 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
                         BudgetTransactionNotFoundMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound,
+                        ErrorCodes.BudgetTransaction.NotFound);
                 }
 
                 if (tx.TransactionTypeId == BudgetTransactionTypeIds.Cancelled)
                 {
-                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                    return ValidationFailure<BudgetTransactionDTO>(
                         CancelledTransactionsCannotBeUpdatedMessage,
-                        ErrorType.Validation);
+                        ErrorCodes.BudgetTransaction.CancelledTransactionsCannotBeUpdated);
                 }
 
                 tx.TransactionTypeId = request.TransactionTypeId;
@@ -571,25 +569,28 @@ namespace tesisproject.backend.Services.Implementations
                 var executedValue = tx.ExecutedAmount ?? 0m;
                 if (executedValue > tx.CertifiedAmount)
                 {
-                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                    return ValidationFailure<BudgetTransactionDTO>(
                         ExecutedAmountExceedsCertifiedMessage,
-                        ErrorType.Validation);
+                        ErrorCodes.BudgetTransaction.ExecutedAmountExceedsCertifiedAmount,
+                        nameof(UpdateBudgetTransactionRequestDTO.ExecutedAmount));
                 }
 
                 if (tx.TransactionTypeId == BudgetTransactionTypeIds.Executed)
                 {
                     if (tx.ExecutedAmount is null)
                     {
-                        return ServiceResult<BudgetTransactionDTO>.Fail(
+                        return ValidationFailure<BudgetTransactionDTO>(
                             ExecutedAmountRequiredMessage,
-                            ErrorType.Validation);
+                            ErrorCodes.BudgetTransaction.ExecutedAmountRequired,
+                            nameof(UpdateBudgetTransactionRequestDTO.ExecutedAmount));
                     }
 
                     if (tx.ExecutedAt is null)
                     {
-                        return ServiceResult<BudgetTransactionDTO>.Fail(
+                        return ValidationFailure<BudgetTransactionDTO>(
                             ExecutedAtRequiredForExecutedMessage,
-                            ErrorType.Validation);
+                            ErrorCodes.BudgetTransaction.ExecutedAtRequired,
+                            "ExecutedAt");
                     }
                 }
 
@@ -598,7 +599,8 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
                         BudgetNotFoundMessage,
-                        ErrorType.NotFound);
+                        ErrorType.NotFound,
+                        ErrorCodes.Budget.NotFound);
                 }
 
                 var all = await _uow.Budgets.GetTransactionsAsync(budget.BudgetId, ct);
@@ -635,16 +637,18 @@ namespace tesisproject.backend.Services.Implementations
 
                 if (certifiedEverTotal > budget.InitialAmount)
                 {
-                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                    return ValidationFailure<BudgetTransactionDTO>(
                         TotalCertifiedExceedsInitialMessage,
-                        ErrorType.Validation);
+                        ErrorCodes.Budget.TotalCertifiedExceedsInitialAmount,
+                        nameof(UpdateBudgetTransactionRequestDTO.CertifiedAmount));
                 }
 
                 if (executedTotal > certifiedEverTotal)
                 {
-                    return ServiceResult<BudgetTransactionDTO>.Fail(
+                    return ValidationFailure<BudgetTransactionDTO>(
                         TotalExecutedExceedsCertifiedMessage,
-                        ErrorType.Validation);
+                        ErrorCodes.Budget.TotalExecutedExceedsCertifiedAmount,
+                        nameof(UpdateBudgetTransactionRequestDTO.ExecutedAmount));
                 }
 
                 budget.CertifiedAmount = certifiedCurrentTotal;
@@ -659,22 +663,15 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (UnauthorizedAccessException)
             {
-                return ServiceResult<BudgetTransactionDTO>.Fail(
-                    UserNotAuthenticatedMessage,
-                    ErrorType.Unauthorized,
-                    AuthUserNotAuthenticatedCode);
+                return FailUnauthorized<BudgetTransactionDTO>();
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
-                return ServiceResult<BudgetTransactionDTO>.Fail(
-                    dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                return FailConflict<BudgetTransactionDTO>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<BudgetTransactionDTO>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                return FailUnexpected<BudgetTransactionDTO>();
             }
         }
 
@@ -685,6 +682,54 @@ namespace tesisproject.backend.Services.Implementations
             var currentUserId = _currentUser.GetRequiredUserId();
             var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
             return user?.IdUser;
+        }
+
+        private static ServiceResult<T> FailUnauthorized<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Auth.UserNotAuthenticated,
+                ErrorType.Unauthorized,
+                ErrorCodes.Auth.UserNotAuthenticated);
+
+        private static ServiceResult<T> FailActorUserNotFound<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Auth.ActorUserNotFound,
+                ErrorType.NotFound,
+                ErrorCodes.Auth.ActorUserNotFound);
+
+        private static ServiceResult<T> FailConflict<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.PersistenceConflict,
+                ErrorType.Conflict,
+                ErrorCodes.Common.PersistenceConflict);
+
+        private static ServiceResult<T> FailUnexpected<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.UnexpectedError,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.UnexpectedError);
+
+        private static ServiceResult<T> ValidationFailure<T>(
+            string message,
+            string errorCode,
+            params string[] fields)
+        {
+            Dictionary<string, string[]>? validation = null;
+
+            if (fields is { Length: > 0 })
+            {
+                validation = fields
+                    .Distinct(StringComparer.Ordinal)
+                    .ToDictionary(
+                        field => field,
+                        _ => new[] { message },
+                        StringComparer.Ordinal);
+            }
+
+            return ServiceResult<T>.Fail(
+                message,
+                ErrorType.Validation,
+                errorCode,
+                validation);
         }
 
         private static BudgetDTO MapToDTO(Budget e) => new()

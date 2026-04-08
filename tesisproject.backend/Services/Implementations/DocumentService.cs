@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using tesisproject.backend.Options;
 using tesisproject.backend.Services.Interfaces;
@@ -6,6 +7,7 @@ using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.Document.Request;
 using tesisproject.shared.DTOs.Document.Response;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -14,7 +16,6 @@ namespace tesisproject.backend.Services.Implementations
     {
         private readonly IUnitOfWork _uow;
         private readonly ICurrentUserService _currentUser;
-        private readonly IWebHostEnvironment _env; // se mantiene por compatibilidad, pero ya no se usa para rutas
         private readonly FileExtensionContentTypeProvider _contentTypeProvider = new();
 
         // Se mantiene como carpeta relativa que va a BD
@@ -22,11 +23,11 @@ namespace tesisproject.backend.Services.Implementations
         private const string DocumentNotFoundMessage = "Document not found.";
         private const string DocumentTypeIdRequiredMessage = "DocumentTypeId is required.";
         private const string UserNotFoundMessage = "User not found.";
-        private const string UserNotAuthenticatedMessage = "User not authenticated.";
-        private const string AuthUserNotAuthenticatedCode = "AUTH_USER_NOT_AUTHENTICATED";
         private const string FileIsEmptyMessage = "File is empty.";
         private const string DocumentDeletedMessage = "Document deleted.";
         private const string FileNotFoundOnServerMessage = "File not found on server.";
+        private const string DocumentFileReplaceFailedMessage = "Document file replacement failed.";
+        private const string DocumentUploadFailedMessage = "Document upload failed.";
         private const string DefaultContentType = "application/octet-stream";
 
         // Root físico configurado (Storage:RootPath)
@@ -35,16 +36,13 @@ namespace tesisproject.backend.Services.Implementations
         public DocumentService(
             IUnitOfWork uow,
             ICurrentUserService currentUser,
-            IWebHostEnvironment env,
             IOptions<StorageOptions> storageOptions)
         {
             _uow = uow;
             _currentUser = currentUser;
-            _env = env;
 
             var root = storageOptions.Value.RootPath;
 
-            // Asegura existencia y normaliza
             Directory.CreateDirectory(root);
             _storageRootFullPath = Path.GetFullPath(root);
         }
@@ -53,11 +51,27 @@ namespace tesisproject.backend.Services.Implementations
             int documentId,
             CancellationToken ct = default)
         {
-            var e = await _uow.Documents.GetByIdWithRefsAsync(documentId, ct);
-            if (e is null)
-                return ServiceResult<DocumentResponseDTO>.Fail(DocumentNotFoundMessage, ErrorType.NotFound);
+            try
+            {
+                var e = await _uow.Documents.GetByIdWithRefsAsync(documentId, ct);
+                if (e is null)
+                {
+                    return ServiceResult<DocumentResponseDTO>.Fail(
+                        DocumentNotFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Document.NotFound);
+                }
 
-            return ServiceResult<DocumentResponseDTO>.Ok(Map(e));
+                return ServiceResult<DocumentResponseDTO>.Ok(Map(e));
+            }
+            catch (OperationCanceledException)
+            {
+                return FailOperationCanceled<DocumentResponseDTO>();
+            }
+            catch (Exception)
+            {
+                return FailUnexpected<DocumentResponseDTO>();
+            }
         }
 
         public async Task<ServiceResult<DocumentResponseDTO>> UpdateAsync(
@@ -68,19 +82,27 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request.DocumentTypeId <= 0)
-                    return ServiceResult<DocumentResponseDTO>.Fail(DocumentTypeIdRequiredMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<DocumentResponseDTO>(
+                        DocumentTypeIdRequiredMessage,
+                        ErrorCodes.Document.DocumentTypeIdRequired,
+                        nameof(UpdateDocumentRequestDTO.DocumentTypeId));
+                }
 
                 var actorUserId = await GetExistingActorUserIdAsync(ct);
                 if (!actorUserId.HasValue)
                 {
-                    return ServiceResult<DocumentResponseDTO>.Fail(
-                        UserNotFoundMessage,
-                        ErrorType.NotFound);
+                    return FailActorUserNotFound<DocumentResponseDTO>();
                 }
 
                 var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
                 if (e is null)
-                    return ServiceResult<DocumentResponseDTO>.Fail(DocumentNotFoundMessage, ErrorType.NotFound);
+                {
+                    return ServiceResult<DocumentResponseDTO>.Fail(
+                        DocumentNotFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Document.NotFound);
+                }
 
                 e.DocumentTypeId = request.DocumentTypeId;
                 e.ResolutionCode = request.ResolutionCode;
@@ -95,16 +117,19 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (UnauthorizedAccessException)
             {
-                return ServiceResult<DocumentResponseDTO>.Fail(
-                    UserNotAuthenticatedMessage,
-                    ErrorType.Unauthorized,
-                    AuthUserNotAuthenticatedCode);
+                return FailUnauthorized<DocumentResponseDTO>();
             }
-            catch (Exception ex)
+            catch (OperationCanceledException)
             {
-                return ServiceResult<DocumentResponseDTO>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                return FailOperationCanceled<DocumentResponseDTO>();
+            }
+            catch (DbUpdateException)
+            {
+                return FailConflict<DocumentResponseDTO>();
+            }
+            catch (Exception)
+            {
+                return FailUnexpected<DocumentResponseDTO>();
             }
         }
 
@@ -116,19 +141,27 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request.File is null || request.File.Length == 0)
-                    return ServiceResult<DocumentResponseDTO>.Fail(FileIsEmptyMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<DocumentResponseDTO>(
+                        FileIsEmptyMessage,
+                        ErrorCodes.Document.FileEmpty,
+                        nameof(ReplaceDocumentFileRequestDTO.File));
+                }
 
                 var actorUserId = await GetExistingActorUserIdAsync(ct);
                 if (!actorUserId.HasValue)
                 {
-                    return ServiceResult<DocumentResponseDTO>.Fail(
-                        UserNotFoundMessage,
-                        ErrorType.NotFound);
+                    return FailActorUserNotFound<DocumentResponseDTO>();
                 }
 
                 var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
                 if (e is null)
-                    return ServiceResult<DocumentResponseDTO>.Fail(DocumentNotFoundMessage, ErrorType.NotFound);
+                {
+                    return ServiceResult<DocumentResponseDTO>.Fail(
+                        DocumentNotFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Document.NotFound);
+                }
 
                 var oldPhysicalPath = ResolvePhysicalPath(e.DocumentPath);
                 var (newRelativePath, newPhysicalPath) = BuildNewFilePath(request.File.FileName);
@@ -154,48 +187,42 @@ namespace tesisproject.backend.Services.Implementations
 
                     await _uow.SaveChangesAsync(ct);
 
-                    // Best-effort delete del archivo anterior
-                    try
-                    {
-                        if (File.Exists(oldPhysicalPath))
-                            File.Delete(oldPhysicalPath);
-                    }
-                    catch
-                    {
-                        // Best-effort
-                    }
+                    TryDeleteFile(newPhysicalPath: oldPhysicalPath);
 
                     var refreshed = await _uow.Documents.GetByIdWithRefsAsync(documentId, ct);
                     return ServiceResult<DocumentResponseDTO>.Ok(Map(refreshed!));
                 }
-                catch (Exception ex)
+                catch (OperationCanceledException)
                 {
-                    // Best-effort cleanup del nuevo archivo si falló algo
-                    try
-                    {
-                        if (File.Exists(newPhysicalPath))
-                            File.Delete(newPhysicalPath);
-                    }
-                    catch
-                    {
-                        // Best-effort
-                    }
+                    TryDeleteFile(newPhysicalPath);
+                    return FailOperationCanceled<DocumentResponseDTO>();
+                }
+                catch (DbUpdateException)
+                {
+                    TryDeleteFile(newPhysicalPath);
+                    return FailConflict<DocumentResponseDTO>();
+                }
+                catch (Exception)
+                {
+                    TryDeleteFile(newPhysicalPath);
 
-                    return ServiceResult<DocumentResponseDTO>.Fail(ex.Message, ErrorType.Conflict);
+                    return ServiceResult<DocumentResponseDTO>.Fail(
+                        DocumentFileReplaceFailedMessage,
+                        ErrorType.Conflict,
+                        ErrorCodes.Document.FileReplaceFailed);
                 }
             }
             catch (UnauthorizedAccessException)
             {
-                return ServiceResult<DocumentResponseDTO>.Fail(
-                    UserNotAuthenticatedMessage,
-                    ErrorType.Unauthorized,
-                    AuthUserNotAuthenticatedCode);
+                return FailUnauthorized<DocumentResponseDTO>();
             }
-            catch (Exception ex)
+            catch (OperationCanceledException)
             {
-                return ServiceResult<DocumentResponseDTO>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                return FailOperationCanceled<DocumentResponseDTO>();
+            }
+            catch (Exception)
+            {
+                return FailUnexpected<DocumentResponseDTO>();
             }
         }
 
@@ -203,47 +230,80 @@ namespace tesisproject.backend.Services.Implementations
             int documentId,
             CancellationToken ct = default)
         {
-            var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
-            if (e is null)
-                return ServiceResult<bool>.Fail(DocumentNotFoundMessage, ErrorType.NotFound);
-
-            var physicalPath = ResolvePhysicalPath(e.DocumentPath);
-
-            _uow.Documents.Remove(e);
-            await _uow.SaveChangesAsync(ct);
-
             try
             {
-                if (File.Exists(physicalPath))
-                    File.Delete(physicalPath);
-            }
-            catch
-            {
-                // Best-effort delete
-            }
+                var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
+                if (e is null)
+                {
+                    return ServiceResult<bool>.Fail(
+                        DocumentNotFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Document.NotFound);
+                }
 
-            return ServiceResult<bool>.Ok(true, DocumentDeletedMessage);
+                var physicalPath = ResolvePhysicalPath(e.DocumentPath);
+
+                _uow.Documents.Remove(e);
+                await _uow.SaveChangesAsync(ct);
+
+                TryDeleteFile(physicalPath);
+
+                return ServiceResult<bool>.Ok(true, DocumentDeletedMessage);
+            }
+            catch (OperationCanceledException)
+            {
+                return FailOperationCanceled<bool>();
+            }
+            catch (DbUpdateException)
+            {
+                return FailConflict<bool>();
+            }
+            catch (Exception)
+            {
+                return FailUnexpected<bool>();
+            }
         }
 
         public async Task<ServiceResult<(Stream Stream, string ContentType, string FileName)>> GetContentAsync(
             int documentId,
             CancellationToken ct = default)
         {
-            var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
-            if (e is null)
-                return ServiceResult<(Stream, string, string)>.Fail(DocumentNotFoundMessage, ErrorType.NotFound);
+            try
+            {
+                var e = await _uow.Documents.GetByIdAsync(new object[] { documentId }, ct);
+                if (e is null)
+                {
+                    return ServiceResult<(Stream, string, string)>.Fail(
+                        DocumentNotFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Document.NotFound);
+                }
 
-            var physicalPath = ResolvePhysicalPath(e.DocumentPath);
-            if (!File.Exists(physicalPath))
-                return ServiceResult<(Stream, string, string)>.Fail(FileNotFoundOnServerMessage, ErrorType.NotFound);
+                var physicalPath = ResolvePhysicalPath(e.DocumentPath);
+                if (!File.Exists(physicalPath))
+                {
+                    return ServiceResult<(Stream, string, string)>.Fail(
+                        FileNotFoundOnServerMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Document.FileNotFoundOnServer);
+                }
 
-            var fileName = Path.GetFileName(physicalPath);
+                var fileName = Path.GetFileName(physicalPath);
 
-            if (!_contentTypeProvider.TryGetContentType(fileName, out var contentType))
-                contentType = DefaultContentType;
+                if (!_contentTypeProvider.TryGetContentType(fileName, out var contentType))
+                    contentType = DefaultContentType;
 
-            var stream = new FileStream(physicalPath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            return ServiceResult<(Stream, string, string)>.Ok((stream, contentType, fileName));
+                var stream = new FileStream(physicalPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                return ServiceResult<(Stream, string, string)>.Ok((stream, contentType, fileName));
+            }
+            catch (OperationCanceledException)
+            {
+                return FailOperationCanceled<(Stream, string, string)>();
+            }
+            catch (Exception)
+            {
+                return FailUnexpected<(Stream, string, string)>();
+            }
         }
 
         public async Task<ServiceResult<DocumentResponseDTO>> UploadAsync(
@@ -253,17 +313,25 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request.File is null || request.File.Length == 0)
-                    return ServiceResult<DocumentResponseDTO>.Fail(FileIsEmptyMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<DocumentResponseDTO>(
+                        FileIsEmptyMessage,
+                        ErrorCodes.Document.FileEmpty,
+                        nameof(UploadDocumentRequestDTO.File));
+                }
 
                 if (request.DocumentTypeId <= 0)
-                    return ServiceResult<DocumentResponseDTO>.Fail(DocumentTypeIdRequiredMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<DocumentResponseDTO>(
+                        DocumentTypeIdRequiredMessage,
+                        ErrorCodes.Document.DocumentTypeIdRequired,
+                        nameof(UploadDocumentRequestDTO.DocumentTypeId));
+                }
 
                 var actorUserId = await GetExistingActorUserIdAsync(ct);
                 if (!actorUserId.HasValue)
                 {
-                    return ServiceResult<DocumentResponseDTO>.Fail(
-                        UserNotFoundMessage,
-                        ErrorType.NotFound);
+                    return FailActorUserNotFound<DocumentResponseDTO>();
                 }
 
                 var (relativePath, physicalPath) = BuildNewFilePath(request.File.FileName);
@@ -300,33 +368,37 @@ namespace tesisproject.backend.Services.Implementations
 
                     return ServiceResult<DocumentResponseDTO>.Ok(Map(entity));
                 }
-                catch (Exception ex)
+                catch (OperationCanceledException)
                 {
-                    try
-                    {
-                        if (File.Exists(physicalPath))
-                            File.Delete(physicalPath);
-                    }
-                    catch
-                    {
-                        // Best-effort delete
-                    }
+                    TryDeleteFile(physicalPath);
+                    return FailOperationCanceled<DocumentResponseDTO>();
+                }
+                catch (DbUpdateException)
+                {
+                    TryDeleteFile(physicalPath);
+                    return FailConflict<DocumentResponseDTO>();
+                }
+                catch (Exception)
+                {
+                    TryDeleteFile(physicalPath);
 
-                    return ServiceResult<DocumentResponseDTO>.Fail(ex.Message, ErrorType.Conflict);
+                    return ServiceResult<DocumentResponseDTO>.Fail(
+                        DocumentUploadFailedMessage,
+                        ErrorType.Conflict,
+                        ErrorCodes.Document.UploadFailed);
                 }
             }
             catch (UnauthorizedAccessException)
             {
-                return ServiceResult<DocumentResponseDTO>.Fail(
-                    UserNotAuthenticatedMessage,
-                    ErrorType.Unauthorized,
-                    AuthUserNotAuthenticatedCode);
+                return FailUnauthorized<DocumentResponseDTO>();
             }
-            catch (Exception ex)
+            catch (OperationCanceledException)
             {
-                return ServiceResult<DocumentResponseDTO>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                return FailOperationCanceled<DocumentResponseDTO>();
+            }
+            catch (Exception)
+            {
+                return FailUnexpected<DocumentResponseDTO>();
             }
         }
 
@@ -335,6 +407,73 @@ namespace tesisproject.backend.Services.Implementations
             var currentUserId = _currentUser.GetRequiredUserId();
             var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
             return user?.IdUser;
+        }
+
+        private static ServiceResult<T> FailUnauthorized<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Auth.UserNotAuthenticated,
+                ErrorType.Unauthorized,
+                ErrorCodes.Auth.UserNotAuthenticated);
+
+        private static ServiceResult<T> FailActorUserNotFound<T>()
+            => ServiceResult<T>.Fail(
+                UserNotFoundMessage,
+                ErrorType.NotFound,
+                ErrorCodes.Auth.ActorUserNotFound);
+
+        private static ServiceResult<T> FailConflict<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.PersistenceConflict,
+                ErrorType.Conflict,
+                ErrorCodes.Common.PersistenceConflict);
+
+        private static ServiceResult<T> FailUnexpected<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.UnexpectedError,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.UnexpectedError);
+
+        private static ServiceResult<T> FailOperationCanceled<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.OperationCanceled,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.OperationCanceled);
+
+        private static ServiceResult<T> ValidationFailure<T>(
+            string message,
+            string errorCode,
+            params string[] fields)
+        {
+            Dictionary<string, string[]>? validation = null;
+
+            if (fields is { Length: > 0 })
+            {
+                validation = fields
+                    .Distinct(StringComparer.Ordinal)
+                    .ToDictionary(
+                        field => field,
+                        _ => new[] { message },
+                        StringComparer.Ordinal);
+            }
+
+            return ServiceResult<T>.Fail(
+                message,
+                ErrorType.Validation,
+                errorCode,
+                validation);
+        }
+
+        private static void TryDeleteFile(string? newPhysicalPath)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(newPhysicalPath) && File.Exists(newPhysicalPath))
+                    File.Delete(newPhysicalPath);
+            }
+            catch
+            {
+                // Best-effort delete
+            }
         }
 
         private DocumentResponseDTO Map(Document e)
@@ -360,13 +499,11 @@ namespace tesisproject.backend.Services.Implementations
             if (string.IsNullOrWhiteSpace(storedRelativePath))
                 throw new InvalidOperationException("Stored relative path is empty.");
 
-            // Normaliza separadores
             var relative = storedRelativePath.Replace("/", Path.DirectorySeparatorChar.ToString());
 
             var combined = Path.Combine(_storageRootFullPath, relative);
             var full = Path.GetFullPath(combined);
 
-            // Seguridad: evita que salgan de la raíz
             var rootPrefix = _storageRootFullPath.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
 
             if (!full.StartsWith(rootPrefix, StringComparison.OrdinalIgnoreCase))
@@ -380,10 +517,7 @@ namespace tesisproject.backend.Services.Implementations
             var extension = Path.GetExtension(originalFileName);
             var fileName = $"{Guid.NewGuid():N}{extension}";
 
-            // Path relativo que se guarda en BD
             var relativePath = Path.Combine(DocumentsFolder, fileName).Replace("\\", "/");
-
-            // Path físico real dentro del root configurado
             var physicalPath = ResolvePhysicalPath(relativePath);
 
             return (relativePath, physicalPath);

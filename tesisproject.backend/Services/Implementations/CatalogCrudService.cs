@@ -7,6 +7,7 @@ using tesisproject.shared.DTOs.Catalog.Common.Request;
 using tesisproject.shared.DTOs.Catalog.Common.Response;
 using tesisproject.shared.Entities.Base;
 using tesisproject.shared.Enums;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -19,11 +20,8 @@ namespace tesisproject.backend.Services.Implementations
     {
         private const string NoItemsFoundMessage = "No items found for this catalog.";
         private const string CatalogItemsRetrievedMessage = "Catalog items retrieved.";
-        private const string IdRequiredMessage = "Id is required.";
         private const string ItemNotFoundMessage = "Item not found.";
         private const string CatalogItemRetrievedMessage = "Catalog item retrieved.";
-        private const string NameRequiredMessage = "Name is required.";
-        private const string NameAlreadyExistsMessage = "Name already exists.";
         private const string CatalogItemCreatedMessage = "Catalog item created.";
         private const string CatalogItemLockedForModifyMessage = "Catalog item is locked and cannot be modified.";
         private const string CatalogItemUpdatedMessage = "Catalog item updated.";
@@ -36,7 +34,6 @@ namespace tesisproject.backend.Services.Implementations
         private readonly IUnitOfWork _uow;
         private readonly ICatalogRepository<TCatalog> _repo;
 
-        // Levenshtein config from enum
         private static double SimilarityThresholdPercent =>
             (double)(int)CatalogLevenshteinConfig.SimilarityThresholdPercent;
 
@@ -72,10 +69,9 @@ namespace tesisproject.backend.Services.Implementations
 
                 return ServiceResult<IReadOnlyList<CatalogListItemDTO>>.Ok(dto, message);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<IReadOnlyList<CatalogListItemDTO>>
-                    .Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<IReadOnlyList<CatalogListItemDTO>>();
             }
         }
 
@@ -88,22 +84,29 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (id <= 0)
-                    return ServiceResult<CatalogDetailDTO>
-                        .Fail(IdRequiredMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<CatalogDetailDTO>(
+                        ErrorMessages.Common.InvalidId,
+                        ErrorCodes.Common.InvalidId,
+                        nameof(CatalogDetailDTO.Id));
+                }
 
                 var entity = await _repo.GetByIdAsync(new object[] { id }, ct);
                 if (entity is null)
-                    return ServiceResult<CatalogDetailDTO>
-                        .Fail(ItemNotFoundMessage, ErrorType.NotFound);
+                {
+                    return ServiceResult<CatalogDetailDTO>.Fail(
+                        ItemNotFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Catalog.ItemNotFound);
+                }
 
                 return ServiceResult<CatalogDetailDTO>.Ok(
                     MapToDetail(entity),
                     CatalogItemRetrievedMessage);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<CatalogDetailDTO>
-                    .Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<CatalogDetailDTO>();
             }
         }
 
@@ -117,19 +120,26 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var name = (request?.Name ?? string.Empty).Trim();
                 if (string.IsNullOrWhiteSpace(name))
-                    return ServiceResult<CatalogDetailDTO>
-                        .Fail(NameRequiredMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<CatalogDetailDTO>(
+                        ErrorMessages.Common.NameRequired,
+                        ErrorCodes.Common.NameRequired,
+                        nameof(AddCatalogRequestDTO.Name));
+                }
 
                 var exists = await _repo.NameExistsAsync(name, excludeId: null, ct);
                 if (exists)
-                    return ServiceResult<CatalogDetailDTO>
-                        .Fail(NameAlreadyExistsMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<CatalogDetailDTO>(
+                        ErrorMessages.Common.NameAlreadyExists,
+                        ErrorCodes.Common.NameAlreadyExists,
+                        nameof(AddCatalogRequestDTO.Name));
+                }
 
                 var entity = new TCatalog
                 {
                     Name = name,
-                    IsActive = true,
-                    // IsLocked viene de CatalogEntityBase, por defecto false
+                    IsActive = true
                 };
 
                 await _repo.AddAsync(entity, ct);
@@ -139,15 +149,13 @@ namespace tesisproject.backend.Services.Implementations
                     MapToDetail(entity),
                     CatalogItemCreatedMessage);
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
-                return ServiceResult<CatalogDetailDTO>
-                    .Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return FailConflict<CatalogDetailDTO>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<CatalogDetailDTO>
-                    .Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<CatalogDetailDTO>();
             }
         }
 
@@ -160,46 +168,59 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request is null || request.Id <= 0)
-                    return ServiceResult<CatalogDetailDTO>
-                        .Fail(IdRequiredMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<CatalogDetailDTO>(
+                        ErrorMessages.Common.InvalidId,
+                        ErrorCodes.Common.InvalidId,
+                        nameof(UpdateCatalogRequestDTO.Id));
+                }
 
                 var entity = await _repo.GetByIdAsync(new object[] { request.Id }, ct);
                 if (entity is null)
-                    return ServiceResult<CatalogDetailDTO>
-                        .Fail(ItemNotFoundMessage, ErrorType.NotFound);
+                {
+                    return ServiceResult<CatalogDetailDTO>.Fail(
+                        ItemNotFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Catalog.ItemNotFound);
+                }
 
                 if (entity.IsLocked)
-                    return ServiceResult<CatalogDetailDTO>
-                        .Fail(CatalogItemLockedForModifyMessage, ErrorType.Conflict);
+                {
+                    return ServiceResult<CatalogDetailDTO>.Fail(
+                        CatalogItemLockedForModifyMessage,
+                        ErrorType.Conflict,
+                        ErrorCodes.Catalog.ItemLockedForModify);
+                }
 
                 var newName = (request.Name ?? string.Empty).Trim();
                 if (string.IsNullOrWhiteSpace(newName))
-                    return ServiceResult<CatalogDetailDTO>
-                        .Fail(NameRequiredMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<CatalogDetailDTO>(
+                        ErrorMessages.Common.NameRequired,
+                        ErrorCodes.Common.NameRequired,
+                        nameof(UpdateCatalogRequestDTO.Name));
+                }
 
                 var nameChanged = !string.Equals(
                     entity.Name?.Trim(),
                     newName,
                     StringComparison.OrdinalIgnoreCase);
 
-                // ====== Si NO cambió el nombre -> solo IsActive ======
                 if (!nameChanged)
                 {
                     entity.IsActive = request.IsActive;
                     return await SaveAndOkAsync(entity, CatalogItemUpdatedMessage, ct);
                 }
 
-                // ====== Si cambió el nombre ======
-
-                // 1) Duplicado exacto (bloquear)
                 var duplicated = await _repo.NameExistsAsync(newName, excludeId: request.Id, ct);
                 if (duplicated)
                 {
-                    return ServiceResult<CatalogDetailDTO>
-                        .Fail(NameAlreadyExistsDetailedMessage, ErrorType.Validation);
+                    return ValidationFailure<CatalogDetailDTO>(
+                        NameAlreadyExistsDetailedMessage,
+                        ErrorCodes.Common.NameAlreadyExists,
+                        nameof(UpdateCatalogRequestDTO.Name));
                 }
 
-                // 2) Posible duplicado (Levenshtein) -> bloquear y sugerir
                 var allItems = await _repo.ListAsync(onlyActives: false, ct: ct);
 
                 var suggestions = allItems
@@ -221,12 +242,12 @@ namespace tesisproject.backend.Services.Implementations
                     var hint = string.Join(" | ", suggestions.Select(s =>
                         $"{s.Name} (Id: {s.Id}, Similarity: {s.Similarity:0.0}%, Active: {s.IsActive})"));
 
-                    return ServiceResult<CatalogDetailDTO>.Fail(
+                    return ValidationFailure<CatalogDetailDTO>(
                         string.Format(SimilarNameCandidatesTemplate, hint),
-                        ErrorType.Validation);
+                        ErrorCodes.Catalog.SimilarNameCandidatesFound,
+                        nameof(UpdateCatalogRequestDTO.Name));
                 }
 
-                // 3) Regla: si tiene referencias -> crear nuevo + desactivar actual
                 var hasReferences = await _repo.HasReferencesAsync(entity.Id, ct);
 
                 if (hasReferences)
@@ -234,7 +255,7 @@ namespace tesisproject.backend.Services.Implementations
                     var newEntity = new TCatalog
                     {
                         Name = newName,
-                        IsActive = request.IsActive, // ✅ respeta el toggle del request
+                        IsActive = request.IsActive,
                     };
 
                     await _repo.AddAsync(newEntity, ct);
@@ -249,21 +270,18 @@ namespace tesisproject.backend.Services.Implementations
                         CatalogItemRenamedByCloneMessage);
                 }
 
-                // 4) Si NO tiene referencias -> update in-place
                 entity.Name = newName;
                 entity.IsActive = request.IsActive;
 
                 return await SaveAndOkAsync(entity, CatalogItemUpdatedMessage, ct);
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
-                return ServiceResult<CatalogDetailDTO>
-                    .Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return FailConflict<CatalogDetailDTO>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<CatalogDetailDTO>
-                    .Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<CatalogDetailDTO>();
             }
         }
 
@@ -276,17 +294,29 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (id <= 0)
-                    return ServiceResult<NoContent>
-                        .Fail(IdRequiredMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<NoContent>(
+                        ErrorMessages.Common.InvalidId,
+                        ErrorCodes.Common.InvalidId,
+                        "Id");
+                }
 
                 var entity = await _repo.GetByIdAsync(new object[] { id }, ct);
                 if (entity is null)
-                    return ServiceResult<NoContent>
-                        .Fail(ItemNotFoundMessage, ErrorType.NotFound);
+                {
+                    return ServiceResult<NoContent>.Fail(
+                        ItemNotFoundMessage,
+                        ErrorType.NotFound,
+                        ErrorCodes.Catalog.ItemNotFound);
+                }
 
                 if (entity.IsLocked)
-                    return ServiceResult<NoContent>
-                        .Fail(CatalogItemLockedForDeleteMessage, ErrorType.Conflict);
+                {
+                    return ServiceResult<NoContent>.Fail(
+                        CatalogItemLockedForDeleteMessage,
+                        ErrorType.Conflict,
+                        ErrorCodes.Catalog.ItemLockedForDelete);
+                }
 
                 _repo.Remove(entity);
                 await _uow.SaveChangesAsync(ct);
@@ -294,15 +324,13 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<NoContent>
                     .Ok(new NoContent(), CatalogItemDeletedMessage);
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
-                return ServiceResult<NoContent>
-                    .Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict);
+                return FailConflict<NoContent>();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<NoContent>
-                    .Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<NoContent>();
             }
         }
 
@@ -319,6 +347,42 @@ namespace tesisproject.backend.Services.Implementations
             return ServiceResult<CatalogDetailDTO>.Ok(
                 MapToDetail(entity),
                 message);
+        }
+
+        private static ServiceResult<T> FailConflict<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.PersistenceConflict,
+                ErrorType.Conflict,
+                ErrorCodes.Common.PersistenceConflict);
+
+        private static ServiceResult<T> FailUnexpected<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.UnexpectedError,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.UnexpectedError);
+
+        private static ServiceResult<T> ValidationFailure<T>(
+            string message,
+            string errorCode,
+            params string[] fields)
+        {
+            Dictionary<string, string[]>? validation = null;
+
+            if (fields is { Length: > 0 })
+            {
+                validation = fields
+                    .Distinct(StringComparer.Ordinal)
+                    .ToDictionary(
+                        field => field,
+                        _ => new[] { message },
+                        StringComparer.Ordinal);
+            }
+
+            return ServiceResult<T>.Fail(
+                message,
+                ErrorType.Validation,
+                errorCode,
+                validation);
         }
 
         // =============== MAPPING HELPERS ===============

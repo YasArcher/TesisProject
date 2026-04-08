@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using tesisproject.backend.Options;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.Entities.External;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 public sealed class ExternalDirectoryClient : IExternalDirectoryClient
@@ -18,16 +19,7 @@ public sealed class ExternalDirectoryClient : IExternalDirectoryClient
         PropertyNameCaseInsensitive = true
     };
 
-    // Mensajes estandarizados
-    private const string MsgNoProfilesFound = "No external profiles found.";
-    private const string MsgUnexpectedError = "Unexpected error.";
-    private const string MsgConfigEndpointMissing = "External API misconfiguration: UsersEndpoint is missing.";
-    private const string MsgConfigParamMissing = "External API misconfiguration: query parameter name is missing.";
-    private const string MsgUnauthorizedExternalApi = "Unauthorized external API.";
-    private const string MsgForbiddenExternalApi = "Forbidden external API.";
-    private const string MsgAtLeastOneEmailRequired = "At least one email is required.";
     private const string MsgProfilesRetrievedByEmails = "External profiles retrieved by emails";
-    private const string MsgAtLeastOneDocumentRequired = "At least one document is required.";
     private const string MsgProfilesRetrievedByDocuments = "External profiles retrieved by documents";
     private const string MsgAllProfilesRetrieved = "All external profiles retrieved";
 
@@ -50,7 +42,7 @@ public sealed class ExternalDirectoryClient : IExternalDirectoryClient
         => QueryByAsync(
             values: emails,
             queryParamName: _opts.UsersEmailQueryParam,
-            requiredMessage: MsgAtLeastOneEmailRequired,
+            requiredFailureFactory: AtLeastOneEmailRequired,
             successMessage: MsgProfilesRetrievedByEmails,
             ct: ct);
 
@@ -60,14 +52,16 @@ public sealed class ExternalDirectoryClient : IExternalDirectoryClient
         => QueryByAsync(
             values: documents,
             queryParamName: _opts.UsersDocumentQueryParam,
-            requiredMessage: MsgAtLeastOneDocumentRequired,
+            requiredFailureFactory: AtLeastOneDocumentRequired,
             successMessage: MsgProfilesRetrievedByDocuments,
             ct: ct);
 
-    public async Task<ServiceResult<IReadOnlyList<ExternalUserProfileModel>>> GetAllAsync(CancellationToken ct = default)
+    public async Task<ServiceResult<IReadOnlyList<ExternalUserProfileModel>>> GetAllAsync(
+        CancellationToken ct = default)
     {
         var cfgFail = ValidateConfig(out var endpoint);
-        if (cfgFail is not null) return cfgFail;
+        if (cfgFail is not null)
+            return cfgFail;
 
         return await FetchAsync(
             url: endpoint,
@@ -81,16 +75,17 @@ public sealed class ExternalDirectoryClient : IExternalDirectoryClient
     private async Task<ServiceResult<IReadOnlyList<ExternalUserProfileModel>>> QueryByAsync(
         IEnumerable<string> values,
         string queryParamName,
-        string requiredMessage,
+        Func<ServiceResult<IReadOnlyList<ExternalUserProfileModel>>> requiredFailureFactory,
         string successMessage,
         CancellationToken ct)
     {
         var list = NormalizeDistinct(values);
         if (list.Count == 0)
-            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(requiredMessage, ErrorType.Validation);
+            return requiredFailureFactory();
 
         var cfgFail = ValidateConfig(out var endpoint, queryParamName);
-        if (cfgFail is not null) return cfgFail;
+        if (cfgFail is not null)
+            return cfgFail;
 
         var url = BuildBatchUrl(endpoint, queryParamName, list);
 
@@ -112,45 +107,48 @@ public sealed class ExternalDirectoryClient : IExternalDirectoryClient
             var api = await _http.GetFromJsonAsync<List<ExternalUserProfileModel>>(url, _jsonOpts, ct);
 
             if (api is null || api.Count == 0)
-                return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(MsgNoProfilesFound, ErrorType.NotFound);
+                return NoProfilesFound();
 
             _logger.LogInformation("Directory {Context}: retrieved {Count} profile(s).", logContext, api.Count);
+
             return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Ok(api, successMessage);
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
         {
             _logger.LogWarning(ex, "Directory {Context}: 404", logContext);
-            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(MsgNoProfilesFound, ErrorType.NotFound);
+            return NoProfilesFound();
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
         {
             _logger.LogWarning(ex, "Directory {Context}: 401", logContext);
-            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(MsgUnauthorizedExternalApi, ErrorType.Unauthorized);
+            return UnauthorizedExternalApi();
         }
         catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Forbidden)
         {
             _logger.LogWarning(ex, "Directory {Context}: 403", logContext);
-            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(MsgForbiddenExternalApi, ErrorType.Forbidden);
+            return ForbiddenExternalApi();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Directory {Context}: unexpected error", logContext);
-            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(MsgUnexpectedError, ErrorType.Unexpected);
+            return Unexpected();
         }
     }
 
     /// <summary>
     /// Valida configuración requerida. Devuelve null si OK; si no, devuelve ServiceResult.Fail listo.
     /// </summary>
-    private ServiceResult<IReadOnlyList<ExternalUserProfileModel>>? ValidateConfig(out string endpoint, string? queryParamName = null)
+    private ServiceResult<IReadOnlyList<ExternalUserProfileModel>>? ValidateConfig(
+        out string endpoint,
+        string? queryParamName = null)
     {
         endpoint = _opts.UsersEndpoint ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(endpoint))
-            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(MsgConfigEndpointMissing, ErrorType.Unexpected);
+            return ConfigEndpointMissing();
 
         if (queryParamName is not null && string.IsNullOrWhiteSpace(queryParamName))
-            return ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(MsgConfigParamMissing, ErrorType.Unexpected);
+            return ConfigParamMissing();
 
         return null;
     }
@@ -172,4 +170,54 @@ public sealed class ExternalDirectoryClient : IExternalDirectoryClient
         var sep = baseEndpoint.Contains('?') ? "&" : "?";
         return $"{baseEndpoint}{sep}{queryParamName}={joined}";
     }
+
+    // ============== Error helpers ==============
+
+    private static ServiceResult<IReadOnlyList<ExternalUserProfileModel>> NoProfilesFound()
+        => ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(
+            ErrorMessages.ExternalDirectory.NoProfilesFound,
+            ErrorType.NotFound,
+            ErrorCodes.ExternalDirectory.NoProfilesFound);
+
+    private static ServiceResult<IReadOnlyList<ExternalUserProfileModel>> ConfigEndpointMissing()
+        => ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(
+            ErrorMessages.ExternalDirectory.ConfigEndpointMissing,
+            ErrorType.Unexpected,
+            ErrorCodes.ExternalDirectory.ConfigEndpointMissing);
+
+    private static ServiceResult<IReadOnlyList<ExternalUserProfileModel>> ConfigParamMissing()
+        => ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(
+            ErrorMessages.ExternalDirectory.ConfigParamMissing,
+            ErrorType.Unexpected,
+            ErrorCodes.ExternalDirectory.ConfigParamMissing);
+
+    private static ServiceResult<IReadOnlyList<ExternalUserProfileModel>> UnauthorizedExternalApi()
+        => ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(
+            ErrorMessages.ExternalDirectory.UnauthorizedExternalApi,
+            ErrorType.Unauthorized,
+            ErrorCodes.ExternalDirectory.UnauthorizedExternalApi);
+
+    private static ServiceResult<IReadOnlyList<ExternalUserProfileModel>> ForbiddenExternalApi()
+        => ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(
+            ErrorMessages.ExternalDirectory.ForbiddenExternalApi,
+            ErrorType.Forbidden,
+            ErrorCodes.ExternalDirectory.ForbiddenExternalApi);
+
+    private static ServiceResult<IReadOnlyList<ExternalUserProfileModel>> AtLeastOneEmailRequired()
+        => ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(
+            ErrorMessages.ExternalDirectory.AtLeastOneEmailRequired,
+            ErrorType.Validation,
+            ErrorCodes.ExternalDirectory.AtLeastOneEmailRequired);
+
+    private static ServiceResult<IReadOnlyList<ExternalUserProfileModel>> AtLeastOneDocumentRequired()
+        => ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(
+            ErrorMessages.ExternalDirectory.AtLeastOneDocumentRequired,
+            ErrorType.Validation,
+            ErrorCodes.ExternalDirectory.AtLeastOneDocumentRequired);
+
+    private static ServiceResult<IReadOnlyList<ExternalUserProfileModel>> Unexpected()
+        => ServiceResult<IReadOnlyList<ExternalUserProfileModel>>.Fail(
+            ErrorMessages.Common.UnexpectedError,
+            ErrorType.Unexpected,
+            ErrorCodes.Common.UnexpectedError);
 }

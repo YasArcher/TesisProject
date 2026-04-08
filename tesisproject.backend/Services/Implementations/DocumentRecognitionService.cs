@@ -11,6 +11,7 @@ using tesisproject.shared.DTOs.Algorithms.Response;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Entities.External;
 using tesisproject.shared.Enums;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -53,7 +54,12 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (file is null || file.Length == 0)
-                return ServiceResult<ResolutionInfo>.Fail(MsgFileIsEmpty, ErrorType.Validation);
+            {
+                return ValidationFailure<ResolutionInfo>(
+                    MsgFileIsEmpty,
+                    ErrorCodes.DocumentRecognition.FileEmpty,
+                    nameof(file));
+            }
 
             try
             {
@@ -64,10 +70,15 @@ namespace tesisproject.backend.Services.Implementations
                 var result = await ExtractResolutionDataAsync(memoryStream, ct);
                 return ServiceResult<ResolutionInfo>.Ok(result);
             }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Resolution document recognition was canceled.");
+                return FailOperationCanceled<ResolutionInfo>();
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error recognizing resolution document");
-                return ServiceResult<ResolutionInfo>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<ResolutionInfo>();
             }
         }
 
@@ -79,7 +90,12 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (file is null || file.Length == 0)
-                return ServiceResult<DideProjectFormInfo>.Fail(MsgFileIsEmpty, ErrorType.Validation);
+            {
+                return ValidationFailure<DideProjectFormInfo>(
+                    MsgFileIsEmpty,
+                    ErrorCodes.DocumentRecognition.FileEmpty,
+                    nameof(file));
+            }
 
             try
             {
@@ -90,10 +106,15 @@ namespace tesisproject.backend.Services.Implementations
                 var result = await ExtractDideProjectDataAsync(memoryStream, ct);
                 return ServiceResult<DideProjectFormInfo>.Ok(result);
             }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("DIDE project document recognition was canceled.");
+                return FailOperationCanceled<DideProjectFormInfo>();
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error recognizing DIDE project document");
-                return ServiceResult<DideProjectFormInfo>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<DideProjectFormInfo>();
             }
         }
 
@@ -391,6 +412,42 @@ namespace tesisproject.backend.Services.Implementations
                         _opt.MemberRoleSimilarityThreshold);
                 }
             }
+        }
+
+        private static ServiceResult<T> FailUnexpected<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.UnexpectedError,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.UnexpectedError);
+
+        private static ServiceResult<T> FailOperationCanceled<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.OperationCanceled,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.OperationCanceled);
+
+        private static ServiceResult<T> ValidationFailure<T>(
+            string message,
+            string errorCode,
+            params string[] fields)
+        {
+            Dictionary<string, string[]>? validation = null;
+
+            if (fields is { Length: > 0 })
+            {
+                validation = fields
+                    .Distinct(StringComparer.Ordinal)
+                    .ToDictionary(
+                        field => field,
+                        _ => new[] { message },
+                        StringComparer.Ordinal);
+            }
+
+            return ServiceResult<T>.Fail(
+                message,
+                ErrorType.Validation,
+                errorCode,
+                validation);
         }
     }
 }

@@ -6,6 +6,7 @@ using System.Text.Json;
 using tesisproject.backend.Options;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.Entities.External;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -21,25 +22,8 @@ namespace tesisproject.backend.Services.Implementations
             PropertyNameCaseInsensitive = true
         };
 
-        private const string MsgNoDistributivos = "No distributivos found.";
-        private const string MsgUnexpected = "Unexpected error.";
         private const string MsgRetrieved = "Distributivos retrieved.";
-        private const string MsgConfigEndpointMissing = "External API misconfiguration: DistributivosEndpoint is missing.";
-        private const string MsgConfigParamMissing = "External API misconfiguration: query parameter name is missing.";
-        private const string MsgInvalidDistributivoId = "Invalid distributivoId.";
-        private const string MsgExternalApiError = "External API error.";
-        private const string MsgDistributivoNotFound = "Distributivo not found.";
         private const string MsgDistributivoRetrieved = "Distributivo retrieved.";
-        private const string MsgUnauthorizedExternalApi = "Unauthorized external API.";
-        private const string MsgForbiddenExternalApi = "Forbidden external API.";
-        private const string MsgCedulasRequired = "Cedulas are required.";
-        private const string MsgNoDistributivosForCedulas = "No distributivos found for the specified cedulas.";
-        private const string MsgCorreosRequired = "Correos are required.";
-        private const string MsgNoDistributivosForCorreos = "No distributivos found for the specified correos.";
-        private const string MsgPeriodosRequired = "Periodos are required.";
-        private const string MsgNoDistributivosForPeriodos = "No distributivos found for the specified periodos.";
-        private const string MsgFacultadesRequired = "Facultades are required.";
-        private const string MsgNoDistributivosForFacultades = "No distributivos found for the specified facultades.";
 
         public ExternalDistributivosService(
             HttpClient http,
@@ -56,10 +40,12 @@ namespace tesisproject.backend.Services.Implementations
 
         // ================= PUBLIC =================
 
-        public async Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> GetDistributivosAsync(CancellationToken ct = default)
+        public async Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> GetDistributivosAsync(
+            CancellationToken ct = default)
         {
             var cfgFail = ValidateConfig(out var endpoint);
-            if (cfgFail is not null) return cfgFail;
+            if (cfgFail is not null)
+                return cfgFail;
 
             return await FetchAsync(
                 url: endpoint,
@@ -74,10 +60,10 @@ namespace tesisproject.backend.Services.Implementations
             => QueryByAsync(
                 values: cedulas,
                 queryParamName: _opts.DistributivosCedulasQueryParam,
-                requiredMessage: MsgCedulasRequired,
-                notFoundMessage: MsgNoDistributivosForCedulas,
+                requiredFailureFactory: CedulasRequired,
+                notFoundFailureFactory: NoDistributivosForCedulas,
                 logContext: "ByCedulas",
-                normalize: s => s, // tal cual
+                normalize: s => s,
                 ct: ct);
 
         public Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> GetDistributivosByCorreosAsync(
@@ -86,10 +72,10 @@ namespace tesisproject.backend.Services.Implementations
             => QueryByAsync(
                 values: correos,
                 queryParamName: _opts.DistributivosCorreosQueryParam,
-                requiredMessage: MsgCorreosRequired,
-                notFoundMessage: MsgNoDistributivosForCorreos,
+                requiredFailureFactory: CorreosRequired,
+                notFoundFailureFactory: NoDistributivosForCorreos,
                 logContext: "ByCorreos",
-                normalize: s => s.ToLowerInvariant(), // si el API lo requiere
+                normalize: s => s.ToLowerInvariant(),
                 ct: ct);
 
         public Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> GetDistributivosByPeriodosAsync(
@@ -98,8 +84,8 @@ namespace tesisproject.backend.Services.Implementations
             => QueryByAsync(
                 values: periodos,
                 queryParamName: _opts.DistributivosPeriodosQueryParam,
-                requiredMessage: MsgPeriodosRequired,
-                notFoundMessage: MsgNoDistributivosForPeriodos,
+                requiredFailureFactory: PeriodosRequired,
+                notFoundFailureFactory: NoDistributivosForPeriodos,
                 logContext: "ByPeriodos",
                 normalize: s => s,
                 ct: ct);
@@ -110,34 +96,36 @@ namespace tesisproject.backend.Services.Implementations
             => QueryByAsync(
                 values: facultades,
                 queryParamName: _opts.DistributivosFacultadesQueryParam,
-                requiredMessage: MsgFacultadesRequired,
-                notFoundMessage: MsgNoDistributivosForFacultades,
+                requiredFailureFactory: FacultadesRequired,
+                notFoundFailureFactory: NoDistributivosForFacultades,
                 logContext: "ByFacultades",
                 normalize: s => s,
                 ct: ct);
 
-        public async Task<ServiceResult<ExternalTeacherDistributivoModel>> GetDistributivoByIdAsync(int distributivoId, CancellationToken ct = default)
+        public async Task<ServiceResult<ExternalTeacherDistributivoModel>> GetDistributivoByIdAsync(
+            int distributivoId,
+            CancellationToken ct = default)
         {
             if (distributivoId <= 0)
-                return ServiceResult<ExternalTeacherDistributivoModel>.Fail(MsgInvalidDistributivoId, ErrorType.Validation);
+                return InvalidDistributivoId();
 
             try
             {
                 // Fallback mientras Node no tenga /api/distributivos/:id
                 var all = await GetDistributivosAsync(ct);
                 if (!all.Success || all.Data is null)
-                    return ServiceResult<ExternalTeacherDistributivoModel>.Fail(all.Message ?? MsgExternalApiError, all.Error);
+                    return RelayFailure<ExternalTeacherDistributivoModel, List<ExternalTeacherDistributivoModel>>(all);
 
                 var item = all.Data.FirstOrDefault(x => x.DistributivoId == distributivoId);
 
                 return item is null
-                    ? ServiceResult<ExternalTeacherDistributivoModel>.Fail(MsgDistributivoNotFound, ErrorType.NotFound)
+                    ? DistributivoNotFound()
                     : ServiceResult<ExternalTeacherDistributivoModel>.Ok(item, MsgDistributivoRetrieved);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error retrieving distributivo {DistributivoId}", distributivoId);
-                return ServiceResult<ExternalTeacherDistributivoModel>.Fail(MsgUnexpected, ErrorType.Unexpected);
+                return UnexpectedSingle();
             }
         }
 
@@ -146,20 +134,20 @@ namespace tesisproject.backend.Services.Implementations
         private async Task<ServiceResult<List<ExternalTeacherDistributivoModel>>> QueryByAsync(
             IEnumerable<string> values,
             string queryParamName,
-            string requiredMessage,
-            string notFoundMessage,
+            Func<ServiceResult<List<ExternalTeacherDistributivoModel>>> requiredFailureFactory,
+            Func<ServiceResult<List<ExternalTeacherDistributivoModel>>> notFoundFailureFactory,
             string logContext,
             Func<string, string> normalize,
             CancellationToken ct)
         {
             var list = NormalizeList(values, normalize);
             if (list.Count == 0)
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(requiredMessage, ErrorType.Validation);
+                return requiredFailureFactory();
 
             var cfgFail = ValidateConfig(out var endpoint, queryParamName);
-            if (cfgFail is not null) return cfgFail;
+            if (cfgFail is not null)
+                return cfgFail;
 
-            // IMPORTANTE: este valor va como CSV. BuildUrl preserva comas para no convertirlas en %2C.
             var query = new Dictionary<string, string>
             {
                 [queryParamName] = string.Join(',', list)
@@ -173,9 +161,8 @@ namespace tesisproject.backend.Services.Implementations
                 logContext: logContext,
                 ct: ct);
 
-            // Personaliza el mensaje de NotFound para cada filtro
             if (!res.Success && res.Error == ErrorType.NotFound)
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(notFoundMessage, ErrorType.NotFound);
+                return notFoundFailureFactory();
 
             return res;
         }
@@ -191,7 +178,7 @@ namespace tesisproject.backend.Services.Implementations
                 var list = await _http.GetFromJsonAsync<List<ExternalTeacherDistributivoModel>>(url, _jsonOpts, ct);
 
                 if (list is null || list.Count == 0)
-                    return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgNoDistributivos, ErrorType.NotFound);
+                    return NoDistributivosFound();
 
                 _logger.LogInformation("Distributivos {Context}: retrieved {Count}.", logContext, list.Count);
                 return ServiceResult<List<ExternalTeacherDistributivoModel>>.Ok(list, successMessage);
@@ -199,34 +186,36 @@ namespace tesisproject.backend.Services.Implementations
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
             {
                 _logger.LogWarning(ex, "Distributivos {Context}: 404", logContext);
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgNoDistributivos, ErrorType.NotFound);
+                return NoDistributivosFound();
             }
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Unauthorized)
             {
                 _logger.LogWarning(ex, "Distributivos {Context}: 401", logContext);
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgUnauthorizedExternalApi, ErrorType.Unauthorized);
+                return UnauthorizedExternalApi();
             }
             catch (HttpRequestException ex) when (ex.StatusCode == HttpStatusCode.Forbidden)
             {
                 _logger.LogWarning(ex, "Distributivos {Context}: 403", logContext);
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgForbiddenExternalApi, ErrorType.Forbidden);
+                return ForbiddenExternalApi();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Distributivos {Context}: unexpected error", logContext);
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgUnexpected, ErrorType.Unexpected);
+                return UnexpectedList();
             }
         }
 
-        private ServiceResult<List<ExternalTeacherDistributivoModel>>? ValidateConfig(out string endpoint, string? queryParamName = null)
+        private ServiceResult<List<ExternalTeacherDistributivoModel>>? ValidateConfig(
+            out string endpoint,
+            string? queryParamName = null)
         {
             endpoint = _opts.DistributivosEndpoint ?? string.Empty;
 
             if (string.IsNullOrWhiteSpace(endpoint))
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgConfigEndpointMissing, ErrorType.Unexpected);
+                return ConfigEndpointMissing();
 
             if (queryParamName is not null && string.IsNullOrWhiteSpace(queryParamName))
-                return ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(MsgConfigParamMissing, ErrorType.Unexpected);
+                return ConfigParamMissing();
 
             return null;
         }
@@ -239,20 +228,18 @@ namespace tesisproject.backend.Services.Implementations
                 return endpoint;
 
             var sb = new StringBuilder(endpoint);
-
-            // Si el endpoint ya trae querystring, agrega con '&'
             sb.Append(endpoint.Contains('?') ? '&' : '?');
 
             var first = true;
             foreach (var kv in query)
             {
-                if (!first) sb.Append('&');
+                if (!first)
+                    sb.Append('&');
+
                 first = false;
 
                 sb.Append(Uri.EscapeDataString(kv.Key));
                 sb.Append('=');
-
-                // CLAVE: preserva comas en valores CSV (evita %2C)
                 sb.Append(EscapeValuePreserveCommas(kv.Value));
             }
 
@@ -261,9 +248,9 @@ namespace tesisproject.backend.Services.Implementations
 
         private static string EscapeValuePreserveCommas(string value)
         {
-            if (string.IsNullOrEmpty(value)) return string.Empty;
+            if (string.IsNullOrEmpty(value))
+                return string.Empty;
 
-            // Escape normal, pero vuelve a dejar comas como comas (para CSV)
             return Uri.EscapeDataString(value).Replace("%2C", ",");
         }
 
@@ -277,5 +264,122 @@ namespace tesisproject.backend.Services.Implementations
                 .ToList()
                 ?? new List<string>();
         }
+
+        // ================= ERROR HELPERS =================
+
+        private static ServiceResult<TTarget> RelayFailure<TTarget, TSource>(ServiceResult<TSource> source)
+        {
+            var error = source.Error == ErrorType.None
+                ? ErrorType.Unexpected
+                : source.Error;
+
+            return ServiceResult<TTarget>.Fail(
+                source.Message ?? ErrorMessages.Common.UnexpectedError,
+                error,
+                source.ErrorCode ?? (error == ErrorType.Unexpected ? ErrorCodes.Common.UnexpectedError : null),
+                source.ValidationErrors);
+        }
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> NoDistributivosFound()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.ExternalDistributivos.NoDistributivosFound,
+                ErrorType.NotFound,
+                ErrorCodes.ExternalDistributivos.NoDistributivosFound);
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> ConfigEndpointMissing()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.ExternalDistributivos.ConfigEndpointMissing,
+                ErrorType.Unexpected,
+                ErrorCodes.ExternalDistributivos.ConfigEndpointMissing);
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> ConfigParamMissing()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.ExternalDistributivos.ConfigParamMissing,
+                ErrorType.Unexpected,
+                ErrorCodes.ExternalDistributivos.ConfigParamMissing);
+
+        private static ServiceResult<ExternalTeacherDistributivoModel> InvalidDistributivoId()
+            => ServiceResult<ExternalTeacherDistributivoModel>.Fail(
+                ErrorMessages.ExternalDistributivos.InvalidDistributivoId,
+                ErrorType.Validation,
+                ErrorCodes.ExternalDistributivos.InvalidDistributivoId);
+
+        private static ServiceResult<ExternalTeacherDistributivoModel> DistributivoNotFound()
+            => ServiceResult<ExternalTeacherDistributivoModel>.Fail(
+                ErrorMessages.ExternalDistributivos.DistributivoNotFound,
+                ErrorType.NotFound,
+                ErrorCodes.ExternalDistributivos.DistributivoNotFound);
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> UnauthorizedExternalApi()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.ExternalDistributivos.UnauthorizedExternalApi,
+                ErrorType.Unauthorized,
+                ErrorCodes.ExternalDistributivos.UnauthorizedExternalApi);
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> ForbiddenExternalApi()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.ExternalDistributivos.ForbiddenExternalApi,
+                ErrorType.Forbidden,
+                ErrorCodes.ExternalDistributivos.ForbiddenExternalApi);
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> CedulasRequired()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.ExternalDistributivos.CedulasRequired,
+                ErrorType.Validation,
+                ErrorCodes.ExternalDistributivos.CedulasRequired);
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> NoDistributivosForCedulas()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.ExternalDistributivos.NoDistributivosForCedulas,
+                ErrorType.NotFound,
+                ErrorCodes.ExternalDistributivos.NoDistributivosForCedulas);
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> CorreosRequired()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.ExternalDistributivos.CorreosRequired,
+                ErrorType.Validation,
+                ErrorCodes.ExternalDistributivos.CorreosRequired);
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> NoDistributivosForCorreos()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.ExternalDistributivos.NoDistributivosForCorreos,
+                ErrorType.NotFound,
+                ErrorCodes.ExternalDistributivos.NoDistributivosForCorreos);
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> PeriodosRequired()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.ExternalDistributivos.PeriodosRequired,
+                ErrorType.Validation,
+                ErrorCodes.ExternalDistributivos.PeriodosRequired);
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> NoDistributivosForPeriodos()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.ExternalDistributivos.NoDistributivosForPeriodos,
+                ErrorType.NotFound,
+                ErrorCodes.ExternalDistributivos.NoDistributivosForPeriodos);
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> FacultadesRequired()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.ExternalDistributivos.FacultadesRequired,
+                ErrorType.Validation,
+                ErrorCodes.ExternalDistributivos.FacultadesRequired);
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> NoDistributivosForFacultades()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.ExternalDistributivos.NoDistributivosForFacultades,
+                ErrorType.NotFound,
+                ErrorCodes.ExternalDistributivos.NoDistributivosForFacultades);
+
+        private static ServiceResult<List<ExternalTeacherDistributivoModel>> UnexpectedList()
+            => ServiceResult<List<ExternalTeacherDistributivoModel>>.Fail(
+                ErrorMessages.Common.UnexpectedError,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.UnexpectedError);
+
+        private static ServiceResult<ExternalTeacherDistributivoModel> UnexpectedSingle()
+            => ServiceResult<ExternalTeacherDistributivoModel>.Fail(
+                ErrorMessages.Common.UnexpectedError,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.UnexpectedError);
     }
 }
