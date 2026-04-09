@@ -3,6 +3,7 @@ using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response;
 using tesisproject.shared.DTOs.Matrices.Response;
 using tesisproject.shared.Enums;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -12,7 +13,6 @@ namespace tesisproject.backend.Services.Implementations
         private const string WorksheetName = "Matriz proyectos";
         private const string EmptyPlaceholder = "-";
         private const string PipeSeparator = " | ";
-        private const string NoDataToExportMessage = "No hay datos para exportar.";
         private const int CategoryColumnsBaseOrder = 1000; // para que vayan después de las base
         private const int ObjectiveColumnsBaseOrder = 2000; // después de categorías
 
@@ -38,8 +38,23 @@ namespace tesisproject.backend.Services.Implementations
         {
             // 1) Cargar dataset plano
             var flatResult = await _flatService.GetFlatReportAsync(projectIds, ct);
-            if (!flatResult.Success || flatResult.Data is null || flatResult.Data.Count == 0)
-                return ServiceResult<byte[]>.Fail(flatResult.Message ?? NoDataToExportMessage);
+
+            if (!flatResult.Success)
+            {
+                return ServiceResult<byte[]>.Fail(
+                    flatResult.Message ?? ErrorMessages.Export.FlatReportUnavailable,
+                    flatResult.Error == ErrorType.None ? ErrorType.Unexpected : flatResult.Error,
+                    flatResult.ErrorCode ?? ErrorCodes.Export.FlatReportUnavailable,
+                    flatResult.ValidationErrors);
+            }
+
+            if (flatResult.Data is null || flatResult.Data.Count == 0)
+            {
+                return ServiceResult<byte[]>.Fail(
+                    ErrorMessages.Export.NoProjectsInFlatReport,
+                    ErrorType.Validation,
+                    ErrorCodes.Export.NoProjectsInFlatReport);
+            }
 
             var projects = flatResult.Data.ToList();
 

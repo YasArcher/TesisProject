@@ -20,15 +20,10 @@ namespace tesisproject.backend.Services.Implementations
     {
         private const string NoItemsFoundMessage = "No items found for this catalog.";
         private const string CatalogItemsRetrievedMessage = "Catalog items retrieved.";
-        private const string ItemNotFoundMessage = "Item not found.";
         private const string CatalogItemRetrievedMessage = "Catalog item retrieved.";
         private const string CatalogItemCreatedMessage = "Catalog item created.";
-        private const string CatalogItemLockedForModifyMessage = "Catalog item is locked and cannot be modified.";
         private const string CatalogItemUpdatedMessage = "Catalog item updated.";
-        private const string NameAlreadyExistsDetailedMessage = "Name already exists. Please review the catalog to avoid duplicates.";
-        private const string SimilarNameCandidatesTemplate = "This name looks very similar to existing items. Please review before saving. Candidates: {0}";
         private const string CatalogItemRenamedByCloneMessage = "Catalog item renamed by creating a new item and deactivating the previous one.";
-        private const string CatalogItemLockedForDeleteMessage = "Catalog item is locked and cannot be deleted.";
         private const string CatalogItemDeletedMessage = "Catalog item deleted.";
 
         private readonly IUnitOfWork _uow;
@@ -91,11 +86,11 @@ namespace tesisproject.backend.Services.Implementations
                         nameof(CatalogDetailDTO.Id));
                 }
 
-                var entity = await _repo.GetByIdAsync(new object[] { id }, ct);
+                var entity = await _repo.GetByIdAsync([id], ct);
                 if (entity is null)
                 {
                     return ServiceResult<CatalogDetailDTO>.Fail(
-                        ItemNotFoundMessage,
+                        ErrorMessages.Catalog.ItemNotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Catalog.ItemNotFound);
                 }
@@ -175,11 +170,11 @@ namespace tesisproject.backend.Services.Implementations
                         nameof(UpdateCatalogRequestDTO.Id));
                 }
 
-                var entity = await _repo.GetByIdAsync(new object[] { request.Id }, ct);
+                var entity = await _repo.GetByIdAsync([request.Id], ct);
                 if (entity is null)
                 {
                     return ServiceResult<CatalogDetailDTO>.Fail(
-                        ItemNotFoundMessage,
+                        ErrorMessages.Catalog.ItemNotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Catalog.ItemNotFound);
                 }
@@ -187,7 +182,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (entity.IsLocked)
                 {
                     return ServiceResult<CatalogDetailDTO>.Fail(
-                        CatalogItemLockedForModifyMessage,
+                        ErrorMessages.Catalog.ItemLockedForModify,
                         ErrorType.Conflict,
                         ErrorCodes.Catalog.ItemLockedForModify);
                 }
@@ -216,7 +211,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (duplicated)
                 {
                     return ValidationFailure<CatalogDetailDTO>(
-                        NameAlreadyExistsDetailedMessage,
+                        ErrorMessages.Catalog.NameAlreadyExistsDetailed,
                         ErrorCodes.Common.NameAlreadyExists,
                         nameof(UpdateCatalogRequestDTO.Name));
                 }
@@ -243,7 +238,7 @@ namespace tesisproject.backend.Services.Implementations
                         $"{s.Name} (Id: {s.Id}, Similarity: {s.Similarity:0.0}%, Active: {s.IsActive})"));
 
                     return ValidationFailure<CatalogDetailDTO>(
-                        string.Format(SimilarNameCandidatesTemplate, hint),
+                        string.Format(ErrorMessages.Catalog.SimilarNameCandidatesFound, hint),
                         ErrorCodes.Catalog.SimilarNameCandidatesFound,
                         nameof(UpdateCatalogRequestDTO.Name));
                 }
@@ -301,11 +296,11 @@ namespace tesisproject.backend.Services.Implementations
                         "Id");
                 }
 
-                var entity = await _repo.GetByIdAsync(new object[] { id }, ct);
+                var entity = await _repo.GetByIdAsync([id], ct);
                 if (entity is null)
                 {
                     return ServiceResult<NoContent>.Fail(
-                        ItemNotFoundMessage,
+                        ErrorMessages.Catalog.ItemNotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Catalog.ItemNotFound);
                 }
@@ -313,7 +308,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (entity.IsLocked)
                 {
                     return ServiceResult<NoContent>.Fail(
-                        CatalogItemLockedForDeleteMessage,
+                        ErrorMessages.Catalog.ItemLockedForDelete,
                         ErrorType.Conflict,
                         ErrorCodes.Catalog.ItemLockedForDelete);
                 }

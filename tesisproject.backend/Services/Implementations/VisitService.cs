@@ -14,19 +14,6 @@ namespace tesisproject.backend.Services.Implementations
     {
         private const int PlanningMinMonths = 1;
 
-        private const string MsgProjectIdRequired = "ProjectId is required.";
-        private const string MsgProjectIdRequiredLower = "projectId is required.";
-        private const string MsgVisitStateIdRequired = "VisitStateId is required.";
-        private const string MsgVisitStateIdRequiredLower = "visitStateId is required.";
-        private const string MsgVisitStateIdInvalid = "VisitStateId is invalid.";
-        private const string MsgVisitIdRequired = "VisitId is required.";
-        private const string MsgFinalVisitStateIdRequired = "FinalVisitStateId is required.";
-
-        private const string MsgVisitNotFound = "Visit not found.";
-        private const string MsgNoVisitsFound = "No visits found.";
-        private const string MsgNoVisitsFoundForProject = "No visits found for this project.";
-        private const string MsgNoVisitsFoundForState = "No visits found for this state.";
-
         private const string MsgVisitCreated = "Visit created";
         private const string MsgVisitUpdated = "Visit updated";
         private const string MsgVisitDeleted = "Visit deleted";
@@ -36,28 +23,8 @@ namespace tesisproject.backend.Services.Implementations
         private const string MsgVisitDetailRetrieved = "Visit detail retrieved";
         private const string MsgVisitFinalized = "Visit finalized";
 
-        private const string MsgVisitCouldNotBeLoadedAfterCreation = "Visit could not be loaded after creation.";
-        private const string MsgVisitCouldNotBeLoadedAfterUpdate = "Visit could not be loaded after update.";
-        private const string MsgVisitCouldNotBeLoadedAfterFinalize = "Visit could not be loaded after finalize.";
-
         private const string MsgNoPlannedVisitsFound = "No planned visits found.";
         private const string MsgPlannedVisitsRetrieved = "Planned visits retrieved";
-
-        private const string MsgBulkInvalidRequest = "Request inválido.";
-        private const string MsgBulkNoValidProjectIds = "Debes enviar al menos un ProjectId válido.";
-        private const string MsgBulkScheduledDateRequired = "ScheduledDate es requerido.";
-        private const string MsgBulkCouldNotSchedule = "No se pudo planificar las visitas.";
-
-        private const string MsgVisitDeletedOk = "Visit deleted";
-
-        private const string MsgVisitRetrievedOk = "Visit retrieved";
-        private const string MsgVisitsRetrievedOk = "Visits retrieved";
-
-        private const string MsgVisitFinalizedOk = "Visit finalized";
-
-        private const string MsgProjectVisitsRetrievedOk = "Project visits retrieved";
-
-        private const string MsgVisitDetailRetrievedOk = "Visit detail retrieved";
 
         private readonly IUnitOfWork _uow;
 
@@ -73,7 +40,12 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request.ProjectId <= 0)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgProjectIdRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+                {
+                    return ServiceResult<VisitListResponseDTO>.Fail(
+                        ErrorMessages.Visit.ProjectIdRequired,
+                        ErrorType.Validation,
+                        ErrorCodes.Visit.ProjectIdRequired);
+                }
 
                 var entity = new Visit
                 {
@@ -87,7 +59,8 @@ namespace tesisproject.backend.Services.Implementations
 
                 return await LoadWithRefsOrFailAsync(
                     entity.VisitId,
-                    MsgVisitCouldNotBeLoadedAfterCreation,
+                    ErrorMessages.Visit.LoadAfterCreationFailed,
+                    ErrorCodes.Visit.LoadAfterCreationFailed,
                     MsgVisitCreated,
                     ct);
             }
@@ -97,7 +70,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<VisitListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+                return FailUnexpected<VisitListResponseDTO>(ex);
             }
         }
 
@@ -109,13 +82,18 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var visit = await _uow.Visits.GetByIdWithRefsAsync(visitId, ct);
                 if (visit is null)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
+                {
+                    return ServiceResult<VisitListResponseDTO>.Fail(
+                        ErrorMessages.Visit.NotFound,
+                        ErrorType.NotFound,
+                        ErrorCodes.Visit.NotFound);
+                }
 
-                return ServiceResult<VisitListResponseDTO>.Ok(MapToListDTO(visit), MsgVisitRetrievedOk);
+                return ServiceResult<VisitListResponseDTO>.Ok(MapToListDTO(visit), MsgVisitRetrieved);
             }
             catch (Exception ex)
             {
-                return ServiceResult<VisitListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+                return FailUnexpected<VisitListResponseDTO>(ex);
             }
         }
 
@@ -140,13 +118,18 @@ namespace tesisproject.backend.Services.Implementations
                     .ToListAsync(ct);
 
                 if (items.Count == 0)
-                    return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(MsgNoVisitsFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
+                {
+                    return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(
+                        ErrorMessages.Visit.NoneFound,
+                        ErrorType.NotFound,
+                        ErrorCodes.Visit.NoneFound);
+                }
 
-                return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Ok(items, MsgVisitsRetrievedOk);
+                return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Ok(items, MsgVisitsRetrieved);
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+                return FailUnexpected<IReadOnlyList<VisitListResponseDTO>>(ex);
             }
         }
 
@@ -155,18 +138,28 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (projectId <= 0)
-                    return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(MsgProjectIdRequiredLower, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+                {
+                    return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(
+                        ErrorMessages.Visit.ProjectIdRequired,
+                        ErrorType.Validation,
+                        ErrorCodes.Visit.ProjectIdRequired);
+                }
 
                 var items = await _uow.Visits.GetByProjectAsync(projectId, ct);
                 if (items.Count == 0)
-                    return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(MsgNoVisitsFoundForProject, ErrorType.NotFound, ErrorCodes.Common.NotFound);
+                {
+                    return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(
+                        ErrorMessages.Visit.NoneFoundForProject,
+                        ErrorType.NotFound,
+                        ErrorCodes.Visit.NoneFoundForProject);
+                }
 
                 var dtos = items.Select(MapToListDTO).ToList();
-                return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Ok(dtos, MsgProjectVisitsRetrievedOk);
+                return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Ok(dtos, MsgProjectVisitsRetrieved);
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<VisitListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+                return FailUnexpected<IReadOnlyList<VisitListResponseDTO>>(ex);
             }
         }
 
@@ -178,13 +171,28 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var entity = await _uow.Visits.GetByIdAsync(new object[] { request.VisitId }, ct);
                 if (entity is null)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
+                {
+                    return ServiceResult<VisitListResponseDTO>.Fail(
+                        ErrorMessages.Visit.NotFound,
+                        ErrorType.NotFound,
+                        ErrorCodes.Visit.NotFound);
+                }
 
                 if (request.ProjectId <= 0)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgProjectIdRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+                {
+                    return ServiceResult<VisitListResponseDTO>.Fail(
+                        ErrorMessages.Visit.ProjectIdRequired,
+                        ErrorType.Validation,
+                        ErrorCodes.Visit.ProjectIdRequired);
+                }
 
                 if (request.VisitStateId <= 0)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitStateIdRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+                {
+                    return ServiceResult<VisitListResponseDTO>.Fail(
+                        ErrorMessages.Visit.VisitStateIdRequired,
+                        ErrorType.Validation,
+                        ErrorCodes.Visit.VisitStateIdRequired);
+                }
 
                 entity.ProjectId = request.ProjectId;
                 entity.VisitStateId = request.VisitStateId;
@@ -196,7 +204,8 @@ namespace tesisproject.backend.Services.Implementations
 
                 return await LoadWithRefsOrFailAsync(
                     entity.VisitId,
-                    MsgVisitCouldNotBeLoadedAfterUpdate,
+                    ErrorMessages.Visit.LoadAfterUpdateFailed,
+                    ErrorCodes.Visit.LoadAfterUpdateFailed,
                     MsgVisitUpdated,
                     ct);
             }
@@ -206,7 +215,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<VisitListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+                return FailUnexpected<VisitListResponseDTO>(ex);
             }
         }
 
@@ -218,12 +227,17 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var entity = await _uow.Visits.GetByIdAsync(new object[] { visitId }, ct);
                 if (entity is null)
-                    return ServiceResult<NoContent>.Fail(MsgVisitNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
+                {
+                    return ServiceResult<NoContent>.Fail(
+                        ErrorMessages.Visit.NotFound,
+                        ErrorType.NotFound,
+                        ErrorCodes.Visit.NotFound);
+                }
 
                 _uow.Visits.Remove(entity);
                 await _uow.SaveChangesAsync(ct);
 
-                return ServiceResult<NoContent>.Ok(new NoContent(), MsgVisitDeletedOk);
+                return ServiceResult<NoContent>.Ok(new NoContent(), MsgVisitDeleted);
             }
             catch (DbUpdateException dbex)
             {
@@ -231,7 +245,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+                return FailUnexpected<NoContent>(ex);
             }
         }
 
@@ -243,13 +257,18 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var visit = await _uow.Visits.GetByIdWithRefsAsync(visitId, ct);
                 if (visit is null)
-                    return ServiceResult<VisitDetailResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
+                {
+                    return ServiceResult<VisitDetailResponseDTO>.Fail(
+                        ErrorMessages.Visit.NotFound,
+                        ErrorType.NotFound,
+                        ErrorCodes.Visit.NotFound);
+                }
 
-                return ServiceResult<VisitDetailResponseDTO>.Ok(MapToDetailDTO(visit), MsgVisitDetailRetrievedOk);
+                return ServiceResult<VisitDetailResponseDTO>.Ok(MapToDetailDTO(visit), MsgVisitDetailRetrieved);
             }
             catch (Exception ex)
             {
-                return ServiceResult<VisitDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+                return FailUnexpected<VisitDetailResponseDTO>(ex);
             }
         }
 
@@ -258,18 +277,38 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request is null || request.VisitId <= 0)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitIdRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+                {
+                    return ServiceResult<VisitListResponseDTO>.Fail(
+                        ErrorMessages.Visit.VisitIdRequired,
+                        ErrorType.Validation,
+                        ErrorCodes.Visit.VisitIdRequired);
+                }
 
                 if (request.FinalVisitStateId <= 0)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgFinalVisitStateIdRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+                {
+                    return ServiceResult<VisitListResponseDTO>.Fail(
+                        ErrorMessages.Visit.FinalVisitStateIdRequired,
+                        ErrorType.Validation,
+                        ErrorCodes.Visit.FinalVisitStateIdRequired);
+                }
 
                 var entity = await _uow.Visits.GetByIdAsync(new object[] { request.VisitId }, ct);
                 if (entity is null)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
+                {
+                    return ServiceResult<VisitListResponseDTO>.Fail(
+                        ErrorMessages.Visit.NotFound,
+                        ErrorType.NotFound,
+                        ErrorCodes.Visit.NotFound);
+                }
 
                 var stateExists = await _uow.VisitStates.ExistsAsync(x => x.Id == request.FinalVisitStateId, ct);
                 if (!stateExists)
-                    return ServiceResult<VisitListResponseDTO>.Fail(MsgVisitStateIdInvalid, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+                {
+                    return ServiceResult<VisitListResponseDTO>.Fail(
+                        ErrorMessages.Visit.VisitStateIdInvalid,
+                        ErrorType.Validation,
+                        ErrorCodes.Visit.VisitStateIdInvalid);
+                }
 
                 entity.VisitStateId = request.FinalVisitStateId;
                 entity.PerformedDate ??= DateTime.UtcNow;
@@ -279,8 +318,9 @@ namespace tesisproject.backend.Services.Implementations
 
                 return await LoadWithRefsOrFailAsync(
                     entity.VisitId,
-                    MsgVisitCouldNotBeLoadedAfterFinalize,
-                    MsgVisitFinalizedOk,
+                    ErrorMessages.Visit.LoadAfterFinalizeFailed,
+                    ErrorCodes.Visit.LoadAfterFinalizeFailed,
+                    MsgVisitFinalized,
                     ct);
             }
             catch (DbUpdateException dbex)
@@ -289,7 +329,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<VisitListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+                return FailUnexpected<VisitListResponseDTO>(ex);
             }
         }
 
@@ -301,11 +341,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             try
             {
-                // Fecha de referencia: si el cliente manda una fecha, se usa; si no, se usa hoy (UTC).
                 var today = (executionDate?.ToDateTime(TimeOnly.MinValue) ?? DateTime.UtcNow.Date).Date;
-
-                // Regla: "cumple el periodo configurado" hasta la fecha => baseDate + minMonths <= today
-                // Equivalente en query: baseDate <= today - minMonths
                 var cutoff = today.AddMonths(-PlanningMinMonths);
 
                 var rows = await _uow.Projects
@@ -326,12 +362,9 @@ namespace tesisproject.backend.Services.Implementations
                             .Max(),
 
                         RealizedCount = p.Visits.Count(v => v.VisitStateId == VisitStateIds.Realized),
-
-                        // Bloquea si existe una visita abierta (Planned/Pending/OnHold)
                         HasOpenVisit = p.Visits.Any(v => VisitStateIds.OpenStates.Contains(v.VisitStateId))
                     })
                     .Where(x => !x.HasOpenVisit)
-                    // "hasta la fecha": si baseDate <= cutoff entonces dueDate (=baseDate+1mes) <= today
                     .Where(x => (x.LastRealizedDate ?? x.StartDate) <= cutoff)
                     .OrderBy(x => (x.LastRealizedDate ?? x.StartDate))
                     .ToListAsync(ct);
@@ -351,15 +384,12 @@ namespace tesisproject.backend.Services.Implementations
                     {
                         VisitId = 0,
                         VisitDate = dueDate,
-
                         VisitStateId = VisitStateIds.Planned,
                         VisitStateName = "Planificable",
-
                         ProjectId = x.ProjectId,
                         ProjectName = x.ProjectName,
                         ProjectCode = x.ProjectCode,
                         FacultyId = x.FacultyId,
-
                         VisitNumber = x.RealizedCount + 1
                     };
                 }).ToList();
@@ -371,8 +401,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
-                    .Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+                return FailUnexpected<IReadOnlyList<VisitPlannedForExecutionListDTO>>(ex);
             }
         }
 
@@ -385,8 +414,12 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (visitStateId <= 0)
-                    return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
-                        .Fail(MsgVisitStateIdRequiredLower, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+                {
+                    return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>.Fail(
+                        ErrorMessages.Visit.VisitStateIdRequired,
+                        ErrorType.Validation,
+                        ErrorCodes.Visit.VisitStateIdRequired);
+                }
 
                 var list = await _uow.Visits
                     .QueryWithRefs()
@@ -396,15 +429,12 @@ namespace tesisproject.backend.Services.Implementations
                     {
                         VisitId = v.VisitId,
                         VisitDate = v.ScheduledDate,
-
                         VisitStateId = v.VisitStateId,
                         VisitStateName = v.VisitState != null ? v.VisitState.Name : string.Empty,
-
                         ProjectId = v.ProjectId,
                         ProjectName = v.Project.ProjectName,
                         ProjectCode = v.Project.ProjectCode,
                         FacultyId = v.Project.FacultyId,
-
                         VisitNumber = 0
                     })
                     .OrderBy(v => v.VisitDate ?? DateTime.MaxValue)
@@ -412,8 +442,12 @@ namespace tesisproject.backend.Services.Implementations
                     .ToListAsync(ct);
 
                 if (list.Count == 0)
-                    return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
-                        .Fail(MsgNoVisitsFoundForState, ErrorType.NotFound, ErrorCodes.Common.NotFound);
+                {
+                    return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>.Fail(
+                        ErrorMessages.Visit.NoneFoundForState,
+                        ErrorType.NotFound,
+                        ErrorCodes.Visit.NoneFoundForState);
+                }
 
                 var projectIds = list.Select(x => x.ProjectId).Distinct().ToList();
 
@@ -432,12 +466,11 @@ namespace tesisproject.backend.Services.Implementations
                 }
 
                 return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
-                    .Ok(list, MsgVisitsRetrievedOk);
+                    .Ok(list, MsgVisitsRetrieved);
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>
-                    .Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+                return FailUnexpected<IReadOnlyList<VisitPlannedForExecutionListDTO>>(ex);
             }
         }
 
@@ -446,7 +479,12 @@ namespace tesisproject.backend.Services.Implementations
         public async Task<ServiceResult<NoContent>> BulkScheduleAsync(BulkScheduleVisitsRequestDTO request, CancellationToken ct = default)
         {
             if (request is null)
-                return ServiceResult<NoContent>.Fail(MsgBulkInvalidRequest);
+            {
+                return ServiceResult<NoContent>.Fail(
+                    ErrorMessages.Visit.BulkInvalidRequest,
+                    ErrorType.Validation,
+                    ErrorCodes.Visit.BulkInvalidRequest);
+            }
 
             var projectIds = request.ProjectIds?
                 .Where(x => x > 0)
@@ -454,18 +492,32 @@ namespace tesisproject.backend.Services.Implementations
                 .ToList() ?? new List<int>();
 
             if (projectIds.Count == 0)
-                return ServiceResult<NoContent>.Fail(MsgBulkNoValidProjectIds);
+            {
+                return ServiceResult<NoContent>.Fail(
+                    ErrorMessages.Visit.BulkNoValidProjectIds,
+                    ErrorType.Validation,
+                    ErrorCodes.Visit.BulkNoValidProjectIds);
+            }
 
             if (request.ScheduledDate == default)
-                return ServiceResult<NoContent>.Fail(MsgBulkScheduledDateRequired);
+            {
+                return ServiceResult<NoContent>.Fail(
+                    ErrorMessages.Visit.BulkScheduledDateRequired,
+                    ErrorType.Validation,
+                    ErrorCodes.Visit.BulkScheduledDateRequired);
+            }
 
             var scheduled = request.ScheduledDate;
 
-            // Reutilizas el mismo método repo, pero ahora su primer parámetro serán ProjectIds
             var repoResult = await _uow.Visits.BulkScheduleAsync(projectIds, scheduled, visitStateId: VisitStateIds.Pending, ct);
 
             if (!repoResult.Success)
-                return ServiceResult<NoContent>.Fail(repoResult.Error ?? MsgBulkCouldNotSchedule);
+            {
+                return ServiceResult<NoContent>.Fail(
+                    repoResult.Error ?? ErrorMessages.Visit.BulkScheduleFailed,
+                    ErrorType.Unexpected,
+                    ErrorCodes.Visit.BulkScheduleFailed);
+            }
 
             await _uow.SaveChangesAsync(ct);
 
@@ -500,19 +552,36 @@ namespace tesisproject.backend.Services.Implementations
         private async Task<ServiceResult<VisitListResponseDTO>> LoadWithRefsOrFailAsync(
             int visitId,
             string failMessage,
+            string failCode,
             string okMessage,
             CancellationToken ct)
         {
             var withRefs = await _uow.Visits.GetByIdWithRefsAsync(visitId, ct);
             if (withRefs is null)
-                return ServiceResult<VisitListResponseDTO>.Fail(failMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+            {
+                return ServiceResult<VisitListResponseDTO>.Fail(
+                    failMessage,
+                    ErrorType.Unexpected,
+                    failCode);
+            }
 
             return ServiceResult<VisitListResponseDTO>.Ok(MapToListDTO(withRefs), okMessage);
         }
 
         private static ServiceResult<T> FailConflict<T>(DbUpdateException dbex)
         {
-            return ServiceResult<T>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
+            return ServiceResult<T>.Fail(
+                dbex.InnerException?.Message ?? dbex.Message,
+                ErrorType.Conflict,
+                ErrorCodes.Common.PersistenceConflict);
+        }
+
+        private static ServiceResult<T> FailUnexpected<T>(Exception ex)
+        {
+            return ServiceResult<T>.Fail(
+                ex.Message,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.UnexpectedError);
         }
     }
 }

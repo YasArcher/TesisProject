@@ -11,6 +11,7 @@ using tesisproject.shared.DTOs.Products.ProductTypeDesign.Request;
 using tesisproject.shared.DTOs.Products.ProductTypeDesign.Response;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Entities.Core.Products;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -18,14 +19,7 @@ namespace tesisproject.backend.Services.Implementations
     public sealed class ProductTypeDesignService : IProductTypeDesignService
     {
         private const string NewTemplateMessage = "New product type design template.";
-        private const string ProductTypeNotFoundMessage = "ProductType not found.";
         private const string DesignLoadedMessage = "Product type design loaded.";
-        private const string RequestOrProductTypeNullMessage = "Request or ProductType is null.";
-        private const string ErrorSavingProductTypeFallbackMessage = "Error saving ProductType.";
-        private const string ErrorSavingProductAttributeMessageTemplate = "Error saving ProductAttribute '{0}'.";
-        private const string ProductTypeNameRequiredMessage = "ProductType name is required.";
-        private const string ProductTypeNameAlreadyExistsMessage = "ProductType name already exists.";
-        private const string ProductTypeLockedMessage = "ProductType is locked and cannot be modified.";
 
         private readonly IUnitOfWork _uow;
         private readonly IProductAttributeService _productAttributeService;
@@ -77,7 +71,10 @@ namespace tesisproject.backend.Services.Implementations
                 if (typeEntity is null)
                 {
                     return ServiceResult<ProductTypeDesignDetailDTO>
-                        .Fail(ProductTypeNotFoundMessage, ErrorType.NotFound);
+                        .Fail(
+                            ErrorMessages.ProductTypeDesign.ProductTypeNotFound,
+                            ErrorType.NotFound,
+                            ErrorCodes.ProductTypeDesign.ProductTypeNotFound);
                 }
 
                 var typeDto = MapProductTypeToCatalogDetail(typeEntity);
@@ -106,10 +103,9 @@ namespace tesisproject.backend.Services.Implementations
                 return ServiceResult<ProductTypeDesignDetailDTO>
                     .Ok(dto, DesignLoadedMessage);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<ProductTypeDesignDetailDTO>
-                    .Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<ProductTypeDesignDetailDTO>();
             }
         }
 
@@ -123,16 +119,21 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (request is null || request.ProductType is null)
                 {
-                    return ServiceResult<ProductTypeDesignDetailDTO>
-                        .Fail(RequestOrProductTypeNullMessage, ErrorType.Validation);
+                    return ValidationFailure<ProductTypeDesignDetailDTO>(
+                        ErrorMessages.ProductTypeDesign.RequestOrProductTypeRequired,
+                        ErrorCodes.ProductTypeDesign.RequestOrProductTypeRequired,
+                        nameof(SaveProductTypeDesignRequestDTO.ProductType));
                 }
 
                 // 1) Upsert ProductType
                 var productTypeIdResult = await UpsertProductTypeAsync(request.ProductType, ct);
                 if (!productTypeIdResult.Success || productTypeIdResult.Data <= 0)
                 {
-                    return ServiceResult<ProductTypeDesignDetailDTO>
-                        .Fail(productTypeIdResult.Message ?? ErrorSavingProductTypeFallbackMessage, ErrorType.Validation);
+                    return ServiceResult<ProductTypeDesignDetailDTO>.Fail(
+                        productTypeIdResult.Message ?? ErrorMessages.ProductTypeDesign.ErrorSavingProductType,
+                        productTypeIdResult.Error == ErrorType.None ? ErrorType.Validation : productTypeIdResult.Error,
+                        productTypeIdResult.ErrorCode ?? ErrorCodes.ProductTypeDesign.ErrorSavingProductType,
+                        productTypeIdResult.ValidationErrors);
                 }
 
                 var productTypeId = productTypeIdResult.Data;
@@ -145,8 +146,10 @@ namespace tesisproject.backend.Services.Implementations
                     var mappedId = await UpsertAttributeAsync(attrDto, ct);
                     if (mappedId <= 0)
                     {
-                        return ServiceResult<ProductTypeDesignDetailDTO>
-                            .Fail(string.Format(ErrorSavingProductAttributeMessageTemplate, attrDto.Name), ErrorType.Validation);
+                        return ValidationFailure<ProductTypeDesignDetailDTO>(
+                            string.Format(ErrorMessages.ProductTypeDesign.ErrorSavingProductAttribute, attrDto.Name),
+                            ErrorCodes.ProductTypeDesign.ErrorSavingProductAttribute,
+                            nameof(SaveProductTypeDesignRequestDTO.Attributes));
                     }
 
                     // Nota: se mantiene el comportamiento original (incluye el caso Id == 0)
@@ -162,10 +165,9 @@ namespace tesisproject.backend.Services.Implementations
                 // 5) Devolver el diseño actualizado
                 return await GetDesignAsync(productTypeId, ct);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<ProductTypeDesignDetailDTO>
-                    .Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<ProductTypeDesignDetailDTO>();
             }
         }
 
@@ -178,8 +180,10 @@ namespace tesisproject.backend.Services.Implementations
             var name = NormalizeName(dto.Name);
             if (string.IsNullOrWhiteSpace(name))
             {
-                return ServiceResult<int>
-                    .Fail(ProductTypeNameRequiredMessage, ErrorType.Validation);
+                return ValidationFailure<int>(
+                    ErrorMessages.ProductTypeDesign.ProductTypeNameRequired,
+                    ErrorCodes.ProductTypeDesign.ProductTypeNameRequired,
+                    nameof(ProductTypeUpsertDTO.Name));
             }
 
             if (dto.Id == 0)
@@ -188,8 +192,10 @@ namespace tesisproject.backend.Services.Implementations
                 var exists = await _uow.ProductTypes.NameExistsAsync(name, excludeId: null, ct);
                 if (exists)
                 {
-                    return ServiceResult<int>
-                        .Fail(ProductTypeNameAlreadyExistsMessage, ErrorType.Validation);
+                    return ValidationFailure<int>(
+                        ErrorMessages.ProductTypeDesign.ProductTypeNameAlreadyExists,
+                        ErrorCodes.ProductTypeDesign.ProductTypeNameAlreadyExists,
+                        nameof(ProductTypeUpsertDTO.Name));
                 }
 
                 var entity = new ProductType
@@ -211,20 +217,28 @@ namespace tesisproject.backend.Services.Implementations
                 if (entity is null)
                 {
                     return ServiceResult<int>
-                        .Fail(ProductTypeNotFoundMessage, ErrorType.NotFound);
+                        .Fail(
+                            ErrorMessages.ProductTypeDesign.ProductTypeNotFound,
+                            ErrorType.NotFound,
+                            ErrorCodes.ProductTypeDesign.ProductTypeNotFound);
                 }
 
                 if (entity.IsLocked)
                 {
                     return ServiceResult<int>
-                        .Fail(ProductTypeLockedMessage, ErrorType.Conflict);
+                        .Fail(
+                            ErrorMessages.ProductTypeDesign.ProductTypeLocked,
+                            ErrorType.Conflict,
+                            ErrorCodes.ProductTypeDesign.ProductTypeLocked);
                 }
 
                 var duplicated = await _uow.ProductTypes.NameExistsAsync(name, excludeId: dto.Id, ct);
                 if (duplicated)
                 {
-                    return ServiceResult<int>
-                        .Fail(ProductTypeNameAlreadyExistsMessage, ErrorType.Validation);
+                    return ValidationFailure<int>(
+                        ErrorMessages.ProductTypeDesign.ProductTypeNameAlreadyExists,
+                        ErrorCodes.ProductTypeDesign.ProductTypeNameAlreadyExists,
+                        nameof(ProductTypeUpsertDTO.Name));
                 }
 
                 entity.Name = name;
@@ -356,6 +370,36 @@ namespace tesisproject.backend.Services.Implementations
                     _uow.ProductAttributeDefinitions.Update(def);
                 }
             }
+        }
+
+        private static ServiceResult<T> FailUnexpected<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.UnexpectedError,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.UnexpectedError);
+
+        private static ServiceResult<T> ValidationFailure<T>(
+            string message,
+            string errorCode,
+            params string[] fields)
+        {
+            Dictionary<string, string[]>? validation = null;
+
+            if (fields is { Length: > 0 })
+            {
+                validation = fields
+                    .Distinct(StringComparer.Ordinal)
+                    .ToDictionary(
+                        field => field,
+                        _ => new[] { message },
+                        StringComparer.Ordinal);
+            }
+
+            return ServiceResult<T>.Fail(
+                message,
+                ErrorType.Validation,
+                errorCode,
+                validation);
         }
 
         // ==================== MAPPERS ====================

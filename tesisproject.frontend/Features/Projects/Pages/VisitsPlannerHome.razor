@@ -8,10 +8,10 @@
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.Modal
 @using tesisproject.frontend.SharedUI.DateInput
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Filters
 @using tesisproject.shared.DTOs.Visit.Request
 @using tesisproject.shared.DTOs.Visit.Response
-@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.External
 
 @inject IVisitClientService VisitService
@@ -350,8 +350,8 @@
         {
             var resp = await ExternalAcademics.GetFacultiesWithProgramsAsync();
 
-            _faculties = (resp.Success && resp.Response != null)
-                ? resp.Response
+            _faculties = (resp.Success && resp.Data != null)
+                ? resp.Data
                 : new List<ExternalFacultyDTO>();
 
             _facultyNameById = _faculties
@@ -375,16 +375,16 @@
             {
                 var resp = await VisitService.GetByStateAsync(PendingStateId);
 
-                allItems = (resp.Success && resp.Response != null)
-                    ? resp.Response
+                allItems = (resp.Success && resp.Data != null)
+                    ? resp.Data
                     : new List<VisitPlannedForExecutionListDTO>();
             }
             else
             {
                 var resp = await VisitService.GetPlannedForExecutionAsync(_filterExecutionDate);
 
-                allItems = (resp.Success && resp.Response != null)
-                    ? resp.Response
+                allItems = (resp.Success && resp.Data != null)
+                    ? resp.Data
                     : new List<VisitPlannedForExecutionListDTO>();
             }
 
@@ -620,11 +620,11 @@
 
             if (!resp.Success)
             {
-                Toast.ShowError(resp.Error ?? "No se pudo planificar las visitas.");
+                Toast.ShowError(resp.ToErrorMessage("No se pudo planificar las visitas."));
                 return;
             }
 
-            Toast.ShowSuccess("Planificación guardada correctamente.");
+            Toast.ShowSuccess(resp.ToSuccessMessage("Planificación guardada correctamente."));
 
             _selectedProjectIds.Clear();
             await ClosePlanModal();

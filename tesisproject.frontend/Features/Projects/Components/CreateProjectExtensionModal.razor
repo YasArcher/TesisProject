@@ -1,11 +1,12 @@
 ﻿@inherits ModalBase
 @using tesisproject.frontend.Services.Interfaces
-@using tesisproject.shared.DTOs.Catalog.Common.Response
-@using tesisproject.shared.DTOs.ProjectExtensions.Request
 @using tesisproject.frontend.SharedUI.SelectInput
 @using tesisproject.frontend.SharedUI.DateInput
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+@using tesisproject.shared.DTOs.ProjectExtensions.Request
 
 @inject IProjectExtensionClientService ProjectExtensionService
 @inject IToastService Toast
@@ -170,13 +171,13 @@
 
             if (response.Success)
             {
-                Toast.ShowSuccess("Prórroga creada correctamente");
+                Toast.ShowSuccess(response.ToSuccessMessage("Prórroga creada correctamente"));
                 await OnExtensionCreated.InvokeAsync();
                 await Close();
             }
             else
             {
-                _errorMessage = response.Error ?? "Error al crear la prórroga";
+                _errorMessage = response.ToErrorMessage("Error al crear la prórroga");
                 Toast.ShowError(_errorMessage);
             }
         }

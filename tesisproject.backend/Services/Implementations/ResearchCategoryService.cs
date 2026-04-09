@@ -4,20 +4,13 @@ using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.Catalog.ResearchCategory.Request;
 using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response;
 using tesisproject.shared.Entities.Catalogs;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
 {
     public class ResearchCategoryService : IResearchCategoryService
     {
-        private const string MsgInvalidId = "Invalid id.";
-        private const string MsgNotFound = "ResearchCategory not found.";
-        private const string MsgNameRequired = "Name is required.";
-        private const string MsgTypeIdRequired = "ResearchCategoryTypeId is required.";
-        private const string MsgNameAlreadyExists = "Name already exists.";
-        private const string MsgParentNotFound = "Parent category not found.";
-        private const string MsgParentCannotBeSameAsId = "ParentCategoryId cannot be the same as Id.";
-
         private readonly IUnitOfWork _uow;
 
         public ResearchCategoryService(IUnitOfWork uow)
@@ -71,15 +64,23 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail(MsgInvalidId, ErrorType.Validation);
+            {
+                return ValidationFailure<ResearchCategoryDetailDTO>(
+                    ErrorMessages.ResearchCategory.InvalidId,
+                    ErrorCodes.ResearchCategory.InvalidId,
+                    nameof(ResearchCategoryDetailDTO.Id));
+            }
 
             var entity = await QueryWithTypeAndParent()
                 .FirstOrDefaultAsync(x => x.Id == id, ct);
 
             if (entity is null)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail(MsgNotFound, ErrorType.NotFound);
+            {
+                return ServiceResult<ResearchCategoryDetailDTO>.Fail(
+                    ErrorMessages.ResearchCategory.NotFound,
+                    ErrorType.NotFound,
+                    ErrorCodes.ResearchCategory.NotFound);
+            }
 
             var dto = ToDetailDto(entity);
 
@@ -95,12 +96,20 @@ namespace tesisproject.backend.Services.Implementations
             var name = NormalizeName(request?.Name);
 
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail(MsgNameRequired, ErrorType.Validation);
+            {
+                return ValidationFailure<ResearchCategoryDetailDTO>(
+                    ErrorMessages.Common.NameRequired,
+                    ErrorCodes.Common.NameRequired,
+                    nameof(AddResearchCategoryRequestDTO.Name));
+            }
 
             if (request!.ResearchCategoryTypeId <= 0)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail(MsgTypeIdRequired, ErrorType.Validation);
+            {
+                return ValidationFailure<ResearchCategoryDetailDTO>(
+                    ErrorMessages.ResearchCategory.TypeIdRequired,
+                    ErrorCodes.ResearchCategory.TypeIdRequired,
+                    nameof(AddResearchCategoryRequestDTO.ResearchCategoryTypeId));
+            }
 
             // Validar duplicado por nombre (catálogo)
             var duplicated = await _uow.ResearchCategories.ExistsAsync(
@@ -108,8 +117,12 @@ namespace tesisproject.backend.Services.Implementations
                 ct);
 
             if (duplicated)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail(MsgNameAlreadyExists, ErrorType.Validation);
+            {
+                return ValidationFailure<ResearchCategoryDetailDTO>(
+                    ErrorMessages.Common.NameAlreadyExists,
+                    ErrorCodes.Common.NameAlreadyExists,
+                    nameof(AddResearchCategoryRequestDTO.Name));
+            }
 
             // Validar parent (si viene)
             if (request.ParentCategoryId.HasValue)
@@ -119,8 +132,12 @@ namespace tesisproject.backend.Services.Implementations
                     ct);
 
                 if (!parentExists)
-                    return ServiceResult<ResearchCategoryDetailDTO>
-                        .Fail(MsgParentNotFound, ErrorType.Validation);
+                {
+                    return ValidationFailure<ResearchCategoryDetailDTO>(
+                        ErrorMessages.ResearchCategory.ParentNotFound,
+                        ErrorCodes.ResearchCategory.ParentNotFound,
+                        nameof(AddResearchCategoryRequestDTO.ParentCategoryId));
+                }
             }
 
             var entity = new ResearchCategory
@@ -148,25 +165,41 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null || request.Id <= 0)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail(MsgInvalidId, ErrorType.Validation);
+            {
+                return ValidationFailure<ResearchCategoryDetailDTO>(
+                    ErrorMessages.ResearchCategory.InvalidId,
+                    ErrorCodes.ResearchCategory.InvalidId,
+                    nameof(UpdateResearchCategoryRequestDTO.Id));
+            }
 
             var name = NormalizeName(request.Name);
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail(MsgNameRequired, ErrorType.Validation);
+            {
+                return ValidationFailure<ResearchCategoryDetailDTO>(
+                    ErrorMessages.Common.NameRequired,
+                    ErrorCodes.Common.NameRequired,
+                    nameof(UpdateResearchCategoryRequestDTO.Name));
+            }
 
             if (request.ResearchCategoryTypeId <= 0)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail(MsgTypeIdRequired, ErrorType.Validation);
+            {
+                return ValidationFailure<ResearchCategoryDetailDTO>(
+                    ErrorMessages.ResearchCategory.TypeIdRequired,
+                    ErrorCodes.ResearchCategory.TypeIdRequired,
+                    nameof(UpdateResearchCategoryRequestDTO.ResearchCategoryTypeId));
+            }
 
             var entity = await _uow.ResearchCategories
                 .Query(false) // tracking
                 .FirstOrDefaultAsync(x => x.Id == request.Id, ct);
 
             if (entity is null)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail(MsgNotFound, ErrorType.NotFound);
+            {
+                return ServiceResult<ResearchCategoryDetailDTO>.Fail(
+                    ErrorMessages.ResearchCategory.NotFound,
+                    ErrorType.NotFound,
+                    ErrorCodes.ResearchCategory.NotFound);
+            }
 
             // Validar nombre duplicado excluyendo el propio Id
             var duplicated = await _uow.ResearchCategories.ExistsAsync(
@@ -174,15 +207,21 @@ namespace tesisproject.backend.Services.Implementations
                 ct);
 
             if (duplicated)
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail(MsgNameAlreadyExists, ErrorType.Validation);
+            {
+                return ValidationFailure<ResearchCategoryDetailDTO>(
+                    ErrorMessages.Common.NameAlreadyExists,
+                    ErrorCodes.Common.NameAlreadyExists,
+                    nameof(UpdateResearchCategoryRequestDTO.Name));
+            }
 
             // Evitar parent = mismo Id
             if (request.ParentCategoryId.HasValue &&
                 request.ParentCategoryId.Value == request.Id)
             {
-                return ServiceResult<ResearchCategoryDetailDTO>
-                    .Fail(MsgParentCannotBeSameAsId, ErrorType.Validation);
+                return ValidationFailure<ResearchCategoryDetailDTO>(
+                    ErrorMessages.ResearchCategory.ParentCannotBeSameAsId,
+                    ErrorCodes.ResearchCategory.ParentCannotBeSameAsId,
+                    nameof(UpdateResearchCategoryRequestDTO.ParentCategoryId));
             }
 
             // Validar parent si viene
@@ -193,8 +232,12 @@ namespace tesisproject.backend.Services.Implementations
                     ct);
 
                 if (!parentExists)
-                    return ServiceResult<ResearchCategoryDetailDTO>
-                        .Fail(MsgParentNotFound, ErrorType.Validation);
+                {
+                    return ValidationFailure<ResearchCategoryDetailDTO>(
+                        ErrorMessages.ResearchCategory.ParentNotFound,
+                        ErrorCodes.ResearchCategory.ParentNotFound,
+                        nameof(UpdateResearchCategoryRequestDTO.ParentCategoryId));
+                }
             }
 
             entity.Name = name;
@@ -219,20 +262,52 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<NoContent>
-                    .Fail(MsgInvalidId, ErrorType.Validation);
+            {
+                return ValidationFailure<NoContent>(
+                    ErrorMessages.ResearchCategory.InvalidId,
+                    ErrorCodes.ResearchCategory.InvalidId,
+                    "Id");
+            }
 
             var entity = await _uow.ResearchCategories
                 .GetByIdAsync(new object[] { id }, ct);
 
             if (entity is null)
-                return ServiceResult<NoContent>
-                    .Fail(MsgNotFound, ErrorType.NotFound);
+            {
+                return ServiceResult<NoContent>.Fail(
+                    ErrorMessages.ResearchCategory.NotFound,
+                    ErrorType.NotFound,
+                    ErrorCodes.ResearchCategory.NotFound);
+            }
 
             _uow.ResearchCategories.Remove(entity);
             await _uow.SaveChangesAsync(ct);
 
             return ServiceResult<NoContent>.Ok(new NoContent());
+        }
+
+        private static ServiceResult<T> ValidationFailure<T>(
+            string message,
+            string errorCode,
+            params string[] fields)
+        {
+            Dictionary<string, string[]>? validation = null;
+
+            if (fields is { Length: > 0 })
+            {
+                validation = fields
+                    .Distinct(StringComparer.Ordinal)
+                    .ToDictionary(
+                        field => field,
+                        _ => new[] { message },
+                        StringComparer.Ordinal);
+            }
+
+            return ServiceResult<T>.Fail(
+                message,
+                ErrorType.Validation,
+                errorCode,
+                validation);
         }
 
         private IQueryable<ResearchCategory> QueryWithTypeAndParent()
@@ -322,4 +397,4 @@ namespace tesisproject.backend.Services.Implementations
             return roots;
         }
     }
-}   
+}

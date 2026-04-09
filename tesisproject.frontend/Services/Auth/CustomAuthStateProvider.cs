@@ -32,18 +32,15 @@ namespace tesisproject.frontend.Services.Auth
                     var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                     if (now >= expUnix)
                     {
-                        // 👉 AQUÍ: intentamos usar el refresh token
                         var refreshResult = await _authClient.RefreshAsync();
 
-                        if (refreshResult.HttpResponse.IsSuccessStatusCode &&
-                            refreshResult.Response is not null)
+                        if (refreshResult.Success &&
+                            refreshResult.Data is not null)
                         {
-                            var newToken = refreshResult.Response.AccessToken;
+                            var newToken = refreshResult.Data.AccessToken;
 
-                            // Guardamos el nuevo access token
                             await _tokenStore.SetAsync(newToken);
 
-                            // Reconstruimos claims con el token renovado
                             var newClaims = ParseClaimsFromJwt(newToken);
                             var newIdentity = new ClaimsIdentity(
                                 newClaims,
@@ -56,7 +53,6 @@ namespace tesisproject.frontend.Services.Auth
                                 new ClaimsPrincipal(newIdentity));
                         }
 
-                        // Si el refresh falla, limpiamos y quedamos anónimos
                         await _tokenStore.ClearAsync();
                         NotifyUserLogout();
                         return Anonymous();
@@ -80,7 +76,6 @@ namespace tesisproject.frontend.Services.Auth
             }
         }
 
-        
         public async Task SetTokenAsync(string token)
         {
             await _tokenStore.SetAsync(token);
@@ -92,7 +87,6 @@ namespace tesisproject.frontend.Services.Auth
             await _tokenStore.ClearAsync();
             NotifyUserLogout();
         }
-
 
         public void NotifyUserAuthentication(string token)
         {
@@ -115,7 +109,6 @@ namespace tesisproject.frontend.Services.Auth
 
         private static List<Claim> ParseClaimsFromJwt(string jwt)
         {
-            // Construimos lista para evitar yield en try/catch
             var claims = new List<Claim>();
             try
             {

@@ -4,7 +4,6 @@
 @using Microsoft.JSInterop
 
 @inject IDocumentClientService DocumentService
-@inject IModalService ModalService
 @inject IJSRuntime JS
 
 <Modal Id="@Id"
@@ -77,7 +76,6 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        // Si se cerró o no hay doc, limpiar
         if (!IsOpen || DocumentId <= 0)
         {
             await CleanupBlobAsync();
@@ -85,24 +83,20 @@
             return;
         }
 
-        // Evita recargar si ya está cargado
         if (_loadedDocumentId == DocumentId && !string.IsNullOrWhiteSpace(_blobUrl))
             return;
 
         await CleanupBlobAsync();
 
-        // ✅ Ahora todo pasa por wrapper
         var r = await DocumentService.GetContentAsync(DocumentId);
 
-        if (!r.Success || r.Response is null)
+        if (!r.Success || r.Data is null)
         {
-            // opcional: log / mostrar error
-            // _error = r.Error ?? "No se pudo cargar el documento.";
             _loadedDocumentId = 0;
             return;
         }
 
-        var payload = r.Response; // FilePayload
+        var payload = r.Data;
         _fileName = payload.FileName;
 
         _blobUrl = await JS.InvokeAsync<string>(
@@ -112,7 +106,6 @@
 
         _loadedDocumentId = DocumentId;
     }
-
 
     private async Task CleanupBlobAsync()
     {

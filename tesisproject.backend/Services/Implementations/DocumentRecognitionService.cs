@@ -18,8 +18,6 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class DocumentRecognitionService : IDocumentRecognitionService
     {
-        private const string MsgFileIsEmpty = "File is empty.";
-
         private readonly ILogger<IDocumentRecognitionService> _logger;
         private readonly IExternalDirectoryClient _externalDirectory;
         private readonly IMemberRoleTypeService _memberRoleTypeService;
@@ -56,7 +54,7 @@ namespace tesisproject.backend.Services.Implementations
             if (file is null || file.Length == 0)
             {
                 return ValidationFailure<ResolutionInfo>(
-                    MsgFileIsEmpty,
+                    ErrorMessages.DocumentRecognition.FileEmpty,
                     ErrorCodes.DocumentRecognition.FileEmpty,
                     nameof(file));
             }
@@ -92,7 +90,7 @@ namespace tesisproject.backend.Services.Implementations
             if (file is null || file.Length == 0)
             {
                 return ValidationFailure<DideProjectFormInfo>(
-                    MsgFileIsEmpty,
+                    ErrorMessages.DocumentRecognition.FileEmpty,
                     ErrorCodes.DocumentRecognition.FileEmpty,
                     nameof(file));
             }
@@ -122,7 +120,7 @@ namespace tesisproject.backend.Services.Implementations
         //    PRIVATE METHODS
         // =======================
 
-        private Task<ResolutionInfo> ExtractResolutionDataAsync(
+        private static Task<ResolutionInfo> ExtractResolutionDataAsync(
             Stream pdfStream,
             CancellationToken ct)
         {
@@ -230,11 +228,10 @@ namespace tesisproject.backend.Services.Implementations
 
             var periodsRes = await _periods.GetAllAsync(ct);
             var periods = (periodsRes.Success && periodsRes.Data is not null)
-                ? periodsRes.Data
+                ? [.. periodsRes.Data
                     .Where(p => p is not null)
                     .Where(p => p.StartDate <= p.EndDate)
-                    .OrderBy(p => p.StartDate)
-                    .ToList()
+                    .OrderBy(p => p.StartDate)]
                 : new List<ExternalAcademicPeriodModel>();
 
             if (periods.Count == 0)
@@ -242,11 +239,10 @@ namespace tesisproject.backend.Services.Implementations
 
             var distRes = await _distributivos.GetDistributivosByCorreosAsync(emails, ct);
             var distributivos = (distRes.Success && distRes.Data is not null)
-                ? distRes.Data
+                ? [.. distRes.Data
                     .Where(d => !string.IsNullOrWhiteSpace(d.Email))
                     .GroupBy(d => new { Email = d.Email!.Trim().ToLowerInvariant(), d.PeriodId })
-                    .Select(g => g.OrderByDescending(x => x.Hours).First())
-                    .ToList()
+                    .Select(g => g.OrderByDescending(x => x.Hours).First())]
                 : new List<ExternalTeacherDistributivoModel>();
 
             if (distributivos.Count == 0)

@@ -210,7 +210,7 @@ namespace tesisproject.backend.Services.Implementations
             => ServiceResult<T>.Fail(
                 ErrorMessages.Common.RequestRequired,
                 ErrorType.Validation,
-                ErrorCodes.Common.InvalidRequest);
+                ErrorCodes.Common.RequestRequired);
 
         private static ServiceResult<T> NameRequired<T>()
             => ServiceResult<T>.Fail(
@@ -261,7 +261,7 @@ namespace tesisproject.backend.Services.Implementations
                         Format = c.Format,
                         Separator = c.Separator
                     })
-                    .ToList() ?? new()
+                    .ToList() ?? []
             };
         }
 

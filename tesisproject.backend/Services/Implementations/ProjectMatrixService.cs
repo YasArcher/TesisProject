@@ -7,6 +7,7 @@ using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.Common.Utils;
 using tesisproject.shared.DTOs.Matrices.Import;
 using tesisproject.shared.DTOs.Matrices.Response;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -16,7 +17,6 @@ namespace tesisproject.backend.Services.Implementations
         private readonly IProjectService _projectService;
         private readonly ILogger<ProjectMatrixService> _logger;
 
-        private const string FileStreamRequiredMessage = "File stream is required.";
         private const string WorkbookMissingThirdWorksheetMessage = "Workbook does not contain the expected third worksheet.";
         private const string WorksheetNoDataMessage = "Worksheet does not contain data.";
         private const string MatrixFileProcessedMessage = "Matrix file processed.";
@@ -50,9 +50,10 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (fileStream is null)
                 {
-                    return ServiceResult<ProjectMatrixUploadSummaryDTO>.Fail(
-                        FileStreamRequiredMessage,
-                        ErrorType.Validation);
+                    return ValidationFailure<ProjectMatrixUploadSummaryDTO>(
+                        ErrorMessages.ProjectMatrix.FileStreamRequired,
+                        ErrorCodes.ProjectMatrix.FileStreamRequired,
+                        nameof(fileStream));
                 }
 
                 using var memory = new MemoryStream();
@@ -298,12 +299,50 @@ namespace tesisproject.backend.Services.Implementations
                     summary,
                     notSupportedMessage);
             }
-            catch (Exception ex)
+            catch (OperationCanceledException)
             {
-                return ServiceResult<ProjectMatrixUploadSummaryDTO>.Fail(
-                    ex.Message,
-                    ErrorType.Unexpected);
+                return FailOperationCanceled<ProjectMatrixUploadSummaryDTO>();
             }
+            catch (Exception)
+            {
+                return FailUnexpected<ProjectMatrixUploadSummaryDTO>();
+            }
+        }
+
+        private static ServiceResult<T> FailUnexpected<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.UnexpectedError,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.UnexpectedError);
+
+        private static ServiceResult<T> FailOperationCanceled<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.OperationCanceled,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.OperationCanceled);
+
+        private static ServiceResult<T> ValidationFailure<T>(
+            string message,
+            string errorCode,
+            params string[] fields)
+        {
+            Dictionary<string, string[]>? validation = null;
+
+            if (fields is { Length: > 0 })
+            {
+                validation = fields
+                    .Distinct(StringComparer.Ordinal)
+                    .ToDictionary(
+                        field => field,
+                        _ => new[] { message },
+                        StringComparer.Ordinal);
+            }
+
+            return ServiceResult<T>.Fail(
+                message,
+                ErrorType.Validation,
+                errorCode,
+                validation);
         }
 
         private static void AddSummaryError(ProjectMatrixUploadSummaryDTO summary, int rowNumber, string message)
@@ -987,7 +1026,6 @@ namespace tesisproject.backend.Services.Implementations
                 project.ExpectedImpact = GetByHeader(normalizedHeaders, row, "IMPACTO ESPERADO");
                 project.GeneralObjective = GetByHeader(normalizedHeaders, row, "OBJETIVO GENERAL");
 
-                // ✅ COORDINADOR / COORDINADOR SUBROGANTE
                 var coordinatorRaw = GetByHeader(normalizedHeaders, row, "COORDINADOR");
                 var alternateCoordinatorRaw = GetByHeader(normalizedHeaders, row, "COORDINADOR SUBROGANTE");
 
@@ -1503,9 +1541,6 @@ namespace tesisproject.backend.Services.Implementations
 
             value = value.Trim();
 
-            // ==========================================
-            // 0) Si hay múltiples fechas (saltos de línea)
-            // ==========================================
             if (value.Contains('\n') || value.Contains('\r'))
             {
                 var parts = value
@@ -1517,7 +1552,7 @@ namespace tesisproject.backend.Services.Implementations
 
                 foreach (var part in parts)
                 {
-                    var parsed = ParseDate(part); // recursivo y seguro
+                    var parsed = ParseDate(part);
                     if (parsed.HasValue)
                     {
                         if (!maxDate.HasValue || parsed.Value > maxDate.Value)
@@ -1528,18 +1563,12 @@ namespace tesisproject.backend.Services.Implementations
                 return maxDate;
             }
 
-            // ================================
-            // 1) Caso especial: solo año "2017"
-            // ================================
             if (Regex.IsMatch(value, @"^\d{4}$"))
             {
                 if (int.TryParse(value, out var year) && year >= 1900 && year <= 2100)
                     return new DateTime(year, 1, 1);
             }
 
-            // ==========================================
-            // 2) Formatos explícitos
-            // ==========================================
             if (DateTime.TryParseExact(
                     value,
                     DateFormats,
@@ -1550,9 +1579,6 @@ namespace tesisproject.backend.Services.Implementations
                 return dtExact;
             }
 
-            // ==========================================
-            // 3) Parse general (culturas)
-            // ==========================================
             if (DateTime.TryParse(
                     value,
                     CultureInfo.CurrentCulture,
@@ -1576,9 +1602,6 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch { }
 
-            // ==========================================
-            // 4) Excel / OA date (solo serial real)
-            // ==========================================
             if (double.TryParse(
                     value.Replace(",", "."),
                     NumberStyles.Any,
@@ -1594,6 +1617,7 @@ namespace tesisproject.backend.Services.Implementations
                     catch { }
                 }
             }
+
             return null;
         }
     }

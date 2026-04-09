@@ -12,10 +12,6 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class CountryService : ICountryService
     {
-        private const string MsgCountryNotFound = "Country not found.";
-        private const string MsgIsoCodeMustHave2Characters = "IsoCode must have 2 characters.";
-        private const string MsgIsoAlpha3MustHave3Characters = "IsoAlpha3 must have 3 characters.";
-
         private readonly IUnitOfWork _uow;
 
         public CountryService(IUnitOfWork uow)
@@ -65,11 +61,11 @@ namespace tesisproject.backend.Services.Implementations
                         nameof(CountryDetailDTO.Id));
                 }
 
-                var entity = await _uow.Countries.GetByIdAsync(new object[] { id }, ct);
+                var entity = await _uow.Countries.GetByIdAsync([id], ct);
                 if (entity is null)
                 {
                     return ServiceResult<CountryDetailDTO>.Fail(
-                        MsgCountryNotFound,
+                        ErrorMessages.Country.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Country.NotFound);
                 }
@@ -122,7 +118,7 @@ namespace tesisproject.backend.Services.Implementations
                         ErrorCodes.Common.InvalidRequest,
                         new Dictionary<string, string[]>
                         {
-                            ["Request"] = new[] { ErrorMessages.Common.InvalidRequest }
+                            ["Request"] = [ErrorMessages.Common.InvalidRequest]
                         });
                 }
 
@@ -141,7 +137,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (string.IsNullOrWhiteSpace(isoCode) || isoCode.Length != 2)
                 {
                     return ValidationFailure<CountryDetailDTO>(
-                        MsgIsoCodeMustHave2Characters,
+                        ErrorMessages.Country.IsoCodeInvalidLength,
                         ErrorCodes.Country.IsoCodeInvalidLength,
                         nameof(AddCountryRequestDTO.IsoCode));
                 }
@@ -149,7 +145,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (string.IsNullOrWhiteSpace(isoAlpha3) || isoAlpha3.Length != 3)
                 {
                     return ValidationFailure<CountryDetailDTO>(
-                        MsgIsoAlpha3MustHave3Characters,
+                        ErrorMessages.Country.IsoAlpha3InvalidLength,
                         ErrorCodes.Country.IsoAlpha3InvalidLength,
                         nameof(AddCountryRequestDTO.IsoAlpha3));
                 }
@@ -219,7 +215,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (string.IsNullOrWhiteSpace(isoCode) || isoCode.Length != 2)
                 {
                     return ValidationFailure<CountryDetailDTO>(
-                        MsgIsoCodeMustHave2Characters,
+                        ErrorMessages.Country.IsoCodeInvalidLength,
                         ErrorCodes.Country.IsoCodeInvalidLength,
                         nameof(UpdateCountryRequestDTO.IsoCode));
                 }
@@ -227,16 +223,16 @@ namespace tesisproject.backend.Services.Implementations
                 if (string.IsNullOrWhiteSpace(isoAlpha3) || isoAlpha3.Length != 3)
                 {
                     return ValidationFailure<CountryDetailDTO>(
-                        MsgIsoAlpha3MustHave3Characters,
+                        ErrorMessages.Country.IsoAlpha3InvalidLength,
                         ErrorCodes.Country.IsoAlpha3InvalidLength,
                         nameof(UpdateCountryRequestDTO.IsoAlpha3));
                 }
 
-                var entity = await _uow.Countries.GetByIdAsync(new object[] { request.Id }, ct);
+                var entity = await _uow.Countries.GetByIdAsync([request.Id], ct);
                 if (entity is null)
                 {
                     return ServiceResult<CountryDetailDTO>.Fail(
-                        MsgCountryNotFound,
+                        ErrorMessages.Country.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Country.NotFound);
                 }

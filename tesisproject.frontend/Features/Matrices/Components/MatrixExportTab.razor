@@ -5,6 +5,7 @@
 @using tesisproject.frontend.SharedUI.CheckboxInput
 @using tesisproject.frontend.SharedUI.Catalog
 @using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Export
 @using tesisproject.frontend.SharedUI.OrderableTable
 
@@ -414,13 +415,13 @@
 
             var response = await ExportTemplates.ExportMatrixExcelAsync(request);
 
-            if (!response.Success || response.Response is null)
+            if (!response.Success || response.Data is null)
             {
-                Toast.ShowError(response.Error ?? "Error al generar el archivo Excel.");
+                Toast.ShowError(response.ToErrorMessage("Error al generar el archivo Excel."));
                 return;
             }
 
-            var file = response.Response;
+            var file = response.Data;
 
             var url = await JS.InvokeAsync<string>(
                 "docViewer.bytesToBlobUrl",
@@ -436,7 +437,7 @@
             await JS.InvokeVoidAsync("docViewer.downloadUrl", url, fileName);
             await JS.InvokeVoidAsync("docViewer.revoke", url);
 
-            Toast.ShowSuccess("Exportación realizada correctamente.");
+            Toast.ShowSuccess(response.ToSuccessMessage("Exportación realizada correctamente."));
         }
         catch (Exception ex)
         {
@@ -457,12 +458,12 @@
 
             if (!response.Success)
             {
-                Toast.ShowError(response.Error ?? "No se pudieron cargar los campos exportables.");
+                Toast.ShowError(response.ToErrorMessage("No se pudieron cargar los campos exportables."));
                 Fields = new();
                 return;
             }
 
-            Fields = response.Response ?? new List<ExportFieldListItemDTO>();
+            Fields = response.Data ?? new List<ExportFieldListItemDTO>();
         }
         catch (Exception ex)
         {
@@ -484,12 +485,12 @@
 
             if (!response.Success)
             {
-                Toast.ShowError(response.Error ?? "No se pudieron cargar las plantillas de exportación.");
+                Toast.ShowError(response.ToErrorMessage("No se pudieron cargar las plantillas de exportación."));
                 Templates = new();
                 return;
             }
 
-            Templates = response.Response ?? new List<ExportTemplateListItemDTO>();
+            Templates = response.Data ?? new List<ExportTemplateListItemDTO>();
         }
         catch (Exception ex)
         {
@@ -538,13 +539,13 @@
             IsBusy = true;
             var response = await ExportTemplates.GetTemplateAsync(id);
 
-            if (!response.Success || response.Response is null)
+            if (!response.Success || response.Data is null)
             {
-                Toast.ShowError(response.Error ?? "No se pudo cargar la plantilla seleccionada.");
+                Toast.ShowError(response.ToErrorMessage("No se pudo cargar la plantilla seleccionada."));
                 return;
             }
 
-            SelectedTemplate = response.Response;
+            SelectedTemplate = response.Data;
             IsEditingNew = false;
             EditModel = ExportTemplateEditModel.FromDetail(SelectedTemplate);
             NormalizeColumnOrder(EditModel.Columns);
@@ -690,11 +691,11 @@
 
                 if (!response.Success)
                 {
-                    Toast.ShowError(response.Error ?? "No se pudo crear la plantilla.");
+                    Toast.ShowError(response.ToErrorMessage("No se pudo crear la plantilla."));
                     return;
                 }
 
-                Toast.ShowSuccess("Plantilla creada correctamente.");
+                Toast.ShowSuccess(response.ToSuccessMessage("Plantilla creada correctamente."));
             }
             else
             {
@@ -709,11 +710,11 @@
 
                 if (!response.Success)
                 {
-                    Toast.ShowError(response.Error ?? "No se pudo actualizar la plantilla.");
+                    Toast.ShowError(response.ToErrorMessage("No se pudo actualizar la plantilla."));
                     return;
                 }
 
-                Toast.ShowSuccess("Plantilla actualizada correctamente.");
+                Toast.ShowSuccess(response.ToSuccessMessage("Plantilla actualizada correctamente."));
             }
 
             await LoadTemplatesAsync();
@@ -747,11 +748,11 @@
 
             if (!response.Success)
             {
-                Toast.ShowError(response.Error ?? "No se pudo eliminar la plantilla.");
+                Toast.ShowError(response.ToErrorMessage("No se pudo eliminar la plantilla."));
                 return;
             }
 
-            Toast.ShowSuccess("Plantilla eliminada correctamente.");
+            Toast.ShowSuccess(response.ToSuccessMessage("Plantilla eliminada correctamente."));
             await LoadTemplatesAsync();
 
             SelectedTemplate = null;

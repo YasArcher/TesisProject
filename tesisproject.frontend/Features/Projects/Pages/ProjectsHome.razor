@@ -4,6 +4,7 @@
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.FilterBar
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Export
 @using tesisproject.shared.DTOs.Filters
 @using tesisproject.shared.DTOs.Project.Response
@@ -190,12 +191,12 @@
 
             if (!resp.Success)
             {
-                Toast.ShowError(resp.Error ?? "No se pudieron cargar las plantillas de exportación.");
+                Toast.ShowError(resp.ToErrorMessage("No se pudieron cargar las plantillas de exportación."));
                 exportTemplates = new List<ExportTemplateListItemDTO>();
                 return;
             }
 
-            exportTemplates = resp.Response ?? new List<ExportTemplateListItemDTO>();
+            exportTemplates = resp.Data ?? new List<ExportTemplateListItemDTO>();
         }
         catch (Exception ex)
         {
@@ -240,13 +241,13 @@
         {
             var tmplResp = await ExportTemplates.GetTemplateAsync(selectedTemplateId.Value);
 
-            if (!tmplResp.Success || tmplResp.Response is null)
+            if (!tmplResp.Success || tmplResp.Data is null)
             {
-                Toast.ShowError(tmplResp.Error ?? "No se pudo cargar el detalle de la plantilla.");
+                Toast.ShowError(tmplResp.ToErrorMessage("No se pudo cargar el detalle de la plantilla."));
                 return;
             }
 
-            var detail = tmplResp.Response;
+            var detail = tmplResp.Data;
 
             if (detail.Columns is null || detail.Columns.Count == 0)
             {
@@ -352,13 +353,13 @@
 
             var r = await ExportTemplates.ExportMatrixExcelAsync(exportRequest);
 
-            if (!r.Success || r.Response is null)
+            if (!r.Success || r.Data is null)
             {
-                Toast.ShowError(r.Error ?? "Error al generar el archivo de exportación.");
+                Toast.ShowError(r.ToErrorMessage("Error al generar el archivo de exportación."));
                 return;
             }
 
-            var file = r.Response;
+            var file = r.Data;
 
             var url = await JS.InvokeAsync<string>(
                 "docViewer.bytesToBlobUrl",
@@ -376,7 +377,7 @@
             await JS.InvokeVoidAsync("docViewer.downloadUrl", url, fileName);
             await JS.InvokeVoidAsync("docViewer.revoke", url);
 
-            Toast.ShowSuccess("Exportación generada correctamente.");
+            Toast.ShowSuccess(r.ToSuccessMessage("Exportación generada correctamente."));
             CloseExportPanel();
         }
         catch (Exception ex)
@@ -398,10 +399,10 @@
         try
         {
             var resp = await ProjectService.GetListAsync(onlyActive: true);
-            allProjects = resp.Success ? resp.Response ?? new() : new();
+            allProjects = resp.Success ? resp.Data ?? new() : new();
 
             if (!resp.Success)
-                errorMessage = resp.Error ?? "Error desconocido al cargar proyectos";
+                errorMessage = resp.ToErrorMessage("Error desconocido al cargar proyectos");
 
             _page = 1;
             ApplyFilters();
@@ -425,9 +426,9 @@
         {
             var bootstrapResp = await ProjectFiltersService.GetBootstrapAsync();
 
-            if (bootstrapResp.Success && bootstrapResp.Response != null)
+            if (bootstrapResp.Success && bootstrapResp.Data != null)
             {
-                var bootstrap = bootstrapResp.Response;
+                var bootstrap = bootstrapResp.Data;
 
                 _filterConfig.Items = new List<FilterItemDescriptor>();
 

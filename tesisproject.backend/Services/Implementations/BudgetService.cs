@@ -11,31 +11,14 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class BudgetService : IBudgetService
     {
-        private const string NoBudgetsFoundMessage = "No budgets found.";
         private const string BudgetsRetrievedMessage = "Budgets retrieved.";
-        private const string BudgetNotFoundMessage = "Budget not found.";
         private const string BudgetRetrievedMessage = "Budget retrieved.";
-        private const string NoBudgetsForProjectMessage = "No budgets found for project.";
-        private const string ProjectDoesNotExistMessage = "Project does not exist.";
         private const string BudgetCreatedMessage = "Budget created.";
         private const string BudgetUpdatedMessage = "Budget updated.";
         private const string BudgetDeletedMessage = "Budget deleted.";
-        private const string CertificationExceedsInitialAmountMessage = "Certification exceeds initial amount.";
         private const string CertificationRegisteredMessage = "Certification registered.";
-        private const string BudgetTransactionNotFoundMessage = "Budget transaction not found.";
-        private const string InvalidTransactionStateForExecutionMessage = "Only certification transactions can be executed.";
-        private const string ExecutedExceedsCertifiedForTransactionMessage = "Executed amount cannot exceed certified amount for this transaction.";
-        private const string ExecutedTotalExceedsCertifiedTotalMessage = "Executed total for this budget cannot exceed the certified total.";
         private const string ExecutionRegisteredMessage = "Execution registered.";
-        private const string ExecutedTransactionsCannotBeCancelledMessage = "Executed transactions cannot be cancelled.";
-        private const string TransactionAlreadyCancelledMessage = "This transaction is already cancelled.";
         private const string TransactionCancelledMessage = "Transaction cancelled.";
-        private const string CancelledTransactionsCannotBeUpdatedMessage = "Cancelled transactions cannot be updated.";
-        private const string ExecutedAmountExceedsCertifiedMessage = "Executed amount cannot exceed certified amount.";
-        private const string ExecutedAmountRequiredMessage = "ExecutedAmount is required for executed transactions.";
-        private const string ExecutedAtRequiredForExecutedMessage = "Executed transactions cannot be updated to type Executed without ExecutedAt set.";
-        private const string TotalCertifiedExceedsInitialMessage = "Total certified amount exceeds the budget initial amount.";
-        private const string TotalExecutedExceedsCertifiedMessage = "Total executed amount cannot exceed the total certified amount.";
         private const string TransactionUpdatedMessage = "Transaction updated.";
         private const string TransactionsRetrievedMessage = "Transactions retrieved.";
 
@@ -73,7 +56,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (items.Count == 0)
                 {
                     return ServiceResult<List<BudgetListItemDTO>>.Fail(
-                        NoBudgetsFoundMessage,
+                        ErrorMessages.Budget.NoneFound,
                         ErrorType.NotFound,
                         ErrorCodes.Budget.NoneFound);
                 }
@@ -90,11 +73,11 @@ namespace tesisproject.backend.Services.Implementations
         {
             try
             {
-                var e = await _uow.Budgets.GetByIdAsync(new object[] { budgetId }, ct);
+                var e = await _uow.Budgets.GetByIdAsync([budgetId], ct);
                 if (e is null)
                 {
                     return ServiceResult<BudgetDTO>.Fail(
-                        BudgetNotFoundMessage,
+                        ErrorMessages.Budget.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Budget.NotFound);
                 }
@@ -124,7 +107,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (list.Count == 0)
                 {
                     return ServiceResult<List<BudgetDTO>>.Fail(
-                        NoBudgetsForProjectMessage,
+                        ErrorMessages.Budget.NoneFoundForProject,
                         ErrorType.NotFound,
                         ErrorCodes.Budget.NoneFoundForProject);
                 }
@@ -162,7 +145,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (!projectExists)
                 {
                     return ServiceResult<BudgetDTO>.Fail(
-                        ProjectDoesNotExistMessage,
+                        ErrorMessages.Project.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Project.NotFound);
                 }
@@ -212,11 +195,11 @@ namespace tesisproject.backend.Services.Implementations
                     return FailActorUserNotFound<BudgetDTO>();
                 }
 
-                var e = await _uow.Budgets.GetByIdAsync(new object[] { budgetId }, ct);
+                var e = await _uow.Budgets.GetByIdAsync([budgetId], ct);
                 if (e is null)
                 {
                     return ServiceResult<BudgetDTO>.Fail(
-                        BudgetNotFoundMessage,
+                        ErrorMessages.Budget.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Budget.NotFound);
                 }
@@ -251,11 +234,11 @@ namespace tesisproject.backend.Services.Implementations
         {
             try
             {
-                var e = await _uow.Budgets.GetByIdAsync(new object[] { budgetId }, ct);
+                var e = await _uow.Budgets.GetByIdAsync([budgetId], ct);
                 if (e is null)
                 {
                     return ServiceResult<NoContent>.Fail(
-                        BudgetNotFoundMessage,
+                        ErrorMessages.Budget.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Budget.NotFound);
                 }
@@ -287,11 +270,11 @@ namespace tesisproject.backend.Services.Implementations
                     return FailActorUserNotFound<BudgetTransactionDTO>();
                 }
 
-                var budget = await _uow.Budgets.GetByIdAsync(new object[] { request.BudgetId }, ct);
+                var budget = await _uow.Budgets.GetByIdAsync([request.BudgetId], ct);
                 if (budget is null)
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
-                        BudgetNotFoundMessage,
+                        ErrorMessages.Budget.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Budget.NotFound);
                 }
@@ -300,7 +283,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (newCertified > budget.InitialAmount)
                 {
                     return ValidationFailure<BudgetTransactionDTO>(
-                        CertificationExceedsInitialAmountMessage,
+                        ErrorMessages.Budget.CertificationExceedsInitialAmount,
                         ErrorCodes.Budget.CertificationExceedsInitialAmount,
                         nameof(AddCertificationRequestDTO.CertifiedAmount));
                 }
@@ -356,7 +339,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (tx is null)
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
-                        BudgetTransactionNotFoundMessage,
+                        ErrorMessages.BudgetTransaction.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.BudgetTransaction.NotFound);
                 }
@@ -364,23 +347,23 @@ namespace tesisproject.backend.Services.Implementations
                 if (tx.TransactionTypeId != BudgetTransactionTypeIds.Certification)
                 {
                     return ValidationFailure<BudgetTransactionDTO>(
-                        InvalidTransactionStateForExecutionMessage,
+                        ErrorMessages.BudgetTransaction.InvalidStateForExecution,
                         ErrorCodes.BudgetTransaction.InvalidStateForExecution);
                 }
 
                 if (request.ExecutedAmount > tx.CertifiedAmount)
                 {
                     return ValidationFailure<BudgetTransactionDTO>(
-                        ExecutedExceedsCertifiedForTransactionMessage,
+                        ErrorMessages.BudgetTransaction.ExecutedAmountExceedsCertifiedAmount,
                         ErrorCodes.BudgetTransaction.ExecutedAmountExceedsCertifiedAmount,
                         nameof(ExecuteDevengadoRequestDTO.ExecutedAmount));
                 }
 
-                var budget = await _uow.Budgets.GetByIdAsync(new object[] { tx.BudgetId }, ct);
+                var budget = await _uow.Budgets.GetByIdAsync([tx.BudgetId], ct);
                 if (budget is null)
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
-                        BudgetNotFoundMessage,
+                        ErrorMessages.Budget.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Budget.NotFound);
                 }
@@ -389,7 +372,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (newExecutedTotal > budget.CertifiedAmount)
                 {
                     return ValidationFailure<BudgetTransactionDTO>(
-                        ExecutedTotalExceedsCertifiedTotalMessage,
+                        ErrorMessages.BudgetTransaction.ExecutedTotalExceedsBudgetCertifiedAmount,
                         ErrorCodes.BudgetTransaction.ExecutedTotalExceedsBudgetCertifiedAmount,
                         nameof(ExecuteDevengadoRequestDTO.ExecutedAmount));
                 }
@@ -438,11 +421,11 @@ namespace tesisproject.backend.Services.Implementations
         {
             try
             {
-                var exists = await _uow.Budgets.GetByIdAsync(new object[] { budgetId }, ct);
+                var exists = await _uow.Budgets.GetByIdAsync([budgetId], ct);
                 if (exists is null)
                 {
                     return ServiceResult<List<BudgetTransactionDTO>>.Fail(
-                        BudgetNotFoundMessage,
+                        ErrorMessages.Budget.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Budget.NotFound);
                 }
@@ -469,7 +452,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (tx is null)
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
-                        BudgetTransactionNotFoundMessage,
+                        ErrorMessages.BudgetTransaction.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.BudgetTransaction.NotFound);
                 }
@@ -477,22 +460,22 @@ namespace tesisproject.backend.Services.Implementations
                 if (tx.TransactionTypeId == BudgetTransactionTypeIds.Executed || tx.ExecutedAt != null)
                 {
                     return ValidationFailure<BudgetTransactionDTO>(
-                        ExecutedTransactionsCannotBeCancelledMessage,
+                        ErrorMessages.BudgetTransaction.ExecutedTransactionsCannotBeCancelled,
                         ErrorCodes.BudgetTransaction.ExecutedTransactionsCannotBeCancelled);
                 }
 
                 if (tx.TransactionTypeId == BudgetTransactionTypeIds.Cancelled)
                 {
                     return ValidationFailure<BudgetTransactionDTO>(
-                        TransactionAlreadyCancelledMessage,
+                        ErrorMessages.BudgetTransaction.AlreadyCancelled,
                         ErrorCodes.BudgetTransaction.AlreadyCancelled);
                 }
 
-                var budget = await _uow.Budgets.GetByIdAsync(new object[] { tx.BudgetId }, ct);
+                var budget = await _uow.Budgets.GetByIdAsync([tx.BudgetId], ct);
                 if (budget is null)
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
-                        BudgetNotFoundMessage,
+                        ErrorMessages.Budget.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Budget.NotFound);
                 }
@@ -545,7 +528,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (tx is null)
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
-                        BudgetTransactionNotFoundMessage,
+                        ErrorMessages.BudgetTransaction.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.BudgetTransaction.NotFound);
                 }
@@ -553,7 +536,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (tx.TransactionTypeId == BudgetTransactionTypeIds.Cancelled)
                 {
                     return ValidationFailure<BudgetTransactionDTO>(
-                        CancelledTransactionsCannotBeUpdatedMessage,
+                        ErrorMessages.BudgetTransaction.CancelledTransactionsCannotBeUpdated,
                         ErrorCodes.BudgetTransaction.CancelledTransactionsCannotBeUpdated);
                 }
 
@@ -570,7 +553,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (executedValue > tx.CertifiedAmount)
                 {
                     return ValidationFailure<BudgetTransactionDTO>(
-                        ExecutedAmountExceedsCertifiedMessage,
+                        ErrorMessages.BudgetTransaction.ExecutedAmountExceedsCertifiedAmount,
                         ErrorCodes.BudgetTransaction.ExecutedAmountExceedsCertifiedAmount,
                         nameof(UpdateBudgetTransactionRequestDTO.ExecutedAmount));
                 }
@@ -580,7 +563,7 @@ namespace tesisproject.backend.Services.Implementations
                     if (tx.ExecutedAmount is null)
                     {
                         return ValidationFailure<BudgetTransactionDTO>(
-                            ExecutedAmountRequiredMessage,
+                            ErrorMessages.BudgetTransaction.ExecutedAmountRequired,
                             ErrorCodes.BudgetTransaction.ExecutedAmountRequired,
                             nameof(UpdateBudgetTransactionRequestDTO.ExecutedAmount));
                     }
@@ -588,17 +571,17 @@ namespace tesisproject.backend.Services.Implementations
                     if (tx.ExecutedAt is null)
                     {
                         return ValidationFailure<BudgetTransactionDTO>(
-                            ExecutedAtRequiredForExecutedMessage,
+                            ErrorMessages.BudgetTransaction.ExecutedAtRequired,
                             ErrorCodes.BudgetTransaction.ExecutedAtRequired,
                             "ExecutedAt");
                     }
                 }
 
-                var budget = await _uow.Budgets.GetByIdAsync(new object[] { tx.BudgetId }, ct);
+                var budget = await _uow.Budgets.GetByIdAsync([tx.BudgetId], ct);
                 if (budget is null)
                 {
                     return ServiceResult<BudgetTransactionDTO>.Fail(
-                        BudgetNotFoundMessage,
+                        ErrorMessages.Budget.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Budget.NotFound);
                 }
@@ -638,7 +621,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (certifiedEverTotal > budget.InitialAmount)
                 {
                     return ValidationFailure<BudgetTransactionDTO>(
-                        TotalCertifiedExceedsInitialMessage,
+                        ErrorMessages.Budget.TotalCertifiedExceedsInitialAmount,
                         ErrorCodes.Budget.TotalCertifiedExceedsInitialAmount,
                         nameof(UpdateBudgetTransactionRequestDTO.CertifiedAmount));
                 }
@@ -646,7 +629,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (executedTotal > certifiedEverTotal)
                 {
                     return ValidationFailure<BudgetTransactionDTO>(
-                        TotalExecutedExceedsCertifiedMessage,
+                        ErrorMessages.Budget.TotalExecutedExceedsCertifiedAmount,
                         ErrorCodes.Budget.TotalExecutedExceedsCertifiedAmount,
                         nameof(UpdateBudgetTransactionRequestDTO.ExecutedAmount));
                 }

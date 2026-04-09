@@ -1,34 +1,52 @@
-﻿using System.Net.Http;
-using tesisproject.shared.Responses;
+﻿using tesisproject.shared.Responses;
 
 namespace tesisproject.frontend.Services
 {
     public sealed class HttpResponseWrapper<T>
     {
         public bool Success { get; }
-        public T? Response { get; }
+        public T? Data { get; }
         public string? Message { get; }
-        public ErrorType ErrorType { get; }
+        public ErrorType Error { get; }
         public string? ErrorCode { get; }
         public Dictionary<string, string[]>? ValidationErrors { get; }
-        public HttpResponseMessage HttpResponse { get; }
 
         public HttpResponseWrapper(
             bool success,
-            T? response,
+            T? data,
             string? message,
-            ErrorType errorType,
+            ErrorType error,
             string? errorCode,
-            Dictionary<string, string[]>? validationErrors,
-            HttpResponseMessage httpResponse)
+            Dictionary<string, string[]>? validationErrors)
         {
             Success = success;
-            Response = response;
+            Data = data;
             Message = message;
-            ErrorType = errorType;
+            Error = error;
             ErrorCode = errorCode;
             ValidationErrors = validationErrors;
-            HttpResponse = httpResponse;
         }
+
+        public static HttpResponseWrapper<T> Ok(T? data, string? message = null)
+            => new(
+                success: true,
+                data: data,
+                message: message,
+                error: ErrorType.None,
+                errorCode: null,
+                validationErrors: null);
+
+        public static HttpResponseWrapper<T> Fail(
+            string? message,
+            ErrorType error = ErrorType.Unexpected,
+            string? errorCode = null,
+            Dictionary<string, string[]>? validationErrors = null)
+            => new(
+                success: false,
+                data: default,
+                message: message,
+                error: error,
+                errorCode: errorCode,
+                validationErrors: validationErrors);
     }
 }

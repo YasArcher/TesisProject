@@ -28,22 +28,22 @@ namespace tesisproject.frontend.Services.Implementations
             _tokenStore = tokenStore;
         }
 
-        // ==================== GET ====================
-        public async Task<HttpResponseWrapper<T?>> GetAsync<T>(string url, CancellationToken ct = default)
+        public async Task<HttpResponseWrapper<T?>> GetAsync<T>(
+            string url,
+            CancellationToken ct = default)
         {
             try
             {
                 using var req = await CreateRequestAsync(HttpMethod.Get, url, content: null, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseServiceResultAsync<T>(resp, ct);
+                return await ReadJsonResultAsync<T>(resp, ct);
             }
             catch (Exception ex)
             {
-                return Fail<T>(ex);
+                return BuildTransportFailure<T>(ex);
             }
         }
 
-        // ==================== POST ====================
         public async Task<HttpResponseWrapper<TResponse?>> PostAsync<TRequest, TResponse>(
             string url,
             TRequest body,
@@ -51,18 +51,17 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
-                using var content = JsonContent(body);
+                using var content = BuildJsonContent(body);
                 using var req = await CreateRequestAsync(HttpMethod.Post, url, content, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseServiceResultAsync<TResponse>(resp, ct);
+                return await ReadJsonResultAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
-                return Fail<TResponse>(ex);
+                return BuildTransportFailure<TResponse>(ex);
             }
         }
 
-        // ==================== PUT ====================
         public async Task<HttpResponseWrapper<TResponse?>> PutAsync<TRequest, TResponse>(
             string url,
             TRequest body,
@@ -70,18 +69,17 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
-                using var content = JsonContent(body);
+                using var content = BuildJsonContent(body);
                 using var req = await CreateRequestAsync(HttpMethod.Put, url, content, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseServiceResultAsync<TResponse>(resp, ct);
+                return await ReadJsonResultAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
-                return Fail<TResponse>(ex);
+                return BuildTransportFailure<TResponse>(ex);
             }
         }
 
-        // ==================== PATCH ====================
         public async Task<HttpResponseWrapper<TResponse?>> PatchAsync<TRequest, TResponse>(
             string url,
             TRequest body,
@@ -89,18 +87,17 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
-                using var content = JsonContent(body);
+                using var content = BuildJsonContent(body);
                 using var req = await CreateRequestAsync(HttpMethod.Patch, url, content, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseServiceResultAsync<TResponse>(resp, ct);
+                return await ReadJsonResultAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
-                return Fail<TResponse>(ex);
+                return BuildTransportFailure<TResponse>(ex);
             }
         }
 
-        // ==================== DELETE ====================
         public async Task<HttpResponseWrapper<TResponse?>> DeleteAsync<TResponse>(
             string url,
             CancellationToken ct = default)
@@ -109,11 +106,11 @@ namespace tesisproject.frontend.Services.Implementations
             {
                 using var req = await CreateRequestAsync(HttpMethod.Delete, url, content: null, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseServiceResultAsync<TResponse>(resp, ct);
+                return await ReadJsonResultAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
-                return Fail<TResponse>(ex);
+                return BuildTransportFailure<TResponse>(ex);
             }
         }
 
@@ -125,15 +122,14 @@ namespace tesisproject.frontend.Services.Implementations
             {
                 using var req = await CreateRequestAsync(HttpMethod.Delete, url, content: null, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseServiceResultAsync<NoContent?>(resp, ct);
+                return await ReadJsonResultAsync<NoContent?>(resp, ct);
             }
             catch (Exception ex)
             {
-                return Fail<NoContent?>(ex);
+                return BuildTransportFailure<NoContent?>(ex);
             }
         }
 
-        // ==================== POST MULTIPART ====================
         public async Task<HttpResponseWrapper<TResponse?>> PostMultipartAsync<TResponse>(
             string url,
             MultipartFormDataContent content,
@@ -143,15 +139,14 @@ namespace tesisproject.frontend.Services.Implementations
             {
                 using var req = await CreateRequestAsync(HttpMethod.Post, url, content, ct);
                 using var resp = await _http.SendAsync(req, ct);
-                return await ParseServiceResultAsync<TResponse>(resp, ct);
+                return await ReadJsonResultAsync<TResponse>(resp, ct);
             }
             catch (Exception ex)
             {
-                return Fail<TResponse>(ex);
+                return BuildTransportFailure<TResponse>(ex);
             }
         }
 
-        // ==================== GET FILE (BLOB) ====================
         public async Task<HttpResponseWrapper<FilePayloadDTO?>> GetFileAsync(
             string url,
             CancellationToken ct = default)
@@ -159,44 +154,21 @@ namespace tesisproject.frontend.Services.Implementations
             try
             {
                 using var req = await CreateRequestAsync(HttpMethod.Get, url, content: null, ct);
-
-                using var resp = await _http.SendAsync(
-                    req,
-                    HttpCompletionOption.ResponseHeadersRead,
-                    ct);
+                using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
 
                 if (!resp.IsSuccessStatusCode)
-                {
-                    var errorResult = await TryReadServiceResultAsync<object>(resp, ct);
-
-                    return new HttpResponseWrapper<FilePayloadDTO?>(
-                        success: false,
-                        response: null,
-                        message: errorResult?.Message ?? $"HTTP {(int)resp.StatusCode}",
-                        errorType: errorResult?.Error ?? ErrorType.Unexpected,
-                        errorCode: errorResult?.ErrorCode,
-                        validationErrors: errorResult?.ValidationErrors,
-                        httpResponse: Snapshot(resp));
-                }
+                    return await BuildFileFailureAsync(resp, ct);
 
                 var bytes = await resp.Content.ReadAsByteArrayAsync(ct);
-                var contentType = resp.Content.Headers.ContentType?.ToString()
-                                  ?? "application/octet-stream";
-
+                var contentType = resp.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
                 var fileName = TryGetFileName(resp) ?? "document";
 
-                return new HttpResponseWrapper<FilePayloadDTO?>(
-                    success: true,
-                    response: new FilePayloadDTO(bytes, contentType, fileName),
-                    message: null,
-                    errorType: ErrorType.None,
-                    errorCode: null,
-                    validationErrors: null,
-                    httpResponse: Snapshot(resp));
+                return HttpResponseWrapper<FilePayloadDTO?>.Ok(
+                    new FilePayloadDTO(bytes, contentType, fileName));
             }
             catch (Exception ex)
             {
-                return Fail<FilePayloadDTO>(ex);
+                return BuildTransportFailure<FilePayloadDTO>(ex);
             }
         }
 
@@ -207,137 +179,24 @@ namespace tesisproject.frontend.Services.Implementations
         {
             try
             {
-                using var content = new StringContent(
-                    JsonSerializer.Serialize(body, _jsonOptions),
-                    Encoding.UTF8,
-                    "application/json");
-
+                using var content = BuildJsonContent(body);
                 using var req = await CreateRequestAsync(HttpMethod.Post, url, content, ct);
-
-                using var resp = await _http.SendAsync(
-                    req,
-                    HttpCompletionOption.ResponseHeadersRead,
-                    ct);
+                using var resp = await _http.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, ct);
 
                 if (!resp.IsSuccessStatusCode)
-                {
-                    var errorResult = await TryReadServiceResultAsync<object>(resp, ct);
-
-                    return new HttpResponseWrapper<FilePayloadDTO?>(
-                        success: false,
-                        response: null,
-                        message: errorResult?.Message ?? $"HTTP {(int)resp.StatusCode}",
-                        errorType: errorResult?.Error ?? ErrorType.Unexpected,
-                        errorCode: errorResult?.ErrorCode,
-                        validationErrors: errorResult?.ValidationErrors,
-                        httpResponse: Snapshot(resp));
-                }
+                    return await BuildFileFailureAsync(resp, ct);
 
                 var bytes = await resp.Content.ReadAsByteArrayAsync(ct);
-                var contentType = resp.Content.Headers.ContentType?.ToString()
-                                  ?? "application/octet-stream";
-
+                var contentType = resp.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
                 var fileName = TryGetFileName(resp) ?? "export.xlsx";
 
-                return new HttpResponseWrapper<FilePayloadDTO?>(
-                    success: true,
-                    response: new FilePayloadDTO(bytes, contentType, fileName),
-                    message: null,
-                    errorType: ErrorType.None,
-                    errorCode: null,
-                    validationErrors: null,
-                    httpResponse: Snapshot(resp));
+                return HttpResponseWrapper<FilePayloadDTO?>.Ok(
+                    new FilePayloadDTO(bytes, contentType, fileName));
             }
             catch (Exception ex)
             {
-                return Fail<FilePayloadDTO>(ex);
+                return BuildTransportFailure<FilePayloadDTO>(ex);
             }
-        }
-
-        // ==================== CORE JSON PARSER ====================
-        private static async Task<HttpResponseWrapper<T?>> ParseServiceResultAsync<T>(
-            HttpResponseMessage resp,
-            CancellationToken ct)
-        {
-            string raw = string.Empty;
-
-            try
-            {
-                raw = await resp.Content.ReadAsStringAsync(ct);
-            }
-            catch
-            {
-                // Si no se puede leer, igual devolvemos status.
-            }
-
-            ServiceResult<T>? result = null;
-
-            // 1) intenta ServiceResult<T>
-            if (!string.IsNullOrWhiteSpace(raw))
-            {
-                try
-                {
-                    result = JsonSerializer.Deserialize<ServiceResult<T>>(raw, _jsonOptions);
-                }
-                catch
-                {
-                    // ignore
-                }
-            }
-
-            if (result is not null)
-            {
-                var ok = resp.IsSuccessStatusCode && result.Success;
-
-                return new HttpResponseWrapper<T?>(
-                    success: ok,
-                    response: ok ? result.Data : default,
-                    message: result.Message ?? $"HTTP {(int)resp.StatusCode}",
-                    errorType: result.Error,
-                    errorCode: result.ErrorCode,
-                    validationErrors: result.ValidationErrors,
-                    httpResponse: Snapshot(resp));
-            }
-
-            // 2) fallback ServiceResult<object> para extraer metadata
-            if (!string.IsNullOrWhiteSpace(raw))
-            {
-                try
-                {
-                    var generic = JsonSerializer.Deserialize<ServiceResult<object>>(raw, _jsonOptions);
-                    if (generic is not null)
-                    {
-                        var ok = resp.IsSuccessStatusCode && generic.Success;
-
-                        return new HttpResponseWrapper<T?>(
-                            success: ok,
-                            response: default,
-                            message: generic.Message ?? $"HTTP {(int)resp.StatusCode}",
-                            errorType: generic.Error,
-                            errorCode: generic.ErrorCode,
-                            validationErrors: generic.ValidationErrors,
-                            httpResponse: Snapshot(resp));
-                    }
-                }
-                catch
-                {
-                    // ignore
-                }
-            }
-
-            // 3) fallback final: texto crudo
-            var msg = string.IsNullOrWhiteSpace(raw)
-                ? $"HTTP {(int)resp.StatusCode}"
-                : raw;
-
-            return new HttpResponseWrapper<T?>(
-                success: resp.IsSuccessStatusCode,
-                response: default,
-                message: msg,
-                errorType: resp.IsSuccessStatusCode ? ErrorType.None : ErrorType.Unexpected,
-                errorCode: null,
-                validationErrors: null,
-                httpResponse: Snapshot(resp));
         }
 
         private async Task<HttpRequestMessage> CreateRequestAsync(
@@ -360,53 +219,191 @@ namespace tesisproject.frontend.Services.Implementations
             return req;
         }
 
-        private static StringContent JsonContent<T>(T body)
+        private static StringContent BuildJsonContent<T>(T body)
             => new(
                 JsonSerializer.Serialize(body, _jsonOptions),
                 Encoding.UTF8,
                 "application/json");
 
-        private static HttpResponseWrapper<T?> Fail<T>(Exception ex)
-            => new(
-                success: false,
-                response: default,
-                message: ex.Message,
-                errorType: ErrorType.Unexpected,
-                errorCode: "CLIENT_UNHANDLED_EXCEPTION",
-                validationErrors: null,
-                httpResponse: new HttpResponseMessage(HttpStatusCode.InternalServerError)
-                {
-                    ReasonPhrase = ex.Message
-                });
-
-        private static HttpResponseMessage Snapshot(HttpResponseMessage resp)
-            => new(resp.StatusCode)
+        // IMPORTANTE:
+        // Este método es el punto central de traducción entre la respuesta real del backend
+        // y el contrato que consume el frontend mediante HttpResponseWrapper<T?>.
+        //
+        // Si en el futuro cambia el shape de la respuesta del backend
+        // (por ejemplo: nombres de propiedades, estructura del error, ubicación de Data/Message/ErrorCode/
+        // ValidationErrors o cualquier ajuste arquitectónico del contrato HTTP),
+        // la adaptación debe hacerse aquí.
+        //
+        // La idea es que los componentes, páginas y client services NO tengan que cambiar;
+        // solo este traductor debe absorber esos cambios mientras mantenga estable
+        // el contrato que usa el frontend.
+        private static async Task<HttpResponseWrapper<T?>> ReadJsonResultAsync<T>(
+            HttpResponseMessage resp,
+            CancellationToken ct)
+        {
+            // 204 o respuesta vacía exitosa
+            if (resp.StatusCode == HttpStatusCode.NoContent)
             {
-                ReasonPhrase = resp.ReasonPhrase
-            };
+                return HttpResponseWrapper<T?>.Ok(default);
+            }
 
-        private static async Task<ServiceResult<T>?> TryReadServiceResultAsync<T>(
+            string raw;
+
+            try
+            {
+                raw = await resp.Content.ReadAsStringAsync(ct);
+            }
+            catch
+            {
+                return HttpResponseWrapper<T?>.Fail(
+                    message: $"No se pudo leer la respuesta del servidor. HTTP {(int)resp.StatusCode}.",
+                    error: MapHttpStatusToError(resp.StatusCode),
+                    errorCode: "CLIENT_RESPONSE_READ_ERROR");
+            }
+
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                return resp.IsSuccessStatusCode
+                    ? HttpResponseWrapper<T?>.Ok(default)
+                    : HttpResponseWrapper<T?>.Fail(
+                        message: $"HTTP {(int)resp.StatusCode}",
+                        error: MapHttpStatusToError(resp.StatusCode),
+                        errorCode: "EMPTY_ERROR_RESPONSE");
+            }
+
+            // 1) Intenta con el shape backend actual
+            try
+            {
+                var backendResult = JsonSerializer.Deserialize<ServiceResult<T>>(raw, _jsonOptions);
+                if (backendResult is not null)
+                {
+                    return MapBackendResult(backendResult, resp.StatusCode);
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
+            // 2) Fallback genérico para rescatar metadata aunque T no coincida
+            try
+            {
+                var genericBackendResult = JsonSerializer.Deserialize<ServiceResult<object>>(raw, _jsonOptions);
+                if (genericBackendResult is not null)
+                {
+                    return new HttpResponseWrapper<T?>(
+                        success: false,
+                        data: default,
+                        message: genericBackendResult.Message ?? $"HTTP {(int)resp.StatusCode}",
+                        error: NormalizeError(genericBackendResult.Error, resp.StatusCode),
+                        errorCode: genericBackendResult.ErrorCode ?? "UNMAPPED_BACKEND_ERROR",
+                        validationErrors: genericBackendResult.ValidationErrors);
+                }
+            }
+            catch
+            {
+                // ignore
+            }
+
+            // 3) Si no se pudo interpretar el contrato, devolvemos fallo controlado
+            return HttpResponseWrapper<T?>.Fail(
+                message: resp.IsSuccessStatusCode
+                    ? "La respuesta del servidor no coincide con el contrato esperado."
+                    : raw,
+                error: MapHttpStatusToError(resp.StatusCode),
+                errorCode: "UNPARSEABLE_BACKEND_RESPONSE");
+        }
+
+        // Mapea el contrato backend actualmente esperado al contrato estable que consume el frontend.
+        // Si cambia el backend pero sigue pudiendo deserializarse, ajustar esta conversión aquí.
+        private static HttpResponseWrapper<T?> MapBackendResult<T>(
+            ServiceResult<T> backendResult,
+            HttpStatusCode statusCode)
+        {
+            var httpOk = (int)statusCode >= 200 && (int)statusCode <= 299;
+            var success = httpOk && backendResult.Success;
+
+            if (success)
+            {
+                return HttpResponseWrapper<T?>.Ok(
+                    backendResult.Data,
+                    backendResult.Message);
+            }
+
+            return new HttpResponseWrapper<T?>(
+                success: false,
+                data: default,
+                message: backendResult.Message ?? $"HTTP {(int)statusCode}",
+                error: NormalizeError(backendResult.Error, statusCode),
+                errorCode: backendResult.ErrorCode,
+                validationErrors: backendResult.ValidationErrors);
+        }
+
+        private static ErrorType NormalizeError(ErrorType backendError, HttpStatusCode statusCode)
+        {
+            if (backendError != ErrorType.None)
+                return backendError;
+
+            return MapHttpStatusToError(statusCode);
+        }
+
+        private static ErrorType MapHttpStatusToError(HttpStatusCode statusCode)
+        {
+            return statusCode switch
+            {
+                HttpStatusCode.BadRequest => ErrorType.Validation,
+                HttpStatusCode.Unauthorized => ErrorType.Unauthorized,
+                HttpStatusCode.Forbidden => ErrorType.Forbidden,
+                HttpStatusCode.NotFound => ErrorType.NotFound,
+                HttpStatusCode.Conflict => ErrorType.Conflict,
+                _ => ErrorType.Unexpected
+            };
+        }
+
+        private static HttpResponseWrapper<T?> BuildTransportFailure<T>(Exception ex)
+        {
+            return HttpResponseWrapper<T?>.Fail(
+                message: ex.Message,
+                error: ErrorType.Unexpected,
+                errorCode: "CLIENT_UNHANDLED_EXCEPTION");
+        }
+
+        private static async Task<HttpResponseWrapper<FilePayloadDTO?>> BuildFileFailureAsync(
             HttpResponseMessage resp,
             CancellationToken ct)
         {
             try
             {
                 var raw = await resp.Content.ReadAsStringAsync(ct);
-                if (string.IsNullOrWhiteSpace(raw))
-                    return null;
 
-                try
+                if (!string.IsNullOrWhiteSpace(raw))
                 {
-                    return JsonSerializer.Deserialize<ServiceResult<T>>(raw, _jsonOptions);
+                    try
+                    {
+                        var backend = JsonSerializer.Deserialize<ServiceResult<object>>(raw, _jsonOptions);
+                        if (backend is not null)
+                        {
+                            return HttpResponseWrapper<FilePayloadDTO?>.Fail(
+                                message: backend.Message ?? $"HTTP {(int)resp.StatusCode}",
+                                error: NormalizeError(backend.Error, resp.StatusCode),
+                                errorCode: backend.ErrorCode,
+                                validationErrors: backend.ValidationErrors);
+                        }
+                    }
+                    catch
+                    {
+                        // ignore
+                    }
                 }
-                catch
-                {
-                    return null;
-                }
+
+                return HttpResponseWrapper<FilePayloadDTO?>.Fail(
+                    message: $"HTTP {(int)resp.StatusCode}",
+                    error: MapHttpStatusToError(resp.StatusCode),
+                    errorCode: "FILE_REQUEST_FAILED");
             }
-            catch
+            catch (Exception ex)
             {
-                return null;
+                return BuildTransportFailure<FilePayloadDTO>(ex);
             }
         }
 
@@ -431,7 +428,6 @@ namespace tesisproject.frontend.Services.Implementations
                         return name.Trim('"');
                 }
             }
-
             return null;
         }
     }

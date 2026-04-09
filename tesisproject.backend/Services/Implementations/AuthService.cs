@@ -12,11 +12,7 @@ namespace tesisproject.backend.Services.Implementations
         private const string NoneTokenType = "None";
         private const string BearerTokenType = "Bearer";
         private const string RegisterOkMessageTemplate = "User registered (AppUserId={0}, no login performed)";
-        private const string InvalidCredentialsMessage = "invalid_credentials";
         private const string LoginSuccessfulMessage = "Login successful";
-        private const string NoRefreshCookieMessage = "no_refresh_cookie";
-        private const string InvalidOrInactiveRefreshTokenMessage = "invalid_or_inactive_refresh_token";
-        private const string UserNotFoundMessage = "user_not_found";
         private const string TokenRefreshedMessage = "Token refreshed";
         private const string NoRefreshCookieProvidedMessage = "No refresh cookie provided.";
         private const string RefreshTokenAlreadyInactiveMessage = "Refresh token already inactive.";
@@ -26,8 +22,6 @@ namespace tesisproject.backend.Services.Implementations
         private readonly SignInManager<IdentityUser<int>> _signInManager;
         private readonly ITokenService _tokenService;
         private readonly IRefreshTokenService _refreshTokens;
-
-        // 👇 NUEVO: servicio que contiene la lógica de registro / APP_USER
         private readonly IAppUserService _appUserRegistration;
 
         public AuthService(
@@ -44,24 +38,32 @@ namespace tesisproject.backend.Services.Implementations
             _appUserRegistration = appUserRegistration;
         }
 
-        // =============== REGISTER ===============
-
         public async Task<(ServiceResult<AuthResponse> Result,
                           (string token, DateTime exp)? RefreshCookie)>
            RegisterAsync(RegisterRequest dto, string? ip, CancellationToken ct)
         {
             try
             {
-                // Toda la lógica de:
-                // - IdentityUser (ASP local)
-                // - AppUser (tabla puente)
-                // vive en IAppUserRegistrationService
-                var appUserId = await _appUserRegistration.EnsureAppUserAsync(dto, ct);
+                var appUserResult = await _appUserRegistration.EnsureAppUserAsync(dto, ct);
 
-                // Si quisieras, aquí podrías loguear ese IdUser:
-                // _logger.LogInformation("User registered with AppUserId {Id}", appUserId);
+                if (!appUserResult.Success)
+                {
+                    return (RelayFailure<AuthResponse, int>(appUserResult), null);
+                }
 
-                // No generamos tokens ni refresh: NO login automático
+                var appUserId = appUserResult.Data;
+
+                if (appUserId <= 0)
+                {
+                    return (
+                        ServiceResult<AuthResponse>.Fail(
+                            ErrorMessages.Common.UnexpectedError,
+                            ErrorType.Unexpected,
+                            ErrorCodes.Common.UnexpectedError),
+                        null
+                    );
+                }
+
                 var resp = new AuthResponse
                 {
                     TokenType = NoneTokenType,
@@ -71,27 +73,33 @@ namespace tesisproject.backend.Services.Implementations
                 };
 
                 return (
-                    ServiceResult<AuthResponse>.Ok(resp, string.Format(RegisterOkMessageTemplate, appUserId)),
+                    ServiceResult<AuthResponse>.Ok(
+                        resp,
+                        string.Format(RegisterOkMessageTemplate, appUserId)),
                     null
                 );
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
                 return (
-                    ServiceResult<AuthResponse>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict),
+                    ServiceResult<AuthResponse>.Fail(
+                        ErrorMessages.Common.PersistenceConflict,
+                        ErrorType.Conflict,
+                        ErrorCodes.Common.PersistenceConflict),
                     null
                 );
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return (
-                    ServiceResult<AuthResponse>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError),
+                    ServiceResult<AuthResponse>.Fail(
+                        ErrorMessages.Common.UnexpectedError,
+                        ErrorType.Unexpected,
+                        ErrorCodes.Common.UnexpectedError),
                     null
                 );
             }
         }
-
-        // =============== LOGIN ===============
 
         public async Task<(ServiceResult<AuthResponse> Result,
                            (string token, DateTime exp)? RefreshCookie)>
@@ -103,7 +111,10 @@ namespace tesisproject.backend.Services.Implementations
                 if (user is null)
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail(InvalidCredentialsMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest),
+                        ServiceResult<AuthResponse>.Fail(
+                            ErrorMessages.Auth.InvalidCredentials,
+                            ErrorType.Unauthorized,
+                            ErrorCodes.Auth.InvalidCredentials),
                         null
                     );
                 }
@@ -116,7 +127,10 @@ namespace tesisproject.backend.Services.Implementations
                 if (!check.Succeeded)
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail(InvalidCredentialsMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest),
+                        ServiceResult<AuthResponse>.Fail(
+                            ErrorMessages.Auth.InvalidCredentials,
+                            ErrorType.Unauthorized,
+                            ErrorCodes.Auth.InvalidCredentials),
                         null
                     );
                 }
@@ -142,23 +156,27 @@ namespace tesisproject.backend.Services.Implementations
                     (refresh, refreshExp)
                 );
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
                 return (
-                    ServiceResult<AuthResponse>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict),
+                    ServiceResult<AuthResponse>.Fail(
+                        ErrorMessages.Common.PersistenceConflict,
+                        ErrorType.Conflict,
+                        ErrorCodes.Common.PersistenceConflict),
                     null
                 );
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return (
-                    ServiceResult<AuthResponse>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError),
+                    ServiceResult<AuthResponse>.Fail(
+                        ErrorMessages.Common.UnexpectedError,
+                        ErrorType.Unexpected,
+                        ErrorCodes.Common.UnexpectedError),
                     null
                 );
             }
         }
-
-        // =============== REFRESH ===============
 
         public async Task<(ServiceResult<AuthResponse> Result,
                            (string token, DateTime exp)? RefreshCookie)>
@@ -169,7 +187,10 @@ namespace tesisproject.backend.Services.Implementations
                 if (string.IsNullOrWhiteSpace(refreshCookie))
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail(NoRefreshCookieMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest),
+                        ServiceResult<AuthResponse>.Fail(
+                            ErrorMessages.Auth.NoRefreshCookie,
+                            ErrorType.Unauthorized,
+                            ErrorCodes.Auth.NoRefreshCookie),
                         null
                     );
                 }
@@ -178,7 +199,10 @@ namespace tesisproject.backend.Services.Implementations
                 if (current is null)
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail(InvalidOrInactiveRefreshTokenMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest),
+                        ServiceResult<AuthResponse>.Fail(
+                            ErrorMessages.Auth.InvalidOrInactiveRefreshToken,
+                            ErrorType.Unauthorized,
+                            ErrorCodes.Auth.InvalidOrInactiveRefreshToken),
                         null
                     );
                 }
@@ -187,7 +211,10 @@ namespace tesisproject.backend.Services.Implementations
                 if (user is null)
                 {
                     return (
-                        ServiceResult<AuthResponse>.Fail(UserNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound),
+                        ServiceResult<AuthResponse>.Fail(
+                            ErrorMessages.Auth.UserNotFound,
+                            ErrorType.NotFound,
+                            ErrorCodes.Auth.UserNotFound),
                         null
                     );
                 }
@@ -214,23 +241,27 @@ namespace tesisproject.backend.Services.Implementations
                     (newRefresh, newRefreshExp)
                 );
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
                 return (
-                    ServiceResult<AuthResponse>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict),
+                    ServiceResult<AuthResponse>.Fail(
+                        ErrorMessages.Common.PersistenceConflict,
+                        ErrorType.Conflict,
+                        ErrorCodes.Common.PersistenceConflict),
                     null
                 );
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 return (
-                    ServiceResult<AuthResponse>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError),
+                    ServiceResult<AuthResponse>.Fail(
+                        ErrorMessages.Common.UnexpectedError,
+                        ErrorType.Unexpected,
+                        ErrorCodes.Common.UnexpectedError),
                     null
                 );
             }
         }
-
-        // =============== REVOKE / LOGOUT ===============
 
         public async Task<ServiceResult<NoContent>> RevokeAsync(
             string? refreshCookie,
@@ -241,7 +272,6 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (string.IsNullOrWhiteSpace(refreshCookie))
                 {
-                    // Lo tratamos como ya “cerrado”
                     return ServiceResult<NoContent>.Ok(new NoContent(), NoRefreshCookieProvidedMessage);
                 }
 
@@ -262,14 +292,33 @@ namespace tesisproject.backend.Services.Implementations
 
                 return ServiceResult<NoContent>.Ok(new NoContent(), RefreshTokenRevokedMessage);
             }
-            catch (DbUpdateException dbex)
+            catch (DbUpdateException)
             {
-                return ServiceResult<NoContent>.Fail(dbex.InnerException?.Message ?? dbex.Message, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
+                return ServiceResult<NoContent>.Fail(
+                    ErrorMessages.Common.PersistenceConflict,
+                    ErrorType.Conflict,
+                    ErrorCodes.Common.PersistenceConflict);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+                return ServiceResult<NoContent>.Fail(
+                    ErrorMessages.Common.UnexpectedError,
+                    ErrorType.Unexpected,
+                    ErrorCodes.Common.UnexpectedError);
             }
+        }
+
+        private static ServiceResult<TTarget> RelayFailure<TTarget, TSource>(ServiceResult<TSource> source)
+        {
+            var error = source.Error == ErrorType.None
+                ? ErrorType.Unexpected
+                : source.Error;
+
+            return ServiceResult<TTarget>.Fail(
+                source.Message ?? ErrorMessages.Common.UnexpectedError,
+                error,
+                source.ErrorCode ?? (error == ErrorType.Unexpected ? ErrorCodes.Common.UnexpectedError : null),
+                source.ValidationErrors);
         }
     }
 }

@@ -14,12 +14,6 @@ namespace tesisproject.backend.Services.Implementations
 {
     public class ConvocationService : IConvocationService
     {
-        private const string MsgConvocationNotFound = "Convocation not found.";
-        private const string MsgNoConvocationsFound = "No convocations found.";
-        private const string MsgConvocationIdRequired = "ConvocationId is required.";
-        private const string MsgIdAndConvocationIdRequired = "Id and ConvocationId are required.";
-        private const string MsgConvocationIdAndRuleIdRequired = "ConvocationId and RuleId are required.";
-
         private const string MsgConvocationCreatedAndActivated = "Convocation created and activated";
         private const string MsgConvocationRetrieved = "Convocation retrieved";
         private const string MsgConvocationsRetrieved = "Convocations retrieved";
@@ -51,7 +45,7 @@ namespace tesisproject.backend.Services.Implementations
                         ErrorCodes.Common.InvalidRequest,
                         new Dictionary<string, string[]>
                         {
-                            ["Request"] = new[] { ErrorMessages.Common.RequestRequired }
+                            ["Request"] = [ErrorMessages.Common.RequestRequired]
                         });
                 }
 
@@ -82,7 +76,7 @@ namespace tesisproject.backend.Services.Implementations
                     Name = entity.Name,
                     Code = entity.Code,
                     IsActive = entity.IsActive,
-                    Rules = new()
+                    Rules = []
                 };
 
                 return ServiceResult<ConvocationDetailResponseDTO>
@@ -124,7 +118,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (entity is null)
                 {
                     return ServiceResult<ConvocationDetailResponseDTO>.Fail(
-                        MsgConvocationNotFound,
+                        ErrorMessages.Convocation.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Convocation.NotFound);
                 }
@@ -159,7 +153,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (items.Count == 0)
                 {
                     return ServiceResult<IReadOnlyList<ConvocationListItemResponseDTO>>.Fail(
-                        MsgNoConvocationsFound,
+                        ErrorMessages.Convocation.NoneFound,
                         ErrorType.NotFound,
                         ErrorCodes.Convocation.NoneFound);
                 }
@@ -209,7 +203,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (entity is null)
                 {
                     return ServiceResult<ConvocationDetailResponseDTO>.Fail(
-                        MsgConvocationNotFound,
+                        ErrorMessages.Convocation.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Convocation.NotFound);
                 }
@@ -264,7 +258,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (entity is null)
                 {
                     return ServiceResult<NoContent>.Fail(
-                        MsgConvocationNotFound,
+                        ErrorMessages.Convocation.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Convocation.NotFound);
                 }
@@ -298,7 +292,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (request is null || request.ConvocationId <= 0)
                 {
                     return ValidationFailure<ConvocationRuleResponseDTO>(
-                        MsgConvocationIdRequired,
+                        ErrorMessages.Convocation.ConvocationIdRequired,
                         ErrorCodes.Common.InvalidId,
                         nameof(ConvocationRuleCreateRequestDTO.ConvocationId));
                 }
@@ -307,7 +301,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (conv is null)
                 {
                     return ServiceResult<ConvocationRuleResponseDTO>.Fail(
-                        MsgConvocationNotFound,
+                        ErrorMessages.Convocation.NotFound,
                         ErrorType.NotFound,
                         ErrorCodes.Convocation.NotFound);
                 }
@@ -356,7 +350,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (request is null || request.Id <= 0 || request.ConvocationId <= 0)
                 {
                     return ValidationFailure<ConvocationRuleResponseDTO>(
-                        MsgIdAndConvocationIdRequired,
+                        ErrorMessages.Convocation.IdAndConvocationIdRequired,
                         ErrorCodes.Common.InvalidId,
                         nameof(ConvocationRuleUpdateRequestDTO.Id),
                         nameof(ConvocationRuleUpdateRequestDTO.ConvocationId));
@@ -408,7 +402,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (convocationId <= 0 || ruleId <= 0)
                 {
                     return ValidationFailure<NoContent>(
-                        MsgConvocationIdAndRuleIdRequired,
+                        ErrorMessages.Convocation.ConvocationIdAndRuleIdRequired,
                         ErrorCodes.Common.InvalidId,
                         nameof(convocationId),
                         nameof(ruleId));
@@ -499,7 +493,7 @@ namespace tesisproject.backend.Services.Implementations
             Name = c.Name,
             Code = c.Code,
             IsActive = c.IsActive,
-            Rules = c.Rules?.Select(MapRuleToDTO).ToList() ?? new()
+            Rules = c.Rules?.Select(MapRuleToDTO).ToList() ?? []
         };
 
         private static ConvocationRuleResponseDTO MapRuleToDTO(ConvocationRule r)
