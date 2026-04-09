@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.Controllers.Extensions;
 using tesisproject.backend.Services.Interfaces;
-using tesisproject.backend.Utils;
 using tesisproject.shared.DTOs.Document.Request;
 using tesisproject.shared.DTOs.Document.Response;
 using tesisproject.shared.Responses;
@@ -21,55 +20,34 @@ namespace tesisproject.backend.Controllers
 
         [HttpPost]
         [Consumes("multipart/form-data")]
-        public async Task<ActionResult<ApiResponse<DocumentResponseDTO>>> Create(
+        public async Task<ActionResult<ServiceResult<DocumentResponseDTO>>> Create(
             [FromForm] UploadDocumentRequestDTO request,
             CancellationToken ct)
-        {
-            var userId = User.GetUserId();
-            if (userId is null)
-                return Unauthorized(ApiResponse<DocumentResponseDTO>.Fail("User not authenticated."));
-
-            return (await _service.UploadAsync(request, userId.Value, ct))
-                .ToActionResult();
-        }
+            => (await _service.UploadAsync(request, ct)).ToActionResult();
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<DocumentResponseDTO>>> GetById(
+        public async Task<ActionResult<ServiceResult<DocumentResponseDTO>>> GetById(
             int id,
             CancellationToken ct)
             => (await _service.GetByIdAsync(id, ct)).ToActionResult();
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<DocumentResponseDTO>>> Update(
+        public async Task<ActionResult<ServiceResult<DocumentResponseDTO>>> Update(
             int id,
             [FromBody] UpdateDocumentRequestDTO request,
             CancellationToken ct)
-        {
-            var userId = User.GetUserId();
-            if (userId is null)
-                return Unauthorized(ApiResponse<DocumentResponseDTO>.Fail("User not authenticated."));
-
-            return (await _service.UpdateAsync(id, request, userId.Value, ct))
-                .ToActionResult();
-        }
+            => (await _service.UpdateAsync(id, request, ct)).ToActionResult();
 
         [HttpPost("{id:int}/file")]
         [Consumes("multipart/form-data")]
-        public async Task<ActionResult<ApiResponse<DocumentResponseDTO>>> ReplaceFile(
+        public async Task<ActionResult<ServiceResult<DocumentResponseDTO>>> ReplaceFile(
             int id,
             [FromForm] ReplaceDocumentFileRequestDTO request,
             CancellationToken ct)
-        {
-            var userId = User.GetUserId();
-            if (userId is null)
-                return Unauthorized(ApiResponse<DocumentResponseDTO>.Fail("User not authenticated."));
-
-            return (await _service.ReplaceFileAsync(id, request, userId.Value, ct))
-                .ToActionResult();
-        }
+            => (await _service.ReplaceFileAsync(id, request, ct)).ToActionResult();
 
         [HttpDelete("{id:int}")]
-        public async Task<ActionResult<ApiResponse<bool>>> Delete(
+        public async Task<ActionResult<ServiceResult<bool>>> Delete(
             int id,
             CancellationToken ct)
             => (await _service.DeleteAsync(id, ct)).ToActionResult();

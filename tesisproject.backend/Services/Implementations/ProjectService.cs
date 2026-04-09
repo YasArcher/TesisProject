@@ -18,12 +18,14 @@ using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Entities.External;
 using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
     public class ProjectService : IProjectService
     {
         private readonly IUnitOfWork _uow;
+        private readonly ICurrentUserService _currentUser;
         private readonly IExternalPeriodsClient _externalPeriods;
         private readonly IAppUserService _appUsers;
         private readonly IExternalAcademicsService _externalAcademics;
@@ -34,8 +36,6 @@ namespace tesisproject.backend.Services.Implementations
 
         private const int DEFAULT_CONVOCATION_ID = 1;
 
-        private const string ProjectNotFoundMessage = "Project not found.";
-        private const string NoProjectsFoundMessage = "No projects found.";
         private const string ProjectsRetrievedMessage = "Projects retrieved";
         private const string ProjectRetrievedMessage = "Project retrieved";
         private const string ProjectsByTypeRetrievedMessage = "Projects by type retrieved";
@@ -43,7 +43,7 @@ namespace tesisproject.backend.Services.Implementations
         private const string ProjectUpdatedMessage = "Project updated";
         private const string ProjectDeletedMessage = "Project deleted";
         private const string ProjectDetailRetrievedMessage = "Project detail retrieved";
-        private const string ConcurrencyConflictMessage = "Concurrency conflict.";
+        private const string ProjectResearchCategoriesUpdatedMessage = "Project research categories updated.";
 
         private const string LegacyMatrixDocumentPath = "legacy-matrix";
         private const string ExternalResearcherRole = "ExternalResearcher";
@@ -64,6 +64,7 @@ namespace tesisproject.backend.Services.Implementations
 
         public ProjectService(
             IUnitOfWork uow,
+            ICurrentUserService currentUser,
             IAppUserService appUsers,
             IExternalAcademicsService externalAcademics,
             IResearchCategoryService researchCategoryService,
@@ -73,6 +74,7 @@ namespace tesisproject.backend.Services.Implementations
             IExternalDistributivosService externalDistributivosRaw)
         {
             _uow = uow;
+            _currentUser = currentUser;
             _appUsers = appUsers;
             _externalAcademics = externalAcademics;
             _researchCategoryService = researchCategoryService;
@@ -122,7 +124,11 @@ namespace tesisproject.backend.Services.Implementations
                     .ToListAsync(ct);
 
                 if (data.Count == 0)
-                    return FailNotFound<List<ProjectListResponseDTO>>(NoProjectsFoundMessage);
+                {
+                    return FailNotFound<List<ProjectListResponseDTO>>(
+                        ErrorMessages.Project.NoneFound,
+                        ErrorCodes.Project.NoneFound);
+                }
 
                 return ServiceResult<List<ProjectListResponseDTO>>.Ok(data, ProjectsRetrievedMessage);
             }
@@ -164,7 +170,9 @@ namespace tesisproject.backend.Services.Implementations
                     .FirstOrDefaultAsync(ct);
 
                 return dto is null
-                    ? FailNotFound<ProjectListResponseDTO>(ProjectNotFoundMessage)
+                    ? FailNotFound<ProjectListResponseDTO>(
+                        ErrorMessages.Project.NotFound,
+                        ErrorCodes.Project.NotFound)
                     : ServiceResult<ProjectListResponseDTO>.Ok(dto, ProjectRetrievedMessage);
             }
             catch (Exception ex)
@@ -207,9 +215,8 @@ namespace tesisproject.backend.Services.Implementations
         // ================= WRITES =================
 
         public async Task<ServiceResult<ProjectListResponseDTO>> CreateAsync(
-    AddProjectRequestDTO dto,
-    int currentUserId,
-    CancellationToken ct = default)
+            AddProjectRequestDTO dto,
+            CancellationToken ct = default)
         {
             try
             {
@@ -219,21 +226,18 @@ namespace tesisproject.backend.Services.Implementations
                 if (duplicate)
                 {
                     return ServiceResult<ProjectListResponseDTO>.Fail(
-                        "A project with the same name already exists in this group.",
-                        ErrorType.Conflict
-                    );
+                        ErrorMessages.Project.NameAlreadyExistsInGroup,
+                        ErrorType.Conflict,
+                        ErrorCodes.Project.NameAlreadyExistsInGroup);
                 }
 
-                var appUserResult = await _appUsers.GetAppUserIdByLocalIdAsync(currentUserId, ct);
-                if (!appUserResult.Success || appUserResult.Data <= 0)
+                var actorUserId = await GetExistingActorUserIdAsync(ct);
+                if (!actorUserId.HasValue)
                 {
-                    return ServiceResult<ProjectListResponseDTO>.Fail(
-                        appUserResult.Message ?? "User not found.",
-                        appUserResult.Error
-                    );
+                    return FailActorUserNotFound<ProjectListResponseDTO>();
                 }
 
-                var createdByUserId = appUserResult.Data;
+                var createdByUserId = actorUserId.Value;
 
                 var entity = MapToEntity(dto, createdByUserId);
                 await _uow.Projects.AddAsync(entity, ct);
@@ -260,6 +264,10 @@ namespace tesisproject.backend.Services.Implementations
 
                 return ServiceResult<ProjectListResponseDTO>.Ok(created, ProjectCreatedMessage);
             }
+            catch (UnauthorizedAccessException)
+            {
+                return FailUnauthorized<ProjectListResponseDTO>();
+            }
             catch (DbUpdateException dbex)
             {
                 return FailConflict<ProjectListResponseDTO>(dbex.InnerException?.Message ?? dbex.Message);
@@ -276,7 +284,11 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var current = await _uow.Projects.GetByIdAsync(new object[] { id }, ct);
                 if (current is null)
-                    return FailNotFound<NoContent>(ProjectNotFoundMessage);
+                {
+                    return FailNotFound<NoContent>(
+                        ErrorMessages.Project.NotFound,
+                        ErrorCodes.Project.NotFound);
+                }
 
                 ApplyUpdate(current, dto);
                 _uow.Projects.Update(current);
@@ -286,7 +298,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (DbUpdateConcurrencyException)
             {
-                return FailConflict<NoContent>(ConcurrencyConflictMessage);
+                return FailConflict<NoContent>(ErrorMessages.Common.PersistenceConflict);
             }
             catch (DbUpdateException dbex)
             {
@@ -304,7 +316,11 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var current = await _uow.Projects.GetByIdAsync(new object[] { id }, ct);
                 if (current is null)
-                    return FailNotFound<NoContent>(ProjectNotFoundMessage);
+                {
+                    return FailNotFound<NoContent>(
+                        ErrorMessages.Project.NotFound,
+                        ErrorCodes.Project.NotFound);
+                }
 
                 _uow.Projects.Remove(current);
                 await _uow.SaveChangesAsync(ct);
@@ -371,7 +387,11 @@ namespace tesisproject.backend.Services.Implementations
                     .FirstOrDefaultAsync(ct);
 
                 if (dto is null)
-                    return FailNotFound<ProjectDetailResponseDTO>(ProjectNotFoundMessage);
+                {
+                    return FailNotFound<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.NotFound,
+                        ErrorCodes.Project.NotFound);
+                }
 
                 dto.Documents = await _uow.ProjectDocuments
                     .Query(asNoTracking: true)
@@ -393,7 +413,6 @@ namespace tesisproject.backend.Services.Implementations
 
         public async Task<ServiceResult<ProjectDetailResponseDTO>> CreateFullAsync(
             AddProjectFullRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default)
         {
             void PhaseLog(string phase, string message)
@@ -404,7 +423,9 @@ namespace tesisproject.backend.Services.Implementations
                 if (request.Project is null)
                 {
                     PhaseLog("Fase 0 - Request", "Project payload is null");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid project data.");
+                    return FailValidation<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.InvalidProjectData,
+                        ErrorCodes.Project.InvalidProjectData);
                 }
 
                 var p = request.Project;
@@ -412,7 +433,9 @@ namespace tesisproject.backend.Services.Implementations
                 if (request.GroupMembers is null || request.GroupMembers.Count == 0)
                 {
                     PhaseLog("Fase 0 - Request", "GroupMembers is null or empty");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail("At least one group member is required.");
+                    return FailValidation<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.AtLeastOneGroupMemberRequired,
+                        ErrorCodes.Project.AtLeastOneGroupMemberRequired);
                 }
 
                 var principalCoordinatorEmail = request.GroupMembers
@@ -422,9 +445,9 @@ namespace tesisproject.backend.Services.Implementations
                 if (string.IsNullOrWhiteSpace(principalCoordinatorEmail))
                 {
                     PhaseLog("Fase 0 - Request", "Principal coordinator email not found");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        "Principal coordinator is required.",
-                        ErrorType.Validation);
+                    return FailValidation<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.PrincipalCoordinatorRequired,
+                        ErrorCodes.Project.PrincipalCoordinatorRequired);
                 }
 
                 var d = request.ProjectDocumentData;
@@ -435,9 +458,10 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     PhaseLog("Fase 1.2 - External Faculty Resolve",
                         $"External profile not found for email={principalCoordinatorEmail}. Error={profRes.Error}, Msg={profRes.Message}");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        "Principal coordinator external profile not found.",
-                        ErrorType.NotFound);
+
+                    return FailNotFound<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.PrincipalCoordinatorExternalProfileNotFound,
+                        ErrorCodes.Project.PrincipalCoordinatorExternalProfileNotFound);
                 }
 
                 var profile = profRes.Data[0];
@@ -447,9 +471,10 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     PhaseLog("Fase 1.2 - External Faculty Resolve",
                         $"External periods not available. Error={periodsRes.Error}, Msg={periodsRes.Message}");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        "External academic periods not available.",
-                        ErrorType.Unexpected);
+
+                    return FailUnexpected<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.ExternalAcademicPeriodsNotAvailable,
+                        ErrorCodes.Project.ExternalAcademicPeriodsNotAvailable);
                 }
 
                 var periods = periodsRes.Data;
@@ -462,9 +487,10 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     PhaseLog("Fase 1.2 - External Faculty Resolve",
                         $"No distributivos found for email={principalCoordinatorEmail}. Error={distRawRes.Error}, Msg={distRawRes.Message}");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        "No distributivo found for principal coordinator in external system.",
-                        ErrorType.NotFound);
+
+                    return FailNotFound<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.NoDistributivoForPrincipalCoordinator,
+                        ErrorCodes.Project.NoDistributivoForPrincipalCoordinator);
                 }
 
                 var distributivos = distRawRes.Data;
@@ -472,9 +498,9 @@ namespace tesisproject.backend.Services.Implementations
                 if (projectStartDate is null)
                 {
                     PhaseLog("Fase 1.2 - External Faculty Resolve", "Project StartDate is null");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        "Project StartDate is required.",
-                        ErrorType.Validation);
+                    return FailValidation<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.StartDateRequired,
+                        ErrorCodes.Project.StartDateRequired);
                 }
 
                 var selected = ExternalCareerSelector.SelectProjectCareer(
@@ -488,9 +514,10 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     PhaseLog("Fase 1.2 - External Faculty Resolve",
                         $"SelectProjectCareer returned null for email={principalCoordinatorEmail}, start={projectStartDate:O}");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        "Unable to resolve faculty/career for project start date from external data.",
-                        ErrorType.Validation);
+
+                    return FailValidation<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.FacultyCareerResolutionFailed,
+                        ErrorCodes.Project.FacultyCareerResolutionFailed);
                 }
 
                 var resolvedFacultyId = selected.FacultyId ?? selected.FacultyCareerId;
@@ -503,40 +530,42 @@ namespace tesisproject.backend.Services.Implementations
                 if (p.FacultyId <= 0)
                 {
                     PhaseLog("Fase 1.3 - Validación", "Resolved FacultyId <= 0");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid FacultyId.");
+                    return FailValidation<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.InvalidFacultyId,
+                        ErrorCodes.Project.InvalidFacultyId);
                 }
 
                 if (p.ProjectTypeId <= 0)
                 {
                     PhaseLog("Fase 1 - Validación", "ProjectTypeId <= 0");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid ProjectTypeId.");
+                    return FailValidation<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.InvalidProjectTypeId,
+                        ErrorCodes.Project.InvalidProjectTypeId);
                 }
 
                 if (p.ProjectStateId <= 0)
                 {
                     PhaseLog("Fase 1 - Validación", "ProjectStateId <= 0");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid ProjectStateId.");
+                    return FailValidation<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.InvalidProjectStateId,
+                        ErrorCodes.Project.InvalidProjectStateId);
                 }
 
-                var appUserResult = await _appUsers.GetAppUserIdByLocalIdAsync(currentUserId, ct);
-                if (!appUserResult.Success || appUserResult.Data <= 0)
+                var actorUserId = await GetExistingActorUserIdAsync(ct);
+                if (!actorUserId.HasValue)
                 {
-                    PhaseLog(
-                        "Fase 1 - Validación",
-                        $"CreatedByUserId unresolved from AspUserId={currentUserId}. Error={appUserResult.Error}, Msg={appUserResult.Message}");
-
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                        appUserResult.Message ?? "User not found.",
-                        appUserResult.Error
-                    );
+                    PhaseLog("Fase 1 - Validación", "CreatedByUserId unresolved from current authenticated user.");
+                    return FailActorUserNotFound<ProjectDetailResponseDTO>();
                 }
 
-                var createdByUserId = appUserResult.Data;
+                var createdByUserId = actorUserId.Value;
 
                 if (p.FacultyId <= 0)
                 {
                     PhaseLog("Fase 1 - Validación", "FacultyId <= 0");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Invalid FacultyId.");
+                    return FailValidation<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.InvalidFacultyId,
+                        ErrorCodes.Project.InvalidFacultyId);
                 }
 
                 PhaseLog("Fase 1.5 - Código", "Generando código de proyecto...");
@@ -546,7 +575,9 @@ namespace tesisproject.backend.Services.Implementations
                 if (string.IsNullOrWhiteSpace(facultyCode))
                 {
                     PhaseLog("Fase 1.5 - Código", "facultyCode vacío");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Faculty project code (prefix) is required.");
+                    return FailValidation<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.FacultyProjectCodeRequired,
+                        ErrorCodes.Project.FacultyProjectCodeRequired);
                 }
 
                 var lastNumber = await _uow.Projects
@@ -566,7 +597,9 @@ namespace tesisproject.backend.Services.Implementations
                 if (generatedCode.Length > 20)
                 {
                     PhaseLog("Fase 1.5 - Código", $"generatedCode demasiado largo: {generatedCode.Length}");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Generated project code is too long.");
+                    return FailValidation<ProjectDetailResponseDTO>(
+                        ErrorMessages.Project.GeneratedProjectCodeTooLong,
+                        ErrorCodes.Project.GeneratedProjectCodeTooLong);
                 }
 
                 PhaseLog("Fase 2 - Group", "Creando grupo...");
@@ -588,7 +621,10 @@ namespace tesisproject.backend.Services.Implementations
                 if (duplicate)
                 {
                     PhaseLog("Fase 3 - Validación nombre", "Duplicado detectado");
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail("A project with the same name already exists.");
+                    return ServiceResult<ProjectDetailResponseDTO>.Fail(
+                        ErrorMessages.Project.NameAlreadyExists,
+                        ErrorType.Conflict,
+                        ErrorCodes.Project.NameAlreadyExists);
                 }
 
                 PhaseLog("Fase 4 - Project",
@@ -668,12 +704,24 @@ namespace tesisproject.backend.Services.Implementations
                         $"EnsureAppUsersAsync => Success={ensureResult.Success}, " +
                         $"Error={ensureResult.Error}, DataCount={(ensureResult.Data?.Count ?? 0)}");
 
-                    if (!ensureResult.Success || ensureResult.Data is null)
+                    if (!ensureResult.Success)
                     {
                         PhaseLog("Fase 5 - Miembros", $"Error asegurando AppUsers: {ensureResult.Error}");
-                        return ServiceResult<ProjectDetailResponseDTO>.Fail(
-                            ensureResult.Message ?? "Error ensuring app users.",
-                            ErrorType.Unexpected);
+
+                        return RelayFailure<ProjectDetailResponseDTO>(
+                            ensureResult.Message,
+                            ensureResult.Error,
+                            ensureResult.ErrorCode,
+                            ensureResult.ValidationErrors);
+                    }
+
+                    if (ensureResult.Data is null)
+                    {
+                        PhaseLog("Fase 5 - Miembros", "EnsureAppUsersAsync returned Success=true but Data=null.");
+
+                        return FailUnexpected<ProjectDetailResponseDTO>(
+                            ErrorMessages.Project.ErrorEnsuringAppUsers,
+                            ErrorCodes.Project.ErrorEnsuringAppUsers);
                     }
 
                     var appUserIds = ensureResult.Data;
@@ -682,7 +730,10 @@ namespace tesisproject.backend.Services.Implementations
                     {
                         PhaseLog("Fase 5 - Miembros",
                             $"Cantidad de AppUserIds ({appUserIds.Count}) != GroupMembers ({request.GroupMembers.Count})");
-                        return ServiceResult<ProjectDetailResponseDTO>.Fail("Inconsistent app user mapping.");
+
+                        return FailUnexpected<ProjectDetailResponseDTO>(
+                            ErrorMessages.Project.InconsistentAppUserMapping,
+                            ErrorCodes.Project.InconsistentAppUserMapping);
                     }
 
                     var groupMembers = new List<GroupMember>();
@@ -829,14 +880,20 @@ namespace tesisproject.backend.Services.Implementations
 
                 var detail = await GetProjectDetailAsync(projectEntity.ProjectId, ct);
                 if (!detail.Success)
-                    return ServiceResult<ProjectDetailResponseDTO>.Fail("Error retrieving project detail.");
+                {
+                    return detail;
+                }
 
                 return ServiceResult<ProjectDetailResponseDTO>.Ok(detail.Data!);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return FailUnauthorized<ProjectDetailResponseDTO>();
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"[DEBUG] EXCEPCIÓN → {ex}");
-                return ServiceResult<ProjectDetailResponseDTO>.Fail("Unexpected server error.");
+                return FailUnexpected<ProjectDetailResponseDTO>(ErrorMessages.Common.UnexpectedError);
             }
         }
 
@@ -887,7 +944,9 @@ namespace tesisproject.backend.Services.Implementations
 
                 if (project is null)
                 {
-                    return FailNotFound<NoContent>(ProjectNotFoundMessage);
+                    return FailNotFound<NoContent>(
+                        ErrorMessages.Project.NotFound,
+                        ErrorCodes.Project.NotFound);
                 }
 
                 var newIds = (researchCategoryIds ?? new List<int>())
@@ -922,7 +981,7 @@ namespace tesisproject.backend.Services.Implementations
 
                 await _uow.SaveChangesAsync(ct);
 
-                return ServiceResult<NoContent>.Ok(new NoContent(), "Project research categories updated.");
+                return ServiceResult<NoContent>.Ok(new NoContent(), ProjectResearchCategoriesUpdatedMessage);
             }
             catch (Exception ex)
             {
@@ -1038,7 +1097,7 @@ namespace tesisproject.backend.Services.Implementations
             if (!ensure.Success || ensure.Data is null || ensure.Data.Count != registerDtos.Count)
             {
                 throw new InvalidOperationException(
-                    ensure.Message ?? "Error ensuring app users for group members.");
+                    ensure.Message ?? ErrorMessages.Project.ErrorEnsuringAppUsers);
             }
 
             var appUserIdByAspId = new Dictionary<int, int>();
@@ -1090,7 +1149,6 @@ namespace tesisproject.backend.Services.Implementations
 
         public async Task<ServiceResult<int>> ImportFromMatrixAsync(
             ProjectMatrixUploadSummaryDTO summary,
-            int currentUserId,
             CancellationToken ct = default)
         {
             void PhaseLog(string phase, string message)
@@ -1139,7 +1197,9 @@ namespace tesisproject.backend.Services.Implementations
                 if (!facultiesResult.Success || facultiesResult.Data is null || facultiesResult.Data.Count == 0)
                 {
                     PhaseLog("Init-Faculties", "Cannot retrieve faculties from external API.");
-                    return ServiceResult<int>.Fail("Cannot retrieve faculties from external API.", ErrorType.Unexpected);
+                    return FailUnexpected<int>(
+                        ErrorMessages.Project.CannotRetrieveFaculties,
+                        ErrorCodes.Project.CannotRetrieveFaculties);
                 }
 
                 var externalFacultiesCache = facultiesResult.Data;
@@ -1153,31 +1213,31 @@ namespace tesisproject.backend.Services.Implementations
                 if (summary.ImportedProjects is null || summary.ImportedProjects.Count == 0)
                 {
                     PhaseLog("Init", "Summary.ImportedProjects is null or empty.");
-                    return ServiceResult<int>.Fail("No imported projects found in summary.");
+                    return FailValidation<int>(
+                        ErrorMessages.Project.NoImportedProjectsFound,
+                        ErrorCodes.Project.NoImportedProjectsFound);
                 }
 
                 PhaseLog("Init", $"ImportedProjects in summary: {summary.ImportedProjects.Count}");
 
-                var appUserResult = await _appUsers.GetAppUserIdByLocalIdAsync(currentUserId, ct);
-                if (!appUserResult.Success || appUserResult.Data <= 0)
+                var actorUserId = await GetExistingActorUserIdAsync(ct);
+                if (!actorUserId.HasValue)
                 {
-                    PhaseLog(
-                        "Init",
-                        $"AppUser resolve failed. AspUserId={currentUserId}, Error={appUserResult.Error}, Msg={appUserResult.Message}");
-
-                    return ServiceResult<int>.Fail(
-                        appUserResult.Message ?? "User not found or invalid.",
-                        appUserResult.Error
-                    );
+                    PhaseLog("Init", "AppUser resolve failed for current authenticated user.");
+                    return FailActorUserNotFound<int>();
                 }
 
-                var createdByUserId = appUserResult.Data;
+                var createdByUserId = actorUserId.Value;
 
-                PhaseLog("Init", $"Import executed by AppUserId={createdByUserId} (AspUserId={currentUserId})");
+                PhaseLog("Init", $"Import executed by AppUserId={createdByUserId}");
 
                 var directoryResult = await _externalDirectory.GetAllAsync(ct);
                 if (!directoryResult.Success || directoryResult.Data is null || directoryResult.Data.Count == 0)
-                    return ServiceResult<int>.Fail("Cannot retrieve external directory.", ErrorType.Unexpected);
+                {
+                    return FailUnexpected<int>(
+                        ErrorMessages.Project.CannotRetrieveExternalDirectory,
+                        ErrorCodes.Project.CannotRetrieveExternalDirectory);
+                }
 
                 var directoryCache = directoryResult.Data;
 
@@ -1633,7 +1693,7 @@ namespace tesisproject.backend.Services.Implementations
                                     ResolutionCode = x.raw,
                                     ResolutionDate = null,
                                     CreatedAt = nowUtc,
-                                    CreatedByUserId = createdByUserId   
+                                    CreatedByUserId = createdByUserId
                                 };
 
                                 await _uow.Documents.AddAsync(visitDocument, ct);
@@ -1682,11 +1742,15 @@ namespace tesisproject.backend.Services.Implementations
 
                 return ServiceResult<int>.Ok(createdCount);
             }
+            catch (UnauthorizedAccessException)
+            {
+                return FailUnauthorized<int>();
+            }
             catch (Exception ex)
             {
                 Console.WriteLine($"[IMPORT] EXCEPTION → {ex}");
                 _logger.LogError(ex, "[IMPORT] Exception in ImportFromMatrixAsync");
-                return ServiceResult<int>.Fail("Unexpected server error.");
+                return FailUnexpected<int>(ErrorMessages.Common.UnexpectedError);
             }
         }
 
@@ -1701,6 +1765,13 @@ namespace tesisproject.backend.Services.Implementations
                 MemberRoleTypeIds.Coordinador or MemberRoleTypeIds.Subrogante => AppRoles.Coordinador,
                 _ => AppRoles.User
             };
+        }
+
+        private async Task<int?> GetExistingActorUserIdAsync(CancellationToken ct)
+        {
+            var currentUserId = _currentUser.GetRequiredUserId();
+            var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+            return user?.IdUser;
         }
 
         private static int? ResolveDocumentTypeId(
@@ -2035,13 +2106,61 @@ namespace tesisproject.backend.Services.Implementations
             target.ConvocationId = dto.ConvocationId;
         }
 
-        private static ServiceResult<T> FailNotFound<T>(string message)
-            => ServiceResult<T>.Fail(message, ErrorType.NotFound);
+        private static ServiceResult<T> FailUnauthorized<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Auth.UserNotAuthenticated,
+                ErrorType.Unauthorized,
+                ErrorCodes.Auth.UserNotAuthenticated);
 
-        private static ServiceResult<T> FailUnexpected<T>(string message)
-            => ServiceResult<T>.Fail(message, ErrorType.Unexpected);
+        private static ServiceResult<T> FailActorUserNotFound<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Auth.ActorUserNotFound,
+                ErrorType.NotFound,
+                ErrorCodes.Auth.ActorUserNotFound);
+
+        private static ServiceResult<T> FailValidation<T>(
+            string message,
+            string errorCode,
+            Dictionary<string, string[]>? validation = null)
+            => ServiceResult<T>.Fail(
+                message,
+                ErrorType.Validation,
+                errorCode,
+                validation);
+
+        private static ServiceResult<T> FailNotFound<T>(string message, string errorCode)
+            => ServiceResult<T>.Fail(
+                message,
+                ErrorType.NotFound,
+                errorCode);
+
+        private static ServiceResult<T> FailUnexpected<T>(string message, string? errorCode = null)
+            => ServiceResult<T>.Fail(
+                message,
+                ErrorType.Unexpected,
+                errorCode ?? ErrorCodes.Common.UnexpectedError);
 
         private static ServiceResult<T> FailConflict<T>(string message)
-            => ServiceResult<T>.Fail(message, ErrorType.Conflict);
+            => ServiceResult<T>.Fail(
+                message,
+                ErrorType.Conflict,
+                ErrorCodes.Common.PersistenceConflict);
+
+        private static ServiceResult<TTarget> RelayFailure<TTarget>(
+            string? message,
+            ErrorType error,
+            string? errorCode,
+            Dictionary<string, string[]>? validation)
+        {
+            var normalizedError = error == ErrorType.None
+                ? ErrorType.Unexpected
+                : error;
+
+            return ServiceResult<TTarget>.Fail(
+                message ?? ErrorMessages.Common.UnexpectedError,
+                normalizedError,
+                errorCode ?? (normalizedError == ErrorType.Unexpected ? ErrorCodes.Common.UnexpectedError : null),
+                validation);
+        }
     }
-} 
+}

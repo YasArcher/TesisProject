@@ -14,43 +14,56 @@ namespace tesisproject.backend.Controllers
     public class VisitsController : ControllerBase
     {
         private readonly IVisitService _service;
+
         public VisitsController(IVisitService service) => _service = service;
 
         // GET: api/visits
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<VisitListResponseDTO>>>> GetAll(CancellationToken ct)
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<VisitListResponseDTO>>>> GetAll(
+            CancellationToken ct)
             => (await _service.ListAsync(ct)).ToActionResult();
 
         // GET: api/visits/{id}
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<VisitListResponseDTO>>> GetById(int id, CancellationToken ct)
+        public async Task<ActionResult<ServiceResult<VisitListResponseDTO>>> GetById(
+            int id,
+            CancellationToken ct)
             => (await _service.GetByIdAsync(id, ct)).ToActionResult();
 
         // GET: api/visits/{id}/detail
         [HttpGet("{id:int}/detail")]
-        public async Task<ActionResult<ApiResponse<VisitDetailResponseDTO>>> GetDetail(int id, CancellationToken ct)
+        public async Task<ActionResult<ServiceResult<VisitDetailResponseDTO>>> GetDetail(
+            int id,
+            CancellationToken ct)
             => (await _service.GetVisitDetailAsync(id, ct)).ToActionResult();
 
         // GET: api/visits/by-project/{projectId}
         [HttpGet("by-project/{projectId:int}")]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<VisitListResponseDTO>>>> GetByProject(int projectId, CancellationToken ct)
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<VisitListResponseDTO>>>> GetByProject(
+            int projectId,
+            CancellationToken ct)
             => (await _service.ListByProjectAsync(projectId, ct)).ToActionResult();
 
         // GET: api/visits/by-state/{visitStateId}
         [HttpGet("by-state/{visitStateId:int}")]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<VisitPlannedForExecutionListDTO>>>> GetByState(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>>> GetByState(
             int visitStateId,
             CancellationToken ct)
             => (await _service.ListByStateAsync(visitStateId, ct)).ToActionResult();
 
         // POST: api/visits
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<VisitListResponseDTO>>> Create(AddVisitRequestDTO body, CancellationToken ct)
+        public async Task<ActionResult<ServiceResult<VisitListResponseDTO>>> Create(
+            AddVisitRequestDTO body,
+            CancellationToken ct)
             => (await _service.CreateAsync(body, ct)).ToActionResult();
 
         // PUT: api/visits/{id}
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<VisitListResponseDTO>>> Update(int id, UpdateVisitRequestDTO body, CancellationToken ct)
+        public async Task<ActionResult<ServiceResult<VisitListResponseDTO>>> Update(
+            int id,
+            UpdateVisitRequestDTO body,
+            CancellationToken ct)
         {
             body.VisitId = id;
             return (await _service.UpdateAsync(body, ct)).ToActionResult();
@@ -58,12 +71,14 @@ namespace tesisproject.backend.Controllers
 
         // DELETE: api/visits/{id}
         [HttpDelete("{id:int}")]
-        public async Task<ActionResult<ApiResponse<NoContent>>> Delete(int id, CancellationToken ct)
+        public async Task<ActionResult<ServiceResult<NoContent>>> Delete(
+            int id,
+            CancellationToken ct)
             => (await _service.DeleteAsync(id, ct)).ToActionResult();
 
         // PUT: api/visits/{id}/finalize
         [HttpPut("{id:int}/finalize")]
-        public async Task<ActionResult<ApiResponse<VisitListResponseDTO>>> Finalize(
+        public async Task<ActionResult<ServiceResult<VisitListResponseDTO>>> Finalize(
             int id,
             [FromBody] FinalizeVisitRequestDTO body,
             CancellationToken ct)
@@ -74,18 +89,16 @@ namespace tesisproject.backend.Controllers
 
         // PUT: api/visits/bulk/schedule
         [HttpPut("bulk/schedule")]
-        public async Task<ActionResult<ApiResponse<NoContent>>> BulkSchedule(
+        public async Task<ActionResult<ServiceResult<NoContent>>> BulkSchedule(
             [FromBody] BulkScheduleVisitsRequestDTO request,
             CancellationToken ct)
             => (await _service.BulkScheduleAsync(request, ct)).ToActionResult();
 
         // GET: api/visits/planned-for-execution?executionDate=2026-02-03
         [HttpGet("planned-for-execution")]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<VisitPlannedForExecutionListDTO>>>> GetPlannedForExecution(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<VisitPlannedForExecutionListDTO>>>> GetPlannedForExecution(
             [FromQuery] DateOnly? executionDate,
             CancellationToken ct)
             => (await _service.ListPlannedForExecutionAsync(executionDate, ct)).ToActionResult();
-
-
     }
 }

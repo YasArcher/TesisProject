@@ -14,11 +14,13 @@ namespace tesisproject.backend.Controllers
     public class ExternalAcademicsController
     {
         private readonly IExternalAcademicsService _service;
-        public ExternalAcademicsController(IExternalAcademicsService service) => _service = service;
-        // GET: api/ExternalAcademics/faculties
-        [HttpGet("faculties")]
-        public async Task<ActionResult<ApiResponse<List<ExternalFacultyDTO>>>> GetFacultiesWithPrograms(CancellationToken ct)
-            => (await _service.GetFacultiesWithProgramsAsync(ct)).ToActionResult();
 
+        public ExternalAcademicsController(IExternalAcademicsService service) => _service = service;
+
+        // GET: api/external/ExternalAcademics/faculties
+        [HttpGet("faculties")]
+        public async Task<ActionResult<ServiceResult<List<ExternalFacultyDTO>>>> GetFacultiesWithPrograms(
+            CancellationToken ct)
+            => (await _service.GetFacultiesWithProgramsAsync(ct)).ToActionResult();
     }
 }

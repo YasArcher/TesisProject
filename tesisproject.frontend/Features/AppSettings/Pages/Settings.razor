@@ -5,7 +5,7 @@
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.Modal
 @using tesisproject.frontend.Services.Interfaces
-
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Catalog.Common.Request
 @using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.DTOs.Catalog.ProductAttribute.Request
@@ -27,27 +27,21 @@
 @inject ITransactionTypeClientService TransactionTypeClient
 
 <div class="flex flex-col h-full min-h-0 gap-4 overflow-hidden">
-    <!-- Header -->
     <div class="rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm shrink-0">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div class="space-y-2">
                 <h1 class="text-2xl font-bold text-foreground">
                     Configuración del Sistema
                 </h1>
-                @* <p class="text-sm text-muted">
-                    Configure catálogos del sistema, productos y otras opciones.
-                </p> *@
             </div>
         </div>
     </div>
 
-    <!-- Tabs container -->
     <div class="flex-1 min-h-0 overflow-hidden">
         <Tabs ActiveKey="@_activeTab"
               OnChange="OnTabChanged"
               Variant="TabVariant.Underline">
 
-            <!-- Products configuration tab -->
             <Tab Key="products" Title="Productos">
                 <Icon>
                     <svg xmlns="http://www.w3.org/2000/svg"
@@ -65,13 +59,12 @@
                           OnChange="OnProductsSubTabChanged"
                           Variant="TabVariant.Pills">
 
-                        <!-- Sub-tab: Product catalogs (Product Types + Attributes) -->
                         <Tab Key="catalogs" Title="Catálogos de productos">
                             <ChildContent>
                                 <ProductCatalogsTab Loading="@_catalogLoading"
                                                     Error="@_catalogError"
-                                                    ProductTypes="@(_catalogProductTypes)"
-                                                    ProductAttributes="@(_catalogProductAttributes)"
+                                                    ProductTypes="@_catalogProductTypes"
+                                                    ProductAttributes="@_catalogProductAttributes"
                                                     TypeModalOpen="@_typeModalOpen"
                                                     TypeModalOpenChanged="v => _typeModalOpen = v"
                                                     IsTypeEditMode="@_isTypeEditMode"
@@ -98,7 +91,6 @@
                             </ChildContent>
                         </Tab>
 
-                        <!-- Sub-tab: Designer -->
                         <Tab Key="designer" Title="Diseñador">
                             <ChildContent>
                                 <ProductTypeDesignerTab Loading="@_designerLoading"
@@ -121,7 +113,6 @@
                 </ChildContent>
             </Tab>
 
-            <!-- Core catalogs tab -->
             <Tab Key="core-catalogs" Title="Catálogos principales">
                 <Icon>
                     <svg xmlns="http://www.w3.org/2000/svg"
@@ -199,7 +190,6 @@
                 </ChildContent>
             </Tab>
 
-            <!-- Research categories tab -->
             <Tab Key="research-categories" Title="Categorías de investigación">
                 <Icon>
                     <svg xmlns="http://www.w3.org/2000/svg"
@@ -216,7 +206,7 @@
                     <ResearchCategoryDesignerTab />
                 </ChildContent>
             </Tab>
-            <!-- Countries & Institutions tab -->
+
             <Tab Key="countries-institutions" Title="Países e Instituciones">
                 <Icon>
                     <svg xmlns="http://www.w3.org/2000/svg"
@@ -231,14 +221,14 @@
                     <CountriesAndInstitutionsTab />
                 </ChildContent>
             </Tab>
-                        <!-- Technician groups tab -->
+
             <Tab Key="technician-groups" Title="Grupos de técnicos">
                 <Icon>
                     <svg xmlns="http://www.w3.org/2000/svg"
                          viewBox="0 0 24 24"
                          fill="currentColor"
                          class="size-5">
-                        <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3Zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z"/>
+                        <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3Zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3Zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13Zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5Z" />
                     </svg>
                 </Icon>
 
@@ -251,8 +241,6 @@
 </div>
 
 @code {
-    // ==================== CORE CATALOGS STATE ====================
-
     private bool _coreCatalogsLoading;
     private string? _coreCatalogsError;
 
@@ -265,35 +253,30 @@
 
     private bool _coreCatalogsLoadedOnce;
 
-    // ===== DocumentType modal =====
     private bool _documentTypeModalOpen;
     private bool _isDocumentTypeEditMode;
     private bool _savingDocumentType;
     private string? _documentTypeError;
     private CatalogDetailDTO _documentTypeEditModel = new();
 
-    // ===== FundingType modal =====
     private bool _fundingTypeModalOpen;
     private bool _isFundingTypeEditMode;
     private bool _savingFundingType;
     private string? _fundingTypeError;
     private CatalogDetailDTO _fundingTypeEditModel = new();
 
-    // ===== ObjectiveType modal =====
     private bool _objectiveTypeModalOpen;
     private bool _isObjectiveTypeEditMode;
     private bool _savingObjectiveType;
     private string? _objectiveTypeError;
     private CatalogDetailDTO _objectiveTypeEditModel = new();
 
-    // ===== ProjectType (core) modal =====
     private bool _projectTypeModalOpen;
     private bool _isProjectTypeEditMode;
     private bool _savingProjectType;
     private string? _projectTypeError;
     private CatalogDetailDTO _projectTypeEditModel = new();
 
-    // ===== TransactionType modal =====
     private bool _transactionTypeModalOpen;
     private bool _isTransactionTypeEditMode;
     private bool _savingTransactionType;
@@ -302,8 +285,6 @@
 
     private string _activeTab = "products";
     private string _productsSubTab = "catalogs";
-
-    // --------- Estado del Designer ----------
 
     private bool _designerLoading;
     private string? _designerError;
@@ -321,22 +302,18 @@
     private bool _designerSaving;
     private string? _designerDesignError;
 
-    // ===== Estado de catálogos de productos =====
-
     private bool _catalogLoading;
     private string? _catalogError;
 
     private List<CatalogListItemDTO> _catalogProductTypes = new();
     private List<ProductAttributeListItemDTO> _catalogProductAttributes = new();
 
-    // ===== ProductType modal (para catálogos de producto) =====
     private bool _typeModalOpen;
     private bool _isTypeEditMode;
     private bool _savingType;
     private string? _typeError;
     private CatalogDetailDTO _typeEditModel = new();
 
-    // ===== ProductAttribute modal =====
     private bool _attributeModalOpen;
     private bool _isAttributeEditMode;
     private bool _savingAttribute;
@@ -346,31 +323,20 @@
     private readonly IEnumerable<ProductAttributeDataType> _dataTypes =
         Enum.GetValues(typeof(ProductAttributeDataType)).Cast<ProductAttributeDataType>();
 
-    // ==================== lifecycle ====================
-
     protected override async Task OnInitializedAsync()
     {
         await LoadProductCatalogsAsync();
     }
 
-    // ==================== ROOT TABS ====================
-
     private async Task OnTabChanged(string newKey)
     {
         _activeTab = newKey;
 
-        if (newKey == "products")
-        {
-            // Opcional: refrescar si quieres
-        }
-        else if (newKey == "core-catalogs" && !_coreCatalogsLoadedOnce)
+        if (newKey == "core-catalogs" && !_coreCatalogsLoadedOnce)
         {
             await LoadCoreCatalogsAsync();
         }
-        // "research-categories" no necesita nada aquí: el componente hijo se encarga solo
     }
-
-    // ==================== PRODUCT CATALOGS (PRODUCT TYPES + ATTRIBUTES) ====================
 
     private async Task LoadProductCatalogsAsync()
     {
@@ -380,29 +346,31 @@
         try
         {
             var typesRes = await ProductTypeClient.GetListAsync();
-            if (!typesRes.Success || typesRes.Response is null)
+            if (!typesRes.Success || typesRes.Data is null)
             {
-                _catalogError = typesRes.Error ?? "Error al cargar los tipos de producto.";
+                _catalogError = typesRes.ToErrorMessage("Error al cargar los tipos de producto.");
                 _catalogProductTypes = new();
             }
             else
             {
-                _catalogProductTypes = typesRes.Response;
+                _catalogProductTypes = typesRes.Data;
             }
 
             var attrsRes = await ProductAttributeClient.GetListAsync(onlyActives: false);
-            if (!attrsRes.Success || attrsRes.Response is null)
+            if (!attrsRes.Success || attrsRes.Data is null)
             {
+                var message = attrsRes.ToErrorMessage("Error al cargar los atributos de producto.");
+
                 if (_catalogError is null)
-                    _catalogError = attrsRes.Error ?? "Error al cargar los atributos de producto.";
+                    _catalogError = message;
                 else
-                    Toast.ShowWarning(attrsRes.Error ?? "Error al cargar los atributos de producto.");
+                    Toast.ShowWarning(message);
 
                 _catalogProductAttributes = new();
             }
             else
             {
-                _catalogProductAttributes = attrsRes.Response;
+                _catalogProductAttributes = attrsRes.Data;
             }
         }
         catch (Exception ex)
@@ -415,8 +383,6 @@
             StateHasChanged();
         }
     }
-
-    // ===== ProductType handlers (product catalogs) =====
 
     private void HandleOpenNewProductTypeModal()
     {
@@ -440,13 +406,13 @@
         try
         {
             var res = await ProductTypeClient.GetByIdAsync(id);
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                Toast.ShowError(res.Error ?? "Error al cargar el tipo de producto.");
+                Toast.ShowError(res.ToErrorMessage("Error al cargar el tipo de producto."));
                 return;
             }
 
-            _typeEditModel = res.Response;
+            _typeEditModel = res.Data;
             _typeModalOpen = true;
         }
         catch (Exception ex)
@@ -490,11 +456,11 @@
                 var res = await ProductTypeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _typeError = res.Error ?? "Error al crear el tipo de producto.";
+                    _typeError = res.ToErrorMessage("Error al crear el tipo de producto.");
                     return;
                 }
 
-                Toast.ShowSuccess("Tipo de producto creado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Tipo de producto creado exitosamente."));
             }
             else
             {
@@ -508,11 +474,11 @@
                 var res = await ProductTypeClient.UpdateAsync(req);
                 if (!res.Success)
                 {
-                    _typeError = res.Error ?? "Error al actualizar el tipo de producto.";
+                    _typeError = res.ToErrorMessage("Error al actualizar el tipo de producto.");
                     return;
                 }
 
-                Toast.ShowSuccess("Tipo de producto actualizado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Tipo de producto actualizado exitosamente."));
             }
 
             _typeModalOpen = false;
@@ -528,8 +494,6 @@
             StateHasChanged();
         }
     }
-
-    // ===== ProductAttribute handlers =====
 
     private void HandleOpenNewAttributeModal()
     {
@@ -555,13 +519,13 @@
         try
         {
             var res = await ProductAttributeClient.GetByIdAsync(id);
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                Toast.ShowError(res.Error ?? "Error al cargar el atributo de producto.");
+                Toast.ShowError(res.ToErrorMessage("Error al cargar el atributo de producto."));
                 return;
             }
 
-            _attributeEditModel = res.Response;
+            _attributeEditModel = res.Data;
             _attributeModalOpen = true;
         }
         catch (Exception ex)
@@ -608,11 +572,11 @@
                 var res = await ProductAttributeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _attributeError = res.Error ?? "Error al crear el atributo.";
+                    _attributeError = res.ToErrorMessage("Error al crear el atributo.");
                     return;
                 }
 
-                Toast.ShowSuccess("Atributo creado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Atributo creado exitosamente."));
             }
             else
             {
@@ -628,11 +592,11 @@
                 var res = await ProductAttributeClient.UpdateAsync(_attributeEditModel.Id, req);
                 if (!res.Success)
                 {
-                    _attributeError = res.Error ?? "Error al actualizar el atributo.";
+                    _attributeError = res.ToErrorMessage("Error al actualizar el atributo.");
                     return;
                 }
 
-                Toast.ShowSuccess("Atributo actualizado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Atributo actualizado exitosamente."));
             }
 
             _attributeModalOpen = false;
@@ -663,11 +627,11 @@
             var res = await ProductTypeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Error al eliminar el tipo de producto.");
+                Toast.ShowError(res.ToErrorMessage("Error al eliminar el tipo de producto."));
                 return;
             }
 
-            Toast.ShowSuccess("Tipo de producto eliminado exitosamente.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Tipo de producto eliminado exitosamente."));
             await LoadProductCatalogsAsync();
         }
         catch (Exception ex)
@@ -690,11 +654,11 @@
             var res = await ProductAttributeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Error al eliminar el atributo.");
+                Toast.ShowError(res.ToErrorMessage("Error al eliminar el atributo."));
                 return;
             }
 
-            Toast.ShowSuccess("Atributo eliminado exitosamente.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Atributo eliminado exitosamente."));
             await LoadProductCatalogsAsync();
         }
         catch (Exception ex)
@@ -703,8 +667,6 @@
         }
     }
 
-    // ==================== CORE CATALOGS LOAD ====================
-
     private async Task LoadCoreCatalogsAsync()
     {
         _coreCatalogsLoading = true;
@@ -712,59 +674,53 @@
 
         try
         {
-            // Document types
             var docRes = await DocumentTypeClient.GetListAsync(onlyActives: false);
-            _documentTypes = docRes.Success && docRes.Response is not null
-                ? docRes.Response
+            _documentTypes = docRes.Success && docRes.Data is not null
+                ? docRes.Data
                 : new List<CatalogListItemDTO>();
 
-            if (!docRes.Success && docRes.Error is not null)
-                _coreCatalogsError ??= docRes.Error;
+            if (!docRes.Success)
+                _coreCatalogsError ??= docRes.ToErrorMessage("Error al cargar los tipos de documento.");
 
-            // Funding types
             var fundRes = await FundingTypeClient.GetListAsync(onlyActives: false);
-            _fundingTypes = fundRes.Success && fundRes.Response is not null
-                ? fundRes.Response
+            _fundingTypes = fundRes.Success && fundRes.Data is not null
+                ? fundRes.Data
                 : new List<CatalogListItemDTO>();
 
-            if (!fundRes.Success && fundRes.Error is not null)
-                _coreCatalogsError ??= fundRes.Error;
+            if (!fundRes.Success)
+                _coreCatalogsError ??= fundRes.ToErrorMessage("Error al cargar los tipos de financiamiento.");
 
-            // Objective types
             var objRes = await ObjectiveTypeClient.GetListAsync(onlyActives: false);
-            _objectiveTypes = objRes.Success && objRes.Response is not null
-                ? objRes.Response
+            _objectiveTypes = objRes.Success && objRes.Data is not null
+                ? objRes.Data
                 : new List<CatalogListItemDTO>();
 
-            if (!objRes.Success && objRes.Error is not null)
-                _coreCatalogsError ??= objRes.Error;
+            if (!objRes.Success)
+                _coreCatalogsError ??= objRes.ToErrorMessage("Error al cargar los tipos de objetivo.");
 
-            // Project types (core)
             var projRes = await ProjectTypeClient.GetListAsync(onlyActives: false);
-            _projectTypesCore = projRes.Success && projRes.Response is not null
-                ? projRes.Response
+            _projectTypesCore = projRes.Success && projRes.Data is not null
+                ? projRes.Data
                 : new List<CatalogListItemDTO>();
 
-            if (!projRes.Success && projRes.Error is not null)
-                _coreCatalogsError ??= projRes.Error;
+            if (!projRes.Success)
+                _coreCatalogsError ??= projRes.ToErrorMessage("Error al cargar los tipos de proyecto.");
 
-            // Product types (core)
             var prodRes = await ProductTypeClient.GetListAsync();
-            _productTypesCore = prodRes.Success && prodRes.Response is not null
-                ? prodRes.Response
+            _productTypesCore = prodRes.Success && prodRes.Data is not null
+                ? prodRes.Data
                 : new List<CatalogListItemDTO>();
 
-            if (!prodRes.Success && prodRes.Error is not null)
-                _coreCatalogsError ??= prodRes.Error;
+            if (!prodRes.Success)
+                _coreCatalogsError ??= prodRes.ToErrorMessage("Error al cargar los tipos de producto.");
 
-            // Transaction types
             var trxRes = await TransactionTypeClient.GetListAsync(onlyActives: false);
-            _transactionTypes = trxRes.Success && trxRes.Response is not null
-                ? trxRes.Response
+            _transactionTypes = trxRes.Success && trxRes.Data is not null
+                ? trxRes.Data
                 : new List<CatalogListItemDTO>();
 
-            if (!trxRes.Success && trxRes.Error is not null)
-                _coreCatalogsError ??= trxRes.Error;
+            if (!trxRes.Success)
+                _coreCatalogsError ??= trxRes.ToErrorMessage("Error al cargar los tipos de transacción.");
 
             _coreCatalogsLoadedOnce = true;
         }
@@ -778,10 +734,6 @@
             StateHasChanged();
         }
     }
-
-    // ==================== CORE CATALOGS HANDLERS ====================
-
-    // ----- DocumentType -----
 
     private void HandleOpenNewDocumentTypeModal()
     {
@@ -805,13 +757,13 @@
         try
         {
             var res = await DocumentTypeClient.GetByIdAsync(id);
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                Toast.ShowError(res.Error ?? "Error al cargar el tipo de documento.");
+                Toast.ShowError(res.ToErrorMessage("Error al cargar el tipo de documento."));
                 return;
             }
 
-            _documentTypeEditModel = res.Response;
+            _documentTypeEditModel = res.Data;
             _documentTypeModalOpen = true;
         }
         catch (Exception ex)
@@ -855,11 +807,11 @@
                 var res = await DocumentTypeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _documentTypeError = res.Error ?? "Error al crear el tipo de documento.";
+                    _documentTypeError = res.ToErrorMessage("Error al crear el tipo de documento.");
                     return;
                 }
 
-                Toast.ShowSuccess("Tipo de documento creado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Tipo de documento creado exitosamente."));
             }
             else
             {
@@ -873,11 +825,11 @@
                 var res = await DocumentTypeClient.UpdateAsync(req);
                 if (!res.Success)
                 {
-                    _documentTypeError = res.Error ?? "Error al actualizar el tipo de documento.";
+                    _documentTypeError = res.ToErrorMessage("Error al actualizar el tipo de documento.");
                     return;
                 }
 
-                Toast.ShowSuccess("Tipo de documento actualizado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Tipo de documento actualizado exitosamente."));
             }
 
             _documentTypeModalOpen = false;
@@ -908,11 +860,11 @@
             var res = await DocumentTypeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Error al eliminar el tipo de documento.");
+                Toast.ShowError(res.ToErrorMessage("Error al eliminar el tipo de documento."));
                 return;
             }
 
-            Toast.ShowSuccess("Tipo de documento eliminado exitosamente.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Tipo de documento eliminado exitosamente."));
             await LoadCoreCatalogsAsync();
         }
         catch (Exception ex)
@@ -920,8 +872,6 @@
             Toast.ShowError($"Error inesperado al eliminar el tipo de documento: {ex.Message}");
         }
     }
-
-    // ----- FundingType -----
 
     private void HandleOpenNewFundingTypeModal()
     {
@@ -945,13 +895,13 @@
         try
         {
             var res = await FundingTypeClient.GetByIdAsync(id);
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                Toast.ShowError(res.Error ?? "Error al cargar el tipo de financiamiento.");
+                Toast.ShowError(res.ToErrorMessage("Error al cargar el tipo de financiamiento."));
                 return;
             }
 
-            _fundingTypeEditModel = res.Response;
+            _fundingTypeEditModel = res.Data;
             _fundingTypeModalOpen = true;
         }
         catch (Exception ex)
@@ -995,11 +945,11 @@
                 var res = await FundingTypeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _fundingTypeError = res.Error ?? "Error al crear el tipo de financiamiento.";
+                    _fundingTypeError = res.ToErrorMessage("Error al crear el tipo de financiamiento.");
                     return;
                 }
 
-                Toast.ShowSuccess("Tipo de financiamiento creado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Tipo de financiamiento creado exitosamente."));
             }
             else
             {
@@ -1013,11 +963,11 @@
                 var res = await FundingTypeClient.UpdateAsync(req);
                 if (!res.Success)
                 {
-                    _fundingTypeError = res.Error ?? "Error al actualizar el tipo de financiamiento.";
+                    _fundingTypeError = res.ToErrorMessage("Error al actualizar el tipo de financiamiento.");
                     return;
                 }
 
-                Toast.ShowSuccess("Tipo de financiamiento actualizado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Tipo de financiamiento actualizado exitosamente."));
             }
 
             _fundingTypeModalOpen = false;
@@ -1048,11 +998,11 @@
             var res = await FundingTypeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Error al eliminar el tipo de financiamiento.");
+                Toast.ShowError(res.ToErrorMessage("Error al eliminar el tipo de financiamiento."));
                 return;
             }
 
-            Toast.ShowSuccess("Tipo de financiamiento eliminado exitosamente.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Tipo de financiamiento eliminado exitosamente."));
             await LoadCoreCatalogsAsync();
         }
         catch (Exception ex)
@@ -1060,8 +1010,6 @@
             Toast.ShowError($"Error inesperado al eliminar el tipo de financiamiento: {ex.Message}");
         }
     }
-
-    // ----- ObjectiveType -----
 
     private void HandleOpenNewObjectiveTypeModal()
     {
@@ -1085,13 +1033,13 @@
         try
         {
             var res = await ObjectiveTypeClient.GetByIdAsync(id);
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                Toast.ShowError(res.Error ?? "Error al cargar el tipo de objetivo.");
+                Toast.ShowError(res.ToErrorMessage("Error al cargar el tipo de objetivo."));
                 return;
             }
 
-            _objectiveTypeEditModel = res.Response;
+            _objectiveTypeEditModel = res.Data;
             _objectiveTypeModalOpen = true;
         }
         catch (Exception ex)
@@ -1135,11 +1083,11 @@
                 var res = await ObjectiveTypeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _objectiveTypeError = res.Error ?? "Error al crear el tipo de objetivo.";
+                    _objectiveTypeError = res.ToErrorMessage("Error al crear el tipo de objetivo.");
                     return;
                 }
 
-                Toast.ShowSuccess("Tipo de objetivo creado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Tipo de objetivo creado exitosamente."));
             }
             else
             {
@@ -1153,11 +1101,11 @@
                 var res = await ObjectiveTypeClient.UpdateAsync(req);
                 if (!res.Success)
                 {
-                    _objectiveTypeError = res.Error ?? "Error al actualizar el tipo de objetivo.";
+                    _objectiveTypeError = res.ToErrorMessage("Error al actualizar el tipo de objetivo.");
                     return;
                 }
 
-                Toast.ShowSuccess("Tipo de objetivo actualizado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Tipo de objetivo actualizado exitosamente."));
             }
 
             _objectiveTypeModalOpen = false;
@@ -1188,11 +1136,11 @@
             var res = await ObjectiveTypeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Error al eliminar el tipo de objetivo.");
+                Toast.ShowError(res.ToErrorMessage("Error al eliminar el tipo de objetivo."));
                 return;
             }
 
-            Toast.ShowSuccess("Tipo de objetivo eliminado exitosamente.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Tipo de objetivo eliminado exitosamente."));
             await LoadCoreCatalogsAsync();
         }
         catch (Exception ex)
@@ -1200,8 +1148,6 @@
             Toast.ShowError($"Error inesperado al eliminar el tipo de objetivo: {ex.Message}");
         }
     }
-
-    // ----- ProjectType (core) -----
 
     private void HandleOpenNewProjectTypeCoreModal()
     {
@@ -1225,13 +1171,13 @@
         try
         {
             var res = await ProjectTypeClient.GetByIdAsync(id);
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                Toast.ShowError(res.Error ?? "Error al cargar el tipo de proyecto.");
+                Toast.ShowError(res.ToErrorMessage("Error al cargar el tipo de proyecto."));
                 return;
             }
 
-            _projectTypeEditModel = res.Response;
+            _projectTypeEditModel = res.Data;
             _projectTypeModalOpen = true;
         }
         catch (Exception ex)
@@ -1275,11 +1221,11 @@
                 var res = await ProjectTypeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _projectTypeError = res.Error ?? "Error al crear el tipo de proyecto.";
+                    _projectTypeError = res.ToErrorMessage("Error al crear el tipo de proyecto.");
                     return;
                 }
 
-                Toast.ShowSuccess("Tipo de proyecto creado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Tipo de proyecto creado exitosamente."));
             }
             else
             {
@@ -1293,11 +1239,11 @@
                 var res = await ProjectTypeClient.UpdateAsync(req);
                 if (!res.Success)
                 {
-                    _projectTypeError = res.Error ?? "Error al actualizar el tipo de proyecto.";
+                    _projectTypeError = res.ToErrorMessage("Error al actualizar el tipo de proyecto.");
                     return;
                 }
 
-                Toast.ShowSuccess("Tipo de proyecto actualizado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Tipo de proyecto actualizado exitosamente."));
             }
 
             _projectTypeModalOpen = false;
@@ -1328,11 +1274,11 @@
             var res = await ProjectTypeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Error al eliminar el tipo de proyecto.");
+                Toast.ShowError(res.ToErrorMessage("Error al eliminar el tipo de proyecto."));
                 return;
             }
 
-            Toast.ShowSuccess("Tipo de proyecto eliminado exitosamente.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Tipo de proyecto eliminado exitosamente."));
             await LoadCoreCatalogsAsync();
         }
         catch (Exception ex)
@@ -1340,8 +1286,6 @@
             Toast.ShowError($"Error inesperado al eliminar el tipo de proyecto: {ex.Message}");
         }
     }
-
-    // ----- TransactionType -----
 
     private void HandleOpenNewTransactionTypeModal()
     {
@@ -1365,13 +1309,13 @@
         try
         {
             var res = await TransactionTypeClient.GetByIdAsync(id);
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                Toast.ShowError(res.Error ?? "Error al cargar el tipo de transacción.");
+                Toast.ShowError(res.ToErrorMessage("Error al cargar el tipo de transacción."));
                 return;
             }
 
-            _transactionTypeEditModel = res.Response;
+            _transactionTypeEditModel = res.Data;
             _transactionTypeModalOpen = true;
         }
         catch (Exception ex)
@@ -1415,11 +1359,11 @@
                 var res = await TransactionTypeClient.CreateAsync(req);
                 if (!res.Success)
                 {
-                    _transactionTypeError = res.Error ?? "Error al crear el tipo de transacción.";
+                    _transactionTypeError = res.ToErrorMessage("Error al crear el tipo de transacción.");
                     return;
                 }
 
-                Toast.ShowSuccess("Tipo de transacción creado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Tipo de transacción creado exitosamente."));
             }
             else
             {
@@ -1433,11 +1377,11 @@
                 var res = await TransactionTypeClient.UpdateAsync(req);
                 if (!res.Success)
                 {
-                    _transactionTypeError = res.Error ?? "Error al actualizar el tipo de transacción.";
+                    _transactionTypeError = res.ToErrorMessage("Error al actualizar el tipo de transacción.");
                     return;
                 }
 
-                Toast.ShowSuccess("Tipo de transacción actualizado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Tipo de transacción actualizado exitosamente."));
             }
 
             _transactionTypeModalOpen = false;
@@ -1468,11 +1412,11 @@
             var res = await TransactionTypeClient.DeleteAsync(id);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Error al eliminar el tipo de transacción.");
+                Toast.ShowError(res.ToErrorMessage("Error al eliminar el tipo de transacción."));
                 return;
             }
 
-            Toast.ShowSuccess("Tipo de transacción eliminado exitosamente.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Tipo de transacción eliminado exitosamente."));
             await LoadCoreCatalogsAsync();
         }
         catch (Exception ex)
@@ -1480,8 +1424,6 @@
             Toast.ShowError($"Error inesperado al eliminar el tipo de transacción: {ex.Message}");
         }
     }
-
-    // ==================== SUB-TABS PRODUCTS ====================
 
     private async Task OnProductsSubTabChanged(string key)
     {
@@ -1503,11 +1445,11 @@
         return Task.CompletedTask;
     }
 
-    // ==================== LÓGICA DEL DESIGNER ====================
     private void HandleDesignerRowsReordered(List<ProductAttributeDefinitionUpsertDTO> rows)
     {
         _designerDefinitionRows = rows;
     }
+
     private async Task LoadDesignerProductTypesAsync()
     {
         _designerLoading = true;
@@ -1516,14 +1458,14 @@
         try
         {
             var res = await ProductTypeClient.GetListAsync();
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                _designerError = res.Error ?? "Error al cargar los tipos de producto.";
+                _designerError = res.ToErrorMessage("Error al cargar los tipos de producto.");
                 _designerProductTypes = new();
             }
             else
             {
-                _designerProductTypes = res.Response;
+                _designerProductTypes = res.Data;
             }
         }
         catch (Exception ex)
@@ -1544,13 +1486,13 @@
         try
         {
             var res = await ProductTypeDesignClient.GetTemplateAsync();
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                Toast.ShowError(res.Error ?? "Error al cargar la plantilla del tipo de producto.");
+                Toast.ShowError(res.ToErrorMessage("Error al cargar la plantilla del tipo de producto."));
                 return;
             }
 
-            _designerCurrentDesign = res.Response;
+            _designerCurrentDesign = res.Data;
 
             _designerAvailableAttributes = _designerCurrentDesign.Attributes.ToList();
             _designerDefinitionRows = _designerCurrentDesign.Definitions
@@ -1587,13 +1529,13 @@
         try
         {
             var res = await ProductTypeDesignClient.GetByProductTypeIdAsync(productTypeId);
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                Toast.ShowError(res.Error ?? "Error al cargar el diseño del tipo de producto.");
+                Toast.ShowError(res.ToErrorMessage("Error al cargar el diseño del tipo de producto."));
                 return;
             }
 
-            _designerCurrentDesign = res.Response;
+            _designerCurrentDesign = res.Data;
 
             _designerAvailableAttributes = _designerCurrentDesign.Attributes.ToList();
             _designerDefinitionRows = _designerCurrentDesign.Definitions
@@ -1704,13 +1646,13 @@
             };
 
             var res = await ProductTypeDesignClient.SaveAsync(request);
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                _designerDesignError = res.Error ?? "Error al guardar el diseño del tipo de producto.";
+                _designerDesignError = res.ToErrorMessage("Error al guardar el diseño del tipo de producto.");
                 return;
             }
 
-            _designerCurrentDesign = res.Response;
+            _designerCurrentDesign = res.Data;
 
             _designerAvailableAttributes = _designerCurrentDesign.Attributes.ToList();
             _designerDefinitionRows = _designerCurrentDesign.Definitions
@@ -1726,7 +1668,7 @@
 
             await LoadDesignerProductTypesAsync();
 
-            Toast.ShowSuccess("Diseño del tipo de producto guardado exitosamente.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Diseño del tipo de producto guardado exitosamente."));
         }
         catch (Exception ex)
         {

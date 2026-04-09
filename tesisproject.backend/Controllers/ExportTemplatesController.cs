@@ -13,20 +13,14 @@ namespace tesisproject.backend.Controllers
     public class ExportTemplatesController : ControllerBase
     {
         private readonly IExportTemplateService _service;
-        private readonly IExportTemplateExcelService _excelService;
-        private readonly IMatrixExcelExportService _matrixExcelService;
-        private readonly IMatrixTemplateExcelExportService _matrixTemplateExcelService; // <- NUEVO
+        private readonly IMatrixTemplateExcelExportService _matrixTemplateExcelService;
 
         public ExportTemplatesController(
             IExportTemplateService service,
-            IExportTemplateExcelService excelService,
-            IMatrixExcelExportService matrixExcelService,
-            IMatrixTemplateExcelExportService matrixTemplateExcelService) // <- NUEVO
+            IMatrixTemplateExcelExportService matrixTemplateExcelService)
         {
             _service = service;
-            _excelService = excelService;
-            _matrixExcelService = matrixExcelService;
-            _matrixTemplateExcelService = matrixTemplateExcelService;     // <- NUEVO
+            _matrixTemplateExcelService = matrixTemplateExcelService;
         }
 
         // =========================
@@ -34,7 +28,7 @@ namespace tesisproject.backend.Controllers
         // =========================
         // GET: api/ExportTemplates/fields
         [HttpGet("fields")]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<ExportFieldListItemDTO>>>> GetFields(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<ExportFieldListItemDTO>>>> GetFields(
             CancellationToken ct)
             => (await _service.ListFieldsAsync(ct)).ToActionResult();
 
@@ -44,20 +38,20 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/ExportTemplates
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<ExportTemplateListItemDTO>>>> GetTemplates(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<ExportTemplateListItemDTO>>>> GetTemplates(
             CancellationToken ct)
             => (await _service.ListTemplatesAsync(ct)).ToActionResult();
 
         // GET: api/ExportTemplates/{id}
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<ExportTemplateDetailDTO>>> GetTemplate(
+        public async Task<ActionResult<ServiceResult<ExportTemplateDetailDTO>>> GetTemplate(
             int id,
             CancellationToken ct)
             => (await _service.GetTemplateAsync(id, ct)).ToActionResult();
 
         // POST: api/ExportTemplates
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<ExportTemplateDetailDTO>>> CreateTemplate(
+        public async Task<ActionResult<ServiceResult<ExportTemplateDetailDTO>>> CreateTemplate(
             [FromBody] ExportTemplateCreateRequestDTO body,
             CancellationToken ct)
         {
@@ -66,7 +60,7 @@ namespace tesisproject.backend.Controllers
             if (!result.Success || result.Data is null)
                 return result.ToActionResult();
 
-            var response = ApiResponse<ExportTemplateDetailDTO>.Ok(
+            var response = ServiceResult<ExportTemplateDetailDTO>.Ok(
                 result.Data,
                 "Template created.");
 
@@ -78,7 +72,7 @@ namespace tesisproject.backend.Controllers
 
         // PUT: api/ExportTemplates/{id}
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<ExportTemplateDetailDTO>>> UpdateTemplate(
+        public async Task<ActionResult<ServiceResult<ExportTemplateDetailDTO>>> UpdateTemplate(
             int id,
             [FromBody] ExportTemplateUpdateRequestDTO body,
             CancellationToken ct)
@@ -86,60 +80,10 @@ namespace tesisproject.backend.Controllers
 
         // DELETE: api/ExportTemplates/{id}
         [HttpDelete("{id:int}")]
-        public async Task<ActionResult<ApiResponse<NoContent>>> DeleteTemplate(
+        public async Task<ActionResult<ServiceResult<NoContent>>> DeleteTemplate(
             int id,
             CancellationToken ct)
             => (await _service.DeleteTemplateAsync(id, ct)).ToActionResult();
-
-        //// =========================
-        ////   EXPORT DINÁMICO (DTO)
-        //// =========================
-        //// POST: api/ExportTemplates/excel
-        //[HttpPost("excel")]
-        //public async Task<IActionResult> ExportToExcel(
-        //    [FromBody] ExportRequestDTO request,
-        //    CancellationToken ct)
-        //{
-        //    var result = await _excelService.GenerateExcelAsync(request, ct);
-
-        //    if (!result.Success || result.Data is null)
-        //    {
-        //        var message = result.Message ?? "Error al generar el archivo Excel.";
-        //        return BadRequest(message);
-        //    }
-
-        //    var fileName = string.IsNullOrWhiteSpace(request.Name)
-        //        ? "reporte_proyectos.xlsx"
-        //        : $"{request.Name}.xlsx";
-
-        //    return File(
-        //        fileContents: result.Data,
-        //        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        //        fileDownloadName: fileName);
-        //}
-
-        //// =========================
-        ////   EXPORT FULL MATRIX
-        //// =========================
-        //// GET: api/ExportTemplates/excelfull
-        //[HttpGet("excelfull")]
-        //public async Task<IActionResult> ExportToExcelFull(CancellationToken ct)
-        //{
-        //    var result = await _matrixExcelService.GenerateExcelAsync(ct);
-
-        //    if (!result.Success || result.Data is null)
-        //    {
-        //        var message = result.Message ?? "Error al generar el archivo Excel.";
-        //        return BadRequest(message);
-        //    }
-
-        //    const string fileName = "reporte_proyectos.xlsx";
-
-        //    return File(
-        //        fileContents: result.Data,
-        //        contentType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        //        fileDownloadName: fileName);
-        //}
 
         // =========================
         //   EXPORT MATRIX (DTO)
@@ -147,15 +91,28 @@ namespace tesisproject.backend.Controllers
         // POST: api/ExportTemplates/matrix-excel
         [HttpPost("matrix-excel")]
         public async Task<IActionResult> ExportMatrixToExcel(
-    [FromBody] ExportByTemplateRequestDTO request,
-    CancellationToken ct)
+            [FromBody] ExportByTemplateRequestDTO request,
+            CancellationToken ct)
         {
             var result = await _matrixTemplateExcelService.GenerateExcelAsync(request, ct);
 
             if (!result.Success || result.Data is null)
             {
-                var message = result.Message ?? "Error al generar el archivo Excel de matriz.";
-                return BadRequest(message);
+                var error = ServiceResult<NoContent>.Fail(
+                    result.Message ?? "Error al generar el archivo Excel de matriz.",
+                    result.Error == ErrorType.None ? ErrorType.Unexpected : result.Error,
+                    result.ErrorCode,
+                    result.ValidationErrors);
+
+                return error.Error switch
+                {
+                    ErrorType.NotFound => NotFound(error),
+                    ErrorType.Validation => BadRequest(error),
+                    ErrorType.Conflict => Conflict(error),
+                    ErrorType.Forbidden => StatusCode(StatusCodes.Status403Forbidden, error),
+                    ErrorType.Unauthorized => Unauthorized(error),
+                    _ => BadRequest(error)
+                };
             }
 
             var fileName = string.IsNullOrWhiteSpace(request.NameOverride)

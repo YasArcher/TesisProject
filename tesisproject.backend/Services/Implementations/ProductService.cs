@@ -10,25 +10,12 @@ using tesisproject.shared.DTOs.Products.Product.Response;
 using tesisproject.shared.Entities.Core.Products;
 using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
     public class ProductService : IProductService
     {
-        private const string RequestRequiredMessage = "Request is required.";
-        private const string ProjectIdRequiredMessage = "ProjectId is required.";
-        private const string TitleRequiredMessage = "Title is required.";
-        private const string ProductTypeIdRequiredMessage = "ProductTypeId is required.";
-        private const string ProductTypeNotFoundMessage = "ProductType not found.";
-
-        private const string ProductNotFoundMessage = "Product not found.";
-        private const string NoProductsFoundMessage = "No products found.";
-        private const string ProjectIdRequiredLowercaseMessage = "projectId is required.";
-        private const string NoProductsFoundForProjectMessage = "No products found for this project.";
-
-        private const string ProductCouldNotLoadAfterCreationMessage = "Product could not be loaded after creation.";
-        private const string ProductCouldNotLoadAfterUpdateMessage = "Product could not be loaded after update.";
-
         private const string ProductCreatedMessage = "Product created";
         private const string ProductRetrievedMessage = "Product retrieved";
         private const string ProductsRetrievedMessage = "Products retrieved";
@@ -64,39 +51,54 @@ namespace tesisproject.backend.Services.Implementations
         {
             try
             {
-                // Basic validations
                 if (request is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<ProductDetailResponseDTO>(
+                        ErrorMessages.Common.RequestRequired,
+                        ErrorCodes.Common.RequestRequired);
+                }
 
                 if (request.ProjectId <= 0)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProjectIdRequiredMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<ProductDetailResponseDTO>(
+                        ErrorMessages.Product.ProjectIdRequired,
+                        ErrorCodes.Product.ProjectIdRequired);
+                }
 
                 if (string.IsNullOrWhiteSpace(request.Title))
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(TitleRequiredMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<ProductDetailResponseDTO>(
+                        ErrorMessages.Product.TitleRequired,
+                        ErrorCodes.Product.TitleRequired);
+                }
 
                 if (request.ProductTypeId <= 0)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductTypeIdRequiredMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<ProductDetailResponseDTO>(
+                        ErrorMessages.Product.ProductTypeIdRequired,
+                        ErrorCodes.Product.ProductTypeIdRequired);
+                }
 
-                // ProductType exists
                 var type = await _uow.ProductTypes.GetByIdAsync(Key(request.ProductTypeId), ct);
                 if (type is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductTypeNotFoundMessage, ErrorType.NotFound);
+                {
+                    return NotFoundFailure<ProductDetailResponseDTO>(
+                        ErrorMessages.Product.ProductTypeNotFound,
+                        ErrorCodes.Product.ProductTypeNotFound);
+                }
 
-                // Load definitions for this type (include ProductAttribute to validate DataType/Unit/Name)
                 var defs = await _uow.ProductAttributeDefinitions
                     .QueryByType(request.ProductTypeId, asNoTracking: true)
                     .Include(d => d.ProductAttribute)
                     .OrderBy(d => d.DisplayOrder)
                     .ToListAsync(ct);
 
-                // Validate + normalize values (by definition)
                 var normalizedValuesResult = ValidateAndNormalizeValues(defs, request.Values);
                 if (!normalizedValuesResult.Success)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(normalizedValuesResult.Message!, ErrorType.Validation);
+                    return RelayFailure<ProductDetailResponseDTO, Dictionary<int, string?>>(normalizedValuesResult);
 
-                var normalizedValues = normalizedValuesResult.Data!; // Dictionary<int defId, string? value>
+                var normalizedValues = normalizedValuesResult.Data!;
 
-                // Create product header
                 var entity = new Product
                 {
                     ProjectId = request.ProjectId,
@@ -109,12 +111,10 @@ namespace tesisproject.backend.Services.Implementations
                 };
 
                 await _uow.Products.AddAsync(entity, ct);
-                await _uow.SaveChangesAsync(ct); // need ProductId
+                await _uow.SaveChangesAsync(ct);
 
-                // Sync authors
                 await SyncAuthorsAsync(entity.Id, request.AuthorUserIds, ct);
 
-                // Insert values
                 foreach (var kv in normalizedValues)
                 {
                     await _uow.ProductValues.AddAsync(new ProductValue
@@ -130,21 +130,21 @@ namespace tesisproject.backend.Services.Implementations
 
                 var withRefs = await _uow.Products.GetByIdWithRefsAsync(entity.Id, ct);
                 if (withRefs is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(
-                        ProductCouldNotLoadAfterCreationMessage,
-                        ErrorType.Unexpected);
+                {
+                    return UnexpectedFailure<ProductDetailResponseDTO>(
+                        ErrorMessages.Product.LoadAfterCreationFailed,
+                        ErrorCodes.Product.LoadAfterCreationFailed);
+                }
 
                 return ServiceResult<ProductDetailResponseDTO>.Ok(MapToDetailDTO(withRefs), ProductCreatedMessage);
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<ProductDetailResponseDTO>.Fail(
-                    dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                return FailConflict<ProductDetailResponseDTO>(dbex);
             }
             catch (Exception ex)
             {
-                return ServiceResult<ProductDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<ProductDetailResponseDTO>(ex);
             }
         }
 
@@ -156,13 +156,17 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var prod = await _uow.Products.GetByIdWithRefsAsync(id, ct);
                 if (prod is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductNotFoundMessage, ErrorType.NotFound);
+                {
+                    return NotFoundFailure<ProductDetailResponseDTO>(
+                        ErrorMessages.Product.NotFound,
+                        ErrorCodes.Product.NotFound);
+                }
 
                 return ServiceResult<ProductDetailResponseDTO>.Ok(MapToDetailDTO(prod), ProductRetrievedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<ProductDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<ProductDetailResponseDTO>(ex);
             }
         }
 
@@ -172,7 +176,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             try
             {
-                var q = _uow.Products.QueryWithRefs(); // includes ProductType
+                var q = _uow.Products.QueryWithRefs();
 
                 var items = await q
                     .OrderByDescending(p => p.CreatedAt)
@@ -180,13 +184,17 @@ namespace tesisproject.backend.Services.Implementations
                     .ToListAsync(ct);
 
                 if (items.Count == 0)
-                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(NoProductsFoundMessage, ErrorType.NotFound);
+                {
+                    return NotFoundFailure<IReadOnlyList<ProductListItemResponseDTO>>(
+                        ErrorMessages.Product.NoneFound,
+                        ErrorCodes.Product.NoneFound);
+                }
 
                 return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Ok(items, ProductsRetrievedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<IReadOnlyList<ProductListItemResponseDTO>>(ex);
             }
         }
 
@@ -197,11 +205,19 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (projectId <= 0)
-                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(ProjectIdRequiredLowercaseMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<IReadOnlyList<ProductListItemResponseDTO>>(
+                        ErrorMessages.Product.ProjectIdRequired,
+                        ErrorCodes.Product.ProjectIdRequired);
+                }
 
-                var entities = await _uow.Products.GetByProjectAsync(projectId, ct); // includes ProductType
+                var entities = await _uow.Products.GetByProjectAsync(projectId, ct);
                 if (entities.Count == 0)
-                    return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(NoProductsFoundForProjectMessage, ErrorType.NotFound);
+                {
+                    return NotFoundFailure<IReadOnlyList<ProductListItemResponseDTO>>(
+                        ErrorMessages.Product.NoneFoundForProject,
+                        ErrorCodes.Product.NoneFoundForProject);
+                }
 
                 var dtos = entities
                     .OrderByDescending(p => p.CreatedAt)
@@ -212,7 +228,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<ProductListItemResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<IReadOnlyList<ProductListItemResponseDTO>>(ex);
             }
         }
 
@@ -225,30 +241,41 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<ProductDetailResponseDTO>(
+                        ErrorMessages.Common.RequestRequired,
+                        ErrorCodes.Common.RequestRequired);
+                }
 
                 var entity = await _uow.Products.GetByIdAsync(Key(request.Id), ct);
                 if (entity is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductNotFoundMessage, ErrorType.NotFound);
+                {
+                    return NotFoundFailure<ProductDetailResponseDTO>(
+                        ErrorMessages.Product.NotFound,
+                        ErrorCodes.Product.NotFound);
+                }
 
                 if (string.IsNullOrWhiteSpace(request.Title))
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(TitleRequiredMessage, ErrorType.Validation);
+                {
+                    return ValidationFailure<ProductDetailResponseDTO>(
+                        ErrorMessages.Product.TitleRequired,
+                        ErrorCodes.Product.TitleRequired);
+                }
 
-                // Update header
                 entity.Title = NormalizeRequiredText(request.Title);
                 entity.Description = NormalizeOptionalText(request.Description);
-                if (request.IsActive.HasValue) entity.IsActive = request.IsActive.Value;
+
+                if (request.IsActive.HasValue)
+                    entity.IsActive = request.IsActive.Value;
+
                 entity.UpdatedAt = DateTime.UtcNow;
                 _uow.Products.Update(entity);
 
-                // Sync authors (if provided)
                 if (request.AuthorUserIds is not null)
                     await SyncAuthorsAsync(entity.Id, request.AuthorUserIds, ct);
 
-                // Sync values (if provided)
                 if (request.Values is not null)
                 {
-                    // Load definitions for this product type (include ProductAttribute)
                     var defs = await _uow.ProductAttributeDefinitions
                         .QueryByType(entity.ProductTypeId, asNoTracking: true)
                         .Include(d => d.ProductAttribute)
@@ -257,10 +284,9 @@ namespace tesisproject.backend.Services.Implementations
 
                     var normalizedValuesResult = ValidateAndNormalizeValues(defs, request.Values);
                     if (!normalizedValuesResult.Success)
-                        return ServiceResult<ProductDetailResponseDTO>.Fail(normalizedValuesResult.Message!, ErrorType.Validation);
+                        return RelayFailure<ProductDetailResponseDTO, Dictionary<int, string?>>(normalizedValuesResult);
 
-                    var normalizedValues = normalizedValuesResult.Data!; // Dictionary<int defId, string? value>
-
+                    var normalizedValues = normalizedValuesResult.Data!;
                     await SyncValuesAsync(entity.Id, normalizedValues, ct);
                 }
 
@@ -268,19 +294,21 @@ namespace tesisproject.backend.Services.Implementations
 
                 var withRefs = await _uow.Products.GetByIdWithRefsAsync(entity.Id, ct);
                 if (withRefs is null)
-                    return ServiceResult<ProductDetailResponseDTO>.Fail(ProductCouldNotLoadAfterUpdateMessage, ErrorType.Unexpected);
+                {
+                    return UnexpectedFailure<ProductDetailResponseDTO>(
+                        ErrorMessages.Product.LoadAfterUpdateFailed,
+                        ErrorCodes.Product.LoadAfterUpdateFailed);
+                }
 
                 return ServiceResult<ProductDetailResponseDTO>.Ok(MapToDetailDTO(withRefs), ProductUpdatedMessage);
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<ProductDetailResponseDTO>.Fail(
-                    dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                return FailConflict<ProductDetailResponseDTO>(dbex);
             }
             catch (Exception ex)
             {
-                return ServiceResult<ProductDetailResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<ProductDetailResponseDTO>(ex);
             }
         }
 
@@ -292,14 +320,19 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var entity = await _uow.Products.GetByIdAsync(Key(id), ct);
                 if (entity is null)
-                    return ServiceResult<NoContent>.Fail(ProductNotFoundMessage, ErrorType.NotFound);
+                {
+                    return NotFoundFailure<NoContent>(
+                        ErrorMessages.Product.NotFound,
+                        ErrorCodes.Product.NotFound);
+                }
 
-                // Remove children first if no cascade
                 var authors = await _uow.ProductAuthors.GetByProductAsync(id, ct);
-                if (authors.Count > 0) _uow.ProductAuthors.RemoveRange(authors);
+                if (authors.Count > 0)
+                    _uow.ProductAuthors.RemoveRange(authors);
 
                 var values = await _uow.ProductValues.GetByProductAsync(id, ct);
-                if (values.Count > 0) _uow.ProductValues.RemoveRange(values);
+                if (values.Count > 0)
+                    _uow.ProductValues.RemoveRange(values);
 
                 _uow.Products.Remove(entity);
                 await _uow.SaveChangesAsync(ct);
@@ -308,13 +341,11 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (DbUpdateException dbex)
             {
-                return ServiceResult<NoContent>.Fail(
-                    dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                return FailConflict<NoContent>(dbex);
             }
             catch (Exception ex)
             {
-                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<NoContent>(ex);
             }
         }
 
@@ -343,19 +374,17 @@ namespace tesisproject.backend.Services.Implementations
 
         private async Task SyncAuthorsAsync(int productId, IEnumerable<int>? authorUserIds, CancellationToken ct)
         {
-            // If null => do nothing (caller decides). If empty => remove all.
-            if (authorUserIds is null) return;
+            if (authorUserIds is null)
+                return;
 
             var newIds = authorUserIds.Where(id => id > 0).Distinct().ToHashSet();
 
             var existing = await _uow.ProductAuthors.GetByProductAsync(productId, ct);
             var existingIds = existing.Select(a => a.UserId).ToHashSet();
 
-            // remove
             foreach (var toRemove in existing.Where(a => !newIds.Contains(a.UserId)))
                 _uow.ProductAuthors.Remove(toRemove);
 
-            // add
             foreach (var uid in newIds.Where(id => !existingIds.Contains(id)))
             {
                 await _uow.ProductAuthors.AddAsync(new ProductAuthor
@@ -372,11 +401,9 @@ namespace tesisproject.backend.Services.Implementations
             Dictionary<int, string?> normalizedValuesByDefinitionId,
             CancellationToken ct)
         {
-            // Existing values
             var existing = await _uow.ProductValues.GetByProductAsync(productId, ct);
             var existingByDefId = existing.ToDictionary(v => v.AttributeDefinitionId);
 
-            // Upsert requested
             foreach (var kv in normalizedValuesByDefinitionId)
             {
                 var defId = kv.Key;
@@ -400,7 +427,6 @@ namespace tesisproject.backend.Services.Implementations
                 }
             }
 
-            // Remove values not present in request (because request is treated as "full form submission")
             var requestedDefIds = normalizedValuesByDefinitionId.Keys.ToHashSet();
             foreach (var old in existing.Where(v => !requestedDefIds.Contains(v.AttributeDefinitionId)))
                 _uow.ProductValues.Remove(old);
@@ -412,27 +438,23 @@ namespace tesisproject.backend.Services.Implementations
         {
             provided ??= new();
 
-            // defs by id
             var defsById = definitions.ToDictionary(d => d.Id);
 
-            // collapse duplicates (keep last)
             var providedByDefId = provided
                 .Where(x => x.AttributeDefinitionId > 0)
                 .GroupBy(x => x.AttributeDefinitionId)
                 .ToDictionary(g => g.Key, g => g.Last());
 
-            // required check
             foreach (var def in definitions.Where(d => d.IsRequired))
             {
                 if (!providedByDefId.TryGetValue(def.Id, out var pv) || string.IsNullOrWhiteSpace(pv.Value))
                 {
-                    return ServiceResult<Dictionary<int, string?>>.Fail(
-                        $"Required attribute value is missing (AttributeDefinitionId={def.Id}).",
-                        ErrorType.Validation);
+                    return ValidationFailure<Dictionary<int, string?>>(
+                        string.Format(ErrorMessages.Product.RequiredAttributeValueMissing, def.Id),
+                        ErrorCodes.Product.RequiredAttributeValueMissing);
                 }
             }
 
-            // validate ownership + datatype + normalize
             var normalized = new Dictionary<int, string?>();
 
             foreach (var kv in providedByDefId)
@@ -442,9 +464,9 @@ namespace tesisproject.backend.Services.Implementations
 
                 if (!defsById.TryGetValue(defId, out var def))
                 {
-                    return ServiceResult<Dictionary<int, string?>>.Fail(
-                        $"AttributeDefinitionId {defId} does not belong to the selected ProductType.",
-                        ErrorType.Validation);
+                    return ValidationFailure<Dictionary<int, string?>>(
+                        string.Format(ErrorMessages.Product.AttributeDefinitionDoesNotBelongToProductType, defId),
+                        ErrorCodes.Product.AttributeDefinitionMismatch);
                 }
 
                 var dt = def.ProductAttribute?.DataType ?? ProductAttributeDataType.Text;
@@ -452,23 +474,19 @@ namespace tesisproject.backend.Services.Implementations
                 var check = ValidateAttributeValue(dt, dto.Value);
                 if (!check.IsValid)
                 {
-                    return ServiceResult<Dictionary<int, string?>>.Fail(
-                        $"Invalid value for AttributeDefinitionId={defId}: {check.Error}",
-                        ErrorType.Validation);
+                    return ValidationFailure<Dictionary<int, string?>>(
+                        string.Format(
+                            ErrorMessages.Product.InvalidAttributeValue,
+                            defId,
+                            check.Error ?? ErrorMessages.Common.InvalidRequest),
+                        ErrorCodes.Product.InvalidAttributeValue);
                 }
 
                 normalized[defId] = NormalizeValue(dt, dto.Value);
             }
 
-            // If your UI expects ALL definitions to exist as rows (even if null),
-            // you can fill missing optional definitions here. If not, keep it sparse.
-            // foreach (var def in definitions)
-            //     if (!normalized.ContainsKey(def.Id)) normalized[def.Id] = null;
-
             return ServiceResult<Dictionary<int, string?>>.Ok(normalized);
         }
-
-        // ===================== MAPPING =====================
 
         private static ProductDetailResponseDTO MapToDetailDTO(Product p)
         {
@@ -499,16 +517,12 @@ namespace tesisproject.backend.Services.Implementations
                     .Select(v => new ProductValueResponseDTO
                     {
                         AttributeDefinitionId = v.AttributeDefinitionId,
-
-                        // metadata from definition (and attribute if included)
                         ProductAttributeId = v.AttributeDefinition?.ProductAttributeId ?? 0,
                         ProductAttributeName = v.AttributeDefinition?.ProductAttribute?.Name ?? string.Empty,
                         DataType = MapDataTypeToString(v.AttributeDefinition?.ProductAttribute?.DataType ?? ProductAttributeDataType.Text),
                         Unit = v.AttributeDefinition?.ProductAttribute?.Unit,
-
                         IsRequired = v.AttributeDefinition?.IsRequired ?? false,
                         DisplayOrder = v.AttributeDefinition?.DisplayOrder ?? 0,
-
                         Value = v.Value,
                         CreatedAt = v.CreatedAt,
                         UpdatedAt = v.UpdatedAt
@@ -530,32 +544,67 @@ namespace tesisproject.backend.Services.Implementations
         private static string? NormalizeValue(ProductAttributeDataType dt, string? raw)
         {
             if (raw is null) return null;
+
             var trimmed = raw.Trim();
             if (trimmed.Length == 0) return null;
 
-            // If later you want strict formats:
-            // - Date => yyyy-MM-dd
-            // - Number => invariant culture
             return trimmed;
         }
 
         private static (bool IsValid, string? Error) ValidateAttributeValue(ProductAttributeDataType dt, string? value)
         {
-            // null/empty allowed for non-required fields; required is validated separately
-            if (string.IsNullOrWhiteSpace(value)) return (true, null);
+            if (string.IsNullOrWhiteSpace(value))
+                return (true, null);
 
             switch (dt)
             {
                 case ProductAttributeDataType.Number:
-                    return (decimal.TryParse(value, out _), "Expected a numeric value.");
+                    return (decimal.TryParse(value, out _), ErrorMessages.Product.ExpectedNumericValue);
+
                 case ProductAttributeDataType.Date:
-                    return (DateTime.TryParse(value, out _), "Expected a valid date.");
+                    return (DateTime.TryParse(value, out _), ErrorMessages.Product.ExpectedValidDate);
+
                 case ProductAttributeDataType.Url:
-                    return (Uri.TryCreate(value, UriKind.Absolute, out _), "Expected a valid absolute URL.");
+                    return (Uri.TryCreate(value, UriKind.Absolute, out _), ErrorMessages.Product.ExpectedAbsoluteUrl);
+
                 case ProductAttributeDataType.Text:
                 default:
-                    return (value.Length <= 4000, "Text too long (max 4000).");
+                    return (value.Length <= 4000, ErrorMessages.Product.TextTooLong);
             }
         }
+
+        private static ServiceResult<T> ValidationFailure<T>(string message, string errorCode)
+            => ServiceResult<T>.Fail(message, ErrorType.Validation, errorCode);
+
+        private static ServiceResult<T> NotFoundFailure<T>(string message, string errorCode)
+            => ServiceResult<T>.Fail(message, ErrorType.NotFound, errorCode);
+
+        private static ServiceResult<T> UnexpectedFailure<T>(string message, string errorCode)
+            => ServiceResult<T>.Fail(message, ErrorType.Unexpected, errorCode);
+
+        private static ServiceResult<TTarget> RelayFailure<TTarget, TSource>(ServiceResult<TSource> source)
+        {
+            var error = source.Error == ErrorType.None
+                ? ErrorType.Unexpected
+                : source.Error;
+
+            return ServiceResult<TTarget>.Fail(
+                source.Message ?? ErrorMessages.Common.UnexpectedError,
+                error,
+                source.ErrorCode ?? (error == ErrorType.Unexpected ? ErrorCodes.Common.UnexpectedError : null),
+                source.ValidationErrors);
+        }
+
+        private static ServiceResult<T> FailConflict<T>(DbUpdateException dbex)
+            => ServiceResult<T>.Fail(
+                dbex.InnerException?.Message ?? dbex.Message,
+                ErrorType.Conflict,
+                ErrorCodes.Common.PersistenceConflict);
+
+        private static ServiceResult<T> FailUnexpected<T>(Exception ex)
+            => ServiceResult<T>.Fail(
+                ex.Message,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.UnexpectedError);
     }
 }

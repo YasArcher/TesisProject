@@ -5,6 +5,7 @@
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.SharedUI.Tabs
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
@@ -52,7 +53,6 @@
 @inject IProjectObjectiveClientService ProjectObjectiveService
 @inject IExternalResearcherProjectClientService ExternalResearcherProjectService
 @inject IProjectExtensionTypeClientService ProjectExtensionTypeService
-
 
 <div class="h-full min-h-0 flex flex-col overflow-hidden">
     <!-- Header -->
@@ -251,7 +251,6 @@
     </div>
 </div>
 
-<!-- Modales presupuesto -->
 <ProjectCertificationModal IsOpen="@_certModalOpen"
                            IsOpenChanged="v => _certModalOpen = v"
                            Value="@_certSeed"
@@ -265,7 +264,7 @@
                      IsSaving="@_savingAccrual"
                      OnSubmit="OnSubmitAccrual"
                      OnCancel="OnCancelAccrual" />
-<!-- MODAL: User Picker -->
+
 <UserPickerModal ModalId="project-user-picker"
                  IsOpen="@_showUserPicker"
                  IsOpenChanged="(bool v) => _showUserPicker = v"
@@ -309,8 +308,6 @@
                      IsOpen="@_docViewerOpen"
                      IsOpenChanged="v => _docViewerOpen = v" />
 
-<!-- Al final del archivo, después de los otros modales -->
-
 <CreateProjectExtensionModal @bind-IsOpen="_showCreateExtensionModal"
                              ProjectId="@ProjectId"
                              ExtensionTypes="@(_extensionTypes ?? new())"
@@ -320,48 +317,38 @@
     private bool _docViewerOpen;
     private int _selectedDocumentId;
 
-
-    // ======= products (para visitas/detail) =======
     private List<ProductListItemResponseDTO> _projectProducts = new();
     private List<ProductListItemResponseDTO> _visitProducts = new();
     private bool _loadingProducts;
     private string? _productsError;
 
-    // ======= Categorías de investigación (árbol) =======
     private IReadOnlyList<ResearchCategoryTreeItemDTO> _researchCategoryTree = Array.Empty<ResearchCategoryTreeItemDTO>();
     private bool _loadingResearchCategories;
     private string? _researchCategoriesError;
     [Parameter] public int ProjectId { get; set; }
 
-    // ======= Estado general =======
     private ProjectDetailResponseDTO? _project;
     private string _activeTab = "overview";
     private bool _loadingOverview;
     private string? _error;
     private int? _objectivesLoadedForVisitId;
 
-    // ======= Objetivos del proyecto (para avance en visitas) =======
     private IReadOnlyList<ProjectObjectiveWithActivitiesDTO> _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
     private bool _loadingObjectives;
     private string? _objectivesError;
 
-
-    // ======= Miembros =======
     private List<ResolvedUserProfileDTO>? _members;
     private bool _loadingMembers;
     private string? _membersError;
 
-    // ======= Investigadores externos =======
     private List<ExternalResearcherProjectListItemDTO>? _externalResearchers;
     private bool _loadingExternalResearchers;
     private string? _externalResearchersError;
 
-    // ======= Visitas (lista) =======
     private List<VisitListResponseDTO>? _visits;
     private bool _loadingVisits;
     private string? _visitsError;
 
-    // ======= Visitas (detalle) =======
     private int? _openVisitId;
     private VisitDetailResponseDTO? _visitDetail;
     private bool _loadingVisitDetail;
@@ -374,34 +361,27 @@
     private int? _editingIssueId;
     private VisitIssueFormModal.VisitIssueFormModel? _issueInitialValues;
 
-    // ======= Tipos de transacción (catálogo) =======
     private IReadOnlyList<CatalogListItemDTO> _transactionTypes = Array.Empty<CatalogListItemDTO>();
     private bool _loadingTransactionTypes;
     private string? _transactionTypesError;
 
-    // ======= Presupuesto =======
     private List<BudgetDTO> _budgets = new();
     private Dictionary<int, List<BudgetTransactionDTO>> _budgetTransactions = new();
     private bool _loadingBudget;
     private string? _budgetError;
     private int _budgetRefreshToken = 0;
 
-    // Para saber en qué presupuesto se está devengando
     private int? _selectedBudgetIdForAccrual;
 
-
-    // ======= Modales presupuesto =======
     private bool _certModalOpen;
     private bool _savingCert;
     private AddCertificationRequestDTO _certSeed = new();
 
-    // ======= Prórrogas =======
     private List<ProjectExtensionListResponseDTO>? _extensions;
     private bool _loadingExtensions;
     private string? _extensionsError;
     private bool _showCreateExtensionModal;
 
-    // ======= Finalización =======
     private bool _loadingFinalization;
     private string? _finalizationError;
 
@@ -428,7 +408,7 @@
         }
     }
 
-    private List<CatalogListItemDTO>? _extensionTypes;  // Lista de tipos de prórroga
+    private List<CatalogListItemDTO>? _extensionTypes;
     private bool _loadingExtensionTypes;
     private string? _extensionTypesError;
 
@@ -436,31 +416,25 @@
     private bool _savingAccrual;
     private ExecuteDevengadoRequestDTO _accrualSeed = new();
 
-    // ====== User Picker (miembros) ======
     private bool _showUserPicker;
     private List<ResolvedUserProfileDTO> _memberCandidates = new();
     private int? _preselectedUserId;
 
-    // ======= Facultades / Programas externos =======
     private List<ExternalFacultyDTO> _faculties = new();
     private bool _loadingFaculties;
     private string? _facultiesError;
 
-    // ======= Roles de miembro para el picker de proyecto =======
     private IEnumerable<MemberRoleTypeDetailDTO>? _memberRoles;
     private int? _selectedRoleIdForProject;
-    // ======= Tipos de Categoría de Investigación =======
+
     private IReadOnlyList<ResearchCategoryTypeListItemDTO> _researchCategoryTypes = Array.Empty<ResearchCategoryTypeListItemDTO>();
     private string? _researchCategoryTypesError;
     private bool _loadingResearchCategoryTypes;
 
-    // ======= Agrupaciones de Categorías de Investigación =======
-    private IReadOnlyList<CatalogListItemDTO> _researchCategoryGroups
-        = Array.Empty<CatalogListItemDTO>();
+    private IReadOnlyList<CatalogListItemDTO> _researchCategoryGroups = Array.Empty<CatalogListItemDTO>();
     private bool _loadingResearchCategoryGroups;
     private string? _researchCategoryGroupsError;
 
-    // Investigadores externos (picker / crear)
     private bool _showExternalResearcherPicker;
     private bool _showExternalResearcherCreateModal;
 
@@ -474,7 +448,6 @@
         return Task.CompletedTask;
     }
 
-
     private async Task HandleOpenExternalResearcherPicker()
     {
         try
@@ -484,16 +457,15 @@
                 institutionId: null,
                 ct: CancellationToken.None);
 
-            if (!result.Success || result.Response is null)
+            if (!result.Success || result.Data is null)
             {
-                Toast.ShowError(result.Error ?? "No se pudieron cargar los investigadores externos.");
+                Toast.ShowError(result.ToErrorMessage("No se pudieron cargar los investigadores externos."));
                 return;
             }
 
-            // Evitar duplicados: ya asociados a este proyecto
             var existingIds = new HashSet<int>(_externalResearchers?.Select(er => er.ExternalResearcherId) ?? Enumerable.Empty<int>());
 
-            _externalResearcherCandidates = result.Response
+            _externalResearcherCandidates = result.Data
                 .Where(r => !existingIds.Contains(r.Id))
                 .OrderBy(r => r.FullName)
                 .ToList();
@@ -520,14 +492,14 @@
         try
         {
             var res = await ProjectExtensionTypeService.GetListAsync(onlyActives: true, CancellationToken.None);
-            if (res.Success && res.Response is not null)
+            if (res.Success && res.Data is not null)
             {
-                _extensionTypes = res.Response;  // Asigna la lista de tipos de prórroga
+                _extensionTypes = res.Data;
             }
             else
             {
                 _extensionTypes = new List<CatalogListItemDTO>();
-                _extensionTypesError = res.Error ?? "No se pudieron cargar los tipos de prórroga.";
+                _extensionTypesError = res.ToErrorMessage("No se pudieron cargar los tipos de prórroga.");
             }
         }
         catch (Exception ex)
@@ -549,14 +521,14 @@
         try
         {
             var res = await ProjectExtensionService.ListByProjectAsync(ProjectId, CancellationToken.None);
-            if (res.Success && res.Response is not null)
+            if (res.Success && res.Data is not null)
             {
-                _extensions = res.Response;
+                _extensions = res.Data;
             }
             else
             {
                 _extensions = new List<ProjectExtensionListResponseDTO>();
-                _extensionsError = res.Error ?? "No se pudieron cargar las prórrogas.";
+                _extensionsError = res.ToErrorMessage("No se pudieron cargar las prórrogas.");
             }
         }
         catch (Exception ex)
@@ -575,7 +547,6 @@
         await LoadVisitProductsAsync(visitId);
     }
 
-
     private async Task LoadVisitProductsAsync(int visitId)
     {
         try
@@ -585,9 +556,9 @@
 
             var productsRes = await ProductService.ListByProjectAsync(ProjectId, CancellationToken.None);
 
-            if (productsRes.Success && productsRes.Response is not null)
+            if (productsRes.Success && productsRes.Data is not null)
             {
-                _projectProducts = productsRes.Response.ToList();
+                _projectProducts = productsRes.Data.ToList();
                 _visitProducts = _projectProducts
                     .Where(p => p.VisitId == visitId)
                     .OrderByDescending(p => p.CreatedAt)
@@ -597,7 +568,7 @@
             {
                 _projectProducts = new();
                 _visitProducts = new();
-                _productsError = productsRes.Error ?? "No se pudieron cargar los productos del proyecto.";
+                _productsError = productsRes.ToErrorMessage("No se pudieron cargar los productos del proyecto.");
                 Toast.ShowWarning(_productsError);
             }
         }
@@ -633,15 +604,14 @@
 
             if (!result.Success)
             {
-                Toast.ShowError(result.Error ?? "No se pudo crear el investigador externo.");
+                Toast.ShowError(result.ToErrorMessage("No se pudo crear el investigador externo."));
                 return;
             }
 
-            Toast.ShowSuccess("Investigador externo creado correctamente.");
+            Toast.ShowSuccess(result.ToSuccessMessage("Investigador externo creado correctamente."));
 
             _showExternalResearcherCreateModal = false;
 
-            // Recargar candidatos y reabrir picker
             await HandleOpenExternalResearcherPicker();
         }
         catch (Exception ex)
@@ -659,13 +629,13 @@
             onlyActives: true,
             ct: CancellationToken.None);
 
-        if (result.Success && result.Response is not null)
+        if (result.Success && result.Data is not null)
         {
-            _allInstitutions = result.Response;
+            _allInstitutions = result.Data;
         }
         else if (!result.Success)
         {
-            Toast.ShowWarning(result.Error ?? "No se pudieron cargar las instituciones.");
+            Toast.ShowWarning(result.ToErrorMessage("No se pudieron cargar las instituciones."));
         }
     }
 
@@ -716,7 +686,6 @@
 
         try
         {
-            // TODO: completa las propiedades según tu ExternalResearcherProjectCreateRequestDTO
             var createDto = new ExternalResearcherProjectCreateRequestDTO
             {
                 ExternalResearcherId = researcher.Id,
@@ -728,14 +697,13 @@
 
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "No se pudo asociar el investigador externo al proyecto.");
+                Toast.ShowError(res.ToErrorMessage("No se pudo asociar el investigador externo al proyecto."));
                 return;
             }
 
-            Toast.ShowSuccess($"Investigador externo '{researcher.FullName}' agregado al proyecto.");
+            Toast.ShowSuccess(res.ToSuccessMessage($"Investigador externo '{researcher.FullName}' agregado al proyecto."));
             _showExternalResearcherPicker = false;
 
-            // Recargar solo la pestaña de miembros
             await EnsureTabDataAsync("members");
             StateHasChanged();
         }
@@ -745,25 +713,22 @@
         }
     }
 
-
     private async Task HandleRemoveExternalResearcher(int externalResearcherProjectId)
     {
         try
         {
-            // 1) Obtener los datos actuales del registro
             var existingRes = await ExternalResearcherProjectService.GetByIdAsync(
                 externalResearcherProjectId,
                 CancellationToken.None);
 
-            if (!existingRes.Success || existingRes.Response is null)
+            if (!existingRes.Success || existingRes.Data is null)
             {
-                Toast.ShowError(existingRes.Error ?? "No se pudo obtener el registro del investigador externo.");
+                Toast.ShowError(existingRes.ToErrorMessage("No se pudo obtener el registro del investigador externo."));
                 return;
             }
 
-            var existing = existingRes.Response;
+            var existing = existingRes.Data;
 
-            // 2) Construir DTO completo (copiando todo lo requerido)
             var dto = new ExternalResearcherProjectUpdateRequestDTO
             {
                 Id = existing.Id,
@@ -773,18 +738,16 @@
                 ExitDate = DateTime.UtcNow
             };
 
-            // 3) Enviar actualización
             var res = await ExternalResearcherProjectService.UpdateAsync(dto, CancellationToken.None);
 
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "No se pudo desvincular al investigador externo.");
+                Toast.ShowError(res.ToErrorMessage("No se pudo desvincular al investigador externo."));
                 return;
             }
 
-            Toast.ShowSuccess("Investigador externo desvinculado del proyecto.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Investigador externo desvinculado del proyecto."));
 
-            // 4) Recargar la pestaña de miembros
             await EnsureTabDataAsync("members");
             StateHasChanged();
         }
@@ -794,7 +757,6 @@
         }
     }
 
-    // ======= Lifecycle =======
     protected override async Task OnInitializedAsync()
     {
         await EnsureFacultiesAsync();
@@ -825,15 +787,14 @@
             _researchCategoriesError = null;
 
             var res = await ResearchCategoryService.GetTreeAsync();
-            
-            if (res.Success && res.Response is not null)
-                _researchCategoryTree = res.Response;
+
+            if (res.Success && res.Data is not null)
+                _researchCategoryTree = res.Data;
             else
             {
                 _researchCategoryTree = Array.Empty<ResearchCategoryTreeItemDTO>();
-                _researchCategoriesError = res.Error ?? "No se pudo cargar el árbol de categorías.";
+                _researchCategoriesError = res.ToErrorMessage("No se pudo cargar el árbol de categorías.");
             }
-
         }
         catch (Exception ex)
         {
@@ -845,6 +806,7 @@
             _loadingResearchCategories = false;
         }
     }
+
     private async Task EnsureResearchCategoryGroupsAsync()
     {
         if (_researchCategoryGroups is { Count: > 0 })
@@ -857,15 +819,14 @@
 
             var res = await ResearchCategoryGroupService.GetListAsync(onlyActives: true);
 
-            if (res.Success && res.Response is not null)
+            if (res.Success && res.Data is not null)
             {
-                _researchCategoryGroups = res.Response;
+                _researchCategoryGroups = res.Data;
             }
             else
             {
                 _researchCategoryGroups = Array.Empty<CatalogListItemDTO>();
-                _researchCategoryGroupsError = res.Error
-                    ?? "No se pudieron cargar las agrupaciones de categorías.";
+                _researchCategoryGroupsError = res.ToErrorMessage("No se pudieron cargar las agrupaciones de categorías.");
             }
         }
         catch (Exception ex)
@@ -878,8 +839,6 @@
             _loadingResearchCategoryGroups = false;
         }
     }
-
-
 
     private async Task EnsureFacultiesAsync()
     {
@@ -894,12 +853,12 @@
 
             if (res.Success)
             {
-                _faculties = res.Response ?? new();
+                _faculties = res.Data ?? new();
             }
             else
             {
                 _faculties = new();
-                _facultiesError = res.Error ?? "No se pudieron cargar las facultades.";
+                _facultiesError = res.ToErrorMessage("No se pudieron cargar las facultades.");
             }
         }
         catch (Exception ex)
@@ -921,8 +880,6 @@
         return Task.CompletedTask;
     }
 
-
-    /// Lazy-load / Refresh por tab
     private async Task EnsureTabDataAsync(string tabKey)
     {
         switch (tabKey)
@@ -934,11 +891,11 @@
                 {
                     var detail = await ProjectService.GetDetailAsync(ProjectId);
                     if (detail.Success)
-                        _project = detail.Response;
+                        _project = detail.Data;
                     else
                     {
                         _project = null;
-                        _error = detail.Error ?? "No se pudo cargar el proyecto.";
+                        _error = detail.ToErrorMessage("No se pudo cargar el proyecto.");
                     }
                 }
                 catch (Exception ex)
@@ -962,7 +919,6 @@
                 {
                     await EnsureProjectDetailIfNeeded();
 
-                    // ===== Miembros internos (Group) =====
                     if (_project?.ProjectGroupId is null or 0)
                     {
                         _members = new();
@@ -972,25 +928,24 @@
                     {
                         var res = await GroupService.GetMembersByGroupIdAsync(_project.ProjectGroupId);
                         if (res.Success)
-                            _members = res.Response ?? new();
+                            _members = res.Data ?? new();
                         else
                         {
                             _members = new();
-                            _membersError = res.Error ?? "No se pudieron cargar los miembros.";
+                            _membersError = res.ToErrorMessage("No se pudieron cargar los miembros.");
                         }
                     }
 
-                    // ===== Investigadores externos del proyecto =====
                     var extRes = await ExternalResearcherProjectService.GetByProjectAsync(ProjectId);
 
-                    if (extRes.Success && extRes.Response is not null)
+                    if (extRes.Success && extRes.Data is not null)
                     {
-                        _externalResearchers = extRes.Response;
+                        _externalResearchers = extRes.Data;
                     }
                     else
                     {
                         _externalResearchers = new();
-                        _externalResearchersError = extRes.Error ?? "No se pudieron cargar los investigadores externos.";
+                        _externalResearchersError = extRes.ToErrorMessage("No se pudieron cargar los investigadores externos.");
                     }
                 }
                 catch (Exception ex)
@@ -1015,11 +970,11 @@
                 {
                     var res = await ProjectExtensionService.ListByProjectAsync(ProjectId);
                     if (res.Success)
-                        _extensions = res.Response ?? new();
+                        _extensions = res.Data ?? new();
                     else
                     {
                         _extensions = new();
-                        _extensionsError = res.Error ?? "No se pudieron cargar las prórrogas.";
+                        _extensionsError = res.ToErrorMessage("No se pudieron cargar las prórrogas.");
                     }
                 }
                 catch (Exception ex)
@@ -1040,11 +995,11 @@
                 {
                     var res = await VisitService.GetByProjectAsync(ProjectId);
                     if (res.Success)
-                        _visits = res.Response?.ToList() ?? new();
+                        _visits = res.Data?.ToList() ?? new();
                     else
                     {
                         _visits = new();
-                        _visitsError = res.Error ?? "No se pudieron cargar las visitas.";
+                        _visitsError = res.ToErrorMessage("No se pudieron cargar las visitas.");
                     }
                     await EnsureProjectObjectivesAsync();
                 }
@@ -1069,7 +1024,7 @@
 
                     if (b.Success)
                     {
-                        var budgets = b.Response ?? new();
+                        var budgets = b.Data ?? new();
 
                         _budgets = budgets;
                         _budgetTransactions = new();
@@ -1082,14 +1037,14 @@
                                 {
                                     var tr = await BudgetService.GetListBudgetTransactionAsync(budget.BudgetId);
 
-                                    if (tr.Success && tr.Response is not null)
+                                    if (tr.Success && tr.Data is not null)
                                     {
-                                        _budgetTransactions[budget.BudgetId] = tr.Response.ToList();
+                                        _budgetTransactions[budget.BudgetId] = tr.Data.ToList();
                                     }
                                     else
                                     {
                                         _budgetTransactions[budget.BudgetId] = new List<BudgetTransactionDTO>();
-                                        _budgetError ??= tr.Error ?? "No se pudieron cargar las transacciones.";
+                                        _budgetError ??= tr.ToErrorMessage("No se pudieron cargar las transacciones.");
                                     }
                                 }
                                 catch (Exception exInner)
@@ -1108,7 +1063,7 @@
                     {
                         _budgets = new();
                         _budgetTransactions = new();
-                        _budgetError = b.Error ?? "No se pudo cargar el presupuesto.";
+                        _budgetError = b.ToErrorMessage("No se pudo cargar el presupuesto.");
                     }
                 }
                 catch (Exception ex)
@@ -1129,35 +1084,28 @@
 
                 try
                 {
-                    // Asegura que exista el proyecto (y por tanto el %)
                     await EnsureProjectDetailIfNeeded();
 
-                    // Si por alguna razón el usuario fuerza el tab (ej: URL state), protege:
                     if (!CanShowFinalizationTab)
                     {
                         _finalizationError = "Este proyecto aún no está al 100% de avance.";
                         break;
                     }
 
-                    // Reusar datos existentes, pero asegurar que estén cargados:
-                    // - miembros
                     if (_members is null)
                         await EnsureTabDataAsync("members");
 
-                    // - visitas + objetivos (tu case visits ya trae objetivos por visita; aquí queremos al menos visitas)
                     if (_visits is null)
                         await EnsureTabDataAsync("visits");
 
-                    // - presupuesto
                     if (_budgets.Count == 0)
                         await EnsureTabDataAsync("financial");
 
-                    // - productos del proyecto (si no están cargados)
                     if (_projectProducts.Count == 0)
                     {
                         var productsRes = await ProductService.ListByProjectAsync(ProjectId, CancellationToken.None);
-                        if (productsRes.Success && productsRes.Response is not null)
-                            _projectProducts = productsRes.Response.ToList();
+                        if (productsRes.Success && productsRes.Data is not null)
+                            _projectProducts = productsRes.Data.ToList();
                     }
                 }
                 catch (Exception ex)
@@ -1174,23 +1122,20 @@
 
     private async Task HandleRefreshFinalization()
     {
-        // Esto fuerza a que se refresquen datos relevantes
         await EnsureTabDataAsync("overview");
         await EnsureTabDataAsync("members");
         await EnsureTabDataAsync("visits");
         await EnsureTabDataAsync("financial");
 
-        // productos
         var productsRes = await ProductService.ListByProjectAsync(ProjectId, CancellationToken.None);
-        if (productsRes.Success && productsRes.Response is not null)
-            _projectProducts = productsRes.Response.ToList();
+        if (productsRes.Success && productsRes.Data is not null)
+            _projectProducts = productsRes.Data.ToList();
 
         StateHasChanged();
     }
 
     private async Task EnsureProjectObjectivesAsync(bool forceRefresh = false)
     {
-        // si no hay visita abierta, no hay nada que cargar “por visita”
         if (!_openVisitId.HasValue || _openVisitId.Value <= 0)
         {
             _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
@@ -1198,7 +1143,6 @@
             return;
         }
 
-        // cache: si ya cargaste para ESTA visita y no piden refresh, no repitas
         if (!forceRefresh
             && _objectivesLoadedForVisitId == _openVisitId.Value
             && _projectObjectives is { Count: > 0 })
@@ -1214,16 +1158,16 @@
                 _openVisitId.Value,
                 ct: CancellationToken.None);
 
-            if (res.Success && res.Response is not null)
+            if (res.Success && res.Data is not null)
             {
-                _projectObjectives = res.Response;
+                _projectObjectives = res.Data;
                 _objectivesLoadedForVisitId = _openVisitId.Value;
             }
             else
             {
                 _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
                 _objectivesLoadedForVisitId = null;
-                _objectivesError = res.Error ?? "No se pudieron cargar los objetivos/actividades de la visita.";
+                _objectivesError = res.ToErrorMessage("No se pudieron cargar los objetivos/actividades de la visita.");
             }
         }
         catch (Exception ex)
@@ -1242,14 +1186,12 @@
     {
         try
         {
-            // 0) Debes tener una visita abierta para guardar progreso por visita
             if (!_openVisitId.HasValue || _openVisitId.Value <= 0)
             {
                 Toast.ShowError("No hay una visita abierta para guardar el progreso.");
                 return;
             }
 
-            // 1) Guardar datos de la actividad (texto/resultado)
             var dto = new UpdateObjectiveActivityRequestDTO
             {
                 ObjectiveActivityId = a.ObjectiveActivityId,
@@ -1265,12 +1207,11 @@
 
             if (!updateRes.Success)
             {
-                Toast.ShowError(updateRes.Error ?? "No se pudo guardar la actividad.");
+                Toast.ShowError(updateRes.ToErrorMessage("No se pudo guardar la actividad."));
                 return;
             }
 
-            // 2) Guardar progreso (por visita)
-            var progress = Math.Min(100, Math.Max(0, a.ProgressPercentage)); // ajusta si el nombre difiere
+            var progress = Math.Min(100, Math.Max(0, a.ProgressPercentage));
 
             var progressRes = await ObjectiveActivityService.SetProgressAsync(
                 a.ObjectiveActivityId,
@@ -1280,13 +1221,11 @@
 
             if (!progressRes.Success)
             {
-                Toast.ShowError(progressRes.Error ?? "Se guardó la actividad, pero no se pudo guardar el progreso.");
+                Toast.ShowError(progressRes.ToErrorMessage("Se guardó la actividad, pero no se pudo guardar el progreso."));
                 return;
             }
 
-            Toast.ShowSuccess("Actividad y progreso guardados.");
-
-            // 3) Refrescar (trae % recalculados)
+            Toast.ShowSuccess(progressRes.ToSuccessMessage("Actividad y progreso guardados."));
             await RefreshVisitsTabAsync(refreshVisitList: false, refreshVisitDetail: false);
         }
         catch (Exception ex)
@@ -1297,26 +1236,21 @@
 
     private async Task RefreshVisitsTabAsync(bool refreshVisitList = false, bool refreshVisitDetail = false)
     {
-        // 1) Refrescar objetivos + actividades (trae % y estados recalculados)
         await EnsureProjectObjectivesAsync(forceRefresh: true);
-
-        // 2) Refrescar header del proyecto (si cambia ExecutionPercentage/State)
         await RefreshProjectHeaderAsync();
 
-        // 3) Opcional: refrescar la lista de visitas
         if (refreshVisitList)
         {
             var res = await VisitService.GetByProjectAsync(ProjectId);
             if (res.Success)
-                _visits = res.Response?.ToList() ?? new();
+                _visits = res.Data?.ToList() ?? new();
         }
 
-        // 4) Opcional: refrescar detalle de visita si está abierto
         if (refreshVisitDetail && _openVisitId is int vid)
         {
             var detailRes = await VisitService.GetVisitDetailAsync(vid);
             if (detailRes.Success)
-                _visitDetail = detailRes.Response;
+                _visitDetail = detailRes.Data;
         }
 
         StateHasChanged();
@@ -1326,11 +1260,9 @@
     {
         var detail = await ProjectService.GetDetailAsync(ProjectId);
         if (detail.Success)
-            _project = detail.Response;
+            _project = detail.Data;
     }
 
-
-    // ===== Acciones miembros =====
     private async Task HandleInviteMember()
     {
         await EnsureProjectDetailIfNeeded();
@@ -1346,12 +1278,12 @@
         var all = await ExternalUserService.GetListAsync();
         if (!all.Success)
         {
-            Toast.ShowError(all.Error ?? "No se pudieron cargar los usuarios.");
+            Toast.ShowError(all.ToErrorMessage("No se pudieron cargar los usuarios."));
             return;
         }
 
         var existingIds = new HashSet<int>((_members ?? new()).Select(m => m.UserId));
-        _memberCandidates = (all.Response ?? new())
+        _memberCandidates = (all.Data ?? new())
             .Where(u => !existingIds.Contains(u.UserId))
             .OrderBy(u => u.FullName)
             .ToList();
@@ -1382,11 +1314,11 @@
             var res = await GroupService.RemoveMemberAsync(_project.ProjectGroupId, userGroupId);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "No se pudo remover el miembro.");
+                Toast.ShowError(res.ToErrorMessage("No se pudo remover el miembro."));
                 return;
             }
 
-            Toast.ShowSuccess("Miembro removido.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Miembro removido."));
             await EnsureTabDataAsync("members");
             StateHasChanged();
         }
@@ -1396,7 +1328,6 @@
         }
     }
 
-    // ===== Acciones presupuesto =====
     private Task HandleAddCertification(int budgetId)
     {
         var targetBudget = _budgets.FirstOrDefault(b => b.BudgetId == budgetId);
@@ -1420,10 +1351,8 @@
         return Task.CompletedTask;
     }
 
-
     private Task HandleExecuteDevengado(int budgetTransactionId)
     {
-        // Buscar a qué presupuesto pertenece esta transacción
         int? budgetId = null;
 
         foreach (var kvp in _budgetTransactions)
@@ -1431,7 +1360,7 @@
             var txList = kvp.Value;
             if (txList is not null && txList.Any(t => t.BudgetTransactionId == budgetTransactionId))
             {
-                budgetId = kvp.Key; // este es el BudgetId
+                budgetId = kvp.Key;
                 break;
             }
         }
@@ -1459,7 +1388,6 @@
         return Task.CompletedTask;
     }
 
-
     private async Task OnSubmitCertification(AddCertificationRequestDTO dto)
     {
         try
@@ -1470,27 +1398,18 @@
 
             if (!res.Success)
             {
-                // 🔹 Usa exactamente lo que responde el backend
-                var backendMessage = res.Error ?? "No se pudo crear la certificación.";
-                Toast.ShowError(backendMessage);
-
+                Toast.ShowError(res.ToErrorMessage("No se pudo crear la certificación."));
                 return;
             }
 
-            Toast.ShowSuccess("Certificación creada correctamente.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Certificación creada correctamente."));
             _certModalOpen = false;
 
             await ReloadBudgetTabAsync();
         }
         catch (Exception ex)
         {
-            // 🔹 Captura exacta del error que provocó el fallo
-            var msg = $"Error inesperado: {ex.Message}";
-
-            // Si quieres aún más detalle:
-            // msg += $"\nDetalle: {ex.StackTrace}";
-
-            Toast.ShowError(msg);
+            Toast.ShowError($"Error inesperado: {ex.Message}");
         }
         finally
         {
@@ -1514,32 +1433,26 @@
 
             if (!res.Success)
             {
-                // 🔹 Mensaje exacto que devuelve el backend
-                var backendMessage = res.Error ?? "No se pudo ejecutar el devengo.";
-                Toast.ShowError(backendMessage);
-                return; // Mantienes el modal abierto para que corrija
+                Toast.ShowError(res.ToErrorMessage("No se pudo ejecutar el devengo."));
+                return;
             }
 
-            Toast.ShowSuccess("Devengo ejecutado correctamente.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Devengo ejecutado correctamente."));
 
             _accrualModalOpen = false;
-            _selectedBudgetIdForAccrual = null; // limpiar selección
+            _selectedBudgetIdForAccrual = null;
 
             await ReloadBudgetTabAsync();
         }
         catch (Exception ex)
         {
-            // 🔹 Mensaje exacto desde la excepción
-            var msg = $"Error inesperado al ejecutar el devengo: {ex.Message}";
-            Toast.ShowError(msg);
-            // _accrualError = msg; // si ya no quieres texto en el modal, no lo uses
+            Toast.ShowError($"Error inesperado al ejecutar el devengo: {ex.Message}");
         }
         finally
         {
             _savingAccrual = false;
         }
     }
-
 
     private Task OnCancelCertification()
     {
@@ -1553,7 +1466,6 @@
         _selectedBudgetIdForAccrual = null;
         return Task.CompletedTask;
     }
-
 
     private async Task HandleChangeVisitStateAsync((int visitId, int newStateId) e)
     {
@@ -1570,7 +1482,7 @@
 
             var resp = await VisitService.UpdateAsync(req);
 
-            if (resp.Success && resp.Response is VisitListResponseDTO updated && _visits is not null)
+            if (resp.Success && resp.Data is VisitListResponseDTO updated && _visits is not null)
             {
                 var local = _visits.FirstOrDefault(x => x.VisitId == updated.VisitId);
                 if (local is not null)
@@ -1582,7 +1494,7 @@
             }
             else
             {
-                _visitsError = resp.Error ?? "No se pudo actualizar el estado de la visita.";
+                _visitsError = resp.ToErrorMessage("No se pudo actualizar el estado de la visita.");
                 await EnsureTabDataAsync("visits");
             }
         }
@@ -1593,7 +1505,6 @@
         }
     }
 
-    // ===== Util =====
     private async Task ReloadBudgetTabAsync()
     {
         await EnsureTabDataAsync("financial");
@@ -1601,7 +1512,6 @@
         StateHasChanged();
     }
 
-    // >>> SWAP: abrir detalle (ya NO navegamos a /visits/{id})
     private async Task HandleOpenVisit(int visitId)
     {
         _openVisitId = visitId;
@@ -1623,15 +1533,15 @@
             var issuesRes = await issuesTask;
 
             if (detailRes.Success)
-                _visitDetail = detailRes.Response;
+                _visitDetail = detailRes.Data;
             else
             {
                 _visitDetail = null;
-                _visitDetailError = detailRes.Error ?? "No se pudo cargar el detalle de la visita.";
+                _visitDetailError = detailRes.ToErrorMessage("No se pudo cargar el detalle de la visita.");
             }
 
             if (issuesRes.Success)
-                _visitIssues = issuesRes.Response?.ToList() ?? new();
+                _visitIssues = issuesRes.Data?.ToList() ?? new();
             else
                 _visitIssues = new();
         }
@@ -1649,7 +1559,6 @@
         }
     }
 
-    // >>> SWAP: cerrar detalle y volver a la lista
     private async Task HandleCloseVisit()
     {
         _openVisitId = null;
@@ -1660,10 +1569,6 @@
         StateHasChanged();
     }
 
-
-    // <<<< AGREGAR: Handlers para VisitIssues
-
-    /// <summary>Abrir modal para agregar nuevo issue</summary>
     private Task HandleAddIssue()
     {
         if (!_openVisitId.HasValue) return Task.CompletedTask;
@@ -1677,7 +1582,6 @@
         return Task.CompletedTask;
     }
 
-    /// <summary>Abrir modal para editar issue existente</summary>
     private Task HandleEditIssue((int issueId, VisitIssueResponseDTO issue) data)
     {
         _editingIssueId = data.issueId;
@@ -1692,7 +1596,6 @@
         return Task.CompletedTask;
     }
 
-    /// <summary>Eliminar issue (confirmación ya manejada por ActionButton)</summary>
     private async Task HandleDeleteIssue(int issueId)
     {
         try
@@ -1701,13 +1604,12 @@
 
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "No se pudo eliminar el problema.");
+                Toast.ShowError(res.ToErrorMessage("No se pudo eliminar el problema."));
                 return;
             }
 
-            Toast.ShowSuccess("Problema eliminado correctamente.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Problema eliminado correctamente."));
 
-            //Refrescar lista de issues
             if (_openVisitId.HasValue)
             {
                 await ReloadVisitIssuesAsync(_openVisitId.Value);
@@ -1719,7 +1621,6 @@
         }
     }
 
-    /// <summary>Submit del modal (crear o actualizar)</summary>
     private async Task HandleSubmitIssue(VisitIssueFormModal.VisitIssueFormModel form)
     {
         if (!_openVisitId.HasValue) return;
@@ -1732,7 +1633,6 @@
 
             if (_editingIssueId.HasValue)
             {
-                // ACTUALIZAR
                 var updateDto = new VisitIssueUpdateRequestDTO
                 {
                     Description = form.Description
@@ -1742,15 +1642,14 @@
 
                 if (!res.Success)
                 {
-                    _issueError = res.Error ?? "No se pudo actualizar el problema.";
+                    _issueError = res.ToErrorMessage("No se pudo actualizar el problema.");
                     return;
                 }
 
-                Toast.ShowSuccess("Problema actualizado correctamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Problema actualizado correctamente."));
             }
             else
             {
-                // CREAR
                 var createDto = new VisitIssueCreateRequestDTO
                 {
                     VisitId = _openVisitId.Value,
@@ -1761,14 +1660,13 @@
 
                 if (!res.Success)
                 {
-                    _issueError = res.Error ?? "No se pudo crear el problema.";
+                    _issueError = res.ToErrorMessage("No se pudo crear el problema.");
                     return;
                 }
 
-                Toast.ShowSuccess("Problema registrado correctamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Problema registrado correctamente."));
             }
 
-            // Cerrar modal y refrescar
             _issueModalOpen = false;
             await ReloadVisitIssuesAsync(_openVisitId.Value);
         }
@@ -1783,7 +1681,6 @@
         }
     }
 
-    /// <summary>Cancelar modal</summary>
     private Task HandleCancelIssue()
     {
         _issueModalOpen = false;
@@ -1793,7 +1690,6 @@
         return Task.CompletedTask;
     }
 
-    /// <summary>Refrescar solo la lista de issues</summary>
     private async Task ReloadVisitIssuesAsync(int visitId)
     {
         try
@@ -1802,9 +1698,9 @@
             var res = await VisitIssueService.ListByVisitAsync(visitId);
 
             if (res.Success)
-                _visitIssues = res.Response?.ToList() ?? new();
+                _visitIssues = res.Data?.ToList() ?? new();
             else
-                Toast.ShowWarning("No se pudieron recargar los problemas.");
+                Toast.ShowWarning(res.ToErrorMessage("No se pudieron recargar los problemas."));
         }
         catch (Exception ex)
         {
@@ -1816,16 +1712,15 @@
             StateHasChanged();
         }
     }
-    // ===== Acciones prórrogas =====
+
     private Task HandleOpenExtension(int projectExtensionId) => Task.CompletedTask;
 
-    // ===== Util miembros =====
     private async Task EnsureProjectDetailIfNeeded()
     {
         if (_project is null)
         {
             var detail = await ProjectService.GetDetailAsync(ProjectId);
-            if (detail.Success) _project = detail.Response;
+            if (detail.Success) _project = detail.Data;
         }
     }
 
@@ -1879,11 +1774,11 @@
         var res = await GroupService.AddMemberAsync(req);
         if (!res.Success)
         {
-            Toast.ShowError(res.Error ?? "No se pudo agregar el miembro.");
+            Toast.ShowError(res.ToErrorMessage("No se pudo agregar el miembro."));
             return;
         }
 
-        Toast.ShowSuccess("Miembro agregado.");
+        Toast.ShowSuccess(res.ToSuccessMessage("Miembro agregado."));
         _showUserPicker = false;
 
         await EnsureTabDataAsync("members");
@@ -1892,7 +1787,6 @@
 
     private async Task EnsureMemberRolesAsync()
     {
-        // Si ya están cargados, no vuelvas a pedirlos
         if (_memberRoles is not null && _memberRoles.Any())
             return;
 
@@ -1900,17 +1794,17 @@
         {
             var res = await MemberRoleTypeService.GetListAsync(onlyActives: true);
 
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                Toast.ShowError(res.Error ?? "No se pudieron cargar los roles.");
+                Toast.ShowError(res.ToErrorMessage("No se pudieron cargar los roles."));
                 _memberRoles = Array.Empty<MemberRoleTypeDetailDTO>();
                 return;
             }
 
-            var allRoles = res.Response; // List<MemberRoleTypeListItemDTO>
+            var allRoles = res.Data;
 
             _memberRoles = allRoles
-                .Where(r => r.Flag == 1) // tu filtro de grupo/proyecto
+                .Where(r => r.Flag == 1)
                 .Select(r => new MemberRoleTypeDetailDTO
                 {
                     Id = r.Id,
@@ -1951,14 +1845,14 @@
 
             var res = await TransactionTypeService.GetListAsync(onlyActives: true);
 
-            if (res.Success && res.Response is not null)
+            if (res.Success && res.Data is not null)
             {
-                _transactionTypes = res.Response;
+                _transactionTypes = res.Data;
             }
             else
             {
                 _transactionTypes = Array.Empty<CatalogListItemDTO>();
-                _transactionTypesError = res.Error ?? "No se pudieron cargar los tipos de transacción.";
+                _transactionTypesError = res.ToErrorMessage("No se pudieron cargar los tipos de transacción.");
             }
         }
         catch (Exception ex)
@@ -1978,6 +1872,7 @@
             return false;
         return _members.Any(m => m.MemberRoleId == roleId);
     }
+
     private async Task EnsureResearchCategoryTypesAsync()
     {
         if (_researchCategoryTypes is { Count: > 0 })
@@ -1990,14 +1885,14 @@
 
             var res = await ResearchCategoryTypeService.ListAsync(onlyActives: true);
 
-            if (res.Success && res.Response is not null)
+            if (res.Success && res.Data is not null)
             {
-                _researchCategoryTypes = res.Response;
+                _researchCategoryTypes = res.Data;
             }
             else
             {
                 _researchCategoryTypes = Array.Empty<ResearchCategoryTypeListItemDTO>();
-                _researchCategoryTypesError = res.Error ?? "No se pudieron cargar los tipos de categoría.";
+                _researchCategoryTypesError = res.ToErrorMessage("No se pudieron cargar los tipos de categoría.");
             }
         }
         catch (Exception ex)
@@ -2010,7 +1905,6 @@
             _loadingResearchCategoryTypes = false;
         }
     }
-    // ===== Acciones presupuesto =====
 
     private async Task HandleCancelTransaction(int budgetTransactionId)
     {
@@ -2020,13 +1914,11 @@
 
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "No se pudo cancelar la transacción.");
+                Toast.ShowError(res.ToErrorMessage("No se pudo cancelar la transacción."));
                 return;
             }
 
-            Toast.ShowSuccess("Transacción cancelada correctamente.");
-
-            // Recargar pestaña financiera
+            Toast.ShowSuccess(res.ToSuccessMessage("Transacción cancelada correctamente."));
             await ReloadBudgetTabAsync();
         }
         catch (Exception ex)

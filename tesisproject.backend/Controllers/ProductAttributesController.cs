@@ -19,25 +19,25 @@ namespace tesisproject.backend.Controllers
             => _service = service;
 
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<ProductAttributeListItemDTO>>>> GetAll(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<ProductAttributeListItemDTO>>>> GetAll(
             [FromQuery] bool onlyActives,
             CancellationToken ct)
             => (await _service.ListAsync(onlyActives, ct)).ToActionResult();
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<ProductAttributeDetailDTO>>> GetById(
+        public async Task<ActionResult<ServiceResult<ProductAttributeDetailDTO>>> GetById(
             int id,
             CancellationToken ct)
             => (await _service.GetByIdAsync(id, ct)).ToActionResult();
 
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<ProductAttributeDetailDTO>>> Create(
+        public async Task<ActionResult<ServiceResult<ProductAttributeDetailDTO>>> Create(
             [FromBody] AddProductAttributeRequestDTO dto,
             CancellationToken ct)
             => (await _service.CreateAsync(dto, ct)).ToActionResult();
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<ProductAttributeDetailDTO>>> Update(
+        public async Task<ActionResult<ServiceResult<ProductAttributeDetailDTO>>> Update(
             int id,
             [FromBody] UpdateProductAttributeRequestDTO dto,
             CancellationToken ct)
@@ -49,7 +49,7 @@ namespace tesisproject.backend.Controllers
         // ================= DELETE =================
 
         [HttpDelete("{id:int}")]
-        public async Task<ActionResult<ApiResponse<NoContent>>> Delete(
+        public async Task<ActionResult<ServiceResult<NoContent>>> Delete(
             int id,
             CancellationToken ct)
             => (await _service.DeleteAsync(id, ct)).ToActionResult();

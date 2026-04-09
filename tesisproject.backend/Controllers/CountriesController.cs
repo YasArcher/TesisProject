@@ -23,7 +23,7 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/countries
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<CountryListItemDTO>>>> List(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<CountryListItemDTO>>>> List(
             [FromQuery] bool onlyActives = true,
             CancellationToken ct = default)
         {
@@ -32,7 +32,7 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/countries/{id}
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<CountryDetailDTO>>> GetById(
+        public async Task<ActionResult<ServiceResult<CountryDetailDTO>>> GetById(
             int id,
             CancellationToken ct = default)
         {
@@ -41,7 +41,7 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/countries/keyvalues
         [HttpGet("keyvalues")]
-        public async Task<ActionResult<ApiResponse<List<KeyValueItemDTO>>>> GetKeyValues(
+        public async Task<ActionResult<ServiceResult<List<KeyValueItemDTO>>>> GetKeyValues(
             [FromQuery] string? term,
             [FromQuery] int? take,
             CancellationToken ct = default)
@@ -51,7 +51,7 @@ namespace tesisproject.backend.Controllers
 
         // POST: api/countries
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<CountryDetailDTO>>> Create(
+        public async Task<ActionResult<ServiceResult<CountryDetailDTO>>> Create(
             AddCountryRequestDTO body,
             CancellationToken ct = default)
         {
@@ -60,7 +60,7 @@ namespace tesisproject.backend.Controllers
 
         // PUT: api/countries/{id}
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<CountryDetailDTO>>> Update(
+        public async Task<ActionResult<ServiceResult<CountryDetailDTO>>> Update(
             int id,
             UpdateCountryRequestDTO body,
             CancellationToken ct = default)

@@ -21,19 +21,19 @@ namespace tesisproject.backend.Controllers
         // ================ READS ================
 
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<ResearchCategoryListItemDTO>>>> GetAll(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<ResearchCategoryListItemDTO>>>> GetAll(
             [FromQuery] bool onlyActives = true,
             CancellationToken ct = default)
             => (await _service.ListAsync(onlyActives, ct)).ToActionResult();
 
         [HttpGet("tree")]
-        public async Task<ActionResult<ApiResponse<List<ResearchCategoryTreeItemDTO>>>> GetTree(
+        public async Task<ActionResult<ServiceResult<List<ResearchCategoryTreeItemDTO>>>> GetTree(
             [FromQuery] bool onlyActives = true,
             CancellationToken ct = default)
             => (await _service.GetTreeAsync(onlyActives, ct)).ToActionResult();
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<ResearchCategoryDetailDTO>>> GetById(
+        public async Task<ActionResult<ServiceResult<ResearchCategoryDetailDTO>>> GetById(
             int id,
             CancellationToken ct = default)
             => (await _service.GetByIdAsync(id, ct)).ToActionResult();
@@ -41,13 +41,13 @@ namespace tesisproject.backend.Controllers
         // ================ WRITES ================
 
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<ResearchCategoryDetailDTO>>> Create(
+        public async Task<ActionResult<ServiceResult<ResearchCategoryDetailDTO>>> Create(
             [FromBody] AddResearchCategoryRequestDTO body,
             CancellationToken ct = default)
             => (await _service.CreateAsync(body, ct)).ToActionResult();
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<ResearchCategoryDetailDTO>>> Update(
+        public async Task<ActionResult<ServiceResult<ResearchCategoryDetailDTO>>> Update(
             int id,
             [FromBody] UpdateResearchCategoryRequestDTO body,
             CancellationToken ct = default)
@@ -57,7 +57,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpDelete("{id:int}")]
-        public async Task<ActionResult<ApiResponse<NoContent>>> Delete(
+        public async Task<ActionResult<ServiceResult<NoContent>>> Delete(
             int id,
             CancellationToken ct = default)
             => (await _service.DeleteAsync(id, ct)).ToActionResult();

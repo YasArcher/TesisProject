@@ -26,7 +26,7 @@ namespace tesisproject.backend.Controllers
         /// Returns ResolutionInfo with resolution code, dates, budget, etc.
         /// </summary>
         [HttpPost("analyze-resolution")]
-        public async Task<ActionResult<ApiResponse<ResolutionInfo>>> AnalyzeResolution(
+        public async Task<ActionResult<ServiceResult<ResolutionInfo>>> AnalyzeResolution(
             IFormFile file,
             CancellationToken ct)
         {
@@ -39,7 +39,7 @@ namespace tesisproject.backend.Controllers
         /// Returns DideProjectFormInfo with project name, researchers, objectives, etc.
         /// </summary>
         [HttpPost("analyze-dide-project")]
-        public async Task<ActionResult<ApiResponse<DideProjectFormInfo>>> AnalyzeDideProject(
+        public async Task<ActionResult<ServiceResult<DideProjectFormInfo>>> AnalyzeDideProject(
             IFormFile file,
             CancellationToken ct)
         {

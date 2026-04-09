@@ -121,9 +121,9 @@ public partial class SideBar
         {
             var result = await DwEtlClientService.RunFullAsync();
 
-            if (!string.IsNullOrWhiteSpace(result.Error))
+            if (!string.IsNullOrWhiteSpace(result.ErrorCode))
             {
-                Toast.ShowError(result.Error ?? "No se pudo completar la actualización.");
+                Toast.ShowError(result.Message?? "No se pudo completar la actualización.");
                 return;
             }
 

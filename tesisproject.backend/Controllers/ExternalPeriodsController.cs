@@ -20,7 +20,7 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/external/ExternalPeriods
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<ExternalAcademicPeriodModel>>>> GetAll(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<ExternalAcademicPeriodModel>>>> GetAll(
             CancellationToken ct)
             => (await _service.GetAllAsync(ct)).ToActionResult();
     }

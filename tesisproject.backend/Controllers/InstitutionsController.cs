@@ -23,7 +23,7 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/institutions
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<InstitutionListItemDTO>>>> List(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<InstitutionListItemDTO>>>> List(
             [FromQuery] bool onlyActives = true,
             CancellationToken ct = default)
         {
@@ -32,7 +32,7 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/institutions/{id}
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<InstitutionDetailDTO>>> GetById(
+        public async Task<ActionResult<ServiceResult<InstitutionDetailDTO>>> GetById(
             int id,
             CancellationToken ct = default)
         {
@@ -41,7 +41,7 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/institutions/keyvalues
         [HttpGet("keyvalues")]
-        public async Task<ActionResult<ApiResponse<List<KeyValueItemDTO>>>> GetKeyValues(
+        public async Task<ActionResult<ServiceResult<List<KeyValueItemDTO>>>> GetKeyValues(
             [FromQuery] string? term,
             [FromQuery] int? take,
             CancellationToken ct = default)
@@ -51,7 +51,7 @@ namespace tesisproject.backend.Controllers
 
         // POST: api/institutions
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<InstitutionDetailDTO>>> Create(
+        public async Task<ActionResult<ServiceResult<InstitutionDetailDTO>>> Create(
             AddInstitutionRequestDTO body,
             CancellationToken ct = default)
         {
@@ -60,7 +60,7 @@ namespace tesisproject.backend.Controllers
 
         // PUT: api/institutions/{id}
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<InstitutionDetailDTO>>> Update(
+        public async Task<ActionResult<ServiceResult<InstitutionDetailDTO>>> Update(
             int id,
             UpdateInstitutionRequestDTO body,
             CancellationToken ct = default)

@@ -2,7 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.Controllers.Extensions;
 using tesisproject.backend.Services.Interfaces;
-using tesisproject.backend.Utils;
 using tesisproject.shared.DTOs.FacultyScope.Request;
 using tesisproject.shared.DTOs.FacultyScope.Response;
 using tesisproject.shared.Responses;
@@ -16,32 +15,39 @@ namespace tesisproject.backend.Controllers
     public class FacultyScopesController : ControllerBase
     {
         private readonly IFacultyScopeService _service;
+        private readonly ICurrentUserService _currentUser;
 
-        public FacultyScopesController(IFacultyScopeService service) => _service = service;
+        public FacultyScopesController(
+            IFacultyScopeService service,
+            ICurrentUserService currentUser)
+        {
+            _service = service;
+            _currentUser = currentUser;
+        }
 
         // ========================= Scopes (CRUD) =========================
 
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<FacultyScopeResponseDTO>>>> GetAll(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<FacultyScopeResponseDTO>>>> GetAll(
             [FromQuery] bool includeAssignments = false,
             CancellationToken ct = default)
             => (await _service.GetAllAsync(includeAssignments, ct)).ToActionResult();
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<FacultyScopeResponseDTO>>> GetById(
+        public async Task<ActionResult<ServiceResult<FacultyScopeResponseDTO>>> GetById(
             int id,
             [FromQuery] bool includeAssignments = false,
             CancellationToken ct = default)
             => (await _service.GetByIdAsync(id, includeAssignments, ct)).ToActionResult();
 
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<FacultyScopeResponseDTO>>> Create(
+        public async Task<ActionResult<ServiceResult<FacultyScopeResponseDTO>>> Create(
             [FromBody] CreateFacultyScopeRequestDTO request,
             CancellationToken ct = default)
             => (await _service.CreateAsync(request, ct)).ToActionResult();
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<FacultyScopeResponseDTO>>> Update(
+        public async Task<ActionResult<ServiceResult<FacultyScopeResponseDTO>>> Update(
             int id,
             [FromBody] UpdateFacultyScopeRequestDTO request,
             CancellationToken ct = default)
@@ -51,7 +57,7 @@ namespace tesisproject.backend.Controllers
         /// Las que no vengan se desactivan, y las nuevas se crean.
         /// </summary>
         [HttpPut("{id:int}/faculties")]
-        public async Task<ActionResult<ApiResponse<FacultyScopeResponseDTO>>> SetFaculties(
+        public async Task<ActionResult<ServiceResult<FacultyScopeResponseDTO>>> SetFaculties(
             int id,
             [FromBody] SetFacultyScopeFacultiesRequestDTO request,
             CancellationToken ct = default)
@@ -60,17 +66,15 @@ namespace tesisproject.backend.Controllers
         // ========================= Assignments (User ↔ Scope) =========================
 
         [HttpPost("{facultyScopeId:int}/assign")]
-        public async Task<ActionResult<ApiResponse<bool>>> Assign(
+        public async Task<ActionResult<ServiceResult<bool>>> Assign(
             int facultyScopeId,
             [FromBody] AssignFacultyScopeUserRequestDTO request,
             CancellationToken ct)
-        {
-            return (await _service.AssignScopeToUserAsync(facultyScopeId, request, ct))
+            => (await _service.AssignScopeToUserAsync(facultyScopeId, request, ct))
                 .ToActionResult();
-        }
 
         [HttpDelete("{id:int}/assign/{userId:int}")]
-        public async Task<ActionResult<ApiResponse<bool>>> UnassignScopeFromUser(
+        public async Task<ActionResult<ServiceResult<bool>>> UnassignScopeFromUser(
             int id,
             int userId,
             CancellationToken ct = default)
@@ -83,24 +87,18 @@ namespace tesisproject.backend.Controllers
         /// calculadas desde assignments activos + faculties activas.
         /// </summary>
         [HttpGet("users/{userId:int}/allowed-faculties")]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<int>>>> GetAllowedFacultiesForUser(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<int>>>> GetAllowedFacultiesForUser(
             int userId,
             CancellationToken ct = default)
-            => (await _service.GetAllowedFacultyIdsForUserAsync(userId, ct)).ToActionResult();
+            => (await _service.GetAllowedFacultyIdsForUserAsync(ct)).ToActionResult();
 
         /// <summary>
         /// Variante "yo mismo" (útil para probar rápido desde el front).
         /// OJO: este controller está restringido a superadmin por clase.
         /// </summary>
         [HttpGet("me/allowed-faculties")]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<int>>>> GetMyAllowedFaculties(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<int>>>> GetMyAllowedFaculties(
             CancellationToken ct = default)
-        {
-            var userId = User.GetUserId();
-            if (userId is null)
-                return Unauthorized(ApiResponse<IReadOnlyList<int>>.Fail("User not authenticated."));
-
-            return (await _service.GetAllowedFacultyIdsForUserAsync(userId.Value, ct)).ToActionResult();
-        }
+            => (await _service.GetAllowedFacultyIdsForUserAsync(ct)).ToActionResult();
     }
 }

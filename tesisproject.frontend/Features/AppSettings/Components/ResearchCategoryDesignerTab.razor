@@ -4,6 +4,7 @@
 @using tesisproject.frontend.SharedUI.Table
 @using tesisproject.frontend.SharedUI.SelectInput
 @using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Catalog.Common.Request
 @using tesisproject.shared.DTOs.Catalog.Common.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Request
@@ -380,12 +381,10 @@
 </div>
 
 @code {
-    // Tipo seleccionado para crear categorías
     private int? _selectedTypeIdForTree;
     private ResearchCategoryTypeListItemDTO? _selectedTypeForCategory;
     private ResearchCategoryListItemDTO? _selectedParentCategory;
 
-    // Grupos
     private bool _loadingGroups;
     private List<CatalogListItemDTO> _groups = new();
     private int? _selectedGroupId;
@@ -393,17 +392,14 @@
     private bool _isGroupEdit;
     private CatalogDetailDTO _groupEditModel = new();
 
-    // Tipos
     private bool _loadingTypes;
     private List<ResearchCategoryTypeListItemDTO> _types = new();
     private bool _typeModalOpen;
     private bool _isTypeEdit;
     private ResearchCategoryTypeDetailDTO _typeEditModel = new();
 
-    // Columnas de la tabla
     private List<ColumnDef<ResearchCategoryTypeListItemDTO>> _typeColumns = new();
 
-    // Categorías
     private bool _loadingCategories;
     private List<ResearchCategoryTreeItemDTO> _allTree = new();
     private List<ResearchCategoryTreeItemDTO> _filteredTree = new();
@@ -414,10 +410,8 @@
     private bool _categoryParentLockedFromTree;
     private ResearchCategoryDetailDTO _categoryEditModel = new();
 
-    // Estado de expansión del árbol
     private HashSet<int> _expandedNodes = new();
 
-    // Propiedades auxiliares para el modal
     private string _selectedTypeName => _types.FirstOrDefault(t => t.Id == _categoryEditModel.ResearchCategoryTypeId)?.Name ?? "";
     private bool _isParentRequired => GetIsParentRequired();
     private string _requiredParentTypeName => GetRequiredParentTypeName();
@@ -455,7 +449,6 @@
         return Task.CompletedTask;
     }
 
-    // ===== GRUPOS =====
     private async Task LoadGroupsAsync()
     {
         _loadingGroups = true;
@@ -464,15 +457,18 @@
             var result = await ResearchCategoryGroupClient.GetListAsync(onlyActives: false);
             if (!result.Success)
             {
-                Toast.ShowError("Error al cargar los grupos de categoría.");
+                Toast.ShowError(result.ToErrorMessage("Error al cargar los grupos de categoría."));
                 _groups = new();
                 return;
             }
-            _groups = result.Response ?? new();
+
+            _groups = result.Data ?? new();
+
             if (!_selectedGroupId.HasValue && _groups.Count > 0)
             {
                 _selectedGroupId = _groups.First().Id;
             }
+
             await LoadTypesAndCategoriesForSelectedGroupAsync();
         }
         finally
@@ -554,26 +550,31 @@
                 Name = _groupEditModel.Name,
                 IsActive = _groupEditModel.IsActive
             };
+
             var result = await ResearchCategoryGroupClient.UpdateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Error al actualizar el grupo.");
+                Toast.ShowError(result.ToErrorMessage("Error al actualizar el grupo."));
                 return;
             }
-            Toast.ShowSuccess("Grupo actualizado correctamente.");
+
+            Toast.ShowSuccess(result.ToSuccessMessage("Grupo actualizado correctamente."));
         }
         else
         {
             var dto = new AddCatalogRequestDTO { Name = _groupEditModel.Name };
+
             var result = await ResearchCategoryGroupClient.CreateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Error al crear el grupo.");
+                Toast.ShowError(result.ToErrorMessage("Error al crear el grupo."));
                 return;
             }
-            Toast.ShowSuccess("Grupo creado correctamente.");
-            _selectedGroupId = result.Response?.Id;
+
+            Toast.ShowSuccess(result.ToSuccessMessage("Grupo creado correctamente."));
+            _selectedGroupId = result.Data?.Id;
         }
+
         _groupModalOpen = false;
         await LoadGroupsAsync();
     }
@@ -583,15 +584,15 @@
         var result = await ResearchCategoryGroupClient.DeleteAsync(groupId);
         if (!result.Success)
         {
-            Toast.ShowError("Error al eliminar el grupo.");
+            Toast.ShowError(result.ToErrorMessage("Error al eliminar el grupo."));
             return;
         }
-        Toast.ShowSuccess("Grupo eliminado correctamente.");
+
+        Toast.ShowSuccess(result.ToSuccessMessage("Grupo eliminado correctamente."));
         if (_selectedGroupId == groupId) _selectedGroupId = null;
         await LoadGroupsAsync();
     }
 
-    // ===== TIPOS =====
     private async Task LoadTypesAndCategoriesForSelectedGroupAsync()
     {
         await LoadTypesAsync();
@@ -609,10 +610,11 @@
             var result = await ResearchCategoryTypeClient.ListAsync(onlyActives: false);
             if (!result.Success)
             {
-                Toast.ShowError("Error al cargar los tipos de categoría.");
+                Toast.ShowError(result.ToErrorMessage("Error al cargar los tipos de categoría."));
                 return;
             }
-            var allTypes = result.Response ?? Array.Empty<ResearchCategoryTypeListItemDTO>();
+
+            var allTypes = result.Data ?? Array.Empty<ResearchCategoryTypeListItemDTO>();
             _types = allTypes.Where(t => t.ResearchCategoryGroupId == _selectedGroupId).OrderBy(t => t.Id).ToList();
         }
         finally
@@ -628,6 +630,7 @@
             Toast.ShowWarning("Selecciona un grupo antes de crear tipos.");
             return;
         }
+
         _isTypeEdit = false;
         _typeEditModel = new ResearchCategoryTypeDetailDTO
         {
@@ -641,12 +644,13 @@
     {
         _isTypeEdit = true;
         var result = await ResearchCategoryTypeClient.GetByIdAsync(typeId);
-        if (!result.Success || result.Response is null)
+        if (!result.Success || result.Data is null)
         {
-            Toast.ShowError("Error al cargar los detalles del tipo.");
+            Toast.ShowError(result.ToErrorMessage("Error al cargar los detalles del tipo."));
             return;
         }
-        _typeEditModel = result.Response;
+
+        _typeEditModel = result.Data;
         _typeModalOpen = true;
     }
 
@@ -659,6 +663,7 @@
             Toast.ShowWarning("El nombre del tipo es obligatorio.");
             return;
         }
+
         if (!_selectedGroupId.HasValue)
         {
             Toast.ShowWarning("Selecciona un grupo antes de guardar el tipo.");
@@ -673,13 +678,15 @@
                 ResearchCategoryGroupId = _selectedGroupId.Value,
                 IsActive = _typeEditModel.IsActive
             };
+
             var result = await ResearchCategoryTypeClient.UpdateAsync(_typeEditModel.Id, dto);
-            if (!result.Success || !result.Response)
+            if (!result.Success || result.Data != true)
             {
-                Toast.ShowError("Error al actualizar el tipo.");
+                Toast.ShowError(result.ToErrorMessage("Error al actualizar el tipo."));
                 return;
             }
-            Toast.ShowSuccess("Tipo actualizado correctamente.");
+
+            Toast.ShowSuccess(result.ToSuccessMessage("Tipo actualizado correctamente."));
         }
         else
         {
@@ -688,14 +695,17 @@
                 Name = _typeEditModel.Name,
                 ResearchCategoryGroupId = _selectedGroupId.Value
             };
+
             var result = await ResearchCategoryTypeClient.CreateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Error al crear el tipo.");
+                Toast.ShowError(result.ToErrorMessage("Error al crear el tipo."));
                 return;
             }
-            Toast.ShowSuccess("Tipo creado correctamente.");
+
+            Toast.ShowSuccess(result.ToSuccessMessage("Tipo creado correctamente."));
         }
+
         _typeModalOpen = false;
         await LoadTypesAndCategoriesForSelectedGroupAsync();
     }
@@ -705,15 +715,15 @@
         var result = await ResearchCategoryTypeClient.DeleteAsync(typeId);
         if (!result.Success)
         {
-            Toast.ShowError("Error al eliminar el tipo.");
+            Toast.ShowError(result.ToErrorMessage("Error al eliminar el tipo."));
             return;
         }
-        Toast.ShowSuccess("Tipo eliminado correctamente.");
+
+        Toast.ShowSuccess(result.ToSuccessMessage("Tipo eliminado correctamente."));
         if (_selectedTypeIdForTree == typeId) _selectedTypeIdForTree = null;
         await LoadTypesAndCategoriesForSelectedGroupAsync();
     }
 
-    // ===== CATEGORÍAS =====
     private async Task LoadCategoriesAsync()
     {
         _loadingCategories = true;
@@ -722,23 +732,26 @@
             _allTree.Clear();
             _filteredTree.Clear();
             _flatCategoriesForGroup.Clear();
+
             if (!_selectedGroupId.HasValue) return;
 
             var treeResult = await ResearchCategoryClient.GetTreeAsync(onlyActives: false);
             if (!treeResult.Success)
             {
-                Toast.ShowError("Error al cargar el árbol de categorías.");
+                Toast.ShowError(treeResult.ToErrorMessage("Error al cargar el árbol de categorías."));
                 return;
             }
-            _allTree = treeResult.Response ?? new List<ResearchCategoryTreeItemDTO>();
+
+            _allTree = treeResult.Data ?? new List<ResearchCategoryTreeItemDTO>();
 
             var listResult = await ResearchCategoryClient.GetAllAsync(onlyActives: false);
             if (!listResult.Success)
             {
-                Toast.ShowError("Error al cargar la lista de categorías.");
+                Toast.ShowError(listResult.ToErrorMessage("Error al cargar la lista de categorías."));
                 return;
             }
-            var flatAll = listResult.Response ?? Array.Empty<ResearchCategoryListItemDTO>();
+
+            var flatAll = listResult.Data ?? Array.Empty<ResearchCategoryListItemDTO>();
             var allowedTypeIds = _types.Select(t => t.Id).ToHashSet();
 
             _flatCategoriesForGroup = flatAll
@@ -882,12 +895,13 @@
         _categoryParentLockedFromTree = false;
 
         var result = await ResearchCategoryClient.GetByIdAsync(categoryId);
-        if (!result.Success || result.Response is null)
+        if (!result.Success || result.Data is null)
         {
-            Toast.ShowError("Error al cargar los detalles de la categoría.");
+            Toast.ShowError(result.ToErrorMessage("Error al cargar los detalles de la categoría."));
             return;
         }
-        _categoryEditModel = result.Response;
+
+        _categoryEditModel = result.Data;
 
         _selectedTypeForCategory = _types.FirstOrDefault(t => t.Id == _categoryEditModel.ResearchCategoryTypeId);
         _selectedParentCategory = _categoryEditModel.ParentCategoryId.HasValue
@@ -969,13 +983,15 @@
                 ResearchCategoryTypeId = _categoryEditModel.ResearchCategoryTypeId,
                 ParentCategoryId = _categoryEditModel.ParentCategoryId
             };
+
             var result = await ResearchCategoryClient.UpdateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Error al actualizar la categoría.");
+                Toast.ShowError(result.ToErrorMessage("Error al actualizar la categoría."));
                 return;
             }
-            Toast.ShowSuccess("Categoría actualizada correctamente.");
+
+            Toast.ShowSuccess(result.ToSuccessMessage("Categoría actualizada correctamente."));
         }
         else
         {
@@ -986,14 +1002,17 @@
                 ResearchCategoryTypeId = _categoryEditModel.ResearchCategoryTypeId,
                 ParentCategoryId = _categoryEditModel.ParentCategoryId
             };
+
             var result = await ResearchCategoryClient.CreateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Error al crear la categoría.");
+                Toast.ShowError(result.ToErrorMessage("Error al crear la categoría."));
                 return;
             }
-            Toast.ShowSuccess("Categoría creada correctamente.");
+
+            Toast.ShowSuccess(result.ToSuccessMessage("Categoría creada correctamente."));
         }
+
         _categoryModalOpen = false;
         await LoadCategoriesAsync();
         await LoadTypesAsync();
@@ -1004,15 +1023,15 @@
         var result = await ResearchCategoryClient.DeleteAsync(categoryId);
         if (!result.Success)
         {
-            Toast.ShowError("Error al eliminar la categoría.");
+            Toast.ShowError(result.ToErrorMessage("Error al eliminar la categoría."));
             return;
         }
-        Toast.ShowSuccess("Categoría eliminada correctamente.");
+
+        Toast.ShowSuccess(result.ToSuccessMessage("Categoría eliminada correctamente."));
         await LoadCategoriesAsync();
         await LoadTypesAsync();
     }
 
-    // ===== RENDERIZADO DEL ÁRBOL =====
     private RenderFragment RenderCategoryNode(ResearchCategoryTreeItemDTO node, int depth, bool isLast) => builder =>
     {
         var seq = 0;
@@ -1022,15 +1041,12 @@
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", "relative");
 
-        // Tarjeta del nodo
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", $"group/node flex items-center gap-3 p-3 rounded-lg border-2 border-border bg-background hover:border-primary/40 hover:bg-primary/5 transition-all duration-150 {(depth > 0 ? "ml-6" : "")}");
 
-        // Izquierda: botón expandir + ícono + contenido
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", "flex items-center gap-3 flex-1 min-w-0");
 
-        // Botón expandir/colapsar
         if (hasChildren)
         {
             builder.OpenComponent<ActionButton>(seq++);
@@ -1062,7 +1078,6 @@
             builder.CloseElement();
         }
 
-        // Ícono del nodo
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", $"w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 {(node.IsActive ? "bg-secondary/15 text-secondary" : "bg-muted/15 text-muted")}");
         builder.OpenElement(seq++, "svg");
@@ -1079,7 +1094,6 @@
         builder.CloseElement();
         builder.CloseElement();
 
-        // Nombre y tipo
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", "flex-1 min-w-0");
         builder.OpenElement(seq++, "div");
@@ -1096,13 +1110,11 @@
         }
         builder.CloseElement();
 
-        builder.CloseElement(); // flex items-center
+        builder.CloseElement();
 
-        // Acciones
         builder.OpenElement(seq++, "div");
         builder.AddAttribute(seq++, "class", "flex items-center gap-2 opacity-0 group-hover/node:opacity-100 transition-opacity flex-shrink-0");
 
-        // Agregar hijo
         builder.OpenComponent<ActionButton>(seq++);
         builder.AddAttribute(seq++, "Execute", EventCallback.Factory.Create(this, () => OpenCreateChildCategoryModal(node.Id)));
         builder.AddAttribute(seq++, "Intent", ButtonIntent.Add);
@@ -1125,7 +1137,6 @@
         }));
         builder.CloseComponent();
 
-        // Editar
         builder.OpenComponent<ActionButton>(seq++);
         builder.AddAttribute(seq++, "Execute", EventCallback.Factory.Create(this, () => OpenEditCategoryModal(node.Id)));
         builder.AddAttribute(seq++, "Intent", ButtonIntent.Neutral);
@@ -1148,7 +1159,6 @@
         }));
         builder.CloseComponent();
 
-        // Eliminar (solo hojas)
         if (!hasChildren)
         {
             builder.OpenComponent<ActionButton>(seq++);
@@ -1176,10 +1186,9 @@
             builder.CloseComponent();
         }
 
-        builder.CloseElement(); // acciones
-        builder.CloseElement(); // tarjeta
+        builder.CloseElement();
+        builder.CloseElement();
 
-        // Hijos (solo si expandido)
         if (hasChildren && isExpanded)
         {
             builder.OpenElement(seq++, "div");
@@ -1195,6 +1204,6 @@
             builder.CloseElement();
         }
 
-        builder.CloseElement(); // wrapper relativo
+        builder.CloseElement();
     };
 }

@@ -10,6 +10,7 @@ using tesisproject.backend.Repositories.Interfaces;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Filters;
 using tesisproject.shared.Entities.Base;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -18,31 +19,33 @@ namespace tesisproject.backend.Services.Implementations
     {
         private const string MsgNoItemsFound = "No items found.";
         private const string MsgCatalogItemsRetrieved = "Catalog items retrieved.";
-        private const string MsgOperationCanceled = "Operation was canceled.";
 
         private readonly IServiceProvider _sp;
-        public CatalogQueryService(IServiceProvider sp) => _sp = sp;
+
+        public CatalogQueryService(IServiceProvider sp)
+        {
+            _sp = sp;
+        }
 
         public async Task<ServiceResult<List<KeyValueItemDTO>>> GetKeyValuesAsync<TCatalog>(
-            string? term = null, int? take = null, CancellationToken ct = default)
+            string? term = null,
+            int? take = null,
+            CancellationToken ct = default)
             where TCatalog : CatalogEntityBase
         {
             try
             {
                 var repo = _sp.GetRequiredService<ICatalogRepository<TCatalog>>();
-                var query = repo.Query(); // AsNoTracking aplicado por el repo
-                // 🔹 Filtro por activos
+                var query = repo.Query();
+
                 query = query.Where(x => x.IsActive);
 
-                // 🔹 Filtro por término de búsqueda
                 if (!string.IsNullOrWhiteSpace(term))
                     query = query.Where(x => EF.Functions.Like(x.Name, $"%{term}%"));
 
-                // 🔹 Límite de resultados
                 if (take.HasValue && take.Value > 0)
                     query = query.Take(take.Value);
 
-                // 🔹 Proyección a DTO
                 var list = await query
                     .OrderBy(x => x.Name)
                     .Select(x => new KeyValueItemDTO
@@ -53,19 +56,31 @@ namespace tesisproject.backend.Services.Implementations
                     .ToListAsync(ct);
 
                 if (list.Count == 0)
-                    return ServiceResult<List<KeyValueItemDTO>>.Fail(MsgNoItemsFound, ErrorType.NotFound);
+                {
+                    return ServiceResult<List<KeyValueItemDTO>>.Fail(
+                        MsgNoItemsFound,
+                        ErrorType.NotFound,
+                        ErrorCodes.CatalogQuery.NoItemsFound);
+                }
 
-                return ServiceResult<List<KeyValueItemDTO>>.Ok(list, MsgCatalogItemsRetrieved);
+                return ServiceResult<List<KeyValueItemDTO>>.Ok(
+                    list,
+                    MsgCatalogItemsRetrieved);
             }
             catch (OperationCanceledException)
             {
-                return ServiceResult<List<KeyValueItemDTO>>.Fail(MsgOperationCanceled, ErrorType.Unexpected);
+                return ServiceResult<List<KeyValueItemDTO>>.Fail(
+                    ErrorMessages.Common.OperationCanceled,
+                    ErrorType.Unexpected,
+                    ErrorCodes.Common.OperationCanceled);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return ServiceResult<List<KeyValueItemDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<List<KeyValueItemDTO>>.Fail(
+                    ErrorMessages.Common.UnexpectedError,
+                    ErrorType.Unexpected,
+                    ErrorCodes.Common.UnexpectedError);
             }
         }
-
     }
 }

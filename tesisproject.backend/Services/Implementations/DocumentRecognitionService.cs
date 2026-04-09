@@ -11,14 +11,13 @@ using tesisproject.shared.DTOs.Algorithms.Response;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Entities.External;
 using tesisproject.shared.Enums;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
 {
     public class DocumentRecognitionService : IDocumentRecognitionService
     {
-        private const string MsgFileIsEmpty = "File is empty.";
-
         private readonly ILogger<IDocumentRecognitionService> _logger;
         private readonly IExternalDirectoryClient _externalDirectory;
         private readonly IMemberRoleTypeService _memberRoleTypeService;
@@ -53,7 +52,12 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (file is null || file.Length == 0)
-                return ServiceResult<ResolutionInfo>.Fail(MsgFileIsEmpty, ErrorType.Validation);
+            {
+                return ValidationFailure<ResolutionInfo>(
+                    ErrorMessages.DocumentRecognition.FileEmpty,
+                    ErrorCodes.DocumentRecognition.FileEmpty,
+                    nameof(file));
+            }
 
             try
             {
@@ -64,10 +68,15 @@ namespace tesisproject.backend.Services.Implementations
                 var result = await ExtractResolutionDataAsync(memoryStream, ct);
                 return ServiceResult<ResolutionInfo>.Ok(result);
             }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Resolution document recognition was canceled.");
+                return FailOperationCanceled<ResolutionInfo>();
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error recognizing resolution document");
-                return ServiceResult<ResolutionInfo>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<ResolutionInfo>();
             }
         }
 
@@ -79,7 +88,12 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (file is null || file.Length == 0)
-                return ServiceResult<DideProjectFormInfo>.Fail(MsgFileIsEmpty, ErrorType.Validation);
+            {
+                return ValidationFailure<DideProjectFormInfo>(
+                    ErrorMessages.DocumentRecognition.FileEmpty,
+                    ErrorCodes.DocumentRecognition.FileEmpty,
+                    nameof(file));
+            }
 
             try
             {
@@ -90,10 +104,15 @@ namespace tesisproject.backend.Services.Implementations
                 var result = await ExtractDideProjectDataAsync(memoryStream, ct);
                 return ServiceResult<DideProjectFormInfo>.Ok(result);
             }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("DIDE project document recognition was canceled.");
+                return FailOperationCanceled<DideProjectFormInfo>();
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error recognizing DIDE project document");
-                return ServiceResult<DideProjectFormInfo>.Fail(ex.Message, ErrorType.Unexpected);
+                return FailUnexpected<DideProjectFormInfo>();
             }
         }
 
@@ -101,7 +120,7 @@ namespace tesisproject.backend.Services.Implementations
         //    PRIVATE METHODS
         // =======================
 
-        private Task<ResolutionInfo> ExtractResolutionDataAsync(
+        private static Task<ResolutionInfo> ExtractResolutionDataAsync(
             Stream pdfStream,
             CancellationToken ct)
         {
@@ -209,11 +228,10 @@ namespace tesisproject.backend.Services.Implementations
 
             var periodsRes = await _periods.GetAllAsync(ct);
             var periods = (periodsRes.Success && periodsRes.Data is not null)
-                ? periodsRes.Data
+                ? [.. periodsRes.Data
                     .Where(p => p is not null)
                     .Where(p => p.StartDate <= p.EndDate)
-                    .OrderBy(p => p.StartDate)
-                    .ToList()
+                    .OrderBy(p => p.StartDate)]
                 : new List<ExternalAcademicPeriodModel>();
 
             if (periods.Count == 0)
@@ -221,11 +239,10 @@ namespace tesisproject.backend.Services.Implementations
 
             var distRes = await _distributivos.GetDistributivosByCorreosAsync(emails, ct);
             var distributivos = (distRes.Success && distRes.Data is not null)
-                ? distRes.Data
+                ? [.. distRes.Data
                     .Where(d => !string.IsNullOrWhiteSpace(d.Email))
                     .GroupBy(d => new { Email = d.Email!.Trim().ToLowerInvariant(), d.PeriodId })
-                    .Select(g => g.OrderByDescending(x => x.Hours).First())
-                    .ToList()
+                    .Select(g => g.OrderByDescending(x => x.Hours).First())]
                 : new List<ExternalTeacherDistributivoModel>();
 
             if (distributivos.Count == 0)
@@ -391,6 +408,42 @@ namespace tesisproject.backend.Services.Implementations
                         _opt.MemberRoleSimilarityThreshold);
                 }
             }
+        }
+
+        private static ServiceResult<T> FailUnexpected<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.UnexpectedError,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.UnexpectedError);
+
+        private static ServiceResult<T> FailOperationCanceled<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.OperationCanceled,
+                ErrorType.Unexpected,
+                ErrorCodes.Common.OperationCanceled);
+
+        private static ServiceResult<T> ValidationFailure<T>(
+            string message,
+            string errorCode,
+            params string[] fields)
+        {
+            Dictionary<string, string[]>? validation = null;
+
+            if (fields is { Length: > 0 })
+            {
+                validation = fields
+                    .Distinct(StringComparer.Ordinal)
+                    .ToDictionary(
+                        field => field,
+                        _ => new[] { message },
+                        StringComparer.Ordinal);
+            }
+
+            return ServiceResult<T>.Fail(
+                message,
+                ErrorType.Validation,
+                errorCode,
+                validation);
         }
     }
 }

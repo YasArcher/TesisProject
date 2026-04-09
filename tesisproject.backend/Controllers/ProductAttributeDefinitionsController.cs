@@ -20,25 +20,25 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/productattributedefinitions/by-product-type/1
         [HttpGet("by-product-type/{productTypeId:int}")]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<ProductAttributeDefinitionListItemDTO>>>> GetByProductType(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<ProductAttributeDefinitionListItemDTO>>>> GetByProductType(
             int productTypeId,
             CancellationToken ct)
             => (await _service.ListByProductTypeAsync(productTypeId, ct)).ToActionResult();
 
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<ProductAttributeDefinitionDetailDTO>>> GetById(
+        public async Task<ActionResult<ServiceResult<ProductAttributeDefinitionDetailDTO>>> GetById(
             int id,
             CancellationToken ct)
             => (await _service.GetByIdAsync(id, ct)).ToActionResult();
 
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<ProductAttributeDefinitionDetailDTO>>> Create(
+        public async Task<ActionResult<ServiceResult<ProductAttributeDefinitionDetailDTO>>> Create(
             [FromBody] AddProductAttributeDefinitionRequestDTO dto,
             CancellationToken ct)
             => (await _service.CreateAsync(dto, ct)).ToActionResult();
 
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<ProductAttributeDefinitionDetailDTO>>> Update(
+        public async Task<ActionResult<ServiceResult<ProductAttributeDefinitionDetailDTO>>> Update(
             int id,
             [FromBody] UpdateProductAttributeDefinitionRequestDTO dto,
             CancellationToken ct)
@@ -48,7 +48,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpDelete("{id:int}")]
-        public async Task<ActionResult<ApiResponse<bool>>> Delete(
+        public async Task<ActionResult<ServiceResult<bool>>> Delete(
             int id,
             CancellationToken ct)
             => (await _service.DeleteAsync(id, ct)).ToActionResult();

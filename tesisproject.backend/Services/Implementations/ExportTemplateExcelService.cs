@@ -1,10 +1,12 @@
 ﻿using System.Globalization;
 using ClosedXML.Excel;
+using Microsoft.Extensions.Logging;
 using tesisproject.backend.Services.Interfaces;
-using tesisproject.shared.Constants; // <-- ExportFieldKeys
+using tesisproject.shared.Constants;
 using tesisproject.shared.DTOs.Export;
 using tesisproject.shared.DTOs.Matrices.Response;
-using tesisproject.shared.Enums;     // <-- ObjectiveTypeIds
+using tesisproject.shared.Enums;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -15,12 +17,16 @@ namespace tesisproject.backend.Services.Implementations
         private readonly ILogger<ExportTemplateExcelService> _logger;
 
         private const string PipeSep = " | ";
+        private const string NullRequestMessage = "La solicitud de exportación es nula.";
+        private const string NoColumnsDefinedMessage = "No se han definido columnas para la exportación.";
+        private const string FlatReportUnavailableMessage = "No se pudo obtener el informe plano de proyectos.";
+        private const string NoProjectsInFlatReportMessage = "No hay proyectos en el informe plano.";
+        private const string OperationCanceledMessage = "La operación de exportación fue cancelada.";
+        private const string ErrorGeneratingExcelMessage = "Error al generar el archivo Excel.";
 
-        // ======= Tabla de resolvers (se busca 1 vez por columna; luego se ejecuta por fila) =======
         private static readonly IReadOnlyDictionary<string, Func<ProjectFlatReportDTO, string>> FieldResolvers
             = new Dictionary<string, Func<ProjectFlatReportDTO, string>>(StringComparer.OrdinalIgnoreCase)
             {
-                // PROJECT GRAIN
                 [ExportFieldKeys.ProjectId] = p => p.ProjectId.ToString(),
                 [ExportFieldKeys.ProjectCode] = p => p.ProjectCode ?? string.Empty,
                 [ExportFieldKeys.ProjectName] = p => p.ProjectName ?? string.Empty,
@@ -49,29 +55,23 @@ namespace tesisproject.backend.Services.Implementations
                 [ExportFieldKeys.FacultyId] = p => p.FacultyId.ToString(),
                 [ExportFieldKeys.FacultyName] = p => p.FacultyName ?? string.Empty,
 
-                // COORDINADOR / DIRECTOR
                 [ExportFieldKeys.CoordinatorName] = p => p.CoordinatorName ?? string.Empty,
                 [ExportFieldKeys.CoordinatorEmail] = p => p.CoordinatorEmail ?? string.Empty,
                 [ExportFieldKeys.CoordinatorPhone] = p => p.CoordinatorPhone ?? string.Empty,
 
-                // BUDGETS (method groups)
                 [ExportFieldKeys.BudgetInitialSummary] = GetBudgetInitialSummary,
                 [ExportFieldKeys.BudgetCertifiedSummary] = GetBudgetCertifiedSummary,
                 [ExportFieldKeys.BudgetExecutedSummary] = GetBudgetExecutedSummary,
                 [ExportFieldKeys.BudgetFundingTypes] = GetBudgetFundingTypesSummary,
 
-                // PRODUCTS
                 [ExportFieldKeys.ProductTitles] = GetProductTitlesSummary,
                 [ExportFieldKeys.ProductTypes] = GetProductTypesSummary,
 
-                // EXTERNOS
                 [ExportFieldKeys.ExternalResearcherNames] = GetExternalNamesSummary,
                 [ExportFieldKeys.ExternalResearcherInstitutions] = GetExternalInstitutionsSummary,
 
-                // SENESCYT
                 [ExportFieldKeys.SenescytMemberNames] = GetSenescytNamesSummary,
 
-                // BUNDLES
                 [ExportFieldKeys.CasesObjetivos] = ResolveObjetivosBundle,
                 [ExportFieldKeys.CasesResearchCategories] = ResolveResearchCategoriesBundle,
             };
@@ -88,33 +88,60 @@ namespace tesisproject.backend.Services.Implementations
             ExportRequestDTO request,
             CancellationToken ct = default)
         {
-            if (request == null)
-                return ServiceResult<byte[]>.Fail("La solicitud de exportación es nula.", ErrorType.Validation);
-
-            if (request.Columns is null || request.Columns.Count == 0)
-                return ServiceResult<byte[]>.Fail("No se han definido columnas para la exportación.", ErrorType.Validation);
-
-            var flatResult = await _flatService.GetFlatReportAsync(null, ct);
-            if (!flatResult.Success || flatResult.Data is null)
-            {
-                return ServiceResult<byte[]>.Fail(flatResult.Message ?? "No se pudo obtener el informe plano de proyectos.");
-            }
-
-            var projects = flatResult.Data.ToList();
-            if (projects.Count == 0)
-            {
-                return ServiceResult<byte[]>.Fail("No hay proyectos en el informe plano.", ErrorType.Validation);
-            }
-
             try
             {
+                if (request is null)
+                {
+                    return ValidationFailure<byte[]>(
+                        NullRequestMessage,
+                        ErrorCodes.Common.InvalidRequest,
+                        "Request");
+                }
+
+                if (request.Columns is null || request.Columns.Count == 0)
+                {
+                    return ValidationFailure<byte[]>(
+                        NoColumnsDefinedMessage,
+                        ErrorCodes.Export.NoColumnsDefined,
+                        nameof(ExportRequestDTO.Columns));
+                }
+
+                var flatResult = await _flatService.GetFlatReportAsync(null, ct);
+                if (!flatResult.Success || flatResult.Data is null)
+                {
+                    return ServiceResult<byte[]>.Fail(
+                        flatResult.Message ?? FlatReportUnavailableMessage,
+                        flatResult.Error == ErrorType.None ? ErrorType.Unexpected : flatResult.Error,
+                        flatResult.ErrorCode ?? ErrorCodes.Export.FlatReportUnavailable,
+                        flatResult.ValidationErrors);
+                }
+
+                var projects = flatResult.Data.ToList();
+                if (projects.Count == 0)
+                {
+                    return ServiceResult<byte[]>.Fail(
+                        NoProjectsInFlatReportMessage,
+                        ErrorType.Validation,
+                        ErrorCodes.Export.NoProjectsInFlatReport);
+                }
+
                 var bytes = GenerateExcelInternal(request, projects);
                 return ServiceResult<byte[]>.Ok(bytes);
+            }
+            catch (OperationCanceledException)
+            {
+                return ServiceResult<byte[]>.Fail(
+                    OperationCanceledMessage,
+                    ErrorType.Unexpected,
+                    ErrorCodes.Common.OperationCanceled);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error al generar el Excel para la exportación solicitada.");
-                return ServiceResult<byte[]>.Fail("Error al generar el archivo Excel.", ErrorType.Unexpected);
+                return ServiceResult<byte[]>.Fail(
+                    ErrorGeneratingExcelMessage,
+                    ErrorType.Unexpected,
+                    ErrorCodes.Export.ExcelGenerationFailed);
             }
         }
 
@@ -127,10 +154,8 @@ namespace tesisproject.backend.Services.Implementations
                 .OrderBy(c => c.OrderIndex)
                 .ToList();
 
-            // ======= Compilar resolvers UNA VEZ por columna (mejora rendimiento real) =======
             var resolvers = BuildColumnResolvers(orderedColumns);
 
-            // ======= Header =======
             const int headerRow = 1;
             for (int i = 0; i < orderedColumns.Count; i++)
             {
@@ -148,7 +173,6 @@ namespace tesisproject.backend.Services.Implementations
                 headerRange.Style.Border.BottomBorder = XLBorderStyleValues.Thin;
             }
 
-            // ======= Data =======
             int row = headerRow + 1;
             foreach (var p in projects)
             {
@@ -166,9 +190,6 @@ namespace tesisproject.backend.Services.Implementations
             return ms.ToArray();
         }
 
-        // =========================
-        // Resolver compiler (log 1 vez por columna desconocida)
-        // =========================
         private List<Func<ProjectFlatReportDTO, string>> BuildColumnResolvers(IReadOnlyList<ExportColumnDTO> orderedColumns)
         {
             var list = new List<Func<ProjectFlatReportDTO, string>>(orderedColumns.Count);
@@ -189,7 +210,6 @@ namespace tesisproject.backend.Services.Implementations
                 }
                 else
                 {
-                    // log UNA vez por columna (no por celda)
                     _logger.LogDebug("FieldKey {FieldKey} not yet mapped in export.", col.FieldKey);
                     list.Add(_ => string.Empty);
                 }
@@ -198,9 +218,30 @@ namespace tesisproject.backend.Services.Implementations
             return list;
         }
 
-        // =========================
-        // Helpers genéricos
-        // =========================
+        private static ServiceResult<T> ValidationFailure<T>(
+            string message,
+            string errorCode,
+            params string[] fields)
+        {
+            Dictionary<string, string[]>? validation = null;
+
+            if (fields is { Length: > 0 })
+            {
+                validation = fields
+                    .Distinct(StringComparer.Ordinal)
+                    .ToDictionary(
+                        field => field,
+                        _ => new[] { message },
+                        StringComparer.Ordinal);
+            }
+
+            return ServiceResult<T>.Fail(
+                message,
+                ErrorType.Validation,
+                errorCode,
+                validation);
+        }
+
         private static string JoinPipe(IEnumerable<string?> items, bool distinct = false)
             => JoinNonEmpty(items, PipeSep, distinct);
 
@@ -228,9 +269,6 @@ namespace tesisproject.backend.Services.Implementations
                 : value.ToString() ?? string.Empty;
         }
 
-        // =========================
-        // Budgets
-        // =========================
         private static string GetBudgetInitialSummary(ProjectFlatReportDTO project)
         {
             if (project.Budgets is null || project.Budgets.Count == 0) return string.Empty;
@@ -255,9 +293,6 @@ namespace tesisproject.backend.Services.Implementations
             return JoinPipe(project.Budgets.Select(b => FormatNumber(b.ExecutedAmount)));
         }
 
-        // =========================
-        // Products
-        // =========================
         private static string GetProductTitlesSummary(ProjectFlatReportDTO project)
         {
             if (project.Products is null || project.Products.Count == 0) return string.Empty;
@@ -270,9 +305,6 @@ namespace tesisproject.backend.Services.Implementations
             return JoinPipe(project.Products.Select(p => p.ProductTypeName), distinct: true);
         }
 
-        // =========================
-        // Externos / Senescyt
-        // =========================
         private static string GetExternalNamesSummary(ProjectFlatReportDTO project)
         {
             if (project.ExternalResearchers is null || project.ExternalResearchers.Count == 0) return string.Empty;
@@ -291,9 +323,6 @@ namespace tesisproject.backend.Services.Implementations
             return JoinPipe(project.SenescytMembers.Select(m => m.FullName), distinct: true);
         }
 
-        // =========================
-        // Bundles (sin IDs quemados)
-        // =========================
         private static string ResolveObjetivosBundle(ProjectFlatReportDTO p)
         {
             if (p.Objectives is null || p.Objectives.Count == 0)

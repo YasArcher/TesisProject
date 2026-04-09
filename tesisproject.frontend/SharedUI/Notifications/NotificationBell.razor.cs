@@ -61,7 +61,7 @@ namespace tesisproject.frontend.SharedUI.Notifications
         {
             NotificationType.Success => "bg-emerald-500",
             NotificationType.Warning => "bg-amber-500",
-            NotificationType.Error => "bg-rose-500",
+            NotificationType.Error=> "bg-rose-500",
             _ => "bg-sky-500",
         };
 

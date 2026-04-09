@@ -23,7 +23,7 @@ namespace tesisproject.backend.Controllers
         /// Ejecuta el ETL completo del DW bajo demanda.
         /// </summary>
         [HttpPost("run-full")]
-        public async Task<ActionResult<ApiResponse<NoContent>>> RunFull(CancellationToken ct)
+        public async Task<ActionResult<ServiceResult<NoContent>>> RunFull(CancellationToken ct)
         {
             var result = await _etlService.RunFullLoadAsync(ct);
             return result.ToActionResult();
@@ -32,15 +32,15 @@ namespace tesisproject.backend.Controllers
         // (Opcional) Endpoints separados si quieres lanzar partes específicas:
 
         [HttpPost("dimensions")]
-        public async Task<ActionResult<ApiResponse<NoContent>>> RunDimensions(CancellationToken ct)
+        public async Task<ActionResult<ServiceResult<NoContent>>> RunDimensions(CancellationToken ct)
             => (await _etlService.LoadDimensionsAsync(ct)).ToActionResult();
 
         [HttpPost("bridges")]
-        public async Task<ActionResult<ApiResponse<NoContent>>> RunBridges(CancellationToken ct)
+        public async Task<ActionResult<ServiceResult<NoContent>>> RunBridges(CancellationToken ct)
             => (await _etlService.LoadBridgesAsync(ct)).ToActionResult();
 
         [HttpPost("facts")]
-        public async Task<ActionResult<ApiResponse<NoContent>>> RunFacts(CancellationToken ct)
+        public async Task<ActionResult<ServiceResult<NoContent>>> RunFacts(CancellationToken ct)
             => (await _etlService.LoadFactsAsync(ct)).ToActionResult();
     }
 }

@@ -26,7 +26,7 @@ namespace tesisproject.backend.Controllers
         // Optional filters: term, institutionId
         // ================================================================
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<ExternalResearcherListItemDTO>>>> List(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<ExternalResearcherListItemDTO>>>> List(
             [FromQuery] string? term,
             [FromQuery] int? institutionId,
             CancellationToken ct)
@@ -38,7 +38,7 @@ namespace tesisproject.backend.Controllers
         // GET: api/externalresearchers/{id}
         // ================================================================
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<ExternalResearcherDetailDTO>>> GetById(
+        public async Task<ActionResult<ServiceResult<ExternalResearcherDetailDTO>>> GetById(
             int id,
             CancellationToken ct)
         {
@@ -50,7 +50,7 @@ namespace tesisproject.backend.Controllers
         // For SelectInput components: id + name
         // ================================================================
         [HttpGet("keyvalues")]
-        public async Task<ActionResult<ApiResponse<List<KeyValueItemDTO>>>> GetKeyValues(
+        public async Task<ActionResult<ServiceResult<List<KeyValueItemDTO>>>> GetKeyValues(
             [FromQuery] string? term,
             [FromQuery] int? institutionId,
             [FromQuery] int? take,
@@ -63,7 +63,7 @@ namespace tesisproject.backend.Controllers
         // POST: api/externalresearchers
         // ================================================================
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<ExternalResearcherDetailDTO>>> Create(
+        public async Task<ActionResult<ServiceResult<ExternalResearcherDetailDTO>>> Create(
             ExternalResearcherCreateRequestDTO body,
             CancellationToken ct)
         {
@@ -74,7 +74,7 @@ namespace tesisproject.backend.Controllers
         // PUT: api/externalresearchers/{id}
         // ================================================================
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<ExternalResearcherDetailDTO>>> Update(
+        public async Task<ActionResult<ServiceResult<ExternalResearcherDetailDTO>>> Update(
             int id,
             ExternalResearcherUpdateRequestDTO body,
             CancellationToken ct)
