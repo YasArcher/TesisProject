@@ -306,6 +306,7 @@ static class StartupExtensions
         builder.Services.AddScoped<IFacultyScopeRepository, FacultyScopeRepository>();
         builder.Services.AddScoped<IFacultyScopeFacultyRepository, FacultyScopeFacultyRepository>();
         builder.Services.AddScoped<IUserFacultyScopeAssignmentRepository, UserFacultyScopeAssignmentRepository>();
+        builder.Services.AddScoped<IAppConfigurationRepository, AppConfigurationRepository>();
 
         // Genéricos
         builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));

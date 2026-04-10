@@ -23,6 +23,9 @@ namespace tesisproject.shared.Enums
         Date = 2,
 
         [Description("Enlace o URL")]
-        Url = 3
+        Url = 3,
+
+        [Description("Usuarios")]
+        Users = 4,
     }
 }
