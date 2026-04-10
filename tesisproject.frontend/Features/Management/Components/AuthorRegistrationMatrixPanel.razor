@@ -1,0 +1,747 @@
+@using Blazored.LocalStorage
+@using tesisproject.frontend.SharedUI
+@using tesisproject.shared.DTOs.Catalogs
+@using tesisproject.shared.DTOs.Configuration
+@using tesisproject.shared.DTOs.MassRegistration
+
+@inject IRegistrationMatrixClient RegistrationMatrixClient
+@inject IFormConfigurationClient FormConfigurationClient
+@inject ILocalStorageService LocalStorage
+
+<div class="author-matrix-panel space-y-4">
+    <AppStatusModal Visible="@HasStatusMessage"
+                    Variant="@StatusVariant"
+                    Eyebrow="Registro en masa"
+                    Title="@StatusTitle"
+                    Message="@StatusMessage"
+                    OnClose="CloseStatusModal" />
+
+    <AppConfirmPanel Visible="@IsSubmitConfirmOpen"
+                     Eyebrow="Confirmar envío"
+                     Title="Enviar artículos a revisión"
+                     Message="Se generará el staging institucional para todos los registros listos de esta matriz. Mientras se realiza el envío no podrás seguir editando la hoja."
+                     ConfirmText="Enviar a revisión"
+                     CancelText="Seguir editando"
+                     OnConfirm="ConfirmSubmitAsync"
+                     OnCancel="CloseSubmitConfirmAsync" />
+
+    @if (IsSubmittingReview)
+    {
+        <div class="author-matrix-cooldown">
+            <div class="author-matrix-cooldown__card">
+                <div class="author-matrix-cooldown__spinner"></div>
+                <div class="author-matrix-cooldown__eyebrow">Procesando envío</div>
+                <h3>Estamos enviando la matriz a revisión</h3>
+                <p>
+                    Espera un momento mientras se genera el lote institucional y se crea el staging para UODIDE y Área Técnica.
+                </p>
+            </div>
+        </div>
+    }
+
+    @if (IsLoading)
+    {
+        <div class="rounded-[1.6rem] border border-[var(--app-border-subtle)] bg-white px-6 py-8 text-center text-sm text-[var(--app-text-muted)] shadow-sm">
+            Preparando la matriz de registro del autor...
+        </div>
+    }
+    else if (!AllowedFieldIds.Any())
+    {
+        <AppEmptyState Class="rounded-[1.8rem] border border-[var(--app-border-subtle)] bg-white px-6 py-10 shadow-sm"
+                       Title="No hay campos configurados para el registro en masa"
+                       Message="Activa primero los campos requeridos en la configuración del formulario para habilitar esta modalidad." />
+    }
+    else if (Matrix is null)
+    {
+        <AppEmptyState Class="rounded-[1.8rem] border border-[var(--app-border-subtle)] bg-white px-6 py-10 shadow-sm"
+                       Title="No pude preparar la matriz del autor"
+                       Message="Intenta recargar el módulo para generar un nuevo borrador de trabajo." />
+    }
+    else
+    {
+        <div class="author-matrix-shell">
+            <section class="author-matrix-overview rounded-[1.85rem] border border-[var(--app-border-subtle)] p-4 shadow-sm">
+                <div class="author-matrix-overview__content">
+                    <div class="space-y-2">
+                        <div class="author-matrix-eyebrow">Registro en masa para autores</div>
+                        <h2 class="text-xl font-black text-[var(--app-heading)]">Matriz institucional de artículos</h2>
+                        <p class="text-sm text-[var(--app-text-muted)]">
+                            Usa esta hoja para registrar varios artículos con los campos institucionales habilitados y enviar únicamente las filas listas al proceso de revisión.
+                        </p>
+                    </div>
+                    <div class="author-matrix-overview__text">
+                        <span class="@GetMatrixStatusClass(Matrix.Summary)">@GetMatrixStatusLabel(Matrix.Summary)</span>
+                        <span><strong>@OrderedRows.Count</strong> fila(s) en la hoja</span>
+                        <span><strong>@ReadyRowsCount</strong> lista(s) para revisión</span>
+                        <span><strong>@PendingRowsCount</strong> pendiente(s)</span>
+                        <span><strong>@RequiredColumnsCount</strong> campo(s) obligatorios</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="author-matrix-board overflow-hidden rounded-[1.8rem] border border-[var(--app-border-subtle)] bg-white shadow-sm">
+                <div class="author-matrix-board__header border-b border-[var(--app-border-subtle)] px-4 py-3">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div class="author-matrix-eyebrow">Captura tabular</div>
+                            <div class="text-sm font-semibold text-[var(--app-heading)]">@Matrix.Summary.Name</div>
+                        </div>
+                        <div class="text-xs text-[var(--app-text-muted)]">
+                            Completa o corrige las celdas necesarias antes de iniciar el envío a revisión.
+                        </div>
+                    </div>
+                </div>
+
+                @if (!Matrix.Rows.Any())
+                {
+                    <div class="p-6">
+                        <AppEmptyState Title="Tu matriz está vacía" Message="Agrega la primera fila para empezar a registrar artículos en masa." />
+                    </div>
+                }
+                else
+                {
+                    <div class="author-matrix-panel__table-host">
+                        <table class="min-w-full border-separate border-spacing-0 text-sm">
+                            <thead class="sticky top-0 z-20 text-white shadow-sm">
+                                <tr>
+                                    <th class="border border-white/10 px-3 py-2 text-left text-xs font-bold uppercase tracking-[0.16em] text-white/80">Fila</th>
+                                    @foreach (var column in OrderedColumns)
+                                    {
+                                        <th class="border border-white/10 px-3 py-2 text-left align-top">
+                                            <div class="author-matrix-column-head min-w-[12rem]">
+                                                <div class="font-semibold text-white">
+                                                    @column.FieldLabel
+                                                    @if (column.IsRequired)
+                                                    {
+                                                        <span class="text-[#ffe0a8]">*</span>
+                                                    }
+                                                </div>
+                                                <div class="mt-1 text-[11px] text-white/70">@GetColumnLegend(column)</div>
+                                            </div>
+                                        </th>
+                                    }
+                                    <th class="border border-white/10 px-3 py-2 text-left text-xs font-bold uppercase tracking-[0.16em] text-white/80">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in OrderedRows)
+                                {
+                                    <tr class="author-matrix-row bg-white even:bg-[var(--app-surface-soft)]/50">
+                                        <td class="border border-[var(--app-border-subtle)] px-3 py-3 align-top">
+                                            <div class="author-matrix-row__index">@row.RowNumber</div>
+                                            <div class="mt-1">
+                                                <span class="@GetRowStatusClass(row)">@GetRowStatusLabel(row)</span>
+                                            </div>
+                                        </td>
+                                        @foreach (var column in OrderedColumns)
+                                        {
+                                            var field = GetFieldById(column.FieldId);
+                                            var value = GetCellValue(row, column.FieldId);
+                                            <td class="border border-[var(--app-border-subtle)] px-3 py-3 align-top">
+                                                @if (field is not null && HasOptionsForRow(field, row))
+                                                {
+                                                    <select class="w-full min-w-[12rem] rounded-xl border border-[var(--app-border-subtle)] bg-white px-3 py-2 text-sm shadow-sm"
+                                                            value="@value"
+                                                            @onchange="e => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, e.Value?.ToString(), field)">
+                                                        <option value="">Seleccionar...</option>
+                                                        @foreach (var option in GetOptionsForRow(field, row))
+                                                        {
+                                                            <option value="@option.Value">@option.Label</option>
+                                                        }
+                                                    </select>
+                                                }
+                                                else if (field is not null && IsBooleanField(field))
+                                                {
+                                                    <select class="w-full min-w-[12rem] rounded-xl border border-[var(--app-border-subtle)] bg-white px-3 py-2 text-sm shadow-sm"
+                                                            value="@value"
+                                                            @onchange="e => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, e.Value?.ToString(), field)">
+                                                        <option value="">Seleccionar...</option>
+                                                        <option value="true">Sí</option>
+                                                        <option value="false">No</option>
+                                                    </select>
+                                                }
+                                                else
+                                                {
+                                                    <input class="w-full min-w-[12rem] rounded-xl border border-[var(--app-border-subtle)] bg-white px-3 py-2 text-sm shadow-sm"
+                                                           type="@(field is null ? "text" : GetInputType(field))"
+                                                           step="@(field is null ? null : GetInputStep(field))"
+                                                           placeholder="@(field is null ? "Registrar valor" : GetPlaceholder(field))"
+                                                           value="@value"
+                                                           @onchange="e => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, e.Value?.ToString(), field)" />
+                                                }
+                                                @if (field is not null && ShowSupport(field, row))
+                                                {
+                                                    <div class="mt-1 text-[11px] text-[var(--app-text-soft)]">@GetSupport(field, row)</div>
+                                                }
+                                            </td>
+                                        }
+                                        <td class="border border-[var(--app-border-subtle)] px-3 py-3 align-top">
+                                            <button type="button" class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700" @onclick="() => DeleteRowAsync(row.RegistrationMatrixRowId)">
+                                                Quitar fila
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </section>
+        </div>
+
+        <div class="author-matrix-floating-actions">
+            <button type="button"
+                    class="author-matrix-floating-button author-matrix-floating-button--submit"
+                    disabled="@(!CanSubmit || IsBusy)"
+                    title="Enviar artículos a revisión"
+                    @onclick="OpenSubmitConfirm">
+                @(IsSubmittingReview ? "..." : "Enviar")
+            </button>
+            <button type="button"
+                    class="author-matrix-floating-button"
+                    title="Agregar fila"
+                    @onclick="AddRowAsync">
+                +
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    private const string DraftStorageKey = "author-registration.matrix-draft";
+    private readonly Dictionary<OptionCacheKey, List<OptionItem>> FieldOptions = new();
+    private List<FieldCatalogItemDto> ArticleFields { get; set; } = new();
+    private List<FieldCatalogItemDto> ParticipantFields { get; set; } = new();
+    private RegistrationMatrixDetailDto? Matrix { get; set; }
+    private bool IsLoading { get; set; } = true;
+    private bool IsBusy { get; set; }
+    private string StatusVariant { get; set; } = "info";
+    private string StatusTitle { get; set; } = string.Empty;
+    private string StatusMessage { get; set; } = string.Empty;
+    private string CurrentFieldSignature { get; set; } = string.Empty;
+    private bool IsSubmitConfirmOpen { get; set; }
+    private bool IsSubmittingReview { get; set; }
+
+    [Parameter] public IReadOnlyList<int> AllowedArticleFieldIds { get; set; } = [];
+    [Parameter] public IReadOnlyList<int> AllowedParticipantFieldIds { get; set; } = [];
+    [Parameter] public string MatrixName { get; set; } = "Registro masivo de artículos";
+    [Parameter] public EventCallback<string> OnSubmitted { get; set; }
+
+    private bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusTitle);
+    private IReadOnlyList<int> AllowedFieldIds => AllowedArticleFieldIds.Concat(AllowedParticipantFieldIds).Distinct().ToList();
+    private IReadOnlyList<RegistrationMatrixColumnDto> OrderedColumns => Matrix?.Columns.OrderBy(x => x.DisplayOrder).ThenBy(x => x.RegistrationMatrixColumnId).ToList() ?? [];
+    private IReadOnlyList<RegistrationMatrixRowDto> OrderedRows => Matrix?.Rows.OrderBy(x => x.RowNumber).ToList() ?? [];
+    private int RequiredColumnsCount => OrderedColumns.Count(x => x.IsRequired);
+    private int ReadyRowsCount => OrderedRows.Count(IsReadyRow);
+    private int PendingRowsCount => OrderedRows.Count - ReadyRowsCount;
+    private bool CanSubmit => Matrix is not null && OrderedRows.Any() && ReadyRowsCount > 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var newSignature = BuildAllowedFieldSignature();
+        if (string.IsNullOrWhiteSpace(newSignature) || string.Equals(CurrentFieldSignature, newSignature, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        CurrentFieldSignature = newSignature;
+        await InitializeAsync();
+    }
+
+    private async Task InitializeAsync()
+    {
+        try
+        {
+            IsLoading = true;
+            StatusTitle = string.Empty;
+            StatusMessage = string.Empty;
+            FieldOptions.Clear();
+
+            ArticleFields = await FormConfigurationClient.GetFieldsAsync("Article");
+            ParticipantFields = await FormConfigurationClient.GetFieldsAsync("ArticleParticipant");
+
+            if (!AllowedFieldIds.Any())
+            {
+                Matrix = null;
+                return;
+            }
+
+            await LoadOrCreateDraftMatrixAsync();
+            if (Matrix is not null && !Matrix.Rows.Any())
+            {
+                Matrix = await RegistrationMatrixClient.AddRowAsync(Matrix.Summary.RegistrationMatrixId) ?? Matrix;
+            }
+
+            await EnsureSupportAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude preparar la matriz del autor", ex.Message);
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private async Task LoadOrCreateDraftMatrixAsync()
+    {
+        var draft = await LocalStorage.GetItemAsync<AuthorMatrixDraftState>(DraftStorageKey);
+        if (draft?.MatrixId is int storedMatrixId && string.Equals(draft.FieldSignature, CurrentFieldSignature, StringComparison.Ordinal))
+        {
+            try
+            {
+                var existing = await RegistrationMatrixClient.GetMatrixAsync(storedMatrixId);
+                if (existing is not null && MatchesAllowedFields(existing))
+                {
+                    Matrix = existing;
+                    return;
+                }
+            }
+            catch
+            {
+            }
+        }
+
+        Matrix = await RegistrationMatrixClient.CreateMatrixAsync(new CreateRegistrationMatrixRequest
+        {
+            Name = MatrixName,
+            EntityName = "Article",
+            Notes = "Borrador automático del registro en masa para autores.",
+            FieldIds = AllowedFieldIds.ToList()
+        });
+
+        if (Matrix is not null)
+        {
+            await PersistDraftStateAsync(Matrix.Summary.RegistrationMatrixId);
+        }
+    }
+
+    private async Task PersistDraftStateAsync(int matrixId)
+    {
+        await LocalStorage.SetItemAsync(DraftStorageKey, new AuthorMatrixDraftState
+        {
+            MatrixId = matrixId,
+            FieldSignature = CurrentFieldSignature
+        });
+    }
+
+    private bool MatchesAllowedFields(RegistrationMatrixDetailDto matrix)
+        => matrix.Columns.OrderBy(x => x.DisplayOrder).Select(x => x.FieldId).SequenceEqual(AllowedFieldIds);
+
+    private async Task ReloadMatrixAsync()
+    {
+        if (Matrix is null)
+        {
+            await InitializeAsync();
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            Matrix = await RegistrationMatrixClient.GetMatrixAsync(Matrix.Summary.RegistrationMatrixId);
+            await EnsureSupportAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude recargar la matriz", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task AddRowAsync()
+    {
+        if (Matrix is null)
+        {
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            Matrix = await RegistrationMatrixClient.AddRowAsync(Matrix.Summary.RegistrationMatrixId) ?? Matrix;
+            await EnsureSupportAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude agregar la fila", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task DeleteRowAsync(int rowId)
+    {
+        if (Matrix is null)
+        {
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            await RegistrationMatrixClient.DeleteRowAsync(Matrix.Summary.RegistrationMatrixId, rowId);
+            Matrix = await RegistrationMatrixClient.GetMatrixAsync(Matrix.Summary.RegistrationMatrixId) ?? Matrix;
+            await EnsureSupportAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude quitar la fila", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task UpdateCellAsync(int rowId, int fieldId, string? rawValue, FieldCatalogItemDto? field)
+    {
+        if (Matrix is null)
+        {
+            return;
+        }
+
+        try
+        {
+            IsBusy = true;
+            Matrix = await RegistrationMatrixClient.UpdateCellAsync(Matrix.Summary.RegistrationMatrixId, rowId, new UpdateRegistrationMatrixCellRequest
+            {
+                FieldId = fieldId,
+                RawValue = NormalizeRawValue(rawValue)
+            }) ?? Matrix;
+
+            if (field is not null)
+            {
+                await ClearDependentValuesAsync(rowId, field);
+            }
+
+            await EnsureSupportAsync();
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude actualizar la celda", ex.Message);
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task ClearDependentValuesAsync(int rowId, FieldCatalogItemDto field)
+    {
+        if (field.FieldKey.Equals("BroadFieldId", StringComparison.OrdinalIgnoreCase))
+        {
+            await ClearFieldValueIfExistsAsync(rowId, "SpecificFieldId");
+            await ClearFieldValueIfExistsAsync(rowId, "DetailedFieldId");
+        }
+        else if (field.FieldKey.Equals("SpecificFieldId", StringComparison.OrdinalIgnoreCase))
+        {
+            await ClearFieldValueIfExistsAsync(rowId, "DetailedFieldId");
+        }
+    }
+
+    private async Task ClearFieldValueIfExistsAsync(int rowId, string fieldKey)
+    {
+        if (Matrix is null)
+        {
+            return;
+        }
+
+        var related = GetFieldByKey(fieldKey);
+        var currentValue = related is null ? null : Matrix.Rows.FirstOrDefault(x => x.RegistrationMatrixRowId == rowId)?.Cells.FirstOrDefault(x => x.FieldId == related.FieldId)?.RawValue;
+        if (related is null || string.IsNullOrWhiteSpace(currentValue))
+        {
+            return;
+        }
+
+        Matrix = await RegistrationMatrixClient.UpdateCellAsync(Matrix.Summary.RegistrationMatrixId, rowId, new UpdateRegistrationMatrixCellRequest
+        {
+            FieldId = related.FieldId,
+            RawValue = null
+        }) ?? Matrix;
+    }
+
+    private void OpenSubmitConfirm()
+    {
+        if (!CanSubmit || IsBusy || IsSubmittingReview)
+        {
+            return;
+        }
+
+        IsSubmitConfirmOpen = true;
+    }
+
+    private Task CloseSubmitConfirmAsync()
+    {
+        IsSubmitConfirmOpen = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task ConfirmSubmitAsync()
+    {
+        IsSubmitConfirmOpen = false;
+        await SubmitAsync();
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (Matrix is null)
+        {
+            return;
+        }
+
+        try
+        {
+            IsSubmittingReview = true;
+            var result = await RegistrationMatrixClient.SubmitToStagingAsync(Matrix.Summary.RegistrationMatrixId, new SubmitRegistrationMatrixRequest
+            {
+                ValidateAfterCreate = true,
+                UseAuthorWorkflow = true
+            });
+
+            if (result?.BatchResult?.Batch?.Summary is null)
+            {
+                ShowStatus("warning", "Revisa este punto", "La matriz se envió, pero no recibí el lote de revisión esperado.");
+                return;
+            }
+
+            await LocalStorage.RemoveItemAsync(DraftStorageKey);
+            await InitializeAsync();
+
+            var message = $"Los artículos se enviaron a revisión correctamente. Se creó el lote {result.BatchResult.Batch.Summary.BatchCode} para staging institucional.";
+            ShowStatus("success", "Registro en masa enviado", message);
+
+            if (OnSubmitted.HasDelegate)
+            {
+                await OnSubmitted.InvokeAsync(message);
+            }
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude enviar la matriz a revisión", ex.Message);
+        }
+        finally
+        {
+            IsSubmittingReview = false;
+        }
+    }
+
+    private async Task EnsureSupportAsync()
+    {
+        if (Matrix is null)
+        {
+            return;
+        }
+
+        foreach (var column in Matrix.Columns)
+        {
+            var field = GetFieldById(column.FieldId);
+            if (field is null)
+            {
+                continue;
+            }
+
+            if (field.IsDynamic)
+            {
+                await EnsureOptionsAsync(field, null);
+                continue;
+            }
+
+            if (!LooksCatalog(field))
+            {
+                continue;
+            }
+
+            if (!IsHierarchicalCatalog(field))
+            {
+                await EnsureOptionsAsync(field, null);
+                continue;
+            }
+
+            foreach (var row in Matrix.Rows)
+            {
+                await EnsureOptionsAsync(field, GetParentCatalogId(field, row));
+            }
+        }
+    }
+
+    private async Task EnsureOptionsAsync(FieldCatalogItemDto field, int? parentId)
+    {
+        var key = new OptionCacheKey(field.FieldId, parentId);
+        if (FieldOptions.ContainsKey(key))
+        {
+            return;
+        }
+
+        if (field.IsDynamic)
+        {
+            var options = await FormConfigurationClient.GetFieldOptionsAsync(field.FieldId);
+            FieldOptions[key] = options.Where(x => x.IsActive).OrderBy(x => x.DisplayOrder).Select(x => new OptionItem(x.OptionValue, x.OptionLabel)).ToList();
+            return;
+        }
+
+        if (LooksCatalog(field))
+        {
+            try
+            {
+                var options = await FormConfigurationClient.GetCatalogItemsByFieldAsync(field.FieldId, parentId);
+                FieldOptions[key] = options.OrderBy(x => x.Name).Select(x => new OptionItem(x.Id.ToString(), x.Name)).ToList();
+            }
+            catch
+            {
+                FieldOptions[key] = [];
+            }
+            return;
+        }
+
+        FieldOptions[key] = [];
+    }
+
+    private FieldCatalogItemDto? GetFieldById(int id) => ArticleFields.Concat(ParticipantFields).FirstOrDefault(x => x.FieldId == id);
+    private FieldCatalogItemDto? GetFieldByKey(string key) => ArticleFields.Concat(ParticipantFields).FirstOrDefault(x => x.FieldKey.Equals(key, StringComparison.OrdinalIgnoreCase));
+    private string GetCellValue(RegistrationMatrixRowDto row, int fieldId) => row.Cells.FirstOrDefault(x => x.FieldId == fieldId)?.RawValue ?? string.Empty;
+    private bool HasOptionsForRow(FieldCatalogItemDto field, RegistrationMatrixRowDto row) => GetOptionsForRow(field, row).Any();
+
+    private IEnumerable<OptionItem> GetOptionsForRow(FieldCatalogItemDto field, RegistrationMatrixRowDto row)
+    {
+        var key = new OptionCacheKey(field.FieldId, GetParentCatalogId(field, row));
+        return FieldOptions.TryGetValue(key, out var options) ? options : Enumerable.Empty<OptionItem>();
+    }
+
+    private int? GetParentCatalogId(FieldCatalogItemDto field, RegistrationMatrixRowDto row)
+    {
+        if (field.FieldKey.Equals("SpecificFieldId", StringComparison.OrdinalIgnoreCase))
+        {
+            return TryGetRelatedFieldValue(row, "BroadFieldId");
+        }
+
+        if (field.FieldKey.Equals("DetailedFieldId", StringComparison.OrdinalIgnoreCase))
+        {
+            return TryGetRelatedFieldValue(row, "SpecificFieldId");
+        }
+
+        return null;
+    }
+
+    private int? TryGetRelatedFieldValue(RegistrationMatrixRowDto row, string fieldKey)
+    {
+        var relatedField = GetFieldByKey(fieldKey);
+        if (relatedField is null)
+        {
+            return null;
+        }
+
+        var raw = GetCellValue(row, relatedField.FieldId);
+        return int.TryParse(raw, out var value) ? value : null;
+    }
+
+    private bool IsReadyRow(RegistrationMatrixRowDto row)
+    {
+        var requiredColumns = OrderedColumns.Where(x => x.IsRequired).ToList();
+        return requiredColumns.Count == 0 || requiredColumns.All(column => !string.IsNullOrWhiteSpace(GetCellValue(row, column.FieldId)));
+    }
+
+    private string GetRowStatusLabel(RegistrationMatrixRowDto row)
+    {
+        var requiredColumns = OrderedColumns.Where(x => x.IsRequired).ToList();
+        if (requiredColumns.Count == 0)
+        {
+            return "Lista";
+        }
+
+        var completedRequired = requiredColumns.Count(column => !string.IsNullOrWhiteSpace(GetCellValue(row, column.FieldId)));
+        if (completedRequired == 0)
+        {
+            return "Vacía";
+        }
+
+        return completedRequired == requiredColumns.Count ? "Lista" : $"{completedRequired}/{requiredColumns.Count}";
+    }
+
+    private string GetRowStatusClass(RegistrationMatrixRowDto row)
+        => GetRowStatusLabel(row) switch
+        {
+            "Lista" => "rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700",
+            "Vacía" => "rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600",
+            _ => "rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700"
+        };
+
+    private string GetSupport(FieldCatalogItemDto field, RegistrationMatrixRowDto row)
+    {
+        if (!string.IsNullOrWhiteSpace(field.HelpText))
+        {
+            return field.HelpText!;
+        }
+
+        if (field.FieldKey.Equals("SpecificFieldId", StringComparison.OrdinalIgnoreCase))
+        {
+            return TryGetRelatedFieldValue(row, "BroadFieldId").HasValue ? "Se filtra según el campo amplio seleccionado en esta fila." : "Primero selecciona un campo amplio para habilitar esta lista.";
+        }
+
+        if (field.FieldKey.Equals("DetailedFieldId", StringComparison.OrdinalIgnoreCase))
+        {
+            return TryGetRelatedFieldValue(row, "SpecificFieldId").HasValue ? "Se filtra según el campo específico seleccionado en esta fila." : "Primero selecciona un campo específico para habilitar esta lista.";
+        }
+
+        if (field.IsDynamic)
+        {
+            return "Opciones dinámicas activas.";
+        }
+
+        return LooksCatalog(field) ? "Catálogo disponible para ayudarte a registrar." : string.Empty;
+    }
+
+    private bool ShowSupport(FieldCatalogItemDto field, RegistrationMatrixRowDto row) => !string.IsNullOrWhiteSpace(GetSupport(field, row));
+    private static bool LooksCatalog(FieldCatalogItemDto field) => !string.IsNullOrWhiteSpace(field.ReferenceTableName) || field.SourceType.Equals("Catalog", StringComparison.OrdinalIgnoreCase) || field.FieldKey.EndsWith("Id", StringComparison.OrdinalIgnoreCase);
+    private static bool IsHierarchicalCatalog(FieldCatalogItemDto field) => field.FieldKey is "SpecificFieldId" or "DetailedFieldId";
+    private static bool IsBooleanField(FieldCatalogItemDto field) => field.DataType.Contains("bool", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("bit", StringComparison.OrdinalIgnoreCase);
+    private static bool IsNumericField(FieldCatalogItemDto field) => field.DataType.Contains("int", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("decimal", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("number", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("double", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("float", StringComparison.OrdinalIgnoreCase);
+    private static string GetInputType(FieldCatalogItemDto field) => field.DataType.Contains("datetime", StringComparison.OrdinalIgnoreCase) ? "datetime-local" : field.DataType.Contains("date", StringComparison.OrdinalIgnoreCase) ? "date" : IsNumericField(field) ? "number" : "text";
+    private static string? GetInputStep(FieldCatalogItemDto field) => field.DataType.Contains("decimal", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("double", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("float", StringComparison.OrdinalIgnoreCase) ? "0.01" : IsNumericField(field) ? "1" : null;
+    private static string GetPlaceholder(FieldCatalogItemDto field) => !string.IsNullOrWhiteSpace(field.Placeholder) ? field.Placeholder! : field.IsRequired ? "Campo obligatorio" : "Registrar valor";
+    private static string GetColumnLegend(RegistrationMatrixColumnDto column) => $"{(column.EntityName == "ArticleParticipant" ? "Participante" : "Artículo")}{(column.IsRequired ? " · Obligatorio" : "")}{(column.IsDynamic ? " · Dinámico" : "")}";
+
+    private static string GetMatrixStatusClass(RegistrationMatrixSummaryDto matrix)
+        => matrix.Status.Contains("Processed", StringComparison.OrdinalIgnoreCase)
+            ? "rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-semibold text-emerald-700"
+            : matrix.Status.Contains("Staging", StringComparison.OrdinalIgnoreCase) || matrix.LastImportBatchId.HasValue
+                ? "rounded-full bg-amber-100 px-3 py-1.5 text-xs font-semibold text-amber-700"
+                : "rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600";
+
+    private static string GetMatrixStatusLabel(RegistrationMatrixSummaryDto matrix)
+        => matrix.Status.Contains("Processed", StringComparison.OrdinalIgnoreCase) ? "Procesada"
+         : matrix.Status.Contains("Staging", StringComparison.OrdinalIgnoreCase) || matrix.LastImportBatchId.HasValue ? "En revisión"
+         : "Borrador";
+
+    private static string? NormalizeRawValue(string? rawValue) => string.IsNullOrWhiteSpace(rawValue) ? null : rawValue.Trim();
+    private string BuildAllowedFieldSignature() => string.Join("|", AllowedFieldIds);
+
+    private void ShowStatus(string variant, string title, string message)
+    {
+        StatusVariant = variant;
+        StatusTitle = title;
+        StatusMessage = message;
+    }
+
+    private Task CloseStatusModal()
+    {
+        StatusTitle = string.Empty;
+        StatusMessage = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private sealed class AuthorMatrixDraftState
+    {
+        public int MatrixId { get; set; }
+        public string? FieldSignature { get; set; }
+    }
+
+    private sealed record OptionItem(string Value, string Label);
+    private sealed record OptionCacheKey(int FieldId, int? ParentId);
+}

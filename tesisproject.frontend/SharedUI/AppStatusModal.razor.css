@@ -6,16 +6,18 @@
     align-items: center;
     justify-content: center;
     padding: 1.25rem;
-    background: rgba(15, 23, 42, 0.5);
+    background: rgba(49, 54, 71, 0.5);
     backdrop-filter: blur(4px);
 }
 
 .app-status-modal {
     width: min(100%, 32rem);
     border-radius: 1.6rem;
-    background: #fffdf8;
-    border: 1px solid rgba(110, 110, 110, 0.14);
-    box-shadow: 0 26px 48px rgba(15, 23, 42, 0.18);
+    background:
+        radial-gradient(circle at top right, rgba(244, 206, 20, 0.14), transparent 28%),
+        linear-gradient(180deg, #ffffff, rgba(245, 247, 248, 0.98));
+    border: 1px solid rgba(67, 86, 99, 0.14);
+    box-shadow: 0 26px 48px rgba(49, 54, 71, 0.18);
     padding: 1.4rem;
     text-align: center;
 }
@@ -43,12 +45,12 @@
     margin-top: .45rem;
     font-size: 1.15rem;
     font-weight: 800;
-    color: #16324f;
+    color: #313647;
 }
 
 .app-status-modal__message {
     margin-top: .65rem;
-    color: #6e6e6e;
+    color: #435663;
     line-height: 1.6;
 }
 
@@ -69,55 +71,56 @@
 }
 
 .app-status-modal--info .app-status-modal__icon {
-    background: #e9f1f8;
-    color: #436b8c;
+    background: rgba(151, 176, 103, 0.18);
+    color: #437057;
 }
 
 .app-status-modal--info .app-status-modal__eyebrow {
-    color: #436b8c;
+    color: #437057;
 }
 
 .app-status-modal--info .app-status-modal__button {
-    background: #16324f;
+    background: linear-gradient(135deg, #313647, #495E57);
 }
 
 .app-status-modal--success .app-status-modal__icon {
-    background: #edf7f1;
-    color: #1f7a45;
+    background: rgba(151, 176, 103, 0.2);
+    color: #437057;
 }
 
 .app-status-modal--success .app-status-modal__eyebrow {
-    color: #1f7a45;
+    color: #437057;
 }
 
 .app-status-modal--success .app-status-modal__button {
-    background: #2b7a4b;
+    background: linear-gradient(135deg, #437057, #97B067);
 }
 
 .app-status-modal--warning .app-status-modal__icon {
-    background: #fff3de;
-    color: #8f6c14;
+    background: rgba(244, 206, 20, 0.2);
+    color: #8a7410;
 }
 
 .app-status-modal--warning .app-status-modal__eyebrow {
-    color: #8f6c14;
+    color: #8a7410;
 }
 
 .app-status-modal--warning .app-status-modal__button {
-    background: #b88a1a;
+    background: linear-gradient(135deg, #F4CE14, #97B067);
+    color: #313647;
 }
 
 .app-status-modal--error .app-status-modal__icon {
-    background: #f9e5e3;
-    color: #a44a3f;
+    background: rgba(244, 206, 20, 0.16);
+    color: #2F5249;
 }
 
 .app-status-modal--error .app-status-modal__eyebrow {
-    color: #a44a3f;
+    color: #2F5249;
 }
 
 .app-status-modal--error .app-status-modal__button {
-    background: #7A1E19;
+    background: linear-gradient(135deg, #2F5249, #313647);
 }
 
 @media (max-width: 767.98px) {

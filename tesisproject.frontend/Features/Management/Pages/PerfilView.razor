@@ -18,7 +18,10 @@
         <div class="profile-hero__inner">
             <div>
                 <div class="profile-hero__kicker">Cuenta institucional</div>
-                <h1 class="profile-hero__title">Perfil de usuario</h1>
+                <div class="flex items-center gap-3">
+                    <span class="profile-hero__icon">◉</span>
+                    <h1 class="profile-hero__title">Perfil de usuario</h1>
+                </div>
                 <div class="profile-hero__copy">Información de la sesión autenticada y permisos visibles en el sistema.</div>
             </div>
             <button class="profile-hero__logout"
@@ -42,7 +45,7 @@
                     @Initials
                 </div>
                 <div>
-                    <div class="profile-card__eyebrow">Usuario autenticado</div>
+                    <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon">◎</span><span>Usuario autenticado</span></div>
                     <div class="profile-card__title">@FullName</div>
                     <div class="profile-card__subtle">@Email</div>
                 </div>
@@ -61,7 +64,7 @@
         </section>
 
         <section class="profile-card">
-            <div class="profile-card__eyebrow">Roles activos</div>
+            <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon">⌘</span><span>Roles activos</span></div>
             @if (Roles.Count == 0)
             {
                 <div class="profile-card__subtle mt-3">Tu sesión actual no contiene roles visibles.</div>
@@ -76,7 +79,7 @@
                 </div>
             }
 
-            <div class="profile-card__claims-title">Claims visibles</div>
+            <div class="profile-card__claims-title flex items-center gap-2"><span class="profile-inline-icon">▣</span><span>Claims visibles</span></div>
             <div class="profile-claims">
                 @foreach (var claim in VisibleClaims)
                 {

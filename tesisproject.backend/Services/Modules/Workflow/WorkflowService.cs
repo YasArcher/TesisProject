@@ -13,6 +13,7 @@ namespace tesisproject.backend.Services.Implementations
         private const string SubmittedStatus = "Submitted";
         private const string PendingStatus = "Pending";
         private const string ApprovedStatus = "Approved";
+        private const string ProcessedStatus = "Processed";
         private const string AssignedStatus = "Assigned";
         private const string InReviewStatus = "InReview";
         private const string ReturnedStatus = "Returned";
@@ -159,9 +160,11 @@ namespace tesisproject.backend.Services.Implementations
 
             var query = _db.WorkflowInstances
                 .AsNoTracking()
+                .AsSplitQuery()
                 .Include(x => x.WorkflowDefinition)
                 .Include(x => x.CurrentStageDefinition)
                 .Include(x => x.Batch)
+                    .ThenInclude(x => x!.Rows)
                 .Include(x => x.StageInstances)
                     .ThenInclude(x => x.WorkflowStageDefinition)
                 .Where(x => x.CurrentStageDefinition != null);
@@ -190,16 +193,24 @@ namespace tesisproject.backend.Services.Implementations
                 return [];
             }
 
+            var authorReferences = await ResolveAuthorReferencesAsync(normalizedUserId, ct);
+            if (authorReferences.Count == 0)
+            {
+                authorReferences.Add(normalizedUserId);
+            }
+
             var query = _db.WorkflowInstances
                 .AsNoTracking()
+                .AsSplitQuery()
                 .Include(x => x.WorkflowDefinition)
                 .Include(x => x.CurrentStageDefinition)
                 .Include(x => x.Batch)
+                    .ThenInclude(x => x!.Rows)
                 .Include(x => x.StageInstances)
                     .ThenInclude(x => x.WorkflowStageDefinition)
                 .AsQueryable();
 
-            query = query.Where(x => x.SubmittedByUserId == normalizedUserId);
+            query = query.Where(x => x.SubmittedByUserId != null && authorReferences.Contains(x.SubmittedByUserId));
 
             var workflows = await query
                 .OrderByDescending(x => x.LastActionAt ?? x.SubmittedAt)
@@ -208,6 +219,42 @@ namespace tesisproject.backend.Services.Implementations
                 .ToListAsync(ct);
 
             return workflows.Select(x => MapInboxItem(x, normalizedUserId)).ToList();
+        }
+
+        private async Task<HashSet<string>> ResolveAuthorReferencesAsync(string normalizedUserId, CancellationToken ct)
+        {
+            var references = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                normalizedUserId
+            };
+
+            var user = await _db.Users
+                .AsNoTracking()
+                .Where(x => x.Id == normalizedUserId || x.UserName == normalizedUserId || x.Email == normalizedUserId)
+                .Select(x => new { x.Id, x.UserName, x.Email })
+                .FirstOrDefaultAsync(ct);
+
+            if (user is null)
+            {
+                return references;
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.Id))
+            {
+                references.Add(user.Id);
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.UserName))
+            {
+                references.Add(user.UserName);
+            }
+
+            if (!string.IsNullOrWhiteSpace(user.Email))
+            {
+                references.Add(user.Email);
+            }
+
+            return references;
         }
 
         public async Task<WorkflowBatchDetailDto?> GetBatchWorkflowAsync(int importBatchId, CancellationToken ct = default)
@@ -409,8 +456,11 @@ namespace tesisproject.backend.Services.Implementations
         {
             return await _db.WorkflowInstances
                 .AsNoTracking()
+                .AsSplitQuery()
                 .Include(x => x.WorkflowDefinition)
                     .ThenInclude(x => x!.Stages)
+                .Include(x => x.Batch)
+                    .ThenInclude(x => x!.Rows)
                 .Include(x => x.CurrentStageDefinition)
                 .Include(x => x.StageInstances)
                     .ThenInclude(x => x.WorkflowStageDefinition)
@@ -420,13 +470,16 @@ namespace tesisproject.backend.Services.Implementations
 
         private WorkflowBatchDetailDto MapWorkflow(WorkflowInstance workflow)
         {
+            var processedRows = workflow.Batch?.Rows.Count(x => x.RowStatus == "Processed") ?? 0;
+            var effectiveStatus = ResolveEffectiveWorkflowStatus(workflow.Status, workflow.Batch?.Status, processedRows);
+
             return new WorkflowBatchDetailDto
             {
                 WorkflowInstanceId = workflow.WorkflowInstanceId,
                 ImportBatchId = workflow.ImportBatchId,
                 WorkflowKey = workflow.WorkflowDefinition?.Key ?? string.Empty,
                 WorkflowName = workflow.WorkflowDefinition?.Name ?? string.Empty,
-                Status = workflow.Status,
+                Status = effectiveStatus,
                 CurrentStageDefinitionId = workflow.CurrentStageDefinitionId,
                 CurrentStageKey = workflow.CurrentStageDefinition?.StageKey,
                 CurrentStageName = workflow.CurrentStageDefinition?.StageName,
@@ -492,6 +545,13 @@ namespace tesisproject.backend.Services.Implementations
 
             var validRows = workflow.Batch?.Rows.Count(x => x.RowStatus == "Valid") ?? 0;
             var processedRows = workflow.Batch?.Rows.Count(x => x.RowStatus == "Processed") ?? 0;
+            var effectiveStatus = ResolveEffectiveWorkflowStatus(workflow.Status, workflow.Batch?.Status, processedRows);
+            var assignedToUserId = currentStageInstance?.AssignedToUserId;
+            var canOperateCurrentStage = currentStageInstance is not null &&
+                                         !string.Equals(currentStageInstance.Status, ApprovedStatus, StringComparison.OrdinalIgnoreCase) &&
+                                         !string.Equals(currentStageInstance.Status, ReturnedStatus, StringComparison.OrdinalIgnoreCase) &&
+                                         !string.Equals(effectiveStatus, ApprovedStatus, StringComparison.OrdinalIgnoreCase) &&
+                                         !string.Equals(effectiveStatus, ProcessedStatus, StringComparison.OrdinalIgnoreCase);
 
             return new WorkflowInboxItemDto
             {
@@ -501,7 +561,7 @@ namespace tesisproject.backend.Services.Implementations
                 SourceType = workflow.Batch?.SourceType ?? string.Empty,
                 WorkflowKey = workflow.WorkflowDefinition?.Key ?? string.Empty,
                 WorkflowName = workflow.WorkflowDefinition?.Name ?? string.Empty,
-                WorkflowStatus = workflow.Status,
+                WorkflowStatus = effectiveStatus,
                 CurrentStageKey = currentStage?.StageKey,
                 CurrentStageName = currentStage?.StageName,
                 CurrentStageGroupName = currentStage?.StageGroupName,
@@ -516,21 +576,33 @@ namespace tesisproject.backend.Services.Implementations
                 ProcessedRows = processedRows,
                 SubmittedAt = workflow.SubmittedAt,
                 LastActionAt = workflow.LastActionAt,
-                CanClaim = currentStageInstance is not null &&
-                           !string.Equals(currentStageInstance.Status, ApprovedStatus, StringComparison.OrdinalIgnoreCase) &&
-                           !string.Equals(currentStageInstance.Status, ReturnedStatus, StringComparison.OrdinalIgnoreCase) &&
-                           (string.IsNullOrWhiteSpace(currentStageInstance.AssignedToUserId) ||
-                            string.Equals(currentStageInstance.AssignedToUserId, NormalizeReference(currentUserId), StringComparison.OrdinalIgnoreCase)),
-                CanReturn = currentStageInstance is not null &&
+                CanClaim = canOperateCurrentStage &&
+                           (string.IsNullOrWhiteSpace(assignedToUserId) ||
+                            string.Equals(assignedToUserId, NormalizeReference(currentUserId), StringComparison.OrdinalIgnoreCase)),
+                CanReturn = canOperateCurrentStage &&
                             currentStage?.CanReturn == true &&
-                            (string.IsNullOrWhiteSpace(currentStageInstance.AssignedToUserId) ||
-                             string.Equals(currentStageInstance.AssignedToUserId, NormalizeReference(currentUserId), StringComparison.OrdinalIgnoreCase)),
-                CanApprove = currentStageInstance is not null &&
+                            (string.IsNullOrWhiteSpace(assignedToUserId) ||
+                             string.Equals(assignedToUserId, NormalizeReference(currentUserId), StringComparison.OrdinalIgnoreCase)),
+                CanApprove = canOperateCurrentStage &&
                              currentStage?.CanApprove == true &&
-                             (string.IsNullOrWhiteSpace(currentStageInstance.AssignedToUserId) ||
-                              string.Equals(currentStageInstance.AssignedToUserId, NormalizeReference(currentUserId), StringComparison.OrdinalIgnoreCase)),
-                CanProcessBatch = currentStage?.CanProcessBatch == true
+                             (string.IsNullOrWhiteSpace(assignedToUserId) ||
+                              string.Equals(assignedToUserId, NormalizeReference(currentUserId), StringComparison.OrdinalIgnoreCase)),
+                CanProcessBatch = currentStage?.CanProcessBatch == true &&
+                                  string.Equals(effectiveStatus, ApprovedStatus, StringComparison.OrdinalIgnoreCase) &&
+                                  processedRows < (workflow.Batch?.TotalRows ?? 0)
             };
+        }
+
+        private static string ResolveEffectiveWorkflowStatus(string? workflowStatus, string? batchStatus, int processedRows)
+        {
+            if (processedRows > 0 || string.Equals(batchStatus, ProcessedStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                return ProcessedStatus;
+            }
+
+            return string.IsNullOrWhiteSpace(workflowStatus)
+                ? string.Empty
+                : workflowStatus;
         }
 
         private async Task<WorkflowActionContext> GetActionContextAsync(int importBatchId, string? userId, IReadOnlyCollection<string> roleNames, CancellationToken ct)

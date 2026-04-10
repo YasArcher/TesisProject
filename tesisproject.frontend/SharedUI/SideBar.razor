@@ -44,7 +44,18 @@
         }
 
         <div class="sidebar-nav-stack">
-            @if (CanSeeArticlesGroup)
+            @if (IsUodideOnly || IsAreaTecnicaOnly)
+            {
+                <ul class="nav flex-column gap-2 sidebar-direct-links">
+                    <li class="nav-item">
+                        <NavLink href="/management/workflow-review" Match="NavLinkMatch.Prefix" class="nav-link px-3 py-2 text-white-90" ActiveClass="active" title="Revisión de envíos">
+                            <span class="icon">✓</span>
+                            <span class="label">Revisión de envíos</span>
+                        </NavLink>
+                    </li>
+                </ul>
+            }
+            else if (CanSeeArticlesGroup)
             {
                 <ul class="nav flex-column gap-2 sidebar-direct-links">
                     <li class="nav-item">
@@ -56,7 +67,7 @@
                 </ul>
             }
 
-            @if (CanSeeArticlesGroup)
+            @if (CanSeeArticlesGroup && !IsUodideOnly && !IsAreaTecnicaOnly)
             {
                 <div class="accordion-group @(GroupClass(_openArticles))">
                     <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-85"
@@ -80,7 +91,7 @@
                             {
                                 <li class="nav-item"><NavLink href="/configuration" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Configuración"><span class="icon">⚙</span><span class="label">Configuración</span></NavLink></li>
                             }
-                            @if (CanRegisterArticles || IsAdmin)
+                            @if (CanSeeArticleListing)
                             {
                                 <li class="nav-item"><NavLink href="/articulos/listado" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Listado de artículos"><span class="icon">≣</span><span class="label">Listado de artículos</span></NavLink></li>
                             }
@@ -89,7 +100,7 @@
                 </div>
             }
 
-            @if (CanSeeImportGroup)
+            @if (CanSeeImportGroup && !IsUodideOnly && !IsAreaTecnicaOnly)
             {
                 <div class="accordion-group @(GroupClass(_openImportFlow))">
                     <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-85"
@@ -116,7 +127,7 @@
                 </div>
             }
 
-            @if (CanSeeAnalysisGroup)
+            @if (CanSeeAnalysisGroup && !IsUodideOnly && !IsAreaTecnicaOnly)
             {
                 <div class="accordion-group @(GroupClass(_openAnalysis))">
                     <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-85"
@@ -167,7 +178,10 @@
                 <div class="accordion-panel">
                     <ul class="nav flex-column ms-4 my-2 gap-1">
                         <li class="nav-item"><NavLink href="/test-api" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Centro de ayuda"><span class="icon">?</span><span class="label">Centro de ayuda</span></NavLink></li>
-                        <li class="nav-item"><NavLink href="/help/manual" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Manual de usuario"><span class="icon">☰</span><span class="label">Manual de usuario</span></NavLink></li>
+                        @if (CanSeeManual)
+                        {
+                            <li class="nav-item"><NavLink href="/help/manual" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Manual de usuario"><span class="icon">☰</span><span class="label">Manual de usuario</span></NavLink></li>
+                        }
                         <li class="nav-item"><NavLink href="/perfilview" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Perfil"><span class="icon">◉</span><span class="label">Perfil</span></NavLink></li>
                     </ul>
                 </div>
@@ -195,13 +209,17 @@
     private bool IsAuthor { get; set; }
     private bool IsUodide { get; set; }
     private bool IsAreaTecnica { get; set; }
+    private bool IsUodideOnly => IsUodide && !IsAdmin && !IsAnalyst && !IsAuthor && !IsAreaTecnica;
+    private bool IsAreaTecnicaOnly => IsAreaTecnica && !IsAdmin && !IsAnalyst && !IsAuthor && !IsUodide;
 
     private bool CanRegisterArticles => IsAdmin || IsAnalyst || IsAuthor;
     private bool CanAccessWorkflow => IsAdmin || IsAuthor || IsUodide || IsAreaTecnica;
     private bool CanManageConfiguration => IsAdmin || IsAnalyst;
     private bool CanSeeArticlesGroup => CanRegisterArticles || CanAccessWorkflow;
     private bool CanSeeImportGroup => CanManageConfiguration || IsAdmin;
-    private bool CanSeeAnalysisGroup => IsAdmin || IsAnalyst || IsUodide || IsAreaTecnica;
+    private bool CanSeeAnalysisGroup => IsAdmin || IsAnalyst || IsAreaTecnica;
+    private bool CanSeeArticleListing => IsAdmin || IsAnalyst || IsAreaTecnica;
+    private bool CanSeeManual => IsAdmin || IsAnalyst || IsUodide || IsAreaTecnica;
 
     protected override async Task OnInitializedAsync()
     {

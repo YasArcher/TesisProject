@@ -3,12 +3,35 @@
     border-radius: 1.5rem;
 }
 
+.security-admin-page {
+    background:
+        radial-gradient(circle at top right, rgba(244, 206, 20, 0.08), transparent 24%),
+        radial-gradient(circle at left bottom, rgba(151, 176, 103, 0.08), transparent 26%);
+}
+
 .security-admin-summary__card {
     height: 100%;
     padding: 1.35rem 1.4rem;
-    border: 1px solid #dbe5e8;
-    background: linear-gradient(180deg, #ffffff, #f9fbfc);
-    box-shadow: 0 14px 30px rgba(28, 45, 59, 0.06);
+    border: 1px solid var(--app-color-border);
+    background:
+        radial-gradient(circle at top right, rgba(244, 206, 20, 0.14), transparent 30%),
+        linear-gradient(180deg, #ffffff, rgba(245, 247, 248, 0.96));
+    box-shadow: var(--app-shadow-sm);
+    position: relative;
+    overflow: hidden;
+}
+
+.security-admin-summary__icon {
+    width: 2.4rem;
+    height: 2.4rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: .95rem;
+    background: linear-gradient(145deg, rgba(49, 54, 71, 1), rgba(73, 94, 87, 0.94));
+    color: #fff8d4;
+    font-size: 1rem;
+    box-shadow: 0 12px 22px rgba(49, 54, 71, 0.12);
 }
 
 .security-admin-summary__label {
@@ -16,25 +39,26 @@
     font-weight: 800;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: #6b7880;
+    color: var(--app-color-text-muted);
 }
 
 .security-admin-summary__value {
     margin-top: 0.55rem;
     font-size: 2rem;
     font-weight: 900;
-    color: #12343b;
+    color: var(--app-color-heading);
 }
 
 .security-admin-summary__note {
     margin-top: 0.45rem;
-    color: #6d777f;
+    color: var(--app-color-text-muted);
     line-height: 1.6;
 }
 
 .security-admin-card {
-    border: 1px solid #dbe5e8 !important;
-    box-shadow: 0 18px 36px rgba(28, 45, 59, 0.07);
+    border: 1px solid var(--app-color-border) !important;
+    box-shadow: var(--app-shadow-sm);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 248, 0.96));
 }
 
 .security-admin-card__eyebrow {
@@ -43,7 +67,7 @@
     font-weight: 800;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #7f8a92;
+    color: var(--app-color-text-muted);
 }
 
 .security-admin-role-create {
@@ -62,22 +86,22 @@
     gap: 1rem;
     width: 100%;
     padding: 1rem 1.05rem;
-    border: 1px solid #dce5e9;
+    border: 1px solid var(--app-color-border);
     border-radius: 1.2rem;
-    background: linear-gradient(180deg, #fbfcfd, #ffffff);
+    background: linear-gradient(180deg, #ffffff, rgba(245, 247, 248, 0.96));
     text-align: left;
     transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .security-admin-actions__button:hover {
     transform: translateY(-1px);
-    box-shadow: 0 14px 28px rgba(28, 45, 59, 0.08);
-    border-color: #b9ccd3;
+    box-shadow: var(--app-shadow-sm);
+    border-color: rgba(151, 176, 103, 0.38);
 }
 
 .security-admin-actions__button--primary {
-    border-color: rgba(18, 52, 59, 0.18);
-    background: linear-gradient(180deg, #f7fafb, #eef5f7);
+    border-color: rgba(151, 176, 103, 0.24);
+    background: linear-gradient(180deg, rgba(151, 176, 103, 0.14), rgba(244, 206, 20, 0.08));
 }
 
 .security-admin-actions__icon {
@@ -87,8 +111,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    background: #12343b;
-    color: #ffffff;
+    background: linear-gradient(135deg, #313647, #495E57, #437057);
+    color: var(--app-color-white);
     font-size: 1.05rem;
     font-weight: 800;
 }
@@ -96,7 +120,7 @@
 .security-admin-actions__title {
     display: block;
     font-weight: 800;
-    color: #12343b;
+    color: var(--app-color-heading);
 }
 
 .security-admin-actions__description {
@@ -104,42 +128,42 @@
     margin-top: 0.25rem;
     font-size: 0.9rem;
     line-height: 1.6;
-    color: #6f7980;
+    color: var(--app-color-text-muted);
 }
 
 .security-role-card {
     height: 100%;
     padding: 1rem 1rem 0.95rem;
     border-radius: 1.2rem;
-    border: 1px solid #e1e8eb;
-    background: #fafcfd;
+    border: 1px solid var(--app-color-border);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 248, 0.96));
 }
 
 .security-role-card__title {
     font-size: 1rem;
     font-weight: 800;
-    color: #12343b;
+    color: var(--app-color-heading);
 }
 
 .security-role-card__code {
     margin-top: 0.18rem;
     font-size: 0.78rem;
     font-weight: 700;
-    color: #931d21;
+    color: #2F5249;
 }
 
 .security-role-card__description {
     margin-top: 0.7rem;
     font-size: 0.92rem;
     line-height: 1.65;
-    color: #637079;
+    color: var(--app-color-text-muted);
 }
 
 .security-role-card__foot {
     margin-top: 0.8rem;
     font-size: 0.82rem;
     font-weight: 700;
-    color: #3e4b54;
+    color: var(--app-color-heading);
 }
 
 .security-user-list {
@@ -150,9 +174,9 @@
 
 .security-user-card {
     width: 100%;
-    border: 1px solid #dde6e9;
+    border: 1px solid var(--app-color-border);
     border-radius: 1.2rem;
-    background: #fbfcfd;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 248, 0.96));
     padding: 1rem;
     text-align: left;
     transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
@@ -160,8 +184,8 @@
 
 .security-user-card:hover,
 .security-user-card--selected {
-    border-color: #8faeb7;
-    box-shadow: 0 12px 26px rgba(28, 45, 59, 0.08);
+    border-color: rgba(151, 176, 103, 0.42);
+    box-shadow: var(--app-shadow-sm);
     transform: translateY(-1px);
 }
 
@@ -174,12 +198,12 @@
 
 .security-user-card__name {
     font-weight: 800;
-    color: #12343b;
+    color: var(--app-color-heading);
 }
 
 .security-user-card__email {
     margin-top: 0.18rem;
-    color: #6c767d;
+    color: var(--app-color-text-muted);
     font-size: 0.92rem;
 }
 
@@ -194,18 +218,18 @@
     margin-bottom: 1rem;
     padding: 1rem;
     border-radius: 1.15rem;
-    background: linear-gradient(180deg, #f7fafb, #ffffff);
-    border: 1px solid #dbe5e8;
+    background: linear-gradient(180deg, rgba(151, 176, 103, 0.08), #ffffff);
+    border: 1px solid var(--app-color-border);
 }
 
 .security-selected-user__name {
     font-weight: 800;
-    color: #12343b;
+    color: var(--app-color-heading);
 }
 
 .security-selected-user__email {
     margin-top: 0.25rem;
-    color: #6c767d;
+    color: var(--app-color-text-muted);
     font-size: 0.92rem;
 }
 
@@ -215,21 +239,26 @@
     gap: 1rem;
     align-items: flex-start;
     padding: 0.95rem 1rem;
-    border: 1px solid #dce5e9;
+    border: 1px solid var(--app-color-border);
     border-radius: 1.1rem;
-    background: #fbfcfd;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 248, 0.96));
+}
+
+.security-role-option:hover {
+    border-color: rgba(151, 176, 103, 0.3);
+    box-shadow: 0 10px 22px rgba(49, 54, 71, 0.06);
 }
 
 .security-role-option__title {
     font-weight: 800;
-    color: #12343b;
+    color: var(--app-color-heading);
 }
 
 .security-role-option__description {
     margin-top: 0.2rem;
     font-size: 0.88rem;
     line-height: 1.6;
-    color: #6f7980;
+    color: var(--app-color-text-muted);
 }
 
 .security-admin-modal-backdrop {
@@ -240,7 +269,7 @@
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
-    background: rgba(12, 24, 36, 0.52);
+    background: rgba(49, 54, 71, 0.46);
     backdrop-filter: blur(6px);
 }
 
@@ -249,9 +278,9 @@
     max-height: calc(100vh - 3rem);
     overflow-y: auto;
     border-radius: 1.6rem;
-    background: #ffffff;
-    border: 1px solid #dbe5e8;
-    box-shadow: 0 28px 56px rgba(12, 24, 36, 0.2);
+    background: linear-gradient(180deg, rgba(255,255,255,1), rgba(245,247,248,.98));
+    border: 1px solid var(--app-color-border);
+    box-shadow: var(--app-shadow-lg);
     padding: 1.45rem;
 }
 
@@ -270,10 +299,10 @@
 .security-admin-modal__close {
     width: 2.2rem;
     height: 2.2rem;
-    border: 1px solid #dbe5e8;
+    border: 1px solid var(--app-color-border);
     border-radius: 999px;
-    background: #f7fafb;
-    color: #4d5a63;
+    background: linear-gradient(145deg, rgba(255,248,212,.86), rgba(255,255,255,1));
+    color: var(--app-color-heading);
     font-size: 1.3rem;
     line-height: 1;
 }
@@ -294,10 +323,24 @@
 .security-admin-note {
     padding: 0.95rem 1rem;
     border-radius: 1rem;
-    background: #f9fbfc;
-    border: 1px solid #dbe5e8;
-    color: #66737b;
+    background: linear-gradient(180deg, rgba(151, 176, 103, 0.08), rgba(255, 248, 212, 0.46));
+    border: 1px solid var(--app-color-border);
+    color: var(--app-color-text-muted);
     line-height: 1.6;
+}
+
+.security-hero__icon {
+    width: 2.9rem;
+    height: 2.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: linear-gradient(145deg, rgba(255,255,255,.16), rgba(244,206,20,.16));
+    border: 1px solid rgba(255,255,255,.16);
+    color: #fff8d4;
+    font-size: 1.1rem;
+    box-shadow: 0 12px 24px rgba(0,0,0,.14);
 }
 
 @media (max-width: 768px) {

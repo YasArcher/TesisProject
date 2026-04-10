@@ -2,6 +2,8 @@
 @inherits LayoutComponentBase
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
+@using System.Globalization
+@using System.Threading
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.Services.Auth
@@ -34,12 +36,21 @@
                 <div class="brand-user-tools">
                     @if (IsAuthenticated)
                     {
+                        <div class="brand-clock-chip">
+                            <div class="brand-clock-chip__time">@HeaderCurrentTime</div>
+                            <div class="brand-clock-chip__date">@HeaderCurrentDate</div>
+                        </div>
+
                         <div class="brand-user-chip">
-                            <div class="brand-user-chip__name">@DisplayName</div>
-                            @if (!string.IsNullOrWhiteSpace(PrimaryRole))
-                            {
-                                <div class="brand-user-chip__role">@PrimaryRole</div>
-                            }
+                            <div class="brand-user-chip__avatar">@UserInitials</div>
+                            <div class="brand-user-chip__body">
+                                <div class="brand-user-chip__label">Sesión activa</div>
+                                <div class="brand-user-chip__name">@DisplayName</div>
+                                @if (!string.IsNullOrWhiteSpace(PrimaryRole))
+                                {
+                                    <div class="brand-user-chip__role">@PrimaryRole</div>
+                                }
+                            </div>
                         </div>
 
                         <button type="button"
@@ -73,11 +84,16 @@
     private SideBar? sidebarComponent;
     private bool IsAuthenticated;
     private string DisplayName { get; set; } = "Usuario";
+    private string UserInitials { get; set; } = "U";
     private string? PrimaryRole { get; set; }
+    private string HeaderCurrentTime { get; set; } = "00:00:00";
+    private string HeaderCurrentDate { get; set; } = "01 abril 2026";
+    private Timer? _clockTimer;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadUserStateAsync();
+        StartClock();
         AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
     }
 
@@ -117,6 +133,7 @@
         if (!IsAuthenticated)
         {
             DisplayName = "Usuario";
+            UserInitials = "U";
             PrimaryRole = null;
             return;
         }
@@ -125,6 +142,7 @@
             ?? user.FindFirst(ClaimTypes.Name)?.Value
             ?? user.FindFirst(ClaimTypes.Email)?.Value
             ?? "Usuario";
+        UserInitials = GetInitials(DisplayName);
 
         PrimaryRole = user.Claims
             .Where(x => x.Type == ClaimTypes.Role)
@@ -144,6 +162,45 @@
         NavManager.NavigateTo("/login", forceLoad: false);
     }
 
+    private void StartClock()
+    {
+        UpdateClock();
+        _clockTimer?.Dispose();
+        _clockTimer = new Timer(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                UpdateClock();
+                StateHasChanged();
+            });
+        }, null, 1000, 1000);
+    }
+
+    private void UpdateClock()
+    {
+        var now = DateTime.Now;
+        HeaderCurrentTime = now.ToString("HH:mm:ss");
+        HeaderCurrentDate = now.ToString("dd MMM yyyy", new CultureInfo("es-ES"));
+    }
+
+    private static string GetInitials(string displayName)
+    {
+        if (string.IsNullOrWhiteSpace(displayName))
+        {
+            return "U";
+        }
+
+        var parts = displayName
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        return parts.Length switch
+        {
+            >= 2 => $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}",
+            1 => char.ToUpperInvariant(parts[0][0]).ToString(),
+            _ => "U"
+        };
+    }
+
     private static string GetRoleDisplayName(string role)
         => role switch
         {
@@ -158,6 +215,7 @@
 
     public void Dispose()
     {
+        _clockTimer?.Dispose();
         AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
     }
 }

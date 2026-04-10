@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using tesisproject.backend.Identity;
 using tesisproject.backend.Services.Interfaces;
+using tesisproject.shared.DTOs.Imports;
 using tesisproject.shared.DTOs.Workflow;
 
 namespace tesisproject.backend.Controllers
@@ -13,10 +14,12 @@ namespace tesisproject.backend.Controllers
     public class WorkflowController : ControllerBase
     {
         private readonly IWorkflowService _service;
+        private readonly IBulkImportService _bulkImportService;
 
-        public WorkflowController(IWorkflowService service)
+        public WorkflowController(IWorkflowService service, IBulkImportService bulkImportService)
         {
             _service = service;
+            _bulkImportService = bulkImportService;
         }
 
         [HttpGet("{batchId:int}")]
@@ -30,6 +33,38 @@ namespace tesisproject.backend.Controllers
             catch (Exception ex)
             {
                 return Problem(title: "No pude cargar el workflow del lote.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
+        [HttpGet("{batchId:int}/preview")]
+        public async Task<ActionResult<BulkImportBatchDetailDto>> GetBatchPreview(int batchId, [FromQuery] int previewRows = 50, CancellationToken ct = default)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                var roleNames = GetCurrentRoleNames();
+
+                var canSeeAsAuthor = roleNames.Any(x => string.Equals(x, AppRoles.Author, StringComparison.OrdinalIgnoreCase) || string.Equals(x, AppRoles.Admin, StringComparison.OrdinalIgnoreCase))
+                    && (await _service.GetAuthorInboxAsync(userId, 200, ct)).Any(x => x.ImportBatchId == batchId);
+
+                var canSeeAsReviewer = roleNames.Any(x =>
+                        string.Equals(x, AppRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(x, AppRoles.WorkflowReviewerUodide, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(x, AppRoles.WorkflowReviewerAreaTecnica, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(x, AppRoles.WorkflowProcessorAreaTecnica, StringComparison.OrdinalIgnoreCase))
+                    && (await _service.GetReviewInboxAsync(userId, roleNames, 200, ct)).Any(x => x.ImportBatchId == batchId);
+
+                if (!canSeeAsAuthor && !canSeeAsReviewer)
+                {
+                    return Forbid();
+                }
+
+                var detail = await _bulkImportService.GetBatchAsync(batchId, previewRows, ct);
+                return detail is null ? NotFound() : Ok(detail);
+            }
+            catch (Exception ex)
+            {
+                return Problem(title: "No pude abrir la previsualización del lote.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 

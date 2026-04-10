@@ -1,0 +1,9 @@
+@page "/management/uodide-review-staging"
+
+<tesisproject.frontend.Features.Management.Components.ReviewStagingHost BatchId="@BatchId"
+                                                                       ContextKey="uodide" />
+
+@code {
+    [SupplyParameterFromQuery(Name = "batchId")]
+    public int? BatchId { get; set; }
+}

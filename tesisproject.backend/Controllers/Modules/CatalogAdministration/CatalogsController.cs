@@ -1,10 +1,10 @@
 ﻿using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using tesisproject.backend.Data;
@@ -142,49 +142,45 @@ namespace tesisproject.backend.Controllers
         [HttpGet("indexing-sources")]
         public async Task<ActionResult<List<CatalogItemDto>>> GetIndexingSources(CancellationToken ct)
         {
-            try
+            if (!await TableExistsAsync("IndexingSources", ct))
             {
-                var list = await _db.IndexingSources
-                    .Where(x => x.IsActive)
-                    .OrderBy(x => x.Name)
-                    .Select(x => new CatalogItemDto
-                    {
-                        Id = x.IndexingSourceId,
-                        Name = x.Name
-                    })
-                    .ToListAsync(ct);
-
-                return Ok(list);
-            }
-            catch (SqlException ex) when (ex.Number == 208 && ex.Message.Contains("IndexingSources", System.StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogWarning(ex, "La tabla IndexingSources no existe en la base actual. Se devolverá un catálogo vacío.");
+                _logger.LogWarning("La tabla IndexingSources no existe en la base actual. Se devolverá un catálogo vacío.");
                 return Ok(new List<CatalogItemDto>());
             }
+
+            var list = await _db.IndexingSources
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.Name)
+                .Select(x => new CatalogItemDto
+                {
+                    Id = x.IndexingSourceId,
+                    Name = x.Name
+                })
+                .ToListAsync(ct);
+
+            return Ok(list);
         }
 
         // ========== Proyectos ==========
         [HttpGet("projects")]
         public async Task<ActionResult<List<CatalogItemDto>>> GetProjects(CancellationToken ct)
         {
-            try
+            if (!await TableExistsAsync("Projects", ct))
             {
-                var list = await _db.Projects
-                    .OrderBy(x => x.Name)
-                    .Select(x => new CatalogItemDto
-                    {
-                        Id = x.Id,
-                        Name = x.Name
-                    })
-                    .ToListAsync(ct);
-
-                return Ok(list);
-            }
-            catch (SqlException ex) when (ex.Number == 208 && ex.Message.Contains("Projects", System.StringComparison.OrdinalIgnoreCase))
-            {
-                _logger.LogWarning(ex, "La tabla Projects no existe en la base actual. Se devolverá un catálogo vacío.");
+                _logger.LogWarning("La tabla Projects no existe en la base actual. Se devolverá un catálogo vacío.");
                 return Ok(new List<CatalogItemDto>());
             }
+
+            var list = await _db.Projects
+                .OrderBy(x => x.Name)
+                .Select(x => new CatalogItemDto
+                {
+                    Id = x.Id,
+                    Name = x.Name
+                })
+                .ToListAsync(ct);
+
+            return Ok(list);
         }
         // ========== Revistas / Venues ==========
         [HttpGet("venues")]
@@ -441,6 +437,26 @@ namespace tesisproject.backend.Controllers
 
         private static string? NormalizeNullable(string? value)
             => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        private async Task<bool> TableExistsAsync(string tableName, CancellationToken ct)
+        {
+            await using var connection = _db.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await connection.OpenAsync(ct);
+            }
+
+            await using var command = connection.CreateCommand();
+            command.CommandText = "SELECT 1 WHERE OBJECT_ID(@tableName, 'U') IS NOT NULL";
+
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = "@tableName";
+            parameter.Value = $"[dbo].[{tableName}]";
+            command.Parameters.Add(parameter);
+
+            var result = await command.ExecuteScalarAsync(ct);
+            return result is not null && result != DBNull.Value;
+        }
 
     }
 }

@@ -6,6 +6,7 @@
 @using Blazored.LocalStorage
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components
+@using Microsoft.JSInterop
 @using tesisproject.frontend.Features.Management.Components
 @using tesisproject.frontend.Models.Configuration
 @using tesisproject.frontend.SharedUI
@@ -18,23 +19,30 @@
 @inject IFormConfigurationClient FormConfigurationClient
 @inject IApiClient ApiClient
 @inject ILocalStorageService LocalStorage
+@inject IJSRuntime JS
 @inject NavigationManager NavManager
 
 <PageTitle>Registro dinámico</PageTitle>
 
 <div class="app-page-shell app-shell-warm register-article-page">
-    <div class="app-module-hero mb-4 rounded-[1.6rem] p-4 text-white shadow-lg">
-        <div class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-            <div>
-                <h1 class="text-2xl font-black md:text-3xl">Registro dinámico de artículos</h1>
-            </div>
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
-                <button class="rounded-xl border border-white/40 bg-white/10 px-4 py-2 text-sm font-semibold" @onclick="GoBack">Volver</button>
-                <button class="rounded-xl border border-white/40 bg-white/10 px-4 py-2 text-sm font-semibold" @onclick="ReloadFormsFromConfigurationAsync">Recargar formulario</button>
-                <button class="rounded-xl bg-[#f4b860] px-4 py-2 text-sm font-semibold text-[#12343b] sm:col-span-2 xl:col-auto" @onclick="AddParticipant">Agregar participante</button>
-            </div>
+    <section class="mb-5 rounded-[1.8rem] border border-[var(--app-border-subtle)] bg-white p-3 shadow-sm">
+        <div class="register-mode-tabs register-generic-tabs" role="tablist" aria-label="Modalidades de registro">
+            <button type="button"
+                    role="tab"
+                    aria-selected="@(CurrentMode == RegisterArticleMode.Single)"
+                    class="register-mode-tab register-generic-tab @(CurrentMode == RegisterArticleMode.Single ? "register-mode-tab--active" : null)"
+                    @onclick="() => SetMode(RegisterArticleMode.Single)">
+                Registro individual
+            </button>
+            <button type="button"
+                    role="tab"
+                    aria-selected="@(CurrentMode == RegisterArticleMode.Mass)"
+                    class="register-mode-tab register-generic-tab @(CurrentMode == RegisterArticleMode.Mass ? "register-mode-tab--active" : null)"
+                    @onclick="() => SetMode(RegisterArticleMode.Mass)">
+                Registro en masa
+            </button>
         </div>
-    </div>
+    </section>
 
     <AppStatusModal Visible="@HasStatusMessage"
                     Variant="@CurrentStatusVariant"
@@ -59,37 +67,90 @@
     }
     else
     {
-        <RegisterArticleOverviewPanel ArticleSectionsCount="@ArticleSections.Count"
-                                      FormName="@(ArticleForm?.FormName ?? "Sin formulario")"
-                                      VisibleFieldCount="@GetVisibleFieldCount()"
-                                      CompletedFieldCount="@GetCompletedVisibleFieldCount()"
-                                      MissingRequiredCount="@GetMissingRequiredTotalCount()"
-                                      SectionSearchTerm="@SectionSearchTerm"
-                                      SectionSearchTermChanged="UpdateSectionSearchTermAsync"
-                                      OnClearSearch="ClearSectionSearchAsync"
-                                      OnExpandAll="ExpandAllArticleSectionsAsync"
-                                      OnCollapseAll="CollapseAllArticleSectionsAsync"
-                                      VisibleSectionsCount="@GetFilteredArticleSections().Count()"
-                                      ArticleOnlyVisibleFieldCount="@GetVisibleFieldCount(ArticleSections)"
-                                      ParticipantsCount="@Participants.Count"
-                                      OnGoToConfiguration="GoToConfiguration"
-                                      OnGoToBulkImport="GoToBulkImport"
-                                      OnGoToArticlesList="GoToArticlesList" />
+        @if (CurrentMode == RegisterArticleMode.Single)
+        {
+            <section class="mb-4 rounded-[2rem] border border-[var(--app-border-subtle)] bg-white p-4 shadow-sm">
+                <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1.25fr_0.75fr]">
+                    <div class="space-y-4">
+                        <div>
+                            <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--app-text-soft)]">Formulario institucional</div>
+                            <h2 class="text-lg font-black text-[var(--app-heading)]">Registro individual de artículos</h2>
+                            <p class="mt-1 text-sm text-[var(--app-text-muted)]">Completa un artículo a la vez y luego envíalo a revisión. El formulario responde únicamente a la configuración activa del sistema.</p>
+                        </div>
+                        <div class="register-top-metrics">
+                            <div class="register-top-metric register-top-metric--primary">
+                                <div class="register-top-metric__eyebrow">Estructura activa</div>
+                                <div class="register-top-metric__value">@ArticleSections.Count</div>
+                                <div class="register-top-metric__label">secciones disponibles</div>
+                            </div>
+                            <div class="register-top-metric">
+                                <div class="register-top-metric__eyebrow">Campos visibles</div>
+                                <div class="register-top-metric__value">@GetVisibleFieldCount()</div>
+                                <div class="register-top-metric__label">incluye participantes</div>
+                            </div>
+                            <div class="register-top-metric register-top-metric--accent">
+                                <div class="register-top-metric__eyebrow">Completados</div>
+                                <div class="register-top-metric__value">@GetCompletedVisibleFieldCount()</div>
+                                <div class="register-top-metric__label">con valor registrado</div>
+                            </div>
+                            <div class="register-top-metric register-top-metric--warm">
+                                <div class="register-top-metric__eyebrow">Pendientes</div>
+                                <div class="register-top-metric__value">@GetMissingRequiredTotalCount()</div>
+                                <div class="register-top-metric__label">obligatorios por completar</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="register-toolbar-panel">
+                        <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--app-text-soft)]">Explorador del formulario</div>
+                        <div class="mt-3 flex flex-col gap-3">
+                            <input class="w-full rounded-xl border border-[var(--app-border-subtle)] bg-white px-3 py-2.5 text-sm shadow-sm"
+                                   placeholder="Buscar sección o campo"
+                                   value="@SectionSearchTerm"
+                                   @oninput="OnSearchInputChanged" />
+                            <div class="flex flex-wrap gap-2">
+                                <button class="rounded-xl border border-[var(--app-border-subtle)] bg-white px-4 py-2 text-sm font-semibold text-[var(--app-heading)]" @onclick="ExpandAllArticleSectionsAsync">Expandir</button>
+                                <button class="rounded-xl border border-[var(--app-border-subtle)] bg-white px-4 py-2 text-sm font-semibold text-[var(--app-heading)]" @onclick="CollapseAllArticleSectionsAsync">Contraer</button>
+                                @if (!string.IsNullOrWhiteSpace(SectionSearchTerm))
+                                {
+                                    <button class="rounded-xl border border-[var(--app-border-subtle)] bg-[var(--app-surface-soft)] px-4 py-2 text-sm font-semibold text-[var(--app-heading)]" @onclick="ClearSectionSearchAsync">Limpiar</button>
+                                }
+                            </div>
+                            <div class="flex flex-wrap gap-2 text-xs">
+                                <span class="app-inline-chip">@GetVisibleFieldCount(ArticleSections) campos de artículo</span>
+                                <span class="app-inline-chip app-inline-chip--warm">@Participants.Count participante(s)</span>
+                                <span class="app-inline-chip">@(ArticleForm?.FormName ?? "Sin formulario")</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-        <div class="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(20rem,0.95fr)]">
-            <div class="space-y-4 xl:max-h-[calc(100vh-11rem)] xl:overflow-y-auto xl:pr-2">
-                @if (!GetFilteredArticleSections().Any())
+            <nav class="register-section-tabs" aria-label="Navegación rápida del formulario">
+                @foreach (var item in IndividualSectionTabs)
                 {
-                    <AppEmptyState Class="rounded-[2rem] px-6 py-10 text-center shadow-sm" Title="No encontramos secciones o campos con ese criterio" Message="Prueba con otra palabra o limpia la búsqueda para volver a ver todo el formulario." />
+                    <button type="button"
+                            class="register-section-tab @(item.IsWarmAccent ? "register-section-tab--warm" : null)"
+                            @onclick="() => ScrollToSectionAsync(item.Target)">
+                        @item.Label
+                    </button>
                 }
-                else
-                {
-                    @foreach (var sectionState in GetFilteredArticleSections())
+            </nav>
+
+            <div class="register-single-layout">
+                <div class="register-form-shell space-y-4">
+                    @if (!GetFilteredArticleSections().Any())
                     {
-                        <section id="@GetSectionAnchor(sectionState.GroupName)" class="scroll-mt-24 rounded-[1.6rem] border border-[#d9e5e8] bg-white shadow-sm shadow-slate-200/40">
-                            <div class="border-b bg-gradient-to-r from-[#f4f8f9] to-[#fff7ef] px-4 py-3">
+                        <AppEmptyState Class="rounded-[2rem] px-6 py-10 text-center shadow-sm" Title="No encontramos secciones o campos con ese criterio" Message="Prueba con otra palabra o limpia la búsqueda para volver a ver todo el formulario." />
+                    }
+                    else
+                    {
+                        @foreach (var sectionState in GetFilteredArticleSections())
+                        {
+                        <section id="@GetSectionAnchor(sectionState.GroupName)" class="register-form-section scroll-mt-24 rounded-[1.6rem] border border-[#d9e5e8] bg-white shadow-sm shadow-slate-200/40">
+                            <div class="register-form-section__header border-b bg-gradient-to-r from-[#f4f8f9] to-[#fff7ef] px-4 py-3">
                                 <button type="button" class="flex w-full items-center justify-between gap-3 text-left" @onclick="() => ToggleArticleSectionAsync(sectionState.GroupName)">
                                     <div>
+                                        <div class="register-form-section__eyebrow">Sección del artículo</div>
                                         <h2 class="text-[15px] font-bold text-[#12343b]">@sectionState.GroupName</h2>
                                         <p class="mt-1 text-xs text-slate-500">@GetVisibleFields(sectionState).Count() campos visibles</p>
                                     </div>
@@ -102,7 +163,7 @@
                             </div>
                             @if (IsArticleSectionExpanded(sectionState.GroupName))
                             {
-                                <div class="grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-2">
+                                <div class="grid grid-cols-1 gap-3 px-4 py-4 md:grid-cols-2 xl:grid-cols-3">
                                     @foreach (var field in GetVisibleFields(sectionState))
                                     {
                                         <div class="@GetFieldCardClass(field)">
@@ -112,14 +173,15 @@
                                 </div>
                             }
                         </section>
+                        }
                     }
-                }
 
-                <section id="participants-panel" class="rounded-[1.6rem] border border-[#ead8bd] bg-white shadow-sm shadow-slate-200/40">
-                    <header class="border-b bg-gradient-to-r from-[#fff8ed] to-[#fff2df] px-4 py-3">
+                    <section id="participants-panel" class="register-participants-section rounded-[1.6rem] border border-[#ead8bd] bg-white shadow-sm shadow-slate-200/40">
+                    <header class="register-participants-section__header border-b bg-gradient-to-r from-[#fff8ed] to-[#fff2df] px-4 py-3">
                         <div class="flex items-center justify-between gap-3">
                             <button type="button" class="flex items-center gap-3 text-left" @onclick="ToggleParticipantsPanelAsync">
                                 <div>
+                                    <div class="register-form-section__eyebrow register-form-section__eyebrow--warm">Autores y coautores</div>
                                     <h2 class="text-[15px] font-bold text-[#7a4b17]">Participantes</h2>
                                 </div>
                                 <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#8b5a16]">@(IsParticipantsPanelExpanded ? "Ocultar" : "Mostrar")</span>
@@ -132,11 +194,12 @@
                     <div class="space-y-3 px-4 py-4">
                         @foreach (var participant in Participants)
                         {
-                            <article class="rounded-[1.4rem] border border-[#ead8bd] bg-[#fffdf8] p-3.5">
+                            <article class="register-participant-card rounded-[1.4rem] border border-[#ead8bd] bg-[#fffdf8] p-3.5">
                                 <details open="@(participant.Index == 1)">
                                     <summary class="cursor-pointer list-none">
                                         <div class="flex items-center justify-between gap-3">
                                             <div>
+                                                <div class="register-participant-card__eyebrow">Ficha de participante</div>
                                                 <h3 class="font-bold text-[#8b5a16]">Participante @participant.Index</h3>
                                                 <p class="mt-1 text-xs text-slate-500">@GetParticipantDisplayName(participant)</p>
                                             </div>
@@ -160,7 +223,7 @@
                                                     <span>@sectionState.GroupName</span>
                                                     <span class="ml-2 rounded-full bg-[#eef5f6] px-2 py-1 text-[11px] font-semibold text-[#2f4858]">@GetCompletionLabel(sectionState.Fields)</span>
                                                 </summary>
-                                                <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                                                <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                                                     @foreach (var field in GetVisibleFields(sectionState))
                                                     {
                                                         <div class="@GetFieldCardClass(field)">
@@ -176,28 +239,67 @@
                         }
                     </div>
                     }
-                </section>
+                    </section>
+                </div>
             </div>
 
-            <RegisterArticleSidebarPanel IsSaving="IsSaving"
-                                         OnCancel="GoBack"
-                                         OnSave="SaveAsync"
-                                         OnSubmitForReview="SubmitForReviewAsync"
-                                         OnReload="ReloadFormsFromConfigurationAsync"
-                                         OnBack="GoBack"
-                                         VisibleFieldCount="@GetVisibleFieldCount()"
-                                         CompletedFieldCount="@GetCompletedVisibleFieldCount()"
-                                         MissingRequiredCount="@GetMissingRequiredTotalCount()"
-                                         ParticipantsCount="@Participants.Count"
-                                         FormName="@(ArticleForm?.FormName ?? "Sin formulario")"
-                                         ArticleSectionsCount="@ArticleSections.Count"
-                                         PreviewTitle="@GetPreviewTitle()"
-                                         ParticipantNames="@GetParticipantNames().ToList()"
-                                         ArticleCompletionLabel="@GetCompletionLabel(ArticleSections.SelectMany(x => x.Fields))"
-                                         ParticipantsCompletionSummary="@GetParticipantsCompletionSummary()"
-                                         QuickAccessItems="@QuickAccessItems"
-                                         OnQuickAction="HandleQuickActionAsync" />
-        </div>
+            <button type="button" class="register-summary-trigger" title="Resumen del registro" aria-label="Abrir resumen del registro" @onclick="OpenSummaryDrawer">
+                <span class="register-summary-trigger__icon" aria-hidden="true">
+                    <span class="register-summary-trigger__sheet">
+                        <span class="register-summary-trigger__line"></span>
+                        <span class="register-summary-trigger__line"></span>
+                        <span class="register-summary-trigger__line"></span>
+                    </span>
+                </span>
+            </button>
+
+            <div class="register-summary-overlay @(IsSummaryDrawerOpen ? "register-summary-overlay--open" : null)" @onclick="CloseSummaryDrawer"></div>
+            <div class="register-summary-drawer @(IsSummaryDrawerOpen ? "register-summary-drawer--open" : null)" aria-hidden="@(!IsSummaryDrawerOpen)">
+                <div class="register-summary-drawer__header">
+                    <div>
+                        <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">Resumen del registro</div>
+                        <h3 class="mt-1 text-lg font-black text-white">Control del artículo actual</h3>
+                    </div>
+                    <button type="button" class="register-summary-drawer__close" @onclick="CloseSummaryDrawer">Cerrar</button>
+                </div>
+                <div class="register-summary-drawer__body">
+                    <RegisterArticleSidebarPanel IsSaving="IsSaving"
+                                                 OnCancel="GoBack"
+                                                 OnSave="SaveAsync"
+                                                 OnSubmitForReview="SubmitForReviewAsync"
+                                                 OnReset="ClearFormAsync"
+                                                 OnReload="ReloadFormsFromConfigurationAsync"
+                                                 OnBack="GoBack"
+                                                 ShowSaveButton="false"
+                                                 ShowReloadButton="false"
+                                                 ShowBackButton="false"
+                                                 ShowResetButton="true"
+                                                 SubmitLabel="Enviar a revisión"
+                                                 CancelLabel="Cancelar"
+                                                 ResetLabel="Limpiar formulario"
+                                                 PanelTitle="Resumen del registro"
+                                                 VisibleFieldCount="@GetVisibleFieldCount()"
+                                                 CompletedFieldCount="@GetCompletedVisibleFieldCount()"
+                                                 MissingRequiredCount="@GetMissingRequiredTotalCount()"
+                                                 ParticipantsCount="@Participants.Count"
+                                                 FormName="@(ArticleForm?.FormName ?? "Sin formulario")"
+                                                 ArticleSectionsCount="@ArticleSections.Count"
+                                                 PreviewTitle="@GetPreviewTitle()"
+                                                 ParticipantNames="@GetParticipantNames().ToList()"
+                                                 ArticleCompletionLabel="@GetCompletionLabel(ArticleSections.SelectMany(x => x.Fields))"
+                                                 ParticipantsCompletionSummary="@GetParticipantsCompletionSummary()"
+                                                 QuickAccessItems="@QuickAccessItems"
+                                                 OnQuickAction="HandleQuickActionAsync" />
+                </div>
+            </div>
+        }
+        else
+        {
+            <AuthorRegistrationMatrixPanel AllowedArticleFieldIds="@GetAllowedArticleMatrixFieldIds()"
+                                           AllowedParticipantFieldIds="@GetAllowedParticipantMatrixFieldIds()"
+                                           MatrixName="Registro masivo de artículos del autor"
+                                           OnSubmitted="HandleMassRegistrationSubmittedAsync" />
+        }
     }
 </div>
 
@@ -214,6 +316,8 @@
     private bool IsParticipantsPanelExpanded { get; set; } = true;
     private bool IsLoading { get; set; } = true;
     private bool IsSaving { get; set; }
+    private bool IsSummaryDrawerOpen { get; set; }
+    private RegisterArticleMode CurrentMode { get; set; } = RegisterArticleMode.Single;
     private string ErrorMessage { get; set; } = string.Empty;
     private string SuccessMessage { get; set; } = string.Empty;
     private string WarningMessage { get; set; } = string.Empty;
@@ -240,8 +344,8 @@
                 },
                 new RegisterArticleQuickAccessItem
                 {
-                    Label = "Carga masiva",
-                    Target = "bulk-import",
+                    Label = "Registro en masa",
+                    Target = "mass-registration",
                     IsButton = true,
                     IsWarmAccent = true
                 },
@@ -250,6 +354,23 @@
                     Label = "Listado",
                     Target = "articles-list",
                     IsButton = true
+                }
+            ])
+            .ToList();
+
+    private IReadOnlyList<RegisterArticleQuickAccessItem> IndividualSectionTabs =>
+        GetFilteredArticleSections()
+            .Select(sectionState => new RegisterArticleQuickAccessItem
+            {
+                Label = sectionState.GroupName,
+                Target = GetSectionAnchor(sectionState.GroupName)
+            })
+            .Concat([
+                new RegisterArticleQuickAccessItem
+                {
+                    Label = "Participantes",
+                    Target = "participants-panel",
+                    IsWarmAccent = true
                 }
             ])
             .ToList();
@@ -266,6 +387,19 @@
         await PersistUiStateAsync();
     }
 
+    private async Task ScrollToSectionAsync(string target)
+    {
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            return;
+        }
+
+        await JS.InvokeVoidAsync("registerArticleScrollToSection", target);
+    }
+
+    private Task OnSearchInputChanged(ChangeEventArgs args)
+        => UpdateSectionSearchTermAsync(Convert.ToString(args.Value) ?? string.Empty);
+
     private Task HandleQuickActionAsync(string target)
     {
         switch (target)
@@ -273,7 +407,7 @@
             case "configuration":
                 GoToConfiguration();
                 break;
-            case "bulk-import":
+            case "mass-registration":
                 GoToBulkImport();
                 break;
             case "articles-list":
@@ -283,6 +417,27 @@
 
         return Task.CompletedTask;
     }
+
+    private void SetMode(RegisterArticleMode mode)
+    {
+        CurrentMode = mode;
+        if (mode == RegisterArticleMode.Mass)
+        {
+            IsSummaryDrawerOpen = false;
+        }
+    }
+
+    private async Task HandleMassRegistrationSubmittedAsync(string message)
+    {
+        ErrorMessage = string.Empty;
+        WarningMessage = string.Empty;
+        SuccessMessage = message;
+        CurrentMode = RegisterArticleMode.Mass;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OpenSummaryDrawer() => IsSummaryDrawerOpen = true;
+    private void CloseSummaryDrawer() => IsSummaryDrawerOpen = false;
 
     private async Task LoadFormsAsync()
     {
@@ -494,6 +649,14 @@
         {
             AddParticipant();
         }
+    }
+
+    private async Task ClearFormAsync()
+    {
+        await ResetFormAsync();
+        ErrorMessage = string.Empty;
+        WarningMessage = string.Empty;
+        SuccessMessage = "El formulario quedó listo para iniciar un nuevo registro.";
     }
 
     private async Task ApplyExternalDraftAsync()
@@ -1119,6 +1282,28 @@
         return $"{completed}/{Participants.Count} completos";
     }
 
+    private IReadOnlyList<int> GetAllowedArticleMatrixFieldIds()
+        => GetAllowedMatrixFieldIds(ArticleForm);
+
+    private IReadOnlyList<int> GetAllowedParticipantMatrixFieldIds()
+        => GetAllowedMatrixFieldIds(ParticipantForm);
+
+    private static IReadOnlyList<int> GetAllowedMatrixFieldIds(ResolvedFormDto? form)
+    {
+        if (form is null)
+        {
+            return [];
+        }
+
+        return form.Sections
+            .OrderBy(section => section.DisplayOrder)
+            .SelectMany(section => section.Fields.OrderBy(field => field.DisplayOrder))
+            .Where(field => field.IsVisible)
+            .Select(field => field.FieldId)
+            .Distinct()
+            .ToList();
+    }
+
     private async Task LoadUiStateAsync()
     {
         var state = await LocalStorage.GetItemAsync<RegisterArticleUiState>("ui.register-article.state");
@@ -1197,13 +1382,19 @@
 
     private void GoToConfiguration() => NavManager.NavigateTo("/configuration");
 
-    private void GoToBulkImport() => NavManager.NavigateTo("/management/exportinformation");
+    private void GoToBulkImport() => CurrentMode = RegisterArticleMode.Mass;
 
     private sealed class RegisterArticleUiState
     {
         public string? SectionSearchTerm { get; set; }
         public List<string>? ExpandedArticleSections { get; set; }
         public bool IsParticipantsPanelExpanded { get; set; } = true;
+    }
+
+    private enum RegisterArticleMode
+    {
+        Single,
+        Mass
     }
 }
 

@@ -1,0 +1,9 @@
+@page "/management/area-tecnica-review-staging"
+
+<tesisproject.frontend.Features.Management.Components.ReviewStagingHost BatchId="@BatchId"
+                                                                       ContextKey="area-tecnica" />
+
+@code {
+    [SupplyParameterFromQuery(Name = "batchId")]
+    public int? BatchId { get; set; }
+}

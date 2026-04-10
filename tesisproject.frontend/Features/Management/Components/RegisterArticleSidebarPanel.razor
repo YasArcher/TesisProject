@@ -5,26 +5,53 @@
         <header class="border-b bg-gradient-to-r from-[#12343b] to-[#2f4858] px-4 py-4 text-white">
             <div class="flex items-center justify-between gap-3">
                 <div>
-                    <h2 class="text-base font-bold">Registro del artículo</h2>
+                    <h2 class="text-base font-bold">@PanelTitle</h2>
                 </div>
                 <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold">@(IsSaving ? "Guardando" : "Edición activa")</span>
             </div>
         </header>
         <div class="space-y-3 px-4 py-4 text-sm">
-            <div class="grid grid-cols-2 gap-2">
-                <button class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" @onclick="OnCancel">Cancelar</button>
-                <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-3 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-60"
-                        disabled="@IsSaving"
-                        @onclick="OnSave">
-                    @(IsSaving ? "Guardando..." : "Registrar")
-                </button>
-                <button class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 disabled:opacity-60"
-                        disabled="@IsSaving"
-                        @onclick="OnSubmitForReview">
-                    @(IsSaving ? "Enviando..." : "Enviar a revisión")
-                </button>
-                <button class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700" @onclick="OnReload">Recargar</button>
-                <button class="rounded-xl border border-[#ead8bd] bg-[#fff7eb] px-3 py-2 text-sm font-semibold text-[#8b5a16]" @onclick="OnBack">Volver</button>
+            <div class="grid grid-cols-1 gap-2">
+                @if (ShowSubmitButton)
+                {
+                    <button class="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700 disabled:opacity-60"
+                            disabled="@IsSaving"
+                            @onclick="OnSubmitForReview">
+                        @(IsSaving ? "Enviando..." : SubmitLabel)
+                    </button>
+                }
+                @if (ShowSaveButton)
+                {
+                    <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-3 py-2 text-sm font-semibold text-white shadow-md disabled:opacity-60"
+                            disabled="@IsSaving"
+                            @onclick="OnSave">
+                        @(IsSaving ? "Guardando..." : SaveLabel)
+                    </button>
+                }
+                @if (ShowResetButton)
+                {
+                    <button class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700" @onclick="OnReset">
+                        @ResetLabel
+                    </button>
+                }
+                @if (ShowReloadButton)
+                {
+                    <button class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700" @onclick="OnReload">
+                        @ReloadLabel
+                    </button>
+                }
+                @if (ShowCancelButton)
+                {
+                    <button class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700" @onclick="OnCancel">
+                        @CancelLabel
+                    </button>
+                }
+                @if (ShowBackButton)
+                {
+                    <button class="rounded-xl border border-[#ead8bd] bg-[#fff7eb] px-3 py-2 text-sm font-semibold text-[#8b5a16]" @onclick="OnBack">
+                        @BackLabel
+                    </button>
+                }
             </div>
 
             <div class="grid grid-cols-2 gap-3">
@@ -111,8 +138,22 @@
     [Parameter] public EventCallback OnCancel { get; set; }
     [Parameter] public EventCallback OnSave { get; set; }
     [Parameter] public EventCallback OnSubmitForReview { get; set; }
+    [Parameter] public EventCallback OnReset { get; set; }
     [Parameter] public EventCallback OnReload { get; set; }
     [Parameter] public EventCallback OnBack { get; set; }
+    [Parameter] public bool ShowCancelButton { get; set; } = true;
+    [Parameter] public bool ShowSaveButton { get; set; } = true;
+    [Parameter] public bool ShowSubmitButton { get; set; } = true;
+    [Parameter] public bool ShowResetButton { get; set; }
+    [Parameter] public bool ShowReloadButton { get; set; } = true;
+    [Parameter] public bool ShowBackButton { get; set; } = true;
+    [Parameter] public string PanelTitle { get; set; } = "Registro del artículo";
+    [Parameter] public string CancelLabel { get; set; } = "Cancelar";
+    [Parameter] public string SaveLabel { get; set; } = "Registrar";
+    [Parameter] public string SubmitLabel { get; set; } = "Enviar a revisión";
+    [Parameter] public string ResetLabel { get; set; } = "Limpiar formulario";
+    [Parameter] public string ReloadLabel { get; set; } = "Recargar";
+    [Parameter] public string BackLabel { get; set; } = "Volver";
     [Parameter] public int VisibleFieldCount { get; set; }
     [Parameter] public int CompletedFieldCount { get; set; }
     [Parameter] public int MissingRequiredCount { get; set; }

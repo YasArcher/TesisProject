@@ -1,27 +1,27 @@
 .app-empty-state {
     border-radius: 1.2rem;
     padding: 1rem 1.1rem;
-    background: #fcfbf8;
+    background: linear-gradient(180deg, rgba(255,248,212,.42), rgba(255,255,255,1));
 }
 
 .app-empty-state--dashed {
-    border: 1px dashed rgba(110, 110, 110, 0.26);
+    border: 1px dashed rgba(67, 86, 99, 0.26);
 }
 
 .app-empty-state--solid {
-    border: 1px solid rgba(110, 110, 110, 0.16);
+    border: 1px solid rgba(67, 86, 99, 0.16);
     background: #ffffff;
 }
 
 .app-empty-state__title {
     font-size: .95rem;
     font-weight: 700;
-    color: #16324f;
+    color: #313647;
 }
 
 .app-empty-state__message {
     margin-top: .35rem;
     font-size: .88rem;
     line-height: 1.5;
-    color: #6e6e6e;
+    color: #435663;
 }

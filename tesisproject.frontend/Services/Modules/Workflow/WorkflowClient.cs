@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using tesisproject.frontend.Services.Interfaces;
+using tesisproject.shared.DTOs.Imports;
 using tesisproject.shared.DTOs.Workflow;
 
 namespace tesisproject.frontend.Services.Implementations
@@ -47,6 +48,17 @@ namespace tesisproject.frontend.Services.Implementations
             }
 
             return await response.Content.ReadFromJsonAsync<WorkflowBatchDetailDto>(cancellationToken: ct);
+        }
+
+        public async Task<BulkImportBatchDetailDto?> GetBatchPreviewAsync(int batchId, int previewRows = 50, CancellationToken ct = default)
+        {
+            using var response = await _http.GetAsync($"api/workflows/import-batches/{batchId}/preview?previewRows={previewRows}", ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude abrir la previsualización del artículo.", ct));
+            }
+
+            return await response.Content.ReadFromJsonAsync<BulkImportBatchDetailDto>(cancellationToken: ct);
         }
 
         public async Task<WorkflowBatchDetailDto?> ClaimAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)

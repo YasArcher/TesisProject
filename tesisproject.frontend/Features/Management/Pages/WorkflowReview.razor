@@ -1,9 +1,11 @@
 @page "/management/workflow-review"
 @attribute [Authorize(Roles = "Admin,Author,WorkflowReviewerUodide,WorkflowReviewerAreaTecnica,WorkflowProcessorAreaTecnica")]
+@implements IAsyncDisposable
 
 @using Microsoft.AspNetCore.Authorization
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Auth
+@using tesisproject.shared.DTOs.Imports
 @using tesisproject.shared.DTOs.Workflow
 @using System.Security.Claims
 
@@ -14,18 +16,21 @@
 
 <PageTitle>Revisión de envíos</PageTitle>
 
-<div class="app-page-shell app-shell-warm space-y-6">
+<div class="app-page-shell app-shell-warm workflow-review-page space-y-6">
     <div class="app-module-hero rounded-[1.5rem] px-4 py-4 text-white shadow-lg">
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-                <h1 class="text-2xl font-black md:text-3xl">Revisión de envíos</h1>
+                <div class="flex items-center gap-3">
+                    <span class="workflow-hero__icon">◎</span>
+                    <h1 class="text-2xl font-black md:text-3xl">Revisión de envíos</h1>
+                </div>
                 <div class="mt-2 text-sm font-semibold text-white/80">@ExperienceTitle</div>
             </div>
             <div class="flex flex-wrap gap-2">
                 <button class="rounded-xl border border-white/35 bg-white/10 px-4 py-2 text-sm font-semibold" @onclick="LoadAsync">Actualizar bandeja</button>
-                @if (SelectedInboxItem is not null)
+                @if (CanOpenSelectedBatch)
                 {
-                    <button class="rounded-xl border border-white/35 bg-white/10 px-4 py-2 text-sm font-semibold" @onclick="OpenSelectedBatchAsync">Abrir staging</button>
+                    <button class="rounded-xl border border-white/35 bg-white/10 px-4 py-2 text-sm font-semibold" @onclick="OpenIntegratedStagingPanelAsync">Abrir panel de staging</button>
                 }
             </div>
         </div>
@@ -46,13 +51,81 @@
                      OnConfirm="ConfirmPendingActionAsync"
                      OnCancel="CancelPendingActionAsync" />
 
+    @if (IsArticlePreviewModalOpen)
+    {
+        <div class="workflow-modal-backdrop" @onclick="CloseArticlePreviewAsync">
+            <div class="workflow-modal-card" @onclick:stopPropagation="true">
+                <div class="workflow-modal-card__header">
+                    <div>
+                        <div class="workflow-modal-card__eyebrow">Previsualización del registro</div>
+                        <h2 class="workflow-modal-card__title">@GetPreviewModalTitle()</h2>
+                        <div class="workflow-modal-card__caption">@PreviewInboxItem?.BatchCode</div>
+                    </div>
+                    <button type="button" class="workflow-modal-card__close" @onclick="CloseArticlePreviewAsync">✕</button>
+                </div>
+
+                @if (IsArticlePreviewLoading)
+                {
+                    <div class="workflow-modal-card__loading">Cargando información del lote...</div>
+                }
+                else if (PreviewBatch is null || !PreviewBatch.Rows.Any())
+                {
+                    <AppEmptyState Title="Sin previsualización disponible" Message="Este envío no tiene filas disponibles para mostrar en pantalla." />
+                }
+                else
+                {
+                    <div class="workflow-modal-card__body">
+                        <div class="workflow-preview-summary">
+                            <article class="app-detail-card rounded-2xl">
+                                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Estado</div>
+                                <div class="mt-2 text-base font-black text-[#12343b]">@GetFriendlyWorkflowStatus(PreviewInboxItem?.WorkflowStatus)</div>
+                            </article>
+                            <article class="app-detail-card rounded-2xl">
+                                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Filas del lote</div>
+                                <div class="mt-2 text-base font-black text-[#12343b]">@PreviewBatch.Summary.TotalRows</div>
+                            </article>
+                            <article class="app-detail-card rounded-2xl">
+                                <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Último movimiento</div>
+                                <div class="mt-2 text-base font-black text-[#12343b]">@FormatDateTime(PreviewInboxItem?.LastActionAt)</div>
+                            </article>
+                        </div>
+
+                        <div class="workflow-preview-rows">
+                            @foreach (var row in PreviewBatch.Rows.OrderBy(x => x.RowNumber).Take(8))
+                            {
+                                <article class="workflow-preview-row">
+                                    <div class="workflow-preview-row__header">
+                                        <div>
+                                            <div class="workflow-preview-row__title">Fila @row.RowNumber</div>
+                                            <div class="workflow-preview-row__status">@row.RowStatus</div>
+                                        </div>
+                                        <span class="@GetStatusBadgeClass(row.RowStatus)">@GetFriendlyWorkflowStatus(row.RowStatus)</span>
+                                    </div>
+                                    <div class="workflow-preview-grid">
+                                        @foreach (var cell in row.Cells.Where(x => !string.IsNullOrWhiteSpace(x.RawValue)).Take(10))
+                                        {
+                                            <div class="workflow-preview-grid__item">
+                                                <div class="workflow-preview-grid__label">@cell.FieldLabel</div>
+                                                <div class="workflow-preview-grid__value">@cell.RawValue</div>
+                                            </div>
+                                        }
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
     @if (IsLoading)
     {
         <div class="rounded-3xl border bg-white p-6 text-center text-slate-600 shadow-sm">Cargando workflows y bandejas activas...</div>
     }
     else
     {
-        <section class="rounded-[1.4rem] border border-[#d9e5e8] bg-white px-5 py-4 shadow-sm">
+        <section class="app-section-card">
             <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>
                     <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Vista activa</div>
@@ -82,19 +155,67 @@
                 {
                     <section class="rounded-[1.7rem] border border-[#d9e5e8] bg-white p-5 shadow-sm">
                         <div class="mb-4 flex items-center justify-between gap-3">
-                            <div>
+                            <div class="flex items-center gap-3">
+                                <span class="workflow-section__icon workflow-section__icon--author">✎</span>
+                                <div>
                                 <h2 class="text-lg font-black text-[#12343b]">Mis envíos como autor</h2>
+                                </div>
                             </div>
                             <span class="rounded-full bg-[#eef5f6] px-3 py-1 text-xs font-semibold text-[#12343b]">@AuthorInbox.Count envío(s)</span>
+                        </div>
+
+                        <div class="workflow-author-tabs">
+                            <button type="button" class="@GetAuthorTabClass("tracking")" @onclick="ShowAuthorTracking">
+                                <span class="workflow-tab__icon">◔</span>
+                                <span>Seguimiento de envíos</span>
+                            </button>
+                            <button type="button" class="@GetAuthorTabClass("articles")" @onclick="ShowAuthorArticles">
+                                <span class="workflow-tab__icon">▤</span>
+                                <span>Mis artículos registrados</span>
+                            </button>
                         </div>
 
                         @if (!AuthorInbox.Any())
                         {
                             <AppEmptyState Title="No tienes envíos todavía" Message="Cuando uses 'Enviar a revisión', el lote aparecerá aquí con su estado actual y feedback del flujo." />
                         }
+                        else if (IsAuthorArticlesView)
+                        {
+                            <div class="workflow-scroll-panel">
+                                <div class="space-y-3 pr-1">
+                                    @foreach (var item in AuthorInbox.OrderByDescending(x => x.LastActionAt ?? x.SubmittedAt))
+                                    {
+                                        <article class="workflow-author-article-card">
+                                            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                                <div>
+                                                    <div class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">@item.BatchCode</div>
+                                                    <h3 class="mt-1 text-base font-bold text-[#12343b]">@GetAuthorArticleTitle(item)</h3>
+                                                    <p class="mt-1 text-sm text-slate-500">Registro enviado el @FormatDateTime(item.SubmittedAt) · @item.TotalRows artículo(s)</p>
+                                                    <div class="mt-3 flex flex-wrap gap-2">
+                                                        @if (!string.IsNullOrWhiteSpace(item.CurrentStageGroupName))
+                                                        {
+                                                            <span class="workflow-inline-chip">@item.CurrentStageGroupName</span>
+                                                        }
+                                                        <span class="workflow-inline-chip workflow-inline-chip--soft">Último cambio: @FormatDateTime(item.LastActionAt)</span>
+                                                    </div>
+                                                </div>
+                                                <div class="flex flex-wrap gap-2">
+                                                    <span class="@GetStatusBadgeClass(item.WorkflowStatus)">@GetFriendlyWorkflowStatus(item.WorkflowStatus)</span>
+                                                    <button type="button" class="workflow-inline-action" @onclick="() => OpenArticlePreviewAsync(item)">
+                                                        <span class="workflow-inline-action__icon">◫</span>
+                                                        <span>Previsualizar</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    }
+                                </div>
+                            </div>
+                        }
                         else
                         {
-                            <div class="space-y-3">
+                            <div class="workflow-scroll-panel">
+                                <div class="space-y-3 pr-1">
                                 @foreach (var item in AuthorInbox)
                                 {
                                     <button type="button" class="@GetInboxItemClass(item)" @onclick="() => SelectWorkflowAsync(item)">
@@ -102,22 +223,23 @@
                                             <div class="text-left">
                                                 <div class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">@item.BatchCode</div>
                                                 <h3 class="mt-1 text-base font-bold text-[#12343b]">@item.CurrentStageName</h3>
-                                                <p class="mt-1 text-sm text-slate-500">Estado: @item.WorkflowStatus · Lote con @item.TotalRows fila(s)</p>
+                                                <p class="mt-1 text-sm text-slate-500">Estado: @GetFriendlyWorkflowStatus(item.WorkflowStatus) · Lote con @item.TotalRows fila(s)</p>
                                             </div>
                                             <div class="flex flex-wrap gap-2">
-                                                <span class="@GetStatusBadgeClass(item.WorkflowStatus)">@item.WorkflowStatus</span>
+                                                <span class="@GetStatusBadgeClass(item.WorkflowStatus)">@GetFriendlyWorkflowStatus(item.WorkflowStatus)</span>
                                                 @if (!string.IsNullOrWhiteSpace(item.CurrentStageGroupName))
                                                 {
                                                     <span class="rounded-full bg-[#fff3de] px-3 py-1 text-xs font-semibold text-[#8b5a16]">@item.CurrentStageGroupName</span>
                                                 }
-                                                @if (item.CanProcessBatch && string.Equals(item.WorkflowStatus, "Approved", StringComparison.OrdinalIgnoreCase))
-                                                {
-                                                    <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">Listo para procesamiento final</span>
-                                                }
+                                                <button type="button" class="workflow-inline-action" @onclick:stopPropagation="true" @onclick="() => OpenArticlePreviewAsync(item)">
+                                                    <span class="workflow-inline-action__icon">◫</span>
+                                                    <span>Ver artículo</span>
+                                                </button>
                                             </div>
                                         </div>
                                     </button>
                                 }
+                                </div>
                             </div>
                         }
                     </section>
@@ -127,8 +249,11 @@
                 {
                 <section class="rounded-[1.7rem] border border-[#d9e5e8] bg-white p-5 shadow-sm">
                     <div class="mb-4 flex items-center justify-between gap-3">
-                        <div>
+                        <div class="flex items-center gap-3">
+                            <span class="workflow-section__icon workflow-section__icon--uodide">◌</span>
+                            <div>
                             <h2 class="text-lg font-black text-[#12343b]">Validación UODIDE</h2>
+                            </div>
                         </div>
                         <span class="rounded-full bg-[#eef5f6] px-3 py-1 text-xs font-semibold text-[#12343b]">@UodideInbox.Count pendiente(s)</span>
                     </div>
@@ -143,8 +268,24 @@
                     }
                     else
                     {
-                        <div class="space-y-3">
-                            @foreach (var item in UodideInbox)
+                        <div class="workflow-review-toolbar">
+                            <div class="workflow-author-tabs workflow-author-tabs--compact mb-0">
+                                <button type="button" class="@GetReviewFilterClass("all")" @onclick="ShowUodideAll">Todos</button>
+                                <button type="button" class="@GetReviewFilterClass("pending")" @onclick="ShowUodidePending">Pendientes</button>
+                                <button type="button" class="@GetReviewFilterClass("reviewing")" @onclick="ShowUodideReviewing">En revisión</button>
+                            </div>
+                            <input class="workflow-filter-input" placeholder="Buscar por lote o autor" @bind="UodideSearchTerm" @bind:event="oninput" />
+                        </div>
+
+                        @if (!FilteredUodideInbox.Any())
+                        {
+                            <AppEmptyState Title="No hay resultados para este filtro" Message="Ajusta el estado o el texto de búsqueda para encontrar el envío que necesitas revisar." />
+                        }
+                        else
+                        {
+                        <div class="workflow-scroll-panel">
+                            <div class="space-y-3 pr-1">
+                            @foreach (var item in FilteredUodideInbox)
                             {
                                 <button type="button" class="@GetInboxItemClass(item)" @onclick="() => SelectWorkflowAsync(item)">
                                     <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -154,7 +295,7 @@
                                             <p class="mt-1 text-sm text-slate-500">Autor: @item.SubmittedByUserName · Rol: @item.ResponsibleRoleName</p>
                                         </div>
                                         <div class="flex flex-wrap gap-2">
-                                            <span class="@GetStatusBadgeClass(item.WorkflowStatus)">@item.WorkflowStatus</span>
+                                            <span class="@GetStatusBadgeClass(item.WorkflowStatus)">@GetFriendlyWorkflowStatus(item.WorkflowStatus)</span>
                                             @if (!string.IsNullOrWhiteSpace(item.AssignedToUserName))
                                             {
                                                 <span class="rounded-full bg-[#edf7f0] px-3 py-1 text-xs font-semibold text-emerald-700">Tomado por @item.AssignedToUserName</span>
@@ -168,6 +309,8 @@
                                 </button>
                             }
                         </div>
+                        </div>
+                        }
                     }
                 </section>
                 }
@@ -176,8 +319,11 @@
                 {
                 <section class="rounded-[1.7rem] border border-[#d9e5e8] bg-white p-5 shadow-sm">
                     <div class="mb-4 flex items-center justify-between gap-3">
-                        <div>
+                        <div class="flex items-center gap-3">
+                            <span class="workflow-section__icon workflow-section__icon--tech">⌘</span>
+                            <div>
                             <h2 class="text-lg font-black text-[#12343b]">Validación Área Técnica</h2>
+                            </div>
                         </div>
                         <span class="rounded-full bg-[#eef5f6] px-3 py-1 text-xs font-semibold text-[#12343b]">@AreaTecnicaInbox.Count pendiente(s)</span>
                     </div>
@@ -192,31 +338,50 @@
                     }
                     else
                     {
-                        <div class="space-y-3">
-                            @foreach (var item in AreaTecnicaInbox)
-                            {
-                                <button type="button" class="@GetInboxItemClass(item)" @onclick="() => SelectWorkflowAsync(item)">
-                                    <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                                        <div class="text-left">
-                                            <div class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">@item.BatchCode</div>
-                                            <h3 class="mt-1 text-base font-bold text-[#12343b]">@item.CurrentStageName</h3>
-                                            <p class="mt-1 text-sm text-slate-500">Autor: @item.SubmittedByUserName · Rol: @item.ResponsibleRoleName</p>
-                                        </div>
-                                        <div class="flex flex-wrap gap-2">
-                                            <span class="@GetStatusBadgeClass(item.WorkflowStatus)">@item.WorkflowStatus</span>
-                                            @if (!string.IsNullOrWhiteSpace(item.AssignedToUserName))
-                                            {
-                                                <span class="rounded-full bg-[#edf7f0] px-3 py-1 text-xs font-semibold text-emerald-700">Tomado por @item.AssignedToUserName</span>
-                                            }
-                                            @if (item.CanProcessBatch && string.Equals(item.WorkflowStatus, "Approved", StringComparison.OrdinalIgnoreCase))
-                                            {
-                                                <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">Listo para procesamiento final</span>
-                                            }
-                                        </div>
-                                    </div>
-                                </button>
-                            }
+                        <div class="workflow-review-toolbar">
+                            <div class="workflow-author-tabs workflow-author-tabs--compact mb-0">
+                                <button type="button" class="@GetAreaReviewFilterClass("all")" @onclick="ShowAreaAll">Todos</button>
+                                <button type="button" class="@GetAreaReviewFilterClass("pending")" @onclick="ShowAreaPending">Pendientes</button>
+                                <button type="button" class="@GetAreaReviewFilterClass("reviewing")" @onclick="ShowAreaReviewing">En revisión</button>
+                                <button type="button" class="@GetAreaReviewFilterClass("ready")" @onclick="ShowAreaReady">Listos para procesar</button>
+                            </div>
+                            <input class="workflow-filter-input" placeholder="Buscar por lote o autor" @bind="AreaTecnicaSearchTerm" @bind:event="oninput" />
                         </div>
+
+                        @if (!FilteredAreaTecnicaInbox.Any())
+                        {
+                            <AppEmptyState Title="No hay resultados para este filtro" Message="Ajusta el estado o el texto de búsqueda para encontrar el envío técnico que necesitas revisar." />
+                        }
+                        else
+                        {
+                            <div class="workflow-scroll-panel">
+                                <div class="space-y-3 pr-1">
+                                    @foreach (var item in FilteredAreaTecnicaInbox)
+                                    {
+                                        <button type="button" class="@GetInboxItemClass(item)" @onclick="() => SelectWorkflowAsync(item)">
+                                            <div class="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                                                <div class="text-left">
+                                                    <div class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">@item.BatchCode</div>
+                                                    <h3 class="mt-1 text-base font-bold text-[#12343b]">@item.CurrentStageName</h3>
+                                                    <p class="mt-1 text-sm text-slate-500">Autor: @item.SubmittedByUserName · Rol: @item.ResponsibleRoleName</p>
+                                                </div>
+                                                <div class="flex flex-wrap gap-2">
+                                                    <span class="@GetStatusBadgeClass(item.WorkflowStatus)">@GetFriendlyWorkflowStatus(item.WorkflowStatus)</span>
+                                                    @if (!string.IsNullOrWhiteSpace(item.AssignedToUserName))
+                                                    {
+                                                        <span class="rounded-full bg-[#edf7f0] px-3 py-1 text-xs font-semibold text-emerald-700">Tomado por @item.AssignedToUserName</span>
+                                                    }
+                                                    @if (item.CanProcessBatch && string.Equals(item.WorkflowStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+                                                    {
+                                                        <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">Listo para procesamiento final</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
                     }
                 </section>
                 }
@@ -225,13 +390,12 @@
             <aside class="space-y-4 xl:sticky xl:top-4 xl:self-start">
                 <section class="rounded-[1.8rem] border border-[#d9e5e8] bg-white p-5 shadow-sm">
                     <div class="mb-4 flex items-center justify-between gap-3">
-                        <div>
+                        <div class="flex items-center gap-3">
+                            <span class="workflow-section__icon workflow-section__icon--detail">▣</span>
+                            <div>
                             <h2 class="text-lg font-black text-[#12343b]">Detalle del workflow</h2>
+                            </div>
                         </div>
-                        @if (CanOpenSelectedBatch)
-                        {
-                            <button class="rounded-xl border border-[#d9e5e8] bg-[#f7fafb] px-3 py-2 text-xs font-semibold text-[#12343b]" @onclick="OpenSelectedBatchAsync">Abrir staging</button>
-                        }
                     </div>
 
                     @if (SelectedWorkflow is null)
@@ -241,11 +405,33 @@
                     else
                     {
                         <div class="space-y-4">
-                            <div class="rounded-2xl bg-[#f4f8f9] px-4 py-4">
+                            <div class="workflow-detail-tabs">
+                                <button type="button" class="@GetDetailTabClass("summary")" @onclick="ShowDetailSummary">
+                                    <span class="workflow-tab__icon">◎</span>
+                                    <span>Resumen</span>
+                                </button>
+                                <button type="button" class="@GetDetailTabClass("stages")" @onclick="ShowDetailStages">
+                                    <span class="workflow-tab__icon">▥</span>
+                                    <span>Etapas</span>
+                                </button>
+                                <button type="button" class="@GetDetailTabClass("notes")" @onclick="ShowDetailNotes">
+                                    <span class="workflow-tab__icon">✎</span>
+                                    <span>Notas</span>
+                                </button>
+                                @if (!IsAuthorOnlyExperience)
+                                {
+                                    <button type="button" class="@GetDetailTabClass("actions")" @onclick="ShowDetailActions">
+                                        <span class="workflow-tab__icon">→</span>
+                                        <span>Acciones</span>
+                                    </button>
+                                }
+                            </div>
+
+                            <div class="app-note-panel rounded-2xl">
                                 <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Lote</div>
                                 <div class="mt-1 text-lg font-black text-[#12343b]">@SelectedInboxItem?.BatchCode</div>
                                 <div class="mt-2 flex flex-wrap gap-2">
-                                    <span class="@GetStatusBadgeClass(SelectedWorkflow.Status)">@SelectedWorkflow.Status</span>
+                                    <span class="@GetStatusBadgeClass(SelectedWorkflow.Status)">@GetFriendlyWorkflowStatus(SelectedWorkflow.Status)</span>
                                     @if (!string.IsNullOrWhiteSpace(SelectedWorkflow.CurrentStageGroupName))
                                     {
                                         <span class="rounded-full bg-[#fff3de] px-3 py-1 text-xs font-semibold text-[#8b5a16]">@SelectedWorkflow.CurrentStageGroupName</span>
@@ -257,13 +443,15 @@
                                 </div>
                             </div>
 
+                            @if (ActiveDetailView == "summary")
+                            {
                             <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                                <article class="rounded-2xl border border-[#d9e5e8] bg-[#fafcfd] px-4 py-4">
+                              <article class="app-detail-card rounded-2xl">
                                     <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Estado actual</div>
                                     <div class="mt-2 text-base font-black text-[#12343b]">@GetFriendlyWorkflowStatus(SelectedWorkflow.Status)</div>
                                     <div class="mt-1 text-sm text-slate-500">@GetWorkflowProgressCaption()</div>
                                 </article>
-                                <article class="rounded-2xl border border-[#d9e5e8] bg-[#fafcfd] px-4 py-4">
+                              <article class="app-detail-card rounded-2xl">
                                     <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Fechas clave</div>
                                     <div class="mt-2 space-y-1 text-sm text-slate-600">
                                         <div>Enviado: <span class="font-semibold text-[#12343b]">@FormatDateTime(SelectedWorkflow.SubmittedAt)</span></div>
@@ -271,16 +459,20 @@
                                         <div>Finalizado: <span class="font-semibold text-[#12343b]">@FormatDateTime(SelectedWorkflow.CompletedAt)</span></div>
                                     </div>
                                 </article>
-                                <article class="rounded-2xl border border-[#d9e5e8] bg-[#fafcfd] px-4 py-4">
+                              <article class="app-detail-card rounded-2xl">
                                     <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Paso siguiente</div>
                                     <div class="mt-2 text-sm font-semibold text-[#12343b]">@GetNextStepLabel()</div>
                                     <div class="mt-1 text-sm text-slate-500">@GetCurrentStageLabel()</div>
                                 </article>
                             </div>
+                            }
 
+                            @if (ActiveDetailView == "stages")
+                            {
                             <div class="rounded-2xl border border-[#d9e5e8] bg-[#fafcfd] px-4 py-4">
                                 <div class="mb-3 text-xs uppercase tracking-[0.2em] text-slate-500">Etapas</div>
-                                <div class="space-y-3">
+                                <div class="workflow-scroll-panel workflow-scroll-panel--detail">
+                                <div class="space-y-3 pr-1">
                                     @foreach (var stage in SelectedWorkflow.Stages.OrderBy(x => x.DisplayOrder))
                                     {
                                         <article class="rounded-2xl border border-[#d9e5e8] bg-white px-4 py-3">
@@ -311,8 +503,12 @@
                                         </article>
                                     }
                                 </div>
+                                </div>
                             </div>
+                            }
 
+                            @if (ActiveDetailView == "notes")
+                            {
                             <div class="rounded-2xl border border-[#d9e5e8] bg-[#fafcfd] px-4 py-4">
                                 <div class="mb-3 text-xs uppercase tracking-[0.2em] text-slate-500">@NotesPanelTitle</div>
                                 @if (!WorkflowNotes.Any())
@@ -321,47 +517,87 @@
                                 }
                                 else
                                 {
-                                    <div class="space-y-3">
+                                    <div class="workflow-scroll-panel workflow-scroll-panel--detail">
+                                    <div class="space-y-3 pr-1">
                                         @foreach (var note in WorkflowNotes)
                                         {
                                             <article class="rounded-2xl border border-[#d9e5e8] bg-white px-4 py-3">
                                                 <div class="flex items-center justify-between gap-3">
-                                                    <div class="text-sm font-semibold text-[#12343b]">@GetFriendlyActionName(note.ActionType)</div>
+                                                    <div class="flex flex-wrap items-center gap-2">
+                                                        <div class="text-sm font-semibold text-[#12343b]">@GetFriendlyActionName(note.ActionType)</div>
+                                                        @if (!string.IsNullOrWhiteSpace(GetCommentAudienceBadge(note.Comments)))
+                                                        {
+                                                            <span class="workflow-inline-chip workflow-inline-chip--soft">@GetCommentAudienceBadge(note.Comments)</span>
+                                                        }
+                                                    </div>
                                                     <div class="text-xs text-slate-500">@FormatDateTime(note.PerformedAt)</div>
                                                 </div>
                                                 @if (!string.IsNullOrWhiteSpace(note.PerformedByUserName))
                                                 {
                                                     <div class="mt-1 text-xs text-slate-500">@note.PerformedByUserName</div>
                                                 }
-                                                <div class="mt-2 text-sm text-slate-700">@note.Comments</div>
-                                            </article>
-                                        }
+                                                        <div class="mt-2 text-sm text-slate-700">@GetDisplayComment(note.Comments)</div>
+                                                    </article>
+                                                }
+                                            </div>
                                     </div>
                                 }
                             </div>
+                            }
 
-                            @if (!IsAuthorOnlyExperience)
+                            @if (!IsAuthorOnlyExperience && ActiveDetailView == "actions")
                             {
                                 <div class="rounded-2xl border border-[#d9e5e8] bg-[#fafcfd] px-4 py-4">
                                     <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Acción del proceso</div>
                                     <div class="mt-2 text-sm font-semibold text-[#12343b]">@GetReviewerActionLead()</div>
 
+                                    <div class="mt-3">
+                                        <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Destinatario de la nota</div>
+                                        <div class="mt-2 workflow-author-tabs workflow-author-tabs--compact mb-0">
+                                            <button type="button" class="@GetNoteAudienceClass("internal")" @onclick="ShowInternalNoteAudience">Interna</button>
+                                            <button type="button" class="@GetNoteAudienceClass("author")" @onclick="ShowAuthorNoteAudience">Para autor</button>
+                                            <button type="button" class="@GetNoteAudienceClass("next")" @onclick="ShowNextReviewerNoteAudience">Para siguiente revisor</button>
+                                        </div>
+                                    </div>
+
                                     @if (CanClaimSelectedWorkflow)
                                     {
                                         <div class="mt-4 flex flex-wrap gap-2">
+                                            <button class="workflow-inline-action"
+                                                    disabled="@IsSubmittingAction"
+                                                    @onclick="OpenIntegratedStagingPanelAsync">
+                                                <span class="workflow-inline-action__icon">▤</span>
+                                                <span>@GetStagingActionLabel()</span>
+                                            </button>
+                                            <button class="rounded-xl border border-[#d9e5e8] bg-white px-3 py-2 text-sm font-semibold text-[#12343b] disabled:opacity-60"
+                                                    disabled="@IsSubmittingAction || IsValidatingSelectedBatch"
+                                                    @onclick="ValidateSelectedBatchAsync">
+                                                @(IsValidatingSelectedBatch ? "Validando..." : GetValidateActionLabel())
+                                            </button>
                                             <button class="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700 disabled:opacity-60"
                                                     disabled="@IsSubmittingAction"
                                                     @onclick="RequestClaimAsync">
-                                                Tomar etapa
+                                                Tomar caso
                                             </button>
                                         </div>
                                     }
                                     else if (CanReturnSelectedWorkflow || CanApproveSelectedWorkflow || CanProcessSelectedWorkflow)
                                     {
                                         <textarea class="mt-3 min-h-[96px] w-full rounded-2xl border border-[#d9e5e8] bg-white px-3 py-3 text-sm text-slate-700"
-                                                  placeholder="@ActionPanelPlaceholder"
+                                                  placeholder="@GetActionPanelPlaceholder()"
                                                   @bind="WorkflowComment"></textarea>
                                         <div class="mt-3 flex flex-wrap gap-2">
+                                            <button class="workflow-inline-action"
+                                                    disabled="@IsSubmittingAction"
+                                                    @onclick="OpenIntegratedStagingPanelAsync">
+                                                <span class="workflow-inline-action__icon">▤</span>
+                                                <span>@GetStagingActionLabel()</span>
+                                            </button>
+                                            <button class="rounded-xl border border-[#d9e5e8] bg-white px-3 py-2 text-sm font-semibold text-[#12343b] disabled:opacity-60"
+                                                    disabled="@IsSubmittingAction || IsValidatingSelectedBatch"
+                                                    @onclick="ValidateSelectedBatchAsync">
+                                                @(IsValidatingSelectedBatch ? "Validando..." : GetValidateActionLabel())
+                                            </button>
                                             @if (CanReturnSelectedWorkflow)
                                             {
                                                 <button class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 disabled:opacity-60"
@@ -375,7 +611,7 @@
                                                 <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
                                                         disabled="@IsSubmittingAction"
                                                         @onclick="RequestApproveAsync">
-                                                    Aprobar etapa
+                                                    @GetApproveActionLabel()
                                                 </button>
                                             }
                                             @if (CanProcessSelectedWorkflow)
@@ -395,12 +631,56 @@
                 </section>
             </aside>
         </div>
+
+        @if (!IsAuthorOnlyExperience && IsIntegratedStagingPanelOpen)
+        {
+            <section class="workflow-stage-panel">
+                <div class="workflow-stage-panel__header">
+                    <div>
+                        <div class="workflow-stage-panel__eyebrow">Staging del lote</div>
+                        <h2 class="workflow-stage-panel__title">Revisión completa del registro enviado por el autor</h2>
+                        <div class="workflow-stage-panel__caption">@SelectedInboxItem?.BatchCode</div>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button class="workflow-inline-action"
+                                disabled="@IsValidatingSelectedBatch"
+                                @onclick="ValidateSelectedBatchAsync">
+                            <span class="workflow-inline-action__icon">✓</span>
+                            <span>@(IsValidatingSelectedBatch ? "Validando..." : "Validar lote")</span>
+                        </button>
+                        <button class="workflow-inline-action" @onclick="CloseIntegratedStagingPanel">
+                            <span class="workflow-inline-action__icon">✕</span>
+                            <span>Cerrar panel</span>
+                        </button>
+                    </div>
+                </div>
+
+                @if (SelectedInboxItem is null)
+                {
+                    <AppEmptyState Title="Sin lote seleccionado" Message="Selecciona un envío para abrir su staging completo dentro de esta misma página." />
+                }
+                else
+                {
+                    <div class="workflow-staging-frame-wrap workflow-staging-frame-wrap--full">
+                        <iframe class="workflow-staging-frame"
+                                src="@GetEmbeddedStagingUrl()"
+                                title="Staging del envío"></iframe>
+                    </div>
+                }
+            </section>
+        }
     }
 </div>
 
 @code {
     private bool IsLoading { get; set; } = true;
     private bool IsSubmittingAction { get; set; }
+    private bool IsArticlePreviewModalOpen { get; set; }
+    private bool IsArticlePreviewLoading { get; set; }
+    private bool IsValidatingSelectedBatch { get; set; }
+    private bool IsIntegratedStagingPanelOpen { get; set; }
+    private CancellationTokenSource? _stagingRefreshCts;
+    private Task? _stagingRefreshTask;
     private AuthMeResponse? CurrentUser { get; set; }
     private List<WorkflowInboxItemDto> AuthorInbox { get; set; } = new();
     private List<WorkflowInboxItemDto> ReviewInbox { get; set; } = new();
@@ -412,9 +692,18 @@
         .ToList();
     private WorkflowInboxItemDto? SelectedInboxItem { get; set; }
     private WorkflowBatchDetailDto? SelectedWorkflow { get; set; }
+    private WorkflowInboxItemDto? PreviewInboxItem { get; set; }
+    private BulkImportBatchDetailDto? PreviewBatch { get; set; }
     private string WorkflowComment { get; set; } = string.Empty;
     private string ErrorMessage { get; set; } = string.Empty;
     private string SuccessMessage { get; set; } = string.Empty;
+    private string ActiveAuthorView { get; set; } = "tracking";
+    private string ActiveDetailView { get; set; } = "summary";
+    private string UodideStatusFilter { get; set; } = "all";
+    private string UodideSearchTerm { get; set; } = string.Empty;
+    private string AreaTecnicaStatusFilter { get; set; } = "all";
+    private string AreaTecnicaSearchTerm { get; set; } = string.Empty;
+    private string WorkflowNoteAudience { get; set; } = "internal";
     private PendingWorkflowAction? _pendingAction;
 
     private bool HasFeedback => !string.IsNullOrWhiteSpace(ErrorMessage) || !string.IsNullOrWhiteSpace(SuccessMessage);
@@ -465,6 +754,7 @@
     private string NotesPanelTitle => IsAuthorOnlyExperience ? "Notas y observaciones de revisión" : "Notas del proceso";
     private bool IsAdminExperience => CurrentUser?.Roles?.Any(x => string.Equals(x, "Admin", StringComparison.OrdinalIgnoreCase)) == true;
     private bool CanOpenSelectedBatch => SelectedInboxItem is not null && !IsAuthorOnlyExperience;
+    private bool IsAuthorArticlesView => string.Equals(ActiveAuthorView, "articles", StringComparison.OrdinalIgnoreCase);
     private string FeedbackVariant => !string.IsNullOrWhiteSpace(ErrorMessage) ? "error" : "success";
     private string FeedbackTitle => !string.IsNullOrWhiteSpace(ErrorMessage) ? "No pude completar la acción" : "Acción completada";
     private string FeedbackMessage => !string.IsNullOrWhiteSpace(ErrorMessage) ? ErrorMessage : SuccessMessage;
@@ -472,7 +762,7 @@
     {
         "claim" => "Tomar etapa de revisión",
         "return" => "Devolver envío al autor",
-        "approve" => "Aprobar etapa actual",
+        "approve" => IsUodideCurrentStage ? "Validar y enviar a Área Técnica" : IsAreaTecnicaCurrentStage ? "Aprobar validación final" : "Aprobar etapa actual",
         "process" => "Procesar envío aprobado",
         _ => "Acción pendiente"
     };
@@ -480,7 +770,11 @@
     {
         "claim" => "Vas a tomar formalmente esta etapa del workflow. A partir de aquí quedará asociada a tu revisión.",
         "return" => "La etapa volverá al autor con tus observaciones y se detendrá el avance del workflow.",
-        "approve" => "La etapa quedará aprobada y el workflow avanzará a la siguiente validación o finalizará si esta era la última.",
+        "approve" => IsUodideCurrentStage
+            ? "La validación UODIDE quedará aprobada y el lote pasará a revisión del Área Técnica."
+            : IsAreaTecnicaCurrentStage
+                ? "La validación técnica final quedará aprobada y el envío pasará al paso de procesamiento definitivo."
+            : "La etapa quedará aprobada y el workflow avanzará a la siguiente validación o finalizará si esta era la última.",
         "process" => "Este envío ya superó toda la validación. Ahora se procesará hacia la base principal usando el payload completo aprobado en staging.",
         _ => string.Empty
     };
@@ -488,19 +782,41 @@
     {
         "claim" => "Tomar etapa",
         "return" => "Devolver",
-        "approve" => "Aprobar",
+        "approve" => IsUodideCurrentStage ? "Enviar a Área Técnica" : IsAreaTecnicaCurrentStage ? "Habilitar procesamiento" : "Aprobar",
         "process" => "Procesar envío",
         _ => "Confirmar"
     };
 
     private bool CanClaimSelectedWorkflow => SelectedInboxItem?.CanClaim == true && SelectedWorkflow is not null;
     private bool CanReturnSelectedWorkflow => SelectedInboxItem?.CanReturn == true && SelectedWorkflow is not null;
-    private bool CanApproveSelectedWorkflow => SelectedInboxItem?.CanApprove == true && SelectedWorkflow is not null;
+    private bool CanApproveSelectedWorkflow =>
+        SelectedInboxItem?.CanApprove == true
+        && SelectedWorkflow is not null
+        && IsSelectedBatchReadyForApproval;
     private bool CanProcessSelectedWorkflow =>
         SelectedInboxItem?.CanProcessBatch == true
         && SelectedInboxItem.ProcessedRows < SelectedInboxItem.TotalRows
         && string.Equals(SelectedWorkflow?.Status, "Approved", StringComparison.OrdinalIgnoreCase)
         && CurrentUser?.Roles?.Any(x => string.Equals(x, "WorkflowProcessorAreaTecnica", StringComparison.OrdinalIgnoreCase)) == true;
+    private bool IsSelectedBatchReadyForApproval =>
+        SelectedInboxItem is not null
+        && SelectedInboxItem.TotalRows > 0
+        && SelectedInboxItem.ErrorRows == 0
+        && (SelectedInboxItem.ValidRows > 0 || SelectedInboxItem.ProcessedRows > 0);
+    private bool IsUodideCurrentStage =>
+        string.Equals(SelectedWorkflow?.CurrentStageKey, "uodide-validation", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(SelectedWorkflow?.CurrentStageGroupKey, "uodide", StringComparison.OrdinalIgnoreCase);
+    private bool IsAreaTecnicaCurrentStage =>
+        string.Equals(SelectedWorkflow?.CurrentStageKey, "technical-validation", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(SelectedWorkflow?.CurrentStageGroupKey, "area-tecnica", StringComparison.OrdinalIgnoreCase);
+    private List<WorkflowInboxItemDto> FilteredUodideInbox => UodideInbox
+        .Where(MatchesUodideFilter)
+        .OrderByDescending(x => x.LastActionAt ?? x.SubmittedAt)
+        .ToList();
+    private List<WorkflowInboxItemDto> FilteredAreaTecnicaInbox => AreaTecnicaInbox
+        .Where(MatchesAreaTecnicaFilter)
+        .OrderByDescending(x => x.LastActionAt ?? x.SubmittedAt)
+        .ToList();
     private IEnumerable<WorkflowActionLogDto> WorkflowNotes => SelectedWorkflow?.Actions
         .Where(x => !string.IsNullOrWhiteSpace(x.Comments))
         .OrderByDescending(x => x.PerformedAt)
@@ -580,10 +896,76 @@
 
     private async Task SelectWorkflowAsync(WorkflowInboxItemDto item)
     {
+        StopStagingRefreshLoop();
         SelectedInboxItem = item;
         SelectedWorkflow = await WorkflowClient.GetBatchWorkflowAsync(item.ImportBatchId);
         WorkflowComment = string.Empty;
+        WorkflowNoteAudience = "internal";
+        ActiveDetailView = "summary";
+        IsIntegratedStagingPanelOpen = false;
         SyncInboxPermissions();
+    }
+
+    private void SetAuthorView(string view) => ActiveAuthorView = view;
+    private void SetDetailView(string view) => ActiveDetailView = view;
+    private void ShowAuthorTracking() => SetAuthorView("tracking");
+    private void ShowAuthorArticles() => SetAuthorView("articles");
+    private void ShowDetailSummary() => SetDetailView("summary");
+    private void ShowDetailStages() => SetDetailView("stages");
+    private void ShowDetailNotes() => SetDetailView("notes");
+    private void ShowDetailActions() => SetDetailView("actions");
+    private void ShowUodideAll() => UodideStatusFilter = "all";
+    private void ShowUodidePending() => UodideStatusFilter = "pending";
+    private void ShowUodideReviewing() => UodideStatusFilter = "reviewing";
+    private void ShowAreaAll() => AreaTecnicaStatusFilter = "all";
+    private void ShowAreaPending() => AreaTecnicaStatusFilter = "pending";
+    private void ShowAreaReviewing() => AreaTecnicaStatusFilter = "reviewing";
+    private void ShowAreaReady() => AreaTecnicaStatusFilter = "ready";
+    private void ShowInternalNoteAudience() => WorkflowNoteAudience = "internal";
+    private void ShowAuthorNoteAudience() => WorkflowNoteAudience = "author";
+    private void ShowNextReviewerNoteAudience() => WorkflowNoteAudience = "next";
+
+    private async Task OpenArticlePreviewAsync(WorkflowInboxItemDto item)
+    {
+        PreviewInboxItem = item;
+        PreviewBatch = null;
+        IsArticlePreviewModalOpen = true;
+        IsArticlePreviewLoading = true;
+
+        try
+        {
+            PreviewBatch = await WorkflowClient.GetBatchPreviewAsync(item.ImportBatchId, 50);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"No pude abrir la previsualización del artículo: {ex.Message}";
+        }
+        finally
+        {
+            IsArticlePreviewLoading = false;
+        }
+    }
+
+    private Task CloseArticlePreviewAsync()
+    {
+        IsArticlePreviewModalOpen = false;
+        IsArticlePreviewLoading = false;
+        PreviewBatch = null;
+        PreviewInboxItem = null;
+        return Task.CompletedTask;
+    }
+
+    private Task OpenIntegratedStagingPanelAsync()
+    {
+        IsIntegratedStagingPanelOpen = true;
+        StartStagingRefreshLoop();
+        return Task.CompletedTask;
+    }
+
+    private void CloseIntegratedStagingPanel()
+    {
+        IsIntegratedStagingPanelOpen = false;
+        StopStagingRefreshLoop();
     }
 
     private void RequestClaimAsync() => _pendingAction = new PendingWorkflowAction("claim");
@@ -618,9 +1000,9 @@
 
             WorkflowBatchDetailDto? updated = _pendingAction.Kind switch
             {
-                "claim" => await WorkflowClient.ClaimAsync(SelectedInboxItem.ImportBatchId, new WorkflowActionRequest { Comments = WorkflowComment }),
-                "return" => await WorkflowClient.ReturnAsync(SelectedInboxItem.ImportBatchId, new WorkflowActionRequest { Comments = WorkflowComment }),
-                "approve" => await WorkflowClient.ApproveAsync(SelectedInboxItem.ImportBatchId, new WorkflowActionRequest { Comments = WorkflowComment }),
+                "claim" => await WorkflowClient.ClaimAsync(SelectedInboxItem.ImportBatchId, new WorkflowActionRequest { Comments = BuildWorkflowCommentForAction() }),
+                "return" => await WorkflowClient.ReturnAsync(SelectedInboxItem.ImportBatchId, new WorkflowActionRequest { Comments = BuildWorkflowCommentForAction() }),
+                "approve" => await WorkflowClient.ApproveAsync(SelectedInboxItem.ImportBatchId, new WorkflowActionRequest { Comments = BuildWorkflowCommentForAction() }),
                 _ => null
             };
 
@@ -636,6 +1018,7 @@
                 };
 
                 WorkflowComment = string.Empty;
+                WorkflowNoteAudience = "internal";
                 _pendingAction = null;
                 await RefreshInboxesAsync();
             }
@@ -673,6 +1056,65 @@
         }
     }
 
+    private async Task RefreshSelectedWorkflowContextAsync()
+    {
+        if (SelectedInboxItem is null)
+        {
+            return;
+        }
+
+        var batchId = SelectedInboxItem.ImportBatchId;
+        await RefreshInboxesAsync();
+        SelectedWorkflow = await WorkflowClient.GetBatchWorkflowAsync(batchId);
+        if (SelectedInboxItem is null)
+        {
+            IsIntegratedStagingPanelOpen = false;
+            StopStagingRefreshLoop();
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void StartStagingRefreshLoop()
+    {
+        StopStagingRefreshLoop();
+        if (!IsIntegratedStagingPanelOpen || SelectedInboxItem is null)
+        {
+            return;
+        }
+
+        _stagingRefreshCts = new CancellationTokenSource();
+        _stagingRefreshTask = RunStagingRefreshLoopAsync(_stagingRefreshCts.Token);
+    }
+
+    private void StopStagingRefreshLoop()
+    {
+        if (_stagingRefreshCts is null)
+        {
+            return;
+        }
+
+        _stagingRefreshCts.Cancel();
+        _stagingRefreshCts.Dispose();
+        _stagingRefreshCts = null;
+        _stagingRefreshTask = null;
+    }
+
+    private async Task RunStagingRefreshLoopAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(4));
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await RefreshSelectedWorkflowContextAsync();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
     private void SyncInboxPermissions()
     {
         if (SelectedInboxItem is null || SelectedWorkflow is null)
@@ -701,7 +1143,7 @@
             return Task.CompletedTask;
         }
 
-        NavManager.NavigateTo($"/management/article-review-staging?batchId={SelectedInboxItem.ImportBatchId}");
+        NavManager.NavigateTo(GetStandaloneStagingUrl());
         return Task.CompletedTask;
     }
 
@@ -710,12 +1152,38 @@
             ? "w-full rounded-[1.3rem] border border-[#12343b] bg-[#f4f8f9] px-4 py-4 shadow-sm transition text-left"
             : "w-full rounded-[1.3rem] border border-[#d9e5e8] bg-white px-4 py-4 shadow-sm transition hover:border-[#9db7bf] text-left";
 
+    private string GetAuthorTabClass(string view)
+        => string.Equals(ActiveAuthorView, view, StringComparison.OrdinalIgnoreCase)
+            ? "workflow-tab workflow-tab--active"
+            : "workflow-tab";
+
+    private string GetDetailTabClass(string view)
+        => string.Equals(ActiveDetailView, view, StringComparison.OrdinalIgnoreCase)
+            ? "workflow-tab workflow-tab--active"
+            : "workflow-tab";
+
+    private string GetReviewFilterClass(string view)
+        => string.Equals(UodideStatusFilter, view, StringComparison.OrdinalIgnoreCase)
+            ? "workflow-tab workflow-tab--active"
+            : "workflow-tab";
+
+    private string GetAreaReviewFilterClass(string view)
+        => string.Equals(AreaTecnicaStatusFilter, view, StringComparison.OrdinalIgnoreCase)
+            ? "workflow-tab workflow-tab--active"
+            : "workflow-tab";
+
+    private string GetNoteAudienceClass(string audience)
+        => string.Equals(WorkflowNoteAudience, audience, StringComparison.OrdinalIgnoreCase)
+            ? "workflow-tab workflow-tab--active"
+            : "workflow-tab";
+
     private static string GetStatusBadgeClass(string? status)
     {
         var normalized = (status ?? string.Empty).Trim().ToLowerInvariant();
         return normalized switch
         {
             "approved" => "rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700",
+            "processed" => "rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700",
             "returned" => "rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700",
             "submitted" => "rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700",
             "inreview" => "rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700",
@@ -807,12 +1275,23 @@
 
         if (CanClaimSelectedWorkflow)
         {
-            return "Primero toma la etapa para dejarla a tu cargo y luego continúa con la revisión.";
+            return IsAreaTecnicaCurrentStage
+                ? "Primero toma el caso, revisa el staging validado por UODIDE y después continúa con la validación técnica final."
+                : "Primero toma el caso, revisa el staging del envío y después continúa con la validación.";
+        }
+
+        if (!IsSelectedBatchReadyForApproval && SelectedInboxItem is not null && SelectedInboxItem.TotalRows > 0)
+        {
+            return IsAreaTecnicaCurrentStage
+                ? "El lote todavía no está listo para cierre técnico. Primero corrige y valida el staging hasta que no queden observaciones."
+                : "El lote todavía no está listo para pasar de etapa. Primero corrige y valida el staging hasta que no queden observaciones.";
         }
 
         if (CanApproveSelectedWorkflow || CanReturnSelectedWorkflow)
         {
-            return "Registra aquí tu nota y continúa con la decisión que corresponda.";
+            return IsAreaTecnicaCurrentStage
+                ? "Deja una observación orientada al destinatario correcto y decide si devuelves el envío o habilitas su procesamiento final."
+                : "Deja una observación orientada al destinatario correcto y decide si devuelves al autor o apruebas para la siguiente etapa.";
         }
 
         return "Este envío no tiene una acción pendiente para tu rol en este momento.";
@@ -827,6 +1306,7 @@
             "claimed" => "Toma de etapa",
             "returned" => "Devolución con observaciones",
             "approved" => "Aprobación de etapa",
+            "processed" => "Procesamiento final",
             _ => string.IsNullOrWhiteSpace(actionType) ? "Movimiento" : actionType
         };
     }
@@ -844,6 +1324,198 @@
         }
 
         return "La etapa fue aprobada correctamente y el workflow avanzó a la siguiente validación.";
+    }
+
+    private string GetApproveActionLabel()
+        => IsUodideCurrentStage
+            ? "Validar y enviar a Área Técnica"
+            : IsAreaTecnicaCurrentStage
+                ? "Aprobar validación final"
+                : "Aprobar etapa";
+
+    private string GetStagingActionLabel()
+        => IsAreaTecnicaCurrentStage
+            ? "Revisar validación técnica"
+            : "Revisar registro del autor";
+
+    private string GetValidateActionLabel()
+        => IsAreaTecnicaCurrentStage
+            ? "Validar revisión final"
+            : "Validar lote";
+
+    private bool MatchesAreaTecnicaFilter(WorkflowInboxItemDto item)
+    {
+        var matchesSearch = string.IsNullOrWhiteSpace(AreaTecnicaSearchTerm)
+            || (item.BatchCode?.Contains(AreaTecnicaSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (item.SubmittedByUserName?.Contains(AreaTecnicaSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        if (!matchesSearch)
+        {
+            return false;
+        }
+
+        return AreaTecnicaStatusFilter switch
+        {
+            "pending" => string.IsNullOrWhiteSpace(item.AssignedToUserId) && !item.CanProcessBatch,
+            "reviewing" => !string.IsNullOrWhiteSpace(item.AssignedToUserId) && !item.CanProcessBatch,
+            "ready" => item.CanProcessBatch || string.Equals(item.WorkflowStatus, "Approved", StringComparison.OrdinalIgnoreCase),
+            _ => true
+        };
+    }
+
+    private string GetAuthorArticleTitle(WorkflowInboxItemDto item)
+        => !string.IsNullOrWhiteSpace(item.CurrentStageName)
+            ? item.CurrentStageName
+            : $"Envío {item.BatchCode}";
+
+    private string GetEmbeddedStagingUrl()
+        => SelectedInboxItem is null
+            ? string.Empty
+            : IsAreaTecnicaCurrentStage
+                ? $"/management/area-tecnica-review-staging-frame?batchId={SelectedInboxItem.ImportBatchId}"
+                : $"/management/uodide-review-staging-frame?batchId={SelectedInboxItem.ImportBatchId}";
+
+    private string GetStandaloneStagingUrl()
+        => SelectedInboxItem is null
+            ? string.Empty
+            : IsAreaTecnicaCurrentStage
+                ? $"/management/area-tecnica-review-staging?batchId={SelectedInboxItem.ImportBatchId}"
+                : $"/management/uodide-review-staging?batchId={SelectedInboxItem.ImportBatchId}";
+
+    private async Task ValidateSelectedBatchAsync()
+    {
+        if (SelectedInboxItem is null)
+        {
+            return;
+        }
+
+        try
+        {
+            IsValidatingSelectedBatch = true;
+            var result = await BulkImportClient.ValidateBatchAsync(SelectedInboxItem.ImportBatchId);
+            SuccessMessage = result?.Message ?? "El lote fue validado correctamente.";
+            await RefreshInboxesAsync();
+            SelectedWorkflow = await WorkflowClient.GetBatchWorkflowAsync(SelectedInboxItem.ImportBatchId);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"No pude validar el lote: {ex.Message}";
+        }
+        finally
+        {
+            IsValidatingSelectedBatch = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        StopStagingRefreshLoop();
+        if (_stagingRefreshTask is not null)
+        {
+            try
+            {
+                await _stagingRefreshTask;
+            }
+            catch (OperationCanceledException)
+            {
+            }
+        }
+    }
+
+    private bool MatchesUodideFilter(WorkflowInboxItemDto item)
+    {
+        var matchesSearch = string.IsNullOrWhiteSpace(UodideSearchTerm)
+            || (item.BatchCode?.Contains(UodideSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+            || (item.SubmittedByUserName?.Contains(UodideSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false);
+
+        if (!matchesSearch)
+        {
+            return false;
+        }
+
+        return UodideStatusFilter switch
+        {
+            "pending" => string.IsNullOrWhiteSpace(item.AssignedToUserId),
+            "reviewing" => !string.IsNullOrWhiteSpace(item.AssignedToUserId),
+            _ => true
+        };
+    }
+
+    private string GetActionPanelPlaceholder()
+        => WorkflowNoteAudience switch
+        {
+            "author" => "Escribe aquí las observaciones que el autor debe revisar para corregir su envío.",
+            "next" => "Escribe una nota breve para el siguiente validador con el contexto de tu revisión.",
+            _ => "Escribe aquí una observación interna breve para acompañar la acción del workflow."
+        };
+
+    private string? BuildWorkflowCommentForAction()
+    {
+        if (string.IsNullOrWhiteSpace(WorkflowComment))
+        {
+            return null;
+        }
+
+        var prefix = WorkflowNoteAudience switch
+        {
+            "author" => "[Para autor]",
+            "next" => "[Para siguiente revisor]",
+            _ => "[Nota interna]"
+        };
+
+        return $"{prefix} {WorkflowComment.Trim()}";
+    }
+
+    private string GetPreviewModalTitle()
+    {
+        var title = PreviewBatch?.Rows
+            .OrderBy(x => x.RowNumber)
+            .SelectMany(x => x.Cells)
+            .FirstOrDefault(x => string.Equals(x.FieldKey, "Title", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrWhiteSpace(x.RawValue))
+            ?.RawValue;
+
+        return !string.IsNullOrWhiteSpace(title)
+            ? title
+            : "Detalle del artículo registrado";
+    }
+
+    private static string? GetCommentAudienceBadge(string? comment)
+    {
+        if (string.IsNullOrWhiteSpace(comment))
+        {
+            return null;
+        }
+
+        if (comment.StartsWith("[Para autor]", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Para autor";
+        }
+
+        if (comment.StartsWith("[Para siguiente revisor]", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Para siguiente revisor";
+        }
+
+        if (comment.StartsWith("[Nota interna]", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Interna";
+        }
+
+        return null;
+    }
+
+    private static string? GetDisplayComment(string? comment)
+    {
+        if (string.IsNullOrWhiteSpace(comment))
+        {
+            return comment;
+        }
+
+        return comment
+            .Replace("[Para autor]", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace("[Para siguiente revisor]", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Replace("[Nota interna]", string.Empty, StringComparison.OrdinalIgnoreCase)
+            .Trim();
     }
 
     private sealed record PendingWorkflowAction(string Kind);

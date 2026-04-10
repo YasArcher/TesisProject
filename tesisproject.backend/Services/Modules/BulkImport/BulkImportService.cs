@@ -169,7 +169,7 @@ namespace tesisproject.backend.Services.Implementations
 
             _db.ImportBatches.Add(batch);
             await _db.SaveChangesAsync(ct);
-            await TryCreateAuthorSubmissionWorkflowAsync(batch, userId, ct);
+            await TryCreateAuthorWorkflowAsync(batch, false, userId, ct);
 
             var rowsToInsert = new List<ImportBatchRow>(parsed.Rows.Count);
             foreach (var parsedRow in parsed.Rows)
@@ -370,7 +370,7 @@ namespace tesisproject.backend.Services.Implementations
 
             _db.ImportBatches.Add(batch);
             await _db.SaveChangesAsync(ct);
-            await TryCreateAuthorSubmissionWorkflowAsync(batch, userId, ct);
+            await TryCreateAuthorWorkflowAsync(batch, false, userId, ct);
             await AddExternalArticleRowAsync(batch.ImportBatchId, 1, request.ProviderName, request.Article, allFields, normalizer, now, ct);
 
             if (request.ValidateAfterCreate)
@@ -430,7 +430,7 @@ namespace tesisproject.backend.Services.Implementations
 
             _db.ImportBatches.Add(batch);
             await _db.SaveChangesAsync(ct);
-            await TryCreateAuthorSubmissionWorkflowAsync(batch, userId, ct);
+            await TryCreateAuthorWorkflowAsync(batch, false, userId, ct);
 
             for (var index = 0; index < validArticles.Count; index++)
             {
@@ -503,7 +503,7 @@ namespace tesisproject.backend.Services.Implementations
 
             _db.ImportBatches.Add(batch);
             await _db.SaveChangesAsync(ct);
-            await TryCreateAuthorSubmissionWorkflowAsync(batch, userId, ct);
+            await TryCreateAuthorWorkflowAsync(batch, true, userId, ct);
 
             var row = new ImportBatchRow
             {
@@ -635,7 +635,7 @@ namespace tesisproject.backend.Services.Implementations
             };
         }
 
-        public async Task<BulkImportActionResultDto> CreateBatchFromMatrixAsync(RegistrationMatrixDetailDto matrix, bool validateAfterCreate, string? userId, CancellationToken ct = default)
+        public async Task<BulkImportActionResultDto> CreateBatchFromMatrixAsync(RegistrationMatrixDetailDto matrix, bool validateAfterCreate, bool useAuthorWorkflow, string? userId, CancellationToken ct = default)
         {
             if (matrix is null || matrix.Summary is null)
             {
@@ -658,14 +658,16 @@ namespace tesisproject.backend.Services.Implementations
                 .Distinct()
                 .ToList();
 
+            var columnOrder = (matrix.Columns ?? new List<RegistrationMatrixColumnDto>())
+                .Select((column, index) => new { column.FieldId, index })
+                .GroupBy(x => x.FieldId)
+                .ToDictionary(x => x.Key, x => x.First().index);
+
             var fields = await _db.FieldCatalogEntries
                 .AsNoTracking()
                 .Include(x => x.Options)
                 .Where(x => columnFieldIds.Contains(x.FieldId))
                 .Where(x => x.EntityName == "Article" || x.EntityName == "ArticleParticipant")
-                .OrderBy(x => x.EntityName)
-                .ThenBy(x => x.DisplayOrder)
-                .ThenBy(x => x.FieldId)
                 .ToListAsync(ct);
 
             if (fields.Count == 0)
@@ -680,16 +682,16 @@ namespace tesisproject.backend.Services.Implementations
             var batch = new ImportBatch
             {
                 BatchCode = GenerateBatchCode("BATCH-MTX"),
-                SourceType = "MatrixDraft",
+                SourceType = useAuthorWorkflow ? "AuthorMatrixSubmission" : "MatrixDraft",
                 EntityName = string.IsNullOrWhiteSpace(matrix.Summary.EntityName) ? "Article" : matrix.Summary.EntityName,
                 FileName = $"{matrix.Summary.Name.Trim()}.matrix",
                 SourceReference = SerializeBatchMetadata(new BatchTemplateMetadata
                 {
-                    Origin = "registration-matrix",
+                    Origin = useAuthorWorkflow ? "author-registration-matrix" : "registration-matrix",
                     FileName = matrix.Summary.Name,
-                    SourceType = "MatrixDraft",
-                    ArticleFieldIds = fields.Where(x => x.EntityName == "Article").Select(x => x.FieldId).ToList(),
-                    ParticipantFieldIds = fields.Where(x => x.EntityName == "ArticleParticipant").Select(x => x.FieldId).ToList(),
+                    SourceType = useAuthorWorkflow ? "AuthorMatrixSubmission" : "MatrixDraft",
+                    ArticleFieldIds = fields.Where(x => x.EntityName == "Article").OrderBy(x => columnOrder[x.FieldId]).Select(x => x.FieldId).ToList(),
+                    ParticipantFieldIds = fields.Where(x => x.EntityName == "ArticleParticipant").OrderBy(x => columnOrder[x.FieldId]).Select(x => x.FieldId).ToList(),
                     RequiredArticleFieldIds = requiredFieldContract.ArticleFieldIds,
                     RequiredParticipantFieldIds = requiredFieldContract.ParticipantFieldIds
                 }, preserveRequiredContractOnlyWhenTrimmed: true),
@@ -704,7 +706,7 @@ namespace tesisproject.backend.Services.Implementations
 
             _db.ImportBatches.Add(batch);
             await _db.SaveChangesAsync(ct);
-            await TryCreateAuthorSubmissionWorkflowAsync(batch, userId, ct);
+            await TryCreateAuthorWorkflowAsync(batch, useAuthorWorkflow, userId, ct);
 
             var batchRows = validRows.Select(row => new ImportBatchRow
             {
@@ -1135,6 +1137,7 @@ namespace tesisproject.backend.Services.Implementations
             batch.FinishedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync(ct);
+            await MarkAuthorSubmissionWorkflowAsProcessedAsync(batchId, failed == 0 && processed > 0, ct);
 
             var detail = await GetBatchAsync(batchId, 25, ct) ?? new BulkImportBatchDetailDto();
             return new BulkImportActionResultDto
@@ -1250,9 +1253,10 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-        private async Task TryCreateAuthorSubmissionWorkflowAsync(ImportBatch batch, string? userId, CancellationToken ct)
+        private async Task TryCreateAuthorWorkflowAsync(ImportBatch batch, bool useAuthorWorkflow, string? userId, CancellationToken ct)
         {
-            if (!string.Equals(batch.SourceType, "AuthorSubmission", StringComparison.OrdinalIgnoreCase))
+            if (!useAuthorWorkflow &&
+                !string.Equals(batch.SourceType, "AuthorSubmission", StringComparison.OrdinalIgnoreCase))
             {
                 return;
             }
@@ -1262,6 +1266,41 @@ namespace tesisproject.backend.Services.Implementations
                 WorkflowService.AuthorArticleSubmissionWorkflowKey,
                 userId,
                 ct);
+        }
+
+        private async Task MarkAuthorSubmissionWorkflowAsProcessedAsync(int batchId, bool markProcessed, CancellationToken ct)
+        {
+            if (!markProcessed)
+            {
+                return;
+            }
+
+            var workflow = await _db.WorkflowInstances
+                .Include(x => x.Batch)
+                .FirstOrDefaultAsync(x => x.ImportBatchId == batchId, ct);
+
+            if (workflow is null || string.Equals(workflow.Status, "Processed", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            var fromStatus = workflow.Status;
+            workflow.Status = "Processed";
+            workflow.LastActionAt = now;
+            workflow.CompletedAt ??= now;
+
+            _db.WorkflowActionLogs.Add(new WorkflowActionLog
+            {
+                WorkflowInstanceId = workflow.WorkflowInstanceId,
+                ActionType = "processed",
+                FromStatus = fromStatus,
+                ToStatus = "Processed",
+                PerformedAt = now,
+                Comments = "El envío aprobado fue integrado en la base principal."
+            });
+
+            await _db.SaveChangesAsync(ct);
         }
 
         private static FieldCatalogEntry? ResolveDynamicField(

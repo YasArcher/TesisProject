@@ -88,6 +88,7 @@ namespace tesisproject.shared.DTOs.MassRegistration
     public class SubmitRegistrationMatrixRequest
     {
         public bool ValidateAfterCreate { get; set; } = true;
+        public bool UseAuthorWorkflow { get; set; }
     }
 
     public class RegistrationMatrixSubmissionResultDto

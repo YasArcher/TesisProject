@@ -287,7 +287,7 @@ namespace tesisproject.backend.Services.Implementations
             }
 
             var detail = MapDetail(matrix);
-            var batchResult = await _bulkImportService.CreateBatchFromMatrixAsync(detail, request.ValidateAfterCreate, userId, ct);
+            var batchResult = await _bulkImportService.CreateBatchFromMatrixAsync(detail, request.ValidateAfterCreate, request.UseAuthorWorkflow, userId, ct);
 
             matrix.Status = "SentToStaging";
             matrix.LastImportBatchId = batchResult.Batch.Summary.ImportBatchId;
@@ -315,17 +315,18 @@ namespace tesisproject.backend.Services.Implementations
                 .ToListAsync(ct);
 
             var existingFieldIds = existingColumns.Select(x => x.FieldId).ToHashSet();
+            var orderMap = normalizedIds
+                .Select((fieldId, index) => new { fieldId, index })
+                .ToDictionary(x => x.fieldId, x => x.index);
+
             var fields = await _db.FieldCatalogEntries
                 .AsNoTracking()
                 .Where(x => normalizedIds.Contains(x.FieldId))
                 .Where(x => x.EntityName == "Article" || x.EntityName == "ArticleParticipant")
-                .OrderBy(x => x.EntityName)
-                .ThenBy(x => x.DisplayOrder)
-                .ThenBy(x => x.FieldId)
                 .ToListAsync(ct);
 
             var nextOrder = existingColumns.Count == 0 ? 1 : existingColumns.Max(x => x.DisplayOrder) + 1;
-            foreach (var field in fields)
+            foreach (var field in fields.OrderBy(x => orderMap[x.FieldId]))
             {
                 if (existingFieldIds.Contains(field.FieldId))
                 {

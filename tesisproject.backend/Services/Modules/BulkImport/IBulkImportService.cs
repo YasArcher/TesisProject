@@ -18,7 +18,7 @@ namespace tesisproject.backend.Services.Interfaces
     Task<BulkImportActionResultDto> CreateBatchFromExternalArticleAsync(ExternalArticleImportRequest request, string? userId, CancellationToken ct = default);
     Task<BulkImportActionResultDto> CreateBatchFromExternalArticlesAsync(ExternalArticlesImportRequest request, string? userId, CancellationToken ct = default);
     Task<BulkImportActionResultDto> CreateBatchFromAuthorSubmissionAsync(RegisterArticleAggregateRequest request, bool validateAfterCreate, string? userId, CancellationToken ct = default);
-    Task<BulkImportActionResultDto> CreateBatchFromMatrixAsync(RegistrationMatrixDetailDto matrix, bool validateAfterCreate, string? userId, CancellationToken ct = default);
+    Task<BulkImportActionResultDto> CreateBatchFromMatrixAsync(RegistrationMatrixDetailDto matrix, bool validateAfterCreate, bool useAuthorWorkflow, string? userId, CancellationToken ct = default);
     Task<BulkImportActionResultDto> CorrectRowAsync(int batchId, int rowId, BulkImportRowCorrectionRequest request, CancellationToken ct = default);
         Task<BulkImportActionResultDto> ValidateBatchAsync(int batchId, CancellationToken ct = default);
         Task<BulkImportActionResultDto> ProcessBatchAsync(int batchId, CancellationToken ct = default);

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
+using System.Security.Claims;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.MassRegistration;
 
@@ -126,7 +127,9 @@ namespace tesisproject.backend.Controllers
         {
             try
             {
-                var userId = User?.Identity?.Name ?? "system";
+                var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier)
+                    ?? User?.Identity?.Name
+                    ?? "system";
                 return Ok(await _service.SubmitToStagingAsync(matrixId, request, userId, ct));
             }
             catch (InvalidOperationException ex)

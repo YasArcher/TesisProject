@@ -6,7 +6,7 @@
     align-items: center;
     justify-content: center;
     padding: 1.25rem;
-    background: rgba(15, 23, 42, 0.48);
+    background: rgba(49, 54, 71, 0.48);
     backdrop-filter: blur(4px);
 }
 
@@ -15,9 +15,11 @@
     max-height: min(90vh, 54rem);
     overflow: hidden;
     border-radius: 1.5rem;
-    border: 1px solid rgba(184, 138, 26, 0.2);
-    background: #fffaf1;
-    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
+    border: 1px solid rgba(67, 86, 99, 0.14);
+    background:
+        radial-gradient(circle at top right, rgba(244, 206, 20, 0.14), transparent 28%),
+        linear-gradient(180deg, #ffffff, rgba(245, 247, 248, 0.98));
+    box-shadow: 0 24px 48px rgba(49, 54, 71, 0.16);
 }
 
 .app-confirm-panel--sm {
@@ -53,9 +55,9 @@
     width: 2.25rem;
     height: 2.25rem;
     border-radius: 999px;
-    border: 1px solid rgba(110, 110, 110, 0.2);
-    background: #ffffff;
-    color: #4b5563;
+    border: 1px solid rgba(67, 86, 99, 0.16);
+    background: linear-gradient(145deg, rgba(255,248,212,.8), rgba(255,255,255,1));
+    color: #313647;
     font-size: 1.2rem;
     line-height: 1;
     flex-shrink: 0;
@@ -66,20 +68,20 @@
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: .18em;
-    color: #8f6c14;
+    color: #437057;
 }
 
 .app-confirm-panel__title {
     margin-top: .25rem;
     font-size: .95rem;
     font-weight: 700;
-    color: #16324f;
+    color: #313647;
 }
 
 .app-confirm-panel__message {
     margin-top: .35rem;
     font-size: .9rem;
-    color: #6e6e6e;
+    color: #435663;
     line-height: 1.5;
 }
 
@@ -93,8 +95,8 @@
     align-items: center;
     justify-content: flex-end;
     padding: 1rem 1.2rem 1.2rem;
-    border-top: 1px solid rgba(110, 110, 110, 0.12);
-    background: #fffdf8;
+    border-top: 1px solid rgba(67, 86, 99, 0.12);
+    background: linear-gradient(180deg, rgba(255,248,212,.36), rgba(255,255,255,1));
 }
 
 .app-confirm-panel__button {
@@ -107,12 +109,12 @@
 
 .app-confirm-panel__button--secondary {
     background: #ffffff;
-    border-color: rgba(110, 110, 110, 0.2);
-    color: #4b5563;
+    border-color: rgba(67, 86, 99, 0.18);
+    color: #313647;
 }
 
 .app-confirm-panel__button--primary {
-    background: #7A1E19;
+    background: linear-gradient(135deg, #313647, #495E57, #437057);
     color: #ffffff;
 }
 

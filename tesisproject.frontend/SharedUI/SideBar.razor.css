@@ -1,16 +1,18 @@
 /* Sidebar visual refresh: educational palette with white, navy, mustard, gray and wine */
 
 .sidebar.menu-bg {
-    --sidebar-bg: var(--app-color-secondary);
-    --sidebar-surface: rgba(var(--app-color-primary-rgb, 110, 193, 228), 0.08);
-    --sidebar-surface-strong: rgba(var(--app-color-primary-rgb, 110, 193, 228), 0.12);
+    --sidebar-bg:
+        radial-gradient(circle at top right, rgba(244, 206, 20, 0.08), transparent 24%),
+        linear-gradient(180deg, rgba(49, 73, 97, 0.99), rgba(67, 86, 99, 0.97) 48%, rgba(49, 73, 97, 0.98));
+    --sidebar-surface: rgba(110, 152, 194, 0.12);
+    --sidebar-surface-strong: rgba(110, 152, 194, 0.18);
     --sidebar-border: rgba(255, 255, 255, 0.08);
     --sidebar-text: rgba(255, 255, 255, 0.94);
     --sidebar-muted: rgba(255, 255, 255, 0.68);
     --sidebar-highlight: var(--app-color-gold);
-    --sidebar-highlight-soft: rgba(205, 152, 46, 0.12);
+    --sidebar-highlight-soft: rgba(244, 206, 20, 0.12);
     --sidebar-wine: var(--app-color-wine);
-    --sidebar-shadow: 0 18px 34px rgba(36, 43, 49, 0.12);
+    --sidebar-shadow: 0 18px 34px rgba(49, 54, 71, 0.12);
     background: var(--sidebar-bg) !important;
     color: var(--sidebar-text);
     position: fixed !important;
@@ -45,18 +47,18 @@
 }
 
 .sidebar::-webkit-scrollbar-thumb {
-    background: rgba(110, 193, 228, 0.28);
+    background: rgba(110, 152, 194, 0.3);
     border-radius: 999px;
 }
 
 .sidebar::-webkit-scrollbar-thumb:hover {
-    background: rgba(110, 193, 228, 0.42);
+    background: rgba(110, 152, 194, 0.42);
 }
 
 .sidebar .sidebar-brand {
     background: var(--sidebar-bg) !important;
     border-bottom: 1px solid var(--sidebar-border) !important;
-    box-shadow: inset 0 -1px 0 rgba(184, 138, 26, 0.08);
+    box-shadow: inset 0 -1px 0 rgba(244, 206, 20, 0.08);
     position: sticky;
     top: 0;
     z-index: 1001;
@@ -71,8 +73,8 @@
     width: 2.35rem;
     height: 2.35rem;
     border-radius: .9rem;
-    background: var(--app-color-gold);
-    color: var(--app-color-white);
+    background: linear-gradient(145deg, #F4CE14, #E3DE61);
+    color: #313647;
     box-shadow: inset 0 0 0 2px rgba(255,255,255,.35);
 }
 
@@ -80,7 +82,7 @@
     font-size: .68rem;
     letter-spacing: .18em;
     text-transform: uppercase;
-    color: rgba(205, 152, 46, 0.92);
+    color: rgba(244, 206, 20, 0.92);
     margin-bottom: .2rem;
 }
 
@@ -107,8 +109,8 @@
     width: 100%;
     padding: .78rem .9rem;
     border-radius: 1rem;
-    border: 1px solid rgba(110, 193, 228, 0.22);
-    background: linear-gradient(180deg, rgba(110, 193, 228, 0.18), rgba(205, 152, 46, 0.12));
+    border: 1px solid rgba(110, 152, 194, 0.24);
+    background: linear-gradient(180deg, rgba(110, 152, 194, 0.18), rgba(244, 206, 20, 0.1));
     color: #ffffff;
     text-decoration: none;
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
@@ -122,7 +124,7 @@
 }
 
 .sidebar-admin-shortcut.active {
-    background: linear-gradient(180deg, rgba(110, 193, 228, 0.24), rgba(205, 152, 46, 0.18));
+    background: linear-gradient(180deg, rgba(110, 152, 194, 0.24), rgba(244, 206, 20, 0.16));
 }
 
 .sidebar-admin-shortcut .icon {
@@ -189,14 +191,14 @@
 .sidebar .nav-link:hover,
 .sidebar .accordion-btn:hover {
     background: rgba(255,255,255,.08);
-    border-color: rgba(151, 186, 214, 0.18);
+    border-color: rgba(110, 152, 194, 0.24);
     color: #ffffff !important;
     transform: translateX(2px);
 }
 
 .sidebar .nav-link.active {
-    background: linear-gradient(135deg, rgba(110, 193, 228, 0.2), rgba(205, 152, 46, 0.14));
-    border-color: rgba(110, 193, 228, 0.22);
+    background: linear-gradient(135deg, rgba(110, 152, 194, 0.2), rgba(244, 206, 20, 0.12));
+    border-color: rgba(110, 152, 194, 0.24);
     color: #ffffff !important;
     font-weight: 600;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
@@ -215,8 +217,8 @@
 
 .sidebar .nav-link.active .icon,
 .sidebar .accordion-group.open .accordion-btn .icon {
-    background: rgba(110, 193, 228, 0.16);
-    box-shadow: inset 0 0 0 1px rgba(110, 193, 228, 0.16);
+    background: rgba(110, 152, 194, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(110, 152, 194, 0.16);
 }
 
 .sidebar .sidebar-brand .btn {
@@ -280,12 +282,12 @@
 
 .sidebar .accordion-group.open .accordion-btn {
     background: rgba(255,255,255,.08);
-    border-color: rgba(151, 186, 214, 0.16);
+    border-color: rgba(110, 152, 194, 0.18);
 }
 
 .sidebar .accordion-group.open .accordion-btn .caret {
     transform: rotate(0deg);
-    background: rgba(110, 193, 228, 0.18);
+    background: rgba(110, 152, 194, 0.18);
 }
 
 .sidebar .accordion-panel {
@@ -304,7 +306,7 @@
 
 .sidebar .accordion-panel .nav {
     margin-left: .7rem !important;
-    border-left: 1px solid rgba(151, 186, 214, 0.14);
+    border-left: 1px solid rgba(110, 152, 194, 0.16);
     padding-left: .35rem;
 }
 
