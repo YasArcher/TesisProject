@@ -20,21 +20,21 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/objectiveactivityusers/by-activity/{objectiveActivityId}
         [HttpGet("by-activity/{objectiveActivityId:int}")]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<ObjectiveActivityUserDTO>>>> GetByActivity(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<ObjectiveActivityUserDTO>>>> GetByActivity(
             int objectiveActivityId,
             CancellationToken ct = default)
             => (await _service.ListByActivityAsync(objectiveActivityId, ct)).ToActionResult();
 
         // POST: api/objectiveactivityusers/assign
         [HttpPost("assign")]
-        public async Task<ActionResult<ApiResponse<ObjectiveActivityUserDTO>>> Assign(
+        public async Task<ActionResult<ServiceResult<ObjectiveActivityUserDTO>>> Assign(
             [FromBody] AssignObjectiveActivityUserRequestDTO request,
             CancellationToken ct = default)
             => (await _service.AssignAsync(request, ct)).ToActionResult();
 
         // PUT: api/objectiveactivityusers/{id}
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<ObjectiveActivityUserDTO>>> Update(
+        public async Task<ActionResult<ServiceResult<ObjectiveActivityUserDTO>>> Update(
             int id,
             [FromBody] UpdateObjectiveActivityUserRequestDTO request,
             CancellationToken ct = default)
@@ -45,7 +45,7 @@ namespace tesisproject.backend.Controllers
 
         // DELETE: api/objectiveactivityusers/{id}
         [HttpDelete("{id:int}")]
-        public async Task<ActionResult<ApiResponse<bool>>> Unassign(
+        public async Task<ActionResult<ServiceResult<bool>>> Unassign(
             int id,
             CancellationToken ct = default)
             => (await _service.UnassignAsync(id, ct)).ToActionResult();

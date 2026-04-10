@@ -4,6 +4,7 @@
 @using tesisproject.frontend.Features.Matrices.Components
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI.Tabs
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Matrices.Response
 @using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
 
@@ -158,13 +159,13 @@
 
             if (!flatResponse.Success)
             {
-                FlatErrorMessage = flatResponse.Error ?? "No se pudo cargar el informe plano.";
+                FlatErrorMessage = flatResponse.ToErrorMessage("No se pudo cargar el informe plano.");
                 FlatProjects = null;
                 Toast.ShowError(FlatErrorMessage);
             }
             else
             {
-                FlatProjects = flatResponse.Response ?? Array.Empty<ProjectFlatReportDTO>();
+                FlatProjects = flatResponse.Data ?? Array.Empty<ProjectFlatReportDTO>();
             }
 
             var treeResponse = await ResearchCategoryClient.GetTreeAsync(onlyActives: true);
@@ -172,11 +173,11 @@
             if (!treeResponse.Success)
             {
                 CategoryTree = null;
-                Toast.ShowWarning(treeResponse.Error ?? "No se pudo cargar el árbol de categorías de investigación.");
+                Toast.ShowWarning(treeResponse.ToErrorMessage("No se pudo cargar el árbol de categorías de investigación."));
             }
             else
             {
-                CategoryTree = treeResponse.Response ?? new List<ResearchCategoryTreeItemDTO>();
+                CategoryTree = treeResponse.Data ?? new List<ResearchCategoryTreeItemDTO>();
             }
         }
         catch (Exception ex)
@@ -222,12 +223,12 @@
 
             if (!result.Success)
             {
-                Toast.ShowError(result.Error ?? "Falló la carga del archivo.");
+                Toast.ShowError(result.ToErrorMessage("Falló la carga del archivo."));
                 return;
             }
 
-            Summary = result.Response;
-            Toast.ShowSuccess("Matriz procesada exitosamente.");
+            Summary = result.Data;
+            Toast.ShowSuccess(result.ToSuccessMessage("Matriz procesada exitosamente."));
         }
         catch (Exception ex)
         {

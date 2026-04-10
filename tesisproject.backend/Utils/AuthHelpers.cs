@@ -1,5 +1,5 @@
-﻿using System.Security.Claims;
-using System.IdentityModel.Tokens.Jwt;
+﻿using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace tesisproject.backend.Utils
 {
@@ -9,10 +9,8 @@ namespace tesisproject.backend.Utils
         {
             if (user is null) return null;
 
-            // 1) Intentar con ClaimTypes.NameIdentifier (el de Identity)
             var claim = user.FindFirst(ClaimTypes.NameIdentifier);
 
-            // 2) Si no está, intentar con "sub"
             if (claim == null)
                 claim = user.FindFirst(JwtRegisteredClaimNames.Sub);
 
@@ -22,6 +20,16 @@ namespace tesisproject.backend.Utils
             return int.TryParse(claim.Value, out var id)
                 ? id
                 : (int?)null;
+        }
+
+        public static int GetRequiredUserId(this ClaimsPrincipal user)
+        {
+            var userId = user.GetUserId();
+
+            if (!userId.HasValue)
+                throw new UnauthorizedAccessException("AUTH_USER_NOT_AUTHENTICATED");
+
+            return userId.Value;
         }
     }
 }

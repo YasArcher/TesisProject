@@ -16,13 +16,7 @@ namespace tesisproject.backend.Services.Interfaces
         /// Más adelante aquí se dispararán las secciones:
         /// proyecto, finanzas, visitas, prórrogas, participantes, etc.
         /// </summary>
-        Task<ServiceResult<ProjectMatrixUploadSummaryDTO>> UploadAsync(
-            Stream fileStream,
-            string fileName,
-            string contentType,
-            int currentUserId,
-            CancellationToken ct = default);
-
+        Task<ServiceResult<ProjectMatrixUploadSummaryDTO>> UploadAsync(Stream fileStream, string fileName, string contentType, CancellationToken ct = default);
         // ======================
         //     CONFIG / EXPORT
         // ======================

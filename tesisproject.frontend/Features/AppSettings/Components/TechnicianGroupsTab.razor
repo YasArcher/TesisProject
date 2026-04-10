@@ -1,5 +1,6 @@
 ﻿@using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI.Catalog
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.FacultyScope.Request
 @using tesisproject.shared.DTOs.FacultyScope.Response
 @using tesisproject.shared.DTOs.External
@@ -149,8 +150,8 @@
                                                   ConfirmBeforeExecute="true"
                                                   ConfirmTitle="@(_selected.IsActive ? "Desactivar grupo" : "Activar grupo")"
                                                   ConfirmMessage="@(_selected.IsActive
-                                                                                                                                                                                                                                  ? "¿Seguro que deseas desactivar este grupo?"
-                                                                                                                                                                                                                                  : "¿Seguro que deseas activar este grupo?")"
+                                                                                                                                                                                                                                                                                                                        ? "¿Seguro que deseas desactivar este grupo?"
+                                                                                                                                                                                                                                                                                                                        : "¿Seguro que deseas activar este grupo?")"
                                                   ConfirmButtonText="@(_selected.IsActive ? "Desactivar" : "Activar")"
                                                   CancelButtonText="Cancelar" />
                                 </div>
@@ -471,14 +472,14 @@
         try
         {
             var res = await ExternalAcademicsClient.GetFacultiesWithProgramsAsync();
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                _catalogError = res.Error ?? "No se pudo cargar el catálogo de facultades.";
+                _catalogError = res.ToErrorMessage("No se pudo cargar el catálogo de facultades.");
                 _catalogFaculties = new();
                 return;
             }
 
-            _catalogFaculties = res.Response
+            _catalogFaculties = res.Data
                 .OrderBy(x => x.Name)
                 .ToList();
         }
@@ -501,14 +502,14 @@
         try
         {
             var res = await ExternalUserClient.GetListAsync();
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                _usersCatalogError = res.Error ?? "No se pudo cargar el catálogo de usuarios.";
+                _usersCatalogError = res.ToErrorMessage("No se pudo cargar el catálogo de usuarios.");
                 _catalogUsers = new();
                 return;
             }
 
-            _catalogUsers = res.Response
+            _catalogUsers = res.Data
                 .OrderBy(x => x.FullName)
                 .ThenBy(x => x.Email)
                 .ToList();
@@ -587,15 +588,15 @@
         try
         {
             var res = await FacultyScopeClient.GetAllAsync(includeAssignments: true);
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
-                _error = res.Error ?? "Error al cargar los grupos.";
+                _error = res.ToErrorMessage("Error al cargar los grupos.");
                 _groups = new();
                 _selected = null;
                 return;
             }
 
-            _groups = res.Response;
+            _groups = res.Data;
 
             if (_selected is not null)
                 _selected = _groups.FirstOrDefault(x => x.FacultyScopeId == _selected.FacultyScopeId);
@@ -714,13 +715,13 @@
                 };
 
                 var res = await FacultyScopeClient.CreateAsync(req);
-                if (!res.Success || res.Response is null)
+                if (!res.Success || res.Data is null)
                 {
-                    _modalError = res.Error ?? "Error al crear el grupo.";
+                    _modalError = res.ToErrorMessage("Error al crear el grupo.");
                     return;
                 }
 
-                Toast.ShowSuccess("Grupo creado exitosamente.");
+                Toast.ShowSuccess(res.ToSuccessMessage("Grupo creado exitosamente."));
             }
             else
             {
@@ -733,7 +734,7 @@
                 var resUpd = await FacultyScopeClient.UpdateAsync(_edit.Id, upd);
                 if (!resUpd.Success)
                 {
-                    _modalError = resUpd.Error ?? "Error al actualizar el grupo.";
+                    _modalError = resUpd.ToErrorMessage("Error al actualizar el grupo.");
                     return;
                 }
 
@@ -745,11 +746,11 @@
                 var resSet = await FacultyScopeClient.SetFacultiesAsync(_edit.Id, set);
                 if (!resSet.Success)
                 {
-                    _modalError = resSet.Error ?? "Se actualizó el nombre/estado, pero falló al guardar facultades.";
+                    _modalError = resSet.ToErrorMessage("Se actualizó el nombre/estado, pero falló al guardar facultades.");
                     return;
                 }
 
-                Toast.ShowSuccess("Grupo actualizado exitosamente.");
+                Toast.ShowSuccess(resSet.ToSuccessMessage("Grupo actualizado exitosamente."));
             }
 
             _modalOpen = false;
@@ -829,11 +830,11 @@
             var res = await FacultyScopeClient.SetFacultiesAsync(_selected.FacultyScopeId, req);
             if (!res.Success)
             {
-                _facultiesError = res.Error ?? "Error al guardar las facultades.";
+                _facultiesError = res.ToErrorMessage("Error al guardar las facultades.");
                 return;
             }
 
-            Toast.ShowSuccess("Facultades guardadas.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Facultades guardadas."));
             await ReloadAsync();
         }
         catch (Exception ex)
@@ -899,11 +900,11 @@
 
             if (!res.Success)
             {
-                _assignmentError = res.Error ?? "Error al asignar el técnico.";
+                _assignmentError = res.ToErrorMessage("Error al asignar el técnico.");
                 return;
             }
 
-            Toast.ShowSuccess("Técnico asignado.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Técnico asignado."));
             _userPickerOpen = false;
             await ReloadAsync();
         }
@@ -931,11 +932,11 @@
             var res = await FacultyScopeClient.UnassignScopeFromUserAsync(_selected.FacultyScopeId, userId);
             if (!res.Success)
             {
-                _assignmentError = res.Error ?? "Error al desasignar el técnico.";
+                _assignmentError = res.ToErrorMessage("Error al desasignar el técnico.");
                 return;
             }
 
-            Toast.ShowSuccess("Técnico desasignado.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Técnico desasignado."));
             await ReloadAsync();
         }
         catch (Exception ex)
@@ -966,11 +967,11 @@
             var res = await FacultyScopeClient.UpdateAsync(_selected.FacultyScopeId, req);
             if (!res.Success)
             {
-                Toast.ShowError(res.Error ?? "Error al cambiar estado.");
+                Toast.ShowError(res.ToErrorMessage("Error al cambiar estado."));
                 return;
             }
 
-            Toast.ShowSuccess("Estado actualizado.");
+            Toast.ShowSuccess(res.ToSuccessMessage("Estado actualizado."));
             await ReloadAsync();
         }
         catch (Exception ex)

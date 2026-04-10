@@ -24,15 +24,22 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/academicperiods
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<AcademicPeriodListItemDTO>>>> List(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<AcademicPeriodListItemDTO>>>> List(
             [FromQuery] bool onlyActives = true,
             CancellationToken ct = default)
         {
             var api = await _service.GetAllAsync(ct);
+
             if (!api.Success || api.Data is null)
+            {
                 return ServiceResult<IReadOnlyList<AcademicPeriodListItemDTO>>
-                    .Fail(api.Message ?? "Cannot retrieve academic periods.", api.Error)
+                    .Fail(
+                        api.Message ?? "Cannot retrieve academic periods.",
+                        api.Error,
+                        api.ErrorCode,
+                        api.ValidationErrors)
                     .ToActionResult();
+            }
 
             var list = api.Data
                 .Select(MapToListItem)
@@ -45,15 +52,22 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/academicperiods/{id}
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<AcademicPeriodListItemDTO>>> GetById(
+        public async Task<ActionResult<ServiceResult<AcademicPeriodListItemDTO>>> GetById(
             int id,
             CancellationToken ct = default)
         {
             var api = await _service.GetByIdAsync(id, ct);
+
             if (!api.Success || api.Data is null)
+            {
                 return ServiceResult<AcademicPeriodListItemDTO>
-                    .Fail(api.Message ?? "Academic period not found.", api.Error)
+                    .Fail(
+                        api.Message ?? "Academic period not found.",
+                        api.Error,
+                        api.ErrorCode,
+                        api.ValidationErrors)
                     .ToActionResult();
+            }
 
             return ServiceResult<AcademicPeriodListItemDTO>
                 .Ok(MapToListItem(api.Data), "Academic period retrieved")
@@ -62,16 +76,23 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/academicperiods/keyvalues
         [HttpGet("keyvalues")]
-        public async Task<ActionResult<ApiResponse<List<KeyValueItemDTO>>>> GetKeyValues(
+        public async Task<ActionResult<ServiceResult<List<KeyValueItemDTO>>>> GetKeyValues(
             [FromQuery] string? term,
             [FromQuery] int? take,
             CancellationToken ct = default)
         {
             var api = await _service.GetAllAsync(ct);
+
             if (!api.Success || api.Data is null)
+            {
                 return ServiceResult<List<KeyValueItemDTO>>
-                    .Fail(api.Message ?? "Cannot retrieve academic periods.", api.Error)
+                    .Fail(
+                        api.Message ?? "Cannot retrieve academic periods.",
+                        api.Error,
+                        api.ErrorCode,
+                        api.ValidationErrors)
                     .ToActionResult();
+            }
 
             var q = api.Data.AsEnumerable();
 
@@ -99,33 +120,31 @@ namespace tesisproject.backend.Controllers
 
         // POST: api/academicperiods
         [HttpPost]
-        public Task<ActionResult<ApiResponse<AcademicPeriodListItemDTO>>> Create(
+        public Task<ActionResult<ServiceResult<AcademicPeriodListItemDTO>>> Create(
             AcademicPeriodCreateRequestDTO body,
             CancellationToken ct = default)
         {
-            return Task.FromResult<ActionResult<ApiResponse<AcademicPeriodListItemDTO>>>(
-                StatusCode(StatusCodes.Status501NotImplemented, new ApiResponse<AcademicPeriodListItemDTO>
-                {
-                    Success = false,
-                    Message = "AcademicPeriods now comes from external source; create is not supported.",
-                    Data = null
-                }));
+            var result = ServiceResult<AcademicPeriodListItemDTO>.Fail(
+                "AcademicPeriods now comes from external source; create is not supported.",
+                ErrorType.Unexpected,
+                "ACADEMIC_PERIOD_CREATE_NOT_SUPPORTED");
+
+            return Task.FromResult(result.ToActionResult());
         }
 
         // PUT: api/academicperiods/{id}
         [HttpPut("{id:int}")]
-        public Task<ActionResult<ApiResponse<AcademicPeriodListItemDTO>>> Update(
+        public Task<ActionResult<ServiceResult<AcademicPeriodListItemDTO>>> Update(
             int id,
             AcademicPeriodUpdateRequestDTO body,
             CancellationToken ct = default)
         {
-            return Task.FromResult<ActionResult<ApiResponse<AcademicPeriodListItemDTO>>>(
-                StatusCode(StatusCodes.Status501NotImplemented, new ApiResponse<AcademicPeriodListItemDTO>
-                {
-                    Success = false,
-                    Message = "AcademicPeriods now comes from external source; update is not supported.",
-                    Data = null
-                }));
+            var result = ServiceResult<AcademicPeriodListItemDTO>.Fail(
+                "AcademicPeriods now comes from external source; update is not supported.",
+                ErrorType.Unexpected,
+                "ACADEMIC_PERIOD_UPDATE_NOT_SUPPORTED");
+
+            return Task.FromResult(result.ToActionResult());
         }
 
         private static AcademicPeriodListItemDTO MapToListItem(ExternalAcademicPeriodModel p) => new()

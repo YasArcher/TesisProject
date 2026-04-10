@@ -9,12 +9,16 @@ using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.Auth;
 using tesisproject.shared.Entities.Auth;
 using tesisproject.shared.Responses;
-
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
     public class AppUserService : IAppUserService
     {
+        private const string AppUserEnsuredMessage = "App user ensured.";
+        private const string AppUsersEnsuredMessage = "App users ensured.";
+        private const string AppUserResolvedMessage = "App user resolved.";
+
         private readonly UserManager<IdentityUser<int>> _userManager;
         private readonly IAppUserRepository _appUsers;
         private readonly IUnitOfWork _uow;
@@ -39,20 +43,29 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 var idUser = await EnsureSingleInternalAsync(dto, ct);
-                return ServiceResult<int>.Ok(idUser, "App user ensured.");
+                return ServiceResult<int>.Ok(idUser, AppUserEnsuredMessage);
             }
             catch (InvalidOperationException invEx)
             {
-                return ServiceResult<int>.Fail(invEx.Message, ErrorType.Validation);
+                return ServiceResult<int>.Fail(
+                    invEx.Message,
+                    ErrorType.Validation,
+                    ErrorCodes.Common.InvalidRequest);
             }
             catch (DbUpdateException dbEx)
             {
                 var msg = dbEx.InnerException?.Message ?? dbEx.Message;
-                return ServiceResult<int>.Fail(msg, ErrorType.Conflict);
+                return ServiceResult<int>.Fail(
+                    msg,
+                    ErrorType.Conflict,
+                    ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<int>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<int>.Fail(
+                    ex.Message,
+                    ErrorType.Unexpected,
+                    ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -63,39 +76,51 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 var result = new List<int>();
+
                 foreach (var dto in dtos)
                 {
                     var idUser = await EnsureSingleInternalAsync(dto, ct);
                     result.Add(idUser);
                 }
 
-                return ServiceResult<List<int>>.Ok(result, "App users ensured.");
+                return ServiceResult<List<int>>.Ok(result, AppUsersEnsuredMessage);
             }
             catch (InvalidOperationException invEx)
             {
-                return ServiceResult<List<int>>.Fail(invEx.Message, ErrorType.Validation);
+                return ServiceResult<List<int>>.Fail(
+                    invEx.Message,
+                    ErrorType.Validation,
+                    ErrorCodes.Common.InvalidRequest);
             }
             catch (DbUpdateException dbEx)
             {
                 var msg = dbEx.InnerException?.Message ?? dbEx.Message;
-                return ServiceResult<List<int>>.Fail(msg, ErrorType.Conflict);
+                return ServiceResult<List<int>>.Fail(
+                    msg,
+                    ErrorType.Conflict,
+                    ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<List<int>>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<List<int>>.Fail(
+                    ex.Message,
+                    ErrorType.Unexpected,
+                    ErrorCodes.Common.UnexpectedError);
             }
         }
 
-        public async Task<ServiceResult<int>> GetAppUserIdByLocalIdAsync(int localUserId, CancellationToken ct = default)
+        public async Task<ServiceResult<int>> GetAppUserIdByLocalIdAsync(
+            int localUserId,
+            CancellationToken ct = default)
         {
             try
             {
                 if (localUserId <= 0)
                 {
                     return ServiceResult<int>.Fail(
-                        "Invalid local user id.",
-                        ErrorType.Validation
-                    );
+                        ErrorMessages.AppUser.InvalidLocalUserId,
+                        ErrorType.Validation,
+                        ErrorCodes.AppUser.InvalidLocalUserId);
                 }
 
                 var appUser = await _appUsers.GetByLocalIdAsync(localUserId, ct);
@@ -103,22 +128,24 @@ namespace tesisproject.backend.Services.Implementations
                 if (appUser is null || appUser.IdUser <= 0)
                 {
                     return ServiceResult<int>.Fail(
-                        "App user not found.",
-                        ErrorType.NotFound
-                    );
+                        ErrorMessages.AppUser.NotFound,
+                        ErrorType.NotFound,
+                        ErrorCodes.AppUser.NotFound);
                 }
 
-                return ServiceResult<int>.Ok(appUser.IdUser, "App user resolved.");
+                return ServiceResult<int>.Ok(appUser.IdUser, AppUserResolvedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<int>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<int>.Fail(
+                    ex.Message,
+                    ErrorType.Unexpected,
+                    ErrorCodes.Common.UnexpectedError);
             }
         }
 
         private async Task<int> EnsureSingleInternalAsync(RegisterRequest dto, CancellationToken ct)
         {
-            // 1) Buscar IdentityUser por email
             var user = await _userManager.FindByEmailAsync(dto.Email);
 
             var userWasCreated = false;
@@ -142,21 +169,18 @@ namespace tesisproject.backend.Services.Implementations
                 userWasCreated = true;
             }
 
-            // 2) Roles (delegado)
             try
             {
                 await _userRoles.AssignRoleAsync(user, dto.Role, ct);
             }
             catch
             {
-                // Si el IdentityUser se creó en este flujo y rol falló => cleanup inmediato
                 if (userWasCreated)
                     await _userManager.DeleteAsync(user);
 
                 throw;
             }
 
-            // 3) Buscar/crear AppUser
             AppUser? appUser = null;
 
             if (dto.AspUserId.HasValue)
@@ -195,19 +219,18 @@ namespace tesisproject.backend.Services.Implementations
                     _appUsers.Update(appUser);
             }
 
-            // 4) Guardar BD propia
             try
             {
                 await _uow.SaveChangesAsync(ct);
             }
             catch
             {
-                // Compensación: evita Identity user + rol sin AppUser
                 if (userWasCreated)
                     await _userManager.DeleteAsync(user);
 
                 throw;
             }
+
             return appUser.IdUser;
         }
     }

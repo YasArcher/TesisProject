@@ -6,12 +6,13 @@
 @using tesisproject.frontend.SharedUI.SelectInput
 @using tesisproject.frontend.SharedUI.TextInput
 @using tesisproject.frontend.SharedUI.SearchInput
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Catalog.Country.Request
 @using tesisproject.shared.DTOs.Catalog.Country.Response
 @using tesisproject.shared.DTOs.Institution.Request
 @using tesisproject.shared.DTOs.Institution.Response
 @using tesisproject.shared.DTOs.Filters
-@using tesisproject.frontend.Services.Interfaces
 @using System.Globalization
 @using System.Text
 
@@ -527,13 +528,13 @@
             var result = await CountryClient.ListAsync(onlyActives: false);
             if (!result.Success)
             {
-                Toast.ShowError("Error al cargar los países.");
+                Toast.ShowError(result.ToErrorMessage("Error al cargar los países."));
                 _countries = new();
                 _filteredCountries = new();
                 return;
             }
 
-            _countries = result.Response ?? new();
+            _countries = result.Data ?? new();
             _filteredCountries = _countries.ToList();
 
             if (!_selectedCountryId.HasValue && _countries.Count > 0)
@@ -614,10 +615,10 @@
             var result = await CountryClient.UpdateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Error al actualizar el país.");
+                Toast.ShowError(result.ToErrorMessage("Error al actualizar el país."));
                 return;
             }
-            Toast.ShowSuccess("País actualizado exitosamente.");
+            Toast.ShowSuccess(result.ToSuccessMessage("País actualizado exitosamente."));
         }
         else
         {
@@ -630,11 +631,11 @@
             var result = await CountryClient.CreateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Error al crear el país.");
+                Toast.ShowError(result.ToErrorMessage("Error al crear el país."));
                 return;
             }
-            Toast.ShowSuccess("País creado exitosamente.");
-            _selectedCountryId = result.Response?.Id;
+            Toast.ShowSuccess(result.ToSuccessMessage("País creado exitosamente."));
+            _selectedCountryId = result.Data?.Id;
         }
         _countryModalOpen = false;
         await LoadCountriesAsync();
@@ -665,13 +666,13 @@
             var result = await InstitutionClient.ListAsync(onlyActives: false);
             if (!result.Success)
             {
-                Toast.ShowError("Error al cargar las instituciones.");
+                Toast.ShowError(result.ToErrorMessage("Error al cargar las instituciones."));
                 _institutions = new();
                 _filteredInstitutions = new();
                 return;
             }
 
-            var allInstitutions = result.Response ?? new();
+            var allInstitutions = result.Data ?? new();
             _institutions = allInstitutions
                 .Where(i => i.CountryId == _selectedCountryId.Value)
                 .OrderBy(i => i.Name)
@@ -708,12 +709,12 @@
     {
         _isInstitutionEdit = true;
         var result = await InstitutionClient.GetByIdAsync(institutionId);
-        if (!result.Success || result.Response is null)
+        if (!result.Success || result.Data is null)
         {
-            Toast.ShowError("Error al cargar los detalles de la institución.");
+            Toast.ShowError(result.ToErrorMessage("Error al cargar los detalles de la institución."));
             return;
         }
-        _institutionEditModel = result.Response;
+        _institutionEditModel = result.Data;
         _selectedCountryForInstitution = _countries.FirstOrDefault(c => c.Id == _institutionEditModel.CountryId);
         _institutionModalOpen = true;
     }
@@ -746,10 +747,10 @@
             var result = await InstitutionClient.UpdateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Error al actualizar la institución.");
+                Toast.ShowError(result.ToErrorMessage("Error al actualizar la institución."));
                 return;
             }
-            Toast.ShowSuccess("Institución actualizada exitosamente.");
+            Toast.ShowSuccess(result.ToSuccessMessage("Institución actualizada exitosamente."));
         }
         else
         {
@@ -761,10 +762,10 @@
             var result = await InstitutionClient.CreateAsync(dto);
             if (!result.Success)
             {
-                Toast.ShowError("Error al crear la institución.");
+                Toast.ShowError(result.ToErrorMessage("Error al crear la institución."));
                 return;
             }
-            Toast.ShowSuccess("Institución creada exitosamente.");
+            Toast.ShowSuccess(result.ToSuccessMessage("Institución creada exitosamente."));
         }
         _institutionModalOpen = false;
         await LoadInstitutionsAsync();

@@ -9,6 +9,9 @@ namespace tesisproject.backend.Services.Implementations
 {
     public sealed class ProjectsFiltersService : IProjectsFiltersService
     {
+        private const string ProjectsFiltersBootstrapGeneratedMessage = "Projects filters bootstrap generated.";
+        private const string OperationCanceledMessage = "Operation was canceled.";
+
         private readonly ICatalogQueryService _catalogs;
         private readonly IExternalAcademicsService _extTypes;
         private readonly ICatalogRepository<ResearchCategoryType> _researchTypes;
@@ -60,12 +63,12 @@ namespace tesisproject.backend.Services.Implementations
                 dto.ResearchCategoryTypes = await BuildResearchCategoryTypesAsync(ct);
 
                 return ServiceResult<ProjectsFilterBootstrapDTO>
-                    .Ok(dto, "Projects filters bootstrap generated.");
+                    .Ok(dto, ProjectsFiltersBootstrapGeneratedMessage);
             }
             catch (OperationCanceledException)
             {
                 return ServiceResult<ProjectsFilterBootstrapDTO>
-                    .Fail("Operation was canceled.", ErrorType.Unexpected);
+                    .Fail(OperationCanceledMessage, ErrorType.Unexpected);
             }
             catch (Exception ex)
             {

@@ -28,7 +28,7 @@ namespace tesisproject.backend.Controllers
 
         [HttpGet]
         [HttpGet("{productTypeId:int}")]
-        public async Task<ActionResult<ApiResponse<ProductTypeDesignDetailDTO>>> Get(
+        public async Task<ActionResult<ServiceResult<ProductTypeDesignDetailDTO>>> Get(
             int? productTypeId,
             CancellationToken ct)
         {
@@ -47,7 +47,7 @@ namespace tesisproject.backend.Controllers
         // ======================================================
 
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<ProductTypeDesignDetailDTO>>> Save(
+        public async Task<ActionResult<ServiceResult<ProductTypeDesignDetailDTO>>> Save(
             [FromBody] SaveProductTypeDesignRequestDTO request,
             CancellationToken ct)
         {

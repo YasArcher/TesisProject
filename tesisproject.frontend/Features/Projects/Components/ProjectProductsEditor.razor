@@ -1,5 +1,6 @@
 ﻿@using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Products.Product.Request
 @using tesisproject.shared.DTOs.Products.Product.Response
 @using tesisproject.shared.DTOs.Products.ProductTypeDesign.Response
@@ -489,17 +490,17 @@
 
         var response = await ProductTypeService.GetListAsync(CancellationToken.None);
 
-        if (!response.Success || response.Response is null)
+        if (!response.Success || response.Data is null)
         {
             if (_editProductModalOpen)
-                _editModalError = response.Error ?? errorMessageTarget;
+                _editModalError = response.ToErrorMessage(errorMessageTarget);
             else
-                _modalError = response.Error ?? errorMessageTarget;
+                _modalError = response.ToErrorMessage(errorMessageTarget);
 
             return false;
         }
 
-        _productTypes = response.Response
+        _productTypes = response.Data
             .OrderBy(x => x.Name)
             .ToList();
 
@@ -568,16 +569,16 @@
         {
             var response = await ProductTypeDesignService.GetByProductTypeIdAsync(_selectedProductTypeId, CancellationToken.None);
 
-            if (!response.Success || response.Response is null)
+            if (!response.Success || response.Data is null)
             {
-                _modalError = response.Error ?? "No se pudo cargar la plantilla del tipo de producto.";
+                _modalError = response.ToErrorMessage("No se pudo cargar la plantilla del tipo de producto.");
                 return;
             }
 
-            if (response.Response.Definitions is null)
+            if (response.Data.Definitions is null)
                 return;
 
-            foreach (var definition in response.Response.Definitions.OrderBy(x => x.DisplayOrder))
+            foreach (var definition in response.Data.Definitions.OrderBy(x => x.DisplayOrder))
             {
                 _designDefinitions.Add(new UiDesignField
                 {
@@ -671,11 +672,11 @@
 
             if (!response.Success)
             {
-                Toast.ShowError(response.Error ?? "No se pudo crear el producto.");
+                Toast.ShowError(response.ToErrorMessage("No se pudo crear el producto."));
                 return;
             }
 
-            Toast.ShowSuccess("Producto creado correctamente.");
+            Toast.ShowSuccess(response.ToSuccessMessage("Producto creado correctamente."));
             CloseCreateProductModal();
 
             if (OnChanged.HasDelegate)
@@ -722,13 +723,13 @@
 
             var productResponse = await ProductService.GetByIdAsync(productId, CancellationToken.None);
 
-            if (!productResponse.Success || productResponse.Response is null)
+            if (!productResponse.Success || productResponse.Data is null)
             {
-                _editModalError = productResponse.Error ?? "No se pudo cargar el producto.";
+                _editModalError = productResponse.ToErrorMessage("No se pudo cargar el producto.");
                 return;
             }
 
-            var product = productResponse.Response;
+            var product = productResponse.Data;
 
             _editSelectedProductTypeId = product.ProductTypeId;
             _editTitle = product.Title ?? string.Empty;
@@ -736,16 +737,16 @@
 
             var designResponse = await ProductTypeDesignService.GetByProductTypeIdAsync(_editSelectedProductTypeId, CancellationToken.None);
 
-            if (!designResponse.Success || designResponse.Response is null)
+            if (!designResponse.Success || designResponse.Data is null)
             {
-                _editModalError = designResponse.Error ?? "No se pudo cargar la plantilla del tipo de producto.";
+                _editModalError = designResponse.ToErrorMessage("No se pudo cargar la plantilla del tipo de producto.");
                 return;
             }
 
-            if (designResponse.Response.Definitions is null)
+            if (designResponse.Data.Definitions is null)
                 return;
 
-            foreach (var definition in designResponse.Response.Definitions.OrderBy(x => x.DisplayOrder))
+            foreach (var definition in designResponse.Data.Definitions.OrderBy(x => x.DisplayOrder))
             {
                 _editDesignDefinitions.Add(new UiDesignField
                 {
@@ -841,11 +842,11 @@
 
             if (!response.Success)
             {
-                Toast.ShowError(response.Error ?? "No se pudo actualizar el producto.");
+                Toast.ShowError(response.ToErrorMessage("No se pudo actualizar el producto."));
                 return;
             }
 
-            Toast.ShowSuccess("Producto actualizado correctamente.");
+            Toast.ShowSuccess(response.ToSuccessMessage("Producto actualizado correctamente."));
             CloseEditProductModal();
 
             if (OnChanged.HasDelegate)
@@ -871,11 +872,11 @@
 
             if (!response.Success)
             {
-                Toast.ShowError(response.Error ?? "No se pudo eliminar el producto.");
+                Toast.ShowError(response.ToErrorMessage("No se pudo eliminar el producto."));
                 return;
             }
 
-            Toast.ShowSuccess("Producto eliminado.");
+            Toast.ShowSuccess(response.ToSuccessMessage("Producto eliminado."));
 
             if (OnChanged.HasDelegate)
             {

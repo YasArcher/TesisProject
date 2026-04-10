@@ -271,6 +271,7 @@ static class StartupExtensions
             });
 
         builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+        builder.Services.AddHttpContextAccessor();
 
         // Repos concretos
         builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
@@ -305,6 +306,7 @@ static class StartupExtensions
         builder.Services.AddScoped<IFacultyScopeRepository, FacultyScopeRepository>();
         builder.Services.AddScoped<IFacultyScopeFacultyRepository, FacultyScopeFacultyRepository>();
         builder.Services.AddScoped<IUserFacultyScopeAssignmentRepository, UserFacultyScopeAssignmentRepository>();
+        builder.Services.AddScoped<IAppConfigurationRepository, AppConfigurationRepository>();
 
         // Genéricos
         builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -315,6 +317,7 @@ static class StartupExtensions
         builder.Services.AddScoped<ICatalogQueryService, CatalogQueryService>();
         builder.Services.AddScoped<IProjectsFiltersService, ProjectsFiltersService>();
         builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
         builder.Services.AddScoped<ITokenService, JwtTokenService>();
         builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         builder.Services.AddScoped<IProjectService, ProjectService>();

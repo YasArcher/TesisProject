@@ -3,6 +3,7 @@
 @using tesisproject.frontend.Features.Groups.Components
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Group.Request
 @using tesisproject.shared.DTOs.Group.Response
 @using tesisproject.shared.DTOs.AppUser
@@ -98,8 +99,8 @@
 
             if (response.Success)
             {
-                Toast.ShowSuccess("Grupo creado exitosamente.");
-                var createdId = response.Response?.GroupId;
+                Toast.ShowSuccess(response.ToSuccessMessage("Grupo creado exitosamente."));
+                var createdId = response.Data?.GroupId;
 
                 _openCreate = false;
 
@@ -111,7 +112,7 @@
                 return;
             }
 
-            Toast.ShowError(response.Error ?? "Error al crear el grupo.");
+            Toast.ShowError(response.ToErrorMessage("Error al crear el grupo."));
         }
         catch (Exception ex)
         {
@@ -133,7 +134,9 @@
         try
         {
             var response = await GroupService.GetListAsync(2);
-            groups = response.Response ?? new();
+            groups = response.Success
+                ? response.Data ?? new()
+                : new();
         }
         finally
         {
@@ -165,7 +168,9 @@
         try
         {
             var response = await GroupService.GetMembersByGroupIdAsync(groupId);
-            members = response.Response ?? new();
+            members = response.Success
+                ? response.Data ?? new()
+                : new();
         }
         finally
         {
@@ -184,11 +189,11 @@
         var response = await GroupService.AddMemberAsync(dto);
         if (!response.Success)
         {
-            Toast.ShowError(response.Error ?? "No se pudo agregar el miembro.");
+            Toast.ShowError(response.ToErrorMessage("No se pudo agregar el miembro."));
             return;
         }
 
-        Toast.ShowSuccess("Miembro agregado.");
+        Toast.ShowSuccess(response.ToSuccessMessage("Miembro agregado."));
         await ReloadAfterMemberChange();
     }
 
@@ -197,11 +202,11 @@
         var response = await GroupService.UpdateAsync(dto);
         if (!response.Success)
         {
-            Toast.ShowError(response.Error ?? "No se pudo actualizar el grupo.");
+            Toast.ShowError(response.ToErrorMessage("No se pudo actualizar el grupo."));
             return;
         }
 
-        Toast.ShowSuccess("Grupo actualizado.");
+        Toast.ShowSuccess(response.ToSuccessMessage("Grupo actualizado."));
         await LoadGroupsAsync();
         await ReloadAfterMemberChange();
     }
@@ -222,13 +227,13 @@
         var response = await ExternalUserService.GetListAsync();
         if (!response.Success)
         {
-            Toast.ShowError(response.Error ?? "No se pudieron cargar usuarios.");
+            Toast.ShowError(response.ToErrorMessage("No se pudieron cargar usuarios."));
             return new();
         }
 
         var existingIds = new HashSet<int>(members.Select(m => m.UserId));
 
-        return (response.Response ?? new())
+        return (response.Data ?? new())
             .Where(user => !existingIds.Contains(user.UserId))
             .OrderBy(user => user.FullName)
             .ToList();
@@ -239,14 +244,14 @@
         try
         {
             var response = await MemberRoleTypeService.GetListAsync(onlyActives: true);
-            if (!response.Success || response.Response is null)
+            if (!response.Success || response.Data is null)
             {
-                Toast.ShowError(response.Error ?? "No se pudieron cargar los roles de miembro.");
+                Toast.ShowError(response.ToErrorMessage("No se pudieron cargar los roles de miembro."));
                 _memberRoleTypes = new();
                 return;
             }
 
-            _memberRoleTypes = response.Response
+            _memberRoleTypes = response.Data
                 .Where(role => role.Flag == 2)
                 .Select(role => new MemberRoleTypeDetailDTO
                 {

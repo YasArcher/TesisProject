@@ -3,23 +3,13 @@ using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.ObjectiveActivityUser.Request;
 using tesisproject.shared.DTOs.ObjectiveActivityUser.Response;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
 {
     public class ObjectiveActivityUserService : IObjectiveActivityUserService
     {
-        private const string RequestRequiredMessage = "Request is required.";
-        private const string ObjectiveActivityIdRequiredMessage = "ObjectiveActivityId is required.";
-        private const string UserIdRequiredMessage = "UserId is required.";
-        private const string VisitIdRequiredMessage = "VisitId is required.";
-
-        private const string InvalidIdMessage = "Invalid id.";
-        private const string ObjectiveActivityNotFoundMessage = "ObjectiveActivity not found.";
-        private const string VisitNotFoundMessage = "Visit not found.";
-        private const string AssignmentNotFoundMessage = "Assignment not found.";
-        private const string AssignmentAlreadyExistsMessage = "Assignment already exists for this activity, user and visit.";
-
         private readonly IUnitOfWork _uow;
 
         public ObjectiveActivityUserService(IUnitOfWork uow)
@@ -34,8 +24,12 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (objectiveActivityId <= 0)
-                return ServiceResult<IReadOnlyList<ObjectiveActivityUserDTO>>
-                    .Fail(ObjectiveActivityIdRequiredMessage, ErrorType.Validation);
+            {
+                return ServiceResult<IReadOnlyList<ObjectiveActivityUserDTO>>.Fail(
+                    ErrorMessages.ObjectiveActivityUser.ObjectiveActivityIdRequired,
+                    ErrorType.Validation,
+                    ErrorCodes.ObjectiveActivityUser.ObjectiveActivityIdRequired);
+            }
 
             var assignments = await _uow.ObjectiveActivityUsers.GetByActivityAsync(objectiveActivityId, ct);
 
@@ -54,36 +48,60 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null)
-                return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail(RequestRequiredMessage, ErrorType.Validation);
+            {
+                return ServiceResult<ObjectiveActivityUserDTO>.Fail(
+                    ErrorMessages.Common.RequestRequired,
+                    ErrorType.Validation,
+                    ErrorCodes.Common.RequestRequired);
+            }
 
             if (request.ObjectiveActivityId <= 0)
-                return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail(ObjectiveActivityIdRequiredMessage, ErrorType.Validation);
+            {
+                return ServiceResult<ObjectiveActivityUserDTO>.Fail(
+                    ErrorMessages.ObjectiveActivityUser.ObjectiveActivityIdRequired,
+                    ErrorType.Validation,
+                    ErrorCodes.ObjectiveActivityUser.ObjectiveActivityIdRequired);
+            }
 
             if (request.UserId <= 0)
-                return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail(UserIdRequiredMessage, ErrorType.Validation);
+            {
+                return ServiceResult<ObjectiveActivityUserDTO>.Fail(
+                    ErrorMessages.ObjectiveActivityUser.UserIdRequired,
+                    ErrorType.Validation,
+                    ErrorCodes.ObjectiveActivityUser.UserIdRequired);
+            }
 
             if (request.VisitId <= 0)
-                return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail(VisitIdRequiredMessage, ErrorType.Validation);
+            {
+                return ServiceResult<ObjectiveActivityUserDTO>.Fail(
+                    ErrorMessages.ObjectiveActivityUser.VisitIdRequired,
+                    ErrorType.Validation,
+                    ErrorCodes.ObjectiveActivityUser.VisitIdRequired);
+            }
 
             // Validar que la actividad exista
             var activity = await _uow.ObjectiveActivities.GetByIdAsync(
                 Key(request.ObjectiveActivityId), ct);
 
             if (activity is null)
-                return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail(ObjectiveActivityNotFoundMessage, ErrorType.Validation);
+            {
+                return ServiceResult<ObjectiveActivityUserDTO>.Fail(
+                    ErrorMessages.ObjectiveActivityUser.ObjectiveActivityNotFound,
+                    ErrorType.Validation,
+                    ErrorCodes.ObjectiveActivityUser.ObjectiveActivityNotFound);
+            }
 
             // Validar que la visita exista
             var visit = await _uow.Visits.GetByIdAsync(
                 Key(request.VisitId), ct);
 
             if (visit is null)
-                return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail(VisitNotFoundMessage, ErrorType.Validation);
+            {
+                return ServiceResult<ObjectiveActivityUserDTO>.Fail(
+                    ErrorMessages.Visit.NotFound,
+                    ErrorType.Validation,
+                    ErrorCodes.Visit.NotFound);
+            }
 
             // Evitar duplicados actividad-usuario-visita
             var exists = await _uow.ObjectiveActivityUsers.ExistsAssignmentAsync(
@@ -93,8 +111,12 @@ namespace tesisproject.backend.Services.Implementations
                 ct);
 
             if (exists)
-                return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail(AssignmentAlreadyExistsMessage, ErrorType.Validation);
+            {
+                return ServiceResult<ObjectiveActivityUserDTO>.Fail(
+                    ErrorMessages.ObjectiveActivityUser.AlreadyAssigned,
+                    ErrorType.Validation,
+                    ErrorCodes.ObjectiveActivityUser.AlreadyAssigned);
+            }
 
             var entity = new ObjectiveActivityUser
             {
@@ -118,15 +140,23 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null || request.Id <= 0)
-                return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail(InvalidIdMessage, ErrorType.Validation);
+            {
+                return ServiceResult<ObjectiveActivityUserDTO>.Fail(
+                    ErrorMessages.Common.InvalidId,
+                    ErrorType.Validation,
+                    ErrorCodes.Common.InvalidId);
+            }
 
             var entity = await _uow.ObjectiveActivityUsers.GetByIdAsync(
                 Key(request.Id), ct);
 
             if (entity is null)
-                return ServiceResult<ObjectiveActivityUserDTO>
-                    .Fail(AssignmentNotFoundMessage, ErrorType.NotFound);
+            {
+                return ServiceResult<ObjectiveActivityUserDTO>.Fail(
+                    ErrorMessages.ObjectiveActivityUser.AssignmentNotFound,
+                    ErrorType.NotFound,
+                    ErrorCodes.ObjectiveActivityUser.AssignmentNotFound);
+            }
 
             entity.WeeklyHours = request.WeeklyHours;
             entity.RoleDescription = NormalizeText(request.RoleDescription);
@@ -144,15 +174,23 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (id <= 0)
-                return ServiceResult<bool>
-                    .Fail(InvalidIdMessage, ErrorType.Validation);
+            {
+                return ServiceResult<bool>.Fail(
+                    ErrorMessages.Common.InvalidId,
+                    ErrorType.Validation,
+                    ErrorCodes.Common.InvalidId);
+            }
 
             var entity = await _uow.ObjectiveActivityUsers.GetByIdAsync(
                 Key(id), ct);
 
             if (entity is null)
-                return ServiceResult<bool>
-                    .Fail(AssignmentNotFoundMessage, ErrorType.NotFound);
+            {
+                return ServiceResult<bool>.Fail(
+                    ErrorMessages.ObjectiveActivityUser.AssignmentNotFound,
+                    ErrorType.NotFound,
+                    ErrorCodes.ObjectiveActivityUser.AssignmentNotFound);
+            }
 
             _uow.ObjectiveActivityUsers.Remove(entity);
             await _uow.SaveChangesAsync(ct);

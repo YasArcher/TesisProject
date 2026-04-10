@@ -1,12 +1,14 @@
-﻿using System;
+﻿using Microsoft.Extensions.Logging;
+using OfficeOpenXml;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.Extensions.Logging;
-using OfficeOpenXml;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response;
 using tesisproject.shared.DTOs.Export;
 using tesisproject.shared.DTOs.Matrices.Response;
+using tesisproject.shared.Enums;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
@@ -24,18 +26,12 @@ namespace tesisproject.backend.Services.Implementations
         private const string EmptyPlaceholder = "-";
         private const string PipeSeparator = " | ";
         private const string DefaultWorksheetName = "Matriz proyectos";
-
         private const string DynamicCategoriesKey = "MATRIX_DYNAMIC_CATEGORIES";
         private const string DynamicObjectivesKey = "MATRIX_DYNAMIC_OBJECTIVES";
-
         private const string CategoryTypePrefix = "CATEGORY_TYPE_";
         private const string ObjectivePrefix = "OBJECTIVE_";
-
         private const int CategoryColumnsBaseOrder = 1000;
         private const int ObjectiveColumnsBaseOrder = 2000;
-
-        private const int ObjectiveTypeGeneralId = 1;
-        private const int ObjectiveTypeSpecificId = 2;
 
         private readonly IProjectFlatReportService _flatService;
         private readonly IResearchCategoryService _categoryService;
@@ -59,42 +55,71 @@ namespace tesisproject.backend.Services.Implementations
             CancellationToken ct = default)
         {
             if (request is null)
-                return ServiceResult<byte[]>.Fail(
-                    "La solicitud de exportación es nula.",
-                    ErrorType.Validation);
+            {
+                return ValidationFailure<byte[]>(
+                    ErrorMessages.Common.RequestRequired,
+                    ErrorCodes.Common.RequestRequired,
+                    "Request");
+            }
 
             if (request.TemplateId <= 0)
-                return ServiceResult<byte[]>.Fail(
-                    "Debe especificar una plantilla válida.",
-                    ErrorType.Validation);
+            {
+                return ValidationFailure<byte[]>(
+                    ErrorMessages.MatrixTemplateExport.InvalidTemplateId,
+                    ErrorCodes.MatrixTemplateExport.InvalidTemplateId,
+                    nameof(ExportByTemplateRequestDTO.TemplateId));
+            }
 
             var includedColumnIds = request.IncludedTemplateColumnIds?
                 .Distinct()
                 .ToList() ?? new List<int>();
 
             if (includedColumnIds.Count == 0)
-                return ServiceResult<byte[]>.Fail(
-                    "Debe seleccionar al menos una columna para exportar.",
-                    ErrorType.Validation);
+            {
+                return ValidationFailure<byte[]>(
+                    ErrorMessages.Export.NoColumnsDefined,
+                    ErrorCodes.Export.NoColumnsDefined,
+                    nameof(ExportByTemplateRequestDTO.IncludedTemplateColumnIds));
+            }
 
-            // 1) Cargar plantilla desde BD
             var templateResult = await _templateService.GetTemplateAsync(request.TemplateId, ct);
-            if (!templateResult.Success || templateResult.Data is null)
+
+            if (!templateResult.Success)
+            {
+                return RelayFailure<byte[]>(
+                    templateResult.Message,
+                    templateResult.Error,
+                    templateResult.ErrorCode,
+                    templateResult.ValidationErrors,
+                    ErrorMessages.MatrixTemplateExport.TemplateNotRecovered,
+                    ErrorCodes.MatrixTemplateExport.TemplateNotRecovered);
+            }
+
+            if (templateResult.Data is null)
+            {
                 return ServiceResult<byte[]>.Fail(
-                    templateResult.Message ?? "No se pudo recuperar la plantilla.",
-                    ErrorType.Validation);
+                    ErrorMessages.ExportTemplate.NotFound,
+                    ErrorType.NotFound,
+                    ErrorCodes.ExportTemplate.NotFound);
+            }
 
             var template = templateResult.Data;
 
             if (!template.IsActive)
-                return ServiceResult<byte[]>.Fail(
-                    "La plantilla seleccionada está inactiva.",
-                    ErrorType.Validation);
+            {
+                return ValidationFailure<byte[]>(
+                    ErrorMessages.MatrixTemplateExport.TemplateInactive,
+                    ErrorCodes.MatrixTemplateExport.TemplateInactive,
+                    nameof(ExportByTemplateRequestDTO.TemplateId));
+            }
 
             if (template.Columns is null || template.Columns.Count == 0)
-                return ServiceResult<byte[]>.Fail(
-                    "La plantilla no tiene columnas configuradas.",
-                    ErrorType.Validation);
+            {
+                return ValidationFailure<byte[]>(
+                    ErrorMessages.MatrixTemplateExport.TemplateWithoutColumns,
+                    ErrorCodes.MatrixTemplateExport.TemplateWithoutColumns,
+                    nameof(ExportTemplateDetailDTO.Columns));
+            }
 
             var templateColumns = template.Columns
                 .OrderBy(c => c.OrderIndex)
@@ -109,9 +134,12 @@ namespace tesisproject.backend.Services.Implementations
                 .ToList();
 
             if (invalidIncludedIds.Count > 0)
-                return ServiceResult<byte[]>.Fail(
-                    "La selección contiene columnas que no pertenecen a la plantilla.",
-                    ErrorType.Validation);
+            {
+                return ValidationFailure<byte[]>(
+                    ErrorMessages.MatrixTemplateExport.IncludedColumnsNotInTemplate,
+                    ErrorCodes.MatrixTemplateExport.IncludedColumnsNotInTemplate,
+                    nameof(ExportByTemplateRequestDTO.IncludedTemplateColumnIds));
+            }
 
             var requiredNotIncluded = templateColumns
                 .Where(c => c.IsRequired && !includedColumnIds.Contains(c.Id))
@@ -119,9 +147,12 @@ namespace tesisproject.backend.Services.Implementations
                 .ToList();
 
             if (requiredNotIncluded.Count > 0)
-                return ServiceResult<byte[]>.Fail(
-                    "Faltan columnas obligatorias requeridas por la plantilla.",
-                    ErrorType.Validation);
+            {
+                return ValidationFailure<byte[]>(
+                    ErrorMessages.MatrixTemplateExport.MissingRequiredColumns,
+                    ErrorCodes.MatrixTemplateExport.MissingRequiredColumns,
+                    nameof(ExportByTemplateRequestDTO.IncludedTemplateColumnIds));
+            }
 
             var selectedTemplateColumns = templateColumns
                 .Where(c => includedColumnIds.Contains(c.Id))
@@ -129,19 +160,36 @@ namespace tesisproject.backend.Services.Implementations
                 .ToList();
 
             if (selectedTemplateColumns.Count == 0)
-                return ServiceResult<byte[]>.Fail(
-                    "No hay columnas válidas seleccionadas para exportar.",
-                    ErrorType.Validation);
+            {
+                return ValidationFailure<byte[]>(
+                    ErrorMessages.MatrixTemplateExport.NoValidSelectedColumns,
+                    ErrorCodes.MatrixTemplateExport.NoValidSelectedColumns,
+                    nameof(ExportByTemplateRequestDTO.IncludedTemplateColumnIds));
+            }
 
-            // 2) Cargar dataset plano
             var flatResult = await _flatService.GetFlatReportAsync(request.ProjectIds, ct);
-            if (!flatResult.Success || flatResult.Data is null || flatResult.Data.Count == 0)
+
+            if (!flatResult.Success)
+            {
+                return RelayFailure<byte[]>(
+                    flatResult.Message,
+                    flatResult.Error,
+                    flatResult.ErrorCode,
+                    flatResult.ValidationErrors,
+                    ErrorMessages.Export.FlatReportUnavailable,
+                    ErrorCodes.Export.FlatReportUnavailable);
+            }
+
+            if (flatResult.Data is null || flatResult.Data.Count == 0)
+            {
                 return ServiceResult<byte[]>.Fail(
-                    flatResult.Message ?? "No hay datos para exportar.");
+                    ErrorMessages.Export.NoProjectsInFlatReport,
+                    ErrorType.NotFound,
+                    ErrorCodes.Export.NoProjectsInFlatReport);
+            }
 
             var projects = flatResult.Data.ToList();
 
-            // 3) Cargar árbol de categorías
             var catResult = await _categoryService.GetTreeAsync(onlyActives: true, ct);
             var categoryTree = catResult.Success && catResult.Data is not null
                 ? catResult.Data.ToList()
@@ -166,9 +214,9 @@ namespace tesisproject.backend.Services.Implementations
                     "Error al generar el Excel de matriz basado en plantilla persistida. TemplateId={TemplateId}",
                     request.TemplateId);
 
-                return ServiceResult<byte[]>.Fail(
-                    "Error al generar el archivo Excel.",
-                    ErrorType.Unexpected);
+                return UnexpectedFailure<byte[]>(
+                    ErrorMessages.Export.ExcelGenerationFailed,
+                    ErrorCodes.Export.ExcelGenerationFailed);
             }
         }
 
@@ -581,13 +629,13 @@ namespace tesisproject.backend.Services.Implementations
                 return EmptyPlaceholder;
 
             var general = project.Objectives
-                .Where(o => o.ObjectiveTypeId == ObjectiveTypeGeneralId)
+                .Where(o => o.ObjectiveTypeId == ObjectiveTypeIds.General)
                 .OrderBy(o => o.ObjectiveId)
                 .Select(o => o.Objective)
                 .FirstOrDefault();
 
             var especificos = project.Objectives
-                .Where(o => o.ObjectiveTypeId != ObjectiveTypeGeneralId)
+                .Where(o => o.ObjectiveTypeId == ObjectiveTypeIds.Specific)
                 .OrderBy(o => o.ObjectiveTypeId)
                 .ThenBy(o => o.ObjectiveId)
                 .Select(o => o.Objective)
@@ -802,8 +850,8 @@ namespace tesisproject.backend.Services.Implementations
         private static string GetObjectiveTypeLabel(int typeId, string? defaultName)
             => typeId switch
             {
-                ObjectiveTypeGeneralId => "Objetivo general",
-                ObjectiveTypeSpecificId => "Objetivo específico",
+                ObjectiveTypeIds.General => "Objetivo general",
+                ObjectiveTypeIds.Specific => "Objetivo específico",
                 _ => string.IsNullOrWhiteSpace(defaultName)
                         ? $"Tipo {typeId}"
                         : defaultName!
@@ -943,6 +991,59 @@ namespace tesisproject.backend.Services.Implementations
                 .ToList();
 
             return names.Count == 0 ? EmptyPlaceholder : string.Join(PipeSeparator, names);
+        }
+
+        private static ServiceResult<T> ValidationFailure<T>(
+            string message,
+            string errorCode,
+            params string[] fields)
+        {
+            Dictionary<string, string[]>? validation = null;
+
+            if (fields is { Length: > 0 })
+            {
+                validation = fields
+                    .Distinct(StringComparer.Ordinal)
+                    .ToDictionary(
+                        field => field,
+                        _ => new[] { message },
+                        StringComparer.Ordinal);
+            }
+
+            return ServiceResult<T>.Fail(
+                message,
+                ErrorType.Validation,
+                errorCode,
+                validation);
+        }
+
+        private static ServiceResult<T> UnexpectedFailure<T>(
+            string message,
+            string? errorCode = null)
+            => ServiceResult<T>.Fail(
+                message,
+                ErrorType.Unexpected,
+                errorCode ?? ErrorCodes.Common.UnexpectedError);
+
+        private static ServiceResult<TTarget> RelayFailure<TTarget>(
+            string? message,
+            ErrorType error,
+            string? errorCode,
+            Dictionary<string, string[]>? validation,
+            string fallbackMessage,
+            string? fallbackErrorCode = null)
+        {
+            var normalizedError = error == ErrorType.None
+                ? ErrorType.Unexpected
+                : error;
+
+            return ServiceResult<TTarget>.Fail(
+                message ?? fallbackMessage,
+                normalizedError,
+                errorCode ?? fallbackErrorCode ?? (normalizedError == ErrorType.Unexpected
+                    ? ErrorCodes.Common.UnexpectedError
+                    : null),
+                validation);
         }
     }
 }

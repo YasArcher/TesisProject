@@ -1,5 +1,6 @@
 ﻿using tesisproject.backend.Data;
 using tesisproject.backend.Repositories.Interfaces;
+using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.Entities.Analytics.Dw.Dimensions;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Entities.Core;
@@ -55,7 +56,8 @@ namespace tesisproject.backend.UnitOfWork.Interfaces
         IFacultyScopeFacultyRepository FacultyScopeFaculties { get; }
         IUserFacultyScopeAssignmentRepository UserFacultyScopeAssignments { get; }
 
-        // 🔹 Nuevo repositorio agregado:
+        IAppConfigurationRepository AppConfigurations { get; }
+
         IAspNetUserRepository AspNetUsers { get; }
         IAppUserRepository AppUsers { get; }
 

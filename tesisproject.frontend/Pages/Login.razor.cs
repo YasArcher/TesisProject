@@ -1,9 +1,9 @@
 ﻿using Blazored.Toast.Services;
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Authorization;
 using System.ComponentModel.DataAnnotations;
 using tesisproject.frontend.Services.Auth;
 using tesisproject.frontend.Services.Interfaces;
+using tesisproject.frontend.Utils;
 using tesisproject.shared.DTOs.Auth;
 
 namespace tesisproject.frontend.Pages
@@ -17,8 +17,6 @@ namespace tesisproject.frontend.Pages
         [Inject] public NavigationManager Navigation { get; set; } = null!;
         [Inject] public IToastService Toast { get; set; } = null!;
 
-
-        // ✅ BLOQUE CORRECTO: dentro de la clase
         protected override async Task OnInitializedAsync()
         {
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -40,23 +38,17 @@ namespace tesisproject.frontend.Pages
 
             var result = await AuthClient.LoginAsync(request);
 
-            if (result.HttpResponse.IsSuccessStatusCode && result.Response is not null)
+            if (result.Success && result.Data is not null)
             {
-                await AuthStateProvider.SetTokenAsync(result.Response.AccessToken);
+                await AuthStateProvider.SetTokenAsync(result.Data.AccessToken);
 
-                // Show success message via Toast
-                Toast.ShowSuccess("Acceso Correcto");
-
-                // Navigate to home page after successful login
+                Toast.ShowSuccess(result.ToSuccessMessage("Acceso correcto"));
                 Navigation.NavigateTo("/", replace: true);
             }
             else
             {
-                var errorMessage =  "Credenciales no validas";
-
-                // Show error message via Toast
+                var errorMessage = result.ToErrorMessage("Credenciales no válidas");
                 Toast.ShowError(errorMessage);
-
                 Console.WriteLine(errorMessage);
             }
         }

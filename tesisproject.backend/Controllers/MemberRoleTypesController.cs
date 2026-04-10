@@ -21,21 +21,21 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/memberroletypes?onlyActives=true
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<MemberRoleTypeListItemDTO>>>> GetAll(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<MemberRoleTypeListItemDTO>>>> GetAll(
             [FromQuery] bool onlyActives = true,
             CancellationToken ct = default)
             => (await _service.ListAsync(onlyActives, ct)).ToActionResult();
 
         // GET: api/memberroletypes/{id}
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<MemberRoleTypeDetailDTO>>> GetById(
+        public async Task<ActionResult<ServiceResult<MemberRoleTypeDetailDTO>>> GetById(
             int id,
             CancellationToken ct = default)
             => (await _service.GetByIdAsync(id, ct)).ToActionResult();
 
         // GET: api/memberroletypes/key-values?term=x&take=10
         [HttpGet("key-values")]
-        public async Task<ActionResult<ApiResponse<List<KeyValueItemDTO>>>> GetKeyValues(
+        public async Task<ActionResult<ServiceResult<List<KeyValueItemDTO>>>> GetKeyValues(
             [FromQuery] string? term,
             [FromQuery] int? take,
             CancellationToken ct = default)
@@ -43,14 +43,14 @@ namespace tesisproject.backend.Controllers
 
         // POST: api/memberroletypes
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<MemberRoleTypeDetailDTO>>> Create(
+        public async Task<ActionResult<ServiceResult<MemberRoleTypeDetailDTO>>> Create(
             [FromBody] AddMemberRoleTypeRequestDTO request,
             CancellationToken ct = default)
             => (await _service.CreateAsync(request, ct)).ToActionResult();
 
         // PUT: api/memberroletypes/{id}
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<MemberRoleTypeDetailDTO>>> Update(
+        public async Task<ActionResult<ServiceResult<MemberRoleTypeDetailDTO>>> Update(
             int id,
             [FromBody] UpdateMemberRoleTypeRequestDTO request,
             CancellationToken ct = default)

@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using System.Reflection.Emit;
 using tesisproject.shared.Entities.Auth;
 using tesisproject.shared.Entities.Catalogs;
 using tesisproject.shared.Entities.Core;
@@ -43,9 +44,10 @@ namespace tesisproject.backend.Data
         public DbSet<UserFacultyScopeAssignment> UserFacultyScopeAssignments => Set<UserFacultyScopeAssignment>();
         public DbSet<ProjectResearchCategory> ProjectResearchCategories => Set<ProjectResearchCategory>();
         public DbSet<ProjectDocument> ProjectDocuments => Set<ProjectDocument>();
-        public DbSet<ExportField> ExportFields { get; set; }
-        public DbSet<ExportTemplate> ExportTemplates { get; set; }
-        public DbSet<ExportTemplateColumn> ExportTemplateColumns { get; set; }
+        public DbSet<ExportField> ExportFields => Set<ExportField>();
+        public DbSet<ExportTemplate> ExportTemplates => Set<ExportTemplate>();
+        public DbSet<ExportTemplateColumn> ExportTemplateColumns => Set<ExportTemplateColumn>();
+        public DbSet<AppConfiguration> AppConfigurations => Set<AppConfiguration>();
         public DbSet<VisitObjectiveActivityProgress> VisitObjectiveActivityProgresses => Set<VisitObjectiveActivityProgress>();
 
 
@@ -105,6 +107,7 @@ namespace tesisproject.backend.Data
             ConfigureProjectDocuments(builder);
             ConfigureProjectExtensions(builder);
             ConfigureVisitObjectiveActivityProgress(builder);
+            ConfigureAppConfiguration(builder);
 
             // 4) Visit (dos FKs hacia Documents, sin cascada)
             ConfigureVisit(builder);
@@ -124,6 +127,50 @@ namespace tesisproject.backend.Data
             var param = expr.Parameters[0];
             var body = Expression.Convert(expr.Body, typeof(object));
             return Expression.Lambda<Func<TEntity, object?>>(body, param);
+        }
+        private static void ConfigureAppConfiguration(ModelBuilder builder)
+        {
+            builder.Entity<AppConfiguration>(entity =>
+            {
+                entity.ToTable("AppConfigurations");
+
+                entity.HasKey(x => x.AppConfigurationId);
+
+                entity.HasIndex(x => new { x.Module, x.SettingKey })
+                      .IsUnique();
+
+                entity.Property(x => x.Module)
+                      .HasMaxLength(50)
+                      .IsRequired();
+
+                entity.Property(x => x.SettingKey)
+                      .HasMaxLength(100)
+                      .IsRequired();
+
+                entity.Property(x => x.SettingValue)
+                      .HasMaxLength(1000)
+                      .IsRequired();
+
+                entity.Property(x => x.DataType)
+                      .HasConversion<string>()
+                      .HasMaxLength(20)
+                      .IsRequired();
+
+                entity.Property(x => x.MinValue)
+                      .HasMaxLength(100);
+
+                entity.Property(x => x.MaxValue)
+                      .HasMaxLength(100);
+
+                entity.Property(x => x.Description)
+                      .HasMaxLength(250);
+
+                entity.Property(x => x.CreatedAt)
+                      .HasColumnType("datetime2");
+
+                entity.Property(x => x.UpdatedAt)
+                      .HasColumnType("datetime2");
+            });
         }
         private static void ConfigureFacultyScopes(ModelBuilder builder)
         {

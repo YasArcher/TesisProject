@@ -8,7 +8,6 @@ namespace tesisproject.backend.Services.Interfaces
     {
         Task<ServiceResult<DocumentResponseDTO>> UploadAsync(
             UploadDocumentRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default);
 
         Task<ServiceResult<DocumentResponseDTO>> GetByIdAsync(
@@ -18,13 +17,11 @@ namespace tesisproject.backend.Services.Interfaces
         Task<ServiceResult<DocumentResponseDTO>> UpdateAsync(
             int documentId,
             UpdateDocumentRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default);
 
         Task<ServiceResult<DocumentResponseDTO>> ReplaceFileAsync(
             int documentId,
             ReplaceDocumentFileRequestDTO request,
-            int currentUserId,
             CancellationToken ct = default);
 
         Task<ServiceResult<bool>> DeleteAsync(

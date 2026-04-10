@@ -1,12 +1,14 @@
-﻿using System;
+﻿using Microsoft.EntityFrameworkCore;
+using System;
 using System.Linq.Expressions;
-using Microsoft.EntityFrameworkCore;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.ProjectExtensions.Request;
 using tesisproject.shared.DTOs.ProjectExtensions.Response;
 using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Enums;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -38,7 +40,6 @@ namespace tesisproject.backend.Services.Implementations
         private const string ProjectExtensionDeletedMessage = "ProjectExtension deleted";
 
         private const int ExtensionMonths = 6;
-        private const int PlannedVisitStateId = 1;
 
         private static readonly Expression<Func<ProjectExtension, ProjectExtensionListResponseDTO>> MapToListExpression = pe =>
             new ProjectExtensionListResponseDTO
@@ -67,29 +68,29 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request is null)
-                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 if (request.ProjectId <= 0)
-                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectIdRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 if (request.ProjectExtensionTypeId <= 0)
-                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectExtensionTypeIdRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectExtensionTypeIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 // 1) Load project (needed to update TentativeEndDate)
                 var project = await _uow.Projects.GetByIdAsync(Key(request.ProjectId), ct);
                 if (project is null)
-                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 // 2) Validate ProjectExtensionType exists (optional but recommended)
                 var extType = await _uow.ProjectExtensionTypes.GetByIdAsync(Key(request.ProjectExtensionTypeId), ct);
                 if (extType is null)
-                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectExtensionTypeNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectExtensionTypeNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 // 3) Update project tentative end date (+ 6 months)
                 if (!project.TentativeEndDate.HasValue)
                     return ServiceResult<ProjectExtensionListResponseDTO>.Fail(
                         TentativeEndDateNullMessage,
-                        ErrorType.Validation);
+                        ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 project.TentativeEndDate = project.TentativeEndDate.Value.AddMonths(ExtensionMonths);
                 _uow.Projects.Update(project);
@@ -113,7 +114,7 @@ namespace tesisproject.backend.Services.Implementations
                 var visit = new Visit
                 {
                     ProjectId = request.ProjectId,
-                    VisitStateId = PlannedVisitStateId,
+                    VisitStateId = VisitStateIds.Planned,
                     AcademicPeriodId = null,
 
                     ScheduledDate = null,
@@ -135,7 +136,7 @@ namespace tesisproject.backend.Services.Implementations
                 if (withRefs is null)
                     return ServiceResult<ProjectExtensionListResponseDTO>.Fail(
                         ProjectExtensionCouldNotLoadAfterCreationMessage,
-                        ErrorType.Unexpected);
+                        ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
 
                 return ServiceResult<ProjectExtensionListResponseDTO>.Ok(MapToListDTO(withRefs), ProjectExtensionCreatedMessage);
             }
@@ -143,11 +144,11 @@ namespace tesisproject.backend.Services.Implementations
             {
                 return ServiceResult<ProjectExtensionListResponseDTO>.Fail(
                     dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                    ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -160,13 +161,13 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var entity = await _uow.ProjectExtensions.GetByIdWithRefsAsync(projectExtensionId, ct);
                 if (entity is null)
-                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectExtensionNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectExtensionNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 return ServiceResult<ProjectExtensionListResponseDTO>.Ok(MapToListDTO(entity), ProjectExtensionRetrievedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -183,13 +184,13 @@ namespace tesisproject.backend.Services.Implementations
                     .ToListAsync(ct);
 
                 if (items.Count == 0)
-                    return ServiceResult<IReadOnlyList<ProjectExtensionListResponseDTO>>.Fail(NoProjectExtensionsFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<IReadOnlyList<ProjectExtensionListResponseDTO>>.Fail(NoProjectExtensionsFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 return ServiceResult<IReadOnlyList<ProjectExtensionListResponseDTO>>.Ok(items, ProjectExtensionsRetrievedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<ProjectExtensionListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<IReadOnlyList<ProjectExtensionListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -201,18 +202,18 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (projectId <= 0)
-                    return ServiceResult<IReadOnlyList<ProjectExtensionListResponseDTO>>.Fail(ProjectIdRequiredLowercaseMessage, ErrorType.Validation);
+                    return ServiceResult<IReadOnlyList<ProjectExtensionListResponseDTO>>.Fail(ProjectIdRequiredLowercaseMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var items = await _uow.ProjectExtensions.GetByProjectAsync(projectId, ct);
                 if (items.Count == 0)
-                    return ServiceResult<IReadOnlyList<ProjectExtensionListResponseDTO>>.Fail(NoProjectExtensionsFoundForProjectMessage, ErrorType.NotFound);
+                    return ServiceResult<IReadOnlyList<ProjectExtensionListResponseDTO>>.Fail(NoProjectExtensionsFoundForProjectMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 var dtos = items.Select(MapToListDTO).ToList();
                 return ServiceResult<IReadOnlyList<ProjectExtensionListResponseDTO>>.Ok(dtos, ProjectExtensionsByProjectRetrievedMessage);
             }
             catch (Exception ex)
             {
-                return ServiceResult<IReadOnlyList<ProjectExtensionListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<IReadOnlyList<ProjectExtensionListResponseDTO>>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -224,17 +225,17 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request is null)
-                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var entity = await _uow.ProjectExtensions.GetByIdAsync(Key(request.ProjectExtensionId), ct);
                 if (entity is null)
-                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectExtensionNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectExtensionNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 if (request.ProjectId <= 0)
-                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectIdRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 if (request.ProjectExtensionTypeId <= 0)
-                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectExtensionTypeIdRequiredMessage, ErrorType.Validation);
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectExtensionTypeIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 entity.ProjectId = request.ProjectId;
                 entity.ProjectExtensionTypeId = request.ProjectExtensionTypeId; // ✅ B: antes se validaba pero NO se asignaba
@@ -247,7 +248,7 @@ namespace tesisproject.backend.Services.Implementations
 
                 var withRefs = await _uow.ProjectExtensions.GetByIdWithRefsAsync(entity.ProjectExtensionId, ct);
                 if (withRefs is null)
-                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectExtensionCouldNotLoadAfterUpdateMessage, ErrorType.Unexpected);
+                    return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ProjectExtensionCouldNotLoadAfterUpdateMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
 
                 return ServiceResult<ProjectExtensionListResponseDTO>.Ok(MapToListDTO(withRefs), ProjectExtensionUpdatedMessage);
             }
@@ -255,11 +256,11 @@ namespace tesisproject.backend.Services.Implementations
             {
                 return ServiceResult<ProjectExtensionListResponseDTO>.Fail(
                     dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                    ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<ProjectExtensionListResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -272,7 +273,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var entity = await _uow.ProjectExtensions.GetByIdAsync(Key(projectExtensionId), ct);
                 if (entity is null)
-                    return ServiceResult<NoContent>.Fail(ProjectExtensionNotFoundMessage, ErrorType.NotFound);
+                    return ServiceResult<NoContent>.Fail(ProjectExtensionNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 _uow.ProjectExtensions.Remove(entity);
                 await _uow.SaveChangesAsync(ct);
@@ -283,11 +284,11 @@ namespace tesisproject.backend.Services.Implementations
             {
                 return ServiceResult<NoContent>.Fail(
                     dbex.InnerException?.Message ?? dbex.Message,
-                    ErrorType.Conflict);
+                    ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
             }
             catch (Exception ex)
             {
-                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 

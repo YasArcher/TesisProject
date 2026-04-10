@@ -7,6 +7,7 @@
 @using tesisproject.frontend.SharedUI.ActionButton
 @using tesisproject.frontend.SharedUI.StatCard
 @using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.Utils
 
 @inject IProjectClientService ProjectService
 @inject IGroupService GroupService
@@ -237,14 +238,14 @@
 
             var response = await GroupService.GetProjectMembersReportAsync(Project.ProjectId);
 
-            if (!response.Success || response.Response is null)
+            if (!response.Success || response.Data is null)
             {
-                ReportError = response.Error ?? "No se pudo obtener el reporte de integrantes.";
+                ReportError = response.ToErrorMessage("No se pudo obtener el reporte de integrantes.");
                 MembersReport = null;
                 return;
             }
 
-            MembersReport = response.Response;
+            MembersReport = response.Data;
         }
         catch (Exception ex)
         {
@@ -301,7 +302,7 @@
 
             if (!response.Success)
             {
-                FinalizeError = response.Error ?? "No se pudo finalizar el proyecto.";
+                FinalizeError = response.ToErrorMessage("No se pudo finalizar el proyecto.");
                 return;
             }
 

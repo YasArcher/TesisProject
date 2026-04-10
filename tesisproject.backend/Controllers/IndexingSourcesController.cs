@@ -23,7 +23,7 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/indexingsources
         [HttpGet]
-        public async Task<ActionResult<ApiResponse<IReadOnlyList<IndexingSourceListItemDTO>>>> List(
+        public async Task<ActionResult<ServiceResult<IReadOnlyList<IndexingSourceListItemDTO>>>> List(
             [FromQuery] bool onlyActives = true,
             CancellationToken ct = default)
         {
@@ -32,7 +32,7 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/indexingsources/{id}
         [HttpGet("{id:int}")]
-        public async Task<ActionResult<ApiResponse<IndexingSourceListItemDTO>>> GetById(
+        public async Task<ActionResult<ServiceResult<IndexingSourceListItemDTO>>> GetById(
             int id,
             CancellationToken ct = default)
         {
@@ -41,7 +41,7 @@ namespace tesisproject.backend.Controllers
 
         // GET: api/indexingsources/keyvalues
         [HttpGet("keyvalues")]
-        public async Task<ActionResult<ApiResponse<List<KeyValueItemDTO>>>> GetKeyValues(
+        public async Task<ActionResult<ServiceResult<List<KeyValueItemDTO>>>> GetKeyValues(
             [FromQuery] string? term,
             [FromQuery] int? take,
             CancellationToken ct = default)
@@ -51,7 +51,7 @@ namespace tesisproject.backend.Controllers
 
         // POST: api/indexingsources
         [HttpPost]
-        public async Task<ActionResult<ApiResponse<IndexingSourceListItemDTO>>> Create(
+        public async Task<ActionResult<ServiceResult<IndexingSourceListItemDTO>>> Create(
             IndexingSourceCreateRequestDTO body,
             CancellationToken ct = default)
         {
@@ -60,7 +60,7 @@ namespace tesisproject.backend.Controllers
 
         // PUT: api/indexingsources/{id}
         [HttpPut("{id:int}")]
-        public async Task<ActionResult<ApiResponse<IndexingSourceListItemDTO>>> Update(
+        public async Task<ActionResult<ServiceResult<IndexingSourceListItemDTO>>> Update(
             int id,
             IndexingSourceUpdateRequestDTO body,
             CancellationToken ct = default)

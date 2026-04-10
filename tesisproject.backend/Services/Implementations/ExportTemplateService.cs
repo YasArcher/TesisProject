@@ -3,12 +3,17 @@ using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.DTOs.Export;
 using tesisproject.shared.Entities.Export;
+using tesisproject.shared.Errors;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Services.Implementations
 {
     public class ExportTemplateService : IExportTemplateService
     {
+        private const string MsgTemplateCreated = "Template created.";
+        private const string MsgTemplateUpdated = "Template updated.";
+        private const string MsgTemplateDeleted = "Template deleted.";
+
         private readonly IUnitOfWork _uow;
         private readonly ILogger<ExportTemplateService> _logger;
 
@@ -66,39 +71,38 @@ namespace tesisproject.backend.Services.Implementations
             return ServiceResult<IReadOnlyList<ExportTemplateListItemDTO>>.Ok(dto);
         }
 
-        public async Task<ServiceResult<ExportTemplateDetailDTO>> GetTemplateAsync(int id, CancellationToken ct)
+        public async Task<ServiceResult<ExportTemplateDetailDTO>> GetTemplateAsync(
+            int id,
+            CancellationToken ct)
         {
             if (id <= 0)
-                return ServiceResult<ExportTemplateDetailDTO>.Fail("Id is required.", ErrorType.Validation);
+                return InvalidId<ExportTemplateDetailDTO>();
 
             var entity = await Templates.GetDetailByIdAsync(id, ct);
             if (entity is null)
-                return ServiceResult<ExportTemplateDetailDTO>.Fail("Template not found.", ErrorType.NotFound);
+                return TemplateNotFound<ExportTemplateDetailDTO>();
 
             return ServiceResult<ExportTemplateDetailDTO>.Ok(MapToDetailDTO(entity));
         }
 
         public async Task<ServiceResult<ExportTemplateDetailDTO>> CreateTemplateAsync(
-            ExportTemplateCreateRequestDTO dto, CancellationToken ct)
+            ExportTemplateCreateRequestDTO dto,
+            CancellationToken ct)
         {
             if (dto is null)
-                return ServiceResult<ExportTemplateDetailDTO>.Fail("Request is required.", ErrorType.Validation);
+                return RequestRequired<ExportTemplateDetailDTO>();
 
             var key = dto.Key?.Trim();
             var name = dto.Name?.Trim();
 
             if (string.IsNullOrWhiteSpace(key))
-                return ServiceResult<ExportTemplateDetailDTO>.Fail("Key is required.", ErrorType.Validation);
+                return KeyRequired<ExportTemplateDetailDTO>();
 
             if (string.IsNullOrWhiteSpace(name))
-                return ServiceResult<ExportTemplateDetailDTO>.Fail("Name is required.", ErrorType.Validation);
+                return NameRequired<ExportTemplateDetailDTO>();
 
-            // Validación unique key (normalizada)
             if (await Templates.GetByKeyAsync(key, ct) is not null)
-                return ServiceResult<ExportTemplateDetailDTO>.Fail(
-                    $"Template with key '{key}' already exists.",
-                    ErrorType.Validation
-                );
+                return TemplateKeyAlreadyExists<ExportTemplateDetailDTO>();
 
             var template = new ExportTemplate
             {
@@ -112,40 +116,39 @@ namespace tesisproject.backend.Services.Implementations
 
             await Templates.AddAsync(template, ct);
 
-            // Guardamos INICIAL para obtener ID (necesario porque columnas usan TemplateId)
+            // Necesario para obtener TemplateId antes de crear columnas.
             await _uow.SaveChangesAsync(ct);
 
-            // Construcción de columnas
             var columns = await BuildColumnsEntitiesAsync(template.Id, dto.Columns, ct);
             if (columns.Count > 0)
                 await Columns.AddRangeAsync(columns, ct);
 
-            // Guardamos una sola vez más
             await _uow.SaveChangesAsync(ct);
 
             var detail = await Templates.GetDetailByIdAsync(template.Id, ct) ?? template;
 
             return ServiceResult<ExportTemplateDetailDTO>.Ok(
                 MapToDetailDTO(detail),
-                "Template created."
-            );
+                MsgTemplateCreated);
         }
 
         public async Task<ServiceResult<ExportTemplateDetailDTO>> UpdateTemplateAsync(
-            int id, ExportTemplateUpdateRequestDTO dto, CancellationToken ct)
+            int id,
+            ExportTemplateUpdateRequestDTO dto,
+            CancellationToken ct)
         {
             if (id <= 0)
-                return ServiceResult<ExportTemplateDetailDTO>.Fail("Id is required.", ErrorType.Validation);
+                return InvalidId<ExportTemplateDetailDTO>();
 
             if (dto is null)
-                return ServiceResult<ExportTemplateDetailDTO>.Fail("Request is required.", ErrorType.Validation);
+                return RequestRequired<ExportTemplateDetailDTO>();
 
             if (string.IsNullOrWhiteSpace(dto.Name))
-                return ServiceResult<ExportTemplateDetailDTO>.Fail("Name is required.", ErrorType.Validation);
+                return NameRequired<ExportTemplateDetailDTO>();
 
             var template = await Templates.GetDetailByIdAsync(id, ct);
             if (template is null)
-                return ServiceResult<ExportTemplateDetailDTO>.Fail("Template not found.", ErrorType.NotFound);
+                return TemplateNotFound<ExportTemplateDetailDTO>();
 
             template.Name = dto.Name.Trim();
             template.TargetSystem = dto.TargetSystem;
@@ -155,51 +158,83 @@ namespace tesisproject.backend.Services.Implementations
 
             Templates.Update(template);
 
-            // Eliminar columnas previas
             var oldCols = await Columns.ListByTemplateIdAsync(template.Id, ct);
             if (oldCols.Count > 0)
                 Columns.RemoveRange(oldCols);
 
-            // Agregar nuevas columnas
             var newCols = await BuildColumnsEntitiesAsync(template.Id, dto.Columns, ct);
             if (newCols.Count > 0)
                 await Columns.AddRangeAsync(newCols, ct);
 
-            // ✅ Guardar una sola vez todo (template + columnas)
             await _uow.SaveChangesAsync(ct);
 
             var refreshed = await Templates.GetDetailByIdAsync(template.Id, ct) ?? template;
 
             return ServiceResult<ExportTemplateDetailDTO>.Ok(
                 MapToDetailDTO(refreshed),
-                "Template updated."
-            );
+                MsgTemplateUpdated);
         }
 
-        public async Task<ServiceResult<NoContent>> DeleteTemplateAsync(int id, CancellationToken ct)
+        public async Task<ServiceResult<NoContent>> DeleteTemplateAsync(
+            int id,
+            CancellationToken ct)
         {
             if (id <= 0)
-                return ServiceResult<NoContent>.Fail("Id is required.", ErrorType.Validation);
+                return InvalidId<NoContent>();
 
             var template = await Templates.GetDetailByIdAsync(id, ct);
             if (template is null)
-                return ServiceResult<NoContent>.Fail("Template not found.", ErrorType.NotFound);
+                return TemplateNotFound<NoContent>();
 
-            // Primero remover columnas
             if (template.Columns?.Count > 0)
                 Columns.RemoveRange(template.Columns);
 
-            // Luego remover template
             Templates.Remove(template);
 
             await _uow.SaveChangesAsync(ct);
 
-            return ServiceResult<NoContent>.Ok(new NoContent(), "Template deleted.");
+            return ServiceResult<NoContent>.Ok(new NoContent(), MsgTemplateDeleted);
         }
 
         // =====================================
         //   Helpers
         // =====================================
+
+        private static ServiceResult<T> InvalidId<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.InvalidId,
+                ErrorType.Validation,
+                ErrorCodes.Common.InvalidId);
+
+        private static ServiceResult<T> RequestRequired<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.RequestRequired,
+                ErrorType.Validation,
+                ErrorCodes.Common.RequestRequired);
+
+        private static ServiceResult<T> NameRequired<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.Common.NameRequired,
+                ErrorType.Validation,
+                ErrorCodes.Common.NameRequired);
+
+        private static ServiceResult<T> KeyRequired<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.ExportTemplate.KeyRequired,
+                ErrorType.Validation,
+                ErrorCodes.ExportTemplate.KeyRequired);
+
+        private static ServiceResult<T> TemplateNotFound<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.ExportTemplate.NotFound,
+                ErrorType.NotFound,
+                ErrorCodes.ExportTemplate.NotFound);
+
+        private static ServiceResult<T> TemplateKeyAlreadyExists<T>()
+            => ServiceResult<T>.Fail(
+                ErrorMessages.ExportTemplate.KeyAlreadyExists,
+                ErrorType.Conflict,
+                ErrorCodes.ExportTemplate.KeyAlreadyExists);
 
         private ExportTemplateDetailDTO MapToDetailDTO(ExportTemplate entity)
         {
@@ -212,27 +247,28 @@ namespace tesisproject.backend.Services.Implementations
                 Version = entity.Version,
                 IsDefault = entity.IsDefault,
                 IsActive = entity.IsActive,
-
                 Columns = entity.Columns?
                     .OrderBy(c => c.OrderIndex)
                     .Select(c => new ExportTemplateColumnDTO
                     {
                         Id = c.Id,
                         FieldId = c.ExportFieldId,
-                        FieldKey = c.ExportField?.Key ?? "",
-                        FieldDisplayName = c.ExportField?.DisplayName ?? "",
+                        FieldKey = c.ExportField?.Key ?? string.Empty,
+                        FieldDisplayName = c.ExportField?.DisplayName ?? string.Empty,
                         TargetHeader = c.TargetHeader,
                         OrderIndex = c.OrderIndex,
                         IsRequired = c.IsRequired,
                         Format = c.Format,
                         Separator = c.Separator
                     })
-                    .ToList() ?? new()
+                    .ToList() ?? []
             };
         }
 
         private async Task<List<ExportTemplateColumn>> BuildColumnsEntitiesAsync(
-            int templateId, IEnumerable<ExportTemplateColumnUpsertDTO>? dtoColumns, CancellationToken ct)
+            int templateId,
+            IEnumerable<ExportTemplateColumnUpsertDTO>? dtoColumns,
+            CancellationToken ct)
         {
             var result = new List<ExportTemplateColumn>();
 
@@ -261,8 +297,8 @@ namespace tesisproject.backend.Services.Implementations
                     TargetHeader = header,
                     OrderIndex = col.OrderIndex,
                     IsRequired = col.IsRequired,
-                    Format = string.IsNullOrWhiteSpace(col.Format) ? null : col.Format,
-                    Separator = string.IsNullOrWhiteSpace(col.Separator) ? null : col.Separator
+                    Format = string.IsNullOrWhiteSpace(col.Format) ? null : col.Format.Trim(),
+                    Separator = string.IsNullOrWhiteSpace(col.Separator) ? null : col.Separator.Trim()
                 });
             }
 

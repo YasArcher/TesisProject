@@ -5,6 +5,7 @@
 @using tesisproject.frontend.SharedUI.TextInput
 @using tesisproject.frontend.SharedUI.FileUpload
 @using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.Document.Request
 @using tesisproject.shared.DTOs.Document.Response
 
@@ -60,8 +61,8 @@
                         </label>
 
                         <InputDate class="w-full rounded-md border border-border px-3 py-2 shadow-sm
-                                                  focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
-                                                  disabled:bg-muted disabled:cursor-not-allowed"
+                        focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
+                        disabled:bg-muted disabled:cursor-not-allowed"
                                    @bind-Value="_model.ResolutionDate"
                                    disabled="@_saving" />
 
@@ -156,23 +157,19 @@
     private DocumentEditModel _model = new();
     private EditContext? _editContext;
 
-    // ✅ FIX: Usamos un flag para evitar cargas múltiples
     private bool _isLoadingInProgress;
 
     protected override async Task OnParametersSetAsync()
     {
-        // Si está cerrado, resetea todo
         if (!IsOpen)
         {
             ResetState();
             return;
         }
 
-        // Si no hay id válido, no cargas
         if (DocumentId <= 0)
             return;
 
-        // ✅ FIX: Solo carga si cambió el ID y no está cargando ya
         if (DocumentId != _lastLoadedId && !_isLoadingInProgress)
         {
             _lastLoadedId = DocumentId;
@@ -197,7 +194,6 @@
 
     private async Task LoadAsync(int id)
     {
-        // ✅ FIX: Prevenir cargas simultáneas
         if (_isLoadingInProgress)
             return;
 
@@ -212,14 +208,14 @@
         {
             var res = await DocumentService.GetByIdAsync(id, CancellationToken.None);
 
-            if (!res.Success || res.Response is null)
+            if (!res.Success || res.Data is null)
             {
                 _document = null;
-                _loadError = res.Error ?? "No se pudo cargar el documento.";
+                _loadError = res.ToErrorMessage("No se pudo cargar el documento.");
                 return;
             }
 
-            _document = res.Response;
+            _document = res.Data;
 
             _model = new DocumentEditModel
             {
@@ -239,7 +235,6 @@
         {
             _loading = false;
             _isLoadingInProgress = false;
-            // ✅ FIX: Removido StateHasChanged() - Blazor ya maneja el render automáticamente
         }
     }
 
@@ -287,7 +282,6 @@
 
         try
         {
-            // 1) Si hay archivo nuevo => reemplazar contenido
             if (_newFile is not null)
             {
                 _savingFile = true;
@@ -301,17 +295,16 @@
 
                 var replace = await DocumentService.ReplaceFileAsync(_document.DocumentId, content, CancellationToken.None);
 
-                if (!replace.Success || replace.Response is null)
+                if (!replace.Success || replace.Data is null)
                 {
-                    _uploadError = replace.Error ?? "No se pudo reemplazar el archivo del documento.";
+                    _uploadError = replace.ToErrorMessage("No se pudo reemplazar el archivo del documento.");
                     return;
                 }
 
-                _document = replace.Response;
+                _document = replace.Data;
                 _savingFile = false;
             }
 
-            // 2) Siempre => actualizar metadatos
             var updateDto = new UpdateDocumentRequestDTO
             {
                 DocumentTypeId = _document.DocumentTypeId,
@@ -321,15 +314,14 @@
 
             var update = await DocumentService.UpdateAsync(_document.DocumentId, updateDto, CancellationToken.None);
 
-            if (!update.Success || update.Response is null)
+            if (!update.Success || update.Data is null)
             {
-                await SetErrorAsync(update.Error ?? "No se pudo actualizar el documento.");
+                await SetErrorAsync(update.ToErrorMessage("No se pudo actualizar el documento."));
                 return;
             }
 
-            _document = update.Response;
+            _document = update.Data;
 
-            // 3) Notificar al padre y cerrar
             if (OnSaved.HasDelegate)
                 await OnSaved.InvokeAsync(_document);
 

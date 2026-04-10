@@ -5,6 +5,7 @@ using tesisproject.shared.DTOs.VisitObjectiveActivityProgress.Request;
 using tesisproject.shared.DTOs.VisitObjectiveActivityProgress.Response;
 using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -23,6 +24,7 @@ namespace tesisproject.backend.Services.Implementations
         private const string MsgIdRequired = "id is required.";
         private const string MsgProgressRecordNotFound = "Progress record not found.";
         private const string MsgActivityProgressDeleted = "Activity progress deleted";
+        private const string MsgProgressExceedsRemainingTemplate = "Progress exceeds 100%. Remaining allowed for this activity in this project is {0}%.";
 
         private readonly IUnitOfWork _uow;
 
@@ -38,21 +40,21 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (request is null)
-                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgRequestRequired, ErrorType.Validation);
+                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgRequestRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 if (request.VisitId <= 0)
-                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgVisitIdRequired, ErrorType.Validation);
+                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgVisitIdRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 if (request.ObjectiveActivityId <= 0)
-                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgObjectiveActivityIdRequired, ErrorType.Validation);
+                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgObjectiveActivityIdRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 if (IsProgressOutOfRange(request.ProgressPercentage))
-                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgProgressPercentageRange, ErrorType.Validation);
+                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgProgressPercentageRange, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 // 1) Validar visita
                 var visit = await _uow.Visits.GetByIdAsync(new object[] { request.VisitId }, ct);
                 if (visit is null)
-                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound);
+                    return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(MsgVisitNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 // 2) Validar que la actividad exista Y pertenezca al proyecto de la visita
                 // ObjectiveActivity.ObjectiveId -> ProjectObjective.Id -> ProjectObjective.ProjectId == visit.ProjectId
@@ -65,7 +67,7 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(
                         MsgObjectiveActivityInvalidForProjectVisit,
-                        ErrorType.Validation);
+                        ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
                 }
 
                 // 3) Validación adicional:
@@ -83,7 +85,7 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     var remaining = MaxProgressPercentage - sumOther;
                     return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(
-                        $"Progress exceeds 100%. Remaining allowed for this activity in this project is {remaining}%.",
+                        string.Format(MsgProgressExceedsRemainingTemplate, remaining),
                         ErrorType.Validation);
                 }
 
@@ -143,7 +145,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<VisitObjectiveActivityProgressSingleResponseDTO>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -152,11 +154,11 @@ namespace tesisproject.backend.Services.Implementations
             try
             {
                 if (id <= 0)
-                    return ServiceResult<NoContent>.Fail(MsgIdRequired, ErrorType.Validation);
+                    return ServiceResult<NoContent>.Fail(MsgIdRequired, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
                 var entity = await _uow.VisitObjectiveActivityProgresses.GetByIdAsync(new object[] { id }, ct);
                 if (entity is null)
-                    return ServiceResult<NoContent>.Fail(MsgProgressRecordNotFound, ErrorType.NotFound);
+                    return ServiceResult<NoContent>.Fail(MsgProgressRecordNotFound, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
                 _uow.VisitObjectiveActivityProgresses.Remove(entity);
                 await _uow.SaveChangesAsync(ct);
@@ -169,7 +171,7 @@ namespace tesisproject.backend.Services.Implementations
             }
             catch (Exception ex)
             {
-                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected);
+                return ServiceResult<NoContent>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
             }
         }
 
@@ -231,7 +233,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             return ServiceResult<T>.Fail(
                 dbex.InnerException?.Message ?? dbex.Message,
-                ErrorType.Conflict);
+                ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
         }
     }
 }

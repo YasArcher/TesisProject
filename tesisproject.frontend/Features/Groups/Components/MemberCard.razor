@@ -1,8 +1,9 @@
 ﻿@using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.SharedUI.Card
 @using tesisproject.frontend.SharedUI.ActionButton
-@using tesisproject.shared.DTOs.AppUser;
-@using tesisproject.shared.DTOs.External
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.AppUser
+
 @inject IGroupService GroupService
 
 <Card Tone="CardTone.Default"
@@ -61,6 +62,7 @@
         try
         {
             var resp = await GroupService.RemoveMemberAsync(Item.GroupId, Item.UserGroupId);
+
             if (resp.Success)
             {
                 if (OnRemoved.HasDelegate)
@@ -68,7 +70,7 @@
             }
             else
             {
-                ErrorMessage = resp.Error ?? "Failed to remove member.";
+                ErrorMessage = resp.ToErrorMessage("No se pudo quitar el miembro.");
             }
         }
         catch (Exception ex)

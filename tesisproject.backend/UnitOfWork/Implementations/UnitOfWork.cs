@@ -1,5 +1,6 @@
 ﻿using tesisproject.backend.Data;
 using tesisproject.backend.Repositories.Interfaces;
+using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Interfaces;
 using tesisproject.shared.Entities.Catalogs;
 
@@ -55,6 +56,7 @@ namespace tesisproject.backend.UnitOfWork.Implementations
         public IFacultyScopeRepository FacultyScopes { get; }
         public IFacultyScopeFacultyRepository FacultyScopeFaculties { get; }
         public IUserFacultyScopeAssignmentRepository UserFacultyScopeAssignments { get; }
+        public IAppConfigurationRepository AppConfigurations { get; }
 
 
         public UnitOfWork(
@@ -105,7 +107,8 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             IVisitObjectiveActivityProgressRepository visitObjectiveActivityProgresses,
             IFacultyScopeRepository facultyScopes,
             IFacultyScopeFacultyRepository facultyScopeFaculties,
-            IUserFacultyScopeAssignmentRepository userFacultyScopeAssignments
+            IUserFacultyScopeAssignmentRepository userFacultyScopeAssignments,
+            IAppConfigurationRepository appConfigurations
             )
         {
             _ctx = ctx;
@@ -156,6 +159,7 @@ namespace tesisproject.backend.UnitOfWork.Implementations
             FacultyScopes = facultyScopes;
             FacultyScopeFaculties = facultyScopeFaculties;
             UserFacultyScopeAssignments = userFacultyScopeAssignments;
+            AppConfigurations = appConfigurations;
         }
 
         public Task<int> SaveChangesAsync(CancellationToken ct = default)

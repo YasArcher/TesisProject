@@ -4,6 +4,7 @@ using tesisproject.shared.DTOs.ProjectResearchCategory.Request;
 using tesisproject.shared.DTOs.ProjectResearchCategory.Response;
 using tesisproject.shared.Entities.Core;
 using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -123,10 +124,10 @@ namespace tesisproject.backend.Services.Implementations
         // ================= PRIVATE HELPERS =================
 
         private static ServiceResult<T> FailValidation<T>(string message)
-            => ServiceResult<T>.Fail(message, ErrorType.Validation);
+            => ServiceResult<T>.Fail(message, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
 
         private static ServiceResult<T> FailNotFound<T>(string message)
-            => ServiceResult<T>.Fail(message, ErrorType.NotFound);
+            => ServiceResult<T>.Fail(message, ErrorType.NotFound, ErrorCodes.Common.NotFound);
 
         private static ProjectResearchCategoryListItemDTO MapToListItemDTO(ProjectResearchCategory entity)
             => new ProjectResearchCategoryListItemDTO
