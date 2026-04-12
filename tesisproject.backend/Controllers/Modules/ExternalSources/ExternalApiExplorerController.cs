@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.Identity;
 using tesisproject.backend.Services.Interfaces;
+using tesisproject.shared.Wrappers;
 using tesisproject.shared.DTOs.ExternalApis;
 
 namespace tesisproject.backend.Controllers
@@ -19,40 +20,40 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpGet("providers")]
-        public async Task<ActionResult<List<ExternalApiProviderDto>>> GetProviders(CancellationToken ct)
-            => Ok(await _service.GetProvidersAsync(ct));
+        public async Task<ActionResult<ApiResult<List<ExternalApiProviderDto>>>> GetProviders(CancellationToken ct)
+            => Ok(ApiResult<List<ExternalApiProviderDto>>.Success(await _service.GetProvidersAsync(ct)));
 
         [HttpPost("query")]
-        public async Task<ActionResult<ExternalApiQueryResultDto>> Query([FromBody] ExternalApiQueryRequest request, CancellationToken ct)
+        public async Task<ActionResult<ApiResult<ExternalApiQueryResultDto>>> Query([FromBody] ExternalApiQueryRequest request, CancellationToken ct)
         {
             try
             {
-                return Ok(await _service.QueryAsync(request, ct));
+                return Ok(ApiResult<ExternalApiQueryResultDto>.Success(await _service.QueryAsync(request, ct)));
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(ApiResult<ExternalApiQueryResultDto>.Fail(ex.Message));
             }
             catch (HttpRequestException ex)
             {
-                return BadRequest(new { message = $"No pude consultar la API externa: {ex.Message}" });
+                return BadRequest(ApiResult<ExternalApiQueryResultDto>.Fail($"No pude consultar la API externa: {ex.Message}"));
             }
         }
 
         [HttpPost("providers/{providerKey}/enrich")]
-        public async Task<ActionResult<ExternalArticlePreviewDto>> Enrich(string providerKey, [FromBody] ExternalArticlePreviewDto article, CancellationToken ct)
+        public async Task<ActionResult<ApiResult<ExternalArticlePreviewDto>>> Enrich(string providerKey, [FromBody] ExternalArticlePreviewDto article, CancellationToken ct)
         {
             try
             {
-                return Ok(await _service.EnrichArticleAsync(providerKey, article, ct));
+                return Ok(ApiResult<ExternalArticlePreviewDto>.Success(await _service.EnrichArticleAsync(providerKey, article, ct)));
             }
             catch (InvalidOperationException ex)
             {
-                return BadRequest(new { message = ex.Message });
+                return BadRequest(ApiResult<ExternalArticlePreviewDto>.Fail(ex.Message));
             }
             catch (HttpRequestException ex)
             {
-                return BadRequest(new { message = $"No pude enriquecer el artículo desde la API externa: {ex.Message}" });
+                return BadRequest(ApiResult<ExternalArticlePreviewDto>.Fail($"No pude enriquecer el artículo desde la API externa: {ex.Message}"));
             }
         }
     }

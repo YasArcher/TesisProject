@@ -1,6 +1,5 @@
-using System.Net.Http.Json;
-using System.Text.Json;
 using tesisproject.frontend.Services.Interfaces;
+using tesisproject.frontend.Services.Platform.Api;
 using tesisproject.shared.DTOs.Imports;
 using tesisproject.shared.DTOs.Workflow;
 
@@ -8,118 +7,77 @@ namespace tesisproject.frontend.Services.Implementations
 {
     public class WorkflowClient : IWorkflowClient
     {
-        private readonly HttpClient _http;
+        private readonly IApiClient _api;
 
-        public WorkflowClient(HttpClient http)
+        public WorkflowClient(IApiClient api)
         {
-            _http = http;
+            _api = api;
         }
 
         public async Task<List<WorkflowInboxItemDto>> GetReviewInboxAsync(int take = 50, CancellationToken ct = default)
-        {
-            using var response = await _http.GetAsync($"api/workflows/import-batches/inbox/review?take={take}", ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude cargar la bandeja de revisión.", ct));
-            }
-
-            return await response.Content.ReadFromJsonAsync<List<WorkflowInboxItemDto>>(cancellationToken: ct)
-                ?? new List<WorkflowInboxItemDto>();
-        }
+            => (await GetReviewInboxResultAsync(take, ct)).Data ?? new List<WorkflowInboxItemDto>();
 
         public async Task<List<WorkflowInboxItemDto>> GetAuthorInboxAsync(int take = 50, CancellationToken ct = default)
-        {
-            using var response = await _http.GetAsync($"api/workflows/import-batches/inbox/author?take={take}", ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude cargar la bandeja del autor.", ct));
-            }
-
-            return await response.Content.ReadFromJsonAsync<List<WorkflowInboxItemDto>>(cancellationToken: ct)
-                ?? new List<WorkflowInboxItemDto>();
-        }
+            => (await GetAuthorInboxResultAsync(take, ct)).Data ?? new List<WorkflowInboxItemDto>();
 
         public async Task<WorkflowBatchDetailDto?> GetBatchWorkflowAsync(int batchId, CancellationToken ct = default)
-        {
-            using var response = await _http.GetAsync($"api/workflows/import-batches/{batchId}", ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude abrir el workflow del lote.", ct));
-            }
-
-            return await response.Content.ReadFromJsonAsync<WorkflowBatchDetailDto>(cancellationToken: ct);
-        }
+            => await RequireDataAsync(
+                GetBatchWorkflowResultAsync(batchId, ct),
+                "No pude abrir el workflow del lote.");
 
         public async Task<BulkImportBatchDetailDto?> GetBatchPreviewAsync(int batchId, int previewRows = 50, CancellationToken ct = default)
-        {
-            using var response = await _http.GetAsync($"api/workflows/import-batches/{batchId}/preview?previewRows={previewRows}", ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude abrir la previsualización del artículo.", ct));
-            }
-
-            return await response.Content.ReadFromJsonAsync<BulkImportBatchDetailDto>(cancellationToken: ct);
-        }
+            => await RequireDataAsync(
+                GetBatchPreviewResultAsync(batchId, previewRows, ct),
+                "No pude abrir la previsualización del artículo.");
 
         public async Task<WorkflowBatchDetailDto?> ClaimAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)
-        {
-            return await PostActionAsync(batchId, "claim", request, "No pude tomar la etapa del workflow.", ct);
-        }
+            => await RequireDataAsync(
+                ClaimResultAsync(batchId, request, ct),
+                "No pude tomar la etapa del workflow.");
 
         public async Task<WorkflowBatchDetailDto?> ReturnAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)
-        {
-            return await PostActionAsync(batchId, "return", request, "No pude devolver la etapa del workflow.", ct);
-        }
+            => await RequireDataAsync(
+                ReturnResultAsync(batchId, request, ct),
+                "No pude devolver la etapa del workflow.");
 
         public async Task<WorkflowBatchDetailDto?> ApproveAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)
+            => await RequireDataAsync(
+                ApproveResultAsync(batchId, request, ct),
+                "No pude aprobar la etapa del workflow.");
+
+        public Task<HttpResponseWrapper<List<WorkflowInboxItemDto>?>> GetReviewInboxResultAsync(int take = 50, CancellationToken ct = default)
+            => _api.GetResultAsync<List<WorkflowInboxItemDto>>($"api/workflows/import-batches/inbox/review?take={take}", ct);
+
+        public Task<HttpResponseWrapper<List<WorkflowInboxItemDto>?>> GetAuthorInboxResultAsync(int take = 50, CancellationToken ct = default)
+            => _api.GetResultAsync<List<WorkflowInboxItemDto>>($"api/workflows/import-batches/inbox/author?take={take}", ct);
+
+        public Task<HttpResponseWrapper<WorkflowBatchDetailDto?>> GetBatchWorkflowResultAsync(int batchId, CancellationToken ct = default)
+            => _api.GetResultAsync<WorkflowBatchDetailDto>($"api/workflows/import-batches/{batchId}", ct);
+
+        public Task<HttpResponseWrapper<BulkImportBatchDetailDto?>> GetBatchPreviewResultAsync(int batchId, int previewRows = 50, CancellationToken ct = default)
+            => _api.GetResultAsync<BulkImportBatchDetailDto>($"api/workflows/import-batches/{batchId}/preview?previewRows={previewRows}", ct);
+
+        public Task<HttpResponseWrapper<WorkflowBatchDetailDto?>> ClaimResultAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)
+            => PostActionResultAsync(batchId, "claim", request, ct);
+
+        public Task<HttpResponseWrapper<WorkflowBatchDetailDto?>> ReturnResultAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)
+            => PostActionResultAsync(batchId, "return", request, ct);
+
+        public Task<HttpResponseWrapper<WorkflowBatchDetailDto?>> ApproveResultAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)
+            => PostActionResultAsync(batchId, "approve", request, ct);
+
+        private Task<HttpResponseWrapper<WorkflowBatchDetailDto?>> PostActionResultAsync(int batchId, string action, WorkflowActionRequest request, CancellationToken ct)
+            => _api.PostResultAsync<WorkflowActionRequest, WorkflowBatchDetailDto>($"api/workflows/import-batches/{batchId}/{action}", request, ct);
+
+        private static async Task<T?> RequireDataAsync<T>(Task<HttpResponseWrapper<T?>> resultTask, string fallbackMessage)
         {
-            return await PostActionAsync(batchId, "approve", request, "No pude aprobar la etapa del workflow.", ct);
-        }
-
-        private async Task<WorkflowBatchDetailDto?> PostActionAsync(int batchId, string action, WorkflowActionRequest request, string fallback, CancellationToken ct)
-        {
-            using var response = await _http.PostAsJsonAsync($"api/workflows/import-batches/{batchId}/{action}", request, ct);
-            if (!response.IsSuccessStatusCode)
+            var result = await resultTask;
+            if (!result.Success)
             {
-                throw new InvalidOperationException(await ReadErrorMessageAsync(response, fallback, ct));
+                throw new InvalidOperationException(result.Message ?? fallbackMessage);
             }
 
-            return await response.Content.ReadFromJsonAsync<WorkflowBatchDetailDto>(cancellationToken: ct);
-        }
-
-        private static async Task<string> ReadErrorMessageAsync(HttpResponseMessage response, string fallback, CancellationToken ct)
-        {
-            var raw = await response.Content.ReadAsStringAsync(ct);
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return fallback;
-            }
-
-            try
-            {
-                using var document = JsonDocument.Parse(raw);
-                var root = document.RootElement;
-
-                if (root.TryGetProperty("message", out var messageElement) && messageElement.ValueKind == JsonValueKind.String)
-                {
-                    return messageElement.GetString() ?? fallback;
-                }
-
-                if (root.TryGetProperty("detail", out var detailElement) && detailElement.ValueKind == JsonValueKind.String)
-                {
-                    return detailElement.GetString() ?? fallback;
-                }
-
-                if (root.TryGetProperty("title", out var titleElement) && titleElement.ValueKind == JsonValueKind.String)
-                {
-                    return titleElement.GetString() ?? fallback;
-                }
-            }
-            catch
-            {
-            }
-
-            return raw;
+            return result.Data;
         }
     }
 }

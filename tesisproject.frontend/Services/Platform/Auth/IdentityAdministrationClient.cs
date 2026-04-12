@@ -1,85 +1,73 @@
-using System.Net.Http.Json;
-using System.Text.Json;
+using tesisproject.frontend.Services.Interfaces;
+using tesisproject.frontend.Services.Platform.Api;
 using tesisproject.shared.DTOs.Auth;
 
 namespace tesisproject.frontend.Services.Platform.Auth;
 
 public class IdentityAdministrationClient : IIdentityAdministrationClient
 {
-    private readonly HttpClient _http;
+    private readonly IApiClient _api;
 
-    public IdentityAdministrationClient(HttpClient http)
+    public IdentityAdministrationClient(IApiClient api)
     {
-        _http = http;
+        _api = api;
     }
 
     public async Task<IReadOnlyList<IdentityUserListItemDto>> GetUsersAsync(CancellationToken ct = default)
-        => await GetAsync<List<IdentityUserListItemDto>>("api/admin/security/users", ct) ?? [];
+        => (await GetUsersResultAsync(ct)).Data ?? [];
 
     public async Task<IReadOnlyList<IdentityRoleListItemDto>> GetRolesAsync(CancellationToken ct = default)
-        => await GetAsync<List<IdentityRoleListItemDto>>("api/admin/security/roles", ct) ?? [];
+        => (await GetRolesResultAsync(ct)).Data ?? [];
 
     public async Task<IdentityUserListItemDto> CreateUserAsync(CreateIdentityUserRequest request, CancellationToken ct = default)
-        => await SendAsync<IdentityUserListItemDto>(HttpMethod.Post, "api/admin/security/users", request, ct);
+        => await RequireDataAsync(
+            CreateUserResultAsync(request, ct),
+            "La API no devolvió un resultado válido al crear el usuario.");
 
     public async Task<IdentityRoleListItemDto> CreateRoleAsync(CreateIdentityRoleRequest request, CancellationToken ct = default)
-        => await SendAsync<IdentityRoleListItemDto>(HttpMethod.Post, "api/admin/security/roles", request, ct);
+        => await RequireDataAsync(
+            CreateRoleResultAsync(request, ct),
+            "La API no devolvió un resultado válido al crear el rol.");
 
     public async Task<IdentityUserListItemDto> UpdateUserRolesAsync(string userId, UpdateIdentityUserRolesRequest request, CancellationToken ct = default)
-        => await SendAsync<IdentityUserListItemDto>(HttpMethod.Put, $"api/admin/security/users/{userId}/roles", request, ct);
+        => await RequireDataAsync(
+            UpdateUserRolesResultAsync(userId, request, ct),
+            "La API no devolvió un resultado válido al actualizar los roles del usuario.");
 
-    private async Task<T?> GetAsync<T>(string url, CancellationToken ct)
+    public async Task<HttpResponseWrapper<IReadOnlyList<IdentityUserListItemDto>?>> GetUsersResultAsync(CancellationToken ct = default)
     {
-        using var response = await _http.GetAsync(url, ct);
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new InvalidOperationException(await BuildErrorMessageAsync(response, ct));
-        }
-
-        return await response.Content.ReadFromJsonAsync<T>(cancellationToken: ct);
+        var result = await _api.GetResultAsync<List<IdentityUserListItemDto>>("api/admin/security/users", ct);
+        return result.Success
+            ? HttpResponseWrapper<IReadOnlyList<IdentityUserListItemDto>?>.Ok(result.Data ?? [], result.StatusCode, result.Message)
+            : HttpResponseWrapper<IReadOnlyList<IdentityUserListItemDto>?>.Fail(result.Message, result.StatusCode, result.ErrorCode, result.ValidationErrors);
     }
 
-    private async Task<T> SendAsync<T>(HttpMethod method, string url, object body, CancellationToken ct)
+    public async Task<HttpResponseWrapper<IReadOnlyList<IdentityRoleListItemDto>?>> GetRolesResultAsync(CancellationToken ct = default)
     {
-        using var request = new HttpRequestMessage(method, url)
-        {
-            Content = JsonContent.Create(body)
-        };
-
-        using var response = await _http.SendAsync(request, ct);
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new InvalidOperationException(await BuildErrorMessageAsync(response, ct));
-        }
-
-        var payload = await response.Content.ReadFromJsonAsync<T>(cancellationToken: ct);
-        return payload ?? throw new InvalidOperationException("La API no devolvió un resultado válido.");
+        var result = await _api.GetResultAsync<List<IdentityRoleListItemDto>>("api/admin/security/roles", ct);
+        return result.Success
+            ? HttpResponseWrapper<IReadOnlyList<IdentityRoleListItemDto>?>.Ok(result.Data ?? [], result.StatusCode, result.Message)
+            : HttpResponseWrapper<IReadOnlyList<IdentityRoleListItemDto>?>.Fail(result.Message, result.StatusCode, result.ErrorCode, result.ValidationErrors);
     }
 
-    private static async Task<string> BuildErrorMessageAsync(HttpResponseMessage response, CancellationToken ct)
-    {
-        var body = await response.Content.ReadAsStringAsync(ct);
-        if (!string.IsNullOrWhiteSpace(body))
-        {
-            try
-            {
-                using var json = JsonDocument.Parse(body);
-                var root = json.RootElement;
-                if (root.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String)
-                {
-                    return message.GetString() ?? "La operación falló.";
-                }
+    public Task<HttpResponseWrapper<IdentityUserListItemDto?>> CreateUserResultAsync(CreateIdentityUserRequest request, CancellationToken ct = default)
+        => _api.PostResultAsync<CreateIdentityUserRequest, IdentityUserListItemDto>("api/admin/security/users", request, ct);
 
-                if (root.TryGetProperty("detail", out var detail) && detail.ValueKind == JsonValueKind.String)
-                {
-                    return detail.GetString() ?? "La operación falló.";
-                }
-            }
-            catch
-            {
-            }
+    public Task<HttpResponseWrapper<IdentityRoleListItemDto?>> CreateRoleResultAsync(CreateIdentityRoleRequest request, CancellationToken ct = default)
+        => _api.PostResultAsync<CreateIdentityRoleRequest, IdentityRoleListItemDto>("api/admin/security/roles", request, ct);
+
+    public Task<HttpResponseWrapper<IdentityUserListItemDto?>> UpdateUserRolesResultAsync(string userId, UpdateIdentityUserRolesRequest request, CancellationToken ct = default)
+        => _api.PutResultAsync<UpdateIdentityUserRolesRequest, IdentityUserListItemDto>($"api/admin/security/users/{userId}/roles", request, ct);
+
+    private static async Task<T> RequireDataAsync<T>(Task<HttpResponseWrapper<T?>> resultTask, string fallbackMessage)
+        where T : class
+    {
+        var result = await resultTask;
+        if (!result.Success)
+        {
+            throw new InvalidOperationException(result.Message ?? fallbackMessage);
         }
 
-        return $"La operación falló con estado {(int)response.StatusCode} ({response.ReasonPhrase}).";
+        return result.Data ?? throw new InvalidOperationException(fallbackMessage);
     }
 }

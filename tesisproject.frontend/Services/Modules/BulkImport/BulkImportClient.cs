@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using tesisproject.frontend.Services.Interfaces;
+using tesisproject.frontend.Services.Platform.Api;
 using tesisproject.shared.DTOs.Imports;
 
 namespace tesisproject.frontend.Services.Implementations
@@ -10,16 +11,17 @@ namespace tesisproject.frontend.Services.Implementations
     public class BulkImportClient : IBulkImportClient
     {
         private readonly HttpClient _http;
+        private readonly IApiClient _api;
 
-        public BulkImportClient(HttpClient http)
+        public BulkImportClient(HttpClient http, IApiClient api)
         {
             _http = http;
+            _api = api;
         }
 
         public async Task<List<BulkImportBatchSummaryDto>> GetBatchesAsync(string? entityName = "Article", int take = 20, CancellationToken ct = default)
         {
-            var url = $"api/import-batches?entityName={Uri.EscapeDataString(entityName ?? "Article")}&take={take}";
-            return await _http.GetFromJsonAsync<List<BulkImportBatchSummaryDto>>(url, ct) ?? new List<BulkImportBatchSummaryDto>();
+            return (await GetBatchesResultAsync(entityName, take, ct)).Data ?? new List<BulkImportBatchSummaryDto>();
         }
 
         public async Task<(byte[] Content, string FileName, string ContentType)> GenerateTemplateAsync(BulkImportTemplateRequest request, CancellationToken ct = default)
@@ -59,69 +61,68 @@ namespace tesisproject.frontend.Services.Implementations
         }
 
         public async Task<BulkImportBatchDetailDto?> GetBatchAsync(int batchId, int previewRows = 25, CancellationToken ct = default)
-        {
-            using var response = await _http.GetAsync($"api/import-batches/{batchId}?previewRows={previewRows}", ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude abrir el lote.", ct));
-            }
-
-            return await response.Content.ReadFromJsonAsync<BulkImportBatchDetailDto>(cancellationToken: ct);
-        }
+            => await RequireDataAsync(
+                GetBatchResultAsync(batchId, previewRows, ct),
+                "No pude abrir el lote.");
 
         public async Task<BulkImportActionResultDto?> CreateBatchFromExternalArticleAsync(ExternalArticleImportRequest request, CancellationToken ct = default)
-        {
-            using var response = await _http.PostAsJsonAsync("api/import-batches/external-article", request, ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude crear el lote externo en staging.", ct));
-            }
-
-            return await response.Content.ReadFromJsonAsync<BulkImportActionResultDto>(cancellationToken: ct);
-        }
+            => await RequireDataAsync(
+                CreateBatchFromExternalArticleResultAsync(request, ct),
+                "No pude crear el lote externo en staging.");
 
         public async Task<BulkImportActionResultDto?> CreateBatchFromExternalArticlesAsync(ExternalArticlesImportRequest request, CancellationToken ct = default)
-        {
-            using var response = await _http.PostAsJsonAsync("api/import-batches/external-articles", request, ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude crear el lote externo múltiple en staging.", ct));
-            }
-
-            return await response.Content.ReadFromJsonAsync<BulkImportActionResultDto>(cancellationToken: ct);
-        }
+            => await RequireDataAsync(
+                CreateBatchFromExternalArticlesResultAsync(request, ct),
+                "No pude crear el lote externo múltiple en staging.");
 
         public async Task<BulkImportActionResultDto?> CorrectRowAsync(int batchId, int rowId, BulkImportRowCorrectionRequest request, CancellationToken ct = default)
-        {
-            using var response = await _http.PutAsJsonAsync($"api/import-batches/{batchId}/rows/{rowId}", request, ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude corregir la fila del staging.", ct));
-            }
-
-            return await response.Content.ReadFromJsonAsync<BulkImportActionResultDto>(cancellationToken: ct);
-        }
+            => await RequireDataAsync(
+                CorrectRowResultAsync(batchId, rowId, request, ct),
+                "No pude corregir la fila del staging.");
 
         public async Task<BulkImportActionResultDto?> ValidateBatchAsync(int batchId, CancellationToken ct = default)
-        {
-            using var response = await _http.PostAsync($"api/import-batches/{batchId}/validate", null, ct);
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude validar el lote.", ct));
-            }
-
-            return await response.Content.ReadFromJsonAsync<BulkImportActionResultDto>(cancellationToken: ct);
-        }
+            => await RequireDataAsync(
+                ValidateBatchResultAsync(batchId, ct),
+                "No pude validar el lote.");
 
         public async Task<BulkImportActionResultDto?> ProcessBatchAsync(int batchId, CancellationToken ct = default)
+            => await RequireDataAsync(
+                ProcessBatchResultAsync(batchId, ct),
+                "No pude procesar el lote.");
+
+        public Task<HttpResponseWrapper<List<BulkImportBatchSummaryDto>?>> GetBatchesResultAsync(string? entityName = "Article", int take = 20, CancellationToken ct = default)
         {
-            using var response = await _http.PostAsync($"api/import-batches/{batchId}/process", null, ct);
-            if (!response.IsSuccessStatusCode)
+            var url = $"api/import-batches?entityName={Uri.EscapeDataString(entityName ?? "Article")}&take={take}";
+            return _api.GetResultAsync<List<BulkImportBatchSummaryDto>>(url, ct);
+        }
+
+        public Task<HttpResponseWrapper<BulkImportBatchDetailDto?>> GetBatchResultAsync(int batchId, int previewRows = 25, CancellationToken ct = default)
+            => _api.GetResultAsync<BulkImportBatchDetailDto>($"api/import-batches/{batchId}?previewRows={previewRows}", ct);
+
+        public Task<HttpResponseWrapper<BulkImportActionResultDto?>> CreateBatchFromExternalArticleResultAsync(ExternalArticleImportRequest request, CancellationToken ct = default)
+            => _api.PostResultAsync<ExternalArticleImportRequest, BulkImportActionResultDto>("api/import-batches/external-article", request, ct);
+
+        public Task<HttpResponseWrapper<BulkImportActionResultDto?>> CreateBatchFromExternalArticlesResultAsync(ExternalArticlesImportRequest request, CancellationToken ct = default)
+            => _api.PostResultAsync<ExternalArticlesImportRequest, BulkImportActionResultDto>("api/import-batches/external-articles", request, ct);
+
+        public Task<HttpResponseWrapper<BulkImportActionResultDto?>> CorrectRowResultAsync(int batchId, int rowId, BulkImportRowCorrectionRequest request, CancellationToken ct = default)
+            => _api.PutResultAsync<BulkImportRowCorrectionRequest, BulkImportActionResultDto>($"api/import-batches/{batchId}/rows/{rowId}", request, ct);
+
+        public Task<HttpResponseWrapper<BulkImportActionResultDto?>> ValidateBatchResultAsync(int batchId, CancellationToken ct = default)
+            => _api.PostResultAsync<object?, BulkImportActionResultDto>($"api/import-batches/{batchId}/validate", null, ct);
+
+        public Task<HttpResponseWrapper<BulkImportActionResultDto?>> ProcessBatchResultAsync(int batchId, CancellationToken ct = default)
+            => _api.PostResultAsync<object?, BulkImportActionResultDto>($"api/import-batches/{batchId}/process", null, ct);
+
+        private static async Task<T?> RequireDataAsync<T>(Task<HttpResponseWrapper<T?>> resultTask, string fallbackMessage)
+        {
+            var result = await resultTask;
+            if (!result.Success)
             {
-                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude procesar el lote.", ct));
+                throw new InvalidOperationException(result.Message ?? fallbackMessage);
             }
 
-            return await response.Content.ReadFromJsonAsync<BulkImportActionResultDto>(cancellationToken: ct);
+            return result.Data;
         }
 
         private static async Task<string> ReadErrorMessageAsync(HttpResponseMessage response, string fallback, CancellationToken ct)
@@ -154,7 +155,6 @@ namespace tesisproject.frontend.Services.Implementations
             }
             catch
             {
-                // Si no viene JSON válido, devolvemos el cuerpo tal cual.
             }
 
             return raw;

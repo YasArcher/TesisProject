@@ -1,4 +1,5 @@
 using tesisproject.frontend.Services.Interfaces;
+using tesisproject.frontend.Services.Platform.Api;
 using tesisproject.shared.DTOs.ExternalApis;
 
 namespace tesisproject.frontend.Services.Implementations
@@ -13,13 +14,36 @@ namespace tesisproject.frontend.Services.Implementations
         }
 
         public async Task<List<ExternalApiProviderDto>> GetProvidersAsync(CancellationToken ct = default)
-            => await _api.GetAsync<List<ExternalApiProviderDto>>("api/external-api-explorer/providers", ct)
-               ?? new List<ExternalApiProviderDto>();
+            => (await GetProvidersResultAsync(ct)).Data ?? new List<ExternalApiProviderDto>();
 
-        public Task<ExternalApiQueryResultDto?> QueryAsync(ExternalApiQueryRequest request, CancellationToken ct = default)
-            => _api.PostAsync<ExternalApiQueryRequest, ExternalApiQueryResultDto>("api/external-api-explorer/query", request, ct);
+        public async Task<ExternalApiQueryResultDto?> QueryAsync(ExternalApiQueryRequest request, CancellationToken ct = default)
+            => await RequireDataAsync(
+                QueryResultAsync(request, ct),
+                "No pude consultar la fuente externa.");
 
-        public Task<ExternalArticlePreviewDto?> EnrichArticleAsync(string providerKey, ExternalArticlePreviewDto article, CancellationToken ct = default)
-            => _api.PostAsync<ExternalArticlePreviewDto, ExternalArticlePreviewDto>($"api/external-api-explorer/providers/{providerKey}/enrich", article, ct);
+        public async Task<ExternalArticlePreviewDto?> EnrichArticleAsync(string providerKey, ExternalArticlePreviewDto article, CancellationToken ct = default)
+            => await RequireDataAsync(
+                EnrichArticleResultAsync(providerKey, article, ct),
+                "No pude enriquecer el artículo con la fuente externa.");
+
+        public Task<HttpResponseWrapper<List<ExternalApiProviderDto>?>> GetProvidersResultAsync(CancellationToken ct = default)
+            => _api.GetResultAsync<List<ExternalApiProviderDto>>("api/external-api-explorer/providers", ct);
+
+        public Task<HttpResponseWrapper<ExternalApiQueryResultDto?>> QueryResultAsync(ExternalApiQueryRequest request, CancellationToken ct = default)
+            => _api.PostResultAsync<ExternalApiQueryRequest, ExternalApiQueryResultDto>("api/external-api-explorer/query", request, ct);
+
+        public Task<HttpResponseWrapper<ExternalArticlePreviewDto?>> EnrichArticleResultAsync(string providerKey, ExternalArticlePreviewDto article, CancellationToken ct = default)
+            => _api.PostResultAsync<ExternalArticlePreviewDto, ExternalArticlePreviewDto>($"api/external-api-explorer/providers/{providerKey}/enrich", article, ct);
+
+        private static async Task<T?> RequireDataAsync<T>(Task<HttpResponseWrapper<T?>> resultTask, string fallbackMessage)
+        {
+            var result = await resultTask;
+            if (!result.Success)
+            {
+                throw new InvalidOperationException(result.Message ?? fallbackMessage);
+            }
+
+            return result.Data;
+        }
     }
 }

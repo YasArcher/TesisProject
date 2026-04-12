@@ -1,5 +1,6 @@
 using tesisproject.shared.DTOs.Catalogs;
 using tesisproject.shared.DTOs.Configuration;
+using tesisproject.frontend.Services.Platform.Api;
 
 namespace tesisproject.frontend.Services.Interfaces
 {
@@ -27,5 +28,25 @@ namespace tesisproject.frontend.Services.Interfaces
         Task<DynamicFieldOptionDto?> UpdateFieldOptionAsync(int fieldId, int optionId, UpdateDynamicFieldOptionRequest request, CancellationToken ct = default);
         Task DeleteFieldOptionAsync(int fieldId, int optionId, CancellationToken ct = default);
         Task DeleteFormFieldAsync(int formId, int formFieldId, CancellationToken ct = default);
+
+        Task<HttpResponseWrapper<List<FormSummaryDto>?>> GetFormsResultAsync(string? entityName = null, CancellationToken ct = default);
+        Task<HttpResponseWrapper<List<FormFieldAdminDto>?>> GetFormFieldsResultAsync(int formId, CancellationToken ct = default);
+        Task<HttpResponseWrapper<List<FieldCatalogItemDto>?>> GetFieldsResultAsync(string entityName, CancellationToken ct = default);
+        Task<HttpResponseWrapper<List<FieldCatalogItemDto>?>> GetDynamicFieldsResultAsync(string entityName, CancellationToken ct = default);
+        Task<HttpResponseWrapper<List<CatalogItemDto>?>> GetCatalogItemsByFieldResultAsync(int fieldId, int? parentId = null, CancellationToken ct = default);
+        Task<HttpResponseWrapper<List<DynamicFieldOptionDto>?>> GetFieldOptionsResultAsync(int fieldId, CancellationToken ct = default);
+        Task<HttpResponseWrapper<ResolvedFormDto?>> GetResolvedFormResultAsync(string formKey, CancellationToken ct = default);
+        Task<HttpResponseWrapper<ResolvedFormDto?>> GetActiveResolvedFormResultAsync(string entityName, string? preferredFormKey = null, CancellationToken ct = default);
+        Task<HttpResponseWrapper<FormDefinitionAdminDto?>> CreateFormResultAsync(CreateFormDefinitionRequest request, CancellationToken ct = default);
+        Task<HttpResponseWrapper<FormDefinitionAdminDto?>> UpdateFormResultAsync(int formId, UpdateFormDefinitionRequest request, CancellationToken ct = default);
+        Task<HttpResponseWrapper<object?>> DeleteFormResultAsync(int formId, CancellationToken ct = default);
+        Task<HttpResponseWrapper<FieldCatalogItemDto?>> CreateDynamicFieldResultAsync(CreateDynamicFieldRequest request, CancellationToken ct = default);
+        Task<HttpResponseWrapper<FieldCatalogItemDto?>> UpdateFieldResultAsync(int fieldId, UpdateFieldCatalogRequest request, CancellationToken ct = default);
+        Task<HttpResponseWrapper<FormFieldAdminDto?>> AddFieldToFormResultAsync(int formId, AddFieldToFormRequest request, CancellationToken ct = default);
+        Task<HttpResponseWrapper<FormFieldAdminDto?>> UpdateFormFieldResultAsync(int formId, int formFieldId, UpdateFormFieldRequest request, CancellationToken ct = default);
+        Task<HttpResponseWrapper<object?>> DeleteFormFieldResultAsync(int formId, int formFieldId, CancellationToken ct = default);
+        Task<HttpResponseWrapper<DynamicFieldOptionDto?>> CreateFieldOptionResultAsync(int fieldId, CreateDynamicFieldOptionRequest request, CancellationToken ct = default);
+        Task<HttpResponseWrapper<DynamicFieldOptionDto?>> UpdateFieldOptionResultAsync(int fieldId, int optionId, UpdateDynamicFieldOptionRequest request, CancellationToken ct = default);
+        Task<HttpResponseWrapper<object?>> DeleteFieldOptionResultAsync(int fieldId, int optionId, CancellationToken ct = default);
     }
 }
