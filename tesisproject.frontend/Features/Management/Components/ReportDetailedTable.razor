@@ -1,0 +1,73 @@
+@using tesisproject.shared.DTOs.Reports
+
+<section class="report-detail-table bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col gap-3 h-full overflow-hidden">
+    <div class="flex items-center justify-between mb-1">
+        <div>
+            <h3 class="text-sm md:text-base font-semibold text-slate-900">Artículos detallados</h3>
+            <p class="text-[11px] md:text-xs text-slate-500">
+                Vista tabular con dimensiones clave: tiempo, proyecto, línea de investigación, áreas OCDE, estado, venue y calidad.
+            </p>
+        </div>
+    </div>
+
+    <div class="flex-1 max-h-[480px] overflow-auto rounded-lg border border-slate-200">
+        <table class="min-w-full text-[11px] md:text-xs">
+            <thead class="bg-slate-50 sticky top-0 z-10">
+                <tr class="text-left font-semibold text-slate-500 uppercase">
+                    <th class="py-1.5 px-2 border-b border-slate-200">Creación</th>
+                    <th class="py-1.5 px-2 border-b border-slate-200">Publicación</th>
+                    <th class="py-1.5 px-2 border-b border-slate-200">Período</th>
+                    <th class="py-1.5 px-2 border-b border-slate-200">Proyecto</th>
+                    <th class="py-1.5 px-2 border-b border-slate-200">Línea</th>
+                    <th class="py-1.5 px-2 border-b border-slate-200">Área amplia</th>
+                    <th class="py-1.5 px-2 border-b border-slate-200">Área específica</th>
+                    <th class="py-1.5 px-2 border-b border-slate-200">Área detallada</th>
+                    <th class="py-1.5 px-2 border-b border-slate-200">Estado</th>
+                    <th class="py-1.5 px-2 border-b border-slate-200">Venue</th>
+                    <th class="py-1.5 px-2 border-b border-slate-200 text-center">Quartil</th>
+                    <th class="py-1.5 px-2 border-b border-slate-200 text-center">OA</th>
+                    <th class="py-1.5 px-2 border-b border-slate-200 text-center">Scopus</th>
+                    <th class="py-1.5 px-2 border-b border-slate-200 text-right">Art.</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                @foreach (var row in Items)
+                {
+                    <tr class="hover:bg-slate-50/80">
+                        <td class="py-1.5 px-2 text-slate-700">@row.CreatedDate?.ToString("dd/MM/yyyy")</td>
+                        <td class="py-1.5 px-2 text-slate-700">@row.PublicationDate?.ToString("dd/MM/yyyy")</td>
+                        <td class="py-1.5 px-2 text-slate-700">@row.AcademicTermName</td>
+                        <td class="py-1.5 px-2 text-slate-700">@row.ProjectName</td>
+                        <td class="py-1.5 px-2 text-slate-700">@row.ResearchLineName</td>
+                        <td class="py-1.5 px-2 text-slate-700">@row.BroadFieldName</td>
+                        <td class="py-1.5 px-2 text-slate-700">@row.SpecificFieldName</td>
+                        <td class="py-1.5 px-2 text-slate-700">@row.DetailedFieldName</td>
+                        <td class="py-1.5 px-2 text-slate-700">@row.PublicationStatusName</td>
+                        <td class="py-1.5 px-2 text-slate-700">@row.VenueName</td>
+                        <td class="py-1.5 px-2 text-center text-slate-700">@row.Quartile</td>
+                        <td class="py-1.5 px-2 text-center">
+                            <span class="@GetBooleanBadgeClass(row.IsOpenAccess)">
+                                @(row.IsOpenAccess ? "Sí" : "No")
+                            </span>
+                        </td>
+                        <td class="py-1.5 px-2 text-center">
+                            <span class="@GetBooleanBadgeClass(row.IndexedInScopus)">
+                                @(row.IndexedInScopus ? "Sí" : "No")
+                            </span>
+                        </td>
+                        <td class="py-1.5 px-2 text-right font-semibold text-slate-800">@row.ArticleCount</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</section>
+
+@code {
+    [Parameter] public IReadOnlyList<ArticleReportRowDto> Items { get; set; } = [];
+
+    private static string GetBooleanBadgeClass(bool value)
+        => value
+            ? "inline-flex items-center justify-center rounded-full bg-emerald-50 text-emerald-600 px-2 py-0.5 text-[10px] font-semibold"
+            : "inline-flex items-center justify-center rounded-full bg-slate-50 text-slate-500 px-2 py-0.5 text-[10px]";
+}

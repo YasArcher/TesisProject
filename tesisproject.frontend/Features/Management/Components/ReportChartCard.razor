@@ -1,0 +1,49 @@
+@using tesisproject.frontend.SharedUI.Charts
+
+<section class="@CardClass">
+    <div class="flex items-start justify-between mb-3">
+        <div>
+            <h2 class="text-base font-semibold text-slate-900">@Title</h2>
+            <p class="text-xs text-slate-500">@Description</p>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Tooltip))
+        {
+            <button type="button"
+                    class="ml-2 text-slate-400 hover:text-slate-600 relative group">
+                <span class="material-icons text-base">info</span>
+                <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
+                    @Tooltip
+                </span>
+            </button>
+        }
+    </div>
+
+    @if (!HasData)
+    {
+        <p class="text-xs text-slate-400">@EmptyMessage</p>
+    }
+    else
+    {
+        <div class="flex-1 min-h-[220px]">
+            <EChart Id="@ChartId"
+                    Height="@Height"
+                    Option="@Option" />
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Description { get; set; } = string.Empty;
+    [Parameter] public string Tooltip { get; set; } = string.Empty;
+    [Parameter] public bool HasData { get; set; }
+    [Parameter] public string EmptyMessage { get; set; } = "No hay datos disponibles.";
+    [Parameter] public string ChartId { get; set; } = string.Empty;
+    [Parameter] public string Height { get; set; } = "260px";
+    [Parameter] public object? Option { get; set; }
+    [Parameter] public string Accent { get; set; } = "default";
+
+    private string CardClass =>
+        $"report-chart-card report-chart-card--{Accent} bg-white border-l-4 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition";
+}

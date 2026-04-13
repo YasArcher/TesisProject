@@ -15,86 +15,64 @@
 @inject IArticlesClient ArticlesClient
 @inject NavigationManager Nav
 
-<div class="min-h-[calc(100vh-80px)] bg-[#f2f2f2]">
+<PageTitle>Artículos registrados</PageTitle>
+
+<div class="article-list-page min-h-[calc(100vh-80px)]">
     <div class="mx-auto max-w-[1400px] px-4 pb-10 pt-4">
 
-        <!-- BLOQUE SUPERIOR: TÍTULO + KPIs + BARRA ESTADO -->
-        <div class="mb-5 rounded-3xl border border-slate-200/80 bg-gradient-to-br from-white via-[#f7f7f7] to-[#e9f0f0] px-5 py-4 shadow-lg shadow-slate-300/50 border-t-4 border-t-[#800909] space-y-4">
-
-            <!-- TÍTULO / DESCRIPCIÓN -->
-            <div class="flex flex-col gap-1 pb-1 border-b border-slate-200/70">
-                <h1 class="text-xl md:text-2xl font-extrabold tracking-tight text-[#1a2b2b]">
-                    Artículos registrados
-                </h1>
-                <p class="text-xs md:text-sm text-slate-600">
-                    Consulta, filtra y administra los artículos almacenados en la DIDE.
-                </p>
+        <section class="article-list-hero mb-5">
+            <div class="article-list-hero__content">
+                <div class="article-list-hero__icon">
+                    <i class="bi bi-journal-text"></i>
+                </div>
+                <div>
+                    <div class="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Repositorio institucional</div>
+                    <h1 class="mt-1 text-2xl font-black tracking-tight text-white md:text-3xl">
+                        Artículos registrados
+                    </h1>
+                    <p class="mt-2 max-w-3xl text-sm leading-6 text-white/78">
+                        Consulta, filtra y administra los artículos almacenados en la DIDE con una vista clara para revisión operativa.
+                    </p>
+                </div>
             </div>
 
-            <!-- KPIs SUPERIORES -->
             @if (!_isLoading && _allArticles.Any())
             {
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
-                    <!-- Total filtrados -->
-                    <div class="rounded-2xl bg-white/95 border border-slate-200 px-4 py-3 shadow-sm flex flex-col gap-1">
-                        <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-                            Total filtrados
-                        </span>
-                        <span class="text-xl font-extrabold text-[#332222]">
-                            @_filteredArticles.Count
-                        </span>
-                        <span class="text-[11px] text-slate-500">
-                            De @_allArticles.Count artículos registrados
-                        </span>
+                <div class="article-list-kpis">
+                    <div class="article-list-kpi">
+                        <span>Total filtrados</span>
+                        <strong>@_filteredArticles.Count</strong>
+                        <small>De @_allArticles.Count registros</small>
                     </div>
-
-                    <!-- Publicados -->
-                    <div class="rounded-2xl bg-gradient-to-br from-[#4d1a1a]/12 via-[#4d1a1a]/5 to-white border border-[#4d1a1a]/30 px-4 py-3 shadow-sm flex flex-col gap-1">
-                        <span class="text-[11px] font-semibold uppercase tracking-wide text-[#4d1a1a]">
-                            Publicados
-                        </span>
-                        <span class="text-xl font-extrabold text-[#4d1a1a]">
-                            @_allArticles.Count(a => GetStatusKey(a) == "PUBLICADO")
-                        </span>
-                        <span class="text-[11px] text-[#4d1a1a]/80">
-                            Estado final publicado
-                        </span>
+                    <div class="article-list-kpi article-list-kpi--gold">
+                        <span>Publicados</span>
+                        <strong>@_allArticles.Count(a => GetStatusKey(a) == "PUBLICADO")</strong>
+                        <small>Estado final</small>
                     </div>
-
-                    <!-- Aceptados -->
-                    <div class="rounded-2xl bg-gradient-to-br from-[#1a2b2b]/12 via-[#1a2b2b]/5 to-white border border-[#1a2b2b]/30 px-4 py-3 shadow-sm flex flex-col gap-1">
-                        <span class="text-[11px] font-semibold uppercase tracking-wide text-[#1a2b2b]">
-                            Aceptados
-                        </span>
-                        <span class="text-xl font-extrabold text-[#1a2b2b]">
-                            @_allArticles.Count(a => GetStatusKey(a) == "ACEPTADO")
-                        </span>
-                        <span class="text-[11px] text-[#1a2b2b]/80">
-                            En fase previa a publicación
-                        </span>
+                    <div class="article-list-kpi article-list-kpi--sage">
+                        <span>Aceptados</span>
+                        <strong>@_allArticles.Count(a => GetStatusKey(a) == "ACEPTADO")</strong>
+                        <small>Previo a publicación</small>
                     </div>
-
-                    <!-- Sin estado -->
-                    <div class="rounded-2xl bg-gradient-to-br from-[#332222]/10 via-[#332222]/5 to-white border border-[#332222]/25 px-4 py-3 shadow-sm flex flex-col gap-1">
-                        <span class="text-[11px] font-semibold uppercase tracking-wide text-[#332222]">
-                            Sin estado
-                        </span>
-                        <span class="text-xl font-extrabold text-[#332222]">
-                            @_allArticles.Count(a => GetStatusKey(a) == "SIN ESTADO")
-                        </span>
-                        <span class="text-[11px] text-[#332222]/80">
-                            Pendientes de clasificación
-                        </span>
+                    <div class="article-list-kpi article-list-kpi--muted">
+                        <span>Sin estado</span>
+                        <strong>@_allArticles.Count(a => GetStatusKey(a) == "SIN ESTADO")</strong>
+                        <small>Por clasificar</small>
                     </div>
                 </div>
             }
+        </section>
 
-            <!-- BARRA DE ESTADO (PUBLICADO / ACEPTADO / SIN ESTADO) -->
-            <div class="pt-1">
+        <section class="article-list-status-panel mb-4">
+            <div>
+                <div class="article-list-section-eyebrow">Segmentación rápida</div>
+                <h2>Estados de publicación</h2>
+            </div>
+            <div class="article-list-status-panel__filters">
                 <ArticleStatusFilterBar StatusOptions="@StatusOptions"
                                         @bind-SelectedStatus="StatusFilter" />
             </div>
-        </div>
+        </section>
 
         <!-- MENSAJES DE ESTADO / CONTENIDO -->
         <AppStatusModal Visible="@_showStatusModal"
@@ -130,31 +108,29 @@
         }
         else
         {
-            <!-- TOOLBAR DE BÚSQUEDA + VISTA + ACCIONES (justo encima del tablero/tabla) -->
-            <div class="mb-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm">
-                <ArticleListToolbar Title=""
-                                    Subtitle=""
-                                    @bind-SearchText="SearchText"
-                                    @bind-IsCardsView="IsCardsView"
-                                    OnReload="ReloadAsync"
-                                    OnNew="GoToNew"
-                                    IsBusy="@_isLoading"
-                                    SearchPlaceholder="Buscar por título, revista, DOI…" />
-            </div>
-            <div class="mb-3 flex justify-end">
+            <div class="article-list-control-panel mb-4">
+                <div class="article-list-control-panel__toolbar">
+                    <ArticleListToolbar Title=""
+                                        Subtitle=""
+                                        @bind-SearchText="SearchText"
+                                        @bind-IsCardsView="IsCardsView"
+                                        OnReload="ReloadAsync"
+                                        OnNew="GoToNew"
+                                        IsBusy="@_isLoading"
+                                        SearchPlaceholder="Buscar por título, revista, DOI…" />
+                </div>
                 <button type="button"
-                        class="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                        class="article-list-bi-button"
                         @onclick="@(() => Nav.NavigateTo("/management/exportinformation"))">
                     <i class="bi bi-diagram-3"></i>
-                    <span>Módulo BI (Exportar / Importar)</span>
+                    <span>Ir a carga masiva</span>
                 </button>
             </div>
 
-            <!-- TOOLBAR DE PAGINADO SUPERIOR -->
-            <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white/90 px-4 py-2.5 shadow-sm">
+            <div class="article-list-pagination-card">
                 @if (_view == ViewMode.Table)
                 {
-                    <div class="text-sm text-slate-700">
+                    <div class="text-sm text-[#45474b]">
                         Mostrando
                         <span class="font-semibold">@PageStart</span>–<span class="font-semibold">@PageEnd</span>
                         de
@@ -164,7 +140,7 @@
 
                     <div class="flex items-center gap-3">
                         <label class="text-xs text-slate-600">Por página</label>
-                        <select class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs shadow-sm"
+                        <select class="rounded-lg border border-[#d9dfd1] bg-white px-2 py-1.5 text-xs shadow-sm"
                                 @bind="_pageSize"
                                 @bind:after="PageSizeChanged">
                             @foreach (var s in _pageSizeOptions)
@@ -182,7 +158,7 @@
                 }
                 else
                 {
-                    <div class="text-sm text-slate-700">
+                    <div class="text-sm text-[#45474b]">
                         Mostrando
                         <span class="font-semibold">@_filteredArticles.Count</span>
                         artículos en vista tablero 
@@ -190,17 +166,14 @@
                 }
             </div>
 
-            <!-- CONTENIDO PRINCIPAL: KANBAN O TABLA -->
-            <div class="mt-4 rounded-3xl bg-gradient-to-b from-[#f2f2f2] via-[#e6f0f0] to-[#f2f2f2] border border-[#d4d4d4] px-4 py-4 shadow-sm">
+            <div class="article-list-content-card mt-4">
                 @if (_view == ViewMode.Cards)
                 {
-                    <!-- Kanban ve TODOS los artículos filtrados, incluso si la lista está vacía -->
                     <ArticleKanbanBoard Items="@_filteredArticles"
                                         OnViewMore="OpenDetails" />
                 }
                 else
                 {
-                    <!-- La tabla sí usa paginación -->
                     <ArticleListTable Items="@PagedItems"
                                       OnViewMore="OpenDetails"
                                       OnEdit="GoToEdit"

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -10,16 +11,14 @@ using System.Text;
 using tesisproject.backend.BI.ETL;
 using tesisproject.backend.Data;
 using tesisproject.backend.DataWarehouse;
+using tesisproject.backend.Filters;
 using tesisproject.backend.Identity;
-using tesisproject.backend.Mapping;
 using tesisproject.backend.Options;
-using tesisproject.backend.Repositories.Implementations;
-using tesisproject.backend.Repositories.Interfaces;
+using tesisproject.backend.Reporting.Data;
 using tesisproject.backend.Services;
 using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Interfaces;
-using tesisproject.backend.UnitOfWork.Implementations;
-using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.backend.Services.Modules.Reporting;
 using tesisproject.shared.Abstractions.Auth;
 
 namespace tesisproject.backend.Configuration;
@@ -44,6 +43,10 @@ public static class ServiceCollectionExtensions
         services.AddDbContext<DwDbContext>(options =>
             options.UseSqlServer(config.GetConnectionString("DwConnection")));
 
+        services.AddDbContext<ReportingDbContext>(options =>
+            options.UseSqlServer(config.GetConnectionString("ReportingConnection")
+                                 ?? config.GetConnectionString("DwConnection")));
+
         services.AddScoped<IEtlOrchestrator, EtlOrchestrator>();
 
         services.AddDbContext<AppDbContext>(opt =>
@@ -52,14 +55,11 @@ public static class ServiceCollectionExtensions
             opt.EnableSensitiveDataLogging(environment.IsDevelopment());
         });
 
-        services.AddAutoMapper(cfg => { }, typeof(ArticleMapping).Assembly);
         return services;
     }
 
     public static IServiceCollection AddAppDomainServices(this IServiceCollection services, IConfiguration config)
     {
-        services.AddScoped<IArticlesRepository, ArticlesRepository>();
-        services.AddScoped<IUnitOfWork, tesisproject.backend.UnitOfWork.Implementations.UnitOfWork>();
         services.AddScoped<IArticlesService, ArticlesService>();
         services.AddScoped<IVenuesService, VenuesService>();
         services.AddScoped<IConfigurationFormsService, ConfigurationFormsService>();
@@ -69,7 +69,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IWorkflowService, WorkflowService>();
         services.AddScoped<IRegistrationMatrixService, RegistrationMatrixService>();
         services.AddScoped<IExternalApiExplorerService, ExternalApiExplorerService>();
+        services.AddScoped<IInstitutionalReportingService, InstitutionalReportingService>();
         services.Configure<ExternalApiExplorerOptions>(config.GetSection("ExternalApis"));
+        services.Configure<LegacyReportingOptions>(config.GetSection("LegacyReporting"));
+        services.AddScoped<LegacyReportingEnabledFilter>();
         services.AddHttpClient("external-api-explorer", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(25);
@@ -116,12 +119,15 @@ public static class ServiceCollectionExtensions
         JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
         services.Configure<JwtOptions>(config.GetSection("Jwt"));
 
-        var jwt = config.GetSection("Jwt").Get<JwtOptions>() ?? new JwtOptions
+        var jwt = config.GetSection("Jwt").Get<JwtOptions>()
+                  ?? throw new InvalidOperationException("La sección Jwt no está configurada.");
+
+        if (string.IsNullOrWhiteSpace(jwt.Issuer)
+            || string.IsNullOrWhiteSpace(jwt.Audience)
+            || string.IsNullOrWhiteSpace(jwt.Key))
         {
-            Issuer = "local",
-            Audience = "local",
-            Key = "dev-very-long-key-please-change"
-        };
+            throw new InvalidOperationException("Jwt:Issuer, Jwt:Audience y Jwt:Key son obligatorios.");
+        }
 
         services.AddAuthentication(options =>
         {
@@ -174,7 +180,9 @@ public static class ServiceCollectionExtensions
 
         services.AddAuthorization(options =>
         {
-            options.FallbackPolicy = null;
+            options.FallbackPolicy = new AuthorizationPolicyBuilder()
+                .RequireAuthenticatedUser()
+                .Build();
 
             options.AddPolicy(AppPolicies.AuthenticatedUser, policy =>
                 policy.RequireAuthenticatedUser());
@@ -220,6 +228,13 @@ public static class ServiceCollectionExtensions
 
             options.AddPolicy(AppPolicies.ExternalApiAccess, policy =>
                 policy.RequireRole(AppRoles.Admin, AppRoles.Analyst, AppRoles.Author));
+
+            options.AddPolicy(AppPolicies.ReportingAccess, policy =>
+                policy.RequireRole(
+                    AppRoles.Admin,
+                    AppRoles.Analyst,
+                    AppRoles.WorkflowReviewerAreaTecnica,
+                    AppRoles.WorkflowProcessorAreaTecnica));
         });
 
         return services;

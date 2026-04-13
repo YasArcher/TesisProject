@@ -7,7 +7,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="AutoMapper" Version="15.1.1" />
 		<PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.9" />
 		<PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.0" />
 		<PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.8" />
@@ -20,15 +19,8 @@
 		  <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		  <PrivateAssets>all</PrivateAssets>
 		</PackageReference>
-		<PackageReference Include="Microsoft.Extensions.ML" Version="4.0.2" />
-		<PackageReference Include="Microsoft.ML" Version="4.0.2" />
-		<PackageReference Include="Microsoft.ML.LightGbm" Version="4.0.2" />
-		<PackageReference Include="Microsoft.ML.Recommender" Version="0.22.2" />
 		<PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3" />
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.14.0" />
-		<!-- Testing packages -->
-		<PackageReference Include="xunit" Version="2.9.2" />
-		<PackageReference Include="xunit.runner.visualstudio" Version="3.0.2" />
 		<PackageReference Include="ClosedXML" Version="0.105.0" />
 		<PackageReference Include="QuestPDF" Version="2024.3.0" />
 		<PackageReference Include="ScottPlot" Version="4.1.68" />

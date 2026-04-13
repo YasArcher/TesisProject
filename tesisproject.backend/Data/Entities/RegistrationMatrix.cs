@@ -10,6 +10,7 @@ namespace tesisproject.backend.Data.Entities
         public string EntityName { get; set; } = "Article";
         public string Status { get; set; } = "Draft";
         public string? Notes { get; set; }
+        public string? CreatedByUserId { get; set; }
         public int? LastImportBatchId { get; set; }
         public ImportBatch? LastImportBatch { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

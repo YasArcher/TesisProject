@@ -27,6 +27,8 @@ namespace tesisproject.backend.Services.Implementations
 
         public async Task EnsureSeedDataAsync(CancellationToken ct = default)
         {
+            await EnsureWorkflowStageDefinitionDefaultsAsync(ct);
+
             var now = DateTime.UtcNow;
             var definition = await _db.WorkflowDefinitions
                 .Include(x => x.Stages)
@@ -450,6 +452,84 @@ namespace tesisproject.backend.Services.Implementations
             stage.IsFinalStage = isFinalStage;
             stage.IsActive = true;
             stage.UpdatedAt = now;
+        }
+
+        private async Task EnsureWorkflowStageDefinitionDefaultsAsync(CancellationToken ct)
+        {
+            await _db.Database.ExecuteSqlRawAsync("""
+                IF OBJECT_ID(N'dbo.WorkflowStageDefinition', N'U') IS NOT NULL
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM sys.default_constraints dc
+                        INNER JOIN sys.columns c
+                            ON c.object_id = dc.parent_object_id
+                           AND c.column_id = dc.parent_column_id
+                        WHERE dc.parent_object_id = OBJECT_ID(N'dbo.WorkflowStageDefinition')
+                          AND c.name = N'CanEditData'
+                    )
+                    BEGIN
+                        ALTER TABLE dbo.WorkflowStageDefinition
+                        ADD CONSTRAINT DF_WorkflowStageDefinition_CanEditData DEFAULT (0) FOR CanEditData;
+                    END;
+
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM sys.default_constraints dc
+                        INNER JOIN sys.columns c
+                            ON c.object_id = dc.parent_object_id
+                           AND c.column_id = dc.parent_column_id
+                        WHERE dc.parent_object_id = OBJECT_ID(N'dbo.WorkflowStageDefinition')
+                          AND c.name = N'CanReturn'
+                    )
+                    BEGIN
+                        ALTER TABLE dbo.WorkflowStageDefinition
+                        ADD CONSTRAINT DF_WorkflowStageDefinition_CanReturn DEFAULT (1) FOR CanReturn;
+                    END;
+
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM sys.default_constraints dc
+                        INNER JOIN sys.columns c
+                            ON c.object_id = dc.parent_object_id
+                           AND c.column_id = dc.parent_column_id
+                        WHERE dc.parent_object_id = OBJECT_ID(N'dbo.WorkflowStageDefinition')
+                          AND c.name = N'CanApprove'
+                    )
+                    BEGIN
+                        ALTER TABLE dbo.WorkflowStageDefinition
+                        ADD CONSTRAINT DF_WorkflowStageDefinition_CanApprove DEFAULT (1) FOR CanApprove;
+                    END;
+
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM sys.default_constraints dc
+                        INNER JOIN sys.columns c
+                            ON c.object_id = dc.parent_object_id
+                           AND c.column_id = dc.parent_column_id
+                        WHERE dc.parent_object_id = OBJECT_ID(N'dbo.WorkflowStageDefinition')
+                          AND c.name = N'CanProcessBatch'
+                    )
+                    BEGIN
+                        ALTER TABLE dbo.WorkflowStageDefinition
+                        ADD CONSTRAINT DF_WorkflowStageDefinition_CanProcessBatch DEFAULT (0) FOR CanProcessBatch;
+                    END;
+
+                    IF NOT EXISTS (
+                        SELECT 1
+                        FROM sys.default_constraints dc
+                        INNER JOIN sys.columns c
+                            ON c.object_id = dc.parent_object_id
+                           AND c.column_id = dc.parent_column_id
+                        WHERE dc.parent_object_id = OBJECT_ID(N'dbo.WorkflowStageDefinition')
+                          AND c.name = N'IsFinalStage'
+                    )
+                    BEGIN
+                        ALTER TABLE dbo.WorkflowStageDefinition
+                        ADD CONSTRAINT DF_WorkflowStageDefinition_IsFinalStage DEFAULT (0) FOR IsFinalStage;
+                    END;
+                END;
+                """, ct);
         }
 
         private async Task<WorkflowInstance?> LoadWorkflowAggregateAsync(int importBatchId, CancellationToken ct)

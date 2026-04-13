@@ -12,4 +12,5 @@ public static class AppPolicies
     public const string BulkImportAccess = "BulkImportAccess";
     public const string ConfigurationAdministration = "ConfigurationAdministration";
     public const string ExternalApiAccess = "ExternalApiAccess";
+    public const string ReportingAccess = "ReportingAccess";
 }

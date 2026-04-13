@@ -1,0 +1,26 @@
+<section class="reports-hero">
+    <div class="reports-hero__content">
+        <div class="reports-hero__icon">
+            <i class="@IconClass"></i>
+        </div>
+        <div>
+            <div class="reports-hero__kicker">@Kicker</div>
+            <h1 class="reports-hero__title">@Title</h1>
+            <p class="reports-hero__copy">@Description</p>
+        </div>
+    </div>
+    <div class="reports-hero__badges">
+        @foreach (var badge in Badges)
+        {
+            <span><i class="@badge.IconClass"></i> @badge.Label</span>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public string Kicker { get; set; } = "Panel de reportería";
+    [Parameter] public string Title { get; set; } = "Reportes estadísticos";
+    [Parameter] public string Description { get; set; } = string.Empty;
+    [Parameter] public string IconClass { get; set; } = "bi bi-bar-chart-line";
+    [Parameter] public IReadOnlyList<ReportBadgeItem> Badges { get; set; } = [];
+}

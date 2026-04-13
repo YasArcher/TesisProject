@@ -5,8 +5,11 @@ namespace tesisproject.backend.Services.Interfaces
     public interface IRegistrationMatrixService
     {
         Task<List<RegistrationMatrixSummaryDto>> GetMatricesAsync(int take = 50, CancellationToken ct = default);
+        Task<List<RegistrationMatrixSummaryDto>> GetMatricesAsync(int take, string? ownerUserId, bool includeAll, CancellationToken ct = default);
         Task<RegistrationMatrixDetailDto?> GetMatrixAsync(int matrixId, CancellationToken ct = default);
+        Task<RegistrationMatrixDetailDto?> GetMatrixAsync(int matrixId, string? ownerUserId, bool includeAll, CancellationToken ct = default);
         Task<RegistrationMatrixDetailDto> CreateMatrixAsync(CreateRegistrationMatrixRequest request, CancellationToken ct = default);
+        Task<RegistrationMatrixDetailDto> CreateMatrixAsync(CreateRegistrationMatrixRequest request, string? ownerUserId, CancellationToken ct = default);
         Task<RegistrationMatrixDetailDto?> UpdateMatrixAsync(int matrixId, UpdateRegistrationMatrixRequest request, CancellationToken ct = default);
         Task<RegistrationMatrixDetailDto?> AddColumnsAsync(int matrixId, AddRegistrationMatrixColumnsRequest request, CancellationToken ct = default);
         Task<RegistrationMatrixDetailDto?> UpdateColumnOrderAsync(int matrixId, int columnId, UpdateRegistrationMatrixColumnOrderRequest request, CancellationToken ct = default);

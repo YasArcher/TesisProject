@@ -22,23 +22,30 @@
 <PageTitle>@PageTitleText</PageTitle>
 
 <div class="app-page-shell app-shell-warm bulk-import-page">
-    <div class="app-module-hero mb-3 rounded-[1.4rem] px-4 py-3 text-white shadow-lg">
-        <div class="flex items-center justify-between gap-3">
-            <div>
-                <div class="text-xs font-semibold uppercase tracking-[0.2em] text-white/75">@PageEyebrow</div>
-                <h1 class="text-xl font-black md:text-2xl">@PageHeading</h1>
-                <div class="mt-1 text-sm text-white/80">@PageSummary</div>
-            </div>
-            @if (IsReviewStagingMode)
-            {
-                <div class="flex flex-wrap gap-2">
-                    <span class="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold">@ReviewModeAudience</span>
-                    @if (CurrentBatch is not null)
-                    {
-                        <span class="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold">@CurrentBatch.Summary.BatchCode</span>
-                    }
+    <div class="app-module-hero bulk-import-hero mb-5 rounded-[1.8rem] px-5 py-5 text-white shadow-lg">
+        <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+            <div class="flex items-start gap-4">
+                <div class="bulk-import-hero__icon">
+                    <i class="bi bi-grid-3x3-gap"></i>
                 </div>
-            }
+                <div>
+                    <div class="text-xs font-semibold uppercase tracking-[0.24em] text-white/75">@PageEyebrow</div>
+                    <h1 class="mt-1 text-2xl font-black md:text-3xl">@PageHeading</h1>
+                    <div class="mt-2 max-w-3xl text-sm leading-6 text-white/80">@PageSummary</div>
+                </div>
+            </div>
+            <div class="bulk-import-hero__meta">
+                <span><i class="bi bi-table"></i> Matriz controlada</span>
+                <span><i class="bi bi-check2-square"></i> Validación por lote</span>
+                @if (IsReviewStagingMode)
+                {
+                    <span><i class="bi bi-person-check"></i> @ReviewModeAudience</span>
+                }
+                @if (CurrentBatch is not null)
+                {
+                    <span><i class="bi bi-upc-scan"></i> @CurrentBatch.Summary.BatchCode</span>
+                }
+            </div>
         </div>
     </div>
 

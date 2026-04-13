@@ -18,9 +18,26 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         public async Task<List<RegistrationMatrixSummaryDto>> GetMatricesAsync(int take = 50, CancellationToken ct = default)
+            => await GetMatricesAsync(take, null, true, ct);
+
+        public async Task<List<RegistrationMatrixSummaryDto>> GetMatricesAsync(int take, string? ownerUserId, bool includeAll, CancellationToken ct = default)
         {
-            return await _db.RegistrationMatrices
+            var query = _db.RegistrationMatrices
                 .AsNoTracking()
+                .AsQueryable();
+
+            if (!includeAll)
+            {
+                var normalizedOwner = NormalizeReference(ownerUserId);
+                if (string.IsNullOrWhiteSpace(normalizedOwner))
+                {
+                    return [];
+                }
+
+                query = query.Where(x => x.CreatedByUserId == normalizedOwner);
+            }
+
+            return await query
                 .OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt)
                 .ThenByDescending(x => x.RegistrationMatrixId)
                 .Take(Math.Max(1, take))
@@ -40,19 +57,38 @@ namespace tesisproject.backend.Services.Implementations
         }
 
         public async Task<RegistrationMatrixDetailDto?> GetMatrixAsync(int matrixId, CancellationToken ct = default)
+            => await GetMatrixAsync(matrixId, null, true, ct);
+
+        public async Task<RegistrationMatrixDetailDto?> GetMatrixAsync(int matrixId, string? ownerUserId, bool includeAll, CancellationToken ct = default)
         {
-            var matrix = await _db.RegistrationMatrices
+            var query = _db.RegistrationMatrices
                 .AsNoTracking()
                 .Include(x => x.Columns)
                     .ThenInclude(x => x.Field)
                 .Include(x => x.Rows.OrderBy(r => r.RowNumber))
                     .ThenInclude(x => x.Cells)
-                .FirstOrDefaultAsync(x => x.RegistrationMatrixId == matrixId, ct);
+                .AsQueryable();
+
+            if (!includeAll)
+            {
+                var normalizedOwner = NormalizeReference(ownerUserId);
+                if (string.IsNullOrWhiteSpace(normalizedOwner))
+                {
+                    return null;
+                }
+
+                query = query.Where(x => x.CreatedByUserId == normalizedOwner);
+            }
+
+            var matrix = await query.FirstOrDefaultAsync(x => x.RegistrationMatrixId == matrixId, ct);
 
             return matrix is null ? null : MapDetail(matrix);
         }
 
         public async Task<RegistrationMatrixDetailDto> CreateMatrixAsync(CreateRegistrationMatrixRequest request, CancellationToken ct = default)
+            => await CreateMatrixAsync(request, null, ct);
+
+        public async Task<RegistrationMatrixDetailDto> CreateMatrixAsync(CreateRegistrationMatrixRequest request, string? ownerUserId, CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(request.Name))
             {
@@ -65,6 +101,7 @@ namespace tesisproject.backend.Services.Implementations
                 EntityName = string.IsNullOrWhiteSpace(request.EntityName) ? "Article" : request.EntityName.Trim(),
                 Status = "Draft",
                 Notes = string.IsNullOrWhiteSpace(request.Notes) ? null : request.Notes.Trim(),
+                CreatedByUserId = NormalizeReference(ownerUserId),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -401,5 +438,8 @@ namespace tesisproject.backend.Services.Implementations
                     .ToList()
             };
         }
+
+        private static string? NormalizeReference(string? value)
+            => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

@@ -1,0 +1,32 @@
+<section class="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <ReportKpiCard Label="Total en tabla"
+                   Value="@TotalArticles.ToString()"
+                   Helper="Suma de artículos visibles"
+                   IconClass="bi bi-table" />
+
+    <ReportKpiCard Label="Publicados este año"
+                   Value="@PublishedThisYear.ToString()"
+                   Helper="Según fecha de publicación"
+                   IconClass="bi bi-calendar-check"
+                   Variant="success" />
+
+    <ReportKpiCard Label="Q1 + Q2"
+                   Value="@Q1Q2Count.ToString()"
+                   Helper="Artículos de alto impacto"
+                   IconClass="bi bi-award"
+                   Variant="gold" />
+
+    <ReportKpiCard Label="Open Access / Scopus"
+                   Value="@($"OA: {OpenAccessCount}")"
+                   Helper="@($"Indexados Scopus: {IndexedInScopusCount}")"
+                   IconClass="bi bi-unlock"
+                   Variant="sage" />
+</section>
+
+@code {
+    [Parameter] public int TotalArticles { get; set; }
+    [Parameter] public int PublishedThisYear { get; set; }
+    [Parameter] public int Q1Q2Count { get; set; }
+    [Parameter] public int OpenAccessCount { get; set; }
+    [Parameter] public int IndexedInScopusCount { get; set; }
+}

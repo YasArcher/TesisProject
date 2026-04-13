@@ -118,10 +118,6 @@
                                 <li class="nav-item"><NavLink href="/management/exportinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Carga masiva"><span class="icon">⇪</span><span class="label">Carga masiva</span></NavLink></li>
                                 <li class="nav-item"><NavLink href="/management/externalapis" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="APIs externas"><span class="icon">◎</span><span class="label">APIs externas</span></NavLink></li>
                             }
-                            @if (IsAdmin)
-                            {
-                                <li class="nav-item"><NavLink href="/management/backupsinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Copias de seguridad"><span class="icon">⛁</span><span class="label">Copias de seguridad</span></NavLink></li>
-                            }
                         </ul>
                     </div>
                 </div>
@@ -140,10 +136,6 @@
                     <div class="accordion-panel">
                         <ul class="nav flex-column ms-4 my-2 gap-1">
                             <li class="nav-item"><NavLink href="/management/statisticalreports" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Reportería"><span class="icon">◔</span><span class="label">Reportería</span></NavLink></li>
-                            @if (CanManageConfiguration)
-                            {
-                                <li class="nav-item"><NavLink href="/ia" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Inteligencia artificial"><span class="icon">✦</span><span class="label">Inteligencia artificial</span></NavLink></li>
-                            }
                         </ul>
                     </div>
                 </div>
@@ -177,7 +169,7 @@
                 </button>
                 <div class="accordion-panel">
                     <ul class="nav flex-column ms-4 my-2 gap-1">
-                        <li class="nav-item"><NavLink href="/test-api" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Centro de ayuda"><span class="icon">?</span><span class="label">Centro de ayuda</span></NavLink></li>
+                        <li class="nav-item"><NavLink href="/management/support" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Centro de ayuda"><span class="icon">?</span><span class="label">Centro de ayuda</span></NavLink></li>
                         @if (CanSeeManual)
                         {
                             <li class="nav-item"><NavLink href="/help/manual" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Manual de usuario"><span class="icon">☰</span><span class="label">Manual de usuario</span></NavLink></li>

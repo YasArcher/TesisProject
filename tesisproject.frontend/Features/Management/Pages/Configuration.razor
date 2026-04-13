@@ -10,8 +10,25 @@
 <PageTitle>Configuración dinámica</PageTitle>
 
 <div class="app-page-shell app-shell-warm configuration-page">
-    <div class="app-module-hero mb-4 rounded-[1.6rem] p-4 text-white shadow-lg">
-        <h1 class="mt-2 text-2xl font-black md:text-3xl">Formularios y metadatos</h1>
+    <div class="app-module-hero configuration-hero mb-5 rounded-[1.8rem] p-5 text-white shadow-lg">
+        <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+            <div class="flex items-start gap-4">
+                <div class="configuration-hero__icon">
+                    <i class="bi bi-sliders2-vertical"></i>
+                </div>
+                <div>
+                    <div class="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Administración dinámica</div>
+                    <h1 class="mt-1 text-2xl font-black md:text-3xl">Formularios y metadatos</h1>
+                    <p class="mt-2 max-w-3xl text-sm leading-6 text-white/78">@GetActiveTabHelperText()</p>
+                </div>
+            </div>
+            <div class="configuration-hero__badges">
+                <span><i class="bi bi-ui-checks-grid"></i> Formularios</span>
+                <span><i class="bi bi-input-cursor-text"></i> Campos</span>
+                <span><i class="bi bi-tags"></i> Catálogos</span>
+                <span><i class="bi bi-list-check"></i> Opciones</span>
+            </div>
+        </div>
     </div>
 
     <AppStatusModal Visible="@HasStatusMessage"

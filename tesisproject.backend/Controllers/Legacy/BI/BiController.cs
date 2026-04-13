@@ -4,13 +4,15 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.BI.ETL;
+using tesisproject.backend.Filters;
+using tesisproject.backend.Identity;
 
 namespace tesisproject.backend.Controllers
 {
     [ApiController]
     [Route("api/bi")]
-    //[Authorize]
-    [AllowAnonymous]
+    [Authorize(Policy = AppPolicies.SecurityAdministration)]
+    [ServiceFilter(typeof(LegacyReportingEnabledFilter))]
     public class BiController : ControllerBase
     {
         private readonly IEtlOrchestrator _etl;
@@ -33,13 +35,10 @@ namespace tesisproject.backend.Controllers
                 // Loguear a consola
                 Console.Error.WriteLine(ex.ToString());
 
-                // Devolver detalle para debug (luego lo volvemos a simplificar para producción)
                 return StatusCode(500, new
                 {
                     message = "Error al ejecutar el ETL",
-                    error = ex.Message,
-                    detail = ex.InnerException?.Message,
-                    stackTrace = ex.StackTrace
+                    detail = ex.InnerException?.Message ?? ex.Message
                 });
             }
         }

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using System.Security.Claims;
+using tesisproject.backend.Identity;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.MassRegistration;
 
@@ -9,7 +10,7 @@ namespace tesisproject.backend.Controllers
 {
     [ApiController]
     [Route("api/registration-matrices")]
-    [AllowAnonymous]
+    [Authorize(Policy = AppPolicies.AuthenticatedUser)]
     public class RegistrationMatricesController : ControllerBase
     {
         private readonly IRegistrationMatrixService _service;
@@ -24,7 +25,7 @@ namespace tesisproject.backend.Controllers
         {
             try
             {
-                return Ok(await _service.GetMatricesAsync(take, ct));
+                return Ok(await _service.GetMatricesAsync(take, GetCurrentUserId(), CanManageMatrices(), ct));
             }
             catch (SqlException ex) when (ex.Number == 208 && ex.Message.Contains("RegistrationMatrix", System.StringComparison.OrdinalIgnoreCase))
             {
@@ -40,7 +41,7 @@ namespace tesisproject.backend.Controllers
         {
             try
             {
-                var matrix = await _service.GetMatrixAsync(matrixId, ct);
+                var matrix = await _service.GetMatrixAsync(matrixId, GetCurrentUserId(), CanManageMatrices(), ct);
                 return matrix is null ? NotFound() : Ok(matrix);
             }
             catch (SqlException ex) when (ex.Number == 208 && ex.Message.Contains("RegistrationMatrix", System.StringComparison.OrdinalIgnoreCase))
@@ -53,11 +54,12 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = AppPolicies.AuthorSubmission)]
         public async Task<ActionResult<RegistrationMatrixDetailDto>> CreateMatrix([FromBody] CreateRegistrationMatrixRequest request, CancellationToken ct = default)
         {
             try
             {
-                return Ok(await _service.CreateMatrixAsync(request, ct));
+                return Ok(await _service.CreateMatrixAsync(request, GetCurrentUserId(), ct));
             }
             catch (InvalidOperationException ex)
             {
@@ -73,6 +75,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPut("{matrixId:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<RegistrationMatrixDetailDto>> UpdateMatrix(int matrixId, [FromBody] UpdateRegistrationMatrixRequest request, CancellationToken ct = default)
         {
             var matrix = await _service.UpdateMatrixAsync(matrixId, request, ct);
@@ -80,6 +83,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPost("{matrixId:int}/columns")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<RegistrationMatrixDetailDto>> AddColumns(int matrixId, [FromBody] AddRegistrationMatrixColumnsRequest request, CancellationToken ct = default)
         {
             var matrix = await _service.AddColumnsAsync(matrixId, request, ct);
@@ -87,6 +91,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPut("{matrixId:int}/columns/{columnId:int}/order")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<RegistrationMatrixDetailDto>> UpdateColumnOrder(int matrixId, int columnId, [FromBody] UpdateRegistrationMatrixColumnOrderRequest request, CancellationToken ct = default)
         {
             var matrix = await _service.UpdateColumnOrderAsync(matrixId, columnId, request, ct);
@@ -94,21 +99,34 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpDelete("{matrixId:int}/columns/{columnId:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<IActionResult> RemoveColumn(int matrixId, int columnId, CancellationToken ct = default)
             => await _service.RemoveColumnAsync(matrixId, columnId, ct) ? NoContent() : NotFound();
 
         [HttpPost("{matrixId:int}/rows")]
+        [Authorize(Policy = AppPolicies.AuthorSubmission)]
         public async Task<ActionResult<RegistrationMatrixDetailDto>> AddRow(int matrixId, CancellationToken ct = default)
         {
+            if (!await CanAccessMatrixAsync(matrixId, ct))
+            {
+                return NotFound();
+            }
+
             var matrix = await _service.AddRowAsync(matrixId, ct);
             return matrix is null ? NotFound() : Ok(matrix);
         }
 
         [HttpPut("{matrixId:int}/rows/{rowId:int}/cells")]
+        [Authorize(Policy = AppPolicies.AuthorSubmission)]
         public async Task<ActionResult<RegistrationMatrixDetailDto>> UpdateCell(int matrixId, int rowId, [FromBody] UpdateRegistrationMatrixCellRequest request, CancellationToken ct = default)
         {
             try
             {
+                if (!await CanAccessMatrixAsync(matrixId, ct))
+                {
+                    return NotFound();
+                }
+
                 var matrix = await _service.UpdateCellAsync(matrixId, rowId, request, ct);
                 return matrix is null ? NotFound() : Ok(matrix);
             }
@@ -119,14 +137,28 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpDelete("{matrixId:int}/rows/{rowId:int}")]
+        [Authorize(Policy = AppPolicies.AuthorSubmission)]
         public async Task<IActionResult> DeleteRow(int matrixId, int rowId, CancellationToken ct = default)
-            => await _service.DeleteRowAsync(matrixId, rowId, ct) ? NoContent() : NotFound();
+        {
+            if (!await CanAccessMatrixAsync(matrixId, ct))
+            {
+                return NotFound();
+            }
+
+            return await _service.DeleteRowAsync(matrixId, rowId, ct) ? NoContent() : NotFound();
+        }
 
         [HttpPost("{matrixId:int}/submit")]
+        [Authorize(Policy = AppPolicies.AuthorSubmission)]
         public async Task<ActionResult<RegistrationMatrixSubmissionResultDto>> SubmitToStaging(int matrixId, [FromBody] SubmitRegistrationMatrixRequest request, CancellationToken ct = default)
         {
             try
             {
+                if (!await CanAccessMatrixAsync(matrixId, ct))
+                {
+                    return NotFound();
+                }
+
                 var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier)
                     ?? User?.Identity?.Name
                     ?? "system";
@@ -141,5 +173,15 @@ namespace tesisproject.backend.Controllers
                 return Problem(title: "No pude enviar la matriz a staging.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
             }
         }
+
+        private async Task<bool> CanAccessMatrixAsync(int matrixId, CancellationToken ct)
+            => await _service.GetMatrixAsync(matrixId, GetCurrentUserId(), CanManageMatrices(), ct) is not null;
+
+        private bool CanManageMatrices()
+            => User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Analyst);
+
+        private string? GetCurrentUserId()
+            => User?.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? User?.Identity?.Name;
     }
 }

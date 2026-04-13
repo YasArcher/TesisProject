@@ -14,7 +14,7 @@ builder.WebHost.PreferHostingUrls(true)
                .UseUrls(backendUrl);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-                      ?? "Server=PERSONAL\\DINNOVA;Database=TesisDB_Extensible;User Id=sa;Password=admin123;Encrypt=False;TrustServerCertificate=True";
+                      ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection no está configurada.");
 
 builder.Services
     .AddAppDataProtection(builder.Environment)

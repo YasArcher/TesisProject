@@ -252,6 +252,7 @@ BEGIN
         [EntityName] NVARCHAR(100) NOT NULL,
         [Status] NVARCHAR(30) NOT NULL,
         [Notes] NVARCHAR(1000) NULL,
+        [CreatedByUserId] NVARCHAR(450) NULL,
         [LastImportBatchId] INT NULL,
         [CreatedAt] DATETIME2 NOT NULL,
         [UpdatedAt] DATETIME2 NULL,
@@ -259,6 +260,15 @@ BEGIN
             FOREIGN KEY ([LastImportBatchId]) REFERENCES [dbo].[ImportBatch]([ImportBatchId]) ON DELETE SET NULL
     );
     CREATE INDEX [IX_RegistrationMatrix_LastImportBatchId] ON [dbo].[RegistrationMatrix]([LastImportBatchId]);
+END;
+
+IF OBJECT_ID(N'[dbo].[RegistrationMatrix]', N'U') IS NOT NULL
+BEGIN
+    IF COL_LENGTH(N'[dbo].[RegistrationMatrix]', N'CreatedByUserId') IS NULL
+        ALTER TABLE [dbo].[RegistrationMatrix] ADD [CreatedByUserId] NVARCHAR(450) NULL;
+
+    IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_RegistrationMatrix_CreatedByUserId' AND object_id = OBJECT_ID(N'[dbo].[RegistrationMatrix]'))
+        CREATE INDEX [IX_RegistrationMatrix_CreatedByUserId] ON [dbo].[RegistrationMatrix]([CreatedByUserId]);
 END;
 
 IF OBJECT_ID(N'[dbo].[RegistrationMatrixColumn]', N'U') IS NULL

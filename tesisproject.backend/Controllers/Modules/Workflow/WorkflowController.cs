@@ -27,6 +27,11 @@ namespace tesisproject.backend.Controllers
         {
             try
             {
+                if (!await CanAccessBatchWorkflowAsync(batchId, ct))
+                {
+                    return Forbid();
+                }
+
                 var workflow = await _service.GetBatchWorkflowAsync(batchId, ct);
                 return workflow is null ? NotFound() : Ok(workflow);
             }
@@ -41,20 +46,7 @@ namespace tesisproject.backend.Controllers
         {
             try
             {
-                var userId = GetCurrentUserId();
-                var roleNames = GetCurrentRoleNames();
-
-                var canSeeAsAuthor = roleNames.Any(x => string.Equals(x, AppRoles.Author, StringComparison.OrdinalIgnoreCase) || string.Equals(x, AppRoles.Admin, StringComparison.OrdinalIgnoreCase))
-                    && (await _service.GetAuthorInboxAsync(userId, 200, ct)).Any(x => x.ImportBatchId == batchId);
-
-                var canSeeAsReviewer = roleNames.Any(x =>
-                        string.Equals(x, AppRoles.Admin, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(x, AppRoles.WorkflowReviewerUodide, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(x, AppRoles.WorkflowReviewerAreaTecnica, StringComparison.OrdinalIgnoreCase) ||
-                        string.Equals(x, AppRoles.WorkflowProcessorAreaTecnica, StringComparison.OrdinalIgnoreCase))
-                    && (await _service.GetReviewInboxAsync(userId, roleNames, 200, ct)).Any(x => x.ImportBatchId == batchId);
-
-                if (!canSeeAsAuthor && !canSeeAsReviewer)
+                if (!await CanAccessBatchWorkflowAsync(batchId, ct))
                 {
                     return Forbid();
                 }
@@ -158,6 +150,33 @@ namespace tesisproject.backend.Controllers
                 .Where(x => !string.IsNullOrWhiteSpace(x))
                 .ToList()
                 ?? new List<string>();
+        }
+
+        private async Task<bool> CanAccessBatchWorkflowAsync(int batchId, CancellationToken ct)
+        {
+            var userId = GetCurrentUserId();
+            var roleNames = GetCurrentRoleNames();
+
+            if (roleNames.Any(x => string.Equals(x, AppRoles.Admin, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            var canSeeAsAuthor = roleNames.Any(x => string.Equals(x, AppRoles.Author, StringComparison.OrdinalIgnoreCase))
+                && (await _service.GetAuthorInboxAsync(userId, 200, ct)).Any(x => x.ImportBatchId == batchId);
+
+            if (canSeeAsAuthor)
+            {
+                return true;
+            }
+
+            var canSeeAsReviewer = roleNames.Any(x =>
+                    string.Equals(x, AppRoles.WorkflowReviewerUodide, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(x, AppRoles.WorkflowReviewerAreaTecnica, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(x, AppRoles.WorkflowProcessorAreaTecnica, StringComparison.OrdinalIgnoreCase))
+                && (await _service.GetReviewInboxAsync(userId, roleNames, 200, ct)).Any(x => x.ImportBatchId == batchId);
+
+            return canSeeAsReviewer;
         }
     }
 }

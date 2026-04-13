@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using tesisproject.backend.Identity;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs;
 using tesisproject.shared.DTOs.Venues;
@@ -10,9 +11,8 @@ using tesisproject.shared.DTOs.Venues;
 namespace tesisproject.backend.Controllers
 {
     [ApiController]
-    [AllowAnonymous]
+    [Authorize(Policy = AppPolicies.AuthenticatedUser)]
     [Route("api/[controller]")]
-    //[Authorize] // opcional
     public class VenuesController : ControllerBase
     {
         private readonly IVenuesService _svc;
@@ -41,6 +41,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPost]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<VenueUpsertResponse>> Upsert(
             [FromBody] VenueUpsertRequest req,
             CancellationToken ct = default)
@@ -50,6 +51,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpDelete("{venueId:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult> Delete(int venueId, CancellationToken ct = default)
         {
             var ok = await _svc.DeleteVenueAsync(venueId, ct);
@@ -66,6 +68,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPost("{venueId:int}/metrics")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<VenueMetricUpsertResponse>> UpsertMetric(
             int venueId,
             [FromBody] VenueMetricUpsertRequest req,
@@ -78,6 +81,7 @@ namespace tesisproject.backend.Controllers
         // DELETE: api/venues/10/metrics/2024
         // 👉 sin constraint de tipo; si quieres, usa ":int"
         [HttpDelete("{venueId:int}/metrics/{year}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult> DeleteMetric(int venueId, int year, CancellationToken ct = default)
         {
             // Si tu servicio espera short, castea con validación

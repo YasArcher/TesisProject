@@ -12,10 +12,24 @@
 <PageTitle>Explorador de APIs externas</PageTitle>
 
 <div class="app-page-shell external-api-page">
-    <div class="external-api-hero mb-4 rounded-[1.6rem] p-4 text-white shadow-sm">
-        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-                <h1 class="text-2xl font-black md:text-3xl">Explorador de APIs académicas</h1>
+    <div class="external-api-hero mb-5 rounded-[1.8rem] p-5 text-white shadow-sm">
+        <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex items-start gap-4">
+                <div class="external-api-hero__icon">
+                    <i class="bi bi-cloud-arrow-down"></i>
+                </div>
+                <div>
+                    <div class="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Conectores académicos</div>
+                    <h1 class="mt-1 text-2xl font-black md:text-3xl">Explorador de APIs externas</h1>
+                    <p class="mt-2 max-w-2xl text-sm leading-6 text-white/78">
+                        Consulta proveedores académicos, revisa metadatos y envía artículos seleccionados al staging sin salir del flujo institucional.
+                    </p>
+                </div>
+            </div>
+            <div class="external-api-hero__badges">
+                <span><i class="bi bi-search"></i> Búsqueda asistida</span>
+                <span><i class="bi bi-database-check"></i> Staging conectado</span>
+                <span><i class="bi bi-filetype-json"></i> JSON auditable</span>
             </div>
         </div>
     </div>
@@ -34,7 +48,7 @@
     }
     else
     {
-        <div class="grid grid-cols-1 gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+        <div class="external-api-workspace grid grid-cols-1 gap-6 xl:grid-cols-[0.88fr_1.12fr]">
             <ExternalApiQuerySidebar Providers="Providers"
                                      SelectedProvider="SelectedProvider"
                                      QueryMode="QueryMode"

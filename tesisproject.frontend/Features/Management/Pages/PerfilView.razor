@@ -22,7 +22,7 @@
                     <span class="profile-hero__icon">◉</span>
                     <h1 class="profile-hero__title">Perfil de usuario</h1>
                 </div>
-                <div class="profile-hero__copy">Información de la sesión autenticada y permisos visibles en el sistema.</div>
+                <div class="profile-hero__copy">Información básica de tu cuenta institucional y accesos habilitados dentro del sistema.</div>
             </div>
             <button class="profile-hero__logout"
                     @onclick="LogoutAsync">
@@ -53,55 +53,43 @@
 
             <div class="profile-card__stats">
                 <article class="profile-mini-card">
-                    <div class="profile-mini-card__label">Identificador</div>
-                    <div class="profile-mini-card__value">@UserId</div>
-                </article>
-                <article class="profile-mini-card">
                     <div class="profile-mini-card__label">Sesión</div>
                     <div class="profile-mini-card__value">@(IsAuthenticated ? "Activa" : "No autenticada")</div>
+                </article>
+                <article class="profile-mini-card">
+                    <div class="profile-mini-card__label">Correo</div>
+                    <div class="profile-mini-card__value">@Email</div>
                 </article>
             </div>
         </section>
 
         <section class="profile-card">
-            <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon">⌘</span><span>Roles activos</span></div>
+            <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon">⌘</span><span>Accesos habilitados</span></div>
             @if (Roles.Count == 0)
             {
-                <div class="profile-card__subtle mt-3">Tu sesión actual no contiene roles visibles.</div>
+                <div class="profile-card__subtle mt-3">Tu cuenta no tiene accesos especiales asignados por el momento.</div>
             }
             else
             {
+                <div class="profile-card__subtle mt-3">Estos accesos determinan las páginas y acciones disponibles para tu cuenta.</div>
                 <div class="profile-role-list">
                     @foreach (var role in Roles)
                     {
-                        <span class="profile-role-pill">@role</span>
+                        <span class="profile-role-pill">@GetUserFriendlyRole(role)</span>
                     }
                 </div>
             }
-
-            <div class="profile-card__claims-title flex items-center gap-2"><span class="profile-inline-icon">▣</span><span>Claims visibles</span></div>
-            <div class="profile-claims">
-                @foreach (var claim in VisibleClaims)
-                {
-                    <div class="profile-claim-card">
-                        <div class="profile-claim-card__type">@claim.Type</div>
-                        <div class="profile-claim-card__value">@claim.Value</div>
-                    </div>
-                }
-            </div>
         </section>
     </div>
 </div>
 
 @code {
     private bool IsAuthenticated { get; set; }
-    private string UserId { get; set; } = "Sin identificar";
     private string Email { get; set; } = "Sin correo";
     private string FullName { get; set; } = "Usuario";
     private string Initials { get; set; } = "U";
     private string? ErrorMessage { get; set; }
     private List<string> Roles { get; set; } = [];
-    private List<(string Type, string Value)> VisibleClaims { get; set; } = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -124,7 +112,6 @@
                 return;
             }
 
-            UserId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "Sin identificar";
             Email = user.FindFirst(ClaimTypes.Email)?.Value ?? "Sin correo";
             FullName = user.FindFirst("fullName")?.Value
                 ?? user.FindFirst(ClaimTypes.GivenName)?.Value
@@ -137,11 +124,6 @@
                 .Select(x => x.Value)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(x => x)
-                .ToList();
-
-            VisibleClaims = user.Claims
-                .Where(x => x.Type is ClaimTypes.NameIdentifier or ClaimTypes.Name or ClaimTypes.Email or ClaimTypes.Role or "fullName")
-                .Select(x => (x.Type, x.Value))
                 .ToList();
 
             var me = await AuthClient.GetCurrentAsync();
@@ -181,4 +163,16 @@
             ? $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant()
             : parts[0][0].ToString().ToUpperInvariant();
     }
+
+    private static string GetUserFriendlyRole(string role)
+        => role switch
+        {
+            "Admin" => "Administrador",
+            "Autor" => "Autor",
+            "UODIDE" => "Revisor UODIDE",
+            "AreaTecnica" => "Área Técnica",
+            "WorkflowReviewerUodide" => "Revisor UODIDE",
+            "WorkflowProcessorAreaTecnica" => "Área Técnica",
+            _ => role
+        };
 }

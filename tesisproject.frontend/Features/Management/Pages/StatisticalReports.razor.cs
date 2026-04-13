@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
+using tesisproject.frontend.Features.Management.Components;
 using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.DTOs.Reports;
 using tesisproject.shared.DTOs.Catalogs;
@@ -19,6 +20,7 @@ namespace tesisproject.frontend.Features.Management.Pages
         [Inject] private IApiClient ApiClient { get; set; } = default!;
         [Inject] private HttpClient Http { get; set; } = default!;
         [Inject] private ICatalogsService Catalogs { get; set; } = default!;
+        [Inject] private IInstitutionalReportingClient InstitutionalReporting { get; set; } = default!;
 
         // =========================================================
         // ESTADO BASE
@@ -27,6 +29,18 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected string? _errorMessage;
 
         protected bool _showAdvancedFilters = false;
+        protected bool _showLegacyReporting = false;
+        protected bool _isLoadingInstitutionalReporting = true;
+        protected string? _institutionalReportingError;
+        protected InstitutionalReportingDashboardDto? _institutionalDashboard;
+
+        protected static readonly IReadOnlyList<ReportBadgeItem> ReportHeroBadges =
+        [
+            new("KPIs", "bi bi-speedometer2"),
+            new("Filtros", "bi bi-funnel"),
+            new("PDF", "bi bi-file-earmark-pdf"),
+            new("Detalle", "bi bi-table")
+        ];
 
         // Datos del dashboard
         protected ArticlesKpiSummaryDto? _kpis;
@@ -121,41 +135,7 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected int? _detailYearFilter;
         protected int? _detailMonthFilter;
 
-        // Modelo de mes para el combo local (DetailMonths)
-        protected sealed class DetailMonthItem
-        {
-            public int Value { get; set; }
-            public string Label { get; set; } = string.Empty;
-        }
-
-        // Lista de meses mostrada en el .razor
-        protected List<DetailMonthItem> DetailMonths { get; } = new()
-        {
-            new DetailMonthItem { Value = 1,  Label = "Enero" },
-            new DetailMonthItem { Value = 2,  Label = "Febrero" },
-            new DetailMonthItem { Value = 3,  Label = "Marzo" },
-            new DetailMonthItem { Value = 4,  Label = "Abril" },
-            new DetailMonthItem { Value = 5,  Label = "Mayo" },
-            new DetailMonthItem { Value = 6,  Label = "Junio" },
-            new DetailMonthItem { Value = 7,  Label = "Julio" },
-            new DetailMonthItem { Value = 8,  Label = "Agosto" },
-            new DetailMonthItem { Value = 9,  Label = "Septiembre" },
-            new DetailMonthItem { Value = 10, Label = "Octubre" },
-            new DetailMonthItem { Value = 11, Label = "Noviembre" },
-            new DetailMonthItem { Value = 12, Label = "Diciembre" },
-        };
-
-        // KPIs locales de la vista detallada
-        protected sealed class DetailKpisModel
-        {
-            public int TotalArticles { get; set; }
-            public int PublishedThisYear { get; set; }
-            public int Q1Q2Count { get; set; }
-            public int OpenAccessCount { get; set; }
-            public int IndexedInScopusCount { get; set; }
-        }
-
-        protected DetailKpisModel _detailKpis = new();
+        protected ReportDetailKpisModel _detailKpis = new();
 
         // =========================================================
         // CICLO DE VIDA
@@ -168,8 +148,17 @@ namespace tesisproject.frontend.Features.Management.Pages
 
             try
             {
-                await LoadCatalogsAsync();
-                await LoadDashboardAsync(buildFilterFromUi: false);
+                if (_showLegacyReporting)
+                {
+                    await LoadCatalogsAsync();
+                    await Task.WhenAll(
+                        LoadInstitutionalReportingAsync(),
+                        LoadDashboardAsync(buildFilterFromUi: false));
+                }
+                else
+                {
+                    await LoadInstitutionalReportingAsync();
+                }
             }
             finally
             {
@@ -323,59 +312,23 @@ namespace tesisproject.frontend.Features.Management.Pages
             }
         }
 
-        // Construye el DTO con todos los filtros actuales
         private ArticlesDashboardFilterDto BuildFilterFromUi()
-        {
-            var filter = new ArticlesDashboardFilterDto
-            {
-                CreatedFrom = _filterCreatedFrom,
-                CreatedTo = _filterCreatedTo,
-                PublicationFrom = _filterPublicationFrom,
-                PublicationTo = _filterPublicationTo
-            };
-
-            // Open Access
-            if (!string.IsNullOrEmpty(_filterIsOpenAccess) &&
-                bool.TryParse(_filterIsOpenAccess, out var oaValue))
-            {
-                filter.IsOpenAccess = oaValue;
-            }
-
-            // Cuartil
-            if (!string.IsNullOrEmpty(_selectedQuartile))
-            {
-                filter.Quartiles = new List<string> { _selectedQuartile };
-            }
-
-            // Dimensiones: si el combo > 0, mandamos una lista con ese Id
-            if (_selectedAcademicTermId > 0)
-                filter.AcademicTermKeys = new List<int> { _selectedAcademicTermId };
-
-            if (_selectedProjectId > 0)
-                filter.ProjectKeys = new List<int> { _selectedProjectId };
-
-            if (_selectedResearchLineId > 0)
-                filter.ResearchLineKeys = new List<int> { _selectedResearchLineId };
-
-            // Campo OCDE – prioridad: detallado > específico > amplio
-            if (_selectedDetailedFieldId > 0)
-                filter.FieldKeys = new List<int> { _selectedDetailedFieldId };
-            else if (_selectedSpecificFieldId > 0)
-                filter.FieldKeys = new List<int> { _selectedSpecificFieldId };
-            else if (_selectedBroadFieldId > 0)
-                filter.FieldKeys = new List<int> { _selectedBroadFieldId };
-
-            if (_selectedPublicationStatusId > 0)
-                filter.PublicationStatusKeys = new List<int> { _selectedPublicationStatusId };
-
-            if (_selectedVenueId > 0)
-                filter.VenueKeys = new List<int> { _selectedVenueId };
-
-            if (_selectedIndexingSourceId > 0)
-                filter.IndexingSourceKeys = new List<int> { _selectedIndexingSourceId };
-
-            return filter;
-        }
+            => ReportDashboardFilterBuilder.Build(
+                _filterCreatedFrom,
+                _filterCreatedTo,
+                _filterPublicationFrom,
+                _filterPublicationTo,
+                _filterIsOpenAccess,
+                _selectedQuartile,
+                _selectedAcademicTermId,
+                _selectedProjectId,
+                _selectedResearchLineId,
+                _selectedBroadFieldId,
+                _selectedSpecificFieldId,
+                _selectedDetailedFieldId,
+                _selectedPublicationStatusId,
+                _selectedVenueId,
+                _selectedIndexingSourceId);
 
         protected async Task ApplyFilters()
         {
@@ -474,45 +427,38 @@ namespace tesisproject.frontend.Features.Management.Pages
 
         private void BuildAggregations()
         {
-            _topBroadFields = _byField
-                .GroupBy(f => string.IsNullOrWhiteSpace(f.BroadFieldName) ? "Sin área" : f.BroadFieldName!)
-                .Select(g => (Name: g.Key, Count: g.Sum(x => x.Count)))
-                .OrderByDescending(x => x.Count)
-                .Take(10)
-                .ToList();
+            _topBroadFields = ReportDashboardMetricsBuilder.BuildTopBroadFields(_byField);
+            _topResearchLines = ReportDashboardMetricsBuilder.BuildTopResearchLines(_byResearchLine);
+        }
 
-            _topResearchLines = _byResearchLine
-                .GroupBy(r => string.IsNullOrWhiteSpace(r.ResearchLineName) ? "Sin línea" : r.ResearchLineName!)
-                .Select(g => (Name: g.Key, Count: g.Sum(x => x.Count)))
-                .OrderByDescending(x => x.Count)
-                .Take(10)
-                .ToList();
+        private async Task LoadInstitutionalReportingAsync()
+        {
+            _isLoadingInstitutionalReporting = true;
+            _institutionalReportingError = null;
+
+            try
+            {
+                _institutionalDashboard = await InstitutionalReporting.GetDashboardAsync();
+            }
+            catch (Exception ex)
+            {
+                _institutionalDashboard = null;
+                _institutionalReportingError = $"No se pudo cargar la reportería institucional: {ex.Message}";
+                Console.Error.WriteLine(ex);
+            }
+            finally
+            {
+                _isLoadingInstitutionalReporting = false;
+            }
         }
 
         private void RebuildTrendSummary()
         {
-            if (_filteredByYear == null || _filteredByYear.Count < 2)
-            {
-                _trendGrowthPercent = null;
-                _trendStartYear = null;
-                _trendEndYear = null;
-                return;
-            }
+            var trend = ReportDashboardMetricsBuilder.BuildTrendSummary(_filteredByYear);
 
-            var ordered = _filteredByYear.OrderBy(x => x.Year).ToList();
-            _trendStartYear = ordered.First().Year;
-            _trendEndYear = ordered.Last().Year;
-
-            var firstValue = ordered.First().Count;
-            var lastValue = ordered.Last().Count;
-
-            if (firstValue <= 0)
-            {
-                _trendGrowthPercent = null;
-                return;
-            }
-
-            _trendGrowthPercent = Math.Round(((lastValue - firstValue) / (double)firstValue) * 100.0, 2);
+            _trendGrowthPercent = trend.GrowthPercent;
+            _trendStartYear = trend.StartYear;
+            _trendEndYear = trend.EndYear;
         }
 
         private static string ShortenLabel(string? text, int maxLength = 18)
@@ -564,25 +510,14 @@ namespace tesisproject.frontend.Features.Management.Pages
         // ETL + PDF
         // =========================================================
         private string BuildPdfPath()
-        {
-            var parts = new List<string>();
-
-            if (_filterCreatedFrom.HasValue)
-                parts.Add($"minYear={_filterCreatedFrom.Value.Year}");
-
-            if (_filterCreatedTo.HasValue)
-                parts.Add($"maxYear={_filterCreatedTo.Value.Year}");
-
-            parts.Add($"includeKpis={_includeKpis.ToString().ToLower()}");
-            parts.Add($"includeByYear={_includeByYear.ToString().ToLower()}");
-            parts.Add($"includeByField={_includeByField.ToString().ToLower()}");
-            parts.Add($"includeByResearchLine={_includeByResearchLine.ToString().ToLower()}");
-            parts.Add($"includeQuartiles={_includeQuartiles.ToString().ToLower()}");
-
-            var query = parts.Count > 0 ? "?" + string.Join("&", parts) : string.Empty;
-
-            return $"api/reports/articles/statistics/pdf{query}";
-        }
+            => ReportPdfPathBuilder.BuildArticlesStatisticsPath(
+                _filterCreatedFrom,
+                _filterCreatedTo,
+                _includeKpis,
+                _includeByYear,
+                _includeByField,
+                _includeByResearchLine,
+                _includeQuartiles);
 
         protected async Task RunEtlAndReload()
         {
@@ -592,10 +527,9 @@ namespace tesisproject.frontend.Features.Management.Pages
 
             try
             {
-                await ApiClient.PostAsync<object, object>(
-                    "api/bi/etl/full",
-                    new { });
+                await InstitutionalReporting.RunFullLoadAsync();
 
+                await LoadInstitutionalReportingAsync();
                 await LoadDashboardAsync(buildFilterFromUi: true);
                 ResetDetailView();
             }
@@ -639,6 +573,20 @@ namespace tesisproject.frontend.Features.Management.Pages
             }
         }
 
+        protected string FormatEtlDate(DateTime? value)
+        {
+            return value.HasValue
+                ? value.Value.ToString("dd/MM/yyyy HH:mm")
+                : "Sin fecha";
+        }
+
+        protected string GetEtlStatusClass(string? status)
+        {
+            return string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase)
+                ? "reports-dw-status reports-dw-status--success"
+                : "reports-dw-status reports-dw-status--warning";
+        }
+
         protected void ClosePdfPreview()
         {
             _showPdfPreview = false;
@@ -648,246 +596,39 @@ namespace tesisproject.frontend.Features.Management.Pages
         // =========================================================
         // ALTURAS DINÁMICAS PARA GRÁFICOS
         // =========================================================
-        protected string YearChartHeight => GetChartHeight(_filteredByYear.Count);
-        protected string FieldChartHeight => GetChartHeight(_topBroadFields.Count);
-        protected string ResearchLineChartHeight => GetChartHeight(_topResearchLines.Count);
-        protected string TrendChartHeight => GetChartHeight(_filteredByYear.Count);
-
-        private string GetChartHeight(int count) => count switch
-        {
-            <= 4 => "220px",
-            <= 8 => "260px",
-            <= 15 => "320px",
-            _ => "380px"
-        };
-
-        protected string QuartileChartHeight
-        {
-            get
-            {
-                if (_quartileStats == null) return "260px";
-                int total = _quartileStats.Q1Count + _quartileStats.Q2Count +
-                           _quartileStats.Q3Count + _quartileStats.Q4Count +
-                           _quartileStats.NoQuartileCount;
-
-                return total switch
-                {
-                    <= 0 => "260px",
-                    <= 20 => "280px",
-                    <= 50 => "320px",
-                    _ => "360px"
-                };
-            }
-        }
+        protected string YearChartHeight => ReportChartOptionsFactory.GetChartHeight(_filteredByYear.Count);
+        protected string FieldChartHeight => ReportChartOptionsFactory.GetChartHeight(_topBroadFields.Count);
+        protected string ResearchLineChartHeight => ReportChartOptionsFactory.GetChartHeight(_topResearchLines.Count);
+        protected string TrendChartHeight => ReportChartOptionsFactory.GetChartHeight(_filteredByYear.Count);
+        protected string QuartileChartHeight => ReportChartOptionsFactory.GetQuartileChartHeight(_quartileStats);
 
         // =========================================================
         // OPCIONES DE GRÁFICOS (ECharts)
         // =========================================================
-        protected object? YearChartOption => BuildBarChartOption(
+        protected object? YearChartOption => ReportChartOptionsFactory.BuildVerticalBar(
             _filteredByYear?.Select(x => x.Year.ToString()).ToArray(),
             _filteredByYear?.Select(x => x.Count).ToArray(),
-            "#7A1E19",
-            "Artículos"
+            "Artículos",
+            "#435663"
         );
 
-        protected object? FieldChartOption => BuildBarChartOption(
+        protected object? FieldChartOption => ReportChartOptionsFactory.BuildVerticalBar(
             _topBroadFields?.Select(x => ShortenLabel(x.Name, 18)).ToArray(),
             _topBroadFields?.Select(x => x.Count).ToArray(),
-            "#9F3B31",
             "Artículos",
+            "#97B067",
             true
         );
 
-        protected object? ResearchLineChartOption => BuildHorizontalBarChartOption(
+        protected object? ResearchLineChartOption => ReportChartOptionsFactory.BuildHorizontalBar(
             _topResearchLines?.Select(x => ShortenLabel(x.Name, 25)).ToArray(),
             _topResearchLines?.Select(x => x.Count).ToArray(),
-            "#C25B4A"
+            "#2F5249"
         );
 
-        protected object? QuartileChartOption => BuildPieChartOption();
+        protected object? QuartileChartOption => ReportChartOptionsFactory.BuildQuartileDonut(_quartileStats);
 
-        protected object? YearTrendChartOption => BuildYearTrendChartOption();
-
-        private object? BuildBarChartOption(string[]? categories, int[]? data, string color, string seriesName, bool rotateLabels = false)
-        {
-            if (categories == null || data == null || categories.Length == 0)
-                return null;
-
-            return new
-            {
-                tooltip = new { trigger = "axis" },
-                toolbox = new
-                {
-                    show = true,
-                    orient = "horizontal",
-                    right = "8",
-                    top = "8",
-                    feature = new
-                    {
-                        saveAsImage = new
-                        {
-                            show = true,
-                            title = "Descargar PNG",
-                            pixelRatio = 2
-                        }
-                    }
-                },
-                xAxis = new
-                {
-                    type = "category",
-                    data = categories,
-                    axisLabel = rotateLabels
-                        ? (object)new { rotate = 30, interval = 0 }
-                        : new { interval = 0 } as object
-                },
-                yAxis = new { type = "value" },
-                series = new object[]
-                {
-                    new
-                    {
-                        name = seriesName,
-                        type = "bar",
-                        data = data,
-                        itemStyle = new { color = color }
-                    }
-                }
-            };
-        }
-
-        private object? BuildHorizontalBarChartOption(string[]? categories, int[]? data, string color)
-        {
-            if (categories == null || data == null || categories.Length == 0)
-                return null;
-
-            return new
-            {
-                tooltip = new { trigger = "axis", axisPointer = new { type = "shadow" } },
-                toolbox = new
-                {
-                    show = true,
-                    orient = "horizontal",
-                    right = "8",
-                    top = "8",
-                    feature = new
-                    {
-                        saveAsImage = new
-                        {
-                            show = true,
-                            title = "Descargar PNG",
-                            pixelRatio = 2
-                        }
-                    }
-                },
-                grid = new { left = "25%", right = "5%", bottom = "5%", top = "10%" },
-                xAxis = new { type = "value" },
-                yAxis = new
-                {
-                    type = "category",
-                    data = categories,
-                    axisLabel = new { interval = 0 }
-                },
-                series = new object[]
-                {
-                    new
-                    {
-                        name = "Artículos",
-                        type = "bar",
-                        data = data,
-                        itemStyle = new { color = color }
-                    }
-                }
-            };
-        }
-
-        private object? BuildPieChartOption()
-        {
-            if (_quartileStats == null)
-                return null;
-
-            int total = _quartileStats.Q1Count + _quartileStats.Q2Count +
-                       _quartileStats.Q3Count + _quartileStats.Q4Count +
-                       _quartileStats.NoQuartileCount;
-
-            if (total <= 0)
-                return null;
-
-            var data = new List<Dictionary<string, object>>
-            {
-                new() { ["value"] = _quartileStats.Q1Count, ["name"] = "Q1" },
-                new() { ["value"] = _quartileStats.Q2Count, ["name"] = "Q2" },
-                new() { ["value"] = _quartileStats.Q3Count, ["name"] = "Q3" },
-                new() { ["value"] = _quartileStats.Q4Count, ["name"] = "Q4" },
-                new() { ["value"] = _quartileStats.NoQuartileCount, ["name"] = "Sin cuartil" }
-            };
-
-            return new
-            {
-                tooltip = new { trigger = "item", formatter = "{b}: {c} artículos ({d}%)" },
-                legend = new { orient = "vertical", left = "left" },
-                series = new object[]
-                {
-                    new
-                    {
-                        name = "Distribución por cuartil",
-                        type = "pie",
-                        radius = new[] { "45%", "70%" },
-                        avoidLabelOverlap = true,
-                        center = new[] { "55%", "55%" },
-                        data = data,
-                        label = new { show = true, formatter = "{b}: {d}%" },
-                        labelLine = new { show = true }
-                    }
-                }
-            };
-        }
-
-        private object? BuildYearTrendChartOption()
-        {
-            if (_filteredByYear == null || _filteredByYear.Count == 0)
-                return null;
-
-            var years = _filteredByYear.Select(x => x.Year.ToString()).ToArray();
-            var counts = _filteredByYear.Select(x => x.Count).ToArray();
-
-            return new
-            {
-                tooltip = new { trigger = "axis" },
-                toolbox = new
-                {
-                    show = true,
-                    orient = "horizontal",
-                    right = "8",
-                    top = "8",
-                    feature = new
-                    {
-                        saveAsImage = new
-                        {
-                            show = true,
-                            title = "Descargar PNG",
-                            pixelRatio = 2
-                        }
-                    }
-                },
-                xAxis = new
-                {
-                    type = "category",
-                    data = years
-                },
-                yAxis = new { type = "value" },
-                series = new object[]
-                {
-                    new
-                    {
-                        name = "Artículos",
-                        type = "line",
-                        smooth = true,
-                        data = counts,
-                        itemStyle = new { color = "#0f766e" },
-                        areaStyle = new { opacity = 0.08 }
-                    }
-                }
-            };
-        }
+        protected object? YearTrendChartOption => ReportChartOptionsFactory.BuildTrend(_filteredByYear);
 
         // =========================================================
         // TABS / VISTA DETALLADA (CARGA DE DATOS)
@@ -959,7 +700,7 @@ namespace tesisproject.frontend.Features.Management.Pages
                 _detailAvailableYears = new();
                 _detailYearFilter = null;
                 _detailMonthFilter = null;
-                _detailKpis = new DetailKpisModel();
+                _detailKpis = new ReportDetailKpisModel();
             }
             finally
             {
@@ -978,7 +719,7 @@ namespace tesisproject.frontend.Features.Management.Pages
             _detailAvailableYears = new();
             _detailYearFilter = null;
             _detailMonthFilter = null;
-            _detailKpis = new DetailKpisModel();
+            _detailKpis = new ReportDetailKpisModel();
         }
 
         // =========================================================
@@ -1024,7 +765,7 @@ namespace tesisproject.frontend.Features.Management.Pages
             if (_detailedRows == null || _detailedRows.Count == 0)
             {
                 _detailedFilteredRows = new List<ArticleReportRowDto>();
-                _detailKpis = new DetailKpisModel();
+                _detailKpis = new ReportDetailKpisModel();
                 return;
             }
 
@@ -1050,7 +791,7 @@ namespace tesisproject.frontend.Features.Management.Pages
 
         private void RebuildDetailKpis()
         {
-            var kpis = new DetailKpisModel();
+            var kpis = new ReportDetailKpisModel();
 
             if (_detailedFilteredRows == null || _detailedFilteredRows.Count == 0)
             {

@@ -797,7 +797,9 @@
         SelectedInboxItem?.CanProcessBatch == true
         && SelectedInboxItem.ProcessedRows < SelectedInboxItem.TotalRows
         && string.Equals(SelectedWorkflow?.Status, "Approved", StringComparison.OrdinalIgnoreCase)
-        && CurrentUser?.Roles?.Any(x => string.Equals(x, "WorkflowProcessorAreaTecnica", StringComparison.OrdinalIgnoreCase)) == true;
+        && CurrentUser?.Roles?.Any(x =>
+            string.Equals(x, "Admin", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(x, "WorkflowProcessorAreaTecnica", StringComparison.OrdinalIgnoreCase)) == true;
     private bool IsSelectedBatchReadyForApproval =>
         SelectedInboxItem is not null
         && SelectedInboxItem.TotalRows > 0

@@ -1,0 +1,21 @@
+<div class="report-kpi-card @VariantClass">
+    <div class="flex items-center justify-between gap-3">
+        <span class="report-kpi-card__label">@Label</span>
+        @if (!string.IsNullOrWhiteSpace(IconClass))
+        {
+            <span class="report-kpi-card__icon"><i class="@IconClass"></i></span>
+        }
+    </div>
+    <span class="report-kpi-card__value">@Value</span>
+    <span class="report-kpi-card__helper">@Helper</span>
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Value { get; set; } = "0";
+    [Parameter] public string Helper { get; set; } = string.Empty;
+    [Parameter] public string IconClass { get; set; } = string.Empty;
+    [Parameter] public string Variant { get; set; } = "default";
+
+    private string VariantClass => $"report-kpi-card--{Variant}";
+}

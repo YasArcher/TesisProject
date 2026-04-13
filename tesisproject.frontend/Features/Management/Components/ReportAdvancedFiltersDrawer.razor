@@ -1,0 +1,205 @@
+@using tesisproject.shared.DTOs.Catalogs
+
+@if (Visible)
+{
+    <div class="reports-filter-drawer fixed inset-0 z-30 flex">
+        <div class="flex-1 bg-black/30" @onclick="OnClose"></div>
+
+        <div class="reports-filter-drawer__surface w-full sm:w-[360px] md:w-[420px] lg:w-[460px] bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col">
+            <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                <div class="flex flex-col">
+                    <span class="text-sm font-semibold text-slate-800">Filtros avanzados</span>
+                    <span class="text-[11px] text-slate-500">
+                        Aplica filtros por proyecto, áreas OCDE, líneas, estados, venues y más.
+                    </span>
+                </div>
+                <button type="button"
+                        class="inline-flex items-center justify-center rounded-full p-1.5 hover:bg-slate-100"
+                        @onclick="OnClose">
+                    <span class="material-icons text-[18px] text-slate-500">close</span>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+                <ReportSelectFilter Label="Proyecto"
+                                    Value="@SelectedProjectId"
+                                    Items="@Projects"
+                                    AllLabel="Todos"
+                                    ValueChanged="SelectedProjectIdChanged" />
+
+                <ReportSelectFilter Label="Período académico"
+                                    Value="@SelectedAcademicTermId"
+                                    Items="@AcademicTerms"
+                                    AllLabel="Todos"
+                                    ValueChanged="SelectedAcademicTermIdChanged" />
+
+                <ReportSelectFilter Label="Línea de investigación"
+                                    Value="@SelectedResearchLineId"
+                                    Items="@ResearchLines"
+                                    AllLabel="Todas"
+                                    ValueChanged="SelectedResearchLineIdChanged" />
+
+                <div class="border border-slate-200 rounded-xl px-3 py-3 bg-slate-50/60 space-y-3">
+                    <div class="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">
+                        Áreas OCDE
+                    </div>
+
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 mb-1">Área amplia</label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                @onchange="OnBroadFieldChanged">
+                            <option value="0">Todas</option>
+                            @foreach (var field in BroadFields)
+                            {
+                                <option value="@field.Id" selected="@(SelectedBroadFieldId == field.Id)">
+                                    @field.Name
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 mb-1">Área específica</label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                @onchange="OnSpecificFieldChanged"
+                                disabled="@(SpecificFields.Count == 0)">
+                            <option value="0">Todas</option>
+                            @foreach (var field in SpecificFields)
+                            {
+                                <option value="@field.Id" selected="@(SelectedSpecificFieldId == field.Id)">
+                                    @field.Name
+                                </option>
+                            }
+                        </select>
+                        @if (BroadFields.Count > 0 && SpecificFields.Count == 0 && SelectedBroadFieldId > 0)
+                        {
+                            <span class="mt-1 text-[11px] text-slate-400">
+                                No hay áreas específicas para el área amplia seleccionada.
+                            </span>
+                        }
+                    </div>
+
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-500 mb-1">Área detallada</label>
+                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                                @onchange="OnDetailedFieldChanged"
+                                disabled="@(DetailedFields.Count == 0)">
+                            <option value="0">Todas</option>
+                            @foreach (var field in DetailedFields)
+                            {
+                                <option value="@field.Id" selected="@(SelectedDetailedFieldId == field.Id)">
+                                    @field.Name
+                                </option>
+                            }
+                        </select>
+                        @if (SpecificFields.Count > 0 && DetailedFields.Count == 0 && SelectedSpecificFieldId > 0)
+                        {
+                            <span class="mt-1 text-[11px] text-slate-400">
+                                No hay áreas detalladas para el área específica seleccionada.
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <ReportSelectFilter Label="Estado de publicación"
+                                    Value="@SelectedPublicationStatusId"
+                                    Items="@PublicationStatuses"
+                                    AllLabel="Todos"
+                                    ValueChanged="SelectedPublicationStatusIdChanged" />
+
+                <ReportSelectFilter Label="Fuente de indexación"
+                                    Value="@SelectedIndexingSourceId"
+                                    Items="@IndexingSources"
+                                    AllLabel="Todas"
+                                    ValueChanged="SelectedIndexingSourceIdChanged" />
+
+                <ReportVenueFilter Value="@SelectedVenueId"
+                                   Items="@Venues"
+                                   ValueChanged="SelectedVenueIdChanged" />
+
+                <div class="flex flex-col">
+                    <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Open Access</label>
+                    <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                            value="@FilterIsOpenAccess"
+                            @onchange="HandleOpenAccessChanged">
+                        <option value="">Todos</option>
+                        <option value="true">Solo Open Access</option>
+                        <option value="false">Solo no Open Access</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Cuartiles</label>
+                    <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                            value="@SelectedQuartile"
+                            @onchange="HandleQuartileChanged">
+                        <option value="">Todos los cuartiles</option>
+                        <option value="Q1">Q1</option>
+                        <option value="Q2">Q2</option>
+                        <option value="Q3">Q3</option>
+                        <option value="Q4">Q4</option>
+                        <option value="SIN_CUARTIL">Sin cuartil</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="px-4 py-3 border-t border-slate-200 flex items-center justify-between gap-2">
+                <button class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                        @onclick="OnClearFilters">
+                    Limpiar filtros
+                </button>
+
+                <button class="inline-flex items-center gap-2 rounded-lg bg-[#7A1E19] px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-[#681813]"
+                        @onclick="OnApplyFilters">
+                    Aplicar filtros
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnClearFilters { get; set; }
+    [Parameter] public EventCallback OnApplyFilters { get; set; }
+
+    [Parameter] public IReadOnlyList<CatalogItemDto> Projects { get; set; } = [];
+    [Parameter] public IReadOnlyList<CatalogItemDto> AcademicTerms { get; set; } = [];
+    [Parameter] public IReadOnlyList<CatalogItemDto> ResearchLines { get; set; } = [];
+    [Parameter] public IReadOnlyList<CatalogItemDto> BroadFields { get; set; } = [];
+    [Parameter] public IReadOnlyList<CatalogItemDto> SpecificFields { get; set; } = [];
+    [Parameter] public IReadOnlyList<CatalogItemDto> DetailedFields { get; set; } = [];
+    [Parameter] public IReadOnlyList<CatalogItemDto> PublicationStatuses { get; set; } = [];
+    [Parameter] public IReadOnlyList<CatalogItemDto> IndexingSources { get; set; } = [];
+    [Parameter] public IReadOnlyList<VenueCatalogItemDto> Venues { get; set; } = [];
+
+    [Parameter] public int SelectedProjectId { get; set; }
+    [Parameter] public EventCallback<int> SelectedProjectIdChanged { get; set; }
+    [Parameter] public int SelectedAcademicTermId { get; set; }
+    [Parameter] public EventCallback<int> SelectedAcademicTermIdChanged { get; set; }
+    [Parameter] public int SelectedResearchLineId { get; set; }
+    [Parameter] public EventCallback<int> SelectedResearchLineIdChanged { get; set; }
+    [Parameter] public int SelectedBroadFieldId { get; set; }
+    [Parameter] public int SelectedSpecificFieldId { get; set; }
+    [Parameter] public int SelectedDetailedFieldId { get; set; }
+    [Parameter] public int SelectedPublicationStatusId { get; set; }
+    [Parameter] public EventCallback<int> SelectedPublicationStatusIdChanged { get; set; }
+    [Parameter] public int SelectedIndexingSourceId { get; set; }
+    [Parameter] public EventCallback<int> SelectedIndexingSourceIdChanged { get; set; }
+    [Parameter] public int SelectedVenueId { get; set; }
+    [Parameter] public EventCallback<int> SelectedVenueIdChanged { get; set; }
+    [Parameter] public string? FilterIsOpenAccess { get; set; }
+    [Parameter] public EventCallback<string?> FilterIsOpenAccessChanged { get; set; }
+    [Parameter] public string? SelectedQuartile { get; set; }
+    [Parameter] public EventCallback<string?> SelectedQuartileChanged { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnBroadFieldChanged { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnSpecificFieldChanged { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnDetailedFieldChanged { get; set; }
+
+    private Task HandleOpenAccessChanged(ChangeEventArgs args)
+        => FilterIsOpenAccessChanged.InvokeAsync(Convert.ToString(args.Value));
+
+    private Task HandleQuartileChanged(ChangeEventArgs args)
+        => SelectedQuartileChanged.InvokeAsync(Convert.ToString(args.Value));
+}

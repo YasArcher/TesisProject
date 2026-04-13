@@ -1,31 +1,138 @@
 ﻿@page "/management/statisticalreports"
+@using Microsoft.AspNetCore.Components.Authorization
+@using tesisproject.frontend.Features.Management.Components
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Reports
 
 <PageTitle>Reportes estadísticos</PageTitle>
 
-<div class="flex flex-col gap-6 h-full bg-slate-50/80 px-3 py-4 md:px-6 md:py-6">
+<div class="reports-page flex flex-col gap-6 h-full px-3 py-4 md:px-6 md:py-6">
 
     <!-- ========================================================= -->
     <!-- TÍTULO PRINCIPAL                                          -->
     <!-- ========================================================= -->
-    <div class="flex flex-col gap-1">
-        <div class="inline-flex items-center gap-2 text-[11px] font-medium text-slate-500 uppercase tracking-[0.16em]">
-            <span class="w-1 h-4 rounded-full bg-[#7A1E19]"></span>
-            Panel de reportería
-        </div>
-        <h1 class="text-2xl md:text-3xl font-semibold text-slate-900">
-            Reportes estadísticos de artículos
-        </h1>
-        <p class="text-sm text-slate-500 max-w-3xl">
-            Explora indicadores clave, tendencias temporales y concentración de la producción científica por áreas de conocimiento y líneas de investigación.
-        </p>
-    </div>
+    <ReportsHero Title="Reportes estadísticos de artículos"
+                 Description="Explora indicadores clave, tendencias temporales y concentración de la producción científica. Esta vista queda preparada para migrar progresivamente hacia la reportería del nuevo modelo extensible."
+                 Badges="ReportHeroBadges" />
 
+    <section class="reports-dw-panel">
+        <div class="reports-dw-panel__header">
+            <div class="reports-dw-panel__title">
+                <span class="reports-dw-panel__icon">
+                    <i class="bi bi-diagram-3"></i>
+                </span>
+                <div>
+                    <p class="reports-dw-panel__kicker">Modelo analítico institucional</p>
+                    <h2>Reportería conectada al DW extensible</h2>
+                    <p>
+                        Primer tablero alimentado desde las vistas analíticas del nuevo modelo. Mantiene la reportería anterior como respaldo mientras consolidamos el OLAP definitivo.
+                    </p>
+                </div>
+            </div>
+
+            @if (_isLoadingInstitutionalReporting)
+            {
+                <span class="reports-dw-status reports-dw-status--loading">
+                    <i class="bi bi-arrow-repeat"></i>
+                    Cargando DW
+                </span>
+            }
+            else if (!string.IsNullOrWhiteSpace(_institutionalReportingError))
+            {
+                <span class="reports-dw-status reports-dw-status--warning">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    Sin conexión DW
+                </span>
+            }
+            else
+            {
+                <span class="@GetEtlStatusClass(_institutionalDashboard?.Health.LastEtlStatus)">
+                    <i class="bi bi-database-check"></i>
+                    ETL: @(_institutionalDashboard?.Health.LastEtlStatus ?? "Sin ejecuciones")
+                </span>
+            }
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_institutionalReportingError))
+        {
+            <div class="reports-dw-panel__notice">
+                @_institutionalReportingError
+            </div>
+        }
+        else
+        {
+            <div class="reports-dw-panel__grid">
+                <article class="reports-dw-card reports-dw-card--gold">
+                    <span><i class="bi bi-journals"></i></span>
+                    <small>Artículos DW</small>
+                    <strong>@((_institutionalDashboard?.ScientificProduction.TotalArticles ?? 0).ToString("N0"))</strong>
+                    <em>Producción científica consolidada</em>
+                </article>
+
+                <article class="reports-dw-card reports-dw-card--green">
+                    <span><i class="bi bi-unlock"></i></span>
+                    <small>Open Access</small>
+                    <strong>@((_institutionalDashboard?.ScientificProduction.OpenAccessArticles ?? 0).ToString("N0"))</strong>
+                    <em>Artículos marcados como acceso abierto</em>
+                </article>
+
+                <article class="reports-dw-card reports-dw-card--blue">
+                    <span><i class="bi bi-table"></i></span>
+                    <small>Filas procesadas</small>
+                    <strong>@((_institutionalDashboard?.LoadQuality.TotalRows ?? 0).ToString("N0"))</strong>
+                    <em>@((_institutionalDashboard?.LoadQuality.SuccessfulRows ?? 0).ToString("N0")) correctas · @((_institutionalDashboard?.LoadQuality.ErrorRows ?? 0).ToString("N0")) con error</em>
+                </article>
+
+                <article class="reports-dw-card reports-dw-card--ink">
+                    <span><i class="bi bi-signpost-split"></i></span>
+                    <small>Etapas workflow</small>
+                    <strong>@((_institutionalDashboard?.Workflow.TotalStageExecutions ?? 0).ToString("N0"))</strong>
+                    <em>@((_institutionalDashboard?.Workflow.ApprovedStages ?? 0).ToString("N0")) aprobadas · @((_institutionalDashboard?.Workflow.ReturnedStages ?? 0).ToString("N0")) devueltas</em>
+                </article>
+            </div>
+
+            <div class="reports-dw-panel__footer">
+                <span>
+                    <i class="bi bi-calendar-range"></i>
+                    DimDate: @((_institutionalDashboard?.Health.DimDateRows ?? 0).ToString("N0")) filas
+                </span>
+                <span>
+                    <i class="bi bi-clock-history"></i>
+                    Última carga: @FormatEtlDate(_institutionalDashboard?.Health.LastEtlFinishedAt)
+                </span>
+                <span>
+                    <i class="bi bi-layers"></i>
+                    Lotes DW: @((_institutionalDashboard?.Health.BatchRows ?? 0).ToString("N0"))
+                </span>
+            </div>
+        }
+    </section>
+
+    @if (!_isLoadingInstitutionalReporting
+        && string.IsNullOrWhiteSpace(_institutionalReportingError)
+        && (_institutionalDashboard?.Health.ArticleRows ?? 0) == 0
+        && (_institutionalDashboard?.Health.BatchRows ?? 0) == 0
+        && (_institutionalDashboard?.Health.WorkflowStageRows ?? 0) == 0)
+    {
+        <section class="reports-dw-empty-state">
+            <span class="reports-dw-empty-state__icon">
+                <i class="bi bi-inbox"></i>
+            </span>
+            <div>
+                <h2>Sin datos analíticos del modelo actual</h2>
+                <p>
+                    El DW extensible está conectado y el ETL finalizó correctamente, pero todavía no existen artículos, lotes o etapas de workflow cargadas desde el OLTP actual. Cuando se registren artículos y se ejecute el ETL, este tablero empezará a mostrar indicadores institucionales reales.
+                </p>
+            </div>
+        </section>
+    }
+
+    @if (_showLegacyReporting)
+    {
     <!-- ========================================================= -->
     <!-- SECCIÓN SUPERIOR: FILTROS / BOTONES / CHECKBOXES + KPIS   -->
     <!-- ========================================================= -->
-    <section class="bg-gradient-to-br from-white via-white to-slate-50 shadow-sm rounded-2xl border border-slate-200 px-4 py-4 md:px-6 md:py-5 relative overflow-hidden">
+    <section class="reports-control-panel bg-gradient-to-br from-white via-white to-slate-50 shadow-sm rounded-2xl border border-slate-200 px-4 py-4 md:px-6 md:py-5 relative overflow-hidden">
         <!-- decoración sutil -->
         <div class="pointer-events-none absolute -right-10 -top-10 w-40 h-40 bg-[#7A1E19]/5 rounded-full blur-3xl"></div>
         <div class="pointer-events-none absolute -left-16 bottom-0 w-40 h-32 bg-amber-500/5 rounded-full blur-3xl"></div>
@@ -41,7 +148,7 @@
                 </p>
             </div>
 
-            <button class="inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
+            <button class="reports-secondary-button inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
                     @onclick="ToggleAdvancedFilters">
                 @(_showAdvancedFilters ? "Cerrar panel de filtros" : "Abrir panel de filtros")
             </button>
@@ -135,7 +242,7 @@
 
                 <!-- Botones de acción -->
                 <div class="flex flex-wrap items-center gap-2 mt-1">
-                    <button class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
+                    <button class="reports-primary-button inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
                             @onclick="OpenPdfPreviewAsync"
                             disabled="@(_isLoading || _isPdfGenerating)">
                         @if (_isPdfGenerating)
@@ -148,13 +255,17 @@
                         }
                     </button>
 
-                    <button class="inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
-                            @onclick="RunEtlAndReload"
-                            disabled="@_isLoading">
-                        Actualizar datos (ETL)
-                    </button>
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <button class="reports-admin-button inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
+                                    @onclick="RunEtlAndReload"
+                                    disabled="@_isLoading">
+                                Actualizar DW (ETL)
+                            </button>
+                        </Authorized>
+                    </AuthorizeView>
 
-                    <button class="inline-flex items-center gap-2 rounded-lg bg-[#7A1E19] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#681813] hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
+                    <button class="reports-filter-button inline-flex items-center gap-2 rounded-lg bg-[#7A1E19] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#681813] hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
                             @onclick="ApplyFilters"
                             disabled="@_isLoading">
                         Aplicar filtros
@@ -172,84 +283,34 @@
                 </h2>
 
                 <div class="grid grid-cols-2 gap-3">
-                    <!-- Total artículos -->
-                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1 hover:shadow-md hover:-translate-y-0.5 transition">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Total de artículos</span>
-                            <span class="inline-flex items-center justify-center rounded-full bg-slate-100 text-slate-500 p-1">
-                            </span>
-                        </div>
-                        <span class="text-2xl font-bold text-slate-900">
-                            @_kpis?.TotalArticles 
-                        </span>
-                        <span class="text-[11px] text-slate-400">
-                            Registrados en el sistema
-                        </span>
-                    </div>
+                    <ReportKpiCard Label="Total de artículos"
+                                   Value="@((_kpis?.TotalArticles ?? 0).ToString())"
+                                   Helper="Registrados en el sistema"
+                                   IconClass="bi bi-journal-text" />
 
-                    <!-- Publicados este año -->
-                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1 hover:shadow-md hover:-translate-y-0.5 transition">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Publicados este año</span>
-                            <span class="inline-flex items-center justify-center rounded-full bg-emerald-50 text-emerald-600 p-1">
-                            </span>
-                        </div>
-                        <span class="text-2xl font-bold text-slate-900">
-                            @_kpis?.PublishedThisYear 
-                        </span>
-                        <span class="text-[11px] text-slate-400">
-                            Según la fecha de publicación
-                        </span>
-                    </div>
+                    <ReportKpiCard Label="Publicados este año"
+                                   Value="@((_kpis?.PublishedThisYear ?? 0).ToString())"
+                                   Helper="Según la fecha de publicación"
+                                   IconClass="bi bi-calendar-check"
+                                   Variant="success" />
 
-                    <!-- Q1 + Q2 -->
-                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1 hover:shadow-md hover:-translate-y-0.5 transition">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Artículos Q1 + Q2</span>
-                            <span class="inline-flex items-center justify-center rounded-full bg-indigo-50 text-indigo-600 p-1">
-                            </span>
-                        </div>
-                        <span class="text-2xl font-bold text-slate-900">
-                            @_kpis?.Q1Q2Count ?? 0
-                        </span>
-                        <span class="text-[11px] text-slate-400">
-                            Según métricas del venue
-                        </span>
-                    </div>
+                    <ReportKpiCard Label="Artículos Q1 + Q2"
+                                   Value="@((_kpis?.Q1Q2Count ?? 0).ToString())"
+                                   Helper="Según métricas del venue"
+                                   IconClass="bi bi-award"
+                                   Variant="gold" />
 
-                    <!-- Crecimiento acumulado -->
-                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1 hover:shadow-md hover:-translate-y-0.5 transition">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                                Crecimiento acumulado
-                            </span>
-                            <span class="inline-flex items-center justify-center rounded-full bg-blue-50 text-blue-600 p-1">
-                            </span>
-                        </div>
-                        <span class="text-2xl font-bold text-slate-900">
-                            @(_trendGrowthPercent.HasValue? _trendGrowthPercent.Value.ToString("0.##") + "%" : "–")
-                        </span>
-                        <span class="text-[11px] text-slate-400">
-                            Desde @_trendStartYear hasta @_trendEndYear
-                        </span>
-                    </div>
+                    <ReportKpiCard Label="Crecimiento acumulado"
+                                   Value="@(_trendGrowthPercent.HasValue ? _trendGrowthPercent.Value.ToString("0.##") + "%" : "–")"
+                                   Helper="@($"Desde {_trendStartYear?.ToString() ?? "sin inicio"} hasta {_trendEndYear?.ToString() ?? "sin cierre"}")"
+                                   IconClass="bi bi-graph-up-arrow"
+                                   Variant="growth" />
 
-                    <!-- Open Access / Indexados Scopus -->
-                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-1 hover:shadow-md hover:-translate-y-0.5 transition">
-                        <div class="flex items-center justify-between">
-                            <span class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Open Access / Scopus</span>
-                            <span class="inline-flex items-center justify-center rounded-full bg-amber-50 text-amber-600 p-1">
-                            </span>
-                        </div>
-                        <div class="flex flex-col">
-                            <span class="text-sm font-semibold text-slate-900">
-                                OA: @_kpis?.OpenAccessCount ?? 0
-                            </span>
-                            <span class="text-[11px] text-slate-500">
-                                Indexados en Scopus: @_kpis?.IndexedInScopusCount ?? 0
-                            </span>
-                        </div>
-                    </div>
+                    <ReportKpiCard Label="Open Access / Scopus"
+                                   Value="@($"OA: {_kpis?.OpenAccessCount ?? 0}")"
+                                   Helper="@($"Indexados en Scopus: {_kpis?.IndexedInScopusCount ?? 0}")"
+                                   IconClass="bi bi-unlock"
+                                   Variant="sage" />
                 </div>
             </div>
         </div>
@@ -258,36 +319,24 @@
     <!-- ========================================================= -->
     <!-- SECCIÓN INFERIOR: TABS (Dashboard / Detallado)            -->
     <!-- ========================================================= -->
-    <div class="flex-1 overflow-y-auto pb-4">
+    <div class="reports-main flex-1 overflow-y-auto pb-4">
 
         <!-- Tabs -->
-        <div class="mb-4 border-b border-slate-200">
-            <nav class="flex gap-2 text-sm">
-                <button type="button"
-                        class="@GetTabButtonClass("dashboard")"
-                        @onclick="SwitchToDashboard">
-                    Resumen gráfico
-                </button>
-
-                <button type="button"
-                        class="@GetTabButtonClass("detail")"
-                        @onclick="SwitchToDetail">
-                    Vista detallada (tabla)
-                </button>
-            </nav>
-        </div>
+        <ReportTabs ActiveTab="@_activeTab"
+                    OnDashboardSelected="SwitchToDashboard"
+                    OnDetailSelected="SwitchToDetail" />
 
         @if (_activeTab == "dashboard")
         {
             if (_isLoading)
             {
-                <div class="flex items-center justify-center py-16 text-slate-500 text-sm">
+                <div class="reports-loading-state flex items-center justify-center py-16 text-slate-500 text-sm">
                     Cargando datos de reportería...
                 </div>
             }
             else if (!string.IsNullOrWhiteSpace(_errorMessage))
             {
-                <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                <div class="reports-error-state bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
                     @_errorMessage
                 </div>
             }
@@ -296,170 +345,60 @@
                 <!-- ========================================================= -->
                 <!-- DASHBOARD: IZQ GRÁFICOS / DER TABLAS                     -->
                 <!-- ========================================================= -->
-                <section class="grid grid-cols-1 xl:grid-cols-2 gap-4 auto-rows-[minmax(360px,auto)]">
+                <section class="reports-dashboard-grid grid grid-cols-1 xl:grid-cols-2 gap-4 auto-rows-[minmax(360px,auto)]">
                     <!-- ----------------------------------------- -->
                     <!-- IZQUIERDA: SOLO GRÁFICOS                  -->
                     <!-- ----------------------------------------- -->
                     <div class="flex flex-col gap-4">
 
-                        <!-- Distribución por año (GRÁFICO) -->
-                        <section class="bg-white border-l-4 border-[#7A1E19]/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
-                            <div class="flex items-start justify-between mb-3">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-900">Distribución por año</h2>
-                                    <p class="text-xs text-slate-500">
-                                        Artículos creados en el sistema por año (según filtros aplicados).
-                                    </p>
-                                </div>
+                        <ReportChartCard Title="Distribución por año"
+                                         Description="Artículos creados en el sistema por año (según filtros aplicados)."
+                                         Tooltip="Muestra la evolución anual del número de artículos registrados en el sistema dentro del rango de años seleccionado."
+                                         HasData="@(_filteredByYear.Count > 0)"
+                                         EmptyMessage="No hay datos para el rango de años seleccionado."
+                                         ChartId="chart-by-year"
+                                         Height="@YearChartHeight"
+                                         Option="@YearChartOption"
+                                         Accent="gold" />
 
-                                <button type="button"
-                                        class="ml-2 text-slate-400 hover:text-slate-600 relative group">
-                                    <span class="material-icons text-base">info</span>
-                                    <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
-                                        Muestra la evolución anual del número de artículos registrados en el sistema dentro del rango de años seleccionado.
-                                    </span>
-                                </button>
-                            </div>
+                        <ReportChartCard Title="Tendencia temporal de artículos"
+                                         Description="Evolución del número de artículos a lo largo de los años."
+                                         HasData="@(_filteredByYear.Count > 0)"
+                                         EmptyMessage="No hay datos para el rango de años seleccionado."
+                                         ChartId="chart-trend"
+                                         Height="@TrendChartHeight"
+                                         Option="@YearTrendChartOption"
+                                         Accent="blue" />
 
-                            @if (_filteredByYear.Count == 0)
-                            {
-                                <p class="text-xs text-slate-400">No hay datos para el rango de años seleccionado.</p>
-                            }
-                            else
-                            {
-                                <div class="flex-1 min-h-[220px]">
-                                    <EChart Id="chart-by-year"
-                                            Height="@YearChartHeight"
-                                            Option="@YearChartOption" />
-                                </div>
-                            }
-                        </section>
+                        <ReportChartCard Title="Top áreas de conocimiento"
+                                         Description="Áreas amplias con mayor cantidad de artículos."
+                                         Tooltip="Muestra las áreas amplias de conocimiento con mayor volumen de artículos, ayudando a identificar focos de producción científica."
+                                         HasData="@(_byField.Count > 0)"
+                                         EmptyMessage="No hay datos de áreas de conocimiento disponibles."
+                                         ChartId="chart-by-field"
+                                         Height="@FieldChartHeight"
+                                         Option="@FieldChartOption"
+                                         Accent="sage" />
 
-                        <!-- Tendencia temporal -->
-                        <section class="bg-white border-l-4 border-blue-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
-                            <div class="flex items-start justify-between mb-3">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-900">Tendencia temporal de artículos</h2>
-                                    <p class="text-xs text-slate-500">
-                                        Evolución del número de artículos a lo largo de los años.
-                                    </p>
-                                </div>
-                            </div>
+                        <ReportChartCard Title="Líneas de investigación (Top)"
+                                         Description="Líneas de investigación con mayor producción científica."
+                                         Tooltip="Permite visualizar qué líneas de investigación concentran más artículos, útil para priorizar recursos y planificación estratégica."
+                                         HasData="@(_byResearchLine.Count > 0)"
+                                         EmptyMessage="No hay datos de líneas de investigación disponibles."
+                                         ChartId="chart-by-researchline"
+                                         Height="@ResearchLineChartHeight"
+                                         Option="@ResearchLineChartOption"
+                                         Accent="green" />
 
-                            @if (_filteredByYear.Count == 0)
-                            {
-                                <p class="text-xs text-slate-400">No hay datos para el rango de años seleccionado.</p>
-                            }
-                            else
-                            {
-                                <div class="flex-1 min-h-[220px]">
-                                    <EChart Id="chart-trend"
-                                            Height="@TrendChartHeight"
-                                            Option="@YearTrendChartOption" />
-                                </div>
-                            }
-                        </section>
-
-                        <!-- Top áreas de conocimiento (GRÁFICO) -->
-                        <section class="bg-white border-l-4 border-amber-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
-                            <div class="flex items-start justify-between mb-3">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-900">Top áreas de conocimiento</h2>
-                                    <p class="text-xs text-slate-500">
-                                        Áreas amplias con mayor cantidad de artículos.
-                                    </p>
-                                </div>
-
-                                <button type="button"
-                                        class="ml-2 text-slate-400 hover:text-slate-600 relative group">
-                                    <span class="material-icons text-base">info</span>
-                                    <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
-                                        Muestra las áreas amplias de conocimiento con mayor volumen de artículos, ayudando a identificar focos de producción científica.
-                                    </span>
-                                </button>
-                            </div>
-
-                            @if (_byField.Count == 0)
-                            {
-                                <p class="text-xs text-slate-400">No hay datos de áreas de conocimiento disponibles.</p>
-                            }
-                            else
-                            {
-                                <div class="flex-1 min-h-[220px]">
-                                    <EChart Id="chart-by-field"
-                                            Height="@FieldChartHeight"
-                                            Option="@FieldChartOption" />
-                                </div>
-                            }
-                        </section>
-
-                        <!-- Líneas de investigación (GRÁFICO) -->
-                        <section class="bg-white border-l-4 border-indigo-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
-                            <div class="flex items-start justify-between mb-3">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-900">Líneas de investigación (Top)</h2>
-                                    <p class="text-xs text-slate-500">
-                                        Líneas de investigación con mayor producción científica.
-                                    </p>
-                                </div>
-
-                                <button type="button"
-                                        class="ml-2 text-slate-400 hover:text-slate-600 relative group">
-                                    <span class="material-icons text-base">info</span>
-                                    <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
-                                        Permite visualizar qué líneas de investigación concentran más artículos, útil para priorizar recursos y planificación estratégica.
-                                    </span>
-                                </button>
-                            </div>
-
-                            @if (_byResearchLine.Count == 0)
-                            {
-                                <p class="text-xs text-slate-400">No hay datos de líneas de investigación disponibles.</p>
-                            }
-                            else
-                            {
-                                <div class="flex-1 min-h-[220px]">
-                                    <EChart Id="chart-by-researchline"
-                                            Height="@ResearchLineChartHeight"
-                                            Option="@ResearchLineChartOption" />
-                                </div>
-                            }
-                        </section>
-
-                        <!-- Calidad por cuartiles (GRÁFICO DONA) -->
-                        <section class="bg-white border-l-4 border-emerald-500/80 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition">
-                            <div class="flex items-start justify-between mb-3">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-900">Calidad por cuartiles</h2>
-                                    <p class="text-xs text-slate-500">
-                                        Distribución de artículos según cuartiles Q1–Q4 y sin cuartil.
-                                    </p>
-                                </div>
-
-                                <button type="button"
-                                        class="ml-2 text-slate-400 hover:text-slate-600 relative group">
-                                    <span class="material-icons text-base">info</span>
-                                    <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
-                                        Permite visualizar la calidad de las publicaciones según el cuartil del venue (Q1–Q4) y artículos sin clasificación.
-                                    </span>
-                                </button>
-                            </div>
-
-                            @if (_quartileStats == null || _quartileStats.TotalArticles <= 0)
-                            {
-                                <p class="text-xs text-slate-400">
-                                    No hay datos de cuartiles disponibles.
-                                </p>
-                            }
-                            else
-                            {
-                                <div class="flex-1 min-h-[220px]">
-                                    <EChart Id="chart-quartiles"
-                                            Height="@QuartileChartHeight"
-                                            Option="@QuartileChartOption" />
-                                </div>
-                            }
-                        </section>
+                        <ReportChartCard Title="Calidad por cuartiles"
+                                         Description="Distribución de artículos según cuartiles Q1-Q4 y sin cuartil."
+                                         Tooltip="Permite visualizar la calidad de las publicaciones según el cuartil del venue (Q1-Q4) y artículos sin clasificación."
+                                         HasData="@(_quartileStats is not null && _quartileStats.TotalArticles > 0)"
+                                         EmptyMessage="No hay datos de cuartiles disponibles."
+                                         ChartId="chart-quartiles"
+                                         Height="@QuartileChartHeight"
+                                         Option="@QuartileChartOption"
+                                         Accent="green" />
                     </div>
 
                     <!-- ----------------------------------------- -->
@@ -467,16 +406,8 @@
                     <!-- ----------------------------------------- -->
                     <div class="flex flex-col gap-4">
 
-                        <!-- Tabla artículos por año -->
-                        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
-                            <div class="flex items-center justify-between mb-3">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-900">Tabla: artículos por año</h2>
-                                    <p class="text-xs text-slate-500">
-                                        Conteo de artículos por año de creación en el sistema.
-                                    </p>
-                                </div>
-                            </div>
+                        <ReportDataCard Title="Tabla: artículos por año"
+                                        Description="Conteo de artículos por año de creación en el sistema.">
 
                             @if (_filteredByYear.Count == 0)
                             {
@@ -504,18 +435,10 @@
                                     </table>
                                 </div>
                             }
-                        </section>
+                        </ReportDataCard>
 
-                        <!-- Tabla top áreas de conocimiento -->
-                        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
-                            <div class="flex items-center justify-between mb-3">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-900">Tabla: top áreas de conocimiento</h2>
-                                    <p class="text-xs text-slate-500">
-                                        Áreas amplias con mayor cantidad de artículos.
-                                    </p>
-                                </div>
-                            </div>
+                        <ReportDataCard Title="Tabla: top áreas de conocimiento"
+                                        Description="Áreas amplias con mayor cantidad de artículos.">
 
                             @if (_byField.Count == 0)
                             {
@@ -543,18 +466,10 @@
                                     </table>
                                 </div>
                             }
-                        </section>
+                        </ReportDataCard>
 
-                        <!-- Tabla líneas de investigación -->
-                        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
-                            <div class="flex items-center justify-between mb-3">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-900">Tabla: líneas de investigación</h2>
-                                    <p class="text-xs text-slate-500">
-                                        Líneas de investigación con mayor producción científica.
-                                    </p>
-                                </div>
-                            </div>
+                        <ReportDataCard Title="Tabla: líneas de investigación"
+                                        Description="Líneas de investigación con mayor producción científica.">
 
                             @if (_byResearchLine.Count == 0)
                             {
@@ -582,18 +497,10 @@
                                     </table>
                                 </div>
                             }
-                        </section>
+                        </ReportDataCard>
 
-                        <!-- Tabla distribución por cuartiles -->
-                        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
-                            <div class="flex items-center justify-between mb-3">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-900">Tabla: distribución por cuartiles</h2>
-                                    <p class="text-xs text-slate-500">
-                                        Conteo y porcentaje de artículos por cuartil (Q1–Q4) y sin clasificación.
-                                    </p>
-                                </div>
-                            </div>
+                        <ReportDataCard Title="Tabla: distribución por cuartiles"
+                                        Description="Conteo y porcentaje de artículos por cuartil (Q1-Q4) y sin clasificación.">
 
                             @if (_quartileStats == null || _quartileStats.TotalArticles <= 0)
                             {
@@ -627,18 +534,10 @@
                                     </table>
                                 </div>
                             }
-                        </section>
+                        </ReportDataCard>
 
-                        <!-- Estadísticas de Open Access y Scopus -->
-                        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
-                            <div class="flex items-center justify-between mb-3">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-900">Acceso abierto e indexación</h2>
-                                    <p class="text-xs text-slate-500">
-                                        Estadísticas de Open Access e indexación en Scopus.
-                                    </p>
-                                </div>
-                            </div>
+                        <ReportDataCard Title="Acceso abierto e indexación"
+                                        Description="Estadísticas de Open Access e indexación en Scopus.">
 
                             @if (_accessIndexingStats == null || _accessIndexingStats.TotalArticles <= 0)
                             {
@@ -667,18 +566,10 @@
                                     </div>
                                 </div>
                             }
-                        </section>
+                        </ReportDataCard>
 
-                        <!-- Tiempo hasta publicación -->
-                        <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
-                            <div class="flex items-center justify-between mb-3">
-                                <div>
-                                    <h2 class="text-base font-semibold text-slate-900">Tiempo hasta publicación</h2>
-                                    <p class="text-xs text-slate-500">
-                                        Días desde creación hasta publicación.
-                                    </p>
-                                </div>
-                            </div>
+                        <ReportDataCard Title="Tiempo hasta publicación"
+                                        Description="Días desde creación hasta publicación.">
 
                             @if (_timeToPublicationStats == null || _timeToPublicationStats.ArticlesWithDatesCount <= 0)
                             {
@@ -711,7 +602,7 @@
                                     </div>
                                 </div>
                             }
-                        </section>
+                        </ReportDataCard>
                     </div>
                 </section>
             }
@@ -751,212 +642,20 @@
                         </p>
                     </header>
 
-                    <!-- Filtros locales (año / mes) -->
-                    <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-3">
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <div class="flex flex-wrap gap-3 items-end">
-                                <div class="flex flex-col">
-                                    <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                                        Año de creación
-                                    </label>
-                                    <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
-                                            @onchange="OnDetailYearChanged">
-                                        <option value="">Todos los años</option>
-                                        @foreach (var year in _detailAvailableYears)
-                                        {
-                                            <option value="@year" selected="@(_detailYearFilter == year)">@year</option>
-                                        }
-                                    </select>
-                                </div>
+                    <ReportDetailFilters AvailableYears="@_detailAvailableYears"
+                                         SelectedYear="@_detailYearFilter"
+                                         SelectedMonth="@_detailMonthFilter"
+                                         OnYearChanged="OnDetailYearChanged"
+                                         OnMonthChanged="OnDetailMonthChanged"
+                                         OnClear="ClearDetailFilters" />
 
-                                <div class="flex flex-col">
-                                    <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                                        Mes de creación
-                                    </label>
-                                    <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
-                                            @onchange="OnDetailMonthChanged">
-                                        <option value="">Todos los meses</option>
-                                        @foreach (var m in DetailMonths)
-                                        {
-                                            <option value="@m.Value" selected="@(_detailMonthFilter == m.Value)">
-                                                @m.Label
-                                            </option>
-                                        }
-                                    </select>
-                                </div>
-                            </div>
+                    <ReportDetailKpiGrid TotalArticles="@_detailKpis.TotalArticles"
+                                         PublishedThisYear="@_detailKpis.PublishedThisYear"
+                                         Q1Q2Count="@_detailKpis.Q1Q2Count"
+                                         OpenAccessCount="@_detailKpis.OpenAccessCount"
+                                         IndexedInScopusCount="@_detailKpis.IndexedInScopusCount" />
 
-                            <button type="button"
-                                    class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                                    @onclick="ClearDetailFilters">
-                                <span class="material-icons text-[14px]">refresh</span>
-                                Limpiar filtros locales
-                            </button>
-                        </div>
-
-                        <p class="text-[11px] text-slate-400">
-                            Estos filtros operan sobre los resultados ya filtrados por el panel principal (fechas, proyectos, áreas OCDE, etc.).
-                        </p>
-                    </section>
-
-                    <!-- KPIs de la vista detallada -->
-                    <section class="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-3 py-3 flex flex-col gap-1">
-                            <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                                Total en tabla
-                            </span>
-                            <span class="text-xl font-bold text-slate-900">
-                                @_detailKpis.TotalArticles
-                            </span>
-                            <span class="text-[11px] text-slate-400">
-                                Suma de artículos visibles
-                            </span>
-                        </div>
-
-                        <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-3 py-3 flex flex-col gap-1">
-                            <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                                Publicados este año
-                            </span>
-                            <span class="text-xl font-bold text-slate-900">
-                                @_detailKpis.PublishedThisYear
-                            </span>
-                            <span class="text-[11px] text-slate-400">
-                                Según fecha de publicación
-                            </span>
-                        </div>
-
-                        <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-3 py-3 flex flex-col gap-1">
-                            <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                                Q1 + Q2
-                            </span>
-                            <span class="text-xl font-bold text-slate-900">
-                                @_detailKpis.Q1Q2Count
-                            </span>
-                            <span class="text-[11px] text-slate-400">
-                                Artículos de alto impacto
-                            </span>
-                        </div>
-
-                        <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-3 py-3 flex flex-col gap-1">
-                            <span class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
-                                Open Access / Scopus
-                            </span>
-                            <span class="text-sm font-semibold text-slate-900">
-                                OA: @_detailKpis.OpenAccessCount
-                            </span>
-                            <span class="text-[11px] text-slate-400">
-                                Indexados Scopus: @_detailKpis.IndexedInScopusCount
-                            </span>
-                        </div>
-                    </section>
-
-                    <!-- Tabla detallada -->
-                    <section class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col gap-3 h-full overflow-hidden">
-                        <div class="flex items-center justify-between mb-1">
-                            <div>
-                                <h3 class="text-sm md:text-base font-semibold text-slate-900">
-                                    Artículos detallados
-                                </h3>
-                                <p class="text-[11px] md:text-xs text-slate-500">
-                                    Vista tabular con dimensiones clave: tiempo, proyecto, línea de investigación, áreas OCDE, estado, venue y calidad.
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="flex-1 max-h-[480px] overflow-auto rounded-lg border border-slate-200">
-                            <table class="min-w-full text-[11px] md:text-xs">
-                                <thead class="bg-slate-50 sticky top-0 z-10">
-                                    <tr class="text-left font-semibold text-slate-500 uppercase">
-                                        <th class="py-1.5 px-2 border-b border-slate-200">Creación</th>
-                                        <th class="py-1.5 px-2 border-b border-slate-200">Publicación</th>
-                                        <th class="py-1.5 px-2 border-b border-slate-200">Período</th>
-                                        <th class="py-1.5 px-2 border-b border-slate-200">Proyecto</th>
-                                        <th class="py-1.5 px-2 border-b border-slate-200">Línea</th>
-                                        <th class="py-1.5 px-2 border-b border-slate-200">Área amplia</th>
-                                        <th class="py-1.5 px-2 border-b border-slate-200">Área específica</th>
-                                        <th class="py-1.5 px-2 border-b border-slate-200">Área detallada</th>
-                                        <th class="py-1.5 px-2 border-b border-slate-200">Estado</th>
-                                        <th class="py-1.5 px-2 border-b border-slate-200">Venue</th>
-                                        <th class="py-1.5 px-2 border-b border-slate-200 text-center">Quartil</th>
-                                        <th class="py-1.5 px-2 border-b border-slate-200 text-center">OA</th>
-                                        <th class="py-1.5 px-2 border-b border-slate-200 text-center">Scopus</th>
-                                        <th class="py-1.5 px-2 border-b border-slate-200 text-right">Art.</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100">
-                                    @foreach (var row in _detailedFilteredRows)
-                                    {
-                                        <tr class="hover:bg-slate-50/80">
-                                            <td class="py-1.5 px-2 text-slate-700">
-                                                @row.CreatedDate?.ToString("dd/MM/yyyy")
-                                            </td>
-                                            <td class="py-1.5 px-2 text-slate-700">
-                                                @row.PublicationDate?.ToString("dd/MM/yyyy")
-                                            </td>
-                                            <td class="py-1.5 px-2 text-slate-700">
-                                                @row.AcademicTermName
-                                            </td>
-                                            <td class="py-1.5 px-2 text-slate-700">
-                                                @row.ProjectName
-                                            </td>
-                                            <td class="py-1.5 px-2 text-slate-700">
-                                                @row.ResearchLineName
-                                            </td>
-                                            <td class="py-1.5 px-2 text-slate-700">
-                                                @row.BroadFieldName
-                                            </td>
-                                            <td class="py-1.5 px-2 text-slate-700">
-                                                @row.SpecificFieldName
-                                            </td>
-                                            <td class="py-1.5 px-2 text-slate-700">
-                                                @row.DetailedFieldName
-                                            </td>
-                                            <td class="py-1.5 px-2 text-slate-700">
-                                                @row.PublicationStatusName
-                                            </td>
-                                            <td class="py-1.5 px-2 text-slate-700">
-                                                @row.VenueName
-                                            </td>
-                                            <td class="py-1.5 px-2 text-center text-slate-700">
-                                                @row.Quartile
-                                            </td>
-                                            <td class="py-1.5 px-2 text-center">
-                                                @if (row.IsOpenAccess)
-                                                {
-                                                    <span class="inline-flex items-center justify-center rounded-full bg-emerald-50 text-emerald-600 px-2 py-0.5 text-[10px] font-semibold">
-                                                        Sí
-                                                    </span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="inline-flex items-center justify-center rounded-full bg-slate-50 text-slate-500 px-2 py-0.5 text-[10px]">
-                                                        No
-                                                    </span>
-                                                }
-                                            </td>
-                                            <td class="py-1.5 px-2 text-center">
-                                                @if (row.IndexedInScopus)
-                                                {
-                                                    <span class="inline-flex items-center justify-center rounded-full bg-indigo-50 text-indigo-600 px-2 py-0.5 text-[10px] font-semibold">
-                                                        Sí
-                                                    </span>
-                                                }
-                                                else
-                                                {
-                                                    <span class="inline-flex items-center justify-center rounded-full bg-slate-50 text-slate-500 px-2 py-0.5 text-[10px]">
-                                                        No
-                                                    </span>
-                                                }
-                                            </td>
-                                            <td class="py-1.5 px-2 text-right font-semibold text-slate-800">
-                                                @row.ArticleCount
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
+                    <ReportDetailedTable Items="@_detailedFilteredRows" />
                 </section>
             }
         }
@@ -965,288 +664,48 @@
     <!-- ========================================================= -->
     <!-- MODAL DE PREVISUALIZACIÓN DE PDF                         -->
     <!-- ========================================================= -->
-    @if (_showPdfPreview)
-    {
-        <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-            <div class="bg-white rounded-2xl shadow-xl w-[90vw] h-[90vh] max-w-5xl flex flex-col overflow-hidden">
-                <!-- Header del modal -->
-                <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                    <div class="flex flex-col">
-                        <span class="text-sm font-semibold text-slate-800">Previsualización de reporte PDF</span>
-                        <span class="text-[11px] text-slate-500">
-                            Vista previa de las secciones seleccionadas según los filtros actuales.
-                        </span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        @if (!string.IsNullOrEmpty(_pdfPreviewDataUrl))
-                        {
-                            <a href="@_pdfPreviewDataUrl"
-                               download="Reporte_Estadistico_Articulos.pdf"
-                               class="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700">
-                                <span class="material-icons text-[14px]">download</span>
-                                Descargar
-                            </a>
-                        }
-                        <button type="button"
-                                class="inline-flex items-center justify-center rounded-full p-1.5 hover:bg-slate-100"
-                                @onclick="ClosePdfPreview">
-                            <span class="material-icons text-[18px] text-slate-500">close</span>
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Contenido del modal -->
-                <div class="flex-1 bg-slate-100">
-                    @if (_isPdfGenerating || string.IsNullOrEmpty(_pdfPreviewDataUrl))
-                    {
-                        <div class="w-full h-full flex items-center justify-center text-slate-500 text-sm">
-                            Generando PDF...
-                        </div>
-                    }
-                    else
-                    {
-                        <iframe src="@_pdfPreviewDataUrl"
-                                class="w-full h-full border-0"></iframe>
-                    }
-                </div>
-            </div>
-        </div>
-    }
+    <ReportPdfPreviewModal Visible="@_showPdfPreview"
+                           IsGenerating="@_isPdfGenerating"
+                           PdfPreviewDataUrl="@_pdfPreviewDataUrl"
+                           OnClose="ClosePdfPreview" />
 
     <!-- ========================================================= -->
     <!-- PANEL LATERAL DE FILTROS AVANZADOS (DRAWER DERECHA)      -->
     <!-- ========================================================= -->
-    @if (_showAdvancedFilters)
-    {
-        <div class="fixed inset-0 z-30 flex">
-            <!-- Fondo oscuro clicable para cerrar -->
-            <div class="flex-1 bg-black/30" @onclick="ToggleAdvancedFilters"></div>
-
-            <!-- Drawer a la derecha -->
-            <div class="w-full sm:w-[360px] md:w-[420px] lg:w-[460px] bg-white h-full shadow-2xl border-l border-slate-200 flex flex-col">
-                <!-- Header del panel -->
-                <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                    <div class="flex flex-col">
-                        <span class="text-sm font-semibold text-slate-800">Filtros avanzados</span>
-                        <span class="text-[11px] text-slate-500">
-                            Aplica filtros por proyecto, áreas OCDE, líneas, estados, venues y más.
-                        </span>
-                    </div>
-                    <button type="button"
-                            class="inline-flex items-center justify-center rounded-full p-1.5 hover:bg-slate-100"
-                            @onclick="ToggleAdvancedFilters">
-                        <span class="material-icons text-[18px] text-slate-500">close</span>
-                    </button>
-                </div>
-
-                <!-- Contenido con scroll -->
-                <div class="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-
-                    <!-- Proyecto -->
-                    <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                            Proyecto
-                        </label>
-                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
-                                @bind="_selectedProjectId">
-                            <option value="0">Todos</option>
-                            @foreach (var p in _projects)
-                            {
-                                <option value="@p.Id">@p.Name</option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Período Académico -->
-                    <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                            Período académico
-                        </label>
-                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
-                                @bind="_selectedAcademicTermId">
-                            <option value="0">Todos</option>
-                            @foreach (var term in _academicTerms)
-                            {
-                                <option value="@term.Id">@term.Name</option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Línea de investigación -->
-                    <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                            Línea de investigación
-                        </label>
-                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
-                                @bind="_selectedResearchLineId">
-                            <option value="0">Todas</option>
-                            @foreach (var rl in _researchLines)
-                            {
-                                <option value="@rl.Id">@rl.Name</option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- OCDE: Área amplia / específica / detallada -->
-                    <div class="border border-slate-200 rounded-xl px-3 py-3 bg-slate-50/60 space-y-3">
-                        <div class="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">
-                            Áreas OCDE
-                        </div>
-
-                        <!-- Campo amplio -->
-                        <div class="flex flex-col">
-                            <label class="text-xs font-semibold text-slate-500 mb-1">
-                                Área amplia
-                            </label>
-                            <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
-                                    @onchange="OnBroadFieldChanged">
-                                <option value="0">Todas</option>
-                                @foreach (var bf in _broadFields)
-                                {
-                                    <option value="@bf.Id" selected="@(_selectedBroadFieldId == bf.Id)">
-                                        @bf.Name
-                                    </option>
-                                }
-                            </select>
-                        </div>
-
-                        <!-- Campo específico -->
-                        <div class="flex flex-col">
-                            <label class="text-xs font-semibold text-slate-500 mb-1">
-                                Área específica
-                            </label>
-                            <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
-                                    @onchange="OnSpecificFieldChanged"
-                                    disabled="@(_specificFields.Count == 0)">
-                                <option value="0">Todas</option>
-                                @foreach (var sf in _specificFields)
-                                {
-                                    <option value="@sf.Id" selected="@(_selectedSpecificFieldId == sf.Id)">
-                                        @sf.Name
-                                    </option>
-                                }
-                            </select>
-                            @if (_broadFields.Count > 0 && _specificFields.Count == 0 && _selectedBroadFieldId > 0)
-                            {
-                                <span class="mt-1 text-[11px] text-slate-400">
-                                    No hay áreas específicas para el área amplia seleccionada.
-                                </span>
-                            }
-                        </div>
-
-                        <!-- Campo detallado -->
-                        <div class="flex flex-col">
-                            <label class="text-xs font-semibold text-slate-500 mb-1">
-                                Área detallada
-                            </label>
-                            <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
-                                    @onchange="OnDetailedFieldChanged"
-                                    disabled="@(_detailedFields.Count == 0)">
-                                <option value="0">Todas</option>
-                                @foreach (var df in _detailedFields)
-                                {
-                                    <option value="@df.Id" selected="@(_selectedDetailedFieldId == df.Id)">
-                                        @df.Name
-                                    </option>
-                                }
-                            </select>
-                            @if (_specificFields.Count > 0 && _detailedFields.Count == 0 && _selectedSpecificFieldId > 0)
-                            {
-                                <span class="mt-1 text-[11px] text-slate-400">
-                                    No hay áreas detalladas para el área específica seleccionada.
-                                </span>
-                            }
-                        </div>
-                    </div>
-
-                    <!-- Estado de publicación -->
-                    <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                            Estado de publicación
-                        </label>
-                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
-                                @bind="_selectedPublicationStatusId">
-                            <option value="0">Todos</option>
-                            @foreach (var st in _publicationStatuses)
-                            {
-                                <option value="@st.Id">@st.Name</option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Fuente de indexación -->
-                    <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                            Fuente de indexación
-                        </label>
-                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
-                                @bind="_selectedIndexingSourceId">
-                            <option value="0">Todas</option>
-                            @foreach (var idx in _indexingSources)
-                            {
-                                <option value="@idx.Id">@idx.Name</option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Venue -->
-                    <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                            Revista / Venue
-                        </label>
-                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
-                                @bind="_selectedVenueId">
-                            <option value="0">Todos</option>
-                            @foreach (var v in _venues)
-                            {
-                                <option value="@v.Id">@v.Name</option>
-                            }
-                        </select>
-                    </div>
-
-                    <!-- Open Access -->
-                    <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                            Open Access
-                        </label>
-                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
-                                @bind="_filterIsOpenAccess">
-                            <option value="">Todos</option>
-                            <option value="true">Solo Open Access</option>
-                            <option value="false">Solo no Open Access</option>
-                        </select>
-                    </div>
-
-                    <!-- Cuartiles -->
-                    <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
-                            Cuartiles
-                        </label>
-                        <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
-                                @bind="_selectedQuartile">
-                            <option value="">Todos los cuartiles</option>
-                            <option value="Q1">Q1</option>
-                            <option value="Q2">Q2</option>
-                            <option value="Q3">Q3</option>
-                            <option value="Q4">Q4</option>
-                            <option value="SIN_CUARTIL">Sin cuartil</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Footer del panel: botones -->
-                <div class="px-4 py-3 border-t border-slate-200 flex items-center justify-between gap-2">
-                    <button class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                            @onclick="ClearFilters">
-                        Limpiar filtros
-                    </button>
-
-                    <button class="inline-flex items-center gap-2 rounded-lg bg-[#7A1E19] px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-[#681813]"
-                            @onclick="ApplyFilters">
-                        Aplicar filtros
-                    </button>
-                </div>
-            </div>
-        </div>
+    <ReportAdvancedFiltersDrawer Visible="@_showAdvancedFilters"
+                                 Projects="@_projects"
+                                 AcademicTerms="@_academicTerms"
+                                 ResearchLines="@_researchLines"
+                                 BroadFields="@_broadFields"
+                                 SpecificFields="@_specificFields"
+                                 DetailedFields="@_detailedFields"
+                                 PublicationStatuses="@_publicationStatuses"
+                                 IndexingSources="@_indexingSources"
+                                 Venues="@_venues"
+                                 SelectedProjectId="@_selectedProjectId"
+                                 SelectedProjectIdChanged="value => _selectedProjectId = value"
+                                 SelectedAcademicTermId="@_selectedAcademicTermId"
+                                 SelectedAcademicTermIdChanged="value => _selectedAcademicTermId = value"
+                                 SelectedResearchLineId="@_selectedResearchLineId"
+                                 SelectedResearchLineIdChanged="value => _selectedResearchLineId = value"
+                                 SelectedBroadFieldId="@_selectedBroadFieldId"
+                                 SelectedSpecificFieldId="@_selectedSpecificFieldId"
+                                 SelectedDetailedFieldId="@_selectedDetailedFieldId"
+                                 SelectedPublicationStatusId="@_selectedPublicationStatusId"
+                                 SelectedPublicationStatusIdChanged="value => _selectedPublicationStatusId = value"
+                                 SelectedIndexingSourceId="@_selectedIndexingSourceId"
+                                 SelectedIndexingSourceIdChanged="value => _selectedIndexingSourceId = value"
+                                 SelectedVenueId="@_selectedVenueId"
+                                 SelectedVenueIdChanged="value => _selectedVenueId = value"
+                                 FilterIsOpenAccess="@_filterIsOpenAccess"
+                                 FilterIsOpenAccessChanged="value => _filterIsOpenAccess = value"
+                                 SelectedQuartile="@_selectedQuartile"
+                                 SelectedQuartileChanged="value => _selectedQuartile = value"
+                                 OnBroadFieldChanged="OnBroadFieldChanged"
+                                 OnSpecificFieldChanged="OnSpecificFieldChanged"
+                                 OnDetailedFieldChanged="OnDetailedFieldChanged"
+                                 OnClose="ToggleAdvancedFilters"
+                                 OnClearFilters="ClearFilters"
+                                 OnApplyFilters="ApplyFilters" />
     }
 </div>

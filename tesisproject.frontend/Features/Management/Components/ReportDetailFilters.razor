@@ -1,0 +1,71 @@
+<section class="report-detail-filters bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-3 flex flex-col gap-3">
+    <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap gap-3 items-end">
+            <div class="flex flex-col">
+                <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                    Año de creación
+                </label>
+                <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                        @onchange="OnYearChanged">
+                    <option value="">Todos los años</option>
+                    @foreach (var year in AvailableYears)
+                    {
+                        <option value="@year" selected="@(SelectedYear == year)">@year</option>
+                    }
+                </select>
+            </div>
+
+            <div class="flex flex-col">
+                <label class="text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1">
+                    Mes de creación
+                </label>
+                <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
+                        @onchange="OnMonthChanged">
+                    <option value="">Todos los meses</option>
+                    @foreach (var month in Months)
+                    {
+                        <option value="@month.Value" selected="@(SelectedMonth == month.Value)">
+                            @month.Label
+                        </option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <button type="button"
+                class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                @onclick="OnClear">
+            <span class="material-icons text-[14px]">refresh</span>
+            Limpiar filtros locales
+        </button>
+    </div>
+
+    <p class="text-[11px] text-slate-400">
+        Estos filtros operan sobre los resultados ya filtrados por el panel principal (fechas, proyectos, áreas OCDE, etc.).
+    </p>
+</section>
+
+@code {
+    private static readonly IReadOnlyList<(int Value, string Label)> Months =
+    [
+        (1, "Enero"),
+        (2, "Febrero"),
+        (3, "Marzo"),
+        (4, "Abril"),
+        (5, "Mayo"),
+        (6, "Junio"),
+        (7, "Julio"),
+        (8, "Agosto"),
+        (9, "Septiembre"),
+        (10, "Octubre"),
+        (11, "Noviembre"),
+        (12, "Diciembre")
+    ];
+
+    [Parameter] public IReadOnlyList<int> AvailableYears { get; set; } = [];
+    [Parameter] public int? SelectedYear { get; set; }
+    [Parameter] public int? SelectedMonth { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnYearChanged { get; set; }
+    [Parameter] public EventCallback<ChangeEventArgs> OnMonthChanged { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+}

@@ -10,15 +10,15 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using tesisproject.backend.Services.Interfaces;
+using tesisproject.backend.Identity;
 using tesisproject.shared.DTOs;
 using tesisproject.shared.DTOs.Articles;
 
 namespace tesisproject.backend.Controllers
 {
     [ApiController]
-    [AllowAnonymous]
+    [Authorize(Policy = AppPolicies.AuthenticatedUser)]
     [Route("api/[controller]")]
-    //[Authorize] // opcional
     public class ArticlesController : ControllerBase
     {
         private readonly IArticlesService _svc;
@@ -69,6 +69,7 @@ namespace tesisproject.backend.Controllers
         }
         // POST: api/articles
         [HttpPost]
+        [Authorize(Policy = AppPolicies.ArticlesWrite)]
         public async Task<ActionResult<int>> Create([FromBody] CreateArticleRequest req, CancellationToken ct)
         {
             // Usa el userId real si ya tienes identidad
@@ -78,6 +79,7 @@ namespace tesisproject.backend.Controllers
         }
         // POST: api/articles/import-bi
         [HttpPost("import-bi")]
+        [Authorize(Policy = AppPolicies.ArticlesWrite)]
         public async Task<ActionResult<ArticleImportResultDto>> ImportBi(
             IFormFile file,
             CancellationToken ct)
@@ -166,6 +168,7 @@ namespace tesisproject.backend.Controllers
 
         // PUT: api/articles/5
         [HttpPut("{id:int}")]
+        [Authorize(Policy = AppPolicies.ArticlesWrite)]
         public async Task<ActionResult> Update(int id, [FromBody] UpdateArticleRequest req, CancellationToken ct)
         {
             var userId = User?.Identity?.Name ?? "system";
@@ -175,6 +178,7 @@ namespace tesisproject.backend.Controllers
 
         // DELETE: api/articles/5
         [HttpDelete("{id:int}")]
+        [Authorize(Policy = AppPolicies.ArticlesWrite)]
         public async Task<ActionResult> Delete(int id, CancellationToken ct)
         {
             var userId = User?.Identity?.Name ?? "system";

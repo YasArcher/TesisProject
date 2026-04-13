@@ -43,172 +43,190 @@
         <div class="alert alert-success shadow-sm">@SuccessMessage</div>
     }
 
-    <section class="security-admin-summary row g-4 mb-4">
-        <div class="col-12 col-md-4">
-            <article class="security-admin-summary__card">
-                <div class="security-admin-summary__icon">◉</div>
-                <div class="security-admin-summary__label">Usuarios</div>
-                <div class="security-admin-summary__value">@Users.Count</div>
-                <div class="security-admin-summary__note">Cuentas disponibles para acceso al sistema</div>
+    <section class="security-command-center mb-4">
+        <div class="security-command-center__stats">
+            <article class="security-mini-stat">
+                <span class="security-mini-stat__icon">◉</span>
+                <span>
+                    <strong>@Users.Count</strong>
+                    <small>usuarios</small>
+                </span>
+            </article>
+            <article class="security-mini-stat">
+                <span class="security-mini-stat__icon">⌘</span>
+                <span>
+                    <strong>@Roles.Count</strong>
+                    <small>roles</small>
+                </span>
+            </article>
+            <article class="security-mini-stat security-mini-stat--warm">
+                <span class="security-mini-stat__icon">✓</span>
+                <span>
+                    <strong>@Users.Count(x => !x.IsLockedOut)</strong>
+                    <small>activos</small>
+                </span>
             </article>
         </div>
-        <div class="col-12 col-md-4">
-            <article class="security-admin-summary__card">
-                <div class="security-admin-summary__icon">⌘</div>
-                <div class="security-admin-summary__label">Roles</div>
-                <div class="security-admin-summary__value">@Roles.Count</div>
-                <div class="security-admin-summary__note">Perfiles administrativos y operativos configurados</div>
-            </article>
-        </div>
-        <div class="col-12 col-md-4">
-            <article class="security-admin-summary__card">
-                <div class="security-admin-summary__icon">◎</div>
-                <div class="security-admin-summary__label">Vista actual</div>
-                <div class="security-admin-summary__value">Administrador</div>
-                <div class="security-admin-summary__note">Puedes crear accesos y reasignar permisos</div>
-            </article>
+        <div class="security-command-center__actions">
+            <button type="button" class="security-pill-action security-pill-action--primary" @onclick="OpenCreateUserModal">+ Usuario</button>
+            <button type="button" class="security-pill-action" @onclick="OpenCreateRoleModal"># Perfil</button>
         </div>
     </section>
 
-    <div class="row g-4">
-        <div class="col-12 col-xl-4">
-            <div class="card shadow-sm border-0 h-100 security-admin-card">
-                <div class="card-body">
-                    <div class="security-admin-card__eyebrow">Acciones rápidas</div>
-                    <h2 class="h5 mb-1">Gestión institucional</h2>
-                    <p class="text-muted mb-4">Usa estos accesos para habilitar nuevas cuentas o sumar perfiles operativos sin recargar la pantalla principal.</p>
-
-                    <div class="security-admin-actions">
-                        <button type="button" class="security-admin-actions__button security-admin-actions__button--primary" @onclick="OpenCreateUserModal">
-                            <span class="security-admin-actions__icon">+</span>
-                            <span>
-                                <span class="security-admin-actions__title">Registrar usuario</span>
-                                <span class="security-admin-actions__description">Crear una cuenta institucional y asignar responsabilidades iniciales.</span>
-                            </span>
-                        </button>
-
-                        <button type="button" class="security-admin-actions__button" @onclick="OpenCreateRoleModal">
-                            <span class="security-admin-actions__icon">#</span>
-                            <span>
-                                <span class="security-admin-actions__title">Crear perfil</span>
-                                <span class="security-admin-actions__description">Agregar un nuevo perfil operativo para casos institucionales especiales.</span>
-                            </span>
-                        </button>
-                    </div>
-                </div>
-            </div>
+    <section class="security-workspace">
+        <div class="security-workspace__tabs" role="tablist" aria-label="Administración de accesos">
+            <button type="button" class="@GetSecurityTabClass("users")" @onclick='() => SetSecurityTab("users")'>
+                <span>Usuarios</span>
+                <small>@FilteredUsers.Count()</small>
+            </button>
+            <button type="button" class="@GetSecurityTabClass("roles")" @onclick='() => SetSecurityTab("roles")'>
+                <span>Roles</span>
+                <small>@Roles.Count</small>
+            </button>
+            <button type="button" class="@GetSecurityTabClass("permissions")" @onclick='() => SetSecurityTab("permissions")'>
+                <span>Permisos</span>
+                <small>@(SelectedUser is null ? "Elegir usuario" : "Editando")</small>
+            </button>
         </div>
 
-        <div class="col-12 col-xl-8">
-            <div class="card shadow-sm border-0 h-100 security-admin-card">
-                <div class="card-body">
-                    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
-                        <div>
-                            <div class="security-admin-card__eyebrow">Perfiles disponibles</div>
-                            <h2 class="h5 mb-1">Roles del sistema</h2>
-                            <p class="text-muted mb-0">Estos perfiles determinan qué puede hacer cada usuario dentro del flujo de registro, validación y procesamiento.</p>
-                        </div>
-                        <div class="d-flex flex-column align-items-lg-end gap-2">
-                            <button class="btn btn-outline-primary" @onclick="ToggleAdvancedRoleEditor">
-                                @(ShowAdvancedRoleEditor ? "Ocultar edición avanzada" : "Mostrar edición avanzada")
-                            </button>
-                            @if (ShowAdvancedRoleEditor)
+        @if (ActiveSecurityTab == "users")
+        {
+            <div class="security-panel">
+                <div class="security-panel__header">
+                    <div>
+                        <div class="security-admin-card__eyebrow">Directorio operativo</div>
+                        <h2 class="h5 mb-1">Usuarios registrados</h2>
+                        <p class="text-muted mb-0">Busca una cuenta y selecciónala para ajustar sus permisos.</p>
+                    </div>
+                    <div class="security-filter-bar">
+                        <input class="security-filter-input" placeholder="Buscar por nombre o correo" @bind="UserSearchTerm" @bind:event="oninput" />
+                        <select class="security-filter-select" @bind="RoleFilter">
+                            <option value="">Todos los roles</option>
+                            @foreach (var role in Roles)
                             {
-                                <button class="btn btn-outline-secondary" @onclick="OpenCreateRoleModal">Abrir editor de perfiles</button>
+                                <option value="@role.Name">@GetRoleDisplayName(role.Name)</option>
                             }
-                        </div>
-                    </div>
-
-                    <div class="row g-3">
-                        @foreach (var role in Roles)
-                        {
-                            <div class="col-12 col-md-6">
-                                <article class="security-role-card">
-                                    <div class="security-role-card__title">@GetRoleDisplayName(role.Name)</div>
-                                    @if (ShowAdvancedRoleEditor)
-                                    {
-                                        <div class="security-role-card__code">@role.Name</div>
-                                    }
-                                    <div class="security-role-card__description">@GetRoleDescription(role.Name)</div>
-                                    <div class="security-role-card__foot">@role.UserCount usuario(s) asignado(s)</div>
-                                </article>
-                            </div>
-                        }
+                        </select>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="col-12 col-xxl-7">
-            <div class="card shadow-sm border-0 h-100 security-admin-card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div>
-                            <div class="security-admin-card__eyebrow">Gestión de accesos</div>
-                            <h2 class="h5 mb-0">Usuarios registrados</h2>
-                        </div>
-                        <span class="badge text-bg-light border">@Users.Count cuenta(s)</span>
-                    </div>
-
-                    <div class="security-user-list">
-                        @if (Users.Count == 0)
-                        {
-                            <div class="text-center text-muted py-4">Todavía no hay usuarios registrados.</div>
-                        }
-                        else
-                        {
-                            @foreach (var user in Users)
-                            {
-                                <button type="button"
-                                        class="security-user-card @(SelectedUser?.UserId == user.UserId ? "security-user-card--selected" : null)"
-                                        @onclick="() => SelectUser(user)">
-                                    <div class="security-user-card__header">
-                                        <div>
-                                            <div class="security-user-card__name">@user.FullName</div>
-                                            <div class="security-user-card__email">@user.Email</div>
-                                        </div>
-                                        <span class="badge @(user.IsLockedOut ? "text-bg-danger" : "text-bg-success")">
-                                            @(user.IsLockedOut ? "Bloqueado" : "Activo")
-                                        </span>
-                                    </div>
-                                    <div class="security-user-card__roles">
-                                        @foreach (var role in user.Roles)
-                                        {
-                                            <span class="badge rounded-pill text-bg-light border">@GetRoleDisplayName(role)</span>
-                                        }
-                                    </div>
-                                </button>
-                            }
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12 col-xxl-5">
-            <div class="card shadow-sm border-0 h-100 security-admin-card">
-                <div class="card-body">
-                    <div class="security-admin-card__eyebrow">Asignación</div>
-                    <h2 class="h5 mb-3">Permisos del usuario</h2>
-
-                    @if (SelectedUser is null)
+                <div class="security-user-grid">
+                    @if (!FilteredUsers.Any())
                     {
-                        <div class="text-muted">Selecciona un usuario para actualizar sus responsabilidades dentro del sistema.</div>
+                        <div class="security-empty-state">No encontramos usuarios con los filtros actuales.</div>
                     }
                     else
                     {
-                        <div class="security-selected-user">
-                            <div class="security-selected-user__name">@SelectedUser.FullName</div>
-                            <div class="security-selected-user__email">@SelectedUser.Email</div>
-                        </div>
+                        @foreach (var user in FilteredUsers)
+                        {
+                            <button type="button"
+                                    class="security-user-card @(SelectedUser?.UserId == user.UserId ? "security-user-card--selected" : null)"
+                                    @onclick="() => SelectUserAndOpenPermissions(user)">
+                                <div class="security-user-card__header">
+                                    <div class="security-user-avatar">@GetInitials(user)</div>
+                                    <div class="security-user-card__identity">
+                                        <div class="security-user-card__name">@GetUserDisplayName(user)</div>
+                                        <div class="security-user-card__email">@user.Email</div>
+                                    </div>
+                                    <span class="security-status-pill @(user.IsLockedOut ? "security-status-pill--danger" : null)">
+                                        @(user.IsLockedOut ? "Bloqueado" : "Activo")
+                                    </span>
+                                </div>
+                                <div class="security-user-card__roles">
+                                    @foreach (var role in user.Roles.Take(3))
+                                    {
+                                        <span class="security-role-chip">@GetRoleDisplayName(role)</span>
+                                    }
+                                    @if (user.Roles.Count() > 3)
+                                    {
+                                        <span class="security-role-chip security-role-chip--muted">+@(user.Roles.Count() - 3)</span>
+                                    }
+                                </div>
+                            </button>
+                        }
+                    }
+                </div>
+            </div>
+        }
+        else if (ActiveSecurityTab == "roles")
+        {
+            <div class="security-panel">
+                <div class="security-panel__header">
+                    <div>
+                        <div class="security-admin-card__eyebrow">Mapa de responsabilidades</div>
+                        <h2 class="h5 mb-1">Roles del sistema</h2>
+                        <p class="text-muted mb-0">Vista resumida de los perfiles que ordenan el flujo institucional.</p>
+                    </div>
+                    <button class="security-pill-action" @onclick="ToggleAdvancedRoleEditor">
+                        @(ShowAdvancedRoleEditor ? "Ocultar códigos" : "Ver códigos internos")
+                    </button>
+                </div>
 
-                        <div class="d-flex flex-column gap-2 mb-4">
+                <div class="security-role-grid">
+                    @foreach (var role in Roles)
+                    {
+                        <article class="security-role-card">
+                            <div class="security-role-card__top">
+                                <span class="security-role-card__icon">@GetRoleIcon(role.Name)</span>
+                                <span class="security-role-card__count">@role.UserCount usuario(s)</span>
+                            </div>
+                            <div class="security-role-card__title">@GetRoleDisplayName(role.Name)</div>
+                            @if (ShowAdvancedRoleEditor)
+                            {
+                                <div class="security-role-card__code">@role.Name</div>
+                            }
+                            <div class="security-role-card__description">@GetRoleDescription(role.Name)</div>
+                        </article>
+                    }
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="security-panel security-panel--permissions">
+                <div class="security-panel__header">
+                    <div>
+                        <div class="security-admin-card__eyebrow">Asignación de permisos</div>
+                        <h2 class="h5 mb-1">Responsabilidades del usuario</h2>
+                        <p class="text-muted mb-0">Modifica solo los roles necesarios para mantener limpio el acceso operativo.</p>
+                    </div>
+                    @if (SelectedUser is not null)
+                    {
+                        <button class="security-pill-action security-pill-action--primary" @onclick="SaveSelectedUserRolesAsync" disabled="@IsBusy">
+                            @(IsBusy ? "Guardando..." : "Guardar permisos")
+                        </button>
+                    }
+                </div>
+
+                @if (SelectedUser is null)
+                {
+                    <div class="security-empty-state security-empty-state--large">Selecciona un usuario desde la pestaña Usuarios para administrar sus permisos.</div>
+                }
+                else
+                {
+                    <div class="security-permission-layout">
+                        <aside class="security-selected-user">
+                            <div class="security-user-avatar security-user-avatar--large">@GetInitials(SelectedUser)</div>
+                            <div class="security-selected-user__name">@GetUserDisplayName(SelectedUser)</div>
+                            <div class="security-selected-user__email">@SelectedUser.Email</div>
+                            <div class="security-user-card__roles">
+                                @foreach (var role in SelectedUserRoles)
+                                {
+                                    <span class="security-role-chip">@GetRoleDisplayName(role)</span>
+                                }
+                            </div>
+                        </aside>
+
+                        <div class="security-permission-grid">
                             @foreach (var role in Roles)
                             {
                                 <label class="security-role-option">
-                                    <div>
-                                        <div class="security-role-option__title">@GetRoleDisplayName(role.Name)</div>
-                                        <div class="security-role-option__description">@GetRoleDescription(role.Name)</div>
+                                    <div class="security-role-option__main">
+                                        <span class="security-role-card__icon">@GetRoleIcon(role.Name)</span>
+                                        <span>
+                                            <span class="security-role-option__title">@GetRoleDisplayName(role.Name)</span>
+                                            <span class="security-role-option__description">@GetRoleDescription(role.Name)</span>
+                                        </span>
                                     </div>
                                     <input type="checkbox"
                                            class="form-check-input"
@@ -217,13 +235,11 @@
                                 </label>
                             }
                         </div>
-
-                        <button class="btn btn-primary w-100" @onclick="SaveSelectedUserRolesAsync" disabled="@IsBusy">Guardar cambios de permisos</button>
-                    }
-                </div>
+                    </div>
+                }
             </div>
-        </div>
-    </div>
+        }
+    </section>
 
     @if (ShowCreateUserModal)
     {
@@ -336,6 +352,22 @@
     private bool IsBusy { get; set; }
     private string? ErrorMessage { get; set; }
     private string? SuccessMessage { get; set; }
+    private string ActiveSecurityTab { get; set; } = "users";
+    private string UserSearchTerm { get; set; } = string.Empty;
+    private string RoleFilter { get; set; } = string.Empty;
+
+    private IEnumerable<IdentityUserListItemDto> FilteredUsers
+        => Users.Where(user =>
+        {
+            var matchesText = string.IsNullOrWhiteSpace(UserSearchTerm)
+                || GetUserDisplayName(user).Contains(UserSearchTerm, StringComparison.OrdinalIgnoreCase)
+                || (user.Email?.Contains(UserSearchTerm, StringComparison.OrdinalIgnoreCase) ?? false);
+
+            var matchesRole = string.IsNullOrWhiteSpace(RoleFilter)
+                || user.Roles.Any(role => string.Equals(role, RoleFilter, StringComparison.OrdinalIgnoreCase));
+
+            return matchesText && matchesRole;
+        });
 
     protected override async Task OnInitializedAsync()
     {
@@ -460,6 +492,17 @@
         SyncSelectedUserRoles();
     }
 
+    private void SelectUserAndOpenPermissions(IdentityUserListItemDto user)
+    {
+        SelectUser(user);
+        ActiveSecurityTab = "permissions";
+    }
+
+    private void SetSecurityTab(string tab)
+    {
+        ActiveSecurityTab = tab;
+    }
+
     private void SyncSelectedUserRoles()
     {
         SelectedUserRoles.Clear();
@@ -556,6 +599,43 @@
             "WorkflowProcessorAreaTecnica" => "Procesa el envío aprobado hacia la base principal del sistema.",
             _ => "Perfil disponible para asignación dentro del sistema."
         };
+
+    private string GetSecurityTabClass(string tab)
+        => string.Equals(ActiveSecurityTab, tab, StringComparison.OrdinalIgnoreCase)
+            ? "security-workspace-tab security-workspace-tab--active"
+            : "security-workspace-tab";
+
+    private static string GetRoleIcon(string roleName)
+        => roleName switch
+        {
+            "Admin" => "A",
+            "Analyst" => "D",
+            "Author" => "AU",
+            "WorkflowReviewerUodide" => "U",
+            "WorkflowReviewerAreaTecnica" => "T",
+            "WorkflowProcessorAreaTecnica" => "P",
+            _ => "#"
+        };
+
+    private static string GetUserDisplayName(IdentityUserListItemDto user)
+        => string.IsNullOrWhiteSpace(user.FullName) ? user.Email : user.FullName;
+
+    private static string GetInitials(IdentityUserListItemDto user)
+    {
+        var source = GetUserDisplayName(user);
+        if (string.IsNullOrWhiteSpace(source))
+        {
+            return "U";
+        }
+
+        var parts = source
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Take(2)
+            .Select(x => char.ToUpperInvariant(x[0]))
+            .ToArray();
+
+        return parts.Length == 0 ? "U" : new string(parts);
+    }
 
     private sealed class CreateUserFormModel
     {

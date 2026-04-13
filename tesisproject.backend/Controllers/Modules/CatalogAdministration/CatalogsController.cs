@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using tesisproject.backend.Data;
 using tesisproject.backend.Data.Entities;
+using tesisproject.backend.Identity;
 using tesisproject.shared.DTOs.Catalogs;
 using tesisproject.shared.DTOs.Configuration;
 
@@ -16,7 +17,7 @@ namespace tesisproject.backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [AllowAnonymous] // Catálogos públicos para el frontend
+    [Authorize(Policy = AppPolicies.AuthenticatedUser)]
     public class CatalogsController : ControllerBase
     {
         private readonly AppDbContext _db;
@@ -201,6 +202,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpGet("admin/{catalogKey}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<List<CatalogAdminItemDto>>> GetAdminCatalog(string catalogKey, CancellationToken ct)
         {
             var items = await GetAdminCatalogItemsAsync(catalogKey, ct);
@@ -213,6 +215,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPost("admin/{catalogKey}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<CatalogAdminItemDto>> CreateAdminCatalogItem(
             string catalogKey,
             [FromBody] UpsertCatalogItemRequest request,
@@ -230,6 +233,7 @@ namespace tesisproject.backend.Controllers
         }
 
         [HttpPut("admin/{catalogKey}/{id:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<CatalogAdminItemDto>> UpdateAdminCatalogItem(
             string catalogKey,
             int id,

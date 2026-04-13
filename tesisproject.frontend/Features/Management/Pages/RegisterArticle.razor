@@ -6,6 +6,7 @@
 @using Blazored.LocalStorage
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.JSInterop
 @using tesisproject.frontend.Features.Management.Components
 @using tesisproject.frontend.Models.Configuration
@@ -21,6 +22,7 @@
 @inject ILocalStorageService LocalStorage
 @inject IJSRuntime JS
 @inject NavigationManager NavManager
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Registro dinámico</PageTitle>
 
@@ -36,10 +38,10 @@
             </button>
             <button type="button"
                     role="tab"
-                    aria-selected="@(CurrentMode == RegisterArticleMode.Mass)"
-                    class="register-mode-tab register-generic-tab @(CurrentMode == RegisterArticleMode.Mass ? "register-mode-tab--active" : null)"
-                    @onclick="() => SetMode(RegisterArticleMode.Mass)">
-                Registro en masa
+                    aria-selected="@(!IsAdminExperience && CurrentMode == RegisterArticleMode.Mass)"
+                    class="register-mode-tab register-generic-tab @(!IsAdminExperience && CurrentMode == RegisterArticleMode.Mass ? "register-mode-tab--active" : null)"
+                    @onclick="OpenSecondaryRegistrationMode">
+                @(IsAdminExperience ? "Matriz de registro" : "Registro en masa")
             </button>
         </div>
     </section>
@@ -317,6 +319,7 @@
     private bool IsLoading { get; set; } = true;
     private bool IsSaving { get; set; }
     private bool IsSummaryDrawerOpen { get; set; }
+    private bool IsAdminExperience { get; set; }
     private RegisterArticleMode CurrentMode { get; set; } = RegisterArticleMode.Single;
     private string ErrorMessage { get; set; } = string.Empty;
     private string SuccessMessage { get; set; } = string.Empty;
@@ -344,7 +347,7 @@
                 },
                 new RegisterArticleQuickAccessItem
                 {
-                    Label = "Registro en masa",
+                    Label = IsAdminExperience ? "Matriz de registro" : "Registro en masa",
                     Target = "mass-registration",
                     IsButton = true,
                     IsWarmAccent = true
@@ -377,8 +380,15 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await LoadRoleStateAsync();
         await LoadUiStateAsync();
         await LoadFormsAsync();
+    }
+
+    private async Task LoadRoleStateAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        IsAdminExperience = state.User.IsInRole("Admin");
     }
 
     private async Task UpdateSectionSearchTermAsync(string value)
@@ -420,11 +430,28 @@
 
     private void SetMode(RegisterArticleMode mode)
     {
+        if (mode == RegisterArticleMode.Mass && IsAdminExperience)
+        {
+            GoToRegistrationMatrix();
+            return;
+        }
+
         CurrentMode = mode;
         if (mode == RegisterArticleMode.Mass)
         {
             IsSummaryDrawerOpen = false;
         }
+    }
+
+    private void OpenSecondaryRegistrationMode()
+    {
+        if (IsAdminExperience)
+        {
+            GoToRegistrationMatrix();
+            return;
+        }
+
+        SetMode(RegisterArticleMode.Mass);
     }
 
     private async Task HandleMassRegistrationSubmittedAsync(string message)
@@ -1382,7 +1409,18 @@
 
     private void GoToConfiguration() => NavManager.NavigateTo("/configuration");
 
-    private void GoToBulkImport() => CurrentMode = RegisterArticleMode.Mass;
+    private void GoToBulkImport()
+    {
+        if (IsAdminExperience)
+        {
+            GoToRegistrationMatrix();
+            return;
+        }
+
+        CurrentMode = RegisterArticleMode.Mass;
+    }
+
+    private void GoToRegistrationMatrix() => NavManager.NavigateTo("/management/registration-matrix");
 
     private sealed class RegisterArticleUiState
     {

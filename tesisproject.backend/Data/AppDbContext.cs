@@ -461,8 +461,11 @@ namespace tesisproject.backend.Data
                 e.Property(x => x.StageGroupKey).HasMaxLength(100);
                 e.Property(x => x.StageGroupName).HasMaxLength(150);
                 e.Property(x => x.IsActive).HasDefaultValue(true);
+                e.Property(x => x.CanEditData).HasDefaultValue(false);
                 e.Property(x => x.CanReturn).HasDefaultValue(true);
                 e.Property(x => x.CanApprove).HasDefaultValue(true);
+                e.Property(x => x.CanProcessBatch).HasDefaultValue(false);
+                e.Property(x => x.IsFinalStage).HasDefaultValue(false);
 
                 e.HasOne(x => x.WorkflowDefinition)
                     .WithMany(x => x.Stages)
@@ -598,6 +601,8 @@ namespace tesisproject.backend.Data
                 e.Property(x => x.EntityName).HasMaxLength(100).IsRequired();
                 e.Property(x => x.Status).HasMaxLength(30).IsRequired();
                 e.Property(x => x.Notes).HasMaxLength(1000);
+                e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+                e.HasIndex(x => x.CreatedByUserId);
 
                 e.HasOne(x => x.LastImportBatch)
                     .WithMany()

@@ -10,6 +10,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
 using QuestPDF.Infrastructure;
+using tesisproject.backend.Filters;
+using tesisproject.backend.Identity;
 using tesisproject.backend.DataWarehouse;
 using tesisproject.shared.DTOs.Reports;
 
@@ -17,8 +19,8 @@ namespace tesisproject.backend.BI.Reports
 {
     [ApiController]
     [Route("api/reports")]
-    //[Authorize]
-    [AllowAnonymous]
+    [Authorize(Policy = AppPolicies.ReportingAccess)]
+    [ServiceFilter(typeof(LegacyReportingEnabledFilter))]
     public class ReportsController : ControllerBase
     {
         static ReportsController()

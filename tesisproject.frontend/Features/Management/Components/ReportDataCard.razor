@@ -1,0 +1,16 @@
+<section class="report-data-card bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden">
+    <div class="flex items-center justify-between mb-3">
+        <div>
+            <h2 class="text-base font-semibold text-slate-900">@Title</h2>
+            <p class="text-xs text-slate-500">@Description</p>
+        </div>
+    </div>
+
+    @ChildContent
+</section>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Description { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
