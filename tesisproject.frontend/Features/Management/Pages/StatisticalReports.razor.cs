@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
 using tesisproject.frontend.Features.Management.Components;
@@ -30,9 +31,16 @@ namespace tesisproject.frontend.Features.Management.Pages
 
         protected bool _showAdvancedFilters = false;
         protected bool _showLegacyReporting = false;
+        protected bool _showInstitutionalFilters = false;
         protected bool _isLoadingInstitutionalReporting = true;
+        protected bool _isRefreshingInstitutionalReporting = false;
+        protected bool _isRunningInstitutionalEtl = false;
+        protected bool _isInstitutionalPdfGenerating = false;
         protected string? _institutionalReportingError;
         protected InstitutionalReportingDashboardDto? _institutionalDashboard;
+        protected InstitutionalReportingFilterDto _institutionalFilter = new();
+        protected DateTime? _institutionalLastLoadedAt;
+        private CancellationTokenSource? _institutionalLoadCts;
 
         protected static readonly IReadOnlyList<ReportBadgeItem> ReportHeroBadges =
         [
@@ -431,24 +439,54 @@ namespace tesisproject.frontend.Features.Management.Pages
             _topResearchLines = ReportDashboardMetricsBuilder.BuildTopResearchLines(_byResearchLine);
         }
 
-        private async Task LoadInstitutionalReportingAsync()
+        private async Task LoadInstitutionalReportingAsync(bool keepCurrentDashboard = false)
         {
-            _isLoadingInstitutionalReporting = true;
+            _institutionalLoadCts?.Cancel();
+            _institutionalLoadCts?.Dispose();
+            _institutionalLoadCts = new CancellationTokenSource();
+            var requestCts = _institutionalLoadCts;
+
+            var canRefreshInPlace = keepCurrentDashboard && _institutionalDashboard != null;
+
+            if (canRefreshInPlace)
+            {
+                _isRefreshingInstitutionalReporting = true;
+            }
+            else
+            {
+                _isLoadingInstitutionalReporting = true;
+            }
+
             _institutionalReportingError = null;
 
             try
             {
-                _institutionalDashboard = await InstitutionalReporting.GetDashboardAsync();
+                _institutionalDashboard = await InstitutionalReporting.GetDashboardAsync(_institutionalFilter, requestCts.Token);
+                _institutionalLastLoadedAt = DateTime.Now;
+            }
+            catch (OperationCanceledException) when (requestCts.IsCancellationRequested)
+            {
+                return;
             }
             catch (Exception ex)
             {
-                _institutionalDashboard = null;
+                if (!canRefreshInPlace)
+                {
+                    _institutionalDashboard = null;
+                }
+
                 _institutionalReportingError = $"No se pudo cargar la reportería institucional: {ex.Message}";
                 Console.Error.WriteLine(ex);
             }
             finally
             {
-                _isLoadingInstitutionalReporting = false;
+                if (ReferenceEquals(_institutionalLoadCts, requestCts))
+                {
+                    _isLoadingInstitutionalReporting = false;
+                    _isRefreshingInstitutionalReporting = false;
+                    _institutionalLoadCts.Dispose();
+                    _institutionalLoadCts = null;
+                }
             }
         }
 
@@ -522,7 +560,9 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected async Task RunEtlAndReload()
         {
             _isLoading = true;
+            _isRunningInstitutionalEtl = true;
             _errorMessage = null;
+            _institutionalReportingError = null;
             StateHasChanged();
 
             try
@@ -530,16 +570,21 @@ namespace tesisproject.frontend.Features.Management.Pages
                 await InstitutionalReporting.RunFullLoadAsync();
 
                 await LoadInstitutionalReportingAsync();
-                await LoadDashboardAsync(buildFilterFromUi: true);
-                ResetDetailView();
+
+                if (_showLegacyReporting)
+                {
+                    await LoadDashboardAsync(buildFilterFromUi: true);
+                    ResetDetailView();
+                }
             }
             catch (Exception ex)
             {
-                _errorMessage = $"Error en ETL: {ex.Message}";
+                _institutionalReportingError = $"No fue posible actualizar la información: {ex.Message}";
                 Console.Error.WriteLine(ex);
             }
             finally
             {
+                _isRunningInstitutionalEtl = false;
                 _isLoading = false;
                 StateHasChanged();
             }
@@ -587,10 +632,275 @@ namespace tesisproject.frontend.Features.Management.Pages
                 : "reports-dw-status reports-dw-status--warning";
         }
 
+        protected static string GetInstitutionalStatusLabel(string? status)
+        {
+            return string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase)
+                ? "actualizada"
+                : "pendiente de actualización";
+        }
+
+        protected bool HasInstitutionalReportingData =>
+            (_institutionalDashboard?.Health.ArticleRows ?? 0) > 0
+            || (_institutionalDashboard?.Health.BatchRows ?? 0) > 0
+            || (_institutionalDashboard?.Health.WorkflowStageRows ?? 0) > 0;
+
+        protected int MaxArticlesByYear =>
+            Math.Max(1, _institutionalDashboard?.ArticlesByYear.Select(x => x.Count).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int MaxIndexingArticles =>
+            Math.Max(1, _institutionalDashboard?.ArticlesByIndexingSource.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int MaxPublicationStatusArticles =>
+            Math.Max(1, _institutionalDashboard?.ArticlesByPublicationStatus.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int MaxResearchLineArticles =>
+            Math.Max(1, _institutionalDashboard?.ArticlesByResearchLine.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int MaxVenueArticles =>
+            Math.Max(1, _institutionalDashboard?.ArticlesByVenue.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int MaxMonthArticles =>
+            Math.Max(1, _institutionalDashboard?.ArticlesByMonth.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int MaxDayArticles =>
+            Math.Max(1, _institutionalDashboard?.ArticlesByDay.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int MaxAuthorArticles =>
+            Math.Max(1, _institutionalDashboard?.ArticlesByAuthor.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int MaxFacultyArticles =>
+            Math.Max(1, _institutionalDashboard?.ArticlesByFaculty.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int MaxVenueTypeArticles =>
+            Math.Max(1, _institutionalDashboard?.ArticlesByVenueType.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int MaxQuartileArticles =>
+            Math.Max(1, _institutionalDashboard?.ArticlesByQuartile.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int OpenAccessPercent =>
+            (_institutionalDashboard?.ScientificProduction.TotalArticles ?? 0) <= 0
+                ? 0
+                : (int)Math.Round((_institutionalDashboard!.ScientificProduction.OpenAccessArticles / (double)_institutionalDashboard.ScientificProduction.TotalArticles) * 100);
+
+        protected int ProjectResultPercent =>
+            (_institutionalDashboard?.ScientificProduction.TotalArticles ?? 0) <= 0
+                ? 0
+                : (int)Math.Round((_institutionalDashboard!.ScientificProduction.ProjectResultArticles / (double)_institutionalDashboard.ScientificProduction.TotalArticles) * 100);
+
+        protected string InstitutionalLastLoadedLabel =>
+            _institutionalLastLoadedAt.HasValue
+                ? _institutionalLastLoadedAt.Value.ToString("dd/MM/yyyy HH:mm:ss")
+                : "Sin lectura reciente";
+
+        protected string InstitutionalScopeLabel =>
+            ActiveInstitutionalFilterChips.Count == 0
+                ? "Vista general institucional"
+                : $"{ActiveInstitutionalFilterChips.Count} filtros activos";
+
+        protected string InstitutionalPeriodLabel =>
+            string.Equals(_institutionalFilter.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase)
+                ? "Fecha de publicación"
+                : "Fecha de registro";
+
+        protected string TopInstitutionalYearLabel
+        {
+            get
+            {
+                var item = _institutionalDashboard?.ArticlesByYear
+                    .OrderByDescending(x => x.Count)
+                    .ThenByDescending(x => x.Year)
+                    .FirstOrDefault();
+
+                return item is null ? "Sin dato" : $"{item.Year} · {item.Count:N0}";
+            }
+        }
+
+        protected string TopInstitutionalResearchLineLabel
+        {
+            get
+            {
+                var item = _institutionalDashboard?.ArticlesByResearchLine
+                    .OrderByDescending(x => x.TotalArticles)
+                    .FirstOrDefault();
+
+                return item is null ? "Sin dato" : $"{ShortenLabel(item.Name, 34)} · {item.TotalArticles:N0}";
+            }
+        }
+
+        protected string TopInstitutionalVenueLabel
+        {
+            get
+            {
+                var item = _institutionalDashboard?.ArticlesByVenue
+                    .OrderByDescending(x => x.TotalArticles)
+                    .FirstOrDefault();
+
+                return item is null ? "Sin dato" : $"{ShortenLabel(item.VenueName, 34)} · {item.TotalArticles:N0}";
+            }
+        }
+
+        protected string TopInstitutionalAuthorLabel
+        {
+            get
+            {
+                var item = _institutionalDashboard?.ArticlesByAuthor
+                    .OrderByDescending(x => x.TotalArticles)
+                    .FirstOrDefault();
+
+                return item is null ? "Sin dato" : $"{ShortenLabel(item.Name, 34)} · {item.TotalArticles:N0}";
+            }
+        }
+
+        protected string TopBroadFieldLabel => BuildTopFieldLabel(x => x.BroadField, "Sin campo amplio");
+
+        protected string TopSpecificFieldLabel => BuildTopFieldLabel(x => x.SpecificField, "Sin campo específico");
+
+        protected string TopDetailedFieldLabel => BuildTopFieldLabel(x => x.DetailedField, "Sin campo detallado");
+
+        protected string TopQuartileLabel
+        {
+            get
+            {
+                var item = _institutionalDashboard?.ArticlesByQuartile
+                    .OrderByDescending(x => x.TotalArticles)
+                    .FirstOrDefault();
+
+                return item is null ? "Sin dato" : $"{ShortenLabel(item.Name, 28)} · {item.TotalArticles:N0}";
+            }
+        }
+
+        private string BuildTopFieldLabel(Func<ReportingFieldSummaryDto, string> selector, string fallback)
+        {
+            var item = _institutionalDashboard?.ArticlesByField
+                .GroupBy(x => string.IsNullOrWhiteSpace(selector(x)) ? fallback : selector(x).Trim())
+                .Select(g => new { Name = g.Key, TotalArticles = g.Sum(x => x.TotalArticles) })
+                .OrderByDescending(x => x.TotalArticles)
+                .FirstOrDefault();
+
+            return item is null ? "Sin dato" : $"{ShortenLabel(item.Name, 30)} · {item.TotalArticles:N0}";
+        }
+
+        protected IReadOnlyList<(string Label, string Value)> ActiveInstitutionalFilterChips
+        {
+            get
+            {
+                var chips = new List<(string Label, string Value)>();
+
+                AddDateChip(chips, "Creación desde", _institutionalFilter.CreatedFrom);
+                AddDateChip(chips, "Creación hasta", _institutionalFilter.CreatedTo);
+                AddDateChip(chips, "Publicación desde", _institutionalFilter.PublishedFrom);
+                AddDateChip(chips, "Publicación hasta", _institutionalFilter.PublishedTo);
+                AddChip(chips, "Periodo", _institutionalFilter.AcademicTerm);
+                AddChip(chips, "Estado", _institutionalFilter.PublicationStatus);
+                AddChip(chips, "Línea", _institutionalFilter.ResearchLine);
+                AddChip(chips, "Campo amplio", _institutionalFilter.BroadField);
+                AddChip(chips, "Campo específico", _institutionalFilter.SpecificField);
+                AddChip(chips, "Campo detallado", _institutionalFilter.DetailedField);
+                AddChip(chips, "Revista", _institutionalFilter.VenueName);
+                AddChip(chips, "Tipo de publicación", _institutionalFilter.VenueType);
+                AddChip(chips, "Cuartil", _institutionalFilter.Quartile);
+
+                if (string.Equals(_institutionalFilter.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase))
+                {
+                    AddChip(chips, "Periodo temporal", InstitutionalPeriodLabel);
+                }
+
+                if (_institutionalFilter.ArticleYear.HasValue)
+                {
+                    chips.Add(("Año", _institutionalFilter.ArticleYear.Value.ToString()));
+                }
+
+                if (_institutionalFilter.IsOpenAccess.HasValue)
+                {
+                    chips.Add(("Acceso", _institutionalFilter.IsOpenAccess.Value ? "Open Access" : "No Open Access"));
+                }
+
+                return chips;
+            }
+        }
+
+        protected static string GetBarWidth(int value, int maxValue)
+        {
+            if (maxValue <= 0 || value <= 0)
+            {
+                return "0%";
+            }
+
+            var percent = Math.Clamp((value / (double)maxValue) * 100, 4, 100);
+            return $"{percent:0.##}%";
+        }
+
+        protected string OpenAccessDonutStyle =>
+            $"background: conic-gradient(#97b067 0 {OpenAccessPercent}%, rgba(67, 86, 99, 0.12) {OpenAccessPercent}% 100%);";
+
+        private static void AddChip(List<(string Label, string Value)> chips, string label, string? value)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                chips.Add((label, value.Trim()));
+            }
+        }
+
+        private static void AddDateChip(List<(string Label, string Value)> chips, string label, DateTime? value)
+        {
+            if (value.HasValue)
+            {
+                chips.Add((label, value.Value.ToString("dd/MM/yyyy")));
+            }
+        }
+
+        protected async Task ApplyInstitutionalFiltersAsync()
+        {
+            await LoadInstitutionalReportingAsync(keepCurrentDashboard: true);
+            StateHasChanged();
+        }
+
+        protected async Task ClearInstitutionalFiltersAsync()
+        {
+            _institutionalFilter = new InstitutionalReportingFilterDto();
+            await LoadInstitutionalReportingAsync(keepCurrentDashboard: true);
+            StateHasChanged();
+        }
+
+        protected void ToggleInstitutionalFilters()
+        {
+            _showInstitutionalFilters = !_showInstitutionalFilters;
+        }
+
+        protected async Task OpenInstitutionalPdfPreviewAsync()
+        {
+            _isInstitutionalPdfGenerating = true;
+            _errorMessage = null;
+            _pdfPreviewDataUrl = null;
+            _showPdfPreview = true;
+            StateHasChanged();
+
+            try
+            {
+                var path = tesisproject.frontend.Services.Implementations.InstitutionalReportingClient
+                    .BuildDashboardUrl(_institutionalFilter, "api/reporting/dashboard/pdf");
+                var bytes = await Http.GetByteArrayAsync(path);
+                _pdfPreviewDataUrl = $"data:application/pdf;base64,{Convert.ToBase64String(bytes)}";
+            }
+            catch (Exception ex)
+            {
+                _errorMessage = $"Error al generar PDF institucional: {ex.Message}";
+                _showPdfPreview = false;
+                Console.Error.WriteLine(ex);
+            }
+            finally
+            {
+                _isInstitutionalPdfGenerating = false;
+                StateHasChanged();
+            }
+        }
+
         protected void ClosePdfPreview()
         {
             _showPdfPreview = false;
             _pdfPreviewDataUrl = null;
+            _isPdfGenerating = false;
+            _isInstitutionalPdfGenerating = false;
         }
 
         // =========================================================

@@ -70,6 +70,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRegistrationMatrixService, RegistrationMatrixService>();
         services.AddScoped<IExternalApiExplorerService, ExternalApiExplorerService>();
         services.AddScoped<IInstitutionalReportingService, InstitutionalReportingService>();
+        services.AddMemoryCache();
         services.Configure<ExternalApiExplorerOptions>(config.GetSection("ExternalApis"));
         services.Configure<LegacyReportingOptions>(config.GetSection("LegacyReporting"));
         services.AddScoped<LegacyReportingEnabledFilter>();

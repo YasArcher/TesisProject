@@ -16,6 +16,10 @@ public sealed class ReportingDbContext : DbContext
     public DbSet<ArticlesByYearRow> ArticlesByYear => Set<ArticlesByYearRow>();
     public DbSet<IndexingSourceSummaryRow> ArticlesByIndexingSource => Set<IndexingSourceSummaryRow>();
     public DbSet<WorkflowCurrentStageRow> WorkflowCurrentStages => Set<WorkflowCurrentStageRow>();
+    public DbSet<ReportingArticleDetailRow> ArticleDetails => Set<ReportingArticleDetailRow>();
+    public DbSet<ReportingQuartileDistributionRow> QuartileDistribution => Set<ReportingQuartileDistributionRow>();
+    public DbSet<ReportingVenueMetricRow> VenueMetricsByYear => Set<ReportingVenueMetricRow>();
+    public DbSet<ReportingArticleAuthorSummaryRow> ArticleAuthorSummaries => Set<ReportingArticleAuthorSummaryRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -60,6 +64,32 @@ public sealed class ReportingDbContext : DbContext
         {
             entity.HasNoKey();
             entity.ToView("vw_Workflow_Batches_ByCurrentStage", "dw");
+        });
+
+        modelBuilder.Entity<ReportingArticleDetailRow>(entity =>
+        {
+            entity.HasNoKey();
+            entity.ToView("vw_Articles_Detail", "dw");
+        });
+
+        modelBuilder.Entity<ReportingQuartileDistributionRow>(entity =>
+        {
+            entity.HasNoKey();
+            entity.ToView("vw_QuartileDistribution", "dw");
+        });
+
+        modelBuilder.Entity<ReportingVenueMetricRow>(entity =>
+        {
+            entity.HasNoKey();
+            entity.ToView("vw_VenueMetrics_ByYear", "dw");
+            entity.Property(x => x.SJR).HasPrecision(18, 3);
+            entity.Property(x => x.CiteScore).HasPrecision(18, 3);
+        });
+
+        modelBuilder.Entity<ReportingArticleAuthorSummaryRow>(entity =>
+        {
+            entity.HasNoKey();
+            entity.ToView(null);
         });
     }
 }

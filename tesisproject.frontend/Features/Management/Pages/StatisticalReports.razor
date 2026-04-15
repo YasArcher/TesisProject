@@ -12,7 +12,7 @@
     <!-- TÍTULO PRINCIPAL                                          -->
     <!-- ========================================================= -->
     <ReportsHero Title="Reportes estadísticos de artículos"
-                 Description="Explora indicadores clave, tendencias temporales y concentración de la producción científica. Esta vista queda preparada para migrar progresivamente hacia la reportería del nuevo modelo extensible."
+                 Description="Explora indicadores clave, tendencias temporales y concentración de la producción científica registrada en la institución."
                  Badges="ReportHeroBadges" />
 
     <section class="reports-dw-panel">
@@ -22,34 +22,71 @@
                     <i class="bi bi-diagram-3"></i>
                 </span>
                 <div>
-                    <p class="reports-dw-panel__kicker">Modelo analítico institucional</p>
-                    <h2>Reportería conectada al DW extensible</h2>
+                    <p class="reports-dw-panel__kicker">Indicadores institucionales</p>
+                    <h2>Panorama de producción académica</h2>
                     <p>
-                        Primer tablero alimentado desde las vistas analíticas del nuevo modelo. Mantiene la reportería anterior como respaldo mientras consolidamos el OLAP definitivo.
+                        Consulta la producción registrada por campos de conocimiento, revistas, líneas de investigación, cuartiles y periodos de análisis.
                     </p>
                 </div>
             </div>
 
-            @if (_isLoadingInstitutionalReporting)
+            @if (_isLoadingInstitutionalReporting && _institutionalDashboard is null)
             {
-                <span class="reports-dw-status reports-dw-status--loading">
-                    <i class="bi bi-arrow-repeat"></i>
-                    Cargando DW
-                </span>
+                <div class="reports-dw-panel__actions">
+                    <span class="reports-dw-status reports-dw-status--loading">
+                        <i class="bi bi-arrow-repeat"></i>
+                        Preparando indicadores
+                    </span>
+                </div>
             }
             else if (!string.IsNullOrWhiteSpace(_institutionalReportingError))
             {
-                <span class="reports-dw-status reports-dw-status--warning">
-                    <i class="bi bi-exclamation-triangle"></i>
-                    Sin conexión DW
-                </span>
+                <div class="reports-dw-panel__actions">
+                    <span class="reports-dw-status reports-dw-status--warning">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Sin datos disponibles
+                    </span>
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <button class="reports-dw-etl-button" @onclick="RunEtlAndReload" disabled="@_isRunningInstitutionalEtl">
+                                <i class="bi bi-arrow-clockwise"></i>
+                                Actualizar información
+                            </button>
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
             }
             else
             {
-                <span class="@GetEtlStatusClass(_institutionalDashboard?.Health.LastEtlStatus)">
-                    <i class="bi bi-database-check"></i>
-                    ETL: @(_institutionalDashboard?.Health.LastEtlStatus ?? "Sin ejecuciones")
-                </span>
+                <div class="reports-dw-panel__actions">
+                    @if (_isRefreshingInstitutionalReporting)
+                    {
+                        <span class="reports-dw-status reports-dw-status--loading">
+                            <i class="bi bi-arrow-repeat"></i>
+                            Actualizando vista
+                        </span>
+                    }
+                    <span class="@GetEtlStatusClass(_institutionalDashboard?.Health.LastEtlStatus)">
+                        <i class="bi bi-database-check"></i>
+                        Información @GetInstitutionalStatusLabel(_institutionalDashboard?.Health.LastEtlStatus)
+                    </span>
+                    <AuthorizeView Roles="Admin">
+                        <Authorized>
+                            <button class="reports-dw-etl-button" @onclick="RunEtlAndReload" disabled="@(_isRunningInstitutionalEtl || _isLoadingInstitutionalReporting)">
+                                @if (_isRunningInstitutionalEtl)
+                                {
+                                    <i class="bi bi-arrow-repeat"></i>
+                                    <span>Actualizando...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                    <span>Actualizar información</span>
+                                }
+                            </button>
+                        </Authorized>
+                    </AuthorizeView>
+                </div>
             }
         </div>
 
@@ -64,66 +101,783 @@
             <div class="reports-dw-panel__grid">
                 <article class="reports-dw-card reports-dw-card--gold">
                     <span><i class="bi bi-journals"></i></span>
-                    <small>Artículos DW</small>
+                    <small>Total de artículos</small>
                     <strong>@((_institutionalDashboard?.ScientificProduction.TotalArticles ?? 0).ToString("N0"))</strong>
-                    <em>Producción científica consolidada</em>
+                    <em>Total dentro del periodo y filtros seleccionados</em>
                 </article>
 
                 <article class="reports-dw-card reports-dw-card--green">
-                    <span><i class="bi bi-unlock"></i></span>
-                    <small>Open Access</small>
-                    <strong>@((_institutionalDashboard?.ScientificProduction.OpenAccessArticles ?? 0).ToString("N0"))</strong>
-                    <em>Artículos marcados como acceso abierto</em>
+                    <span><i class="bi bi-diagram-3"></i></span>
+                    <small>Campo amplio destacado</small>
+                    <strong>@TopBroadFieldLabel</strong>
+                    <em>Campo amplio con mayor cantidad de artículos</em>
                 </article>
 
                 <article class="reports-dw-card reports-dw-card--blue">
-                    <span><i class="bi bi-table"></i></span>
-                    <small>Filas procesadas</small>
-                    <strong>@((_institutionalDashboard?.LoadQuality.TotalRows ?? 0).ToString("N0"))</strong>
-                    <em>@((_institutionalDashboard?.LoadQuality.SuccessfulRows ?? 0).ToString("N0")) correctas · @((_institutionalDashboard?.LoadQuality.ErrorRows ?? 0).ToString("N0")) con error</em>
+                    <span><i class="bi bi-diagram-2"></i></span>
+                    <small>Campo específico destacado</small>
+                    <strong>@TopSpecificFieldLabel</strong>
+                    <em>Campo específico con mayor producción registrada</em>
                 </article>
 
                 <article class="reports-dw-card reports-dw-card--ink">
-                    <span><i class="bi bi-signpost-split"></i></span>
-                    <small>Etapas workflow</small>
-                    <strong>@((_institutionalDashboard?.Workflow.TotalStageExecutions ?? 0).ToString("N0"))</strong>
-                    <em>@((_institutionalDashboard?.Workflow.ApprovedStages ?? 0).ToString("N0")) aprobadas · @((_institutionalDashboard?.Workflow.ReturnedStages ?? 0).ToString("N0")) devueltas</em>
+                    <span><i class="bi bi-bezier"></i></span>
+                    <small>Campo detallado destacado</small>
+                    <strong>@TopDetailedFieldLabel</strong>
+                    <em>Campo detallado más representativo del filtro aplicado</em>
+                </article>
+
+                <article class="reports-dw-card reports-dw-card--green">
+                    <span><i class="bi bi-building"></i></span>
+                    <small>Revista destacada</small>
+                    <strong>@TopInstitutionalVenueLabel</strong>
+                    <em>Revista con mayor concentración</em>
+                </article>
+
+                <article class="reports-dw-card reports-dw-card--blue">
+                    <span><i class="bi bi-signpost-2"></i></span>
+                    <small>Línea destacada</small>
+                    <strong>@TopInstitutionalResearchLineLabel</strong>
+                    <em>Línea de investigación con más artículos</em>
+                </article>
+
+                <article class="reports-dw-card reports-dw-card--gold">
+                    <span><i class="bi bi-award"></i></span>
+                    <small>Cuartil destacado</small>
+                    <strong>@TopQuartileLabel</strong>
+                    <em>Concentración según la categoría de la revista</em>
+                </article>
+
+                <article class="reports-dw-card reports-dw-card--ink">
+                    <span><i class="bi bi-calendar-range"></i></span>
+                    <small>Periodo analizado</small>
+                    <strong>@InstitutionalPeriodLabel</strong>
+                    <em>Agrupación anual, mensual y diaria del tablero</em>
                 </article>
             </div>
 
             <div class="reports-dw-panel__footer">
                 <span>
                     <i class="bi bi-calendar-range"></i>
-                    DimDate: @((_institutionalDashboard?.Health.DimDateRows ?? 0).ToString("N0")) filas
+                    Calendario institucional listo
                 </span>
                 <span>
                     <i class="bi bi-clock-history"></i>
-                    Última carga: @FormatEtlDate(_institutionalDashboard?.Health.LastEtlFinishedAt)
+                    Última actualización: @FormatEtlDate(_institutionalDashboard?.Health.LastEtlFinishedAt)
                 </span>
                 <span>
                     <i class="bi bi-layers"></i>
-                    Lotes DW: @((_institutionalDashboard?.Health.BatchRows ?? 0).ToString("N0"))
+                    Registros procesados: @((_institutionalDashboard?.LoadQuality.TotalRows ?? 0).ToString("N0"))
+                </span>
+                <span>
+                    <i class="bi bi-activity"></i>
+                    Vista: @InstitutionalScopeLabel
                 </span>
             </div>
         }
     </section>
 
+    <section class="reports-dw-filter-panel">
+        <div class="reports-dw-filter-panel__header">
+            <div>
+                <p>Filtros institucionales</p>
+                <h2>Segmenta la producción académica</h2>
+            </div>
+            <div class="reports-dw-filter-panel__actions">
+                <button class="reports-dw-filter-button reports-dw-filter-button--ghost" @onclick="ToggleInstitutionalFilters">
+                    <i class="bi bi-sliders"></i>
+                    @(_showInstitutionalFilters ? "Ocultar filtros" : "Mostrar filtros")
+                </button>
+                <button class="reports-dw-filter-button reports-dw-filter-button--ghost" @onclick="ClearInstitutionalFiltersAsync" disabled="@(_isRefreshingInstitutionalReporting || _isLoadingInstitutionalReporting)">
+                    <i class="bi bi-eraser"></i>
+                    Limpiar
+                </button>
+                <button class="reports-dw-filter-button" @onclick="ApplyInstitutionalFiltersAsync" disabled="@(_isRefreshingInstitutionalReporting || _isLoadingInstitutionalReporting)">
+                    <i class="@(_isRefreshingInstitutionalReporting ? "bi bi-arrow-repeat" : "bi bi-funnel")"></i>
+                    @(_isRefreshingInstitutionalReporting ? "Aplicando..." : "Aplicar filtros")
+                </button>
+                <button class="reports-dw-filter-button reports-dw-filter-button--pdf" @onclick="OpenInstitutionalPdfPreviewAsync" disabled="@(_isInstitutionalPdfGenerating || _isLoadingInstitutionalReporting || _isRefreshingInstitutionalReporting)">
+                    <i class="bi bi-file-earmark-pdf"></i>
+                    @(_isInstitutionalPdfGenerating ? "Generando..." : "Generar PDF")
+                </button>
+            </div>
+        </div>
+
+        @if (_showInstitutionalFilters)
+        {
+        <div class="reports-dw-filter-grid">
+            <label>
+                <span>Periodo para gráficas</span>
+                <select @bind="_institutionalFilter.PeriodDateType">
+                    <option value="">Fecha de registro</option>
+                    <option value="created">Fecha de registro</option>
+                    <option value="published">Fecha de publicación</option>
+                </select>
+            </label>
+            <label>
+                <span>Creación desde</span>
+                <input type="date" @bind="_institutionalFilter.CreatedFrom" @bind:format="yyyy-MM-dd" />
+            </label>
+            <label>
+                <span>Creación hasta</span>
+                <input type="date" @bind="_institutionalFilter.CreatedTo" @bind:format="yyyy-MM-dd" />
+            </label>
+            <label>
+                <span>Publicación desde</span>
+                <input type="date" @bind="_institutionalFilter.PublishedFrom" @bind:format="yyyy-MM-dd" />
+            </label>
+            <label>
+                <span>Publicación hasta</span>
+                <input type="date" @bind="_institutionalFilter.PublishedTo" @bind:format="yyyy-MM-dd" />
+            </label>
+            <label>
+                <span>Periodo académico</span>
+                <select @bind="_institutionalFilter.AcademicTerm">
+                    <option value="">Todos</option>
+                    @foreach (var item in _institutionalDashboard?.FilterOptions.AcademicTerms ?? new())
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Estado</span>
+                <select @bind="_institutionalFilter.PublicationStatus">
+                    <option value="">Todos</option>
+                    @foreach (var item in _institutionalDashboard?.FilterOptions.PublicationStatuses ?? new())
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Línea de investigación</span>
+                <select @bind="_institutionalFilter.ResearchLine">
+                    <option value="">Todas</option>
+                    @foreach (var item in _institutionalDashboard?.FilterOptions.ResearchLines ?? new())
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Campo amplio</span>
+                <select @bind="_institutionalFilter.BroadField">
+                    <option value="">Todas</option>
+                    @foreach (var item in _institutionalDashboard?.FilterOptions.BroadFields ?? new())
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Campo específico</span>
+                <select @bind="_institutionalFilter.SpecificField">
+                    <option value="">Todas</option>
+                    @foreach (var item in _institutionalDashboard?.FilterOptions.SpecificFields ?? new())
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Campo detallado</span>
+                <select @bind="_institutionalFilter.DetailedField">
+                    <option value="">Todas</option>
+                    @foreach (var item in _institutionalDashboard?.FilterOptions.DetailedFields ?? new())
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Revista</span>
+                <select @bind="_institutionalFilter.VenueName">
+                    <option value="">Todos</option>
+                    @foreach (var item in _institutionalDashboard?.FilterOptions.Venues ?? new())
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Tipo de publicación</span>
+                <select @bind="_institutionalFilter.VenueType">
+                    <option value="">Todos</option>
+                    @foreach (var item in _institutionalDashboard?.FilterOptions.VenueTypes ?? new())
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Año artículo</span>
+                <select @bind="_institutionalFilter.ArticleYear">
+                    <option value="">Todos</option>
+                    @foreach (var item in _institutionalDashboard?.FilterOptions.ArticleYears ?? new())
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Cuartil</span>
+                <select @bind="_institutionalFilter.Quartile">
+                    <option value="">Todos</option>
+                    @foreach (var item in _institutionalDashboard?.FilterOptions.Quartiles ?? new())
+                    {
+                        <option value="@item">@item</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>Acceso abierto</span>
+                <select @bind="_institutionalFilter.IsOpenAccess">
+                    <option value="">Todos</option>
+                    <option value="true">Open Access</option>
+                    <option value="false">No Open Access</option>
+                </select>
+            </label>
+        </div>
+        }
+        else
+        {
+            <div class="reports-dw-filter-collapsed">
+                <i class="bi bi-info-circle"></i>
+                Los filtros están contraídos para acelerar la lectura del tablero. Puedes desplegarlos cuando necesites segmentar por fechas, revistas, campos de conocimiento, cuartil o acceso abierto.
+            </div>
+        }
+    </section>
+
+    @if ((!_isLoadingInstitutionalReporting || _institutionalDashboard is not null)
+        && string.IsNullOrWhiteSpace(_institutionalReportingError)
+        && HasInstitutionalReportingData)
+    {
+        <section class="reports-dw-executive-strip">
+            <article class="reports-dw-executive-card reports-dw-executive-card--scope">
+                <span><i class="bi bi-crosshair"></i></span>
+                <small>Alcance del reporte</small>
+                <strong>@InstitutionalScopeLabel</strong>
+                <em>Última lectura: @InstitutionalLastLoadedLabel</em>
+            </article>
+
+            <article class="reports-dw-executive-card">
+                <span><i class="bi bi-calendar2-check"></i></span>
+                <small>Año con más producción</small>
+                <strong>@TopInstitutionalYearLabel</strong>
+                <em>Según los artículos incluidos en el filtro actual</em>
+            </article>
+
+            <article class="reports-dw-executive-card">
+                <span><i class="bi bi-bezier"></i></span>
+                <small>Línea dominante</small>
+                <strong>@TopInstitutionalResearchLineLabel</strong>
+                <em>Principal concentración temática</em>
+            </article>
+
+            <article class="reports-dw-executive-card">
+                <span><i class="bi bi-person-badge"></i></span>
+                <small>Autor destacado</small>
+                <strong>@TopInstitutionalAuthorLabel</strong>
+                <em>Participación registrada en artículos</em>
+            </article>
+
+            <article class="reports-dw-executive-card">
+                <span><i class="bi bi-building-check"></i></span>
+                <small>Revista principal</small>
+                <strong>@TopInstitutionalVenueLabel</strong>
+                <em>Revista con mayor concentración</em>
+            </article>
+        </section>
+
+        <section class="reports-dw-filter-summary">
+            <div class="reports-dw-filter-summary__title">
+                <span><i class="bi bi-funnel"></i></span>
+                <div>
+                    <strong>Filtros activos</strong>
+                    <small>Estos criterios también se aplican al PDF institucional.</small>
+                </div>
+            </div>
+
+            @if (ActiveInstitutionalFilterChips.Count == 0)
+            {
+                <div class="reports-dw-filter-summary__empty">
+                    Sin filtros aplicados. La reportería muestra el consolidado institucional completo.
+                </div>
+            }
+            else
+            {
+                <div class="reports-dw-filter-chips">
+                    @foreach (var chip in ActiveInstitutionalFilterChips)
+                    {
+                        <span>
+                            <small>@chip.Label</small>
+                            @chip.Value
+                        </span>
+                    }
+                </div>
+            }
+        </section>
+    }
+
     @if (!_isLoadingInstitutionalReporting
         && string.IsNullOrWhiteSpace(_institutionalReportingError)
-        && (_institutionalDashboard?.Health.ArticleRows ?? 0) == 0
-        && (_institutionalDashboard?.Health.BatchRows ?? 0) == 0
-        && (_institutionalDashboard?.Health.WorkflowStageRows ?? 0) == 0)
+        && !HasInstitutionalReportingData)
     {
         <section class="reports-dw-empty-state">
             <span class="reports-dw-empty-state__icon">
                 <i class="bi bi-inbox"></i>
             </span>
             <div>
-                <h2>Sin datos analíticos del modelo actual</h2>
+                <h2>Sin artículos académicos para mostrar</h2>
                 <p>
-                    El DW extensible está conectado y el ETL finalizó correctamente, pero todavía no existen artículos, lotes o etapas de workflow cargadas desde el OLTP actual. Cuando se registren artículos y se ejecute el ETL, este tablero empezará a mostrar indicadores institucionales reales.
+                    Todavía no existen artículos académicos dentro de los filtros seleccionados. Cuando se registren artículos y se actualice la información, este tablero mostrará indicadores institucionales reales.
                 </p>
             </div>
+        </section>
+    }
+    else if ((!_isLoadingInstitutionalReporting || _institutionalDashboard is not null)
+        && string.IsNullOrWhiteSpace(_institutionalReportingError)
+        && HasInstitutionalReportingData)
+    {
+        <section class="reports-dw-analytics-grid @(_isRefreshingInstitutionalReporting ? "reports-dw-analytics-grid--refreshing" : string.Empty)">
+            @if (_isRefreshingInstitutionalReporting)
+            {
+                <div class="reports-dw-refresh-overlay">
+                    <i class="bi bi-arrow-repeat"></i>
+                    Actualizando indicadores filtrados...
+                </div>
+            }
+
+            <div class="reports-dw-section-heading">
+                <span><i class="bi bi-graph-up-arrow"></i></span>
+                <div>
+                    <small>Bloque 01</small>
+                    <h2>Producción científica y comportamiento temporal</h2>
+                    <p>Lectura inicial de volumen institucional, ritmo de registro, acceso abierto y evolución por periodos.</p>
+                </div>
+            </div>
+
+            <article class="reports-dw-chart-card reports-dw-chart-card--wide">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-bar-chart-line"></i></span>
+                    <div>
+                        <h2>Producción por año</h2>
+                        <p>Artículos registrados y agrupados según el periodo de análisis seleccionado.</p>
+                    </div>
+                </div>
+
+                @if ((_institutionalDashboard?.ArticlesByYear.Count ?? 0) == 0)
+                {
+                    <div class="reports-dw-chart-empty">No hay distribución anual disponible.</div>
+                }
+                else
+                {
+                    <div class="reports-dw-bars">
+                        @foreach (var item in _institutionalDashboard!.ArticlesByYear.OrderBy(x => x.Year))
+                        {
+                            <div class="reports-dw-bar-row">
+                                <span>@item.Year</span>
+                                <div class="reports-dw-bar-track">
+                                    <div class="reports-dw-bar-fill" style="width:@GetBarWidth(item.Count, MaxArticlesByYear)"></div>
+                                </div>
+                                <strong>@item.Count</strong>
+                            </div>
+                        }
+                    </div>
+                }
+            </article>
+
+            <article class="reports-dw-chart-card">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-pie-chart"></i></span>
+                    <div>
+                        <h2>Open Access</h2>
+                        <p>Proporción de artículos abiertos dentro del filtro activo.</p>
+                    </div>
+                </div>
+                <div class="reports-dw-donut-layout">
+                    <div class="reports-dw-donut" style="@OpenAccessDonutStyle">
+                        <span>@OpenAccessPercent%</span>
+                    </div>
+                    <div class="reports-dw-donut-legend">
+                        <strong>@((_institutionalDashboard?.ScientificProduction.OpenAccessArticles ?? 0).ToString("N0")) OA</strong>
+                        <span>@(((_institutionalDashboard?.ScientificProduction.TotalArticles ?? 0) - (_institutionalDashboard?.ScientificProduction.OpenAccessArticles ?? 0)).ToString("N0")) no OA</span>
+                    </div>
+                </div>
+            </article>
+
+            <article class="reports-dw-chart-card">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-award"></i></span>
+                    <div>
+                        <h2>Artículos por cuartil</h2>
+                        <p>Concentración de artículos según la clasificación más reciente de la revista.</p>
+                    </div>
+                </div>
+                @if ((_institutionalDashboard?.ArticlesByQuartile.Count ?? 0) == 0)
+                {
+                    <div class="reports-dw-chart-empty">Sin cuartiles vinculados a artículos.</div>
+                }
+                else
+                {
+                    <div class="reports-dw-bars reports-dw-bars--compact">
+                    @foreach (var item in _institutionalDashboard!.ArticlesByQuartile)
+                    {
+                        <div class="reports-dw-bar-row">
+                            <span title="@item.Name">@item.Name</span>
+                            <div class="reports-dw-bar-track">
+                                <div class="reports-dw-bar-fill reports-dw-bar-fill--gold" style="width:@GetBarWidth(item.TotalArticles, MaxQuartileArticles)"></div>
+                            </div>
+                            <strong>@item.TotalArticles</strong>
+                        </div>
+                    }
+                    </div>
+                }
+            </article>
+
+            <article class="reports-dw-chart-card reports-dw-chart-card--wide">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-calendar3"></i></span>
+                    <div>
+                        <h2>Registro por mes y día</h2>
+                        <p>Conteos de artículos registrados por periodo para detectar ritmo de carga institucional.</p>
+                    </div>
+                </div>
+                <div class="reports-dw-split-grid">
+                    <div class="reports-dw-bars reports-dw-bars--compact">
+                        @foreach (var item in _institutionalDashboard!.ArticlesByMonth.TakeLast(12))
+                        {
+                            <div class="reports-dw-bar-row">
+                                <span>@item.Name</span>
+                                <div class="reports-dw-bar-track">
+                                    <div class="reports-dw-bar-fill" style="width:@GetBarWidth(item.TotalArticles, MaxMonthArticles)"></div>
+                                </div>
+                                <strong>@item.TotalArticles</strong>
+                            </div>
+                        }
+                    </div>
+                    <div class="reports-dw-bars reports-dw-bars--compact">
+                        @foreach (var item in _institutionalDashboard!.ArticlesByDay.Take(12))
+                        {
+                            <div class="reports-dw-bar-row">
+                                <span>@item.Name</span>
+                                <div class="reports-dw-bar-track">
+                                    <div class="reports-dw-bar-fill reports-dw-bar-fill--sage" style="width:@GetBarWidth(item.TotalArticles, MaxDayArticles)"></div>
+                                </div>
+                                <strong>@item.TotalArticles</strong>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </article>
+
+            <div class="reports-dw-section-heading reports-dw-section-heading--sage">
+                <span><i class="bi bi-diagram-2"></i></span>
+                <div>
+                    <small>Bloque 02</small>
+                    <h2>Calidad editorial, indexación y métricas</h2>
+                    <p>Indicadores asociados a fuentes de indexación, cuartiles, revistas y consistencia de la información.</p>
+                </div>
+            </div>
+
+            <article class="reports-dw-chart-card">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-diagram-2"></i></span>
+                    <div>
+                        <h2>Indexación</h2>
+                        <p>Fuentes de indexación vinculadas a los artículos.</p>
+                    </div>
+                </div>
+
+                @if ((_institutionalDashboard?.ArticlesByIndexingSource.Count ?? 0) == 0)
+                {
+                    <div class="reports-dw-chart-empty">Sin fuentes de indexación registradas.</div>
+                }
+                else
+                {
+                    <div class="reports-dw-bars reports-dw-bars--compact">
+                        @foreach (var item in _institutionalDashboard!.ArticlesByIndexingSource.Take(6))
+                        {
+                            <div class="reports-dw-bar-row">
+                                <span title="@item.IndexingSourceName">@item.IndexingSourceName</span>
+                                <div class="reports-dw-bar-track">
+                                    <div class="reports-dw-bar-fill reports-dw-bar-fill--sage" style="width:@GetBarWidth(item.TotalArticles, MaxIndexingArticles)"></div>
+                                </div>
+                                <strong>@item.TotalArticles</strong>
+                            </div>
+                        }
+                    </div>
+                }
+            </article>
+
+            <article class="reports-dw-chart-card">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-check2-circle"></i></span>
+                    <div>
+                        <h2>Artículos por estado</h2>
+                        <p>Distribución según el catálogo de estado de publicación.</p>
+                    </div>
+                </div>
+                <div class="reports-dw-bars reports-dw-bars--compact">
+                    @foreach (var item in _institutionalDashboard!.ArticlesByPublicationStatus.Take(8))
+                    {
+                        <div class="reports-dw-bar-row">
+                            <span title="@item.Name">@item.Name</span>
+                            <div class="reports-dw-bar-track">
+                                <div class="reports-dw-bar-fill" style="width:@GetBarWidth(item.TotalArticles, MaxPublicationStatusArticles)"></div>
+                            </div>
+                            <strong>@item.TotalArticles</strong>
+                        </div>
+                    }
+                </div>
+            </article>
+
+            <div class="reports-dw-section-heading reports-dw-section-heading--ink">
+                <span><i class="bi bi-people"></i></span>
+                <div>
+                    <small>Bloque 03</small>
+                    <h2>Autores, afiliación y concentración temática</h2>
+                    <p>Distribución por participantes, afiliaciones, tipos de publicación y líneas de investigación.</p>
+                </div>
+            </div>
+
+            <article class="reports-dw-chart-card">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-person-lines-fill"></i></span>
+                    <div>
+                        <h2>Autores</h2>
+                        <p>Producción por autor/participante registrado.</p>
+                    </div>
+                </div>
+                <div class="reports-dw-bars reports-dw-bars--compact">
+                    @foreach (var item in _institutionalDashboard!.ArticlesByAuthor.Take(8))
+                    {
+                        <div class="reports-dw-bar-row">
+                            <span title="@item.Name">@item.Name</span>
+                            <div class="reports-dw-bar-track">
+                                <div class="reports-dw-bar-fill" style="width:@GetBarWidth(item.TotalArticles, MaxAuthorArticles)"></div>
+                            </div>
+                            <strong>@item.TotalArticles</strong>
+                        </div>
+                    }
+                </div>
+            </article>
+
+            <article class="reports-dw-chart-card">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-mortarboard"></i></span>
+                    <div>
+                        <h2>Facultad / afiliación</h2>
+                        <p>Conteo aproximado desde la afiliación del autor hasta incorporar dimensión formal de facultad.</p>
+                    </div>
+                </div>
+                <div class="reports-dw-bars reports-dw-bars--compact">
+                    @foreach (var item in _institutionalDashboard!.ArticlesByFaculty.Take(8))
+                    {
+                        <div class="reports-dw-bar-row">
+                            <span title="@item.Name">@item.Name</span>
+                            <div class="reports-dw-bar-track">
+                                <div class="reports-dw-bar-fill reports-dw-bar-fill--sage" style="width:@GetBarWidth(item.TotalArticles, MaxFacultyArticles)"></div>
+                            </div>
+                            <strong>@item.TotalArticles</strong>
+                        </div>
+                    }
+                </div>
+            </article>
+
+            <article class="reports-dw-chart-card">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-collection"></i></span>
+                    <div>
+                        <h2>Tipo de publicación</h2>
+                        <p>Distribución por tipo de publicación: revista, proceedings u otros.</p>
+                    </div>
+                </div>
+                <div class="reports-dw-bars reports-dw-bars--compact">
+                    @foreach (var item in _institutionalDashboard!.ArticlesByVenueType.Take(8))
+                    {
+                        <div class="reports-dw-bar-row">
+                            <span title="@item.Name">@item.Name</span>
+                            <div class="reports-dw-bar-track">
+                                <div class="reports-dw-bar-fill" style="width:@GetBarWidth(item.TotalArticles, MaxVenueTypeArticles)"></div>
+                            </div>
+                            <strong>@item.TotalArticles</strong>
+                        </div>
+                    }
+                </div>
+            </article>
+
+            <article class="reports-dw-chart-card">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-bezier2"></i></span>
+                    <div>
+                        <h2>Líneas de investigación</h2>
+                        <p>Producción por línea configurada en el catálogo institucional.</p>
+                    </div>
+                </div>
+                <div class="reports-dw-bars reports-dw-bars--compact">
+                    @foreach (var item in _institutionalDashboard!.ArticlesByResearchLine.Take(8))
+                    {
+                        <div class="reports-dw-bar-row">
+                            <span title="@item.Name">@item.Name</span>
+                            <div class="reports-dw-bar-track">
+                                <div class="reports-dw-bar-fill reports-dw-bar-fill--sage" style="width:@GetBarWidth(item.TotalArticles, MaxResearchLineArticles)"></div>
+                            </div>
+                            <strong>@item.TotalArticles</strong>
+                        </div>
+                    }
+                </div>
+            </article>
+
+            <article class="reports-dw-chart-card reports-dw-chart-card--wide">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-diagram-3"></i></span>
+                    <div>
+                        <h2>Campos de conocimiento</h2>
+                        <p>Conteo de artículos por campo amplio, campo específico y campo detallado.</p>
+                    </div>
+                </div>
+                <div class="reports-dw-table-wrap reports-dw-table-wrap--compact">
+                    <table class="reports-dw-table">
+                        <thead>
+                            <tr>
+                                <th>Campo amplio</th>
+                                <th>Campo específico</th>
+                                <th>Campo detallado</th>
+                                <th>Artículos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var field in _institutionalDashboard!.ArticlesByField.Take(12))
+                            {
+                                <tr>
+                                    <td>@field.BroadField</td>
+                                    <td>@field.SpecificField</td>
+                                    <td>@field.DetailedField</td>
+                                    <td>@field.TotalArticles</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <div class="reports-dw-section-heading reports-dw-section-heading--workflow">
+                <span><i class="bi bi-signpost-split"></i></span>
+                <div>
+                    <small>Bloque 04</small>
+                    <h2>Seguimiento del flujo y detalle consultable</h2>
+                    <p>Seguimiento de revisión, revistas con métricas y artículos recientes que componen el filtro actual.</p>
+                </div>
+            </div>
+
+            <article class="reports-dw-chart-card">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-signpost"></i></span>
+                    <div>
+                        <h2>Revisión reciente</h2>
+                        <p>Últimos procesos de revisión visibles en la reportería.</p>
+                    </div>
+                </div>
+
+                @if ((_institutionalDashboard?.WorkflowCurrentStages.Count ?? 0) == 0)
+                {
+                    <div class="reports-dw-chart-empty">Sin procesos de revisión cargados.</div>
+                }
+                else
+                {
+                    <div class="reports-dw-workflow-list">
+                        @foreach (var item in _institutionalDashboard!.WorkflowCurrentStages.Take(6))
+                        {
+                            <div class="reports-dw-workflow-item">
+                                <strong>Lote @item.BatchId</strong>
+                                <span>@item.StageName · @(item.StageStatus ?? "Sin estado")</span>
+                            </div>
+                        }
+                    </div>
+                }
+            </article>
+
+            <article class="reports-dw-chart-card reports-dw-chart-card--wide">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-building"></i></span>
+                    <div>
+                        <h2>Revistas y métricas recientes</h2>
+                        <p>Artículos por revista académica, con SJR, CiteScore, HIndex y cuartil disponibles.</p>
+                    </div>
+                </div>
+                <div class="reports-dw-table-wrap">
+                    <table class="reports-dw-table">
+                        <thead>
+                            <tr>
+                                <th>Revista</th>
+                                <th>Tipo</th>
+                                <th>Artículos</th>
+                                <th>Métricas recientes</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var venue in _institutionalDashboard!.ArticlesByVenue.Take(8))
+                            {
+                                var metric = _institutionalDashboard.VenueMetricsByYear.FirstOrDefault(x => x.VenueName == venue.VenueName);
+                                <tr>
+                                    <td>@venue.VenueName</td>
+                                    <td>@venue.VenueType</td>
+                                    <td>@venue.TotalArticles</td>
+                                    <td>
+                                        @if (metric is null)
+                                        {
+                                            <span>Sin métricas</span>
+                                        }
+                                        else
+                                        {
+                                            <span>@metric.Year · @(metric.Quartile ?? "S/C") · SJR @metric.Sjr · CiteScore @metric.CiteScore · H @metric.HIndex</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="reports-dw-chart-card reports-dw-chart-card--wide">
+                <div class="reports-dw-chart-card__header">
+                    <span><i class="bi bi-journal-richtext"></i></span>
+                    <div>
+                        <h2>Artículos recientes filtrados</h2>
+                        <p>Vista informativa de los artículos incluidos en el reporte actual.</p>
+                    </div>
+                </div>
+                <div class="reports-dw-table-wrap">
+                    <table class="reports-dw-table">
+                        <thead>
+                            <tr>
+                                <th>Título</th>
+                                <th>Año</th>
+                                <th>Estado</th>
+                                <th>Línea</th>
+                                <th>Revista</th>
+                                <th>OA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var article in _institutionalDashboard!.RecentArticles.Take(12))
+                            {
+                                <tr>
+                                    <td>@article.Title</td>
+                                    <td>@article.Year</td>
+                                    <td>@(article.PublicationStatus ?? "Sin estado")</td>
+                                    <td>@(article.ResearchLine ?? "Sin línea")</td>
+                                    <td>@(article.VenueName ?? "Sin revista")</td>
+                                    <td>@(article.IsOpenAccess ? "Sí" : "No")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </article>
         </section>
     }
 
@@ -224,7 +978,7 @@
                     <label class="inline-flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
                         <input type="checkbox" class="rounded border-slate-300 text-[#7A1E19] focus:ring-[#7A1E19]"
                                @bind="_includeByField" />
-                        <span>Áreas de conocimiento</span>
+                        <span>Campos de conocimiento</span>
                     </label>
 
                     <label class="inline-flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
@@ -370,11 +1124,11 @@
                                          Option="@YearTrendChartOption"
                                          Accent="blue" />
 
-                        <ReportChartCard Title="Top áreas de conocimiento"
+                        <ReportChartCard Title="Top campos de conocimiento"
                                          Description="Áreas amplias con mayor cantidad de artículos."
                                          Tooltip="Muestra las áreas amplias de conocimiento con mayor volumen de artículos, ayudando a identificar focos de producción científica."
                                          HasData="@(_byField.Count > 0)"
-                                         EmptyMessage="No hay datos de áreas de conocimiento disponibles."
+                                         EmptyMessage="No hay datos de campos de conocimiento disponibles."
                                          ChartId="chart-by-field"
                                          Height="@FieldChartHeight"
                                          Option="@FieldChartOption"
@@ -437,12 +1191,12 @@
                             }
                         </ReportDataCard>
 
-                        <ReportDataCard Title="Tabla: top áreas de conocimiento"
+                        <ReportDataCard Title="Tabla: top campos de conocimiento"
                                         Description="Áreas amplias con mayor cantidad de artículos.">
 
                             @if (_byField.Count == 0)
                             {
-                                <p class="text-xs text-slate-400">No hay datos de áreas de conocimiento disponibles.</p>
+                                <p class="text-xs text-slate-400">No hay datos de campos de conocimiento disponibles.</p>
                             }
                             else
                             {
@@ -664,8 +1418,8 @@
     <!-- ========================================================= -->
     <!-- MODAL DE PREVISUALIZACIÓN DE PDF                         -->
     <!-- ========================================================= -->
-    <ReportPdfPreviewModal Visible="@_showPdfPreview"
-                           IsGenerating="@_isPdfGenerating"
+    <ReportPdfPreviewModal Visible="@(_showLegacyReporting && _showPdfPreview)"
+                           IsGenerating="@(_isPdfGenerating || _isInstitutionalPdfGenerating)"
                            PdfPreviewDataUrl="@_pdfPreviewDataUrl"
                            OnClose="ClosePdfPreview" />
 
@@ -708,4 +1462,10 @@
                                  OnClearFilters="ClearFilters"
                                  OnApplyFilters="ApplyFilters" />
     }
+
+    <ReportPdfPreviewModal Visible="@(!_showLegacyReporting && _showPdfPreview)"
+                           IsGenerating="@(_isPdfGenerating || _isInstitutionalPdfGenerating)"
+                           PdfPreviewDataUrl="@_pdfPreviewDataUrl"
+                           DownloadFileName="Reporte_Institucional_Articulos.pdf"
+                           OnClose="ClosePdfPreview" />
 </div>

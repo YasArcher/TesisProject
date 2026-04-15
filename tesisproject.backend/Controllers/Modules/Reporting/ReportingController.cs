@@ -26,10 +26,21 @@ public sealed class ReportingController : ControllerBase
     }
 
     [HttpGet("dashboard")]
-    public async Task<ActionResult<InstitutionalReportingDashboardDto>> GetDashboard(CancellationToken ct)
+    public async Task<ActionResult<InstitutionalReportingDashboardDto>> GetDashboard(
+        [FromQuery] InstitutionalReportingFilterDto filter,
+        CancellationToken ct)
     {
-        var result = await _reporting.GetDashboardAsync(ct);
+        var result = await _reporting.GetDashboardAsync(filter, ct);
         return Ok(result);
+    }
+
+    [HttpGet("dashboard/pdf")]
+    public async Task<IActionResult> GetDashboardPdf(
+        [FromQuery] InstitutionalReportingFilterDto filter,
+        CancellationToken ct)
+    {
+        var bytes = await _reporting.GenerateDashboardPdfAsync(filter, ct);
+        return File(bytes, "application/pdf", $"reporte-institucional-{DateTime.UtcNow:yyyyMMddHHmm}.pdf");
     }
 
     [HttpPost("etl/full")]
