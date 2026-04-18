@@ -39,6 +39,7 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected string? _institutionalReportingError;
         protected InstitutionalReportingDashboardDto? _institutionalDashboard;
         protected InstitutionalReportingFilterDto _institutionalFilter = new();
+        protected string _institutionalReportTab = "overview";
         protected DateTime? _institutionalLastLoadedAt;
         private CancellationTokenSource? _institutionalLoadCts;
 
@@ -644,6 +645,41 @@ namespace tesisproject.frontend.Features.Management.Pages
             || (_institutionalDashboard?.Health.BatchRows ?? 0) > 0
             || (_institutionalDashboard?.Health.WorkflowStageRows ?? 0) > 0;
 
+        protected bool IsInstitutionalBlockingBusy =>
+            _isLoadingInstitutionalReporting
+            || _isRefreshingInstitutionalReporting
+            || _isRunningInstitutionalEtl;
+
+        protected string InstitutionalBlockingBusyTitle
+        {
+            get
+            {
+                if (_isRunningInstitutionalEtl)
+                {
+                    return "Actualizando modelo analítico";
+                }
+
+                return _isRefreshingInstitutionalReporting
+                    ? "Aplicando filtros de reportería"
+                    : "Cargando reportería institucional";
+            }
+        }
+
+        protected string InstitutionalBlockingBusyMessage
+        {
+            get
+            {
+                if (_isRunningInstitutionalEtl)
+                {
+                    return "Estamos ejecutando el ETL y sincronizando los indicadores del DW. Mantén esta pantalla abierta.";
+                }
+
+                return _isRefreshingInstitutionalReporting
+                    ? "Se están recalculando los bloques, tablas y porcentajes con los filtros seleccionados."
+                    : "Estamos preparando los indicadores institucionales, filtros y bloques analíticos.";
+            }
+        }
+
         protected int MaxArticlesByYear =>
             Math.Max(1, _institutionalDashboard?.ArticlesByYear.Select(x => x.Count).DefaultIfEmpty(0).Max() ?? 0);
 
@@ -677,6 +713,18 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected int MaxQuartileArticles =>
             Math.Max(1, _institutionalDashboard?.ArticlesByQuartile.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
 
+        protected int MaxParticipationFacultyArticles =>
+            Math.Max(1, _institutionalDashboard?.ParticipationSummary.ByFaculty.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int MaxParticipationIndexingArticles =>
+            Math.Max(1, _institutionalDashboard?.ParticipationSummary.ByIndexingSource.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int MaxParticipationQuartileArticles =>
+            Math.Max(1, _institutionalDashboard?.ParticipationSummary.ByQuartile.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+        protected int MaxFacultyIndexingBreakdownArticles =>
+            Math.Max(1, _institutionalDashboard?.ParticipationSummary.IndexingByFaculty.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
         protected int OpenAccessPercent =>
             (_institutionalDashboard?.ScientificProduction.TotalArticles ?? 0) <= 0
                 ? 0
@@ -696,6 +744,18 @@ namespace tesisproject.frontend.Features.Management.Pages
             ActiveInstitutionalFilterChips.Count == 0
                 ? "Vista general institucional"
                 : $"{ActiveInstitutionalFilterChips.Count} filtros activos";
+
+        protected string InstitutionalDataPulseLabel =>
+            $"{(_institutionalDashboard?.ScientificProduction.TotalArticles ?? 0):N0} artículos · {(_institutionalDashboard?.ParticipationSummary.TotalIndexingLinks ?? 0):N0} indexaciones · {(_institutionalDashboard?.ParticipationSummary.ByFaculty.Count ?? 0):N0} facultades";
+
+        protected string PediIiitScopeLabel =>
+            $"{(_institutionalDashboard?.PediIiitArticles.Count ?? 0):N0} registros disponibles · mostrando hasta 20";
+
+        protected string TddTotalScopeLabel =>
+            $"{(_institutionalDashboard?.TddTotalArticles.Count ?? 0):N0} registros disponibles · mostrando hasta 24";
+
+        protected string ParticipationScopeLabel =>
+            $"{(_institutionalDashboard?.ParticipationSummary.TotalArticles ?? 0):N0} artículos · {(_institutionalDashboard?.ParticipationSummary.TotalIndexingLinks ?? 0):N0} vínculos";
 
         protected string InstitutionalPeriodLabel =>
             string.Equals(_institutionalFilter.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase)
@@ -736,6 +796,30 @@ namespace tesisproject.frontend.Features.Management.Pages
                     .FirstOrDefault();
 
                 return item is null ? "Sin dato" : $"{ShortenLabel(item.VenueName, 34)} · {item.TotalArticles:N0}";
+            }
+        }
+
+        protected string TopInstitutionalFacultyLabel
+        {
+            get
+            {
+                var item = _institutionalDashboard?.ParticipationSummary.ByFaculty
+                    .OrderByDescending(x => x.TotalArticles)
+                    .FirstOrDefault();
+
+                return item is null ? "Sin dato" : $"{ShortenLabel(item.Name, 34)} · {item.TotalArticles:N0}";
+            }
+        }
+
+        protected string TopInstitutionalIndexingLabel
+        {
+            get
+            {
+                var item = _institutionalDashboard?.ParticipationSummary.ByIndexingSource
+                    .OrderByDescending(x => x.TotalArticles)
+                    .FirstOrDefault();
+
+                return item is null ? "Sin dato" : $"{ShortenLabel(item.Name, 34)} · {item.TotalArticles:N0}";
             }
         }
 
@@ -793,6 +877,8 @@ namespace tesisproject.frontend.Features.Management.Pages
                 AddChip(chips, "Periodo", _institutionalFilter.AcademicTerm);
                 AddChip(chips, "Estado", _institutionalFilter.PublicationStatus);
                 AddChip(chips, "Línea", _institutionalFilter.ResearchLine);
+                AddChip(chips, "Facultad", _institutionalFilter.Faculty);
+                AddChip(chips, "Base de datos", _institutionalFilter.IndexingSource);
                 AddChip(chips, "Campo amplio", _institutionalFilter.BroadField);
                 AddChip(chips, "Campo específico", _institutionalFilter.SpecificField);
                 AddChip(chips, "Campo detallado", _institutionalFilter.DetailedField);
@@ -833,6 +919,32 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected string OpenAccessDonutStyle =>
             $"background: conic-gradient(#97b067 0 {OpenAccessPercent}%, rgba(67, 86, 99, 0.12) {OpenAccessPercent}% 100%);";
 
+        protected string BuildFacultyParticipationPieStyle()
+        {
+            var items = _institutionalDashboard?.ParticipationSummary.ByFaculty
+                .Where(x => x.TotalArticles > 0)
+                .Take(8)
+                .ToList() ?? new List<ReportingParticipationItemDto>();
+
+            if (items.Count == 0)
+            {
+                return "background: conic-gradient(rgba(67, 86, 99, 0.12) 0 100%);";
+            }
+
+            var colors = new[] { "#2F5249", "#437057", "#97B067", "#E3DE61", "#F4CE14", "#435663", "#313647", "#A3B087" };
+            decimal start = 0;
+            var segments = new List<string>();
+
+            for (var i = 0; i < items.Count; i++)
+            {
+                var end = i == items.Count - 1 ? 100 : Math.Min(100, start + items[i].Percentage);
+                segments.Add($"{colors[i % colors.Length]} {start:0.##}% {end:0.##}%");
+                start = end;
+            }
+
+            return $"background: conic-gradient({string.Join(", ", segments)});";
+        }
+
         private static void AddChip(List<(string Label, string Value)> chips, string label, string? value)
         {
             if (!string.IsNullOrWhiteSpace(value))
@@ -865,6 +977,16 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected void ToggleInstitutionalFilters()
         {
             _showInstitutionalFilters = !_showInstitutionalFilters;
+        }
+
+        protected void ShowInstitutionalOverview()
+        {
+            _institutionalReportTab = "overview";
+        }
+
+        protected void ShowInstitutionalParticipation()
+        {
+            _institutionalReportTab = "participation";
         }
 
         protected async Task OpenInstitutionalPdfPreviewAsync()

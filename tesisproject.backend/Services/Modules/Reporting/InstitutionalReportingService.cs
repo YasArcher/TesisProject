@@ -118,11 +118,13 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             _db.WorkflowCurrentStages.AsNoTracking().OrderByDescending(x => x.BatchId_OLTP).Take(25),
             "dw.vw_Workflow_Batches_ByCurrentStage",
             ct);
+        var articleIndexingDetails = await BuildArticleIndexingDetailsAsync(details, filter, ct);
+        var participationSummary = BuildParticipationSummary(details, articleIndexingDetails);
 
         return new InstitutionalReportingDashboardDto
         {
             Health = health,
-            FilterOptions = BuildFilterOptions(details),
+            FilterOptions = BuildFilterOptions(details, articleIndexingDetails),
             ScientificProduction = new ScientificProductionKpiDto
             {
                 TotalArticles = details.Sum(x => x.ArticleCount),
@@ -173,11 +175,25 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
                     TotalArticles = x.TotalArticles
                 })
                 .ToList(),
+            PediIiitArticles = articleIndexingDetails
+                .OrderByDescending(x => x.PublishedDate)
+                .ThenBy(x => x.Title)
+                .Take(80)
+                .Select(ToArticleIndexingDetailDto)
+                .ToList(),
+            TddTotalArticles = articleIndexingDetails
+                .OrderBy(x => x.FacultyName)
+                .ThenBy(x => x.IndexingSourceName)
+                .ThenByDescending(x => x.PublishedDate)
+                .Take(100)
+                .Select(ToArticleIndexingDetailDto)
+                .ToList(),
+            ParticipationSummary = participationSummary,
             ArticlesByPublicationStatus = GroupByName(details, x => x.PublicationStatus, "Sin estado"),
             ArticlesByAcademicTerm = GroupByName(details, x => x.AcademicTerm, "Sin periodo"),
             ArticlesByResearchLine = GroupByName(details, x => x.ResearchLine, "Sin línea"),
             ArticlesByAuthor = await BuildAuthorSummaryAsync(details.Select(x => x.ArticleKey).Distinct().ToList(), ct),
-            ArticlesByFaculty = await BuildFacultySummaryAsync(details.Select(x => x.ArticleKey).Distinct().ToList(), ct),
+            ArticlesByFaculty = GroupByName(details, x => x.FacultyName, "Sin facultad"),
             ArticlesByVenueType = GroupByName(details, x => x.VenueType, "Sin tipo"),
             ArticlesByQuartile = BuildArticlesByQuartile(details, venueMetrics),
             ArticlesByField = details
@@ -399,7 +415,7 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
 
                     if (dashboard.ArticlesByResearchLine.Count > 0 || dashboard.ArticlesByAuthor.Count > 0 || dashboard.ArticlesByFaculty.Count > 0)
                     {
-                        column.Item().Element(section => PdfSectionHeader(section, "Líneas, autores y afiliación", "Participación académica y concentración temática."));
+                        column.Item().Element(section => PdfSectionHeader(section, "Líneas, autores y facultades", "Participación académica y concentración temática."));
                         column.Item().Table(table =>
                         {
                             table.ColumnsDefinition(columns =>
@@ -411,7 +427,115 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
 
                             PdfCompactList(table, "Líneas de investigación", dashboard.ArticlesByResearchLine.Select(x => (x.Name, x.TotalArticles)).Take(10));
                             PdfCompactList(table, "Autores", dashboard.ArticlesByAuthor.Select(x => (x.Name, x.TotalArticles)).Take(10));
-                            PdfCompactList(table, "Afiliación", dashboard.ArticlesByFaculty.Select(x => (x.Name, x.TotalArticles)).Take(10));
+                            PdfCompactList(table, "Facultades", dashboard.ArticlesByFaculty.Select(x => (x.Name, x.TotalArticles)).Take(10));
+                        });
+                    }
+
+                    if (dashboard.PediIiitArticles.Count > 0)
+                    {
+                        column.Item().Element(section => PdfSectionHeader(section, "PEDI IIIT", "Detalle por título de artículo, base de datos, enlace, mes de publicación, proyecto y cuartil."));
+                        column.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn(2.1f);
+                                columns.RelativeColumn();
+                                columns.RelativeColumn();
+                                columns.ConstantColumn(54);
+                                columns.ConstantColumn(42);
+                                columns.ConstantColumn(42);
+                            });
+
+                            PdfHeaderCell(table, "Título de artículo");
+                            PdfHeaderCell(table, "Base de datos");
+                            PdfHeaderCell(table, "Enlace");
+                            PdfHeaderCell(table, "Mes");
+                            PdfHeaderCell(table, "Proyecto");
+                            PdfHeaderCell(table, "Cuartil");
+
+                            foreach (var article in dashboard.PediIiitArticles.Take(16))
+                            {
+                                PdfBodyCell(table, ShortenForPdf(article.Title, 78));
+                                PdfBodyCell(table, ShortenForPdf(article.IndexingSourceName, 28));
+                                PdfBodyCell(table, ShortenForPdf(article.PublicationUrl ?? "Sin enlace", 34));
+                                PdfBodyCell(table, article.PublicationMonth);
+                                PdfBodyCell(table, article.IsProjectResult ? "Sí" : "No", alignRight: true);
+                                PdfBodyCell(table, article.Quartile, alignRight: true);
+                            }
+                        });
+                    }
+
+                    if (dashboard.TddTotalArticles.Count > 0)
+                    {
+                        column.Item().Element(section => PdfSectionHeader(section, "TDD Total", "Detalle por publicación, base de datos, cuartil, facultad y mes."));
+                        column.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn(2f);
+                                columns.RelativeColumn();
+                                columns.ConstantColumn(48);
+                                columns.RelativeColumn(1.35f);
+                                columns.ConstantColumn(56);
+                            });
+
+                            PdfHeaderCell(table, "Título de publicación");
+                            PdfHeaderCell(table, "Base de datos");
+                            PdfHeaderCell(table, "Cuartil");
+                            PdfHeaderCell(table, "Facultad");
+                            PdfHeaderCell(table, "Mes");
+
+                            foreach (var article in dashboard.TddTotalArticles.Take(18))
+                            {
+                                PdfBodyCell(table, ShortenForPdf(article.Title, 82));
+                                PdfBodyCell(table, ShortenForPdf(article.IndexingSourceName, 30));
+                                PdfBodyCell(table, article.Quartile, alignRight: true);
+                                PdfBodyCell(table, ShortenForPdf(article.Faculty, 42));
+                                PdfBodyCell(table, article.PublicationMonth);
+                            }
+                        });
+                    }
+
+                    if (dashboard.ParticipationSummary.TotalArticles > 0 || dashboard.ParticipationSummary.TotalIndexingLinks > 0)
+                    {
+                        column.Item().Element(section => PdfSectionHeader(section, "Porcentaje de participación", "Resumen proporcional por facultad, base de datos, cuartil y cruce facultad/base."));
+                        column.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn();
+                                columns.RelativeColumn();
+                                columns.RelativeColumn();
+                            });
+
+                            PdfParticipationList(table, "Facultades", dashboard.ParticipationSummary.ByFaculty.Take(10), dashboard.ParticipationSummary.TotalArticles);
+                            PdfParticipationList(table, "Bases de datos", dashboard.ParticipationSummary.ByIndexingSource.Take(10), dashboard.ParticipationSummary.TotalIndexingLinks);
+                            PdfParticipationList(table, "Cuartiles", dashboard.ParticipationSummary.ByQuartile.Take(10), dashboard.ParticipationSummary.TotalArticles);
+                        });
+
+                        column.Item().Table(table =>
+                        {
+                            table.ColumnsDefinition(columns =>
+                            {
+                                columns.RelativeColumn(1.35f);
+                                columns.RelativeColumn();
+                                columns.ConstantColumn(56);
+                            });
+
+                            PdfHeaderCell(table, "Facultad");
+                            PdfHeaderCell(table, "Base de datos");
+                            PdfHeaderCell(table, "Artículos");
+
+                            foreach (var item in dashboard.ParticipationSummary.IndexingByFaculty.Take(18))
+                            {
+                                PdfBodyCell(table, ShortenForPdf(item.Faculty, 52));
+                                PdfBodyCell(table, ShortenForPdf(item.IndexingSourceName, 34));
+                                PdfBodyCell(table, item.TotalArticles.ToString("N0"), alignRight: true);
+                            }
+
+                            PdfBodyCell(table, "Total general");
+                            PdfBodyCell(table, "Vínculos de indexación");
+                            PdfBodyCell(table, dashboard.ParticipationSummary.TotalIndexingLinks.ToString("N0"), alignRight: true);
                         });
                     }
 
@@ -580,6 +704,46 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             });
     }
 
+    private static void PdfParticipationList(
+        TableDescriptor table,
+        string title,
+        IEnumerable<ReportingParticipationItemDto> rows,
+        int total)
+    {
+        table.Cell()
+            .Border(1)
+            .BorderColor("#E7EAEC")
+            .Padding(7)
+            .Column(column =>
+            {
+                column.Spacing(4);
+                column.Item()
+                    .Background("#2F5249")
+                    .PaddingVertical(4)
+                    .PaddingHorizontal(6)
+                    .Text($"{title} · Total {total:N0}")
+                    .FontSize(8)
+                    .SemiBold()
+                    .FontColor("#FFF8D4");
+
+                var materialized = rows.ToList();
+                if (materialized.Count == 0)
+                {
+                    column.Item().Text("Sin datos disponibles").FontSize(7).FontColor("#7A7A7A");
+                    return;
+                }
+
+                foreach (var row in materialized)
+                {
+                    column.Item().Row(itemRow =>
+                    {
+                        itemRow.RelativeItem().Text(ShortenForPdf(row.Name, 34)).FontSize(7).FontColor("#45474B");
+                        itemRow.ConstantItem(58).AlignRight().Text($"{row.TotalArticles:N0} · {row.Percentage:0.##}%").FontSize(7).Bold().FontColor("#313647");
+                    });
+                }
+            });
+    }
+
     private static void PdfHeaderCell(TableDescriptor table, string text)
     {
         table.Cell()
@@ -637,6 +801,8 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         AddPdfChip(chips, "Periodo académico", filter.AcademicTerm);
         AddPdfChip(chips, "Estado", filter.PublicationStatus);
         AddPdfChip(chips, "Línea de investigación", filter.ResearchLine);
+        AddPdfChip(chips, "Facultad", filter.Faculty);
+        AddPdfChip(chips, "Base de datos", filter.IndexingSource);
         AddPdfChip(chips, "Campo amplio", filter.BroadField);
         AddPdfChip(chips, "Campo específico", filter.SpecificField);
         AddPdfChip(chips, "Campo detallado", filter.DetailedField);
@@ -740,6 +906,8 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             filter.AcademicTerm,
             filter.PublicationStatus,
             filter.ResearchLine,
+            filter.Faculty,
+            filter.IndexingSource,
             filter.BroadField,
             filter.SpecificField,
             filter.DetailedField,
@@ -790,6 +958,7 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         query = ApplyStringFilter(query, filter.AcademicTerm, x => x.AcademicTerm);
         query = ApplyStringFilter(query, filter.PublicationStatus, x => x.PublicationStatus);
         query = ApplyStringFilter(query, filter.ResearchLine, x => x.ResearchLine);
+        query = ApplyStringFilter(query, filter.Faculty, x => x.FacultyName);
         query = ApplyStringFilter(query, filter.BroadField, x => x.BroadFieldName);
         query = ApplyStringFilter(query, filter.SpecificField, x => x.SpecificFieldName);
         query = ApplyStringFilter(query, filter.DetailedField, x => x.DetailedFieldName);
@@ -843,13 +1012,17 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         return System.Linq.Expressions.Expression.Lambda<Func<ReportingArticleDetailRow, bool>>(body, selector.Parameters);
     }
 
-    private static InstitutionalReportingFilterOptionsDto BuildFilterOptions(List<ReportingArticleDetailRow> details)
+    private static InstitutionalReportingFilterOptionsDto BuildFilterOptions(
+        List<ReportingArticleDetailRow> details,
+        List<ReportingArticleIndexingDetailRow> indexingDetails)
     {
         return new InstitutionalReportingFilterOptionsDto
         {
             AcademicTerms = Distinct(details.Select(x => x.AcademicTerm)),
             PublicationStatuses = Distinct(details.Select(x => x.PublicationStatus)),
             ResearchLines = Distinct(details.Select(x => x.ResearchLine)),
+            Faculties = Distinct(details.Select(x => x.FacultyName)),
+            IndexingSources = Distinct(indexingDetails.Select(x => x.IndexingSourceName)),
             BroadFields = Distinct(details.Select(x => x.BroadFieldName)),
             SpecificFields = Distinct(details.Select(x => x.SpecificFieldName)),
             DetailedFields = Distinct(details.Select(x => x.DetailedFieldName)),
@@ -910,6 +1083,141 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             })
             .OrderBy(x => x.Name)
             .ToList();
+    }
+
+    private async Task<List<ReportingArticleIndexingDetailRow>> BuildArticleIndexingDetailsAsync(
+        List<ReportingArticleDetailRow> details,
+        InstitutionalReportingFilterDto? filter,
+        CancellationToken ct)
+    {
+        if (details.Count == 0)
+        {
+            return new List<ReportingArticleIndexingDetailRow>();
+        }
+
+        var articleKeys = details.Select(x => x.ArticleKey).Distinct().ToHashSet();
+        var rows = await SafeListAsync(
+            _db.ArticleIndexingDetails
+                .FromSqlRaw("""
+                    SELECT
+                        d.ArticleKey,
+                        d.ArticleId_OLTP AS ArticleId,
+                        d.Title,
+                        dis.Name AS IndexingSourceName,
+                        d.PublicationUrl,
+                        d.PublishedDate,
+                        d.IsProjectResult,
+                        d.FacultyName,
+                        ISNULL(NULLIF(metric.Quartile, N''), N'Sin cuartil') AS Quartile
+                    FROM dw.vw_Articles_Detail d
+                    INNER JOIN dw.FactArticleIndexing fai
+                        ON fai.ArticleKey = d.ArticleKey
+                    INNER JOIN dw.DimIndexingSource dis
+                        ON dis.IndexingSourceKey = fai.IndexingSourceKey
+                    OUTER APPLY (
+                        SELECT TOP 1 vm.Quartile
+                        FROM dw.vw_VenueMetrics_ByYear vm
+                        WHERE vm.VenueName = d.VenueName
+                          AND (d.ArticleYear IS NULL OR vm.YearNumber <= d.ArticleYear)
+                        ORDER BY vm.YearNumber DESC
+                    ) metric
+                    """)
+                .AsNoTracking(),
+            "detalle de artículos por base de datos",
+            ct);
+
+        var filtered = rows
+            .Where(x => articleKeys.Contains(x.ArticleKey));
+
+        if (!string.IsNullOrWhiteSpace(filter?.IndexingSource))
+        {
+            var selected = filter.IndexingSource.Trim();
+            filtered = filtered.Where(x => string.Equals(x.IndexingSourceName, selected, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return filtered.ToList();
+    }
+
+    private static ReportingArticleIndexingDetailDto ToArticleIndexingDetailDto(ReportingArticleIndexingDetailRow row)
+    {
+        return new ReportingArticleIndexingDetailDto
+        {
+            ArticleId = row.ArticleId,
+            Title = Normalize(row.Title, "Sin título"),
+            IndexingSourceName = Normalize(row.IndexingSourceName, "Sin base de datos"),
+            PublicationUrl = row.PublicationUrl,
+            PublishedDate = row.PublishedDate,
+            PublicationMonth = row.PublishedDate?.ToString("yyyy-MM") ?? "Sin mes",
+            IsProjectResult = row.IsProjectResult,
+            Quartile = Normalize(row.Quartile, "Sin cuartil"),
+            Faculty = Normalize(row.FacultyName, "Sin facultad")
+        };
+    }
+
+    private static ReportingParticipationSummaryDto BuildParticipationSummary(
+        List<ReportingArticleDetailRow> details,
+        List<ReportingArticleIndexingDetailRow> indexingDetails)
+    {
+        var totalArticles = Math.Max(0, details.Select(x => x.ArticleKey).Distinct().Count());
+        var totalIndexingLinks = indexingDetails.Count;
+
+        return new ReportingParticipationSummaryDto
+        {
+            TotalArticles = totalArticles,
+            TotalIndexingLinks = totalIndexingLinks,
+            ByFaculty = details
+                .GroupBy(x => Normalize(x.FacultyName, "Sin facultad"))
+                .Select(g => new ReportingParticipationItemDto
+                {
+                    Name = g.Key,
+                    TotalArticles = g.Select(x => x.ArticleKey).Distinct().Count(),
+                    Percentage = CalculatePercentage(g.Select(x => x.ArticleKey).Distinct().Count(), totalArticles)
+                })
+                .OrderByDescending(x => x.TotalArticles)
+                .ToList(),
+            ByIndexingSource = indexingDetails
+                .GroupBy(x => Normalize(x.IndexingSourceName, "Sin base de datos"))
+                .Select(g => new ReportingParticipationItemDto
+                {
+                    Name = g.Key,
+                    TotalArticles = g.Select(x => x.ArticleKey).Distinct().Count(),
+                    Percentage = CalculatePercentage(g.Select(x => x.ArticleKey).Distinct().Count(), totalArticles)
+                })
+                .OrderByDescending(x => x.TotalArticles)
+                .ToList(),
+            ByQuartile = indexingDetails
+                .GroupBy(x => x.ArticleKey)
+                .Select(g => Normalize(g.Select(x => x.Quartile).FirstOrDefault(), "Sin cuartil"))
+                .GroupBy(x => x)
+                .Select(g => new ReportingParticipationItemDto
+                {
+                    Name = g.Key,
+                    TotalArticles = g.Count(),
+                    Percentage = CalculatePercentage(g.Count(), totalArticles)
+                })
+                .OrderBy(x => x.Name)
+                .ToList(),
+            IndexingByFaculty = indexingDetails
+                .GroupBy(x => new
+                {
+                    Faculty = Normalize(x.FacultyName, "Sin facultad"),
+                    IndexingSource = Normalize(x.IndexingSourceName, "Sin base de datos")
+                })
+                .Select(g => new ReportingFacultyIndexingBreakdownDto
+                {
+                    Faculty = g.Key.Faculty,
+                    IndexingSourceName = g.Key.IndexingSource,
+                    TotalArticles = g.Select(x => x.ArticleKey).Distinct().Count()
+                })
+                .OrderBy(x => x.Faculty)
+                .ThenByDescending(x => x.TotalArticles)
+                .ToList()
+        };
+    }
+
+    private static decimal CalculatePercentage(int value, int total)
+    {
+        return total <= 0 ? 0 : Math.Round((decimal)value * 100 / total, 2);
     }
 
     private static List<string> Distinct(IEnumerable<string?> values)

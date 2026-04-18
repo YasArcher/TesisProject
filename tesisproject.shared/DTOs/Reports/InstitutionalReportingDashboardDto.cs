@@ -25,6 +25,9 @@ public sealed class InstitutionalReportingDashboardDto
     public List<ReportingVenueMetricDto> VenueMetricsByYear { get; set; } = new();
     public List<ReportingArticleDetailDto> RecentArticles { get; set; } = new();
     public List<WorkflowCurrentStageDto> WorkflowCurrentStages { get; set; } = new();
+    public List<ReportingArticleIndexingDetailDto> PediIiitArticles { get; set; } = new();
+    public List<ReportingArticleIndexingDetailDto> TddTotalArticles { get; set; } = new();
+    public ReportingParticipationSummaryDto ParticipationSummary { get; set; } = new();
 }
 
 public sealed class InstitutionalReportingFilterDto
@@ -36,6 +39,8 @@ public sealed class InstitutionalReportingFilterDto
     public string? AcademicTerm { get; set; }
     public string? PublicationStatus { get; set; }
     public string? ResearchLine { get; set; }
+    public string? Faculty { get; set; }
+    public string? IndexingSource { get; set; }
     public string? BroadField { get; set; }
     public string? SpecificField { get; set; }
     public string? DetailedField { get; set; }
@@ -52,6 +57,8 @@ public sealed class InstitutionalReportingFilterOptionsDto
     public List<string> AcademicTerms { get; set; } = new();
     public List<string> PublicationStatuses { get; set; } = new();
     public List<string> ResearchLines { get; set; } = new();
+    public List<string> Faculties { get; set; } = new();
+    public List<string> IndexingSources { get; set; } = new();
     public List<string> BroadFields { get; set; } = new();
     public List<string> SpecificFields { get; set; } = new();
     public List<string> DetailedFields { get; set; } = new();
@@ -163,4 +170,41 @@ public sealed class WorkflowCurrentStageDto
     public int? StageDurationSeconds { get; set; }
     public bool Approved { get; set; }
     public bool Returned { get; set; }
+}
+
+public sealed class ReportingArticleIndexingDetailDto
+{
+    public int ArticleId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string IndexingSourceName { get; set; } = string.Empty;
+    public string? PublicationUrl { get; set; }
+    public DateTime? PublishedDate { get; set; }
+    public string PublicationMonth { get; set; } = string.Empty;
+    public bool IsProjectResult { get; set; }
+    public string Quartile { get; set; } = string.Empty;
+    public string Faculty { get; set; } = string.Empty;
+}
+
+public sealed class ReportingParticipationSummaryDto
+{
+    public int TotalArticles { get; set; }
+    public int TotalIndexingLinks { get; set; }
+    public List<ReportingParticipationItemDto> ByFaculty { get; set; } = new();
+    public List<ReportingParticipationItemDto> ByIndexingSource { get; set; } = new();
+    public List<ReportingParticipationItemDto> ByQuartile { get; set; } = new();
+    public List<ReportingFacultyIndexingBreakdownDto> IndexingByFaculty { get; set; } = new();
+}
+
+public sealed class ReportingParticipationItemDto
+{
+    public string Name { get; set; } = string.Empty;
+    public int TotalArticles { get; set; }
+    public decimal Percentage { get; set; }
+}
+
+public sealed class ReportingFacultyIndexingBreakdownDto
+{
+    public string Faculty { get; set; } = string.Empty;
+    public string IndexingSourceName { get; set; } = string.Empty;
+    public int TotalArticles { get; set; }
 }

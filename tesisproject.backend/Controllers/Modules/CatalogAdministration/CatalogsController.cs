@@ -162,6 +162,29 @@ namespace tesisproject.backend.Controllers
             return Ok(list);
         }
 
+        // ========== Facultades ==========
+        [HttpGet("faculties")]
+        public async Task<ActionResult<List<CatalogItemDto>>> GetFaculties(CancellationToken ct)
+        {
+            if (!await TableExistsAsync("Faculties", ct))
+            {
+                _logger.LogWarning("La tabla Faculties no existe en la base actual. Se devolverá un catálogo vacío.");
+                return Ok(new List<CatalogItemDto>());
+            }
+
+            var list = await _db.Faculties
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.Name)
+                .Select(x => new CatalogItemDto
+                {
+                    Id = x.FacultyId,
+                    Name = x.Name
+                })
+                .ToListAsync(ct);
+
+            return Ok(list);
+        }
+
         // ========== Proyectos ==========
         [HttpGet("projects")]
         public async Task<ActionResult<List<CatalogItemDto>>> GetProjects(CancellationToken ct)
@@ -270,6 +293,11 @@ namespace tesisproject.backend.Controllers
                     .Select(x => new CatalogAdminItemDto { Id = x.ResearchLineId, Name = x.Name })
                     .ToListAsync(ct),
 
+                "faculties" => await _db.Faculties
+                    .OrderBy(x => x.Name)
+                    .Select(x => new CatalogAdminItemDto { Id = x.FacultyId, Name = x.Name, Code = x.Code })
+                    .ToListAsync(ct),
+
                 "broad-fields" => await _db.BroadFields
                     .OrderBy(x => x.Name)
                     .Select(x => new CatalogAdminItemDto { Id = x.BroadFieldId, Name = x.Name })
@@ -339,6 +367,12 @@ namespace tesisproject.backend.Controllers
                     await _db.SaveChangesAsync(ct);
                     return new CatalogAdminItemDto { Id = researchLine.ResearchLineId, Name = researchLine.Name };
 
+                case "faculties":
+                    var faculty = new Faculty { Name = request.Name.Trim(), Code = NormalizeNullable(request.Code) };
+                    _db.Faculties.Add(faculty);
+                    await _db.SaveChangesAsync(ct);
+                    return new CatalogAdminItemDto { Id = faculty.FacultyId, Name = faculty.Name, Code = faculty.Code };
+
                 case "broad-fields":
                     var broadField = new BroadField { Name = request.Name.Trim() };
                     _db.BroadFields.Add(broadField);
@@ -395,6 +429,14 @@ namespace tesisproject.backend.Controllers
                     researchLine.Name = request.Name.Trim();
                     await _db.SaveChangesAsync(ct);
                     return new CatalogAdminItemDto { Id = researchLine.ResearchLineId, Name = researchLine.Name };
+
+                case "faculties":
+                    var faculty = await _db.Faculties.FirstOrDefaultAsync(x => x.FacultyId == id, ct);
+                    if (faculty is null) return null;
+                    faculty.Name = request.Name.Trim();
+                    faculty.Code = NormalizeNullable(request.Code);
+                    await _db.SaveChangesAsync(ct);
+                    return new CatalogAdminItemDto { Id = faculty.FacultyId, Name = faculty.Name, Code = faculty.Code };
 
                 case "broad-fields":
                     var broadField = await _db.BroadFields.FirstOrDefaultAsync(x => x.BroadFieldId == id, ct);

@@ -19,7 +19,9 @@ namespace tesisproject.backend.Mapping
                 PublicationStatusId = a.PublicationStatusId,
                 PublicationStatusName = a.PublicationStatus != null
             ? a.PublicationStatus.Name
-            : null
+            : null,
+                FacultyId = a.FacultyId,
+                FacultyName = a.Faculty?.Name
             };
         }
 
@@ -51,6 +53,8 @@ namespace tesisproject.backend.Mapping
                 BroadFieldId = a.BroadFieldId,
                 SpecificFieldId = a.SpecificFieldId,
                 DetailedFieldId = a.DetailedFieldId,
+                FacultyId = a.FacultyId,
+                FacultyName = a.Faculty?.Name,
 
                 // Venue
                 VenueName = a.Venue?.Name,

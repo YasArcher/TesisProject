@@ -13,6 +13,7 @@ namespace tesisproject.frontend.Services.Interfaces
         Task<List<CatalogItemDto>> GetDetailedFieldsAsync(int? specificFieldId = null);
         Task<List<CatalogItemDto>> GetPublicationStatusesAsync();
         Task<List<CatalogItemDto>> GetIndexingSourcesAsync();
+        Task<List<CatalogItemDto>> GetFacultiesAsync();
         Task<List<CatalogItemDto>> GetProjectsAsync();
 
         Task<List<VenueCatalogItemDto>> GetVenuesAsync();

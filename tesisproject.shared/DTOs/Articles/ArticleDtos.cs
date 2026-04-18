@@ -25,6 +25,8 @@ namespace tesisproject.shared.DTOs.Articles
         public string? AcademicTermName { get; set; }
         public byte? PublicationStatusId { get; set; }
         public int? ResearchLineId { get; set; }
+        public int? FacultyId { get; set; }
+        public string? FacultyName { get; set; }
         public int? IndexingSourceId { get; set; }
         public string? IndexingSourceName { get; set; }
         public string? Issn { get; set; }
@@ -60,6 +62,8 @@ namespace tesisproject.shared.DTOs.Articles
         public int? BroadFieldId { get; set; }
         public int? SpecificFieldId { get; set; }
         public int? DetailedFieldId { get; set; }
+        public int? FacultyId { get; set; }
+        public string? FacultyName { get; set; }
 
         // Proyección Venue (solo lectura en detalle)
         public string? VenueName { get; set; }

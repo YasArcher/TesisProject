@@ -42,6 +42,8 @@ namespace tesisproject.frontend.Services.Implementations
             AddString(query, nameof(filter.AcademicTerm), filter.AcademicTerm);
             AddString(query, nameof(filter.PublicationStatus), filter.PublicationStatus);
             AddString(query, nameof(filter.ResearchLine), filter.ResearchLine);
+            AddString(query, nameof(filter.Faculty), filter.Faculty);
+            AddString(query, nameof(filter.IndexingSource), filter.IndexingSource);
             AddString(query, nameof(filter.BroadField), filter.BroadField);
             AddString(query, nameof(filter.SpecificField), filter.SpecificField);
             AddString(query, nameof(filter.DetailedField), filter.DetailedField);

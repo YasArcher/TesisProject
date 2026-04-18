@@ -37,7 +37,8 @@ namespace tesisproject.backend.Services.Implementations
             var q = _db.Articles
                 .AsNoTracking()
                 .Include(a => a.Venue)
-                 .Include(a => a.PublicationStatus)
+                .Include(a => a.PublicationStatus)
+                .Include(a => a.Faculty)
                 .OrderByDescending(a => a.Year)
                 .ThenBy(a => a.Title)
                 .AsQueryable();
@@ -78,6 +79,7 @@ namespace tesisproject.backend.Services.Implementations
                 .Include(a => a.AcademicTerm)
                 .Include(a => a.PublicationStatus)
                 .Include(a => a.ResearchLine)
+                .Include(a => a.Faculty)
                 .Include(a => a.BroadField)
                 .Include(a => a.SpecificField)
                 .Include(a => a.DetailedField)
@@ -743,6 +745,7 @@ namespace tesisproject.backend.Services.Implementations
             var entity = await _db.Articles
                 .Include(a => a.Venue)!.ThenInclude(v => v!.VenueMetrics)
                 .Include(a => a.Indexings)!.ThenInclude(ix => ix.IndexingSource)
+                .Include(a => a.Faculty)
                 .Include(a => a.Participants)
                 .Include(a => a.Files)
                 .FirstOrDefaultAsync(a => a.Id == id, ct);
@@ -810,6 +813,7 @@ namespace tesisproject.backend.Services.Implementations
                 BroadFieldId = request.BroadFieldId,
                 SpecificFieldId = request.SpecificFieldId,
                 DetailedFieldId = request.DetailedFieldId,
+                FacultyId = request.FacultyId,
 
                 VenueId = venueId
                 // Si tus entidades tienen audit fields, agrégalos aquí.
@@ -876,6 +880,7 @@ namespace tesisproject.backend.Services.Implementations
             article.BroadFieldId = request.BroadFieldId;
             article.SpecificFieldId = request.SpecificFieldId;
             article.DetailedFieldId = request.DetailedFieldId;
+            article.FacultyId = request.FacultyId;
 
             article.VenueId = venueId;
 

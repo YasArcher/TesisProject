@@ -558,6 +558,7 @@ namespace tesisproject.backend.Services.Implementations
             AddCell("AcademicTermId", request.Article.AcademicTermId?.ToString(CultureInfo.InvariantCulture));
             AddCell("PublicationStatusId", request.Article.PublicationStatusId?.ToString(CultureInfo.InvariantCulture));
             AddCell("ResearchLineId", request.Article.ResearchLineId?.ToString(CultureInfo.InvariantCulture));
+            AddCell("FacultyId", request.Article.FacultyId?.ToString(CultureInfo.InvariantCulture));
             AddCell("BroadFieldId", request.Article.BroadFieldId?.ToString(CultureInfo.InvariantCulture));
             AddCell("SpecificFieldId", request.Article.SpecificFieldId?.ToString(CultureInfo.InvariantCulture));
             AddCell("DetailedFieldId", request.Article.DetailedFieldId?.ToString(CultureInfo.InvariantCulture));
@@ -1465,6 +1466,7 @@ namespace tesisproject.backend.Services.Implementations
                 "AcademicTermId" => "ID o nombre del periodo academico.",
                 "PublicationStatusId" => "ID o nombre del estado de publicacion.",
                 "ResearchLineId" => "ID o nombre de la linea de investigacion.",
+                "FacultyId" => "ID o nombre de la facultad.",
                 "BroadFieldId" => "ID o nombre del campo amplio.",
                 "SpecificFieldId" => "ID, nombre o codigo del campo especifico.",
                 "DetailedFieldId" => "ID, nombre o codigo del campo detallado.",
@@ -1504,6 +1506,7 @@ namespace tesisproject.backend.Services.Implementations
                 "AcademicTermId" => "Se convierte al ID real del catalogo.",
                 "PublicationStatusId" => "Se convierte al ID real del catalogo.",
                 "ResearchLineId" => "Se convierte al ID real del catalogo.",
+                "FacultyId" => "Se convierte al ID real del catalogo.",
                 "BroadFieldId" => "Se convierte al ID real del catalogo.",
                 "SpecificFieldId" => "Se convierte al ID real del catalogo.",
                 "DetailedFieldId" => "Se convierte al ID real del catalogo.",
@@ -2223,6 +2226,11 @@ namespace tesisproject.backend.Services.Implementations
                 result = cache.NormalizeLookup(field, value, cache.ResearchLinesByName, cache.ResearchLinesById, "línea de investigación");
                 return true;
             }
+            if (field.FieldKey == "FacultyId")
+            {
+                result = cache.NormalizeLookup(field, value, cache.FacultiesByNameOrCode, cache.FacultiesById, "facultad");
+                return true;
+            }
             if (field.FieldKey == "BroadFieldId")
             {
                 result = cache.NormalizeLookup(field, value, cache.BroadFieldsByName, cache.BroadFieldsById, "campo amplio");
@@ -2602,6 +2610,8 @@ namespace tesisproject.backend.Services.Implementations
             public Dictionary<int, int> PublicationStatusesById { get; init; } = new();
             public Dictionary<string, int> ResearchLinesByName { get; init; } = new(StringComparer.OrdinalIgnoreCase);
             public Dictionary<int, int> ResearchLinesById { get; init; } = new();
+            public Dictionary<string, int> FacultiesByNameOrCode { get; init; } = new(StringComparer.OrdinalIgnoreCase);
+            public Dictionary<int, int> FacultiesById { get; init; } = new();
             public Dictionary<string, int> BroadFieldsByName { get; init; } = new(StringComparer.OrdinalIgnoreCase);
             public Dictionary<int, int> BroadFieldsById { get; init; } = new();
             public Dictionary<string, int> SpecificFieldsByNameOrCode { get; init; } = new(StringComparer.OrdinalIgnoreCase);
@@ -2631,6 +2641,13 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     cache.ResearchLinesByName[item.Name.Trim()] = item.ResearchLineId;
                     cache.ResearchLinesById[item.ResearchLineId] = item.ResearchLineId;
+                }
+
+                foreach (var item in await db.Faculties.AsNoTracking().ToListAsync(ct))
+                {
+                    cache.FacultiesByNameOrCode[item.Name.Trim()] = item.FacultyId;
+                    if (!string.IsNullOrWhiteSpace(item.Code)) cache.FacultiesByNameOrCode[item.Code.Trim()] = item.FacultyId;
+                    cache.FacultiesById[item.FacultyId] = item.FacultyId;
                 }
 
                 foreach (var item in await db.BroadFields.AsNoTracking().ToListAsync(ct))

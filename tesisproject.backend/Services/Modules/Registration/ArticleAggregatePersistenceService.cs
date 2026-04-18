@@ -121,6 +121,7 @@ namespace tesisproject.backend.Services.Implementations
                 BroadFieldId = request.Article.BroadFieldId,
                 SpecificFieldId = request.Article.SpecificFieldId,
                 DetailedFieldId = request.Article.DetailedFieldId,
+                FacultyId = request.Article.FacultyId,
                 IsOpenAccess = request.Article.IsOpenAccess,
                 ExternalSource = Normalize(request.Article.ExternalSource),
                 ExternalId = Normalize(request.Article.ExternalId),

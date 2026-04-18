@@ -80,6 +80,7 @@ public sealed class ReportingArticleDetailRow
     public string? PublicationStatus { get; set; }
     public string? AcademicTerm { get; set; }
     public string? ResearchLine { get; set; }
+    public string? FacultyName { get; set; }
     public string? BroadFieldName { get; set; }
     public string? SpecificFieldName { get; set; }
     public string? DetailedFieldName { get; set; }
@@ -110,4 +111,17 @@ public sealed class ReportingArticleAuthorSummaryRow
 {
     public string Name { get; set; } = string.Empty;
     public int TotalArticles { get; set; }
+}
+
+public sealed class ReportingArticleIndexingDetailRow
+{
+    public int ArticleKey { get; set; }
+    public int ArticleId { get; set; }
+    public string? Title { get; set; }
+    public string? IndexingSourceName { get; set; }
+    public string? PublicationUrl { get; set; }
+    public DateTime? PublishedDate { get; set; }
+    public bool IsProjectResult { get; set; }
+    public string? FacultyName { get; set; }
+    public string? Quartile { get; set; }
 }

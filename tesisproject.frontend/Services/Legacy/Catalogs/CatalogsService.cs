@@ -34,6 +34,9 @@ namespace tesisproject.frontend.Services.Implementations
         public Task<List<CatalogItemDto>> GetIndexingSourcesAsync()
             => GetListAsync("api/catalogs/indexing-sources");
 
+        public Task<List<CatalogItemDto>> GetFacultiesAsync()
+            => GetListAsync("api/catalogs/faculties");
+
         public Task<List<CatalogItemDto>> GetProjectsAsync()
             => GetListAsync("api/catalogs/projects");
 

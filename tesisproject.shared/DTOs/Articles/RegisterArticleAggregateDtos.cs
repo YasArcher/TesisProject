@@ -31,6 +31,7 @@ namespace tesisproject.shared.DTOs.Articles
         public int? BroadFieldId { get; set; }
         public int? SpecificFieldId { get; set; }
         public int? DetailedFieldId { get; set; }
+        public int? FacultyId { get; set; }
         public bool IsOpenAccess { get; set; }
         public string? ExternalSource { get; set; }
         public string? ExternalId { get; set; }

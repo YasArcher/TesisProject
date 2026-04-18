@@ -33,6 +33,7 @@ namespace tesisproject.shared.DTOs.Articles
         public int? BroadFieldId { get; set; }
         public int? SpecificFieldId { get; set; }
         public int? DetailedFieldId { get; set; }
+        public int? FacultyId { get; set; }
 
         public List<int>? IndexingSourceIds { get; set; } = new();
         public List<ArticleParticipantRequest> Participants { get; set; } = new();

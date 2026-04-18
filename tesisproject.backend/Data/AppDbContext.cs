@@ -21,6 +21,7 @@ namespace tesisproject.backend.Data
         public DbSet<PublicationStatus> PublicationStatuses => Set<PublicationStatus>();
         public DbSet<ResearchLine> ResearchLines => Set<ResearchLine>();
         public DbSet<IndexingSource> IndexingSources => Set<IndexingSource>();
+        public DbSet<Faculty> Faculties => Set<Faculty>();
 
         // Campos OCDE
         public DbSet<BroadField> BroadFields => Set<BroadField>();
@@ -103,6 +104,11 @@ namespace tesisproject.backend.Data
                     .WithMany()
                     .HasForeignKey(x => x.DetailedFieldId)
                     .OnDelete(DeleteBehavior.NoAction);
+
+                e.HasOne(x => x.Faculty)
+                    .WithMany(f => f.Articles)
+                    .HasForeignKey(x => x.FacultyId)
+                    .OnDelete(DeleteBehavior.SetNull);
 
                 e.HasOne(x => x.Venue)
                     .WithMany(v => v.Articles)
@@ -199,6 +205,19 @@ namespace tesisproject.backend.Data
                 e.Property(x => x.Name).HasMaxLength(120).IsRequired();
                 e.Property(x => x.IsActive).HasDefaultValue(true);
                 e.HasIndex(x => x.Name).IsUnique();
+            });
+
+            // =============== Faculty ====================
+            m.Entity<Faculty>(e =>
+            {
+                e.Property(x => x.Name).HasMaxLength(200).IsRequired();
+                e.Property(x => x.Code).HasMaxLength(40);
+                e.Property(x => x.IsActive).HasDefaultValue(true);
+                e.Property(x => x.CreatedAt).HasDefaultValueSql("SYSUTCDATETIME()");
+                e.HasIndex(x => x.Name).IsUnique();
+                e.HasIndex(x => x.Code)
+                    .IsUnique()
+                    .HasFilter("[Code] IS NOT NULL AND [Code] <> N''");
             });
 
             // =============== OCDE Fields ================
