@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
@@ -16,10 +17,14 @@ namespace tesisproject.backend.Controllers
     public class ArticleRegistrationController : ControllerBase
     {
         private readonly IArticleRegistrationService _articleRegistrationService;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public ArticleRegistrationController(IArticleRegistrationService articleRegistrationService)
+        public ArticleRegistrationController(
+            IArticleRegistrationService articleRegistrationService,
+            UserManager<ApplicationUser> userManager)
         {
             _articleRegistrationService = articleRegistrationService;
+            _userManager = userManager;
         }
 
         [HttpPost]
@@ -51,6 +56,11 @@ namespace tesisproject.backend.Controllers
         {
             try
             {
+                if (!await HasAcceptedAuthorTermsAsync())
+                {
+                    return BadRequest(new { message = "Debes aceptar los términos y condiciones de manejo de información antes de enviar artículos a revisión." });
+                }
+
                 var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier) ?? User?.Identity?.Name;
                 var result = await _articleRegistrationService.SubmitArticleAggregateForReviewAsync(request, userId, ct);
                 return Ok(result);
@@ -63,6 +73,17 @@ namespace tesisproject.backend.Controllers
             {
                 return Problem(title: "No pude enviar el artículo a revisión.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
             }
+        }
+
+        private async Task<bool> HasAcceptedAuthorTermsAsync()
+        {
+            if (!User.IsInRole(AppRoles.Author) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Analyst))
+            {
+                return true;
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            return user?.TermsAcceptedAt is not null;
         }
     }
 }

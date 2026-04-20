@@ -1,0 +1,13 @@
+<div class="reports-dw-chart-empty reports-dw-empty-inline">
+    <span><i class="@IconClass"></i></span>
+    <div>
+        <strong>@Title</strong>
+        <p>@Message</p>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Sin información disponible";
+    [Parameter] public string Message { get; set; } = "No existen datos para los filtros seleccionados.";
+    [Parameter] public string IconClass { get; set; } = "bi bi-inbox";
+}

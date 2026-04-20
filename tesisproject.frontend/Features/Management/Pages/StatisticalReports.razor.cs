@@ -31,15 +31,18 @@ namespace tesisproject.frontend.Features.Management.Pages
 
         protected bool _showAdvancedFilters = false;
         protected bool _showLegacyReporting = false;
-        protected bool _showInstitutionalFilters = false;
+        protected bool _showInstitutionalFilters = true;
         protected bool _isLoadingInstitutionalReporting = true;
         protected bool _isRefreshingInstitutionalReporting = false;
         protected bool _isRunningInstitutionalEtl = false;
         protected bool _isInstitutionalPdfGenerating = false;
         protected string? _institutionalReportingError;
         protected InstitutionalReportingDashboardDto? _institutionalDashboard;
+        protected AuthorReportingDashboardDto? _authorReportingDashboard;
         protected InstitutionalReportingFilterDto _institutionalFilter = new();
         protected string _institutionalReportTab = "overview";
+        protected bool _isLoadingAuthorReporting = false;
+        protected string? _authorReportingError;
         protected DateTime? _institutionalLastLoadedAt;
         private CancellationTokenSource? _institutionalLoadCts;
 
@@ -491,6 +494,27 @@ namespace tesisproject.frontend.Features.Management.Pages
             }
         }
 
+        private async Task LoadAuthorReportingAsync()
+        {
+            _isLoadingAuthorReporting = true;
+            _authorReportingError = null;
+
+            try
+            {
+                _authorReportingDashboard = await InstitutionalReporting.GetAuthorDashboardAsync(_institutionalFilter);
+            }
+            catch (Exception ex)
+            {
+                _authorReportingDashboard = null;
+                _authorReportingError = $"No se pudo cargar la analítica de autores: {ex.Message}";
+                Console.Error.WriteLine(ex);
+            }
+            finally
+            {
+                _isLoadingAuthorReporting = false;
+            }
+        }
+
         private void RebuildTrendSummary()
         {
             var trend = ReportDashboardMetricsBuilder.BuildTrendSummary(_filteredByYear);
@@ -648,7 +672,8 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected bool IsInstitutionalBlockingBusy =>
             _isLoadingInstitutionalReporting
             || _isRefreshingInstitutionalReporting
-            || _isRunningInstitutionalEtl;
+            || _isRunningInstitutionalEtl
+            || _isLoadingAuthorReporting;
 
         protected string InstitutionalBlockingBusyTitle
         {
@@ -679,56 +704,6 @@ namespace tesisproject.frontend.Features.Management.Pages
                     : "Estamos preparando los indicadores institucionales, filtros y bloques analíticos.";
             }
         }
-
-        protected int MaxArticlesByYear =>
-            Math.Max(1, _institutionalDashboard?.ArticlesByYear.Select(x => x.Count).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxIndexingArticles =>
-            Math.Max(1, _institutionalDashboard?.ArticlesByIndexingSource.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxPublicationStatusArticles =>
-            Math.Max(1, _institutionalDashboard?.ArticlesByPublicationStatus.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxResearchLineArticles =>
-            Math.Max(1, _institutionalDashboard?.ArticlesByResearchLine.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxVenueArticles =>
-            Math.Max(1, _institutionalDashboard?.ArticlesByVenue.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxMonthArticles =>
-            Math.Max(1, _institutionalDashboard?.ArticlesByMonth.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxDayArticles =>
-            Math.Max(1, _institutionalDashboard?.ArticlesByDay.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxAuthorArticles =>
-            Math.Max(1, _institutionalDashboard?.ArticlesByAuthor.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxFacultyArticles =>
-            Math.Max(1, _institutionalDashboard?.ArticlesByFaculty.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxVenueTypeArticles =>
-            Math.Max(1, _institutionalDashboard?.ArticlesByVenueType.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxQuartileArticles =>
-            Math.Max(1, _institutionalDashboard?.ArticlesByQuartile.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxParticipationFacultyArticles =>
-            Math.Max(1, _institutionalDashboard?.ParticipationSummary.ByFaculty.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxParticipationIndexingArticles =>
-            Math.Max(1, _institutionalDashboard?.ParticipationSummary.ByIndexingSource.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxParticipationQuartileArticles =>
-            Math.Max(1, _institutionalDashboard?.ParticipationSummary.ByQuartile.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int MaxFacultyIndexingBreakdownArticles =>
-            Math.Max(1, _institutionalDashboard?.ParticipationSummary.IndexingByFaculty.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
-
-        protected int OpenAccessPercent =>
-            (_institutionalDashboard?.ScientificProduction.TotalArticles ?? 0) <= 0
-                ? 0
-                : (int)Math.Round((_institutionalDashboard!.ScientificProduction.OpenAccessArticles / (double)_institutionalDashboard.ScientificProduction.TotalArticles) * 100);
 
         protected int ProjectResultPercent =>
             (_institutionalDashboard?.ScientificProduction.TotalArticles ?? 0) <= 0
@@ -885,6 +860,10 @@ namespace tesisproject.frontend.Features.Management.Pages
                 AddChip(chips, "Revista", _institutionalFilter.VenueName);
                 AddChip(chips, "Tipo de publicación", _institutionalFilter.VenueType);
                 AddChip(chips, "Cuartil", _institutionalFilter.Quartile);
+                AddChip(chips, "Autor", _institutionalFilter.AuthorName);
+                AddChip(chips, "Coautor", _institutionalFilter.CoauthorName);
+                AddChip(chips, "Filiación", _institutionalFilter.AuthorAffiliation);
+                AddChip(chips, "Tipo participante", _institutionalFilter.ParticipantType);
 
                 if (string.Equals(_institutionalFilter.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase))
                 {
@@ -901,48 +880,13 @@ namespace tesisproject.frontend.Features.Management.Pages
                     chips.Add(("Acceso", _institutionalFilter.IsOpenAccess.Value ? "Open Access" : "No Open Access"));
                 }
 
+                if (_institutionalFilter.OnlyPrimaryAuthors == true)
+                {
+                    chips.Add(("Autoría", "Solo autor principal"));
+                }
+
                 return chips;
             }
-        }
-
-        protected static string GetBarWidth(int value, int maxValue)
-        {
-            if (maxValue <= 0 || value <= 0)
-            {
-                return "0%";
-            }
-
-            var percent = Math.Clamp((value / (double)maxValue) * 100, 4, 100);
-            return $"{percent:0.##}%";
-        }
-
-        protected string OpenAccessDonutStyle =>
-            $"background: conic-gradient(#97b067 0 {OpenAccessPercent}%, rgba(67, 86, 99, 0.12) {OpenAccessPercent}% 100%);";
-
-        protected string BuildFacultyParticipationPieStyle()
-        {
-            var items = _institutionalDashboard?.ParticipationSummary.ByFaculty
-                .Where(x => x.TotalArticles > 0)
-                .Take(8)
-                .ToList() ?? new List<ReportingParticipationItemDto>();
-
-            if (items.Count == 0)
-            {
-                return "background: conic-gradient(rgba(67, 86, 99, 0.12) 0 100%);";
-            }
-
-            var colors = new[] { "#2F5249", "#437057", "#97B067", "#E3DE61", "#F4CE14", "#435663", "#313647", "#A3B087" };
-            decimal start = 0;
-            var segments = new List<string>();
-
-            for (var i = 0; i < items.Count; i++)
-            {
-                var end = i == items.Count - 1 ? 100 : Math.Min(100, start + items[i].Percentage);
-                segments.Add($"{colors[i % colors.Length]} {start:0.##}% {end:0.##}%");
-                start = end;
-            }
-
-            return $"background: conic-gradient({string.Join(", ", segments)});";
         }
 
         private static void AddChip(List<(string Label, string Value)> chips, string label, string? value)
@@ -964,13 +908,22 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected async Task ApplyInstitutionalFiltersAsync()
         {
             await LoadInstitutionalReportingAsync(keepCurrentDashboard: true);
+            if (_institutionalReportTab == "authors")
+            {
+                await LoadAuthorReportingAsync();
+            }
             StateHasChanged();
         }
 
         protected async Task ClearInstitutionalFiltersAsync()
         {
             _institutionalFilter = new InstitutionalReportingFilterDto();
+            _authorReportingDashboard = null;
             await LoadInstitutionalReportingAsync(keepCurrentDashboard: true);
+            if (_institutionalReportTab == "authors")
+            {
+                await LoadAuthorReportingAsync();
+            }
             StateHasChanged();
         }
 
@@ -987,6 +940,27 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected void ShowInstitutionalParticipation()
         {
             _institutionalReportTab = "participation";
+        }
+
+        protected async Task ShowInstitutionalAuthors()
+        {
+            _institutionalReportTab = "authors";
+            if (_authorReportingDashboard is null && !_isLoadingAuthorReporting)
+            {
+                await LoadAuthorReportingAsync();
+            }
+        }
+
+        protected async Task ApplyAuthorFiltersAsync()
+        {
+            await LoadAuthorReportingAsync();
+            StateHasChanged();
+        }
+
+        protected async Task ClearAuthorFiltersAsync()
+        {
+            await LoadAuthorReportingAsync();
+            StateHasChanged();
         }
 
         protected async Task OpenInstitutionalPdfPreviewAsync()

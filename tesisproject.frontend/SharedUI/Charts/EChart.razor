@@ -1,6 +1,23 @@
 ﻿@using Microsoft.JSInterop
 
-<div id="@Id" class="w-full h-full" style="height:@Height;"></div>
+@implements IAsyncDisposable
+
+@if (_hasInteropIssue)
+{
+    <div class="echart-fallback" style="height:@Height;">
+        <span class="echart-fallback__icon">
+            <i class="bi bi-bar-chart-line"></i>
+        </span>
+        <div>
+            <strong>No se pudo cargar la visualización</strong>
+            <p>Los datos están disponibles, pero el componente gráfico no respondió en el navegador.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div id="@Id" class="echart-visual w-full h-full" style="height:@Height;"></div>
+}
 
 @code {
     [Inject] private IJSRuntime JS { get; set; } = default!;
@@ -20,6 +37,7 @@
     [Parameter] public string? OptionsJson { get; set; }
 
     private bool _firstRenderDone = false;
+    private bool _hasInteropIssue = false;
 
     private object? EffectiveOption => (object?)Option ?? OptionsJson;
 
@@ -31,7 +49,11 @@
 
             if (EffectiveOption != null)
             {
-                await JS.InvokeVoidAsync("echartsInterop.init", Id, EffectiveOption);
+                _hasInteropIssue = !await TryRenderChartAsync();
+                if (_hasInteropIssue)
+                {
+                    StateHasChanged();
+                }
             }
         }
     }
@@ -40,7 +62,19 @@
     {
         if (_firstRenderDone && EffectiveOption != null)
         {
-            await JS.InvokeVoidAsync("echartsInterop.init", Id, EffectiveOption);
+            _hasInteropIssue = !await TryRenderChartAsync();
+        }
+    }
+
+    private async Task<bool> TryRenderChartAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("echartsInterop.init", Id, EffectiveOption);
+        }
+        catch
+        {
+            return false;
         }
     }
 

@@ -1,0 +1,104 @@
+@using tesisproject.shared.DTOs.Reports
+
+<section class="reports-dw-insights-panel">
+    <div class="reports-dw-insights-panel__header">
+        <span><i class="bi bi-lightbulb"></i></span>
+        <div>
+            <small>Resumen ejecutivo</small>
+            <h2>Lectura estratégica del reporte filtrado</h2>
+            <p>Conclusiones rápidas para orientar la interpretación de la producción científica.</p>
+        </div>
+    </div>
+
+    <div class="reports-dw-insights-grid">
+        @foreach (var insight in Insights)
+        {
+            <article class="reports-dw-insight-card">
+                <span><i class="@insight.IconClass"></i></span>
+                <div>
+                    <small>@insight.Label</small>
+                    <strong>@insight.Value</strong>
+                    <p>@insight.Helper</p>
+                </div>
+            </article>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public InstitutionalReportingDashboardDto? Dashboard { get; set; }
+    [Parameter] public string ScopeLabel { get; set; } = "Vista general institucional";
+
+    private IReadOnlyList<InsightItem> Insights =>
+    [
+        new(
+            "Alcance",
+            ScopeLabel,
+            $"{Dashboard?.ScientificProduction.TotalArticles.ToString("N0") ?? "0"} artículos dentro de la selección actual.",
+            "bi bi-funnel"),
+        new(
+            "Facultad dominante",
+            TopFacultyLabel,
+            "Facultad con mayor producción dentro del filtro aplicado.",
+            "bi bi-mortarboard"),
+        new(
+            "Base de datos dominante",
+            TopIndexingLabel,
+            "Fuente de indexación con mayor presencia en el reporte.",
+            "bi bi-database-check"),
+        new(
+            "Revista destacada",
+            TopVenueLabel,
+            "Revista con mayor concentración de artículos registrados.",
+            "bi bi-building"),
+        new(
+            "Cuartil destacado",
+            TopQuartileLabel,
+            "Clasificación editorial con mayor concentración de artículos.",
+            "bi bi-award")
+    ];
+
+    private string TopFacultyLabel => BuildTopLabel(
+        Dashboard?.ParticipationSummary.ByFaculty.Select(x => (x.Name, x.TotalArticles)),
+        "Sin facultad");
+
+    private string TopIndexingLabel => BuildTopLabel(
+        Dashboard?.ParticipationSummary.ByIndexingSource.Select(x => (x.Name, x.TotalArticles)),
+        "Sin base de datos");
+
+    private string TopVenueLabel => BuildTopLabel(
+        Dashboard?.ArticlesByVenue.Select(x => (x.VenueName, x.TotalArticles)),
+        "Sin revista");
+
+    private string TopQuartileLabel => BuildTopLabel(
+        Dashboard?.ArticlesByQuartile.Select(x => (x.Name, x.TotalArticles)),
+        "Sin cuartil");
+
+    private static string BuildTopLabel(IEnumerable<(string Name, int Total)>? source, string fallback)
+    {
+        var item = source?
+            .Where(x => x.Total > 0)
+            .OrderByDescending(x => x.Total)
+            .FirstOrDefault();
+
+        if (item is null || item.Value.Total <= 0)
+        {
+            return fallback;
+        }
+
+        return $"{Shorten(item.Value.Name, 34)} · {item.Value.Total:N0}";
+    }
+
+    private static string Shorten(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Sin dato";
+        }
+
+        var text = value.Trim();
+        return text.Length <= maxLength ? text : text[..Math.Max(0, maxLength - 1)] + "...";
+    }
+
+    private sealed record InsightItem(string Label, string Value, string Helper, string IconClass);
+}

@@ -158,7 +158,9 @@ BEGIN
         [LockoutEnd] DATETIMEOFFSET NULL,
         [LockoutEnabled] BIT NOT NULL CONSTRAINT [DF_AspNetUsers_LockoutEnabled] DEFAULT (0),
         [AccessFailedCount] INT NOT NULL CONSTRAINT [DF_AspNetUsers_AccessFailedCount] DEFAULT (0),
-        [FullName] NVARCHAR(MAX) NULL
+        [FullName] NVARCHAR(MAX) NULL,
+        [TermsAcceptedAt] DATETIME2 NULL,
+        [TermsVersion] NVARCHAR(40) NULL
     );
     CREATE INDEX [EmailIndex] ON [dbo].[AspNetUsers]([NormalizedEmail]);
     CREATE UNIQUE INDEX [UserNameIndex] ON [dbo].[AspNetUsers]([NormalizedUserName]) WHERE [NormalizedUserName] IS NOT NULL;
@@ -167,6 +169,16 @@ END;
 IF COL_LENGTH(N'[dbo].[AspNetUsers]', N'FullName') IS NULL
 BEGIN
     ALTER TABLE [dbo].[AspNetUsers] ADD [FullName] NVARCHAR(MAX) NULL;
+END;
+
+IF COL_LENGTH(N'[dbo].[AspNetUsers]', N'TermsAcceptedAt') IS NULL
+BEGIN
+    ALTER TABLE [dbo].[AspNetUsers] ADD [TermsAcceptedAt] DATETIME2 NULL;
+END;
+
+IF COL_LENGTH(N'[dbo].[AspNetUsers]', N'TermsVersion') IS NULL
+BEGIN
+    ALTER TABLE [dbo].[AspNetUsers] ADD [TermsVersion] NVARCHAR(40) NULL;
 END;
 
 IF OBJECT_ID(N'[dbo].[AspNetRoleClaims]', N'U') IS NULL

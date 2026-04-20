@@ -352,6 +352,8 @@ namespace tesisproject.backend.Services.Implementations
                 throw new InvalidOperationException("La etapa actual no permite aprobación.");
             }
 
+            await EnsureBatchIsReadyForStageApprovalAsync(importBatchId, ct);
+
             var orderedDefinitions = context.Workflow.WorkflowDefinition!.Stages
                 .Where(x => x.IsActive)
                 .OrderBy(x => x.DisplayOrder)
@@ -403,6 +405,45 @@ namespace tesisproject.backend.Services.Implementations
 
             await _db.SaveChangesAsync(ct);
             return (await GetBatchWorkflowAsync(importBatchId, ct))!;
+        }
+
+        private async Task EnsureBatchIsReadyForStageApprovalAsync(int importBatchId, CancellationToken ct)
+        {
+            var batchState = await _db.ImportBatches
+                .AsNoTracking()
+                .Where(x => x.ImportBatchId == importBatchId)
+                .Select(x => new
+                {
+                    x.BatchCode,
+                    x.TotalRows,
+                    PendingRows = x.Rows.Count(row => row.RowStatus == "Pending"),
+                    ValidRows = x.Rows.Count(row => row.RowStatus == "Valid"),
+                    ErrorRows = x.Rows.Count(row => row.RowStatus == "Error"),
+                    ProcessedRows = x.Rows.Count(row => row.RowStatus == "Processed")
+                })
+                .FirstOrDefaultAsync(ct)
+                ?? throw new InvalidOperationException("El lote asociado al workflow no existe.");
+
+            if (batchState.TotalRows <= 0)
+            {
+                throw new InvalidOperationException($"El lote {batchState.BatchCode} no contiene filas para revisar.");
+            }
+
+            if (batchState.ErrorRows > 0)
+            {
+                throw new InvalidOperationException($"El lote {batchState.BatchCode} todavía tiene {batchState.ErrorRows} fila(s) con error. Corrige el staging y vuelve a validar antes de aprobar la etapa.");
+            }
+
+            if (batchState.PendingRows > 0)
+            {
+                throw new InvalidOperationException($"El lote {batchState.BatchCode} todavía tiene {batchState.PendingRows} fila(s) pendiente(s). Ejecuta la validación del staging antes de aprobar la etapa.");
+            }
+
+            var reviewedRows = batchState.ValidRows + batchState.ProcessedRows;
+            if (reviewedRows < batchState.TotalRows)
+            {
+                throw new InvalidOperationException($"El lote {batchState.BatchCode} no tiene todas sus filas listas para continuar. Valida el staging y confirma que no queden observaciones.");
+            }
         }
 
         private void EnsureStageDefinition(

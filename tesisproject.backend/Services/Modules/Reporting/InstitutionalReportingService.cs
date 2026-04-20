@@ -92,6 +92,21 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         return dashboard;
     }
 
+    public async Task<AuthorReportingDashboardDto> GetAuthorDashboardAsync(
+        InstitutionalReportingFilterDto? filter = null,
+        CancellationToken ct = default)
+    {
+        var cacheKey = BuildAuthorCacheKey(filter);
+        if (_cache.TryGetValue(cacheKey, out AuthorReportingDashboardDto? cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        var dashboard = await BuildAuthorDashboardAsync(filter, ct);
+        _cache.Set(cacheKey, dashboard, TimeSpan.FromMinutes(5));
+        return dashboard;
+    }
+
     private async Task<InstitutionalReportingDashboardDto> BuildDashboardAsync(
         InstitutionalReportingFilterDto? filter,
         CancellationToken ct)
@@ -102,10 +117,6 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         var periodDateSelector = BuildPeriodDateSelector(filter);
         var loadQuality = await SafeFirstOrDefaultAsync(_db.LoadQualityKpis.AsNoTracking(), "dw.vw_KPI_CalidadCarga", ct);
         var workflow = await SafeFirstOrDefaultAsync(_db.WorkflowKpis.AsNoTracking(), "dw.vw_KPI_Workflow", ct);
-        var indexing = await SafeListAsync(
-            _db.ArticlesByIndexingSource.AsNoTracking().OrderByDescending(x => x.TotalArticles),
-            "dw.vw_Articles_ByIndexingSource",
-            ct);
         var quartiles = await SafeListAsync(
             _db.QuartileDistribution.AsNoTracking().OrderBy(x => x.Quartile),
             "dw.vw_QuartileDistribution",
@@ -119,6 +130,19 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             "dw.vw_Workflow_Batches_ByCurrentStage",
             ct);
         var articleIndexingDetails = await BuildArticleIndexingDetailsAsync(details, filter, ct);
+
+        if (!string.IsNullOrWhiteSpace(filter?.IndexingSource))
+        {
+            var indexedArticleKeys = articleIndexingDetails
+                .Select(x => x.ArticleKey)
+                .Distinct()
+                .ToHashSet();
+
+            details = details
+                .Where(x => indexedArticleKeys.Contains(x.ArticleKey))
+                .ToList();
+        }
+
         var participationSummary = BuildParticipationSummary(details, articleIndexingDetails);
 
         return new InstitutionalReportingDashboardDto
@@ -168,12 +192,15 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
                 .OrderByDescending(x => x.Name)
                 .Take(30)
                 .ToList(),
-            ArticlesByIndexingSource = indexing
-                .Select(x => new IndexingSourceSummaryDto
+            ArticlesByIndexingSource = articleIndexingDetails
+                .GroupBy(x => Normalize(x.IndexingSourceName, "Sin base de datos"))
+                .Select(g => new IndexingSourceSummaryDto
                 {
-                    IndexingSourceName = x.IndexingSourceName,
-                    TotalArticles = x.TotalArticles
+                    IndexingSourceName = g.Key,
+                    TotalArticles = g.Select(x => x.ArticleKey).Distinct().Count()
                 })
+                .OrderByDescending(x => x.TotalArticles)
+                .ThenBy(x => x.IndexingSourceName)
                 .ToList(),
             PediIiitArticles = articleIndexingDetails
                 .OrderByDescending(x => x.PublishedDate)
@@ -916,7 +943,17 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             filter.ArticleYear,
             filter.Quartile,
             filter.IsOpenAccess,
-            filter.PeriodDateType);
+            filter.PeriodDateType,
+            filter.AuthorName,
+            filter.AuthorAffiliation,
+            filter.ParticipantType,
+            filter.OnlyPrimaryAuthors,
+            filter.CoauthorName);
+    }
+
+    private static string BuildAuthorCacheKey(InstitutionalReportingFilterDto? filter)
+    {
+        return $"reporting:authors:{BuildCacheKey(filter)}";
     }
 
     private static Func<ReportingArticleDetailRow, DateTime?> BuildPeriodDateSelector(InstitutionalReportingFilterDto? filter)
@@ -1136,6 +1173,369 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         }
 
         return filtered.ToList();
+    }
+
+    private async Task<AuthorReportingDashboardDto> BuildAuthorDashboardAsync(
+        InstitutionalReportingFilterDto? filter,
+        CancellationToken ct)
+    {
+        var rows = await SafeListAsync(
+            _db.AuthorPublications
+                .FromSqlRaw("""
+                    SELECT
+                        da.AuthorKey,
+                        COALESCE(
+                            NULLIF(LTRIM(RTRIM(da.ExternalAuthorId)), N''),
+                            NULLIF(LTRIM(RTRIM(da.Orcid)), N''),
+                            NULLIF(LTRIM(RTRIM(da.Identificacion)), N''),
+                            NULLIF(LTRIM(RTRIM(da.Email)), N''),
+                            UPPER(LTRIM(RTRIM(da.Nombre)))
+                        ) AS AuthorIdentity,
+                        da.Nombre AS AuthorName,
+                        da.Affiliation,
+                        da.ParticipantType,
+                        da.Email,
+                        da.Orcid,
+                        CAST(faa.IsPrimaryAuthorFlag AS bit) AS IsPrimaryAuthor,
+                        d.ArticleKey,
+                        d.ArticleId_OLTP AS ArticleId,
+                        d.Title,
+                        d.PublicationUrl,
+                        d.PublishedDate,
+                        d.CreatedDate,
+                        d.ArticleYear,
+                        d.VenueName,
+                        dis.Name AS IndexingSourceName,
+                        ISNULL(NULLIF(metric.Quartile, N''), N'Sin cuartil') AS Quartile,
+                        d.FacultyName,
+                        d.ResearchLine,
+                        d.BroadFieldName,
+                        d.SpecificFieldName,
+                        d.DetailedFieldName
+                    FROM dw.FactArticleAuthor faa
+                    INNER JOIN dw.DimAuthor da
+                        ON da.AuthorKey = faa.AuthorKey
+                    INNER JOIN dw.vw_Articles_Detail d
+                        ON d.ArticleKey = faa.ArticleKey
+                    LEFT JOIN dw.FactArticleIndexing fai
+                        ON fai.ArticleKey = d.ArticleKey
+                    LEFT JOIN dw.DimIndexingSource dis
+                        ON dis.IndexingSourceKey = fai.IndexingSourceKey
+                    OUTER APPLY (
+                        SELECT TOP 1 vm.Quartile
+                        FROM dw.vw_VenueMetrics_ByYear vm
+                        WHERE vm.VenueName = d.VenueName
+                          AND (d.ArticleYear IS NULL OR vm.YearNumber <= d.ArticleYear)
+                        ORDER BY vm.YearNumber DESC
+                    ) metric
+                    """)
+                .AsNoTracking(),
+            "detalle analítico de autores",
+            ct);
+
+        var filtered = ApplyAuthorFilters(rows, filter).ToList();
+        var authorArticlePairs = filtered
+            .GroupBy(x => new { x.AuthorIdentity, x.ArticleKey })
+            .Select(g => g.First())
+            .ToList();
+
+        var totalArticles = filtered.Select(x => x.ArticleKey).Distinct().Count();
+        var totalAuthors = filtered.Select(x => x.AuthorIdentity).Distinct().Count();
+        var primaryLinks = authorArticlePairs.Count(x => x.IsPrimaryAuthor);
+
+        return new AuthorReportingDashboardDto
+        {
+            Kpis = new AuthorReportingKpiDto
+            {
+                TotalAuthors = totalAuthors,
+                TotalArticles = totalArticles,
+                TotalAuthorArticleLinks = authorArticlePairs.Count,
+                PrimaryAuthorLinks = primaryLinks,
+                CoauthorLinks = Math.Max(0, authorArticlePairs.Count - primaryLinks),
+                AuthorsWithOrcid = filtered
+                    .Where(x => !string.IsNullOrWhiteSpace(x.Orcid))
+                    .Select(x => x.AuthorIdentity)
+                    .Distinct()
+                    .Count(),
+                AuthorsWithAffiliation = filtered
+                    .Where(x => !string.IsNullOrWhiteSpace(x.Affiliation))
+                    .Select(x => x.AuthorIdentity)
+                    .Distinct()
+                    .Count(),
+                AverageAuthorsPerArticle = totalArticles == 0
+                    ? 0
+                    : Math.Round((decimal)authorArticlePairs.Count / totalArticles, 2)
+            },
+            FilterOptions = new AuthorReportingFilterOptionsDto
+            {
+                Authors = Distinct(rows.Select(x => x.AuthorName)),
+                Affiliations = Distinct(rows.Select(x => x.Affiliation)),
+                ParticipantTypes = Distinct(rows.Select(x => x.ParticipantType))
+            },
+            Authors = BuildAuthorSummaries(authorArticlePairs),
+            Publications = BuildAuthorPublications(filtered),
+            Coauthors = BuildCoauthorSummaries(authorArticlePairs, filter),
+            ArticlesByAffiliation = GroupAuthorRows(authorArticlePairs, x => x.Affiliation, "Sin filiación"),
+            ArticlesByFaculty = GroupAuthorRows(authorArticlePairs, x => x.FacultyName, "Sin facultad"),
+            ArticlesByIndexingSource = GroupAuthorRows(filtered, x => x.IndexingSourceName, "Sin base de datos"),
+            ArticlesByQuartile = GroupAuthorRows(filtered, x => x.Quartile, "Sin cuartil"),
+            ArticlesByMonth = authorArticlePairs
+                .Select(x => new { Date = BuildPeriodDateSelector(filter)(ToArticleDetailRow(x)), x.ArticleKey })
+                .Where(x => x.Date.HasValue)
+                .GroupBy(x => x.Date!.Value.ToString("yyyy-MM"))
+                .Select(g => new ReportingSummaryItemDto { Name = g.Key, TotalArticles = g.Select(x => x.ArticleKey).Distinct().Count() })
+                .OrderBy(x => x.Name)
+                .ToList()
+        };
+    }
+
+    private static IEnumerable<ReportingAuthorPublicationRow> ApplyAuthorFilters(
+        IEnumerable<ReportingAuthorPublicationRow> rows,
+        InstitutionalReportingFilterDto? filter)
+    {
+        var query = rows;
+
+        if (filter is null)
+        {
+            return query;
+        }
+
+        if (filter.CreatedFrom.HasValue)
+        {
+            query = query.Where(x => x.CreatedDate.HasValue && x.CreatedDate.Value.Date >= filter.CreatedFrom.Value.Date);
+        }
+
+        if (filter.CreatedTo.HasValue)
+        {
+            query = query.Where(x => x.CreatedDate.HasValue && x.CreatedDate.Value.Date <= filter.CreatedTo.Value.Date);
+        }
+
+        if (filter.PublishedFrom.HasValue)
+        {
+            query = query.Where(x => x.PublishedDate.HasValue && x.PublishedDate.Value.Date >= filter.PublishedFrom.Value.Date);
+        }
+
+        if (filter.PublishedTo.HasValue)
+        {
+            query = query.Where(x => x.PublishedDate.HasValue && x.PublishedDate.Value.Date <= filter.PublishedTo.Value.Date);
+        }
+
+        if (filter.ArticleYear.HasValue)
+        {
+            query = query.Where(x => x.ArticleYear == filter.ArticleYear.Value);
+        }
+
+        query = FilterByText(query, filter.ResearchLine, x => x.ResearchLine);
+        query = FilterByText(query, filter.Faculty, x => x.FacultyName);
+        query = FilterByText(query, filter.IndexingSource, x => x.IndexingSourceName);
+        query = FilterByText(query, filter.BroadField, x => x.BroadFieldName);
+        query = FilterByText(query, filter.SpecificField, x => x.SpecificFieldName);
+        query = FilterByText(query, filter.DetailedField, x => x.DetailedFieldName);
+        query = FilterByText(query, filter.VenueName, x => x.VenueName);
+        query = FilterByText(query, filter.Quartile, x => x.Quartile);
+        query = FilterByText(query, filter.AuthorAffiliation, x => x.Affiliation);
+        query = FilterByText(query, filter.ParticipantType, x => x.ParticipantType);
+
+        if (!string.IsNullOrWhiteSpace(filter.CoauthorName))
+        {
+            var selectedCoauthor = filter.CoauthorName.Trim();
+            var coauthoredArticleKeys = query
+                .Where(x => ContainsText(x.AuthorName, selectedCoauthor))
+                .Select(x => x.ArticleKey)
+                .Distinct()
+                .ToHashSet();
+
+            query = query.Where(x => coauthoredArticleKeys.Contains(x.ArticleKey));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter.AuthorName))
+        {
+            var selected = filter.AuthorName.Trim();
+            query = query.Where(x => ContainsText(x.AuthorName, selected));
+        }
+
+        if (filter.OnlyPrimaryAuthors == true)
+        {
+            query = query.Where(x => x.IsPrimaryAuthor);
+        }
+
+        return query;
+    }
+
+    private static IEnumerable<ReportingAuthorPublicationRow> FilterByText(
+        IEnumerable<ReportingAuthorPublicationRow> rows,
+        string? selected,
+        Func<ReportingAuthorPublicationRow, string?> selector)
+    {
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            return rows;
+        }
+
+        var value = selected.Trim();
+        return rows.Where(x => string.Equals(selector(x)?.Trim(), value, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static bool ContainsText(string? source, string value)
+    {
+        return !string.IsNullOrWhiteSpace(source)
+            && source.Contains(value, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static List<AuthorReportingSummaryDto> BuildAuthorSummaries(List<ReportingAuthorPublicationRow> authorArticlePairs)
+    {
+        return authorArticlePairs
+            .GroupBy(x => new
+            {
+                x.AuthorIdentity,
+                Name = Normalize(x.AuthorName, "Sin autor"),
+                Affiliation = Normalize(x.Affiliation, "Sin filiación"),
+                ParticipantType = Normalize(x.ParticipantType, "Sin tipo"),
+                x.Email,
+                x.Orcid
+            })
+            .Select(g => new AuthorReportingSummaryDto
+            {
+                AuthorKey = g.Min(x => x.AuthorKey),
+                AuthorName = g.Key.Name,
+                Affiliation = g.Key.Affiliation,
+                ParticipantType = g.Key.ParticipantType,
+                Email = g.Key.Email,
+                Orcid = g.Key.Orcid,
+                TotalArticles = g.Select(x => x.ArticleKey).Distinct().Count(),
+                PrimaryAuthorArticles = g.Where(x => x.IsPrimaryAuthor).Select(x => x.ArticleKey).Distinct().Count(),
+                CoauthorArticles = g.Where(x => !x.IsPrimaryAuthor).Select(x => x.ArticleKey).Distinct().Count()
+            })
+            .OrderByDescending(x => x.TotalArticles)
+            .ThenBy(x => x.AuthorName)
+            .Take(50)
+            .ToList();
+    }
+
+    private static List<AuthorPublicationDto> BuildAuthorPublications(List<ReportingAuthorPublicationRow> rows)
+    {
+        return rows
+            .GroupBy(x => new { x.AuthorIdentity, x.ArticleKey, Indexing = Normalize(x.IndexingSourceName, "Sin base de datos") })
+            .Select(g =>
+            {
+                var row = g.First();
+                return new AuthorPublicationDto
+                {
+                    AuthorKey = row.AuthorKey,
+                    AuthorName = Normalize(row.AuthorName, "Sin autor"),
+                    Affiliation = Normalize(row.Affiliation, "Sin filiación"),
+                    ParticipantType = Normalize(row.ParticipantType, "Sin tipo"),
+                    IsPrimaryAuthor = row.IsPrimaryAuthor,
+                    ArticleId = row.ArticleId,
+                    Title = Normalize(row.Title, "Sin título"),
+                    PublicationUrl = row.PublicationUrl,
+                    PublishedDate = row.PublishedDate,
+                    CreatedDate = row.CreatedDate,
+                    Year = row.ArticleYear,
+                    VenueName = Normalize(row.VenueName, "Sin revista"),
+                    IndexingSourceName = Normalize(row.IndexingSourceName, "Sin base de datos"),
+                    Quartile = Normalize(row.Quartile, "Sin cuartil"),
+                    Faculty = Normalize(row.FacultyName, "Sin facultad"),
+                    ResearchLine = Normalize(row.ResearchLine, "Sin línea"),
+                    BroadField = Normalize(row.BroadFieldName, "Sin campo amplio"),
+                    SpecificField = Normalize(row.SpecificFieldName, "Sin campo específico"),
+                    DetailedField = Normalize(row.DetailedFieldName, "Sin campo detallado")
+                };
+            })
+            .OrderByDescending(x => x.PublishedDate ?? x.CreatedDate)
+            .ThenBy(x => x.AuthorName)
+            .Take(120)
+            .ToList();
+    }
+
+    private static List<AuthorCoauthorDto> BuildCoauthorSummaries(
+        List<ReportingAuthorPublicationRow> authorArticlePairs,
+        InstitutionalReportingFilterDto? filter)
+    {
+        var articleAuthors = authorArticlePairs
+            .GroupBy(x => x.ArticleKey)
+            .ToList();
+        var selectedAuthor = filter?.AuthorName?.Trim();
+        var selectedCoauthor = filter?.CoauthorName?.Trim();
+        var pairs = new List<AuthorCoauthorDto>();
+
+        foreach (var article in articleAuthors)
+        {
+            var authors = article
+                .GroupBy(x => x.AuthorIdentity)
+                .Select(g => g.First())
+                .ToList();
+
+            foreach (var author in authors)
+            {
+                foreach (var coauthor in authors.Where(x => !string.Equals(x.AuthorIdentity, author.AuthorIdentity, StringComparison.OrdinalIgnoreCase)))
+                {
+                    if (!string.IsNullOrWhiteSpace(selectedAuthor) && !ContainsText(author.AuthorName, selectedAuthor))
+                    {
+                        continue;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(selectedCoauthor) && !ContainsText(coauthor.AuthorName, selectedCoauthor))
+                    {
+                        continue;
+                    }
+
+                    pairs.Add(new AuthorCoauthorDto
+                    {
+                        AuthorKey = author.AuthorKey,
+                        AuthorName = Normalize(author.AuthorName, "Sin autor"),
+                        CoauthorKey = coauthor.AuthorKey,
+                        CoauthorName = Normalize(coauthor.AuthorName, "Sin coautor"),
+                        CoauthorAffiliation = Normalize(coauthor.Affiliation, "Sin filiación"),
+                        SharedArticles = 1
+                    });
+                }
+            }
+        }
+
+        return pairs
+            .GroupBy(x => new { x.AuthorName, x.CoauthorName, x.CoauthorAffiliation })
+            .Select(g => new AuthorCoauthorDto
+            {
+                AuthorKey = g.Min(x => x.AuthorKey),
+                AuthorName = g.Key.AuthorName,
+                CoauthorKey = g.Min(x => x.CoauthorKey),
+                CoauthorName = g.Key.CoauthorName,
+                CoauthorAffiliation = g.Key.CoauthorAffiliation,
+                SharedArticles = g.Sum(x => x.SharedArticles)
+            })
+            .OrderByDescending(x => x.SharedArticles)
+            .ThenBy(x => x.AuthorName)
+            .Take(80)
+            .ToList();
+    }
+
+    private static List<ReportingSummaryItemDto> GroupAuthorRows(
+        IEnumerable<ReportingAuthorPublicationRow> rows,
+        Func<ReportingAuthorPublicationRow, string?> selector,
+        string fallback)
+    {
+        return rows
+            .GroupBy(x => Normalize(selector(x), fallback))
+            .Select(g => new ReportingSummaryItemDto
+            {
+                Name = g.Key,
+                TotalArticles = g.Select(x => x.ArticleKey).Distinct().Count()
+            })
+            .OrderByDescending(x => x.TotalArticles)
+            .ThenBy(x => x.Name)
+            .Take(20)
+            .ToList();
+    }
+
+    private static ReportingArticleDetailRow ToArticleDetailRow(ReportingAuthorPublicationRow row)
+    {
+        return new ReportingArticleDetailRow
+        {
+            ArticleKey = row.ArticleKey,
+            CreatedDate = row.CreatedDate,
+            PublishedDate = row.PublishedDate
+        };
     }
 
     private static ReportingArticleIndexingDetailDto ToArticleIndexingDetailDto(ReportingArticleIndexingDetailRow row)

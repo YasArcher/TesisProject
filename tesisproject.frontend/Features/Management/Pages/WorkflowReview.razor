@@ -551,6 +551,23 @@
                                     <div class="text-xs uppercase tracking-[0.2em] text-slate-500">Acción del proceso</div>
                                     <div class="mt-2 text-sm font-semibold text-[#12343b]">@GetReviewerActionLead()</div>
 
+                                    @if (SelectedInboxItem is not null)
+                                    {
+                                        <div class="@GetStagingReadinessClass()">
+                                            <div class="workflow-readiness-card__icon">@GetStagingReadinessIcon()</div>
+                                            <div class="workflow-readiness-card__body">
+                                                <div class="workflow-readiness-card__title">@GetStagingReadinessTitle()</div>
+                                                <div class="workflow-readiness-card__text">@GetStagingReadinessMessage()</div>
+                                                <div class="workflow-readiness-card__chips">
+                                                    <span>Total: @SelectedInboxItem.TotalRows</span>
+                                                    <span>Listas: @(SelectedInboxItem.ValidRows + SelectedInboxItem.ProcessedRows)</span>
+                                                    <span>Pendientes: @GetSelectedPendingRows()</span>
+                                                    <span>Errores: @SelectedInboxItem.ErrorRows</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+
                                     <div class="mt-3">
                                         <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Destinatario de la nota</div>
                                         <div class="mt-2 workflow-author-tabs workflow-author-tabs--compact mb-0">
@@ -804,7 +821,8 @@
         SelectedInboxItem is not null
         && SelectedInboxItem.TotalRows > 0
         && SelectedInboxItem.ErrorRows == 0
-        && (SelectedInboxItem.ValidRows > 0 || SelectedInboxItem.ProcessedRows > 0);
+        && GetSelectedPendingRows() == 0
+        && (SelectedInboxItem.ValidRows + SelectedInboxItem.ProcessedRows) >= SelectedInboxItem.TotalRows;
     private bool IsUodideCurrentStage =>
         string.Equals(SelectedWorkflow?.CurrentStageKey, "uodide-validation", StringComparison.OrdinalIgnoreCase)
         || string.Equals(SelectedWorkflow?.CurrentStageGroupKey, "uodide", StringComparison.OrdinalIgnoreCase);
@@ -857,11 +875,16 @@
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray();
 
-                CurrentUser = new AuthMeResponse(email, fullName, roles);
+                CurrentUser = new AuthMeResponse
+                {
+                    Email = email,
+                    FullName = fullName,
+                    Roles = roles
+                };
             }
             else
             {
-                CurrentUser = new AuthMeResponse(string.Empty, string.Empty, Array.Empty<string>());
+                CurrentUser = new AuthMeResponse();
             }
 
             AuthorInbox = CanSeeAuthorInbox
@@ -1297,6 +1320,62 @@
         }
 
         return "Este envío no tiene una acción pendiente para tu rol en este momento.";
+    }
+
+    private int GetSelectedPendingRows()
+    {
+        if (SelectedInboxItem is null)
+        {
+            return 0;
+        }
+
+        var reviewedRows = SelectedInboxItem.ValidRows + SelectedInboxItem.ProcessedRows + SelectedInboxItem.ErrorRows;
+        return Math.Max(0, SelectedInboxItem.TotalRows - reviewedRows);
+    }
+
+    private string GetStagingReadinessClass()
+        => IsSelectedBatchReadyForApproval
+            ? "workflow-readiness-card workflow-readiness-card--ready"
+            : SelectedInboxItem?.ErrorRows > 0
+                ? "workflow-readiness-card workflow-readiness-card--blocked"
+                : "workflow-readiness-card workflow-readiness-card--pending";
+
+    private string GetStagingReadinessIcon()
+        => IsSelectedBatchReadyForApproval ? "✓" : SelectedInboxItem?.ErrorRows > 0 ? "!" : "…";
+
+    private string GetStagingReadinessTitle()
+        => IsSelectedBatchReadyForApproval
+            ? "Staging listo para aprobar"
+            : SelectedInboxItem?.ErrorRows > 0
+                ? "Correcciones requeridas"
+                : "Validación pendiente";
+
+    private string GetStagingReadinessMessage()
+    {
+        if (SelectedInboxItem is null)
+        {
+            return "Selecciona un envío para revisar el estado del staging.";
+        }
+
+        if (IsSelectedBatchReadyForApproval)
+        {
+            return IsAreaTecnicaCurrentStage
+                ? "El lote no tiene pendientes ni errores. Puedes aprobar la validación final o procesar cuando el workflow lo habilite."
+                : "El lote no tiene pendientes ni errores. Puedes aprobar y enviarlo a Área Técnica.";
+        }
+
+        if (SelectedInboxItem.ErrorRows > 0)
+        {
+            return $"Hay {SelectedInboxItem.ErrorRows} fila(s) con observaciones. Corrige el staging, valida nuevamente y luego continúa.";
+        }
+
+        var pendingRows = GetSelectedPendingRows();
+        if (pendingRows > 0)
+        {
+            return $"Todavía hay {pendingRows} fila(s) pendiente(s). Ejecuta la validación del staging antes de aprobar.";
+        }
+
+        return "El staging aún no cumple las condiciones para avanzar. Revisa el panel integrado y vuelve a validar.";
     }
 
     private static string GetFriendlyActionName(string? actionType)

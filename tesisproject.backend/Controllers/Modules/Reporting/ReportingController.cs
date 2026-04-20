@@ -34,6 +34,15 @@ public sealed class ReportingController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("authors")]
+    public async Task<ActionResult<AuthorReportingDashboardDto>> GetAuthors(
+        [FromQuery] InstitutionalReportingFilterDto filter,
+        CancellationToken ct)
+    {
+        var result = await _reporting.GetAuthorDashboardAsync(filter, ct);
+        return Ok(result);
+    }
+
     [HttpGet("dashboard/pdf")]
     public async Task<IActionResult> GetDashboardPdf(
         [FromQuery] InstitutionalReportingFilterDto filter,

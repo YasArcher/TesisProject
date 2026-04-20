@@ -21,6 +21,7 @@ public sealed class ReportingDbContext : DbContext
     public DbSet<ReportingVenueMetricRow> VenueMetricsByYear => Set<ReportingVenueMetricRow>();
     public DbSet<ReportingArticleAuthorSummaryRow> ArticleAuthorSummaries => Set<ReportingArticleAuthorSummaryRow>();
     public DbSet<ReportingArticleIndexingDetailRow> ArticleIndexingDetails => Set<ReportingArticleIndexingDetailRow>();
+    public DbSet<ReportingAuthorPublicationRow> AuthorPublications => Set<ReportingAuthorPublicationRow>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -94,6 +95,12 @@ public sealed class ReportingDbContext : DbContext
         });
 
         modelBuilder.Entity<ReportingArticleIndexingDetailRow>(entity =>
+        {
+            entity.HasNoKey();
+            entity.ToView(null);
+        });
+
+        modelBuilder.Entity<ReportingAuthorPublicationRow>(entity =>
         {
             entity.HasNoKey();
             entity.ToView(null);

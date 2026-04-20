@@ -10,4 +10,5 @@ public interface IAuthClient
 
     // /api/auth/me
     Task<AuthMeResponse?> GetCurrentAsync(CancellationToken ct = default);
+    Task<AuthMeResponse?> AcceptTermsAsync(AcceptTermsRequest request, CancellationToken ct = default);
 }

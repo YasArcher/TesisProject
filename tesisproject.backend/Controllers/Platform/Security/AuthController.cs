@@ -33,12 +33,29 @@ public class AuthController : ControllerBase
     {
         try
         {
-            var (email, fullName, roles) = await _auth.MeAsync(User);
-            return Ok(new { email, fullName, roles });
+            return Ok(await _auth.MeAsync(User));
         }
         catch (UnauthorizedAccessException)
         {
             return Unauthorized(new { message = "La sesión actual no es válida o no está autenticada." });
+        }
+    }
+
+    [Authorize(Policy = AppPolicies.AuthenticatedUser)]
+    [HttpPost("accept-terms")]
+    public async Task<IActionResult> AcceptTerms([FromBody] AcceptTermsRequest request, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await _auth.AcceptTermsAsync(User, request, ct));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized(new { message = "La sesión actual no es válida o no está autenticada." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 }

@@ -12,6 +12,7 @@ namespace tesisproject.shared.Abstractions.Auth
     {
         Task<LoguinResponse> RegisterAsync(RegisterUserRequest request);
         Task<LoguinResponse> LoginAsync(LoguinRequest request);
-        Task<(string Email, string FullName, string[] Roles)> MeAsync(ClaimsPrincipal user);
+        Task<AuthMeResponse> MeAsync(ClaimsPrincipal user);
+        Task<AuthMeResponse> AcceptTermsAsync(ClaimsPrincipal user, AcceptTermsRequest request, CancellationToken ct = default);
     }
 }

@@ -23,6 +23,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager NavManager
 @inject AuthenticationStateProvider AuthStateProvider
+@inject IAuthClient AuthClient
 
 <PageTitle>Registro dinámico</PageTitle>
 
@@ -58,6 +59,54 @@
                      Message="Se eliminarán los datos cargados para ese participante antes de guardar."
                      OnCancel="CancelRemoveParticipant"
                      OnConfirm="ConfirmRemoveParticipant" />
+
+    @if (ShouldShowTermsGate)
+    {
+        <div class="terms-gate-backdrop">
+            <section class="terms-gate-card" role="dialog" aria-modal="true" aria-labelledby="terms-title">
+                <div class="terms-gate-card__badge">Seguridad de datos</div>
+                <h2 id="terms-title" class="terms-gate-card__title">Acuerdo de uso de información académica</h2>
+                <p class="terms-gate-card__lead">
+                    Antes de registrar artículos, necesitamos que aceptes las condiciones de uso y tratamiento de información. Esto protege los datos académicos, institucionales y personales que ingreses al sistema.
+                </p>
+                <div class="terms-gate-grid">
+                    <article>
+                        <span>01</span>
+                        <strong>Responsabilidad del registro</strong>
+                        <p>Declaro que la información registrada corresponde a producción científica verificable y que puedo sustentar sus datos.</p>
+                    </article>
+                    <article>
+                        <span>02</span>
+                        <strong>Uso institucional</strong>
+                        <p>Autorizo el uso de la información para revisión, validación, reportería institucional y procesos internos de investigación.</p>
+                    </article>
+                    <article>
+                        <span>03</span>
+                        <strong>Protección de datos</strong>
+                        <p>Comprendo que los datos serán tratados bajo criterios de confidencialidad, trazabilidad y acceso por roles autorizados.</p>
+                    </article>
+                </div>
+                <label class="terms-gate-check">
+                    <input type="checkbox" @bind="HasConfirmedTermsRead" />
+                    <span>He leído y acepto los términos y condiciones para el manejo de información académica.</span>
+                </label>
+                @if (!string.IsNullOrWhiteSpace(TermsErrorMessage))
+                {
+                    <div class="terms-gate-error">@TermsErrorMessage</div>
+                }
+                <div class="terms-gate-actions">
+                    <button type="button" class="terms-gate-actions__secondary" @onclick="GoBack">Cancelar</button>
+                    <button type="button"
+                            class="terms-gate-actions__primary"
+                            disabled="@(!HasConfirmedTermsRead || IsAcceptingTerms)"
+                            @onclick="AcceptTermsAsync">
+                        @(IsAcceptingTerms ? "Registrando aceptación..." : "Aceptar y continuar")
+                    </button>
+                </div>
+                <div class="terms-gate-footer">Versión de términos: @TermsVersion</div>
+            </section>
+        </div>
+    }
 
     @if (IsLoading)
     {
@@ -320,6 +369,12 @@
     private bool IsSaving { get; set; }
     private bool IsSummaryDrawerOpen { get; set; }
     private bool IsAdminExperience { get; set; }
+    private bool IsAuthorExperience { get; set; }
+    private AuthMeResponse? CurrentUser { get; set; }
+    private bool HasConfirmedTermsRead { get; set; }
+    private bool IsAcceptingTerms { get; set; }
+    private string TermsErrorMessage { get; set; } = string.Empty;
+    private const string TermsVersion = "2026-04";
     private RegisterArticleMode CurrentMode { get; set; } = RegisterArticleMode.Single;
     private string ErrorMessage { get; set; } = string.Empty;
     private string SuccessMessage { get; set; } = string.Empty;
@@ -389,6 +444,39 @@
     {
         var state = await AuthStateProvider.GetAuthenticationStateAsync();
         IsAdminExperience = state.User.IsInRole("Admin");
+        IsAuthorExperience = state.User.IsInRole("Author") && !IsAdminExperience;
+        CurrentUser = await AuthClient.GetCurrentAsync();
+    }
+
+    private bool ShouldShowTermsGate
+        => false;
+
+    private async Task AcceptTermsAsync()
+    {
+        if (!HasConfirmedTermsRead)
+        {
+            TermsErrorMessage = "Debes confirmar la lectura de los términos para continuar.";
+            return;
+        }
+
+        try
+        {
+            IsAcceptingTerms = true;
+            TermsErrorMessage = string.Empty;
+            CurrentUser = await AuthClient.AcceptTermsAsync(new AcceptTermsRequest { TermsVersion = TermsVersion });
+            if (CurrentUser?.HasAcceptedTerms != true)
+            {
+                TermsErrorMessage = "No pude registrar la aceptación. Inténtalo nuevamente.";
+            }
+        }
+        catch (Exception ex)
+        {
+            TermsErrorMessage = $"No pude registrar la aceptación: {ex.Message}";
+        }
+        finally
+        {
+            IsAcceptingTerms = false;
+        }
     }
 
     private async Task UpdateSectionSearchTermAsync(string value)
@@ -430,6 +518,12 @@
 
     private void SetMode(RegisterArticleMode mode)
     {
+        if (ShouldShowTermsGate)
+        {
+            WarningMessage = "Primero debes aceptar los términos y condiciones para registrar artículos.";
+            return;
+        }
+
         if (mode == RegisterArticleMode.Mass && IsAdminExperience)
         {
             GoToRegistrationMatrix();
@@ -445,6 +539,12 @@
 
     private void OpenSecondaryRegistrationMode()
     {
+        if (ShouldShowTermsGate)
+        {
+            WarningMessage = "Primero debes aceptar los términos y condiciones para registrar artículos.";
+            return;
+        }
+
         if (IsAdminExperience)
         {
             GoToRegistrationMatrix();
@@ -562,6 +662,12 @@
     }
     private async Task SaveAsync()
     {
+        if (ShouldShowTermsGate)
+        {
+            WarningMessage = "Acepta los términos y condiciones antes de guardar o enviar un registro.";
+            return;
+        }
+
         if (!await PrepareSubmissionAsync())
         {
             return;
@@ -595,6 +701,12 @@
 
     private async Task SubmitForReviewAsync()
     {
+        if (ShouldShowTermsGate)
+        {
+            WarningMessage = "Acepta los términos y condiciones antes de enviar el registro a revisión.";
+            return;
+        }
+
         if (!await PrepareSubmissionAsync())
         {
             return;

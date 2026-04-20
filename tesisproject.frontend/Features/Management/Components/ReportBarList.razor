@@ -1,0 +1,62 @@
+@if (BarItems.Count == 0)
+{
+    <div class="reports-dw-chart-empty">@EmptyMessage</div>
+}
+else
+{
+    <div class="reports-dw-bars reports-dw-bars--compact">
+        @foreach (var item in BarItems)
+        {
+            <div class="@RowClass">
+                <span title="@(item.Title ?? item.Label)">@item.Label</span>
+                <div class="reports-dw-bar-track">
+                    <div class="@FillClass" style="width:@GetBarWidth(item.Value, MaxValue)"></div>
+                </div>
+                <strong>@FormatValue(item)</strong>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public IEnumerable<ReportBarItem>? Items { get; set; }
+    [Parameter] public string FillVariant { get; set; } = "default";
+    [Parameter] public bool ShowPercentage { get; set; }
+    [Parameter] public string EmptyMessage { get; set; } = "Sin datos disponibles.";
+
+    private IReadOnlyList<ReportBarItem> BarItems => Items?.ToList() ?? [];
+
+    private int MaxValue => Math.Max(1, BarItems.Select(x => x.Value).DefaultIfEmpty(0).Max());
+
+    private string FillClass => FillVariant switch
+    {
+        "sage" => "reports-dw-bar-fill reports-dw-bar-fill--sage",
+        "gold" => "reports-dw-bar-fill reports-dw-bar-fill--gold",
+        _ => "reports-dw-bar-fill"
+    };
+
+    private string RowClass => ShowPercentage
+        ? "reports-dw-bar-row reports-dw-bar-row--percentage"
+        : "reports-dw-bar-row";
+
+    private static string GetBarWidth(int value, int maxValue)
+    {
+        if (maxValue <= 0 || value <= 0)
+        {
+            return "0%";
+        }
+
+        var percent = Math.Clamp((value / (double)maxValue) * 100, 4, 100);
+        return $"{percent:0.##}%";
+    }
+
+    private string FormatValue(ReportBarItem item)
+    {
+        if (ShowPercentage && item.Percentage.HasValue)
+        {
+            return $"{item.Value:N0} · {item.Percentage.Value:0.##}%";
+        }
+
+        return item.Value.ToString("N0");
+    }
+}

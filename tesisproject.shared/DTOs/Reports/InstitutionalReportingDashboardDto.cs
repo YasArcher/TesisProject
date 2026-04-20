@@ -50,6 +50,11 @@ public sealed class InstitutionalReportingFilterDto
     public string? Quartile { get; set; }
     public bool? IsOpenAccess { get; set; }
     public string? PeriodDateType { get; set; }
+    public string? AuthorName { get; set; }
+    public string? AuthorAffiliation { get; set; }
+    public string? ParticipantType { get; set; }
+    public bool? OnlyPrimaryAuthors { get; set; }
+    public string? CoauthorName { get; set; }
 }
 
 public sealed class InstitutionalReportingFilterOptionsDto

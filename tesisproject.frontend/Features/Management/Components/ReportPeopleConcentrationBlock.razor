@@ -1,0 +1,92 @@
+@using tesisproject.shared.DTOs.Reports
+
+<div id="reports-block-people" class="reports-dw-section-heading reports-dw-section-heading--ink">
+    <span><i class="bi bi-people"></i></span>
+    <div>
+        <small>Bloque 03</small>
+        <h2>Autores, facultades y concentración temática</h2>
+        <p>Distribución por participantes, facultades, tipos de publicación y líneas de investigación.</p>
+    </div>
+</div>
+
+<article class="reports-dw-chart-card">
+    <ReportCardHeader IconClass="bi bi-person-lines-fill"
+                      Title="Autores"
+                      Description="Producción por autor/participante registrado." />
+    <ReportBarList Items="@AuthorBarItems"
+                   EmptyMessage="Sin autores registrados para el filtro actual." />
+</article>
+
+<article class="reports-dw-chart-card">
+    <ReportCardHeader IconClass="bi bi-mortarboard"
+                      Title="Facultades"
+                      Description="Conteo por facultad formal registrada en el artículo." />
+    <ReportBarList Items="@FacultyBarItems"
+                   FillVariant="sage"
+                   EmptyMessage="Sin facultades registradas para el filtro actual." />
+</article>
+
+<article class="reports-dw-chart-card">
+    <ReportCardHeader IconClass="bi bi-collection"
+                      Title="Tipo de publicación"
+                      Description="Distribución por tipo de publicación: revista, proceedings u otros." />
+    <ReportBarList Items="@VenueTypeBarItems"
+                   EmptyMessage="Sin tipos de publicación registrados." />
+</article>
+
+<article class="reports-dw-chart-card">
+    <ReportCardHeader IconClass="bi bi-bezier2"
+                      Title="Líneas de investigación"
+                      Description="Producción por línea configurada en el catálogo institucional." />
+    <ReportBarList Items="@ResearchLineBarItems"
+                   FillVariant="sage"
+                   EmptyMessage="Sin líneas de investigación registradas." />
+</article>
+
+<article class="reports-dw-chart-card reports-dw-chart-card--wide">
+    <ReportCardHeader IconClass="bi bi-diagram-3"
+                      Title="Campos de conocimiento"
+                      Description="Conteo de artículos por campo amplio, campo específico y campo detallado." />
+    <div class="reports-dw-table-wrap reports-dw-table-wrap--compact">
+        <table class="reports-dw-table">
+            <thead>
+                <tr>
+                    <th>Campo amplio</th>
+                    <th>Campo específico</th>
+                    <th>Campo detallado</th>
+                    <th>Artículos</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var field in Dashboard?.ArticlesByField.Take(12) ?? [])
+                {
+                    <tr>
+                        <td>@field.BroadField</td>
+                        <td>@field.SpecificField</td>
+                        <td>@field.DetailedField</td>
+                        <td>@field.TotalArticles</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</article>
+
+@code {
+    [Parameter] public InstitutionalReportingDashboardDto? Dashboard { get; set; }
+
+    private IEnumerable<ReportBarItem> AuthorBarItems =>
+        Dashboard?.ArticlesByAuthor.Take(8).Select(ToBarItem) ?? [];
+
+    private IEnumerable<ReportBarItem> FacultyBarItems =>
+        Dashboard?.ArticlesByFaculty.Take(8).Select(ToBarItem) ?? [];
+
+    private IEnumerable<ReportBarItem> VenueTypeBarItems =>
+        Dashboard?.ArticlesByVenueType.Take(8).Select(ToBarItem) ?? [];
+
+    private IEnumerable<ReportBarItem> ResearchLineBarItems =>
+        Dashboard?.ArticlesByResearchLine.Take(8).Select(ToBarItem) ?? [];
+
+    private static ReportBarItem ToBarItem(ReportingSummaryItemDto item)
+        => new(item.Name, item.TotalArticles, item.Name);
+}

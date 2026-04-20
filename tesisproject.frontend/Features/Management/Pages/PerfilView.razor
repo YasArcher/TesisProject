@@ -80,6 +80,32 @@
                 </div>
             }
         </section>
+
+        <section class="profile-card profile-card--agreement">
+            <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon">✓</span><span>Acuerdo de información</span></div>
+            <div class="profile-agreement">
+                <div class="profile-agreement__icon">@AgreementIcon</div>
+                <div>
+                    <div class="profile-agreement__title">@AgreementTitle</div>
+                    <div class="profile-card__subtle">@AgreementDescription</div>
+                </div>
+            </div>
+
+            <div class="profile-agreement__details">
+                <article class="profile-mini-card">
+                    <div class="profile-mini-card__label">Estado</div>
+                    <div class="profile-mini-card__value">@AgreementStatus</div>
+                </article>
+                <article class="profile-mini-card">
+                    <div class="profile-mini-card__label">Fecha</div>
+                    <div class="profile-mini-card__value">@AgreementDate</div>
+                </article>
+                <article class="profile-mini-card">
+                    <div class="profile-mini-card__label">Versión</div>
+                    <div class="profile-mini-card__value">@AgreementVersion</div>
+                </article>
+            </div>
+        </section>
     </div>
 </div>
 
@@ -90,6 +116,24 @@
     private string Initials { get; set; } = "U";
     private string? ErrorMessage { get; set; }
     private List<string> Roles { get; set; } = [];
+    private bool HasAcceptedTerms { get; set; }
+    private DateTime? TermsAcceptedAt { get; set; }
+    private string? TermsVersion { get; set; }
+    private bool IsAuthor => Roles.Any(IsAuthorRole);
+    private string AgreementIcon => !IsAuthor ? "i" : HasAcceptedTerms ? "✓" : "!";
+    private string AgreementTitle => !IsAuthor
+        ? "Acuerdo no requerido para este rol"
+        : HasAcceptedTerms
+            ? "Acuerdo aceptado"
+            : "Acuerdo pendiente";
+    private string AgreementDescription => !IsAuthor
+        ? "Tu perfil no requiere aceptación previa para registrar artículos como autor."
+        : HasAcceptedTerms
+            ? "Puedes registrar y enviar artículos a revisión con normalidad."
+            : "Para registrar y enviar artículos, primero debes aceptar el manejo institucional de información.";
+    private string AgreementStatus => !IsAuthor ? "No requerido" : HasAcceptedTerms ? "Aceptado" : "Pendiente";
+    private string AgreementDate => TermsAcceptedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Sin registro";
+    private string AgreementVersion => string.IsNullOrWhiteSpace(TermsVersion) ? "Sin versión" : TermsVersion;
 
     protected override async Task OnInitializedAsync()
     {
@@ -132,6 +176,17 @@
                 Email = string.IsNullOrWhiteSpace(me.Email) ? Email : me.Email;
                 FullName = string.IsNullOrWhiteSpace(me.FullName) ? FullName : me.FullName;
                 Initials = BuildInitials(FullName);
+                HasAcceptedTerms = me.HasAcceptedTerms;
+                TermsAcceptedAt = me.TermsAcceptedAt;
+                TermsVersion = me.TermsVersion;
+
+                if (me.Roles?.Length > 0)
+                {
+                    Roles = me.Roles
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(x => x)
+                        .ToList();
+                }
             }
         }
         catch (Exception ex)
@@ -175,4 +230,8 @@
             "WorkflowProcessorAreaTecnica" => "Área Técnica",
             _ => role
         };
+
+    private static bool IsAuthorRole(string role)
+        => string.Equals(role, "Autor", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "Author", StringComparison.OrdinalIgnoreCase);
 }

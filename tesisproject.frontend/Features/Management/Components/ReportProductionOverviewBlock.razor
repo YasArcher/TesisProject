@@ -1,0 +1,155 @@
+@using tesisproject.shared.DTOs.Reports
+
+<div id="reports-block-production" class="reports-dw-section-heading">
+    <span><i class="bi bi-graph-up-arrow"></i></span>
+    <div>
+        <small>Bloque 01</small>
+        <h2>Producción científica y comportamiento temporal</h2>
+        <p>Lectura inicial de volumen institucional, ritmo de registro, acceso abierto y evolución por periodos.</p>
+    </div>
+</div>
+
+<article class="reports-dw-chart-card reports-dw-chart-card--wide">
+    <ReportCardHeader IconClass="bi bi-bar-chart-line"
+                      Title="Producción por año"
+                      Description="Artículos registrados y agrupados según el periodo de análisis seleccionado." />
+
+    @if ((Dashboard?.ArticlesByYear.Count ?? 0) == 0)
+    {
+        <div class="reports-dw-chart-empty">No hay distribución anual disponible.</div>
+    }
+    else
+    {
+        <div class="reports-dw-bars">
+            @foreach (var item in Dashboard!.ArticlesByYear.OrderBy(x => x.Year))
+            {
+                <div class="reports-dw-bar-row">
+                    <span>@item.Year</span>
+                    <div class="reports-dw-bar-track">
+                        <div class="reports-dw-bar-fill" style="width:@GetBarWidth(item.Count, MaxArticlesByYear)"></div>
+                    </div>
+                    <strong>@item.Count</strong>
+                </div>
+            }
+        </div>
+    }
+</article>
+
+<article class="reports-dw-chart-card">
+    <ReportCardHeader IconClass="bi bi-pie-chart"
+                      Title="Open Access"
+                      Description="Proporción de artículos abiertos dentro del filtro activo." />
+    <div class="reports-dw-donut-layout">
+        <div class="reports-dw-donut" style="@OpenAccessDonutStyle">
+            <span>@OpenAccessPercent%</span>
+        </div>
+        <div class="reports-dw-donut-legend">
+            <strong>@((Dashboard?.ScientificProduction.OpenAccessArticles ?? 0).ToString("N0")) OA</strong>
+            <span>@(((Dashboard?.ScientificProduction.TotalArticles ?? 0) - (Dashboard?.ScientificProduction.OpenAccessArticles ?? 0)).ToString("N0")) no OA</span>
+        </div>
+    </div>
+</article>
+
+<article class="reports-dw-chart-card">
+    <ReportCardHeader IconClass="bi bi-award"
+                      Title="Artículos por cuartil"
+                      Description="Concentración de artículos según la clasificación más reciente de la revista." />
+    @if ((Dashboard?.ArticlesByQuartile.Count ?? 0) == 0)
+    {
+        <div class="reports-dw-chart-empty">Sin cuartiles vinculados a artículos.</div>
+    }
+    else
+    {
+        <div class="reports-dw-bars reports-dw-bars--compact">
+            @foreach (var item in Dashboard!.ArticlesByQuartile)
+            {
+                <div class="reports-dw-bar-row">
+                    <span title="@item.Name">@item.Name</span>
+                    <div class="reports-dw-bar-track">
+                        <div class="reports-dw-bar-fill reports-dw-bar-fill--gold" style="width:@GetBarWidth(item.TotalArticles, MaxQuartileArticles)"></div>
+                    </div>
+                    <strong>@item.TotalArticles</strong>
+                </div>
+            }
+        </div>
+    }
+</article>
+
+<article class="reports-dw-chart-card reports-dw-chart-card--wide">
+    <ReportCardHeader IconClass="bi bi-calendar3"
+                      Title="Registro por mes y día"
+                      Description="Conteos de artículos registrados por periodo para detectar ritmo de carga institucional.">
+        <div class="reports-dw-card-meta">
+            <span><i class="bi bi-arrows"></i> Vista deslizable</span>
+        </div>
+    </ReportCardHeader>
+    <div class="reports-dw-split-grid reports-dw-period-slider">
+        <div class="reports-dw-bars reports-dw-bars--compact">
+            <div class="reports-dw-mini-heading">
+                <i class="bi bi-calendar-month"></i>
+                Últimos meses
+            </div>
+            @foreach (var item in Dashboard?.ArticlesByMonth.TakeLast(12) ?? [])
+            {
+                <div class="reports-dw-bar-row">
+                    <span>@item.Name</span>
+                    <div class="reports-dw-bar-track">
+                        <div class="reports-dw-bar-fill" style="width:@GetBarWidth(item.TotalArticles, MaxMonthArticles)"></div>
+                    </div>
+                    <strong>@item.TotalArticles</strong>
+                </div>
+            }
+        </div>
+        <div class="reports-dw-bars reports-dw-bars--compact">
+            <div class="reports-dw-mini-heading">
+                <i class="bi bi-calendar-day"></i>
+                Días con registro
+            </div>
+            @foreach (var item in Dashboard?.ArticlesByDay.Take(12) ?? [])
+            {
+                <div class="reports-dw-bar-row">
+                    <span>@item.Name</span>
+                    <div class="reports-dw-bar-track">
+                        <div class="reports-dw-bar-fill reports-dw-bar-fill--sage" style="width:@GetBarWidth(item.TotalArticles, MaxDayArticles)"></div>
+                    </div>
+                    <strong>@item.TotalArticles</strong>
+                </div>
+            }
+        </div>
+    </div>
+</article>
+
+@code {
+    [Parameter] public InstitutionalReportingDashboardDto? Dashboard { get; set; }
+
+    private int MaxArticlesByYear =>
+        Math.Max(1, Dashboard?.ArticlesByYear.Select(x => x.Count).DefaultIfEmpty(0).Max() ?? 0);
+
+    private int MaxQuartileArticles =>
+        Math.Max(1, Dashboard?.ArticlesByQuartile.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+    private int MaxMonthArticles =>
+        Math.Max(1, Dashboard?.ArticlesByMonth.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+    private int MaxDayArticles =>
+        Math.Max(1, Dashboard?.ArticlesByDay.Select(x => x.TotalArticles).DefaultIfEmpty(0).Max() ?? 0);
+
+    private int OpenAccessPercent =>
+        (Dashboard?.ScientificProduction.TotalArticles ?? 0) <= 0
+            ? 0
+            : (int)Math.Round((Dashboard!.ScientificProduction.OpenAccessArticles / (double)Dashboard.ScientificProduction.TotalArticles) * 100);
+
+    private string OpenAccessDonutStyle =>
+        $"background: conic-gradient(#97b067 0 {OpenAccessPercent}%, rgba(67, 86, 99, 0.12) {OpenAccessPercent}% 100%);";
+
+    private static string GetBarWidth(int value, int maxValue)
+    {
+        if (maxValue <= 0 || value <= 0)
+        {
+            return "0%";
+        }
+
+        var percent = Math.Clamp((value / (double)maxValue) * 100, 4, 100);
+        return $"{percent:0.##}%";
+    }
+}

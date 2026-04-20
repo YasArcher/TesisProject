@@ -22,6 +22,11 @@ namespace tesisproject.frontend.Services.Implementations
             return _apiClient.GetAsync<InstitutionalReportingDashboardDto>(BuildDashboardUrl(filter), ct);
         }
 
+        public Task<AuthorReportingDashboardDto?> GetAuthorDashboardAsync(InstitutionalReportingFilterDto? filter = null, CancellationToken ct = default)
+        {
+            return _apiClient.GetAsync<AuthorReportingDashboardDto>(BuildDashboardUrl(filter, "api/reporting/authors"), ct);
+        }
+
         public Task<ReportingHealthDto?> RunFullLoadAsync(CancellationToken ct = default)
         {
             return _apiClient.PostAsync<object, ReportingHealthDto>("api/reporting/etl/full", new { }, ct);
@@ -51,6 +56,10 @@ namespace tesisproject.frontend.Services.Implementations
             AddString(query, nameof(filter.VenueType), filter.VenueType);
             AddString(query, nameof(filter.Quartile), filter.Quartile);
             AddString(query, nameof(filter.PeriodDateType), filter.PeriodDateType);
+            AddString(query, nameof(filter.AuthorName), filter.AuthorName);
+            AddString(query, nameof(filter.AuthorAffiliation), filter.AuthorAffiliation);
+            AddString(query, nameof(filter.ParticipantType), filter.ParticipantType);
+            AddString(query, nameof(filter.CoauthorName), filter.CoauthorName);
 
             if (filter.ArticleYear.HasValue)
             {
@@ -60,6 +69,11 @@ namespace tesisproject.frontend.Services.Implementations
             if (filter.IsOpenAccess.HasValue)
             {
                 query.Add($"{nameof(filter.IsOpenAccess)}={filter.IsOpenAccess.Value.ToString().ToLowerInvariant()}");
+            }
+
+            if (filter.OnlyPrimaryAuthors.HasValue)
+            {
+                query.Add($"{nameof(filter.OnlyPrimaryAuthors)}={filter.OnlyPrimaryAuthors.Value.ToString().ToLowerInvariant()}");
             }
 
             return query.Count == 0 ? path : $"{path}?{string.Join("&", query)}";

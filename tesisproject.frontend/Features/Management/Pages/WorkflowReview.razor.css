@@ -389,6 +389,88 @@
     font-weight: 700;
 }
 
+.workflow-readiness-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.85rem;
+    margin-top: 1rem;
+    border-radius: 1.25rem;
+    border: 1px solid rgba(67, 86, 99, 0.12);
+    padding: 0.95rem 1rem;
+    background:
+        radial-gradient(circle at top right, rgba(244, 206, 20, 0.1), transparent 30%),
+        rgba(255, 255, 255, 0.86);
+}
+
+.workflow-readiness-card__icon {
+    display: inline-flex;
+    width: 2.25rem;
+    height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    color: #fff;
+    font-weight: 950;
+    box-shadow: 0 12px 24px rgba(49, 54, 71, 0.14);
+}
+
+.workflow-readiness-card--ready {
+    border-color: rgba(151, 176, 103, 0.34);
+    background: linear-gradient(180deg, rgba(151, 176, 103, 0.13), rgba(255, 255, 255, 0.9));
+}
+
+.workflow-readiness-card--ready .workflow-readiness-card__icon {
+    background: linear-gradient(135deg, #437057, #97b067);
+}
+
+.workflow-readiness-card--pending {
+    border-color: rgba(244, 206, 20, 0.32);
+    background: linear-gradient(180deg, rgba(255, 248, 212, 0.68), rgba(255, 255, 255, 0.94));
+}
+
+.workflow-readiness-card--pending .workflow-readiness-card__icon {
+    background: linear-gradient(135deg, #cd982e, #f4ce14);
+}
+
+.workflow-readiness-card--blocked {
+    border-color: rgba(109, 19, 19, 0.18);
+    background: linear-gradient(180deg, rgba(109, 19, 19, 0.07), rgba(255, 255, 255, 0.94));
+}
+
+.workflow-readiness-card--blocked .workflow-readiness-card__icon {
+    background: linear-gradient(135deg, #6d1313, #cd982e);
+}
+
+.workflow-readiness-card__title {
+    color: var(--workflow-heading);
+    font-size: 0.95rem;
+    font-weight: 900;
+}
+
+.workflow-readiness-card__text {
+    margin-top: 0.25rem;
+    color: var(--workflow-muted);
+    font-size: 0.84rem;
+    line-height: 1.55;
+}
+
+.workflow-readiness-card__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.7rem;
+}
+
+.workflow-readiness-card__chips span {
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.72);
+    border: 1px solid rgba(67, 86, 99, 0.08);
+    color: var(--workflow-heading);
+    font-size: 0.72rem;
+    font-weight: 850;
+    padding: 0.38rem 0.6rem;
+}
+
 .workflow-modal-backdrop {
     position: fixed;
     inset: 0;

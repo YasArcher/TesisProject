@@ -1,37 +1,40 @@
 @if (Visible)
 {
     <div class="reports-pdf-modal fixed inset-0 z-40 flex items-center justify-center bg-black/40">
-        <div class="reports-pdf-modal__surface bg-white rounded-2xl shadow-xl w-[90vw] h-[90vh] max-w-5xl flex flex-col overflow-hidden">
-            <div class="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
-                <div class="flex flex-col">
-                    <span class="text-sm font-semibold text-slate-800">Previsualización de reporte PDF</span>
-                    <span class="text-[11px] text-slate-500">
-                        Vista previa de las secciones seleccionadas según los filtros actuales.
-                    </span>
+        <div class="reports-pdf-modal__surface reports-pdf-preview-shell bg-white rounded-2xl shadow-xl w-[90vw] h-[90vh] max-w-5xl flex flex-col overflow-hidden">
+            <div class="reports-pdf-preview-header">
+                <div class="reports-pdf-preview-title">
+                    <span><i class="bi bi-file-earmark-pdf"></i></span>
+                    <div>
+                        <strong>Previsualización de reporte PDF</strong>
+                        <small>Vista previa institucional según los filtros actuales.</small>
+                    </div>
                 </div>
                 <div class="flex items-center gap-2">
                     @if (!string.IsNullOrEmpty(PdfPreviewDataUrl))
                     {
                         <a href="@PdfPreviewDataUrl"
                            download="@DownloadFileName"
-                           class="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700">
-                            <span class="material-icons text-[14px]">download</span>
+                           class="reports-pdf-preview-download">
+                            <i class="bi bi-download"></i>
                             Descargar
                         </a>
                     }
                     <button type="button"
-                            class="inline-flex items-center justify-center rounded-full p-1.5 hover:bg-slate-100"
+                            class="reports-pdf-preview-close"
                             @onclick="OnClose">
-                        <span class="material-icons text-[18px] text-slate-500">close</span>
+                        <i class="bi bi-x-lg"></i>
                     </button>
                 </div>
             </div>
 
-            <div class="flex-1 bg-slate-100">
+            <div class="reports-pdf-preview-body flex-1 bg-slate-100">
                 @if (IsGenerating || string.IsNullOrEmpty(PdfPreviewDataUrl))
                 {
-                    <div class="w-full h-full flex items-center justify-center text-slate-500 text-sm">
-                        Generando PDF...
+                    <div class="reports-pdf-preview-loading">
+                        <span><i class="bi bi-file-earmark-arrow-down"></i></span>
+                        <strong>Preparando el reporte</strong>
+                        <small>Estamos generando una vista previa con la información filtrada.</small>
                     </div>
                 }
                 else

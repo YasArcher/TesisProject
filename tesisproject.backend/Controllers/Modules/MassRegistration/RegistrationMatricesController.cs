@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
 using System.Security.Claims;
@@ -14,10 +15,14 @@ namespace tesisproject.backend.Controllers
     public class RegistrationMatricesController : ControllerBase
     {
         private readonly IRegistrationMatrixService _service;
+        private readonly UserManager<ApplicationUser> _userManager;
 
-        public RegistrationMatricesController(IRegistrationMatrixService service)
+        public RegistrationMatricesController(
+            IRegistrationMatrixService service,
+            UserManager<ApplicationUser> userManager)
         {
             _service = service;
+            _userManager = userManager;
         }
 
         [HttpGet]
@@ -59,6 +64,11 @@ namespace tesisproject.backend.Controllers
         {
             try
             {
+                if (!await HasAcceptedAuthorTermsAsync())
+                {
+                    return BadRequest(new { message = "Debes aceptar los términos y condiciones de manejo de información antes de crear matrices de registro." });
+                }
+
                 return Ok(await _service.CreateMatrixAsync(request, GetCurrentUserId(), ct));
             }
             catch (InvalidOperationException ex)
@@ -112,6 +122,11 @@ namespace tesisproject.backend.Controllers
                 return NotFound();
             }
 
+            if (!await HasAcceptedAuthorTermsAsync())
+            {
+                return BadRequest(new { message = "Debes aceptar los términos y condiciones de manejo de información antes de agregar filas." });
+            }
+
             var matrix = await _service.AddRowAsync(matrixId, ct);
             return matrix is null ? NotFound() : Ok(matrix);
         }
@@ -125,6 +140,11 @@ namespace tesisproject.backend.Controllers
                 if (!await CanAccessMatrixAsync(matrixId, ct))
                 {
                     return NotFound();
+                }
+
+                if (!await HasAcceptedAuthorTermsAsync())
+                {
+                    return BadRequest(new { message = "Debes aceptar los términos y condiciones de manejo de información antes de editar la matriz." });
                 }
 
                 var matrix = await _service.UpdateCellAsync(matrixId, rowId, request, ct);
@@ -145,6 +165,11 @@ namespace tesisproject.backend.Controllers
                 return NotFound();
             }
 
+            if (!await HasAcceptedAuthorTermsAsync())
+            {
+                return BadRequest(new { message = "Debes aceptar los términos y condiciones de manejo de información antes de eliminar filas." });
+            }
+
             return await _service.DeleteRowAsync(matrixId, rowId, ct) ? NoContent() : NotFound();
         }
 
@@ -157,6 +182,11 @@ namespace tesisproject.backend.Controllers
                 if (!await CanAccessMatrixAsync(matrixId, ct))
                 {
                     return NotFound();
+                }
+
+                if (!await HasAcceptedAuthorTermsAsync())
+                {
+                    return BadRequest(new { message = "Debes aceptar los términos y condiciones de manejo de información antes de enviar la matriz a revisión." });
                 }
 
                 var userId = User?.FindFirstValue(ClaimTypes.NameIdentifier)
@@ -183,5 +213,16 @@ namespace tesisproject.backend.Controllers
         private string? GetCurrentUserId()
             => User?.FindFirstValue(ClaimTypes.NameIdentifier)
                 ?? User?.Identity?.Name;
+
+        private async Task<bool> HasAcceptedAuthorTermsAsync()
+        {
+            if (!User.IsInRole(AppRoles.Author) || CanManageMatrices())
+            {
+                return true;
+            }
+
+            var user = await _userManager.GetUserAsync(User);
+            return user?.TermsAcceptedAt is not null;
+        }
     }
 }

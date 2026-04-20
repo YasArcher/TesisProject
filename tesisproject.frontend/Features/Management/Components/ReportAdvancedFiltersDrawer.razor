@@ -10,13 +10,13 @@
                 <div class="flex flex-col">
                     <span class="text-sm font-semibold text-slate-800">Filtros avanzados</span>
                     <span class="text-[11px] text-slate-500">
-                        Aplica filtros por proyecto, áreas OCDE, líneas, estados, venues y más.
+                        Aplica filtros por proyecto, campos de conocimiento, líneas, estados, revistas y más.
                     </span>
                 </div>
                 <button type="button"
                         class="inline-flex items-center justify-center rounded-full p-1.5 hover:bg-slate-100"
                         @onclick="OnClose">
-                    <span class="material-icons text-[18px] text-slate-500">close</span>
+                    <i class="bi bi-x-lg text-[18px] text-slate-500"></i>
                 </button>
             </div>
 
@@ -41,11 +41,11 @@
 
                 <div class="border border-slate-200 rounded-xl px-3 py-3 bg-slate-50/60 space-y-3">
                     <div class="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">
-                        Áreas OCDE
+                        Campos de conocimiento
                     </div>
 
                     <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 mb-1">Área amplia</label>
+                        <label class="text-xs font-semibold text-slate-500 mb-1">Campo amplio</label>
                         <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
                                 @onchange="OnBroadFieldChanged">
                             <option value="0">Todas</option>
@@ -59,7 +59,7 @@
                     </div>
 
                     <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 mb-1">Área específica</label>
+                        <label class="text-xs font-semibold text-slate-500 mb-1">Campo específico</label>
                         <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
                                 @onchange="OnSpecificFieldChanged"
                                 disabled="@(SpecificFields.Count == 0)">
@@ -74,13 +74,13 @@
                         @if (BroadFields.Count > 0 && SpecificFields.Count == 0 && SelectedBroadFieldId > 0)
                         {
                             <span class="mt-1 text-[11px] text-slate-400">
-                                No hay áreas específicas para el área amplia seleccionada.
+                                No hay campos específicos para el campo amplio seleccionado.
                             </span>
                         }
                     </div>
 
                     <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 mb-1">Área detallada</label>
+                        <label class="text-xs font-semibold text-slate-500 mb-1">Campo detallado</label>
                         <select class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19]"
                                 @onchange="OnDetailedFieldChanged"
                                 disabled="@(DetailedFields.Count == 0)">
@@ -95,7 +95,7 @@
                         @if (SpecificFields.Count > 0 && DetailedFields.Count == 0 && SelectedSpecificFieldId > 0)
                         {
                             <span class="mt-1 text-[11px] text-slate-400">
-                                No hay áreas detalladas para el área específica seleccionada.
+                                No hay campos detallados para el campo específico seleccionado.
                             </span>
                         }
                     </div>
@@ -107,7 +107,7 @@
                                     AllLabel="Todos"
                                     ValueChanged="SelectedPublicationStatusIdChanged" />
 
-                <ReportSelectFilter Label="Fuente de indexación"
+                <ReportSelectFilter Label="Base de datos"
                                     Value="@SelectedIndexingSourceId"
                                     Items="@IndexingSources"
                                     AllLabel="Todas"

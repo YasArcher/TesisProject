@@ -125,3 +125,30 @@ public sealed class ReportingArticleIndexingDetailRow
     public string? FacultyName { get; set; }
     public string? Quartile { get; set; }
 }
+
+public sealed class ReportingAuthorPublicationRow
+{
+    public int AuthorKey { get; set; }
+    public string AuthorIdentity { get; set; } = string.Empty;
+    public string? AuthorName { get; set; }
+    public string? Affiliation { get; set; }
+    public string? ParticipantType { get; set; }
+    public string? Email { get; set; }
+    public string? Orcid { get; set; }
+    public bool IsPrimaryAuthor { get; set; }
+    public int ArticleKey { get; set; }
+    public int ArticleId { get; set; }
+    public string? Title { get; set; }
+    public string? PublicationUrl { get; set; }
+    public DateTime? PublishedDate { get; set; }
+    public DateTime? CreatedDate { get; set; }
+    public short? ArticleYear { get; set; }
+    public string? VenueName { get; set; }
+    public string? IndexingSourceName { get; set; }
+    public string? Quartile { get; set; }
+    public string? FacultyName { get; set; }
+    public string? ResearchLine { get; set; }
+    public string? BroadFieldName { get; set; }
+    public string? SpecificFieldName { get; set; }
+    public string? DetailedFieldName { get; set; }
+}

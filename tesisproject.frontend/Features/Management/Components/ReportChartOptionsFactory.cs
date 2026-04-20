@@ -205,6 +205,78 @@ public static class ReportChartOptionsFactory
         };
     }
 
+    public static object? BuildSummaryDonut(IEnumerable<ReportingSummaryItemDto>? items, string title = "Distribución")
+    {
+        var data = items?
+            .Where(x => x.TotalArticles > 0)
+            .Take(8)
+            .Select(x => new Dictionary<string, object>
+            {
+                ["value"] = x.TotalArticles,
+                ["name"] = x.Name
+            })
+            .ToList();
+
+        if (data is null || data.Count == 0)
+        {
+            return null;
+        }
+
+        return new
+        {
+            color = new[] { Green, Sage, Gold, Blue, "#A3B087", "#E3DE61", Ink, "#437057" },
+            tooltip = new { trigger = "item", formatter = "{b}: {c} artículos ({d}%)" },
+            legend = new { orient = "vertical", left = "left", top = "middle", textStyle = new { color = Charcoal } },
+            series = new object[]
+            {
+                new
+                {
+                    name = title,
+                    type = "pie",
+                    radius = new[] { "44%", "70%" },
+                    center = new[] { "62%", "52%" },
+                    avoidLabelOverlap = true,
+                    data,
+                    label = new { show = true, formatter = "{d}%", color = Ink },
+                    labelLine = new { show = true }
+                }
+            }
+        };
+    }
+
+    public static object? BuildAuthorRoleDonut(int primaryAuthorLinks, int coauthorLinks)
+    {
+        if (primaryAuthorLinks + coauthorLinks <= 0)
+        {
+            return null;
+        }
+
+        var data = new List<Dictionary<string, object>>
+        {
+            new() { ["value"] = primaryAuthorLinks, ["name"] = "Autoría principal" },
+            new() { ["value"] = coauthorLinks, ["name"] = "Coautoría" }
+        };
+
+        return new
+        {
+            color = new[] { Green, Gold },
+            tooltip = new { trigger = "item", formatter = "{b}: {c} participaciones ({d}%)" },
+            legend = new { bottom = "0", textStyle = new { color = Charcoal } },
+            series = new object[]
+            {
+                new
+                {
+                    name = "Participación",
+                    type = "pie",
+                    radius = new[] { "45%", "72%" },
+                    center = new[] { "50%", "45%" },
+                    data,
+                    label = new { show = true, formatter = "{b}: {d}%", color = Ink }
+                }
+            }
+        };
+    }
+
     private static object BuildToolbox()
         => new
         {

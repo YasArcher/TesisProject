@@ -9,6 +9,7 @@
 @using tesisproject.frontend.Services.Auth
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ITokenStore TokenStore
+@inject IAuthClient AuthClient
 @inject NavigationManager NavManager
 
 <div class="app-shell @(mobileMenuOpen ? "menu-open" : null) @(sidebarCollapsed ? "sidebar-collapsed" : null)">
@@ -78,6 +79,59 @@
     </div>
 </div>
 
+@if (ShouldShowAuthorTermsGate)
+{
+    <div class="layout-terms-backdrop">
+        <section class="layout-terms-card" role="dialog" aria-modal="true" aria-labelledby="layout-terms-title">
+            <div class="layout-terms-card__badge">Acuerdo institucional</div>
+            <h2 id="layout-terms-title" class="layout-terms-card__title">Términos para el uso de información académica</h2>
+            <p class="layout-terms-card__lead">
+                Para continuar, confirma que aceptas el tratamiento de la información registrada en el sistema. Esta aceptación se guardará con fecha y versión para mantener trazabilidad institucional.
+            </p>
+
+            <div class="layout-terms-grid">
+                <article>
+                    <span>01</span>
+                    <strong>Información verificada</strong>
+                    <p>Registrarás datos académicos reales, verificables y relacionados con tu producción científica.</p>
+                </article>
+                <article>
+                    <span>02</span>
+                    <strong>Uso institucional</strong>
+                    <p>La información podrá utilizarse para revisión, validación, reportería e indicadores institucionales.</p>
+                </article>
+                <article>
+                    <span>03</span>
+                    <strong>Acceso por roles</strong>
+                    <p>Los datos serán tratados por personal autorizado según el flujo de revisión definido.</p>
+                </article>
+            </div>
+
+            <label class="layout-terms-check">
+                <input type="checkbox" @bind="HasConfirmedTermsRead" />
+                <span>He leído y acepto los términos y condiciones para el manejo de información académica.</span>
+            </label>
+
+            @if (!string.IsNullOrWhiteSpace(TermsErrorMessage))
+            {
+                <div class="layout-terms-error">@TermsErrorMessage</div>
+            }
+
+            <div class="layout-terms-actions">
+                <button type="button" class="layout-terms-actions__secondary" @onclick="LogoutAsync">Salir</button>
+                <button type="button"
+                        class="layout-terms-actions__primary"
+                        disabled="@(!HasConfirmedTermsRead || IsAcceptingTerms)"
+                        @onclick="AcceptTermsAsync">
+                    @(IsAcceptingTerms ? "Registrando aceptación..." : "Aceptar y continuar")
+                </button>
+            </div>
+
+            <div class="layout-terms-footer">Versión de términos: @TermsVersion</div>
+        </section>
+    </div>
+}
+
 @code {
     private bool mobileMenuOpen;
     private bool sidebarCollapsed;
@@ -88,6 +142,11 @@
     private string? PrimaryRole { get; set; }
     private string HeaderCurrentTime { get; set; } = "00:00:00";
     private string HeaderCurrentDate { get; set; } = "01 abril 2026";
+    private AuthMeResponse? CurrentUser { get; set; }
+    private bool HasConfirmedTermsRead { get; set; }
+    private bool IsAcceptingTerms { get; set; }
+    private string TermsErrorMessage { get; set; } = string.Empty;
+    private const string TermsVersion = "2026-04";
     private Timer? _clockTimer;
 
     protected override async Task OnInitializedAsync()
@@ -135,19 +194,83 @@
             DisplayName = "Usuario";
             UserInitials = "U";
             PrimaryRole = null;
+            CurrentUser = null;
+            HasConfirmedTermsRead = false;
+            TermsErrorMessage = string.Empty;
             return;
         }
 
-        DisplayName = user.FindFirst("fullName")?.Value
+        CurrentUser = await TryLoadCurrentUserAsync();
+
+        DisplayName = CurrentUser?.FullName
+            ?? user.FindFirst("fullName")?.Value
             ?? user.FindFirst(ClaimTypes.Name)?.Value
             ?? user.FindFirst(ClaimTypes.Email)?.Value
             ?? "Usuario";
         UserInitials = GetInitials(DisplayName);
 
-        PrimaryRole = user.Claims
-            .Where(x => x.Type == ClaimTypes.Role)
-            .Select(x => GetRoleDisplayName(x.Value))
+        var roles = CurrentUser?.Roles?.Length > 0
+            ? CurrentUser.Roles
+            : user.Claims
+                .Where(x => x.Type == ClaimTypes.Role)
+                .Select(x => x.Value)
+                .ToArray();
+
+        PrimaryRole = roles
+            .Select(GetRoleDisplayName)
             .FirstOrDefault();
+    }
+
+    private async Task<AuthMeResponse?> TryLoadCurrentUserAsync()
+    {
+        try
+        {
+            return await AuthClient.GetCurrentAsync();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private bool ShouldShowAuthorTermsGate
+        => IsAuthenticated
+           && CurrentUser?.HasAcceptedTerms != true
+           && CurrentUser?.Roles?.Any(x => string.Equals(x, "Author", StringComparison.OrdinalIgnoreCase)) == true
+           && CurrentUser?.Roles?.Any(x =>
+               string.Equals(x, "Admin", StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(x, "Analyst", StringComparison.OrdinalIgnoreCase)) != true;
+
+    private async Task AcceptTermsAsync()
+    {
+        if (!HasConfirmedTermsRead)
+        {
+            TermsErrorMessage = "Debes confirmar la lectura de los términos para continuar.";
+            return;
+        }
+
+        try
+        {
+            IsAcceptingTerms = true;
+            TermsErrorMessage = string.Empty;
+            CurrentUser = await AuthClient.AcceptTermsAsync(new AcceptTermsRequest { TermsVersion = TermsVersion });
+
+            if (CurrentUser?.HasAcceptedTerms != true)
+            {
+                TermsErrorMessage = "No pude registrar la aceptación. Inténtalo nuevamente.";
+                return;
+            }
+
+            HasConfirmedTermsRead = false;
+        }
+        catch (Exception ex)
+        {
+            TermsErrorMessage = $"No pude registrar la aceptación: {ex.Message}";
+        }
+        finally
+        {
+            IsAcceptingTerms = false;
+        }
     }
 
     private async Task LogoutAsync()

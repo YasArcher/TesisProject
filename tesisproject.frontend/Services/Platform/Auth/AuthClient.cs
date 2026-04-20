@@ -44,6 +44,17 @@ public class AuthClient : IAuthClient
     public Task<AuthMeResponse?> GetCurrentAsync(CancellationToken ct = default)
         => GetCurrentInternalAsync(ct);
 
+    public async Task<AuthMeResponse?> AcceptTermsAsync(AcceptTermsRequest request, CancellationToken ct = default)
+    {
+        using var response = await _http.PostAsJsonAsync("api/auth/accept-terms", request, ct);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        return await response.Content.ReadFromJsonAsync<AuthMeResponse>(cancellationToken: ct);
+    }
+
     private async Task<AuthMeResponse?> GetCurrentInternalAsync(CancellationToken ct)
     {
         using var response = await _http.GetAsync("api/auth/me", ct);
