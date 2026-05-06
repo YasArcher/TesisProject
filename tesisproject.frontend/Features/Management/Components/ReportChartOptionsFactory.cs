@@ -10,13 +10,23 @@ public static class ReportChartOptionsFactory
     private const string Green = "#2F5249";
     private const string Sage = "#97B067";
     private const string Gold = "#F4CE14";
+    private const string SoftSage = "#A3B087";
+    private const string CreamGold = "#E3DE61";
+    private const string DeepRed = "#7A1E19";
+    private const string Forest = "#437057";
+    private const string Slate = "#5E6B75";
+    private const string Amber = "#CD982E";
+    private const string Mist = "#C9D4D9";
+
+    private static readonly string[] ExecutivePalette = [Green, Blue, Gold, Sage, Forest, Slate, Amber, DeepRed];
+    private static readonly string[] DonutPalette = [Green, Sage, Gold, Blue, Forest, SoftSage, Amber, Slate];
 
     public static string GetChartHeight(int count) => count switch
     {
-        <= 4 => "220px",
-        <= 8 => "260px",
-        <= 15 => "320px",
-        _ => "380px"
+        <= 4 => "240px",
+        <= 8 => "280px",
+        <= 15 => "340px",
+        _ => "400px"
     };
 
     public static string GetQuartileChartHeight(ArticlesQuartileStatsDto? stats)
@@ -48,7 +58,6 @@ public static class ReportChartOptionsFactory
         {
             color = new[] { color },
             tooltip = new { trigger = "axis" },
-            toolbox = BuildToolbox(),
             grid = new { left = "8%", right = "5%", bottom = rotateLabels ? "18%" : "10%", top = "16%" },
             xAxis = new
             {
@@ -89,7 +98,6 @@ public static class ReportChartOptionsFactory
         {
             color = new[] { color },
             tooltip = new { trigger = "axis", axisPointer = new { type = "shadow" } },
-            toolbox = BuildToolbox(),
             grid = new { left = "25%", right = "5%", bottom = "5%", top = "14%" },
             xAxis = new
             {
@@ -141,9 +149,17 @@ public static class ReportChartOptionsFactory
 
         return new
         {
-            color = new[] { Green, Sage, Gold, Blue, "#A3B087" },
+            color = DonutPalette,
             tooltip = new { trigger = "item", formatter = "{b}: {c} artículos ({d}%)" },
-            legend = new { orient = "vertical", left = "left", textStyle = new { color = Charcoal } },
+            legend = new
+            {
+                orient = "vertical",
+                left = "left",
+                top = "middle",
+                itemWidth = 10,
+                itemHeight = 10,
+                textStyle = new { color = Charcoal, fontSize = 12, fontWeight = 700 }
+            },
             series = new object[]
             {
                 new
@@ -154,8 +170,10 @@ public static class ReportChartOptionsFactory
                     avoidLabelOverlap = true,
                     center = new[] { "55%", "55%" },
                     data,
-                    label = new { show = true, formatter = "{b}: {d}%", color = Ink },
-                    labelLine = new { show = true }
+                    itemStyle = new { borderColor = "#ffffff", borderWidth = 3 },
+                    emphasis = new { scale = true, scaleSize = 6 },
+                    label = new { show = true, formatter = "{b}\n{d}%", color = Ink, fontWeight = 700, fontSize = 11 },
+                    labelLine = new { show = true, length = 10, length2 = 8 }
                 }
             }
         };
@@ -224,9 +242,17 @@ public static class ReportChartOptionsFactory
 
         return new
         {
-            color = new[] { Green, Sage, Gold, Blue, "#A3B087", "#E3DE61", Ink, "#437057" },
+            color = ExecutivePalette,
             tooltip = new { trigger = "item", formatter = "{b}: {c} artículos ({d}%)" },
-            legend = new { orient = "vertical", left = "left", top = "middle", textStyle = new { color = Charcoal } },
+            legend = new
+            {
+                orient = "vertical",
+                left = "left",
+                top = "middle",
+                itemWidth = 10,
+                itemHeight = 10,
+                textStyle = new { color = Charcoal, fontSize = 12, fontWeight = 700 }
+            },
             series = new object[]
             {
                 new
@@ -237,8 +263,10 @@ public static class ReportChartOptionsFactory
                     center = new[] { "62%", "52%" },
                     avoidLabelOverlap = true,
                     data,
-                    label = new { show = true, formatter = "{d}%", color = Ink },
-                    labelLine = new { show = true }
+                    itemStyle = new { borderColor = "#ffffff", borderWidth = 3 },
+                    emphasis = new { scale = true, scaleSize = 6 },
+                    label = new { show = true, formatter = "{d}%", color = Ink, fontWeight = 700, fontSize = 11 },
+                    labelLine = new { show = true, length = 10, length2 = 8 }
                 }
             }
         };
@@ -261,7 +289,13 @@ public static class ReportChartOptionsFactory
         {
             color = new[] { Green, Gold },
             tooltip = new { trigger = "item", formatter = "{b}: {c} participaciones ({d}%)" },
-            legend = new { bottom = "0", textStyle = new { color = Charcoal } },
+            legend = new
+            {
+                bottom = "0",
+                itemWidth = 10,
+                itemHeight = 10,
+                textStyle = new { color = Charcoal, fontSize = 12, fontWeight = 700 }
+            },
             series = new object[]
             {
                 new
@@ -271,7 +305,9 @@ public static class ReportChartOptionsFactory
                     radius = new[] { "45%", "72%" },
                     center = new[] { "50%", "45%" },
                     data,
-                    label = new { show = true, formatter = "{b}: {d}%", color = Ink }
+                    itemStyle = new { borderColor = "#ffffff", borderWidth = 3 },
+                    emphasis = new { scale = true, scaleSize = 6 },
+                    label = new { show = true, formatter = "{b}\n{d}%", color = Ink, fontWeight = 700, fontSize = 11 }
                 }
             }
         };

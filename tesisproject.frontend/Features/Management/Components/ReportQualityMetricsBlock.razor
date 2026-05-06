@@ -3,32 +3,59 @@
 <div id="reports-block-quality" class="reports-dw-section-heading reports-dw-section-heading--sage">
     <span><i class="bi bi-diagram-2"></i></span>
     <div>
-        <small>Bloque 02</small>
-        <h2>Calidad editorial, indexación y métricas</h2>
-        <p>Indicadores asociados a fuentes de indexación, cuartiles, revistas y consistencia de la información.</p>
+        <small>Calidad editorial</small>
+        <h2>Indexación y métricas</h2>
+        <p>Fuentes, cuartiles y consistencia editorial del filtro actual.</p>
     </div>
 </div>
 
-<article class="reports-dw-chart-card">
-    <ReportCardHeader IconClass="bi bi-diagram-2"
-                      Title="Indexación"
-                      Description="Fuentes de indexación vinculadas a los artículos." />
+@if (HasSummaryTrim)
+{
+    <div class="reports-dw-inline-note reports-dw-inline-note--soft">
+        Vista resumida: indexación muestra hasta 6 fuentes y estado de publicación hasta 8 categorías.
+    </div>
+}
 
-    <ReportBarList Items="@IndexingBarItems"
-                   FillVariant="sage"
-                   EmptyMessage="Sin fuentes de indexación registradas." />
-</article>
+<ReportChartCard Title="Indexación por volumen"
+                 Description="Fuentes con más artículos visibles."
+                 Tooltip="Muestra qué bases concentran más artículos del resultado actual en valores absolutos."
+                 HasData="@(IndexingCategories.Length > 0)"
+                 EmptyMessage="Sin fuentes de indexación registradas."
+                 ChartId="chart-quality-indexing"
+                 Height="@IndexingChartHeight"
+                 Option="@IndexingChartOption"
+                 Accent="sage"
+                 Density="primary" />
 
-<article class="reports-dw-chart-card">
-    <ReportCardHeader IconClass="bi bi-check2-circle"
-                      Title="Artículos por estado"
-                      Description="Distribución según el catálogo de estado de publicación." />
-    <ReportBarList Items="@PublicationStatusBarItems"
-                   EmptyMessage="Sin estados de publicación registrados." />
-</article>
+<ReportChartCard Title="Estado de publicación"
+                 Description="Distribución proporcional por estado editorial."
+                 Tooltip="Resume la mezcla entre estados editoriales dentro del conjunto filtrado."
+                 HasData="@(PublicationStatusCategories.Length > 0)"
+                 EmptyMessage="Sin estados de publicación registrados."
+                 ChartId="chart-quality-status"
+                 Height="320px"
+                 Option="@PublicationStatusChartOption"
+                 Accent="blue"
+                 Density="compact" />
+
+<ReportChartCard Title="Revistas por cuartil"
+                 Description="Conteo editorial según el cuartil más reciente."
+                 Tooltip="Esta lectura se basa en la distribución de venues por cuartil, no en artículos por cuartil."
+                 HasData="@(QuartileCategories.Length > 0)"
+                 EmptyMessage="Sin distribución editorial por cuartil."
+                 ChartId="chart-quality-venues-quartile"
+                 Height="320px"
+                 Option="@QuartileDistributionChartOption"
+                 Accent="gold"
+                 Density="compact" />
 
 @code {
     [Parameter] public InstitutionalReportingDashboardDto? Dashboard { get; set; }
+
+    private bool HasSummaryTrim =>
+        (Dashboard?.ArticlesByIndexingSource.Count ?? 0) > 6
+        || (Dashboard?.ArticlesByPublicationStatus.Count ?? 0) > 8
+        || (Dashboard?.QuartileDistribution.Count ?? 0) > 5;
 
     private IEnumerable<ReportBarItem> IndexingBarItems =>
         Dashboard?.ArticlesByIndexingSource
@@ -41,4 +68,51 @@
             .Take(8)
             .Select(x => new ReportBarItem(x.Name, x.TotalArticles, x.Name))
         ?? [];
+
+    private string[] IndexingCategories =>
+        Dashboard?.ArticlesByIndexingSource
+            .Take(6)
+            .Select(x => x.IndexingSourceName)
+            .ToArray() ?? [];
+
+    private int[] IndexingValues =>
+        Dashboard?.ArticlesByIndexingSource
+            .Take(6)
+            .Select(x => x.TotalArticles)
+            .ToArray() ?? [];
+
+    private string IndexingChartHeight => ReportChartOptionsFactory.GetChartHeight(IndexingCategories.Length);
+
+    private object? IndexingChartOption =>
+        ReportChartOptionsFactory.BuildHorizontalBar(IndexingCategories, IndexingValues, "#2F5249");
+
+    private string[] PublicationStatusCategories =>
+        Dashboard?.ArticlesByPublicationStatus
+            .Take(8)
+            .Select(x => x.Name)
+            .ToArray() ?? [];
+
+    private object? PublicationStatusChartOption =>
+        ReportChartOptionsFactory.BuildSummaryDonut(
+            Dashboard?.ArticlesByPublicationStatus.Take(8).ToList(),
+            "Estado");
+
+    private string[] QuartileCategories =>
+        Dashboard?.QuartileDistribution
+            .Take(5)
+            .Select(x => x.Quartile)
+            .ToArray() ?? [];
+
+    private int[] QuartileVenueValues =>
+        Dashboard?.QuartileDistribution
+            .Take(5)
+            .Select(x => x.TotalVenues)
+            .ToArray() ?? [];
+
+    private object? QuartileDistributionChartOption =>
+        ReportChartOptionsFactory.BuildVerticalBar(
+            QuartileCategories,
+            QuartileVenueValues,
+            "Revistas",
+            "#F4CE14");
 }

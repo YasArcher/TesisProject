@@ -1,18 +1,24 @@
 @using tesisproject.frontend.SharedUI.Charts
 
 <section class="@CardClass">
-    <div class="flex items-start justify-between mb-3">
+    <div class="reports-dw-chart-card__header">
+        <span><i class="@IconClass"></i></span>
         <div>
-            <h2 class="text-base font-semibold text-slate-900">@Title</h2>
-            <p class="text-xs text-slate-500">@Description</p>
+            <small class="reports-dw-chart-card__eyebrow">@Eyebrow</small>
+            <h2>@Title</h2>
+            @if (!string.IsNullOrWhiteSpace(Description))
+            {
+                <p>@Description</p>
+            }
         </div>
 
         @if (!string.IsNullOrWhiteSpace(Tooltip))
         {
             <button type="button"
-                    class="ml-2 text-slate-400 hover:text-slate-600 relative group">
-                <i class="bi bi-info-circle text-base"></i>
-                <span class="absolute z-20 hidden group-hover:block bg-slate-900 text-white text-[11px] rounded px-2 py-1 w-56 -right-2 top-5">
+                    class="reports-dw-card-tooltip group"
+                    aria-label="Información del gráfico">
+                <i class="bi bi-info-circle"></i>
+                <span class="reports-dw-card-tooltip__content">
                     @Tooltip
                 </span>
             </button>
@@ -25,7 +31,7 @@
     }
     else
     {
-        <div class="flex-1 min-h-[220px]">
+        <div class="reports-dw-chart-card__canvas">
             <EChart Id="@ChartId"
                     Height="@Height"
                     Option="@Option" />
@@ -34,6 +40,7 @@
 </section>
 
 @code {
+    [Parameter] public string IconClass { get; set; } = "bi bi-bar-chart";
     [Parameter] public string Title { get; set; } = string.Empty;
     [Parameter] public string Description { get; set; } = string.Empty;
     [Parameter] public string Tooltip { get; set; } = string.Empty;
@@ -43,7 +50,18 @@
     [Parameter] public string Height { get; set; } = "260px";
     [Parameter] public object? Option { get; set; }
     [Parameter] public string Accent { get; set; } = "default";
+    [Parameter] public string Density { get; set; } = "standard";
 
     private string CardClass =>
-        $"report-chart-card report-chart-card--{Accent} bg-white border-l-4 border border-slate-200 rounded-xl shadow-sm px-4 py-4 flex flex-col h-full overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition";
+        $"reports-dw-chart-card reports-dw-chart-card--chart reports-dw-chart-card--{Accent} reports-dw-chart-card--{Density}";
+
+    private string Eyebrow => Accent switch
+    {
+        "blue" => "Tendencia",
+        "gold" => "Distribución",
+        "sage" => "Comparativo",
+        "green" => "Cobertura",
+        "ink" => "Resumen",
+        _ => "Visualización"
+    };
 }

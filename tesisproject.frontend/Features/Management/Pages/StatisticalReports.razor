@@ -24,13 +24,6 @@
         </div>
     }
 
-    <!-- ========================================================= -->
-    <!-- TÍTULO PRINCIPAL                                          -->
-    <!-- ========================================================= -->
-    <ReportsHero Title="Reportes estadísticos de artículos"
-                 Description="Explora indicadores clave, tendencias temporales y concentración de la producción científica registrada en la institución."
-                 Badges="ReportHeroBadges" />
-
     <section class="reports-dw-panel">
         <div class="reports-dw-panel__header">
             <div class="reports-dw-panel__title">
@@ -38,11 +31,7 @@
                     <i class="bi bi-diagram-3"></i>
                 </span>
                 <div>
-                    <p class="reports-dw-panel__kicker">Indicadores institucionales</p>
-                    <h2>Panorama de producción académica</h2>
-                    <p>
-                        Consulta la producción registrada por campos de conocimiento, revistas, líneas de investigación, cuartiles y periodos de análisis.
-                    </p>
+                    <h2>Producción académica</h2>
                 </div>
             </div>
 
@@ -55,7 +44,7 @@
                     </span>
                 </div>
             }
-            else if (!string.IsNullOrWhiteSpace(_institutionalReportingError))
+            else if (!string.IsNullOrWhiteSpace(_institutionalReportingError) && _institutionalDashboard is null)
             {
                 <div class="reports-dw-panel__actions">
                     <span class="reports-dw-status reports-dw-status--warning">
@@ -112,137 +101,19 @@
                 @_institutionalReportingError
             </div>
         }
-        else
+
+        @if (_institutionalDashboard is not null)
         {
             <ReportInstitutionalKpiSlider Dashboard="@_institutionalDashboard"
-                                          TopBroadFieldLabel="@TopBroadFieldLabel"
-                                          TopSpecificFieldLabel="@TopSpecificFieldLabel"
-                                          TopDetailedFieldLabel="@TopDetailedFieldLabel"
-                                          TopVenueLabel="@TopInstitutionalVenueLabel"
-                                          TopResearchLineLabel="@TopInstitutionalResearchLineLabel"
-                                          TopQuartileLabel="@TopQuartileLabel"
-                                          PeriodLabel="@InstitutionalPeriodLabel"
                                           LastEtlLabel="@FormatEtlDate(_institutionalDashboard?.Health.LastEtlFinishedAt)"
                                           ScopeLabel="@InstitutionalScopeLabel" />
         }
     </section>
 
-    <ReportInstitutionalFilters Filter="@_institutionalFilter"
-                                Dashboard="@_institutionalDashboard"
-                                ShowFilters="@_showInstitutionalFilters"
-                                IsBusy="@IsInstitutionalBlockingBusy"
-                                IsRefreshing="@_isRefreshingInstitutionalReporting"
-                                IsPdfGenerating="@_isInstitutionalPdfGenerating"
-                                ScopeLabel="@InstitutionalScopeLabel"
-                                DataPulseLabel="@InstitutionalDataPulseLabel"
-                                LastLoadedLabel="@InstitutionalLastLoadedLabel"
-                                OnToggleFilters="ToggleInstitutionalFilters"
-                                OnClearFilters="ClearInstitutionalFiltersAsync"
-                                OnApplyFilters="ApplyInstitutionalFiltersAsync"
-                                OnOpenPdfPreview="OpenInstitutionalPdfPreviewAsync" />
-
     @if ((!_isLoadingInstitutionalReporting || _institutionalDashboard is not null)
-        && string.IsNullOrWhiteSpace(_institutionalReportingError)
+        && _institutionalDashboard is not null
         && HasInstitutionalReportingData)
     {
-        <section class="reports-dw-executive-strip">
-            <div class="reports-dw-executive-strip__intro">
-                <span><i class="bi bi-lightning-charge"></i></span>
-                <div>
-                    <strong>Resumen ejecutivo</strong>
-                    <small>Tarjetas de orientación rápida para entender el filtro actual.</small>
-                </div>
-            </div>
-
-            <article class="reports-dw-executive-card reports-dw-executive-card--scope">
-                <span><i class="bi bi-crosshair"></i></span>
-                <small>Alcance del reporte</small>
-                <strong>@InstitutionalScopeLabel</strong>
-                <em>Última lectura: @InstitutionalLastLoadedLabel</em>
-            </article>
-
-            <article class="reports-dw-executive-card">
-                <span><i class="bi bi-calendar2-check"></i></span>
-                <small>Año con más producción</small>
-                <strong>@TopInstitutionalYearLabel</strong>
-                <em>Según los artículos incluidos en el filtro actual</em>
-            </article>
-
-            <article class="reports-dw-executive-card">
-                <span><i class="bi bi-bezier"></i></span>
-                <small>Línea dominante</small>
-                <strong>@TopInstitutionalResearchLineLabel</strong>
-                <em>Principal concentración temática</em>
-            </article>
-
-            <article class="reports-dw-executive-card">
-                <span><i class="bi bi-mortarboard"></i></span>
-                <small>Facultad dominante</small>
-                <strong>@TopInstitutionalFacultyLabel</strong>
-                <em>Facultad con mayor producción científica</em>
-            </article>
-
-            <article class="reports-dw-executive-card">
-                <span><i class="bi bi-database-check"></i></span>
-                <small>Base dominante</small>
-                <strong>@TopInstitutionalIndexingLabel</strong>
-                <em>Indexación con mayor presencia</em>
-            </article>
-        </section>
-
-        <section class="reports-dw-filter-summary">
-            <div class="reports-dw-filter-summary__title">
-                <span><i class="bi bi-funnel"></i></span>
-                <div>
-                    <strong>Filtros activos</strong>
-                    <small>Estos criterios también se aplican al PDF institucional.</small>
-                </div>
-            </div>
-
-            @if (ActiveInstitutionalFilterChips.Count == 0)
-            {
-                <div class="reports-dw-filter-summary__empty">
-                    Sin filtros aplicados. La reportería muestra el consolidado institucional completo.
-                </div>
-            }
-            else
-            {
-                <div class="reports-dw-filter-chips">
-                    @foreach (var chip in ActiveInstitutionalFilterChips)
-                    {
-                        <span>
-                            <small>@chip.Label</small>
-                            @chip.Value
-                        </span>
-                    }
-                </div>
-            }
-        </section>
-    }
-
-    @if (!_isLoadingInstitutionalReporting
-        && string.IsNullOrWhiteSpace(_institutionalReportingError)
-        && !HasInstitutionalReportingData)
-    {
-        <section class="reports-dw-empty-state">
-            <span class="reports-dw-empty-state__icon">
-                <i class="bi bi-inbox"></i>
-            </span>
-            <div>
-                <h2>Sin artículos académicos para mostrar</h2>
-                <p>
-                    Todavía no existen artículos académicos dentro de los filtros seleccionados. Cuando se registren artículos y se actualice la información, este tablero mostrará indicadores institucionales reales.
-                </p>
-            </div>
-        </section>
-    }
-    else if ((!_isLoadingInstitutionalReporting || _institutionalDashboard is not null)
-        && string.IsNullOrWhiteSpace(_institutionalReportingError)
-        && HasInstitutionalReportingData)
-    {
-        <ReportExecutiveInsights Dashboard="@_institutionalDashboard"
-                                 ScopeLabel="@InstitutionalScopeLabel" />
-
         <section class="reports-dw-tabs" aria-label="Secciones de reportería institucional">
             <button class="@(_institutionalReportTab == "overview" ? "reports-dw-tab reports-dw-tab--active" : "reports-dw-tab")"
                     type="button"
@@ -271,15 +142,113 @@
                 <i class="bi bi-person-vcard"></i>
                 <span>
                     Autores y coautoría
-                    <small>@((_authorReportingDashboard?.Kpis.TotalAuthors ?? 0).ToString("N0")) autores</small>
+                    <small>@AuthorTabSubtitle</small>
                 </span>
             </button>
+        </section>
+    }
+
+    <button class="reports-dw-floating-filter"
+            type="button"
+            aria-label="Abrir filtros"
+            title="Filtros"
+            @onclick="ToggleInstitutionalFilters">
+        <i class="bi bi-sliders2-vertical"></i>
+        <span>Filtros</span>
+    </button>
+
+    <button class="reports-dw-floating-pdf"
+            type="button"
+            aria-label="Generar PDF"
+            title="Generar PDF"
+            @onclick="OpenPdfComposer">
+        <i class="bi bi-file-earmark-pdf"></i>
+        <span>PDF</span>
+    </button>
+
+    @if (_showInstitutionalFilters)
+    {
+        <div class="reports-filter-drawer" aria-label="Panel de filtros">
+            <button class="reports-filter-drawer__backdrop"
+                    type="button"
+                    aria-label="Cerrar filtros"
+                    @onclick="ToggleInstitutionalFilters"></button>
+
+            <aside class="reports-filter-drawer__surface reports-dw-filter-drawer-panel">
+                <ReportInstitutionalFilters Filter="@_institutionalFilter"
+                                            Dashboard="@_institutionalDashboard"
+                                            ShowFilters="true"
+                                            IsBusy="@IsInstitutionalBlockingBusy"
+                                            IsRefreshing="@_isRefreshingInstitutionalReporting"
+                                            ScopeLabel="@InstitutionalScopeLabel"
+                                            DataPulseLabel="@InstitutionalDataPulseLabel"
+                                            LastLoadedLabel="@InstitutionalLastLoadedLabel"
+                                            OnToggleFilters="ToggleInstitutionalFilters"
+                                            OnClearFilters="ClearInstitutionalFiltersAsync"
+                                            OnApplyFilters="ApplyInstitutionalFiltersAsync" />
+            </aside>
+        </div>
+    }
+
+    @if (!_isLoadingInstitutionalReporting
+        && _institutionalDashboard is not null
+        && !HasInstitutionalReportingData)
+    {
+        <section class="reports-dw-empty-state">
+            <span class="reports-dw-empty-state__icon">
+                <i class="bi bi-inbox"></i>
+            </span>
+            <div>
+                <h2>Sin artículos académicos para mostrar</h2>
+                <p>
+                    Todavía no existen artículos académicos dentro de los filtros seleccionados. Cuando se registren artículos y se actualice la información, este tablero mostrará indicadores institucionales reales.
+                </p>
+            </div>
+        </section>
+    }
+    else if ((!_isLoadingInstitutionalReporting || _institutionalDashboard is not null)
+        && _institutionalDashboard is not null
+        && HasInstitutionalReportingData)
+    {
+        <section class="reports-dw-toolbar">
+            <div class="reports-dw-toolbar__meta">
+                <span><i class="bi bi-grid-1x2"></i>@InstitutionalScopeLabel</span>
+                <span><i class="bi bi-clock-history"></i>@InstitutionalLastLoadedLabel</span>
+            </div>
+        </section>
+
+        <section class="reports-dw-filter-summary">
+            <div class="reports-dw-filter-summary__title">
+                <span><i class="bi bi-funnel"></i></span>
+                <div>
+                    <strong>Filtros activos</strong>
+                    <small>@GetActiveFilterSummaryLabel()</small>
+                </div>
+            </div>
+
+            @if (ActiveInstitutionalFilterChips.Count == 0)
+            {
+                <div class="reports-dw-filter-summary__empty">
+                    Consolidado institucional completo.
+                </div>
+            }
+            else
+            {
+                <div class="reports-dw-filter-chips">
+                    @foreach (var chip in ActiveInstitutionalFilterChips)
+                    {
+                        <span>
+                            <small>@chip.Label</small>
+                            @chip.Value
+                        </span>
+                    }
+                </div>
+            }
         </section>
 
         @if (_institutionalReportTab == "overview")
         {
-        <ReportSectionQuickNav />
-
+        <section class="reports-dw-content-shell">
         <section class="reports-dw-analytics-grid @(_isRefreshingInstitutionalReporting ? "reports-dw-analytics-grid--refreshing" : string.Empty)">
             @if (_isRefreshingInstitutionalReporting)
             {
@@ -298,624 +267,53 @@
             <ReportSpecificArticleBlocks Dashboard="@_institutionalDashboard"
                                          ScopeLabel="@InstitutionalScopeLabel"
                                          PediIiitScopeLabel="@PediIiitScopeLabel"
-                                         TddTotalScopeLabel="@TddTotalScopeLabel"
-                                         ParticipationScopeLabel="@ParticipationScopeLabel" />
+                                         TddTotalScopeLabel="@TddTotalScopeLabel" />
 
             <ReportWorkflowDetailBlock Dashboard="@_institutionalDashboard" />
+        </section>
         </section>
         }
         else if (_institutionalReportTab == "participation")
         {
-        <ReportParticipationPanel Dashboard="@_institutionalDashboard"
-                                  ParticipationScopeLabel="@ParticipationScopeLabel" />
+        <section class="reports-dw-content-shell">
+            <ReportParticipationPanel Dashboard="@_institutionalDashboard"
+                                      ParticipationScopeLabel="@ParticipationScopeLabel" />
+        </section>
         }
         else
         {
+            <section class="reports-dw-content-shell">
             @if (!string.IsNullOrWhiteSpace(_authorReportingError))
             {
-                <div class="reports-dw-error-card">
-                    <i class="bi bi-exclamation-triangle"></i>
+                <div class="@(_authorDashboardUsingFallback ? "reports-dw-info-card" : "reports-dw-error-card")">
+                    <i class="bi @(_authorDashboardUsingFallback ? "bi-info-circle" : "bi-exclamation-triangle")"></i>
                     <div>
-                        <strong>No pude cargar autores</strong>
+                        <strong>@(_authorDashboardUsingFallback ? "Resumen autoral disponible" : "No pude cargar autores")</strong>
                         <span>@_authorReportingError</span>
                     </div>
                 </div>
             }
 
             <ReportAuthorAnalyticsPanel Dashboard="@_authorReportingDashboard"
-                                        Filter="@_institutionalFilter"
                                         IsBusy="@_isLoadingAuthorReporting"
-                                        ScopeLabel="@InstitutionalScopeLabel"
-                                        OnApplyFilters="ApplyAuthorFiltersAsync"
-                                        OnClearAuthorFilters="ClearAuthorFiltersAsync" />
+                                        IsFallbackSummary="@_authorDashboardUsingFallback"
+                                        ScopeLabel="@InstitutionalScopeLabel" />
+            </section>
         }
     }
 
-    @if (_showLegacyReporting)
-    {
-    <!-- ========================================================= -->
-    <!-- SECCIÓN SUPERIOR: FILTROS / BOTONES / CHECKBOXES + KPIS   -->
-    <!-- ========================================================= -->
-    <section class="reports-control-panel bg-gradient-to-br from-white via-white to-slate-50 shadow-sm rounded-2xl border border-slate-200 px-4 py-4 md:px-6 md:py-5 relative overflow-hidden">
-        <!-- decoración sutil -->
-        <div class="pointer-events-none absolute -right-10 -top-10 w-40 h-40 bg-[#7A1E19]/5 rounded-full blur-3xl"></div>
-        <div class="pointer-events-none absolute -left-16 bottom-0 w-40 h-32 bg-amber-500/5 rounded-full blur-3xl"></div>
+    <ReportPdfComposerModal @key="_pdfComposerRenderKey"
+                            Visible="@_showPdfComposer"
+                            Selection="@_pdfComposerSelection"
+                            IsGeneratingPreview="@_isPdfPreviewGenerating"
+                            CanDownload="@CanDownloadPdf"
+                            IsPreviewCurrent="@IsPdfPreviewCurrent"
+                            PreviewBase64="@_pdfPreviewBase64"
+                            PreviewError="@_pdfPreviewError"
+                            GeneratedAtLabel="@_pdfPreviewGeneratedAtLabel"
+                            OnClose="ClosePdfComposer"
+                            OnGeneratePreview="GeneratePdfPreviewAsync"
+                            OnDownload="DownloadPdfAsync"
+                            OnSelectionChanged="HandlePdfSelectionChanged" />
 
-        <!-- Botón para mostrar/ocultar panel lateral de filtros -->
-        <div class="flex items-center justify-between mb-4">
-            <div>
-                <h2 class="text-sm font-semibold text-slate-800 uppercase tracking-wide">
-                    Configuración del reporte
-                </h2>
-                <p class="mt-1 text-xs text-slate-500">
-                    Ajusta el rango de años, aplica filtros avanzados por dimensiones y genera el informe en PDF.
-                </p>
-            </div>
-
-            <button class="reports-secondary-button inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-200"
-                    @onclick="ToggleAdvancedFilters">
-                @(_showAdvancedFilters ? "Cerrar panel de filtros" : "Abrir panel de filtros")
-            </button>
-        </div>
-
-        <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)] gap-6 relative z-10">
-
-            <!-- --------------------------------------------- -->
-            <!-- IZQUIERDA: Filtros básicos + acciones         -->
-            <!-- --------------------------------------------- -->
-            <div class="flex flex-col gap-4">
-                <!-- Filtros de fechas -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                            Fecha creación (desde)
-                        </label>
-                        <input type="date"
-                               class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19] transition-shadow"
-                               @bind="_filterCreatedFrom"
-                               @bind:format="yyyy-MM-dd" />
-                    </div>
-
-                    <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                            Fecha creación (hasta)
-                        </label>
-                        <input type="date"
-                               class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19] transition-shadow"
-                               @bind="_filterCreatedTo"
-                               @bind:format="yyyy-MM-dd" />
-                    </div>
-
-                    <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                            Fecha publicación (desde)
-                        </label>
-                        <input type="date"
-                               class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19] transition-shadow"
-                               @bind="_filterPublicationFrom"
-                               @bind:format="yyyy-MM-dd" />
-                    </div>
-
-                    <div class="flex flex-col">
-                        <label class="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-                            Fecha publicación (hasta)
-                        </label>
-                        <input type="date"
-                               class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#7A1E19]/70 focus:border-[#7A1E19] transition-shadow"
-                               @bind="_filterPublicationTo"
-                               @bind:format="yyyy-MM-dd" />
-                    </div>
-                </div>
-
-                <!-- Checkboxes de secciones del PDF -->
-                <div class="bg-slate-50/90 border border-slate-200 rounded-xl px-3 py-2 flex flex-wrap items-center gap-3 text-xs text-slate-600">
-                    <span class="font-semibold uppercase tracking-wide text-[11px] text-slate-700">
-                        Secciones del PDF:
-                    </span>
-
-                    <label class="inline-flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
-                        <input type="checkbox" class="rounded border-slate-300 text-[#7A1E19] focus:ring-[#7A1E19]"
-                               @bind="_includeKpis" />
-                        <span>KPIs resumen</span>
-                    </label>
-
-                    <label class="inline-flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
-                        <input type="checkbox" class="rounded border-slate-300 text-[#7A1E19] focus:ring-[#7A1E19]"
-                               @bind="_includeByYear" />
-                        <span>Gráfico por año</span>
-                    </label>
-
-                    <label class="inline-flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
-                        <input type="checkbox" class="rounded border-slate-300 text-[#7A1E19] focus:ring-[#7A1E19]"
-                               @bind="_includeByField" />
-                        <span>Campos de conocimiento</span>
-                    </label>
-
-                    <label class="inline-flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
-                        <input type="checkbox" class="rounded border-slate-300 text-[#7A1E19] focus:ring-[#7A1E19]"
-                               @bind="_includeByResearchLine" />
-                        <span>Líneas de investigación</span>
-                    </label>
-
-                    <label class="inline-flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
-                        <input type="checkbox" class="rounded border-slate-300 text-[#7A1E19] focus:ring-[#7A1E19]"
-                               @bind="_includeQuartiles" />
-                        <span>Calidad por cuartiles</span>
-                    </label>
-                </div>
-
-                <!-- Botones de acción -->
-                <div class="flex flex-wrap items-center gap-2 mt-1">
-                    <button class="reports-primary-button inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
-                            @onclick="OpenPdfPreviewAsync"
-                            disabled="@(_isLoading || _isPdfGenerating)">
-                        @if (_isPdfGenerating)
-                        {
-                            <span>Generando PDF...</span>
-                        }
-                        else
-                        {
-                            <span>Exportar reporte (PDF)</span>
-                        }
-                    </button>
-
-                    <AuthorizeView Roles="Admin">
-                        <Authorized>
-                            <button class="reports-admin-button inline-flex items-center gap-2 rounded-lg bg-slate-700 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
-                                    @onclick="RunEtlAndReload"
-                                    disabled="@_isLoading">
-                                Actualizar DW (ETL)
-                            </button>
-                        </Authorized>
-                    </AuthorizeView>
-
-                    <button class="reports-filter-button inline-flex items-center gap-2 rounded-lg bg-[#7A1E19] px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-[#681813] hover:shadow-md disabled:opacity-60 disabled:hover:shadow-none transition"
-                            @onclick="ApplyFilters"
-                            disabled="@_isLoading">
-                        Aplicar filtros
-                    </button>
-                </div>
-            </div>
-
-            <!-- --------------------------------------------- -->
-            <!-- DERECHA: KPI CARDS                            -->
-            <!-- --------------------------------------------- -->
-            <div class="flex flex-col gap-3">
-                <h2 class="text-sm font-semibold text-slate-800 uppercase tracking-wide flex items-center gap-2">
-                    <span class="w-1 h-4 rounded-full bg-amber-500"></span>
-                    Indicadores globales
-                </h2>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <ReportKpiCard Label="Total de artículos"
-                                   Value="@((_kpis?.TotalArticles ?? 0).ToString())"
-                                   Helper="Registrados en el sistema"
-                                   IconClass="bi bi-journal-text" />
-
-                    <ReportKpiCard Label="Publicados este año"
-                                   Value="@((_kpis?.PublishedThisYear ?? 0).ToString())"
-                                   Helper="Según la fecha de publicación"
-                                   IconClass="bi bi-calendar-check"
-                                   Variant="success" />
-
-                    <ReportKpiCard Label="Artículos Q1 + Q2"
-                                   Value="@((_kpis?.Q1Q2Count ?? 0).ToString())"
-                                   Helper="Según métricas de la revista"
-                                   IconClass="bi bi-award"
-                                   Variant="gold" />
-
-                    <ReportKpiCard Label="Crecimiento acumulado"
-                                   Value="@(_trendGrowthPercent.HasValue ? _trendGrowthPercent.Value.ToString("0.##") + "%" : "–")"
-                                   Helper="@($"Desde {_trendStartYear?.ToString() ?? "sin inicio"} hasta {_trendEndYear?.ToString() ?? "sin cierre"}")"
-                                   IconClass="bi bi-graph-up-arrow"
-                                   Variant="growth" />
-
-                    <ReportKpiCard Label="Open Access / Scopus"
-                                   Value="@($"OA: {_kpis?.OpenAccessCount ?? 0}")"
-                                   Helper="@($"Indexados en Scopus: {_kpis?.IndexedInScopusCount ?? 0}")"
-                                   IconClass="bi bi-unlock"
-                                   Variant="sage" />
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- ========================================================= -->
-    <!-- SECCIÓN INFERIOR: TABS (Dashboard / Detallado)            -->
-    <!-- ========================================================= -->
-    <div class="reports-main flex-1 overflow-y-auto pb-4">
-
-        <!-- Tabs -->
-        <ReportTabs ActiveTab="@_activeTab"
-                    OnDashboardSelected="SwitchToDashboard"
-                    OnDetailSelected="SwitchToDetail" />
-
-        @if (_activeTab == "dashboard")
-        {
-            if (_isLoading)
-            {
-                <div class="reports-loading-state flex items-center justify-center py-16 text-slate-500 text-sm">
-                    Cargando datos de reportería...
-                </div>
-            }
-            else if (!string.IsNullOrWhiteSpace(_errorMessage))
-            {
-                <div class="reports-error-state bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-                    @_errorMessage
-                </div>
-            }
-            else
-            {
-                <!-- ========================================================= -->
-                <!-- DASHBOARD: IZQ GRÁFICOS / DER TABLAS                     -->
-                <!-- ========================================================= -->
-                <section class="reports-dashboard-grid grid grid-cols-1 xl:grid-cols-2 gap-4 auto-rows-[minmax(360px,auto)]">
-                    <!-- ----------------------------------------- -->
-                    <!-- IZQUIERDA: SOLO GRÁFICOS                  -->
-                    <!-- ----------------------------------------- -->
-                    <div class="flex flex-col gap-4">
-
-                        <ReportChartCard Title="Distribución por año"
-                                         Description="Artículos creados en el sistema por año (según filtros aplicados)."
-                                         Tooltip="Muestra la evolución anual del número de artículos registrados en el sistema dentro del rango de años seleccionado."
-                                         HasData="@(_filteredByYear.Count > 0)"
-                                         EmptyMessage="No hay datos para el rango de años seleccionado."
-                                         ChartId="chart-by-year"
-                                         Height="@YearChartHeight"
-                                         Option="@YearChartOption"
-                                         Accent="gold" />
-
-                        <ReportChartCard Title="Tendencia temporal de artículos"
-                                         Description="Evolución del número de artículos a lo largo de los años."
-                                         HasData="@(_filteredByYear.Count > 0)"
-                                         EmptyMessage="No hay datos para el rango de años seleccionado."
-                                         ChartId="chart-trend"
-                                         Height="@TrendChartHeight"
-                                         Option="@YearTrendChartOption"
-                                         Accent="blue" />
-
-                        <ReportChartCard Title="Top campos de conocimiento"
-                                         Description="Áreas amplias con mayor cantidad de artículos."
-                                         Tooltip="Muestra las áreas amplias de conocimiento con mayor volumen de artículos, ayudando a identificar focos de producción científica."
-                                         HasData="@(_byField.Count > 0)"
-                                         EmptyMessage="No hay datos de campos de conocimiento disponibles."
-                                         ChartId="chart-by-field"
-                                         Height="@FieldChartHeight"
-                                         Option="@FieldChartOption"
-                                         Accent="sage" />
-
-                        <ReportChartCard Title="Líneas de investigación (Top)"
-                                         Description="Líneas de investigación con mayor producción científica."
-                                         Tooltip="Permite visualizar qué líneas de investigación concentran más artículos, útil para priorizar recursos y planificación estratégica."
-                                         HasData="@(_byResearchLine.Count > 0)"
-                                         EmptyMessage="No hay datos de líneas de investigación disponibles."
-                                         ChartId="chart-by-researchline"
-                                         Height="@ResearchLineChartHeight"
-                                         Option="@ResearchLineChartOption"
-                                         Accent="green" />
-
-                        <ReportChartCard Title="Calidad por cuartiles"
-                                         Description="Distribución de artículos según cuartiles Q1-Q4 y sin cuartil."
-                                         Tooltip="Permite visualizar la calidad de las publicaciones según el cuartil de la revista (Q1-Q4) y artículos sin clasificación."
-                                         HasData="@(_quartileStats is not null && _quartileStats.TotalArticles > 0)"
-                                         EmptyMessage="No hay datos de cuartiles disponibles."
-                                         ChartId="chart-quartiles"
-                                         Height="@QuartileChartHeight"
-                                         Option="@QuartileChartOption"
-                                         Accent="green" />
-                    </div>
-
-                    <!-- ----------------------------------------- -->
-                    <!-- DERECHA: SOLO TABLAS                     -->
-                    <!-- ----------------------------------------- -->
-                    <div class="flex flex-col gap-4">
-
-                        <ReportDataCard Title="Tabla: artículos por año"
-                                        Description="Conteo de artículos por año de creación en el sistema.">
-
-                            @if (_filteredByYear.Count == 0)
-                            {
-                                <p class="text-xs text-slate-400">No hay datos para el rango de años seleccionado.</p>
-                            }
-                            else
-                            {
-                                <div class="max-h-48 overflow-y-auto rounded-lg border border-slate-200">
-                                    <table class="min-w-full text-xs">
-                                        <thead class="border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
-                                            <tr class="text-left font-semibold text-slate-500 uppercase">
-                                                <th class="py-1.5 pr-3 pl-3">Año</th>
-                                                <th class="py-1.5 pr-3 text-right">Artículos</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var item in _filteredByYear)
-                                            {
-                                                <tr class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
-                                                    <td class="py-1.5 pr-3 pl-3 text-slate-700">@item.Year</td>
-                                                    <td class="py-1.5 pr-3 text-right font-semibold text-slate-800">@item.Count</td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            }
-                        </ReportDataCard>
-
-                        <ReportDataCard Title="Tabla: top campos de conocimiento"
-                                        Description="Campos amplios con mayor cantidad de artículos.">
-
-                            @if (_byField.Count == 0)
-                            {
-                                <p class="text-xs text-slate-400">No hay datos de campos de conocimiento disponibles.</p>
-                            }
-                            else
-                            {
-                                <div class="max-h-48 overflow-y-auto rounded-lg border border-slate-200">
-                                    <table class="min-w-full text-xs">
-                                        <thead class="border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
-                                            <tr class="text-left font-semibold text-slate-500 uppercase">
-                                                <th class="py-1.5 pr-3 pl-3">Campo amplio</th>
-                                                <th class="py-1.5 pr-3 text-right">Artículos</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var item in _topBroadFields)
-                                            {
-                                                <tr class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
-                                                    <td class="py-1.5 pr-3 pl-3 text-slate-700">@item.Name</td>
-                                                    <td class="py-1.5 pr-3 text-right font-semibold text-slate-800">@item.Count</td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            }
-                        </ReportDataCard>
-
-                        <ReportDataCard Title="Tabla: líneas de investigación"
-                                        Description="Líneas de investigación con mayor producción científica.">
-
-                            @if (_byResearchLine.Count == 0)
-                            {
-                                <p class="text-xs text-slate-400">No hay datos de líneas de investigación disponibles.</p>
-                            }
-                            else
-                            {
-                                <div class="max-h-48 overflow-y-auto rounded-lg border border-slate-200">
-                                    <table class="min-w-full text-xs">
-                                        <thead class="border-b border-slate-200 bg-slate-50 sticky top-0 z-10">
-                                            <tr class="text-left font-semibold text-slate-500 uppercase">
-                                                <th class="py-1.5 pr-3 pl-3">Línea de investigación</th>
-                                                <th class="py-1.5 pr-3 text-right">Artículos</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @foreach (var item in _topResearchLines)
-                                            {
-                                                <tr class="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/80">
-                                                    <td class="py-1.5 pr-3 pl-3 text-slate-700">@item.Name</td>
-                                                    <td class="py-1.5 pr-3 text-right font-semibold text-slate-800">@item.Count</td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            }
-                        </ReportDataCard>
-
-                        <ReportDataCard Title="Tabla: distribución por cuartiles"
-                                        Description="Conteo y porcentaje de artículos por cuartil (Q1-Q4) y sin clasificación.">
-
-                            @if (_quartileStats == null || _quartileStats.TotalArticles <= 0)
-                            {
-                                <p class="text-xs text-slate-400">
-                                    No hay datos de cuartiles disponibles.
-                                </p>
-                            }
-                            else
-                            {
-                                <div class="flex-1 overflow-y-auto max-h-60 rounded-lg border border-slate-200">
-                                    <table class="min-w-full text-xs">
-                                        <thead class="bg-slate-50 sticky top-0 z-10">
-                                            <tr class="text-left font-semibold text-slate-500 uppercase">
-                                                <th class="py-1.5 px-3 border-b border-slate-200">Cuartil</th>
-                                                <th class="py-1.5 px-3 border-b border-slate-200 text-right">Artículos</th>
-                                                <th class="py-1.5 px-3 border-b border-slate-200 text-right">% sobre total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody class="divide-y divide-slate-100">
-                                            @foreach (var row in QuartileRows)
-                                            {
-                                                <tr class="hover:bg-slate-50/80">
-                                                    <td class="py-1.5 px-3 text-slate-700">@row.Label</td>
-                                                    <td class="py-1.5 px-3 text-right font-semibold text-slate-800">@row.Count</td>
-                                                    <td class="py-1.5 px-3 text-right text-slate-700">
-                                                        @row.Percent.ToString("0.##")%
-                                                    </td>
-                                                </tr>
-                                            }
-                                        </tbody>
-                                    </table>
-                                </div>
-                            }
-                        </ReportDataCard>
-
-                        <ReportDataCard Title="Acceso abierto e indexación"
-                                        Description="Estadísticas de Open Access e indexación en Scopus.">
-
-                            @if (_accessIndexingStats == null || _accessIndexingStats.TotalArticles <= 0)
-                            {
-                                <p class="text-xs text-slate-400">No hay datos disponibles.</p>
-                            }
-                            else
-                            {
-                                <div class="space-y-3">
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-sm text-slate-600">Total de artículos</span>
-                                        <span class="font-semibold">@_accessIndexingStats.TotalArticles</span>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-sm text-slate-600">Open Access</span>
-                                        <div class="text-right">
-                                            <span class="font-semibold">@_accessIndexingStats.OpenAccessCount</span>
-                                            <span class="text-xs text-slate-500 ml-2">(@_accessIndexingStats.OpenAccessPercent.ToString("0.##")%)</span>
-                                        </div>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-sm text-slate-600">Indexados en Scopus</span>
-                                        <div class="text-right">
-                                            <span class="font-semibold">@_accessIndexingStats.ScopusIndexedCount</span>
-                                            <span class="text-xs text-slate-500 ml-2">(@_accessIndexingStats.ScopusIndexedPercent.ToString("0.##")%)</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        </ReportDataCard>
-
-                        <ReportDataCard Title="Tiempo hasta publicación"
-                                        Description="Días desde creación hasta publicación.">
-
-                            @if (_timeToPublicationStats == null || _timeToPublicationStats.ArticlesWithDatesCount <= 0)
-                            {
-                                <p class="text-xs text-slate-400">No hay datos disponibles.</p>
-                            }
-                            else
-                            {
-                                <div class="space-y-3">
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-sm text-slate-600">Artículos con fechas</span>
-                                        <span class="font-semibold">@_timeToPublicationStats.ArticlesWithDatesCount</span>
-                                    </div>
-                                    <div class="flex justify-between items-center">
-                                        <span class="text-sm text-slate-600">Promedio de días</span>
-                                        <span class="font-semibold">@_timeToPublicationStats.AverageDays?.ToString("0")</span>
-                                    </div>
-                                    <div class="grid grid-cols-2 gap-3 pt-2">
-                                        <div class="text-center p-2 bg-blue-50 rounded-lg">
-                                            <div class="text-xs text-slate-500">≤ 6 meses</div>
-                                            <div class="text-lg font-bold text-blue-600">@_timeToPublicationStats.Bucket0To180</div>
-                                        </div>
-                                        <div class="text-center p-2 bg-green-50 rounded-lg">
-                                            <div class="text-xs text-slate-500">6-12 meses</div>
-                                            <div class="text-lg font-bold text-green-600">@_timeToPublicationStats.Bucket181To365</div>
-                                        </div>
-                                        <div class="text-center p-2 bg-orange-50 rounded-lg">
-                                            <div class="text-xs text-slate-500">> 12 meses</div>
-                                            <div class="text-lg font-bold text-orange-600">@_timeToPublicationStats.BucketMore365</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            }
-                        </ReportDataCard>
-                    </div>
-                </section>
-            }
-        }
-        else if (_activeTab == "detail")
-        {
-            @* ======================= VISTA DETALLADA ======================= *@
-
-            @if (_isLoadingDetailed)
-            {
-                <div class="flex items-center justify-center py-16 text-slate-500 text-sm">
-                    Cargando datos detallados...
-                </div>
-            }
-            else if (!string.IsNullOrWhiteSpace(_detailedErrorMessage))
-            {
-                <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-                    @_detailedErrorMessage
-                </div>
-            }
-            else if (_detailedFilteredRows == null || _detailedFilteredRows.Count == 0)
-            {
-                <div class="bg-white border border-slate-200 rounded-xl shadow-sm px-4 py-6 text-sm text-slate-500">
-                    No se encontraron artículos para los filtros actuales. Ajusta los filtros superiores o el rango de fechas.
-                </div>
-            }
-            else
-            {
-                <section class="flex flex-col gap-4">
-                    <!-- Header vista detallada -->
-                    <header class="flex flex-col gap-1">
-                        <h2 class="text-base md:text-lg font-semibold text-slate-900">
-                            Vista detallada tipo tabla
-                        </h2>
-                        <p class="text-xs md:text-sm text-slate-500 max-w-3xl">
-                            Revisa el detalle fila a fila, aplica filtros adicionales por año y mes de creación, y obtén un resumen cuantitativo de los artículos visibles.
-                        </p>
-                    </header>
-
-                    <ReportDetailFilters AvailableYears="@_detailAvailableYears"
-                                         SelectedYear="@_detailYearFilter"
-                                         SelectedMonth="@_detailMonthFilter"
-                                         OnYearChanged="OnDetailYearChanged"
-                                         OnMonthChanged="OnDetailMonthChanged"
-                                         OnClear="ClearDetailFilters" />
-
-                    <ReportDetailKpiGrid TotalArticles="@_detailKpis.TotalArticles"
-                                         PublishedThisYear="@_detailKpis.PublishedThisYear"
-                                         Q1Q2Count="@_detailKpis.Q1Q2Count"
-                                         OpenAccessCount="@_detailKpis.OpenAccessCount"
-                                         IndexedInScopusCount="@_detailKpis.IndexedInScopusCount" />
-
-                    <ReportDetailedTable Items="@_detailedFilteredRows" />
-                </section>
-            }
-        }
-    </div>
-
-    <!-- ========================================================= -->
-    <!-- MODAL DE PREVISUALIZACIÓN DE PDF                         -->
-    <!-- ========================================================= -->
-    <ReportPdfPreviewModal Visible="@(_showLegacyReporting && _showPdfPreview)"
-                           IsGenerating="@(_isPdfGenerating || _isInstitutionalPdfGenerating)"
-                           PdfPreviewDataUrl="@_pdfPreviewDataUrl"
-                           OnClose="ClosePdfPreview" />
-
-    <!-- ========================================================= -->
-    <!-- PANEL LATERAL DE FILTROS AVANZADOS (DRAWER DERECHA)      -->
-    <!-- ========================================================= -->
-    <ReportAdvancedFiltersDrawer Visible="@_showAdvancedFilters"
-                                 Projects="@_projects"
-                                 AcademicTerms="@_academicTerms"
-                                 ResearchLines="@_researchLines"
-                                 BroadFields="@_broadFields"
-                                 SpecificFields="@_specificFields"
-                                 DetailedFields="@_detailedFields"
-                                 PublicationStatuses="@_publicationStatuses"
-                                 IndexingSources="@_indexingSources"
-                                 Venues="@_venues"
-                                 SelectedProjectId="@_selectedProjectId"
-                                 SelectedProjectIdChanged="value => _selectedProjectId = value"
-                                 SelectedAcademicTermId="@_selectedAcademicTermId"
-                                 SelectedAcademicTermIdChanged="value => _selectedAcademicTermId = value"
-                                 SelectedResearchLineId="@_selectedResearchLineId"
-                                 SelectedResearchLineIdChanged="value => _selectedResearchLineId = value"
-                                 SelectedBroadFieldId="@_selectedBroadFieldId"
-                                 SelectedSpecificFieldId="@_selectedSpecificFieldId"
-                                 SelectedDetailedFieldId="@_selectedDetailedFieldId"
-                                 SelectedPublicationStatusId="@_selectedPublicationStatusId"
-                                 SelectedPublicationStatusIdChanged="value => _selectedPublicationStatusId = value"
-                                 SelectedIndexingSourceId="@_selectedIndexingSourceId"
-                                 SelectedIndexingSourceIdChanged="value => _selectedIndexingSourceId = value"
-                                 SelectedVenueId="@_selectedVenueId"
-                                 SelectedVenueIdChanged="value => _selectedVenueId = value"
-                                 FilterIsOpenAccess="@_filterIsOpenAccess"
-                                 FilterIsOpenAccessChanged="value => _filterIsOpenAccess = value"
-                                 SelectedQuartile="@_selectedQuartile"
-                                 SelectedQuartileChanged="value => _selectedQuartile = value"
-                                 OnBroadFieldChanged="OnBroadFieldChanged"
-                                 OnSpecificFieldChanged="OnSpecificFieldChanged"
-                                 OnDetailedFieldChanged="OnDetailedFieldChanged"
-                                 OnClose="ToggleAdvancedFilters"
-                                 OnClearFilters="ClearFilters"
-                                 OnApplyFilters="ApplyFilters" />
-    }
-
-    <ReportPdfPreviewModal Visible="@(!_showLegacyReporting && _showPdfPreview)"
-                           IsGenerating="@(_isPdfGenerating || _isInstitutionalPdfGenerating)"
-                           PdfPreviewDataUrl="@_pdfPreviewDataUrl"
-                           DownloadFileName="Reporte_Institucional_Articulos.pdf"
-                           OnClose="ClosePdfPreview" />
 </div>

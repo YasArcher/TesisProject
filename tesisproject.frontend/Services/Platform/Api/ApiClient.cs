@@ -57,22 +57,23 @@ namespace tesisproject.frontend.Services.Implementations
 
         private static async Task<T?> ReadJsonOrDefaultAsync<T>(HttpContent content, CancellationToken ct)
         {
-            // Si está vacío o el servidor respondió 204, devolver default(T)
             if (content is null) return default;
 
-            // No confíes únicamente en ContentLength; puede venir null en "chunked".
             var payload = await content.ReadAsStringAsync(ct);
             if (string.IsNullOrWhiteSpace(payload))
+            {
                 return default;
+            }
 
             try
             {
                 return JsonSerializer.Deserialize<T>(payload, _json);
             }
-            catch
+            catch (JsonException ex)
             {
-                // Si el servidor respondió con texto no-JSON, evita romper el flujo.
-                return default;
+                throw new InvalidOperationException(
+                    $"No se pudo deserializar la respuesta de la API como {typeof(T).Name}. Body: {TruncatePayload(payload)}",
+                    ex);
             }
         }
 
@@ -89,6 +90,9 @@ namespace tesisproject.frontend.Services.Implementations
 
             throw new ApiException(res.StatusCode, body, problem);
         }
+
+        private static string TruncatePayload(string? value) =>
+            string.IsNullOrEmpty(value) ? "" : (value.Length > 800 ? value[..800] + "..." : value);
     }
 
     /// <summary>

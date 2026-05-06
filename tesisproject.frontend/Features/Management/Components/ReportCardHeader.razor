@@ -2,7 +2,10 @@
     <span><i class="@IconClass"></i></span>
     <div>
         <h2>@Title</h2>
-        <p>@Description</p>
+        @if (!string.IsNullOrWhiteSpace(Description))
+        {
+            <p>@Description</p>
+        }
     </div>
     @if (ChildContent is not null)
     {

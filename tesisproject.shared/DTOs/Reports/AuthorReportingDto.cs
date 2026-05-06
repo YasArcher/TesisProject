@@ -19,6 +19,8 @@ public sealed class AuthorReportingKpiDto
     public int TotalAuthors { get; set; }
     public int TotalAuthorArticleLinks { get; set; }
     public int TotalArticles { get; set; }
+    public int ArticlesWithAuthorTrace { get; set; }
+    public int ArticlesWithoutAuthorTrace { get; set; }
     public int PrimaryAuthorLinks { get; set; }
     public int CoauthorLinks { get; set; }
     public int AuthorsWithOrcid { get; set; }
@@ -30,6 +32,7 @@ public sealed class AuthorReportingSummaryDto
 {
     public int AuthorKey { get; set; }
     public string AuthorName { get; set; } = string.Empty;
+    public string? Identification { get; set; }
     public string Affiliation { get; set; } = string.Empty;
     public string ParticipantType { get; set; } = string.Empty;
     public string? Email { get; set; }
@@ -43,11 +46,15 @@ public sealed class AuthorPublicationDto
 {
     public int AuthorKey { get; set; }
     public string AuthorName { get; set; } = string.Empty;
+    public string? Identification { get; set; }
     public string Affiliation { get; set; } = string.Empty;
     public string ParticipantType { get; set; } = string.Empty;
     public bool IsPrimaryAuthor { get; set; }
     public int ArticleId { get; set; }
     public string Title { get; set; } = string.Empty;
+    public string? Doi { get; set; }
+    public string? Issn { get; set; }
+    public string? JournalUrl { get; set; }
     public string? PublicationUrl { get; set; }
     public DateTime? PublishedDate { get; set; }
     public DateTime? CreatedDate { get; set; }

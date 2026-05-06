@@ -4,16 +4,16 @@
     <div class="reports-dw-section-heading reports-dw-section-heading--gold">
         <span><i class="bi bi-pie-chart-fill"></i></span>
         <div>
-            <small>Pestaña secundaria</small>
+            <small>Participación</small>
             <h2>Porcentaje de participación</h2>
-            <p>Lectura proporcional de la producción científica por facultad, base de datos, cuartil y cruces institucionales.</p>
+            <p>Lectura proporcional por facultad, base y cuartil.</p>
         </div>
     </div>
 
-    <article class="reports-dw-chart-card">
+    <article class="reports-dw-chart-card reports-dw-chart-card--sage reports-dw-chart-card--primary">
         <ReportCardHeader IconClass="bi bi-mortarboard"
-                          Title="Facultad y número de artículos"
-                          Description="@($"Total general: {Dashboard?.ParticipationSummary.TotalArticles.ToString("N0") ?? "0"} artículos.")">
+                          Title="Facultades"
+                          Description="@($"Total visible: {Dashboard?.ParticipationSummary.TotalArticles.ToString("N0") ?? "0"} artículos.")">
             <div class="reports-dw-card-meta">
                 <span><i class="bi bi-graph-up"></i> @ParticipationScopeLabel</span>
             </div>
@@ -23,10 +23,10 @@
                        EmptyMessage="Sin facultades registradas para el filtro actual." />
     </article>
 
-    <article class="reports-dw-chart-card">
+    <article class="reports-dw-chart-card reports-dw-chart-card--ink reports-dw-chart-card--compact">
         <ReportCardHeader IconClass="bi bi-database"
-                          Title="Bases de datos"
-                          Description="@($"Total general: {Dashboard?.ParticipationSummary.TotalIndexingLinks.ToString("N0") ?? "0"} vínculos de indexación.")">
+                          Title="Participación por base"
+                          Description="@($"Total visible: {Dashboard?.ParticipationSummary.TotalIndexingLinks.ToString("N0") ?? "0"} vínculos de indexación.")">
             <div class="reports-dw-card-meta">
                 <span><i class="bi bi-database-check"></i> @((Dashboard?.ParticipationSummary.ByIndexingSource.Count ?? 0).ToString("N0")) bases</span>
             </div>
@@ -36,10 +36,10 @@
                        EmptyMessage="Sin bases de datos registradas para el filtro actual." />
     </article>
 
-    <article class="reports-dw-chart-card">
+    <article class="reports-dw-chart-card reports-dw-chart-card--gold reports-dw-chart-card--compact">
         <ReportCardHeader IconClass="bi bi-award"
-                          Title="Cuartiles"
-                          Description="Porcentaje y número de artículos por clasificación editorial.">
+                          Title="Participación por cuartil"
+                          Description="Peso relativo del resultado visible por categoría.">
             <div class="reports-dw-card-meta">
                 <span><i class="bi bi-stars"></i> @((Dashboard?.ParticipationSummary.ByQuartile.Count ?? 0).ToString("N0")) categorías</span>
             </div>
@@ -50,61 +50,87 @@
                        EmptyMessage="Sin cuartiles registrados para el filtro actual." />
     </article>
 
-    <article class="reports-dw-chart-card reports-dw-chart-card--wide">
+    <article class="reports-dw-chart-card reports-dw-chart-card--wide reports-dw-chart-card--blue">
         <ReportCardHeader IconClass="bi bi-diagram-3"
-                          Title="Bases de datos por facultad"
-                          Description="@($"Desglose por cada base de datos, facultad y número de artículos. Total general: {Dashboard?.ParticipationSummary.TotalIndexingLinks.ToString("N0") ?? "0"}.")" />
-        <div class="reports-dw-table-wrap">
-            <table class="reports-dw-table">
-                <thead>
-                    <tr>
-                        <th>Facultad</th>
-                        <th>Base de datos</th>
-                        <th>Número de artículos</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var item in Dashboard?.ParticipationSummary.IndexingByFaculty ?? [])
-                    {
-                        <tr>
-                            <td>@item.Faculty</td>
-                            <td>@item.IndexingSourceName</td>
-                            <td>@item.TotalArticles</td>
-                        </tr>
-                    }
-                    <tr class="reports-dw-table-total">
-                        <td colspan="2">Total general</td>
-                        <td>@((Dashboard?.ParticipationSummary.TotalIndexingLinks ?? 0).ToString("N0"))</td>
-                    </tr>
-                </tbody>
-            </table>
+                          Title="Detalle de participación"
+                          Description="Facultades y cruce base-facultad." />
+        <div class="reports-dw-subtabs">
+            <button type="button"
+                    class="@(ParticipationDetailView == "pie" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
+                    @onclick="@(() => ParticipationDetailView = "pie")">
+                Facultades
+            </button>
+            <button type="button"
+                    class="@(ParticipationDetailView == "table" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
+                    @onclick="@(() => ParticipationDetailView = "table")">
+                Cruce base-facultad
+            </button>
         </div>
-    </article>
 
-    <article class="reports-dw-chart-card reports-dw-chart-card--wide reports-dw-pie-card">
-        <ReportCardHeader IconClass="bi bi-pie-chart"
-                          Title="Pastel de participación por facultad"
-                          Description="Porcentaje de participación en producción científica según el total filtrado." />
-        <div class="reports-dw-participation-pie-layout">
-            <div class="reports-dw-participation-pie" style="@BuildFacultyParticipationPieStyle()">
-                <span>@((Dashboard?.ParticipationSummary.TotalArticles ?? 0).ToString("N0"))</span>
+        @if (ParticipationDetailView == "pie")
+        {
+            @if (FacultyParticipationPieItems.Count >= 8)
+            {
+                <div class="reports-dw-inline-note reports-dw-inline-note--soft">
+                    Vista resumida: se muestran hasta 8 grupos de facultad, incluyendo “Otras facultades” cuando aplica.
+                </div>
+            }
+            <div class="reports-dw-participation-pie-layout">
+                <div class="reports-dw-participation-pie" style="@BuildFacultyParticipationPieStyle()">
+                    <span>@((Dashboard?.ParticipationSummary.TotalArticles ?? 0).ToString("N0"))</span>
+                </div>
+                <div class="reports-dw-pie-legend">
+                    @foreach (var item in FacultyParticipationPieItems)
+                    {
+                        <div>
+                            <span>@item.Name</span>
+                            <strong>@item.Percentage.ToString("0.##")% · @item.TotalArticles</strong>
+                        </div>
+                    }
+                </div>
             </div>
-            <div class="reports-dw-pie-legend">
-                @foreach (var item in FacultyParticipationPieItems)
-                {
-                    <div>
-                        <span>@item.Name</span>
-                        <strong>@item.Percentage.ToString("0.##")% · @item.TotalArticles</strong>
-                    </div>
-                }
+        }
+        else
+        {
+            @if ((Dashboard?.ParticipationSummary.IndexingByFaculty.Count ?? 0) > 12)
+            {
+                <div class="reports-dw-inline-note">
+                    Mostrando 12 cruces del resultado actual.
+                </div>
+            }
+            <div class="reports-dw-table-wrap">
+                <table class="reports-dw-table">
+                    <thead>
+                        <tr>
+                            <th>Facultad</th>
+                            <th>Base de datos</th>
+                            <th>Número de artículos</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Dashboard?.ParticipationSummary.IndexingByFaculty.Take(12) ?? [])
+                        {
+                            <tr>
+                                <td>@item.Faculty</td>
+                                <td>@item.IndexingSourceName</td>
+                                <td>@item.TotalArticles</td>
+                            </tr>
+                        }
+                        <tr class="reports-dw-table-total">
+                            <td colspan="2">Total general</td>
+                            <td>@((Dashboard?.ParticipationSummary.TotalIndexingLinks ?? 0).ToString("N0"))</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-        </div>
+        }
     </article>
 </section>
 
 @code {
     [Parameter] public InstitutionalReportingDashboardDto? Dashboard { get; set; }
     [Parameter] public string ParticipationScopeLabel { get; set; } = string.Empty;
+    private string ParticipationDetailView { get; set; } = "pie";
 
     private IEnumerable<ReportBarItem> FacultyBarItems =>
         Dashboard?.ParticipationSummary.ByFaculty.Select(ToBarItem) ?? [];

@@ -4,6 +4,7 @@ public sealed class InstitutionalReportingDashboardDto
 {
     public ReportingHealthDto Health { get; set; } = new();
     public ScientificProductionKpiDto ScientificProduction { get; set; } = new();
+    public AuthorTraceCoverageDto AuthorTraceCoverage { get; set; } = new();
     public LoadQualityKpiDto LoadQuality { get; set; } = new();
     public WorkflowKpiDto Workflow { get; set; } = new();
     public InstitutionalReportingFilterOptionsDto FilterOptions { get; set; } = new();
@@ -30,6 +31,12 @@ public sealed class InstitutionalReportingDashboardDto
     public ReportingParticipationSummaryDto ParticipationSummary { get; set; } = new();
 }
 
+public sealed class AuthorTraceCoverageDto
+{
+    public int ArticlesWithAuthorTrace { get; set; }
+    public int ArticlesWithoutAuthorTrace { get; set; }
+}
+
 public sealed class InstitutionalReportingFilterDto
 {
     public DateTime? CreatedFrom { get; set; }
@@ -49,12 +56,25 @@ public sealed class InstitutionalReportingFilterDto
     public int? ArticleYear { get; set; }
     public string? Quartile { get; set; }
     public bool? IsOpenAccess { get; set; }
+    public bool? IsProjectResult { get; set; }
+    public bool? HasInterculturalComponent { get; set; }
     public string? PeriodDateType { get; set; }
     public string? AuthorName { get; set; }
     public string? AuthorAffiliation { get; set; }
     public string? ParticipantType { get; set; }
+    public bool? HasOrcid { get; set; }
     public bool? OnlyPrimaryAuthors { get; set; }
     public string? CoauthorName { get; set; }
+    public bool IncludePdfKpis { get; set; } = true;
+    public bool IncludePdfFilters { get; set; } = true;
+    public bool IncludePdfPeriod { get; set; } = true;
+    public bool IncludePdfFields { get; set; } = true;
+    public bool IncludePdfVenues { get; set; } = true;
+    public bool IncludePdfAuthors { get; set; } = true;
+    public bool IncludePdfPediIiit { get; set; } = true;
+    public bool IncludePdfTddTotal { get; set; } = true;
+    public bool IncludePdfParticipation { get; set; } = true;
+    public bool IncludePdfArticles { get; set; } = true;
 }
 
 public sealed class InstitutionalReportingFilterOptionsDto
@@ -71,6 +91,9 @@ public sealed class InstitutionalReportingFilterOptionsDto
     public List<string> VenueTypes { get; set; } = new();
     public List<int> ArticleYears { get; set; } = new();
     public List<string> Quartiles { get; set; } = new();
+    public List<string> Authors { get; set; } = new();
+    public List<string> Affiliations { get; set; } = new();
+    public List<string> ParticipantTypes { get; set; } = new();
 }
 
 public sealed class ScientificProductionKpiDto

@@ -2,12 +2,15 @@
 @using Blazored.LocalStorage
 @using tesisproject.frontend.Features.Management.Components
 @using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.Utils
 @using tesisproject.shared.DTOs.ExternalApis
 @using tesisproject.shared.DTOs.Imports
+@using System.Text.Json
 @inject IExternalApiExplorerClient ExternalApiExplorerClient
 @inject IBulkImportClient BulkImportClient
 @inject ILocalStorageService LocalStorage
 @inject NavigationManager NavManager
+@inject ExportJsInterop ExportJs
 
 <PageTitle>Explorador de APIs externas</PageTitle>
 
@@ -22,17 +25,78 @@
                     <div class="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Conectores académicos</div>
                     <h1 class="mt-1 text-2xl font-black md:text-3xl">Explorador de APIs externas</h1>
                     <p class="mt-2 max-w-2xl text-sm leading-6 text-white/78">
-                        Consulta proveedores académicos, revisa metadatos y envía artículos seleccionados al staging sin salir del flujo institucional.
+                        Consulta, valida y prepara artículos desde bases académicas.
                     </p>
                 </div>
             </div>
             <div class="external-api-hero__badges">
                 <span><i class="bi bi-search"></i> Búsqueda asistida</span>
-                <span><i class="bi bi-database-check"></i> Staging conectado</span>
-                <span><i class="bi bi-filetype-json"></i> JSON auditable</span>
+                <span><i class="bi bi-filetype-json"></i> Resultado auditable</span>
             </div>
         </div>
     </div>
+
+    <div class="external-api-command-bar mb-5 grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <div class="external-api-command-bar__card">
+            <span><i class="bi bi-diagram-3"></i></span>
+            <div>
+                <small>Proveedor activo</small>
+                <strong>@(SelectedProvider?.DisplayName ?? "Sin selección")</strong>
+                <p>@GetProviderStatusText()</p>
+            </div>
+        </div>
+        <div class="external-api-command-bar__card">
+            <span><i class="bi bi-sliders2"></i></span>
+            <div>
+                <small>Modo de búsqueda</small>
+                <strong>@GetCurrentModeLabel()</strong>
+                <p>@GetCurrentModeSummaryText()</p>
+            </div>
+        </div>
+        <div class="external-api-command-bar__card">
+            <span><i class="bi bi-collection"></i></span>
+            <div>
+                <small>Selección actual</small>
+                <strong>@SelectedExternalArticles.Count artículo(s)</strong>
+                <p>@GetSelectionSummaryText()</p>
+            </div>
+        </div>
+    </div>
+
+    <section class="external-api-institutional-panel mb-5 rounded-[1.8rem] border border-[rgba(67,86,99,0.12)] bg-white/95 p-5 shadow-sm">
+        <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+            <div class="space-y-3">
+                <div class="inline-flex items-center gap-2 rounded-full bg-[#eef5fb] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#295173]">
+                    <i class="bi bi-building-check"></i>
+                    Exploración institucional
+                </div>
+                <div>
+                    <h2 class="text-lg font-black text-[#102642]">Producción Scopus de la Universidad Técnica de Ambato</h2>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">Dataset institucional por filiación UTA.</p>
+                </div>
+                <div class="flex flex-wrap gap-2 text-xs">
+                    <span class="rounded-full bg-[#fff8d4] px-3 py-1.5 font-semibold text-[#7a5b00]">Filiación UTA</span>
+                    <span class="rounded-full bg-[#eef6ff] px-3 py-1.5 font-semibold text-[#295173]">CSV / JSON</span>
+                </div>
+            </div>
+            <div class="external-api-institutional-panel__actions">
+                <div class="rounded-3xl border border-[#dbe6ef] bg-[linear-gradient(135deg,#fbfdff_0%,#fffdf3_100%)] p-4">
+                    <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Dataset institucional UTA</div>
+                    <button class="mt-4 inline-flex items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#313647_0%,#2f5249_100%)] px-4 py-3 text-sm font-semibold text-[#fff8d4] shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                            type="button"
+                            disabled="@(!CanUseScopusInstitutionalDataset)"
+                            @onclick="OpenInstitutionalDatasetModal">
+                        <i class="bi bi-cloud-download"></i>
+                        Abrir dataset institucional
+                    </button>
+                    @if (!CanUseScopusInstitutionalDataset)
+                    {
+                        <div class="mt-2 text-xs text-slate-500">Selecciona primero el proveedor Scopus para habilitar esta herramienta.</div>
+                    }
+                </div>
+            </div>
+        </div>
+    </section>
 
     <AppStatusModal Visible="@HasStatusMessage"
                     Variant="@CurrentStatusVariant"
@@ -40,7 +104,166 @@
                     Title="@CurrentStatusTitle"
                     Message="@CurrentStatusMessage"
                     OnClose="CloseStatusModal" />
+    <AppConfirmPanel Visible="@IsStagingConfirmVisible"
+                     Eyebrow="Confirmar envío"
+                     Title="@StagingConfirmTitle"
+                     Message="@StagingConfirmMessage"
+                     ConfirmText="@StagingConfirmActionLabel"
+                     CancelText="Cancelar"
+                     OnConfirm="ConfirmStagingSendAsync"
+                     OnCancel="CloseStagingConfirmAsync" />
     <ExternalApiArticleDetailPanel Article="SelectedArticleDetail" OnClose="CloseArticleDetail" />
+
+    @if (IsInstitutionalDatasetModalVisible)
+    {
+        <div class="external-api-dataset-modal-backdrop">
+            <section class="external-api-dataset-modal" role="dialog" aria-modal="true" aria-labelledby="external-api-dataset-title">
+                <div class="external-api-dataset-modal__header">
+                    <div>
+                        <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Scopus institucional</div>
+                        <h2 id="external-api-dataset-title" class="mt-1 text-xl font-black text-[#102642]">Dataset preliminar UTA</h2>
+                        <p class="mt-2 text-sm text-slate-600">Artículos recuperados por filiación UTA.</p>
+                    </div>
+                    <button type="button" class="external-api-dataset-modal__close" @onclick="CloseInstitutionalDatasetModal">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+
+                <div class="external-api-dataset-modal__body">
+                    <div class="external-api-dataset-modal__metrics">
+                        <article>
+                            <small>Proveedor</small>
+                            <strong>Scopus</strong>
+                            <p>Fuente institucional activa.</p>
+                        </article>
+                        <article>
+                            <small>Cobertura</small>
+                            <strong>Filiación UTA</strong>
+                            <p>Español e inglés.</p>
+                        </article>
+                        <article>
+                            <small>Registros listos</small>
+                            <strong>@InstitutionalDatasetArticles.Length</strong>
+                            <p>Artículos disponibles en la vista previa actual.</p>
+                        </article>
+                    </div>
+
+                    <div class="external-api-dataset-modal__panel">
+                        <div class="external-api-dataset-modal__panel-copy">
+                            <div class="text-sm font-bold text-[#102642]">Preparar dataset institucional completo</div>
+                            <div class="text-xs text-slate-500">Busca todo y luego habilita la descarga.</div>
+                        </div>
+                        <button type="button"
+                                class="external-api-dataset-modal__primary"
+                                disabled="@IsLoadingInstitutionalDataset"
+                                @onclick="PrepareInstitutionalDatasetAsync">
+                            @(IsLoadingInstitutionalDataset ? "Buscando todos los artículos..." : "Preparar dataset completo")
+                        </button>
+                    </div>
+
+                    @if (InstitutionalDatasetResult is not null)
+                    {
+                        <div class="external-api-dataset-modal__result">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <div class="text-sm font-bold text-[#102642]">Vista previa lista</div>
+                                    <div class="text-xs text-slate-500">@GetInstitutionalDatasetSummary()</div>
+                                    <div class="mt-2 inline-flex items-center gap-2 rounded-full bg-[#eef6ff] px-3 py-1 text-[11px] font-semibold text-[#295173]">
+                                        <i class="bi bi-building-check"></i>
+                                        Dataset generado por filiación UTA en Scopus
+                                    </div>
+                                </div>
+                                <div class="flex flex-wrap gap-2">
+                                    <button type="button" class="external-api-dataset-modal__secondary" @onclick="DownloadInstitutionalDatasetCsvAsync">Descargar CSV</button>
+                                    <button type="button" class="external-api-dataset-modal__secondary" @onclick="DownloadInstitutionalDatasetJsonAsync">Descargar JSON</button>
+                                    <button type="button" class="external-api-dataset-modal__secondary disabled:cursor-not-allowed disabled:opacity-60" disabled>Enviar a staging - Guardar en Base de datos</button>
+                                </div>
+                            </div>
+
+                            <div class="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                                @foreach (var article in InstitutionalDatasetArticles.Take(6))
+                                {
+                                    <div class="rounded-2xl border border-[#e5edf4] bg-[#fbfdff] px-4 py-3">
+                                        <div class="text-sm font-bold text-[#102642]">@article.Title</div>
+                                        <div class="mt-2 flex flex-wrap gap-2 text-[11px]">
+                                            @if (!string.IsNullOrWhiteSpace(article.Authors))
+                                            {
+                                                <span class="rounded-full bg-[#eef6ff] px-2 py-1 font-semibold text-[#295173]">@article.Authors</span>
+                                            }
+                                            @if (article.PublicationYear.HasValue)
+                                            {
+                                                <span class="rounded-full bg-slate-100 px-2 py-1 font-semibold text-slate-600">@article.PublicationYear</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(article.JournalName))
+                                            {
+                                                <span class="rounded-full bg-[#fff4e4] px-2 py-1 font-semibold text-[#8b5a16]">@article.JournalName</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            </section>
+        </div>
+    }
+
+    @if (IsBusyOverlayVisible)
+    {
+        <div class="external-api-overlay" role="status" aria-live="polite" aria-busy="true">
+            <div class="external-api-overlay__card">
+                <div class="external-api-overlay__spinner"></div>
+                <div class="external-api-overlay__eyebrow">@CurrentBusyEyebrow</div>
+                <h3>@CurrentBusyTitle</h3>
+                <p>@CurrentBusyMessage</p>
+            </div>
+        </div>
+    }
+
+    @if (LastResult is not null)
+    {
+        <div class="mb-5 rounded-[1.6rem] border border-[#dbe6ef] bg-white/95 p-4 shadow-sm">
+            <div class="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Última consulta</div>
+                    <div class="mt-1 text-base font-black text-[#102642]">@LastResult.ProviderName · @GetExecutedModeLabel()</div>
+                    <div class="mt-1 text-sm text-slate-600">@GetLastResultSummary()</div>
+                </div>
+                <span class="rounded-full bg-[#eef5fb] px-3 py-1 text-xs font-semibold text-[#295173]">@LastResultPreviewArticles.Length artículo(s)</span>
+            </div>
+
+            @if (LastResultPreviewArticles.Any())
+            {
+                <div class="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                    @foreach (var article in LastResultPreviewArticles.Take(4))
+                    {
+                        <div class="rounded-2xl border border-[#e5edf4] bg-[#fbfdff] px-4 py-3" @key="GetLastResultArticleKey(article)">
+                            <div class="text-sm font-bold text-[#102642]">@(string.IsNullOrWhiteSpace(article.Title) ? "Artículo sin título visible" : article.Title)</div>
+                            <div class="mt-2 flex flex-wrap gap-2 text-[11px]">
+                                @if (!string.IsNullOrWhiteSpace(article.Authors))
+                                {
+                                    <span class="rounded-full bg-[#eef6ff] px-2 py-1 font-semibold text-[#295173]">@article.Authors</span>
+                                }
+                                @if (article.PublicationYear.HasValue)
+                                {
+                                    <span class="rounded-full bg-slate-100 px-2 py-1 font-semibold text-slate-600">@article.PublicationYear</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(article.JournalName))
+                                {
+                                    <span class="rounded-full bg-[#fff4e4] px-2 py-1 font-semibold text-[#8b5a16]">@article.JournalName</span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(article.Doi))
+                                {
+                                    <span class="rounded-full bg-[#eaf7ee] px-2 py-1 font-semibold text-emerald-700">@article.Doi</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
 
     @if (IsLoading)
     {
@@ -49,46 +272,68 @@
     else
     {
         <div class="external-api-workspace grid grid-cols-1 gap-6 xl:grid-cols-[0.88fr_1.12fr]">
-            <ExternalApiQuerySidebar Providers="Providers"
-                                     SelectedProvider="SelectedProvider"
-                                     QueryMode="QueryMode"
-                                     QueryModeChanged="@(value => QueryMode = value)"
-                                     MaxResults="MaxResults"
-                                     MaxResultsChanged="@(value => MaxResults = value)"
-                                     QueryText="QueryText"
-                                     QueryTextChanged="@(value => QueryText = value)"
-                                     InstitutionName="InstitutionName"
-                                     InstitutionNameChanged="@(value => InstitutionName = value)"
-                                     PrimaryAuthor="PrimaryAuthor"
-                                     PrimaryAuthorChanged="@(value => PrimaryAuthor = value)"
-                                     CoAuthor="CoAuthor"
-                                     CoAuthorChanged="@(value => CoAuthor = value)"
-                                     IsRunningQuery="IsRunningQuery"
-                                     OnSelectProvider="SelectProvider"
-                                     OnRunQuery="RunQueryAsync"
-                                     OnUseSample="UseQuerySample" />
+            <div class="external-api-sidebar-shell">
+                <ExternalApiQuerySidebar Providers="@Providers"
+                                         SelectedProvider="@SelectedProvider"
+                                         QueryMode="@QueryMode"
+                                         QueryModeChanged="HandleQueryModeChangedAsync"
+                                         MaxResults="@MaxResults"
+                                         MaxResultsChanged="@(value => MaxResults = value)"
+                                         QueryText="@QueryText"
+                                         QueryTextChanged="HandleQueryTextChangedAsync"
+                                         InstitutionName="@InstitutionName"
+                                         InstitutionNameChanged="HandleInstitutionNameChangedAsync"
+                                         PrimaryAuthor="@PrimaryAuthor"
+                                         PrimaryAuthorChanged="HandlePrimaryAuthorChangedAsync"
+                                         RestrictAuthorToInstitution="@RestrictAuthorToInstitution"
+                                         RestrictAuthorToInstitutionChanged="HandleRestrictAuthorToInstitutionChangedAsync"
+                                         RecentQueries="@RecentQueries"
+                                         OnApplyRecentQuery="ApplyRecentQueryAsync"
+                                         OnClearRecentQueries="ClearRecentQueriesAsync"
+                                         IsRunningQuery="@IsRunningQuery"
+                                         OnSelectProvider="SelectProvider"
+                                         OnRunQuery="RunQueryAsync"
+                                         OnClearSearch="ClearSearchAsync" />
+            </div>
 
-            <ExternalApiResultsPanel Result="LastResult"
-                                     QueryMode="QueryMode"
-                                     CurrentResults="CurrentResults"
-                                     ResultsPage="ResultsPage"
-                                     TotalResultsPages="TotalResultsPages"
-                                     ResultsPageSize="ResultsPageSize"
-                                     ResultsPageSizeChanged="ChangeResultsPageSizeAsync"
-                                     OnPreviousPage="PreviousResultsPage"
-                                     OnNextPage="NextResultsPage"
-                                     SelectedArticles="SelectedArticleLookup"
-                                     IsArticleSelected="IsArticleSelected"
-                                     OnToggleSelection="HandleArticleSelectionChanged"
-                                     OnRemoveSelectedArticle="RemoveSelectedArticle"
-                                     OnClearSelectedArticles="ClearSelectedArticles"
-                                     OnSendSelectedToStaging="SendSelectedToStagingAsync"
-                                     IsSendingSelectionToStaging="IsSendingSelectionToStaging"
-                                     OnOpenDetail="OpenArticleDetail"
-                                     OnSendToRegister="SendToRegisterAsync"
-                                     OnSendToStaging="SendToStagingAsync"
-                                     IsSendingToStaging="IsSendingToStaging"
-                                     FormattedJsonPreview="GetFormattedJsonPreview()" />
+            <div class="external-api-results-shell">
+                <ExternalApiResultsPanel Result="@LastResult"
+                                         QueryMode="@LastExecutedQueryMode"
+                                         QueryText="@LastExecutedQueryText"
+                                         PrimaryAuthor="@LastExecutedPrimaryAuthor"
+                                         InstitutionName="@LastExecutedInstitutionName"
+                                         SelectedAuthorId="@SelectedAuthorId"
+                                         SelectedAffiliationId="@SelectedAffiliationId"
+                                         HasManualResolutionSelection="@HasManualResolutionSelection"
+                                         ResultsSearchText="@ResultsSearchText"
+                                         ResultsSearchTextChanged="HandleResultsSearchChangedAsync"
+                                         FilterOnlyWithDoi="@FilterOnlyWithDoi"
+                                         FilterOnlyWithDoiChanged="HandleOnlyWithDoiChangedAsync"
+                                         FilterOnlyOpenAccess="@FilterOnlyOpenAccess"
+                                         FilterOnlyOpenAccessChanged="HandleOnlyOpenAccessChangedAsync"
+                                         OnSelectResolutionCandidate="HandleResolutionCandidateSelectionAsync"
+                                         OnClearResolutionSelection="ClearResolutionSelectionAsync"
+                                         CurrentResults="@CurrentResults"
+                                         TotalFilteredResultsCount="@FilteredResults.Count"
+                                         ResultsPage="@ResultsPage"
+                                         TotalResultsPages="@TotalResultsPages"
+                                         ResultsPageSize="@ResultsPageSize"
+                                         ResultsPageSizeChanged="ChangeResultsPageSizeAsync"
+                                         OnPreviousPage="PreviousResultsPage"
+                                         OnNextPage="NextResultsPage"
+                                         SelectedArticles="@SelectedArticleLookup"
+                                         IsArticleSelected="@IsArticleSelected"
+                                         OnToggleSelection="HandleArticleSelectionChanged"
+                                         OnRemoveSelectedArticle="RemoveSelectedArticle"
+                                         OnClearSelectedArticles="ClearSelectedArticles"
+                                         OnSendSelectedToStaging="SendSelectedToStagingAsync"
+                                         IsSendingSelectionToStaging="@IsSendingSelectionToStaging"
+                                         OnOpenDetail="OpenArticleDetail"
+                                         OnSendToRegister="SendToRegisterAsync"
+                                         OnSendToStaging="SendToStagingAsync"
+                                         IsSendingToStaging="@IsSendingToStaging"
+                                         FormattedJsonPreview="@GetFormattedJsonPreview()" />
+            </div>
         </div>
     }
 </div>
@@ -109,32 +354,118 @@
     private string QueryMode = "general";
     private string InstitutionName = string.Empty;
     private string PrimaryAuthor = string.Empty;
-    private string CoAuthor = string.Empty;
+    private bool RestrictAuthorToInstitution;
     private int MaxResults = 10;
     private bool IsLoading = true;
     private bool IsRunningQuery;
     private bool IsSendingToStaging;
     private bool IsSendingSelectionToStaging;
+    private bool IsStagingConfirmVisible;
     private string? ErrorMessage;
     private string? SuccessMessage;
     private ExternalArticlePreviewDto? SelectedArticleDetail;
     private Dictionary<string, SelectedExternalArticleItem> SelectedExternalArticles { get; set; } = new();
+    private List<ExternalApiQuerySidebar.ExternalApiRecentQueryItem> RecentQueries { get; set; } = new();
+    private ExternalArticlePreviewDto? PendingSingleStagingArticle;
+    private bool PendingSelectionStagingSend;
+    private string ResultsSearchText = string.Empty;
+    private bool FilterOnlyWithDoi;
+    private bool FilterOnlyOpenAccess;
+    private string? SelectedAuthorId;
+    private string? SelectedAffiliationId;
     private int ResultsPage { get; set; } = 1;
     private int ResultsPageSize { get; set; } = 10;
+    private string LastExecutedQueryMode = "general";
+    private string LastExecutedQueryText = string.Empty;
+    private string LastExecutedPrimaryAuthor = string.Empty;
+    private string LastExecutedInstitutionName = string.Empty;
+    private bool IsInstitutionalDatasetModalVisible;
+    private bool IsLoadingInstitutionalDataset;
+    private ExternalApiQueryResultDto? InstitutionalDatasetResult;
+    private const string DefaultInstitutionName = "Universidad Técnica de Ambato";
+    private const string RecentQueriesStorageKey = "external-api.recent-queries";
     private IReadOnlyDictionary<string, ExternalArticlePreviewDto> SelectedArticleLookup =>
         SelectedExternalArticles.ToDictionary(item => item.Key, item => item.Value.Article);
+    private ExternalArticlePreviewDto[] LastResultPreviewArticles =>
+        ExternalApiExplorerPageHelper.BuildPreviewArticles(LastResult);
+    private ExternalArticlePreviewDto[] InstitutionalDatasetArticles =>
+        ExternalApiExplorerPageHelper.BuildPreviewArticles(InstitutionalDatasetResult);
+    private bool CanUseScopusInstitutionalDataset =>
+        string.Equals(SelectedProvider?.ProviderKey, "scopus", StringComparison.OrdinalIgnoreCase);
 
-    private List<ExternalArticlePreviewDto> CurrentResults =>
-        LastResult?.Articles
-            .Skip((ResultsPage - 1) * ResultsPageSize)
-            .Take(ResultsPageSize)
-            .ToList()
-        ?? new List<ExternalArticlePreviewDto>();
+    private List<ExternalArticlePreviewDto> EffectiveResultArticles =>
+        LastResultPreviewArticles.ToList();
+
+    private List<ExternalArticlePreviewDto> FilteredResults =>
+        EffectiveResultArticles
+            .Where(article => MatchesResultsSearch(article))
+            .Where(article => !FilterOnlyWithDoi || !string.IsNullOrWhiteSpace(article.Doi))
+            .Where(article => !FilterOnlyOpenAccess || article.IsOpenAccess == true)
+            .ToList();
+
+    private List<ExternalArticlePreviewDto> CurrentResults
+    {
+        get
+        {
+            var filtered = FilteredResults;
+            var safePage = Math.Max(1, Math.Min(ResultsPage, TotalResultsPages));
+            return filtered
+                .Skip((safePage - 1) * ResultsPageSize)
+                .Take(ResultsPageSize)
+                .ToList();
+        }
+    }
 
     private int TotalResultsPages =>
-        LastResult is null || LastResult.Articles.Count == 0
+        FilteredResults.Count == 0
             ? 1
-            : (int)Math.Ceiling(LastResult.Articles.Count / (double)ResultsPageSize);
+            : (int)Math.Ceiling(FilteredResults.Count / (double)ResultsPageSize);
+
+    private bool HasManualResolutionSelection =>
+        !string.IsNullOrWhiteSpace(SelectedAuthorId)
+        || !string.IsNullOrWhiteSpace(SelectedAffiliationId);
+
+    private bool IsBusyOverlayVisible => IsLoading || IsRunningQuery || IsSendingToStaging || IsSendingSelectionToStaging || IsLoadingInstitutionalDataset;
+    private string StagingConfirmTitle => PendingSelectionStagingSend
+        ? "Enviar selección de artículos a staging"
+        : "Enviar artículo a staging";
+    private string StagingConfirmActionLabel => PendingSelectionStagingSend
+        ? "Enviar selección"
+        : "Enviar artículo";
+    private string StagingConfirmMessage => PendingSelectionStagingSend
+        ? $"Se generará un lote con {SelectedExternalArticles.Count} artículo(s) seleccionados. Mientras se procesa el envío no podrás seguir interactuando con esta pantalla."
+        : "Se enviará este artículo al staging institucional para revisión técnica posterior. ¿Deseas continuar?";
+
+    private string CurrentBusyEyebrow => IsLoading
+        ? "Preparando módulo"
+        : IsLoadingInstitutionalDataset
+            ? "Preparando dataset"
+        : IsRunningQuery
+            ? "Consultando proveedor"
+            : "Procesando envío";
+
+    private string CurrentBusyTitle => IsLoading
+        ? "Estamos cargando los conectores académicos"
+        : IsLoadingInstitutionalDataset
+            ? "Estamos reuniendo los artículos institucionales"
+        : IsRunningQuery
+            ? "Estamos consultando la fuente seleccionada"
+            : "Estamos enviando artículos al staging";
+
+    private string CurrentBusyMessage => IsLoading
+        ? "Espera un momento mientras dejamos listo el módulo con sus proveedores, ayudas visuales y paneles de resultados."
+        : IsLoadingInstitutionalDataset
+            ? "Estamos recorriendo Scopus y consolidando el dataset de la Universidad Técnica de Ambato. Por ahora bloqueamos la pantalla para evitar acciones duplicadas."
+        : IsRunningQuery
+            ? "No necesitas hacer nada más por ahora. Estamos resolviendo la consulta, leyendo la respuesta y preparando los artículos mapeables."
+            : "Mantendremos esta pantalla protegida hasta completar el envío para evitar acciones duplicadas o inconsistencias.";
+
+    private static string GetLastResultArticleKey(ExternalArticlePreviewDto article)
+        => !string.IsNullOrWhiteSpace(article.ExternalId)
+            ? article.ExternalId
+            : !string.IsNullOrWhiteSpace(article.Doi)
+                ? article.Doi
+                : $"{article.Title}|{article.PublicationYear}|{article.JournalName}";
 
     private string GetFormattedJsonPreview()
     {
@@ -190,7 +521,9 @@
         try
         {
             Providers = await ExternalApiExplorerClient.GetProvidersAsync();
-            SelectedProvider = Providers.FirstOrDefault();
+            RecentQueries = await LocalStorage.GetItemAsync<List<ExternalApiQuerySidebar.ExternalApiRecentQueryItem>>(RecentQueriesStorageKey) ?? new();
+            SelectedProvider = null;
+            ResetQueryStateForProvider(useSampleValues: false);
         }
         catch (Exception ex)
         {
@@ -206,53 +539,164 @@
     {
         var previousProviderKey = SelectedProvider?.ProviderKey;
         SelectedProvider = provider;
+        EnsureValidQueryModeForProvider();
         ErrorMessage = null;
         SuccessMessage = null;
         LastResult = null;
+        InstitutionalDatasetResult = null;
         ResultsPage = 1;
+        SelectedAuthorId = null;
+        SelectedAffiliationId = null;
 
         if (!string.Equals(previousProviderKey, provider.ProviderKey, StringComparison.OrdinalIgnoreCase))
         {
             SelectedExternalArticles.Clear();
         }
 
-        UseQuerySample();
+        ResetQueryStateForProvider(useSampleValues: false);
     }
 
-    private void UseQuerySample()
+    private async Task ApplyRecentQueryAsync(ExternalApiQuerySidebar.ExternalApiRecentQueryItem query)
+    {
+        var provider = Providers.FirstOrDefault(item =>
+            string.Equals(item.ProviderKey, query.ProviderKey, StringComparison.OrdinalIgnoreCase));
+
+        if (provider is not null)
+        {
+            SelectProvider(provider);
+        }
+
+        QueryMode = string.IsNullOrWhiteSpace(query.QueryMode) ? "general" : query.QueryMode;
+        EnsureValidQueryModeForProvider();
+        QueryText = query.QueryText ?? string.Empty;
+        InstitutionName = query.InstitutionName ?? string.Empty;
+        PrimaryAuthor = query.PrimaryAuthor ?? string.Empty;
+        RestrictAuthorToInstitution = !string.IsNullOrWhiteSpace(InstitutionName)
+            && string.Equals(QueryMode, "author", StringComparison.OrdinalIgnoreCase);
+        SelectedAuthorId = null;
+        SelectedAffiliationId = null;
+        MaxResults = query.MaxResults >= 0 ? query.MaxResults : 10;
+        ResultsPage = 1;
+        LastResult = null;
+        ErrorMessage = null;
+        SuccessMessage = null;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ClearRecentQueriesAsync()
+    {
+        RecentQueries.Clear();
+        await LocalStorage.RemoveItemAsync(RecentQueriesStorageKey);
+    }
+
+    private Task ClearSearchAsync()
+    {
+        ErrorMessage = null;
+        SuccessMessage = null;
+        LastResult = null;
+        ResultsPage = 1;
+        ResultsSearchText = string.Empty;
+        FilterOnlyWithDoi = false;
+        FilterOnlyOpenAccess = false;
+        SelectedAuthorId = null;
+        SelectedAffiliationId = null;
+        QueryText = string.Empty;
+        PrimaryAuthor = string.Empty;
+        RestrictAuthorToInstitution = false;
+        InstitutionalDatasetResult = null;
+        InstitutionName = QueryMode == "affiliation" ? DefaultInstitutionName : string.Empty;
+        MaxResults = 10;
+        SelectedExternalArticles.Clear();
+        return Task.CompletedTask;
+    }
+
+    private Task HandleQueryModeChangedAsync(string value)
+    {
+        QueryMode = string.IsNullOrWhiteSpace(value) ? "general" : value;
+        ErrorMessage = null;
+        SuccessMessage = null;
+        LastResult = null;
+        ResultsPage = 1;
+        SelectedAuthorId = null;
+        SelectedAffiliationId = null;
+        InstitutionalDatasetResult = null;
+        ResetQueryStateForProvider(useSampleValues: false);
+        return Task.CompletedTask;
+    }
+
+    private void ResetQueryStateForProvider(bool useSampleValues)
     {
         if (SelectedProvider is null)
         {
+            QueryMode = "general";
+            QueryText = string.Empty;
+            InstitutionName = string.Empty;
+            PrimaryAuthor = string.Empty;
+            RestrictAuthorToInstitution = false;
             return;
         }
 
-        QueryText = QueryMode == "doi"
-            ? "10.1038/nphys1170"
-            : SelectedProvider.ProviderKey switch
-            {
-                "scopus" => "TITLE-ABS-KEY(machine learning)",
-                "crossref" => "machine learning in education",
-                "openalex" => "artificial intelligence higher education",
-                "semantic-scholar" => "deep learning scientific articles",
-                _ => "scientific article search"
-            };
-
-        if (string.Equals(SelectedProvider.ProviderKey, "scopus", StringComparison.OrdinalIgnoreCase))
+        var isScopus = string.Equals(SelectedProvider.ProviderKey, "scopus", StringComparison.OrdinalIgnoreCase);
+        if (!isScopus && QueryMode is "author" or "affiliation")
         {
-            PrimaryAuthor = "Juan Perez";
-            CoAuthor = "Maria Garcia";
-            InstitutionName = "Universidad Técnica de Ambato";
+            QueryMode = "general";
+        }
+
+        if (QueryMode == "doi")
+        {
+            QueryText = useSampleValues ? "10.1038/nphys1170" : string.Empty;
+            RestrictAuthorToInstitution = false;
+        }
+        else if (QueryMode == "affiliation")
+        {
+            QueryText = string.Empty;
+            RestrictAuthorToInstitution = true;
+        }
+        else if (QueryMode == "author")
+        {
+            QueryText = string.Empty;
         }
         else
         {
-            PrimaryAuthor = string.Empty;
-            CoAuthor = string.Empty;
-            InstitutionName = string.Empty;
+            QueryText = useSampleValues
+                ? SelectedProvider.ProviderKey switch
+                {
+                    "scopus" => "TITLE-ABS-KEY(machine learning)",
+                    "crossref" => "machine learning in education",
+                    "openalex" => "artificial intelligence higher education",
+                    "semantic-scholar" => "deep learning scientific articles",
+                    _ => "scientific article search"
+                }
+                : string.Empty;
         }
 
-        if (QueryMode == "affiliation")
+        if (isScopus)
         {
-            QueryText = string.Empty;
+            InstitutionName = QueryMode == "affiliation" || RestrictAuthorToInstitution
+                ? DefaultInstitutionName
+                : string.Empty;
+            PrimaryAuthor = useSampleValues ? "Ruben Nogales" : string.Empty;
+        }
+        else
+        {
+            InstitutionName = string.Empty;
+            PrimaryAuthor = string.Empty;
+            RestrictAuthorToInstitution = false;
+        }
+    }
+
+    private void EnsureValidQueryModeForProvider()
+    {
+        if (SelectedProvider is null)
+        {
+            QueryMode = "general";
+            return;
+        }
+
+        var isScopus = string.Equals(SelectedProvider.ProviderKey, "scopus", StringComparison.OrdinalIgnoreCase);
+        if (!isScopus && QueryMode is "author" or "affiliation")
+        {
+            QueryMode = "general";
         }
     }
 
@@ -269,17 +713,37 @@
             IsRunningQuery = true;
             ErrorMessage = null;
             SuccessMessage = null;
+            ResultsSearchText = string.Empty;
+            FilterOnlyWithDoi = false;
+            FilterOnlyOpenAccess = false;
+
+            if (string.Equals(SelectedProvider.ProviderKey, "scopus", StringComparison.OrdinalIgnoreCase))
+            {
+                if (QueryMode == "author" && string.IsNullOrWhiteSpace(PrimaryAuthor))
+                {
+                    ErrorMessage = "Debes escribir el autor principal antes de consultar Scopus.";
+                    return;
+                }
+
+            }
+
             LastResult = await ExternalApiExplorerClient.QueryAsync(new ExternalApiQueryRequest
             {
                 ProviderKey = SelectedProvider.ProviderKey,
-                QueryText = QueryText,
+                QueryText = QueryText.Trim(),
                 QueryMode = QueryMode,
-                InstitutionName = InstitutionName,
-                PrimaryAuthor = PrimaryAuthor,
-                CoAuthor = CoAuthor,
+                InstitutionName = GetRequestInstitutionName(),
+                PrimaryAuthor = PrimaryAuthor.Trim(),
+                SelectedAuthorId = SelectedAuthorId,
+                SelectedAffiliationId = SelectedAffiliationId,
                 MaxResults = MaxResults
             });
+            LastExecutedQueryMode = QueryMode;
+            LastExecutedQueryText = QueryText.Trim();
+            LastExecutedPrimaryAuthor = PrimaryAuthor.Trim();
+            LastExecutedInstitutionName = GetRequestInstitutionName() ?? string.Empty;
             ResultsPage = 1;
+            await SaveRecentQueryAsync();
 
             if (LastResult is not null)
             {
@@ -295,6 +759,44 @@
             IsRunningQuery = false;
         }
     }
+
+    private Task HandleQueryTextChangedAsync(string value)
+    {
+        QueryText = value ?? string.Empty;
+        SelectedAuthorId = null;
+        SelectedAffiliationId = null;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleInstitutionNameChangedAsync(string value)
+    {
+        InstitutionName = value ?? string.Empty;
+        SelectedAffiliationId = null;
+        return Task.CompletedTask;
+    }
+
+    private Task HandlePrimaryAuthorChangedAsync(string value)
+    {
+        PrimaryAuthor = value ?? string.Empty;
+        SelectedAuthorId = null;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleRestrictAuthorToInstitutionChangedAsync(bool value)
+    {
+        RestrictAuthorToInstitution = value;
+        InstitutionName = value ? DefaultInstitutionName : string.Empty;
+        SelectedAffiliationId = null;
+        return Task.CompletedTask;
+    }
+
+    private string? GetRequestInstitutionName()
+        => QueryMode switch
+        {
+            "affiliation" => DefaultInstitutionName,
+            "author" when RestrictAuthorToInstitution => DefaultInstitutionName,
+            _ => string.IsNullOrWhiteSpace(InstitutionName) ? null : InstitutionName
+        };
 
     private async Task SendToRegisterAsync(ExternalArticlePreviewDto article)
     {
@@ -330,6 +832,105 @@
         });
 
         NavManager.NavigateTo("/articulos/registrar");
+    }
+
+    private void OpenInstitutionalDatasetModal()
+    {
+        if (!CanUseScopusInstitutionalDataset)
+        {
+            ErrorMessage = "Selecciona Scopus antes de preparar el dataset institucional.";
+            return;
+        }
+
+        IsInstitutionalDatasetModalVisible = true;
+        ErrorMessage = null;
+        SuccessMessage = null;
+    }
+
+    private void CloseInstitutionalDatasetModal()
+    {
+        IsInstitutionalDatasetModalVisible = false;
+    }
+
+    private async Task PrepareInstitutionalDatasetAsync()
+    {
+        if (!CanUseScopusInstitutionalDataset)
+        {
+            ErrorMessage = "Selecciona Scopus antes de preparar el dataset institucional.";
+            return;
+        }
+
+        try
+        {
+            IsLoadingInstitutionalDataset = true;
+            ErrorMessage = null;
+            SuccessMessage = null;
+
+            InstitutionalDatasetResult = await ExternalApiExplorerClient.QueryAsync(new ExternalApiQueryRequest
+            {
+                ProviderKey = "scopus",
+                QueryMode = "affiliation",
+                InstitutionName = DefaultInstitutionName,
+                MaxResults = 0
+            });
+
+            if (InstitutionalDatasetResult is not null)
+            {
+                SuccessMessage = $"{InstitutionalDatasetResult.Message} Dataset preliminar: {InstitutionalDatasetArticles.Length} artículo(s) listos para descarga.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"No pude preparar el dataset institucional: {ex.Message}";
+        }
+        finally
+        {
+            IsLoadingInstitutionalDataset = false;
+        }
+    }
+
+    private async Task DownloadInstitutionalDatasetCsvAsync()
+    {
+        if (!InstitutionalDatasetArticles.Any())
+        {
+            ErrorMessage = "Primero prepara el dataset institucional antes de descargarlo.";
+            return;
+        }
+
+        var rows = new List<string>
+        {
+            "Titulo,DOI,Revista,Anio,Autores,Fuente,FechaPublicacion"
+        };
+
+        rows.AddRange(InstitutionalDatasetArticles.Select(article => string.Join(",",
+            ExternalApiExplorerPageHelper.EscapeCsv(article.Title),
+            ExternalApiExplorerPageHelper.EscapeCsv(article.Doi),
+            ExternalApiExplorerPageHelper.EscapeCsv(article.JournalName),
+            ExternalApiExplorerPageHelper.EscapeCsv(article.PublicationYear?.ToString()),
+            ExternalApiExplorerPageHelper.EscapeCsv(article.Authors),
+            ExternalApiExplorerPageHelper.EscapeCsv(article.ExternalSource),
+            ExternalApiExplorerPageHelper.EscapeCsv(article.PublicationDate))));
+
+        await ExportJs.ExportCsv($"dataset-uta-scopus-{DateTime.Now:yyyyMMdd-HHmm}.csv", string.Join(Environment.NewLine, rows));
+    }
+
+    private async Task DownloadInstitutionalDatasetJsonAsync()
+    {
+        if (!InstitutionalDatasetArticles.Any())
+        {
+            ErrorMessage = "Primero prepara el dataset institucional antes de descargarlo.";
+            return;
+        }
+
+        var payload = JsonSerializer.Serialize(InstitutionalDatasetArticles, new JsonSerializerOptions
+        {
+            WriteIndented = true
+        });
+
+        await ExportJs.DownloadFile(
+            $"dataset-uta-scopus-{DateTime.Now:yyyyMMdd-HHmm}.json",
+            "application/json",
+            System.Text.Encoding.UTF8.GetBytes(payload));
     }
 
     private string GetArticleSelectionKey(ExternalArticlePreviewDto article)
@@ -385,6 +986,47 @@
     }
 
     private async Task SendSelectedToStagingAsync()
+    {
+        if (!SelectedExternalArticles.Any())
+        {
+            ErrorMessage = "Selecciona al menos un artículo antes de enviarlo a staging.";
+            return;
+        }
+
+        PendingSelectionStagingSend = true;
+        PendingSingleStagingArticle = null;
+        IsStagingConfirmVisible = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task ConfirmStagingSendAsync()
+    {
+        IsStagingConfirmVisible = false;
+
+        if (PendingSelectionStagingSend)
+        {
+            PendingSelectionStagingSend = false;
+            await ExecuteSendSelectedToStagingAsync();
+            return;
+        }
+
+        if (PendingSingleStagingArticle is not null)
+        {
+            var article = PendingSingleStagingArticle;
+            PendingSingleStagingArticle = null;
+            await ExecuteSendToStagingAsync(article);
+        }
+    }
+
+    private Task CloseStagingConfirmAsync()
+    {
+        IsStagingConfirmVisible = false;
+        PendingSingleStagingArticle = null;
+        PendingSelectionStagingSend = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task ExecuteSendSelectedToStagingAsync()
     {
         if (!SelectedExternalArticles.Any())
         {
@@ -455,6 +1097,14 @@
 
     private async Task SendToStagingAsync(ExternalArticlePreviewDto article)
     {
+        PendingSingleStagingArticle = article;
+        PendingSelectionStagingSend = false;
+        IsStagingConfirmVisible = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task ExecuteSendToStagingAsync(ExternalArticlePreviewDto article)
+    {
         if (LastResult is null)
         {
             ErrorMessage = "Primero ejecuta una consulta válida antes de enviar un artículo al staging.";
@@ -502,6 +1152,27 @@
         }
     }
 
+    private Task HandleResultsSearchChangedAsync(string value)
+    {
+        ResultsSearchText = value ?? string.Empty;
+        ResultsPage = 1;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleOnlyWithDoiChangedAsync(bool value)
+    {
+        FilterOnlyWithDoi = value;
+        ResultsPage = 1;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleOnlyOpenAccessChangedAsync(bool value)
+    {
+        FilterOnlyOpenAccess = value;
+        ResultsPage = 1;
+        return Task.CompletedTask;
+    }
+
     private Task ResetResultsPageAsync()
     {
         ResultsPage = 1;
@@ -544,4 +1215,166 @@
         SuccessMessage = null;
         return Task.CompletedTask;
     }
+
+    private bool MatchesResultsSearch(ExternalArticlePreviewDto article)
+    {
+        if (string.IsNullOrWhiteSpace(ResultsSearchText))
+        {
+            return true;
+        }
+
+        var term = ResultsSearchText.Trim();
+        return Contains(article.Title, term)
+               || Contains(article.Doi, term)
+               || Contains(article.JournalName, term)
+               || Contains(article.Authors, term)
+               || Contains(article.Publisher, term)
+               || Contains(article.DocumentType, term);
+    }
+
+    private static bool Contains(string? source, string value)
+        => !string.IsNullOrWhiteSpace(source)
+           && source.Contains(value, StringComparison.OrdinalIgnoreCase);
+
+    private async Task SaveRecentQueryAsync()
+    {
+        if (SelectedProvider is null)
+        {
+            return;
+        }
+
+        var item = new ExternalApiQuerySidebar.ExternalApiRecentQueryItem
+        {
+            ProviderKey = SelectedProvider.ProviderKey,
+            ProviderName = SelectedProvider.DisplayName,
+            QueryMode = QueryMode,
+            QueryText = QueryText,
+            InstitutionName = GetRequestInstitutionName() ?? string.Empty,
+            PrimaryAuthor = PrimaryAuthor,
+            MaxResults = MaxResults,
+            ExecutedAtLabel = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+        };
+
+        RecentQueries = RecentQueries
+            .Where(existing => !(string.Equals(existing.ProviderKey, item.ProviderKey, StringComparison.OrdinalIgnoreCase)
+                                 && string.Equals(existing.QueryMode, item.QueryMode, StringComparison.OrdinalIgnoreCase)
+                                 && string.Equals(existing.QueryText, item.QueryText, StringComparison.Ordinal)
+                                 && string.Equals(existing.PrimaryAuthor, item.PrimaryAuthor, StringComparison.Ordinal)
+                                 && string.Equals(existing.InstitutionName, item.InstitutionName, StringComparison.Ordinal)))
+            .Prepend(item)
+            .Take(8)
+            .ToList();
+
+        await LocalStorage.SetItemAsync(RecentQueriesStorageKey, RecentQueries);
+    }
+
+    private async Task HandleResolutionCandidateSelectionAsync(ExternalApiResultsPanel.ExternalApiResolutionSelectionRequest selection)
+    {
+        if (selection is null || string.IsNullOrWhiteSpace(selection.CandidateId))
+        {
+            return;
+        }
+
+        switch (selection.Target)
+        {
+            case "author":
+                SelectedAuthorId = selection.CandidateId;
+                if (!string.IsNullOrWhiteSpace(selection.DisplayName))
+                {
+                    PrimaryAuthor = selection.DisplayName;
+                }
+                break;
+            case "affiliation":
+                SelectedAffiliationId = selection.CandidateId;
+                if (!string.IsNullOrWhiteSpace(selection.DisplayName))
+                {
+                    InstitutionName = selection.DisplayName;
+                }
+                break;
+            default:
+                return;
+        }
+
+        await RunQueryAsync();
+    }
+
+    private async Task ClearResolutionSelectionAsync()
+    {
+        if (!HasManualResolutionSelection)
+        {
+            return;
+        }
+
+        SelectedAuthorId = null;
+        SelectedAffiliationId = null;
+        await RunQueryAsync();
+    }
+
+    private string GetCurrentModeLabel()
+        => QueryMode switch
+        {
+            "doi" => "DOI exacto",
+            "author" => "Autor",
+            "affiliation" => "Filiación UTA",
+            _ => "Texto libre"
+        };
+
+    private string GetExecutedModeLabel()
+        => LastExecutedQueryMode switch
+        {
+            "doi" => "DOI exacto",
+            "author" => "Autor",
+            "affiliation" => "Filiación UTA",
+            _ => "Texto libre"
+        };
+
+    private string GetCurrentModeDescription()
+        => QueryMode switch
+        {
+            "doi" => "Búsqueda puntual por identificador.",
+            "author" => "Producción asociada a una persona.",
+            "affiliation" => "Producción vinculada a la UTA.",
+            _ => "Búsqueda amplia por texto."
+        };
+
+    private string GetCurrentModeSummaryText()
+        => QueryMode switch
+        {
+            "doi" => "Consulta exacta.",
+            "author" => "Producción por autor.",
+            "affiliation" => "Producción UTA.",
+            _ => "Consulta general."
+        };
+
+    private string GetProviderSupportSummary()
+        => string.Equals(SelectedProvider?.ProviderKey, "scopus", StringComparison.OrdinalIgnoreCase)
+            ? "DOI, autor, filiación UTA y dataset."
+            : SelectedProvider is null
+                ? "Selecciona un proveedor para comenzar."
+                : "Texto libre y DOI.";
+
+    private string GetProviderStatusText()
+        => SelectedProvider is null
+            ? "Elige una fuente."
+            : string.Equals(SelectedProvider.ProviderKey, "scopus", StringComparison.OrdinalIgnoreCase)
+                ? "Búsqueda completa."
+                : "Consulta básica.";
+
+    private string GetSelectionSummaryText()
+        => SelectedExternalArticles.Count == 0
+            ? "Sin artículos elegidos."
+            : SelectedExternalArticles.Count == 1
+                ? "1 artículo listo."
+                : $"{SelectedExternalArticles.Count} listos.";
+
+    private string GetInstitutionalDatasetSummary()
+        => InstitutionalDatasetResult is null
+            ? "Sin vista previa disponible."
+            : $"{InstitutionalDatasetArticles.Length} artículo(s) listos para exportar.";
+
+    private string GetLastResultSummary()
+        => LastResult is null
+            ? "Sin resultados recientes."
+            : $"{LastResultPreviewArticles.Length} artículo(s) visibles en la consulta actual.";
+
 }

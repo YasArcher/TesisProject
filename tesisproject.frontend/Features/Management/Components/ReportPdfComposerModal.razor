@@ -1,0 +1,277 @@
+@using Microsoft.JSInterop
+@using tesisproject.shared.DTOs.Reports
+@inject IJSRuntime JS
+
+@if (Visible)
+{
+    <div class="reports-pdf-composer"
+         role="dialog"
+         aria-modal="true"
+         aria-label="Configuración del PDF">
+        <button class="reports-pdf-composer__backdrop"
+                type="button"
+                aria-label="Cerrar configuración del PDF"
+                @onclick="CloseAsync"></button>
+
+        <section class="reports-pdf-composer__shell">
+            <header class="reports-pdf-composer__header">
+                <div class="reports-pdf-composer__title">
+                    <span>
+                        <i class="bi bi-file-earmark-pdf"></i>
+                    </span>
+                    <div>
+                        <strong>Generar PDF</strong>
+                        <small>Selecciona secciones, genera la vista previa y luego descarga el reporte.</small>
+                    </div>
+                </div>
+
+                <button class="reports-pdf-composer__close"
+                        type="button"
+                        aria-label="Cerrar modal PDF"
+                        @onclick="CloseAsync">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </header>
+
+            <div class="reports-pdf-composer__body">
+                <aside class="reports-pdf-composer__sidebar">
+                    <div class="reports-pdf-composer__sidebar-head">
+                        <div>
+                            <strong>Contenido del reporte</strong>
+                            <small>@SelectedCount bloque(s) seleccionados</small>
+                        </div>
+                        <div class="reports-pdf-composer__quick-actions">
+                            <button type="button" @onclick="SelectAllAsync">Todo</button>
+                            <button type="button" @onclick="ClearAllAsync">Ninguno</button>
+                        </div>
+                    </div>
+
+                    <div class="reports-pdf-composer__options">
+                        @foreach (var option in Options)
+                        {
+                            <label class="@(option.GetValue(Selection)
+                                ? "reports-pdf-composer__option reports-pdf-composer__option--selected"
+                                : "reports-pdf-composer__option")">
+                                <input type="checkbox" checked="@option.GetValue(Selection)" @onchange="args => OnOptionChangedAsync(option, args.Value is true)" />
+                                <span class="reports-pdf-composer__option-icon">
+                                    <i class="@option.Icon"></i>
+                                </span>
+                                <span class="reports-pdf-composer__option-copy">
+                                    <strong>@option.Label</strong>
+                                    <small>@option.Description</small>
+                                </span>
+                            </label>
+                        }
+                    </div>
+                </aside>
+
+                <section class="reports-pdf-composer__preview">
+                    <div class="reports-pdf-composer__preview-head">
+                        <div>
+                            <strong>Vista previa</strong>
+                            <small>@PreviewSubtitle</small>
+                        </div>
+                        @if (!string.IsNullOrWhiteSpace(GeneratedAtLabel))
+                        {
+                            <span>@GeneratedAtLabel</span>
+                        }
+                    </div>
+
+                    @if (!IsPreviewCurrent)
+                    {
+                        <div class="reports-pdf-composer__notice">
+                            La selección cambió. Actualiza la vista previa para descargar la versión correcta.
+                        </div>
+                    }
+                    @if (!HasSelectedSections)
+                    {
+                        <div class="reports-pdf-composer__notice">
+                            Selecciona al menos un bloque para generar la vista previa del PDF.
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(ResolvedPreviewError))
+                    {
+                        <div class="reports-pdf-composer__state reports-pdf-composer__state--error">
+                            <i class="bi bi-exclamation-triangle"></i>
+                            <div>
+                                <strong>No pude preparar el PDF</strong>
+                                <small>@ResolvedPreviewError</small>
+                            </div>
+                        </div>
+                    }
+                    else if (IsGeneratingPreview)
+                    {
+                        <div class="reports-pdf-composer__state">
+                            <i class="bi bi-file-earmark-bar-graph"></i>
+                            <div>
+                                <strong>Preparando vista previa</strong>
+                                <small>Estamos generando el PDF con las secciones seleccionadas.</small>
+                            </div>
+                        </div>
+                    }
+                    else if (string.IsNullOrWhiteSpace(PreviewBase64))
+                    {
+                        <div class="reports-pdf-composer__state">
+                            <i class="bi bi-file-earmark-medical"></i>
+                            <div>
+                                <strong>Aún no hay vista previa</strong>
+                                <small>Selecciona el contenido y pulsa Vista previa.</small>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="reports-pdf-composer__pages" @ref="_previewHost"></div>
+                    }
+                </section>
+            </div>
+
+            <footer class="reports-pdf-composer__footer">
+                <div class="reports-pdf-composer__actions">
+                    <button class="reports-pdf-composer__action reports-pdf-composer__action--ghost"
+                            type="button"
+                            @onclick="CloseAsync">
+                        <i class="bi bi-x-circle"></i>
+                        Cerrar
+                    </button>
+                    <button class="reports-pdf-composer__action reports-pdf-composer__action--secondary"
+                            type="button"
+                            disabled="@(!HasSelectedSections || IsGeneratingPreview)"
+                            @onclick="GeneratePreviewAsync">
+                        <i class="@(IsGeneratingPreview ? "bi bi-arrow-repeat" : "bi bi-eye")"></i>
+                        @(IsGeneratingPreview ? "Generando..." : "Vista previa")
+                    </button>
+                    <button class="reports-pdf-composer__action reports-pdf-composer__action--primary"
+                            type="button"
+                            disabled="@(!CanDownload)"
+                            @onclick="DownloadAsync">
+                        <i class="bi bi-download"></i>
+                        Descargar PDF
+                    </button>
+                </div>
+            </footer>
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter, EditorRequired] public InstitutionalReportingFilterDto Selection { get; set; } = new();
+    [Parameter] public bool IsGeneratingPreview { get; set; }
+    [Parameter] public bool CanDownload { get; set; }
+    [Parameter] public bool IsPreviewCurrent { get; set; }
+    [Parameter] public string? PreviewBase64 { get; set; }
+    [Parameter] public string? PreviewError { get; set; }
+    [Parameter] public string GeneratedAtLabel { get; set; } = string.Empty;
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnGeneratePreview { get; set; }
+    [Parameter] public EventCallback OnDownload { get; set; }
+    [Parameter] public EventCallback OnSelectionChanged { get; set; }
+
+    private ElementReference _previewHost;
+    private string? _lastRenderedBase64;
+    private string? _renderPreviewError;
+
+    private string PreviewSubtitle
+        => string.IsNullOrWhiteSpace(PreviewBase64)
+            ? "El documento aparecerá aquí antes de descargarlo."
+            : "Este es el documento real que se descargará.";
+
+    private string? ResolvedPreviewError => PreviewError ?? _renderPreviewError;
+
+    private int SelectedCount => Options.Count(option => option.GetValue(Selection));
+
+    private bool HasSelectedSections => SelectedCount > 0;
+
+    private static IReadOnlyList<PdfSectionOption> Options { get; } =
+    [
+        new("Indicadores", "Totales principales del reporte.", "bi bi-speedometer2", x => x.IncludePdfKpis, (x, value) => x.IncludePdfKpis = value),
+        new("Filtros aplicados", "Resumen del contexto usado.", "bi bi-funnel", x => x.IncludePdfFilters, (x, value) => x.IncludePdfFilters = value),
+        new("Producción por periodo", "Año, mes y día.", "bi bi-calendar3", x => x.IncludePdfPeriod, (x, value) => x.IncludePdfPeriod = value),
+        new("Campos de conocimiento", "Campo amplio, específico y detallado.", "bi bi-diagram-3", x => x.IncludePdfFields, (x, value) => x.IncludePdfFields = value),
+        new("Revistas e indexación", "Revistas, cuartiles y bases de datos.", "bi bi-journal-richtext", x => x.IncludePdfVenues, (x, value) => x.IncludePdfVenues = value),
+        new("Autores y facultades", "Autores, líneas y facultades.", "bi bi-people", x => x.IncludePdfAuthors, (x, value) => x.IncludePdfAuthors = value),
+        new("PEDI IIIT", "Bloque específico PEDI IIIT.", "bi bi-grid-1x2", x => x.IncludePdfPediIiit, (x, value) => x.IncludePdfPediIiit = value),
+        new("TDD Total", "Bloque específico TDD Total.", "bi bi-table", x => x.IncludePdfTddTotal, (x, value) => x.IncludePdfTddTotal = value),
+        new("Participación", "Facultades, bases y cuartiles.", "bi bi-pie-chart", x => x.IncludePdfParticipation, (x, value) => x.IncludePdfParticipation = value),
+        new("Artículos incluidos", "Muestra final de artículos.", "bi bi-file-earmark-text", x => x.IncludePdfArticles, (x, value) => x.IncludePdfArticles = value)
+    ];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!Visible)
+        {
+            _lastRenderedBase64 = null;
+            _renderPreviewError = null;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(PreviewBase64))
+        {
+            return;
+        }
+
+        if (string.Equals(_lastRenderedBase64, PreviewBase64, StringComparison.Ordinal) && string.IsNullOrWhiteSpace(_renderPreviewError))
+        {
+            await JS.InvokeVoidAsync("tesisExport.refreshPdfPreviewLayout", _previewHost);
+            return;
+        }
+
+        _lastRenderedBase64 = PreviewBase64;
+        _renderPreviewError = null;
+        try
+        {
+            var rendered = await JS.InvokeAsync<bool>("tesisExport.renderPdfPreview", _previewHost, PreviewBase64);
+            if (!rendered)
+            {
+                _renderPreviewError = "No fue posible renderizar la vista previa del PDF en pantalla.";
+                StateHasChanged();
+            }
+        }
+        catch
+        {
+            _renderPreviewError = "No fue posible preparar la vista previa en pantalla.";
+            StateHasChanged();
+        }
+    }
+
+    private Task CloseAsync() => OnClose.InvokeAsync();
+
+    private Task GeneratePreviewAsync() => OnGeneratePreview.InvokeAsync();
+
+    private Task DownloadAsync() => OnDownload.InvokeAsync();
+
+    private async Task OnOptionChangedAsync(PdfSectionOption option, bool value)
+    {
+        option.SetValue(Selection, value);
+        await OnSelectionChanged.InvokeAsync();
+    }
+
+    private async Task SelectAllAsync()
+    {
+        foreach (var option in Options)
+        {
+            option.SetValue(Selection, true);
+        }
+
+        await OnSelectionChanged.InvokeAsync();
+    }
+
+    private async Task ClearAllAsync()
+    {
+        foreach (var option in Options)
+        {
+            option.SetValue(Selection, false);
+        }
+
+        await OnSelectionChanged.InvokeAsync();
+    }
+
+    private sealed record PdfSectionOption(
+        string Label,
+        string Description,
+        string Icon,
+        Func<InstitutionalReportingFilterDto, bool> GetValue,
+        Action<InstitutionalReportingFilterDto, bool> SetValue);
+}

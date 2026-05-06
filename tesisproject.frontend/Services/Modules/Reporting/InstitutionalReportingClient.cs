@@ -32,7 +32,10 @@ namespace tesisproject.frontend.Services.Implementations
             return _apiClient.PostAsync<object, ReportingHealthDto>("api/reporting/etl/full", new { }, ct);
         }
 
-        public static string BuildDashboardUrl(InstitutionalReportingFilterDto? filter, string path = "api/reporting/dashboard")
+        public static string BuildDashboardUrl(
+            InstitutionalReportingFilterDto? filter,
+            string path = "api/reporting/dashboard",
+            bool includePdfOptions = false)
         {
             if (filter is null)
             {
@@ -71,9 +74,38 @@ namespace tesisproject.frontend.Services.Implementations
                 query.Add($"{nameof(filter.IsOpenAccess)}={filter.IsOpenAccess.Value.ToString().ToLowerInvariant()}");
             }
 
+            if (filter.IsProjectResult.HasValue)
+            {
+                query.Add($"{nameof(filter.IsProjectResult)}={filter.IsProjectResult.Value.ToString().ToLowerInvariant()}");
+            }
+
+            if (filter.HasInterculturalComponent.HasValue)
+            {
+                query.Add($"{nameof(filter.HasInterculturalComponent)}={filter.HasInterculturalComponent.Value.ToString().ToLowerInvariant()}");
+            }
+
+            if (filter.HasOrcid.HasValue)
+            {
+                query.Add($"{nameof(filter.HasOrcid)}={filter.HasOrcid.Value.ToString().ToLowerInvariant()}");
+            }
+
             if (filter.OnlyPrimaryAuthors.HasValue)
             {
                 query.Add($"{nameof(filter.OnlyPrimaryAuthors)}={filter.OnlyPrimaryAuthors.Value.ToString().ToLowerInvariant()}");
+            }
+
+            if (includePdfOptions)
+            {
+                AddBool(query, nameof(filter.IncludePdfKpis), filter.IncludePdfKpis);
+                AddBool(query, nameof(filter.IncludePdfFilters), filter.IncludePdfFilters);
+                AddBool(query, nameof(filter.IncludePdfPeriod), filter.IncludePdfPeriod);
+                AddBool(query, nameof(filter.IncludePdfFields), filter.IncludePdfFields);
+                AddBool(query, nameof(filter.IncludePdfVenues), filter.IncludePdfVenues);
+                AddBool(query, nameof(filter.IncludePdfAuthors), filter.IncludePdfAuthors);
+                AddBool(query, nameof(filter.IncludePdfPediIiit), filter.IncludePdfPediIiit);
+                AddBool(query, nameof(filter.IncludePdfTddTotal), filter.IncludePdfTddTotal);
+                AddBool(query, nameof(filter.IncludePdfParticipation), filter.IncludePdfParticipation);
+                AddBool(query, nameof(filter.IncludePdfArticles), filter.IncludePdfArticles);
             }
 
             return query.Count == 0 ? path : $"{path}?{string.Join("&", query)}";
@@ -93,6 +125,11 @@ namespace tesisproject.frontend.Services.Implementations
             {
                 query.Add($"{name}={Uri.EscapeDataString(value.Trim())}");
             }
+        }
+
+        private static void AddBool(List<string> query, string name, bool value)
+        {
+            query.Add($"{name}={value.ToString().ToLowerInvariant()}");
         }
     }
 }

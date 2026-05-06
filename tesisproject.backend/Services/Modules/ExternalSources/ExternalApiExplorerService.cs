@@ -72,7 +72,7 @@ namespace tesisproject.backend.Services.Implementations
 
             if (string.IsNullOrWhiteSpace(request.QueryText))
             {
-                var requiresStructuredAuthorInput = request.QueryMode is "author" or "author-coauthor";
+                var requiresStructuredAuthorInput = request.QueryMode is "author" or "affiliation";
                 if (!requiresStructuredAuthorInput)
                 {
                     throw new InvalidOperationException("Debes ingresar un criterio de búsqueda antes de consultar la API externa.");
@@ -99,7 +99,10 @@ namespace tesisproject.backend.Services.Implementations
                 Message = execution.Message,
                 RawResponsePreview = execution.RawResponse.Length > 12000 ? execution.RawResponse[..12000] : execution.RawResponse,
                 ExecutedAtUtc = DateTime.UtcNow,
-                Articles = execution.Success ? ParseArticles(provider.ProviderKey, execution.RawResponse) : new List<ExternalArticlePreviewDto>()
+                Articles = execution.Success
+                    ? execution.Articles ?? ParseArticles(provider.ProviderKey, execution.RawResponse)
+                    : new List<ExternalArticlePreviewDto>(),
+                ResolutionDebug = execution.ResolutionDebug
             };
         }
 
@@ -165,7 +168,82 @@ namespace tesisproject.backend.Services.Implementations
 
         private async Task<ProviderExecutionResult> ExecuteScopusQueryAsync(HttpClient client, ExternalApiQueryRequest request, CancellationToken ct)
         {
-            var attempts = BuildScopusAttemptUrls(request).ToList();
+            var mode = (request.QueryMode ?? "general").Trim().ToLowerInvariant();
+
+            var attempts = mode switch
+            {
+                "author" => BuildScopusAuthorArticleAttempts(request),
+                "affiliation" => BuildScopusAffiliationArticleAttempts(request),
+                _ => BuildScopusAttemptUrls(request).ToList()
+            };
+
+            if (attempts.Count == 0)
+            {
+                attempts = BuildScopusAttemptUrls(request).ToList();
+            }
+
+            return await ExecuteScopusAttemptsAsync(client, attempts, request, ct);
+        }
+
+        private static List<ScopusAttempt> BuildScopusAuthorArticleAttempts(ExternalApiQueryRequest request)
+        {
+            var maxResults = ResolveScopusPageSize(request.MaxResults);
+            var queries = ScopusExternalApiSupport.BuildAuthorArticleQueries(
+                request.PrimaryAuthor ?? string.Empty,
+                request.InstitutionName);
+
+            return queries
+                .SelectMany(query => new[]
+                {
+                    new ScopusAttempt(
+                        $"https://api.elsevier.com/content/search/scopus?query={Uri.EscapeDataString(query)}&count={maxResults}&view=STANDARD",
+                        "búsqueda directa de artículos por autor",
+                        new ExternalApiResolutionDebugDto
+                        {
+                            Mode = "author"
+                        }),
+                    new ScopusAttempt(
+                        $"https://api.elsevier.com/content/search/scopus?query={Uri.EscapeDataString(query)}&count={maxResults}&view=COMPLETE",
+                        "búsqueda directa de artículos por autor",
+                        new ExternalApiResolutionDebugDto
+                        {
+                            Mode = "author"
+                        })
+                })
+                .ToList();
+        }
+
+        private static List<ScopusAttempt> BuildScopusAffiliationArticleAttempts(ExternalApiQueryRequest request)
+        {
+            var institutionName = string.IsNullOrWhiteSpace(request.InstitutionName)
+                ? "Universidad Técnica de Ambato"
+                : request.InstitutionName!;
+            var maxResults = ResolveScopusPageSize(request.MaxResults);
+            var queries = ScopusExternalApiSupport.BuildAffiliationArticleQueries(institutionName);
+
+            return queries
+                .SelectMany(query => new[]
+                {
+                    new ScopusAttempt(
+                        $"https://api.elsevier.com/content/search/scopus?query={Uri.EscapeDataString(query)}&count={maxResults}&view=STANDARD",
+                        "búsqueda directa de artículos por filiación",
+                        new ExternalApiResolutionDebugDto
+                        {
+                            Mode = "affiliation"
+                        }),
+                    new ScopusAttempt(
+                        $"https://api.elsevier.com/content/search/scopus?query={Uri.EscapeDataString(query)}&count={maxResults}&view=COMPLETE",
+                        "búsqueda directa de artículos por filiación",
+                        new ExternalApiResolutionDebugDto
+                        {
+                            Mode = "affiliation"
+                        })
+                })
+                .ToList();
+        }
+
+        private async Task<ProviderExecutionResult> ExecuteScopusAttemptsAsync(HttpClient client, List<ScopusAttempt> attempts, ExternalApiQueryRequest request, CancellationToken ct)
+        {
             ProviderExecutionResult? lastResult = null;
 
             foreach (var attempt in attempts)
@@ -177,7 +255,13 @@ namespace tesisproject.backend.Services.Implementations
 
                 if (success)
                 {
-                    return new ProviderExecutionResult
+                    var articles = ParseArticles("scopus", raw);
+                    if (ShouldFetchAllScopusResults(request, attempt.Url))
+                    {
+                        articles = await FetchAllScopusResultsAsync(client, attempt.Url, raw, articles, ct);
+                    }
+
+                    var result = new ProviderExecutionResult
                     {
                         FinalRequestUrl = attempt.Url,
                         Success = true,
@@ -185,8 +269,18 @@ namespace tesisproject.backend.Services.Implementations
                         Message = attempt.Note is null
                             ? "Consulta completada contra Scopus."
                             : $"Consulta completada contra Scopus usando {attempt.Note}.",
-                        RawResponse = raw
+                        RawResponse = raw,
+                        Articles = articles,
+                        ResolutionDebug = attempt.ResolutionDebug
                     };
+
+                    if (articles.Count > 0)
+                    {
+                        return result;
+                    }
+
+                    lastResult = result;
+                    continue;
                 }
 
                 lastResult = new ProviderExecutionResult
@@ -197,15 +291,9 @@ namespace tesisproject.backend.Services.Implementations
                     Message = attempt.Note is null
                         ? BuildResponseMessage("Scopus", false, response.StatusCode)
                         : $"{BuildResponseMessage("Scopus", false, response.StatusCode)} Intento realizado con {attempt.Note}.",
-                    RawResponse = raw
+                    RawResponse = raw,
+                    ResolutionDebug = attempt.ResolutionDebug
                 };
-
-                if (response.StatusCode is System.Net.HttpStatusCode.Forbidden or System.Net.HttpStatusCode.Unauthorized)
-                {
-                    continue;
-                }
-
-                break;
             }
 
             return lastResult ?? new ProviderExecutionResult
@@ -222,7 +310,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             var query = request.QueryText.Trim();
             var encodedQuery = Uri.EscapeDataString(query);
-            var maxResults = Math.Clamp(request.MaxResults, 1, 25);
+            var maxResults = ResolveScopusPageSize(request.MaxResults);
             var mode = (request.QueryMode ?? "general").Trim().ToLowerInvariant();
 
             if (mode == "doi")
@@ -235,27 +323,16 @@ namespace tesisproject.backend.Services.Implementations
 
             if (mode == "author")
             {
-                var authorQuery = BuildScopusAuthorQuery(request.PrimaryAuthor);
+                var authorQuery = ScopusExternalApiSupport.BuildAuthorArticleQueries(
+                        request.PrimaryAuthor ?? string.Empty,
+                        request.InstitutionName)
+                    .FirstOrDefault();
                 if (string.IsNullOrWhiteSpace(authorQuery))
                 {
                     throw new InvalidOperationException("Debes informar el autor principal para buscar por autor.");
                 }
 
                 yield return new ScopusAttempt($"https://api.elsevier.com/content/search/scopus?query={Uri.EscapeDataString(authorQuery)}&count={maxResults}&view=STANDARD", "búsqueda por autor");
-                yield break;
-            }
-
-            if (mode == "author-coauthor")
-            {
-                var authorQuery = BuildScopusAuthorQuery(request.PrimaryAuthor);
-                var coAuthorQuery = BuildScopusAuthorQuery(request.CoAuthor);
-                if (string.IsNullOrWhiteSpace(authorQuery) || string.IsNullOrWhiteSpace(coAuthorQuery))
-                {
-                    throw new InvalidOperationException("Debes informar autor y coautor para este modo de búsqueda.");
-                }
-
-                var combinedQuery = $"{authorQuery} AND {coAuthorQuery}";
-                yield return new ScopusAttempt($"https://api.elsevier.com/content/search/scopus?query={Uri.EscapeDataString(combinedQuery)}&count={maxResults}&view=STANDARD", "búsqueda por autor y coautor");
                 yield break;
             }
 
@@ -322,7 +399,7 @@ namespace tesisproject.backend.Services.Implementations
         {
             var query = request.QueryText.Trim();
             var encodedQuery = Uri.EscapeDataString(query);
-            var maxResults = Math.Clamp(request.MaxResults, 1, 25);
+            var maxResults = request.MaxResults <= 0 ? 25 : Math.Clamp(request.MaxResults, 1, 25);
             var mode = (request.QueryMode ?? "general").Trim().ToLowerInvariant();
 
             return providerKey switch
@@ -342,18 +419,127 @@ namespace tesisproject.backend.Services.Implementations
 
         private static string BuildScopusUtaAffiliationQuery()
         {
-            var variants = new[]
-            {
-                "Universidad Técnica de Ambato",
-                "Universidad Tecnica de Ambato",
-                "Technical University of Ambato",
-                "Universidad Técnica Ambato",
-                "Universidad Tecnica Ambato",
-                "Univ Tecnica de Ambato",
-                "Univ Técnica de Ambato"
-            };
+            var variants = ScopusExternalApiSupport.BuildInstitutionVariants("Universidad Técnica de Ambato");
+            return string.Join(" OR ", variants
+                .Select(x => $"AFFIL(\"{x}\")")
+                .Distinct(StringComparer.OrdinalIgnoreCase));
+        }
 
-            return string.Join(" OR ", variants.Select(x => $"AFFIL(\"{x}\")"));
+        private static int ResolveScopusPageSize(int maxResults)
+            => maxResults <= 0 ? 25 : Math.Clamp(maxResults, 1, 25);
+
+        private static bool ShouldFetchAllScopusResults(ExternalApiQueryRequest request, string requestUrl)
+            => request.MaxResults <= 0
+               && requestUrl.Contains("/content/search/scopus?", StringComparison.OrdinalIgnoreCase);
+
+        private async Task<List<ExternalArticlePreviewDto>> FetchAllScopusResultsAsync(
+            HttpClient client,
+            string firstRequestUrl,
+            string firstRawResponse,
+            List<ExternalArticlePreviewDto> firstArticles,
+            CancellationToken ct)
+        {
+            var totalResults = ExtractScopusTotalResults(firstRawResponse);
+            if (totalResults <= firstArticles.Count || totalResults <= 25)
+            {
+                return DeduplicateArticles(firstArticles);
+            }
+
+            var allArticles = new List<ExternalArticlePreviewDto>(firstArticles);
+            var nextStart = firstArticles.Count;
+
+            while (nextStart < totalResults)
+            {
+                var nextUrl = WithScopusStart(firstRequestUrl, nextStart, 25);
+                using var response = await client.GetAsync(nextUrl, ct);
+                if (!response.IsSuccessStatusCode)
+                {
+                    break;
+                }
+
+                var raw = await response.Content.ReadAsStringAsync(ct);
+                var pageArticles = ParseArticles("scopus", raw);
+                if (pageArticles.Count == 0)
+                {
+                    break;
+                }
+
+                allArticles.AddRange(pageArticles);
+
+                if (pageArticles.Count < 25)
+                {
+                    break;
+                }
+
+                nextStart += 25;
+            }
+
+            return DeduplicateArticles(allArticles);
+        }
+
+        private static int ExtractScopusTotalResults(string rawResponse)
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(rawResponse);
+                if (document.RootElement.TryGetProperty("search-results", out var searchResults)
+                    && searchResults.TryGetProperty("opensearch:totalResults", out var totalResultsElement))
+                {
+                    var totalText = totalResultsElement.GetString();
+                    if (int.TryParse(totalText, out var total))
+                    {
+                        return total;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return 0;
+        }
+
+        private static string WithScopusStart(string originalUrl, int start, int count)
+        {
+            var builder = new UriBuilder(originalUrl);
+            var query = builder.Query.TrimStart('?')
+                .Split('&', StringSplitOptions.RemoveEmptyEntries)
+                .Select(part => part.Split('=', 2))
+                .ToDictionary(
+                    parts => parts[0],
+                    parts => parts.Length > 1 ? parts[1] : string.Empty,
+                    StringComparer.OrdinalIgnoreCase);
+
+            query["start"] = start.ToString();
+            query["count"] = count.ToString();
+            builder.Query = string.Join("&", query.Select(item => $"{item.Key}={item.Value}"));
+            return builder.Uri.ToString();
+        }
+
+        private static List<ExternalArticlePreviewDto> DeduplicateArticles(IEnumerable<ExternalArticlePreviewDto> articles)
+            => articles
+                .GroupBy(GetArticleIdentity, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group.First())
+                .ToList();
+
+        private static string GetArticleIdentity(ExternalArticlePreviewDto article)
+        {
+            if (!string.IsNullOrWhiteSpace(article.ScopusId))
+            {
+                return $"scopus:{article.ScopusId}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(article.ExternalId))
+            {
+                return $"external:{article.ExternalId}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(article.Doi))
+            {
+                return $"doi:{article.Doi}";
+            }
+
+            return $"{article.Title}|{article.PublicationYear}|{article.JournalName}";
         }
 
         private static List<ExternalArticlePreviewDto> ParseArticles(string providerKey, string rawJson)
@@ -1088,35 +1274,6 @@ namespace tesisproject.backend.Services.Implementations
                 : identifier;
         }
 
-        private static string? BuildScopusAuthorQuery(string? authorInput)
-        {
-            if (string.IsNullOrWhiteSpace(authorInput))
-            {
-                return null;
-            }
-
-            var tokens = authorInput
-                .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-                .ToList();
-
-            if (tokens.Count == 0)
-            {
-                return null;
-            }
-
-            var lastName = tokens.Last();
-            var firstNames = tokens.Take(tokens.Count - 1).ToList();
-
-            if (firstNames.Count == 0)
-            {
-                return $"AUTHLASTNAME({lastName})";
-            }
-
-            var firstNameExpression = string.Join(" AND ", firstNames.Select(name => $"AUTHFIRST({name})"));
-            return $"AUTHLASTNAME({lastName}) AND {firstNameExpression}";
-        }
-
         private static ExternalArticlePreviewDto MergeArticle(ExternalArticlePreviewDto original, ExternalArticlePreviewDto enriched)
         {
             return new ExternalArticlePreviewDto
@@ -1171,8 +1328,10 @@ namespace tesisproject.backend.Services.Implementations
             public int StatusCode { get; set; }
             public string Message { get; set; } = string.Empty;
             public string RawResponse { get; set; } = string.Empty;
+            public List<ExternalArticlePreviewDto>? Articles { get; set; }
+            public ExternalApiResolutionDebugDto? ResolutionDebug { get; set; }
         }
 
-        private sealed record ScopusAttempt(string Url, string? Note);
+        private sealed record ScopusAttempt(string Url, string? Note, ExternalApiResolutionDebugDto? ResolutionDebug = null);
     }
 }

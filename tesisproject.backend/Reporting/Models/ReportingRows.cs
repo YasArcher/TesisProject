@@ -131,6 +131,7 @@ public sealed class ReportingAuthorPublicationRow
     public int AuthorKey { get; set; }
     public string AuthorIdentity { get; set; } = string.Empty;
     public string? AuthorName { get; set; }
+    public string? Identification { get; set; }
     public string? Affiliation { get; set; }
     public string? ParticipantType { get; set; }
     public string? Email { get; set; }
@@ -139,11 +140,20 @@ public sealed class ReportingAuthorPublicationRow
     public int ArticleKey { get; set; }
     public int ArticleId { get; set; }
     public string? Title { get; set; }
+    public string? Doi { get; set; }
+    public string? Issn { get; set; }
+    public string? JournalUrl { get; set; }
     public string? PublicationUrl { get; set; }
     public DateTime? PublishedDate { get; set; }
     public DateTime? CreatedDate { get; set; }
     public short? ArticleYear { get; set; }
     public string? VenueName { get; set; }
+    public string? VenueType { get; set; }
+    public string? PublicationStatus { get; set; }
+    public string? AcademicTerm { get; set; }
+    public bool IsOpenAccess { get; set; }
+    public bool IsProjectResult { get; set; }
+    public bool HasInterculturalComponent { get; set; }
     public string? IndexingSourceName { get; set; }
     public string? Quartile { get; set; }
     public string? FacultyName { get; set; }

@@ -22,6 +22,9 @@ namespace tesisproject.shared.DTOs.ExternalApis
         public string? InstitutionName { get; set; }
         public string? PrimaryAuthor { get; set; }
         public string? CoAuthor { get; set; }
+        public string? SelectedAuthorId { get; set; }
+        public string? SelectedCoAuthorId { get; set; }
+        public string? SelectedAffiliationId { get; set; }
         public int MaxResults { get; set; } = 10;
     }
 
@@ -76,5 +79,30 @@ namespace tesisproject.shared.DTOs.ExternalApis
         public string? RawResponsePreview { get; set; }
         public DateTime ExecutedAtUtc { get; set; }
         public List<ExternalArticlePreviewDto> Articles { get; set; } = new();
+        public ExternalApiResolutionDebugDto? ResolutionDebug { get; set; }
+    }
+
+    public class ExternalApiResolutionDebugDto
+    {
+        public string? Mode { get; set; }
+        public List<string> ResolvedAuthorIds { get; set; } = new();
+        public List<string> ResolvedCoAuthorIds { get; set; } = new();
+        public List<string> ResolvedAffiliationIds { get; set; } = new();
+        public string? SelectedAuthorId { get; set; }
+        public string? SelectedCoAuthorId { get; set; }
+        public string? SelectedAffiliationId { get; set; }
+        public bool UsedManualSelection { get; set; }
+        public List<ExternalApiResolutionCandidateDto> AuthorCandidates { get; set; } = new();
+        public List<ExternalApiResolutionCandidateDto> CoAuthorCandidates { get; set; } = new();
+        public List<ExternalApiResolutionCandidateDto> AffiliationCandidates { get; set; } = new();
+    }
+
+    public class ExternalApiResolutionCandidateDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string DisplayName { get; set; } = string.Empty;
+        public string? SecondaryText { get; set; }
+        public int Score { get; set; }
+        public int DocumentCount { get; set; }
     }
 }
