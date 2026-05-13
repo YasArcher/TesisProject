@@ -1,0 +1,101 @@
+.reports-dw-quality-block {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 0.72rem;
+    padding: 0.78rem;
+    border: 1px solid rgba(0, 54, 56, 0.1);
+    border-radius: 1rem;
+    background:
+        linear-gradient(135deg, rgba(98, 129, 65, 0.07), rgba(255, 255, 255, 0.74)),
+        rgba(255, 255, 255, 0.62);
+}
+
+.reports-dw-quality-block__heading {
+    margin: 0;
+}
+
+.reports-dw-quality-block__note {
+    width: fit-content;
+    max-width: 100%;
+    margin: -0.12rem 0 0;
+}
+
+.reports-dw-quality-block__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(19rem, 0.8fr);
+    gap: 0.72rem;
+    align-items: stretch;
+}
+
+.reports-dw-quality-block__side {
+    display: grid;
+    gap: 0.72rem;
+}
+
+::deep .reports-dw-chart-card--quality-primary {
+    min-height: 20.4rem;
+    padding: 0.9rem;
+    border-radius: 0.9rem;
+}
+
+::deep .reports-dw-chart-card--quality-compact {
+    min-height: 15rem;
+    padding: 0.78rem;
+    border-radius: 0.86rem;
+}
+
+::deep .reports-dw-chart-card--quality-primary .reports-dw-chart-card__header,
+::deep .reports-dw-chart-card--quality-compact .reports-dw-chart-card__header {
+    gap: 0.62rem;
+    margin-bottom: 0.35rem;
+}
+
+::deep .reports-dw-chart-card--quality-primary .reports-dw-chart-card__header > span,
+::deep .reports-dw-chart-card--quality-compact .reports-dw-chart-card__header > span {
+    width: 2.05rem;
+    height: 2.05rem;
+    border-radius: 0.72rem;
+}
+
+::deep .reports-dw-chart-card--quality-primary h2,
+::deep .reports-dw-chart-card--quality-compact h2 {
+    font-size: 0.96rem;
+}
+
+::deep .reports-dw-chart-card--quality-primary p,
+::deep .reports-dw-chart-card--quality-compact p {
+    font-size: 0.71rem;
+    line-height: 1.36;
+}
+
+::deep .reports-dw-chart-card--quality-primary .reports-dw-chart-card__eyebrow,
+::deep .reports-dw-chart-card--quality-compact .reports-dw-chart-card__eyebrow {
+    padding: 0.2rem 0.44rem;
+    font-size: 0.57rem;
+}
+
+::deep .reports-dw-chart-card--quality-primary .reports-dw-chart-card__canvas,
+::deep .reports-dw-chart-card--quality-compact .reports-dw-chart-card__canvas {
+    min-height: 0;
+    padding-top: 0;
+}
+
+@media (max-width: 1100px) {
+    .reports-dw-quality-block__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .reports-dw-quality-block__side {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 760px) {
+    .reports-dw-quality-block {
+        padding: 0.62rem;
+    }
+
+    .reports-dw-quality-block__side {
+        grid-template-columns: 1fr;
+    }
+}

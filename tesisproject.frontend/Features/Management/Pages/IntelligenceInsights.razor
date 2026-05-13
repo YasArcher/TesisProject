@@ -1,0 +1,346 @@
+@page "/management/intelligence"
+@using tesisproject.shared.DTOs.Reports
+@inject IInstitutionalReportingClient ReportingClient
+
+<PageTitle>Inteligencia IA</PageTitle>
+
+<div class="ai-page module-shell">
+    <section class="ai-hero module-hero module-hero--blue">
+        <div class="ai-hero__content">
+            <span class="module-kicker">Inteligencia institucional</span>
+            <h1>Predicción y recomendación académica</h1>
+            <p>
+                Motor base para preparar escenarios predictivos, priorizar acciones y conectar la reportería institucional con modelos de apoyo a decisión.
+            </p>
+        </div>
+        <div class="ai-hero__status">
+            <span class="@HealthClass">
+                <i class="bi bi-database-check"></i>
+                @HealthLabel
+            </span>
+            <button type="button" class="ai-action-button" @onclick="LoadDashboardAsync" disabled="@_isLoading">
+                <i class="bi bi-arrow-clockwise"></i>
+                <span>@(_isLoading ? "Actualizando" : "Actualizar")</span>
+            </button>
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <section class="ai-alert" role="alert">
+            <i class="bi bi-exclamation-triangle"></i>
+            <span>@_error</span>
+        </section>
+    }
+
+    <section class="ai-grid ai-grid--metrics" aria-label="Indicadores de preparación IA">
+        <article class="ai-metric">
+            <span class="ai-metric__label">Base analítica</span>
+            <strong>@TotalArticlesLabel</strong>
+            <small>artículos disponibles</small>
+        </article>
+        <article class="ai-metric">
+            <span class="ai-metric__label">Trazabilidad autoral</span>
+            <strong>@AuthorTracePercent%</strong>
+            <small>@AuthorTraceLabel</small>
+        </article>
+        <article class="ai-metric">
+            <span class="ai-metric__label">Calidad de carga</span>
+            <strong>@LoadQualityPercent%</strong>
+            <small>@LoadQualityLabel</small>
+        </article>
+        <article class="ai-metric">
+            <span class="ai-metric__label">Cobertura de indexación</span>
+            <strong>@IndexingCoveragePercent%</strong>
+            <small>@IndexingCoverageLabel</small>
+        </article>
+    </section>
+
+    <section class="ai-workbench">
+        <div class="ai-workbench__main app-section-card">
+            <div class="ai-section-heading">
+                <span class="app-inline-chip app-inline-chip--gold">
+                    <i class="bi bi-cpu"></i>
+                    Escenarios
+                </span>
+                <h2>Casos de uso iniciales</h2>
+            </div>
+
+            <div class="ai-scenario-list" role="list">
+                @foreach (var scenario in Scenarios)
+                {
+                    <button type="button"
+                            class="@GetScenarioClass(scenario.Key)"
+                            @onclick="() => SelectScenario(scenario.Key)">
+                        <span class="ai-scenario__icon"><i class="@scenario.Icon"></i></span>
+                        <span>
+                            <strong>@scenario.Title</strong>
+                            <small>@scenario.Signal</small>
+                        </span>
+                    </button>
+                }
+            </div>
+
+            <div class="ai-selected-scenario">
+                <div>
+                    <span class="ai-readiness-label">Preparación estimada</span>
+                    <strong>@SelectedReadiness%</strong>
+                    <small>@SelectedScenario.Description</small>
+                </div>
+                <div class="ai-readiness-ring" style="--ai-score:@SelectedReadiness">
+                    <span>@SelectedReadiness%</span>
+                </div>
+            </div>
+        </div>
+
+        <aside class="ai-workbench__aside app-section-card">
+            <div class="ai-section-heading">
+                <span class="app-inline-chip app-inline-chip--success">
+                    <i class="bi bi-stars"></i>
+                    Recomendaciones
+                </span>
+                <h2>Acciones sugeridas</h2>
+            </div>
+
+            <div class="ai-recommendation-list">
+                @foreach (var item in Recommendations)
+                {
+                    <article class="ai-recommendation">
+                        <span>@item.Priority</span>
+                        <div>
+                            <strong>@item.Title</strong>
+                            <small>@item.Detail</small>
+                        </div>
+                    </article>
+                }
+            </div>
+        </aside>
+    </section>
+
+    <section class="ai-grid ai-grid--pipeline" aria-label="Pipeline IA">
+        @foreach (var stage in Pipeline)
+        {
+            <article class="ai-pipeline-step">
+                <span>@stage.Number</span>
+                <div>
+                    <strong>@stage.Title</strong>
+                    <small>@stage.Detail</small>
+                </div>
+            </article>
+        }
+    </section>
+</div>
+
+@code {
+    private InstitutionalReportingDashboardDto? _dashboard;
+    private bool _isLoading = true;
+    private string? _error;
+    private string _selectedScenario = "production";
+
+    private IReadOnlyList<AiScenario> Scenarios => new[]
+    {
+        new AiScenario("production", "Predicción de producción", "series anuales, facultades y líneas", "bi bi-graph-up-arrow", "Estima producción por periodo, facultad y línea de investigación."),
+        new AiScenario("indexing", "Recomendación de indexación", "bases, cuartiles y revistas", "bi bi-journal-check", "Sugiere rutas de publicación según patrones de indexación y calidad."),
+        new AiScenario("workflow", "Riesgo de demora", "etapas, devoluciones y tiempos", "bi bi-hourglass-split", "Detecta lotes o etapas con probabilidad de retraso en revisión."),
+        new AiScenario("quality", "Calidad de datos", "errores, staging y completitud", "bi bi-shield-check", "Prioriza correcciones y campos que afectan la confiabilidad analítica.")
+    };
+
+    private AiScenario SelectedScenario => Scenarios.First(x => x.Key == _selectedScenario);
+
+    private IReadOnlyList<AiRecommendation> Recommendations => BuildRecommendations();
+
+    private IReadOnlyList<AiPipelineStage> Pipeline => new[]
+    {
+        new AiPipelineStage("01", "Consolidar señales", "DW, autores, workflow, indexación y errores de carga."),
+        new AiPipelineStage("02", "Crear variables", "Tendencias, cobertura, tiempos, calidad y concentración por facultad."),
+        new AiPipelineStage("03", "Entrenar modelos", "Predicción, ranking de recomendaciones y alertas operativas."),
+        new AiPipelineStage("04", "Explicar resultados", "Motivos, confianza, impacto esperado y trazabilidad de cada sugerencia.")
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardAsync();
+    }
+
+    private async Task LoadDashboardAsync()
+    {
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            _dashboard = await ReportingClient.GetDashboardAsync(new InstitutionalReportingFilterDto());
+        }
+        catch (Exception ex)
+        {
+            _dashboard = null;
+            _error = $"No se pudo cargar la base analítica para IA: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void SelectScenario(string key)
+    {
+        _selectedScenario = key;
+    }
+
+    private string GetScenarioClass(string key)
+        => key == _selectedScenario ? "ai-scenario ai-scenario--active" : "ai-scenario";
+
+    private int TotalArticles => _dashboard?.ScientificProduction.TotalArticles ?? 0;
+    private string TotalArticlesLabel => TotalArticles.ToString("N0");
+
+    private int AuthorTracePercent
+    {
+        get
+        {
+            if (TotalArticles <= 0)
+            {
+                return 0;
+            }
+
+            return ClampPercent((_dashboard?.AuthorTraceCoverage.ArticlesWithAuthorTrace ?? 0) * 100m / TotalArticles);
+        }
+    }
+
+    private string AuthorTraceLabel
+        => $"{(_dashboard?.AuthorTraceCoverage.ArticlesWithAuthorTrace ?? 0):N0} con autor trazable";
+
+    private int LoadQualityPercent
+    {
+        get
+        {
+            var total = _dashboard?.LoadQuality.TotalRows ?? 0;
+            if (total <= 0)
+            {
+                return 0;
+            }
+
+            return ClampPercent((_dashboard!.LoadQuality.SuccessfulRows * 100m) / total);
+        }
+    }
+
+    private string LoadQualityLabel
+        => $"{(_dashboard?.LoadQuality.SuccessfulRows ?? 0):N0} filas exitosas";
+
+    private int IndexingCoveragePercent
+    {
+        get
+        {
+            if (TotalArticles <= 0)
+            {
+                return 0;
+            }
+
+            var indexed = _dashboard?.ArticlesByIndexingSource.Sum(x => x.TotalArticles) ?? 0;
+            return ClampPercent(indexed * 100m / TotalArticles);
+        }
+    }
+
+    private string IndexingCoverageLabel
+        => $"{(_dashboard?.ArticlesByIndexingSource.Count ?? 0):N0} fuentes activas";
+
+    private int SelectedReadiness
+        => _selectedScenario switch
+        {
+            "production" => ClampPercent((AuthorTracePercent + IndexingCoveragePercent + DatasetVolumeScore) / 3m),
+            "indexing" => ClampPercent((IndexingCoveragePercent * 0.7m) + (DatasetVolumeScore * 0.3m)),
+            "workflow" => ClampPercent((WorkflowSignalScore * 0.7m) + (LoadQualityPercent * 0.3m)),
+            "quality" => ClampPercent((LoadQualityPercent * 0.8m) + (DatasetVolumeScore * 0.2m)),
+            _ => 0
+        };
+
+    private int DatasetVolumeScore
+        => TotalArticles switch
+        {
+            >= 500 => 100,
+            >= 250 => 85,
+            >= 100 => 70,
+            >= 50 => 55,
+            > 0 => 35,
+            _ => 0
+        };
+
+    private int WorkflowSignalScore
+    {
+        get
+        {
+            var total = _dashboard?.Workflow.TotalStageExecutions ?? 0;
+            if (total <= 0)
+            {
+                return 0;
+            }
+
+            var signal = Math.Min(total, 100);
+            var returnedPenalty = Math.Min(_dashboard?.Workflow.ReturnedStages ?? 0, 30);
+            return Math.Max(0, signal - returnedPenalty);
+        }
+    }
+
+    private string HealthLabel
+    {
+        get
+        {
+            if (_isLoading)
+            {
+                return "Sincronizando DW";
+            }
+
+            if (_dashboard?.Health.CanConnect == true)
+            {
+                return $"DW {_dashboard.Health.LastEtlStatus}";
+            }
+
+            return "DW no disponible";
+        }
+    }
+
+    private string HealthClass
+        => _dashboard?.Health.CanConnect == true
+            ? "ai-status ai-status--ok"
+            : _isLoading
+                ? "ai-status ai-status--loading"
+                : "ai-status ai-status--warning";
+
+    private IReadOnlyList<AiRecommendation> BuildRecommendations()
+    {
+        var items = new List<AiRecommendation>();
+
+        if (TotalArticles < 250)
+        {
+            items.Add(new("Alta", "Ampliar base histórica", "Más observaciones mejorarán predicciones por facultad y línea."));
+        }
+
+        if (AuthorTracePercent < 80)
+        {
+            items.Add(new("Alta", "Consolidar autores", "La predicción por docente requiere mayor trazabilidad autoral."));
+        }
+
+        if (IndexingCoveragePercent < 70)
+        {
+            items.Add(new("Media", "Normalizar indexación", "Conviene reforzar vínculos con bases y cuartiles para recomendaciones."));
+        }
+
+        if (LoadQualityPercent > 0 && LoadQualityPercent < 90)
+        {
+            items.Add(new("Media", "Reducir errores de staging", "La calidad de carga impacta entrenamiento y explicabilidad."));
+        }
+
+        if (items.Count == 0)
+        {
+            items.Add(new("Lista", "Base inicial suficiente", "La reportería ya entrega señales útiles para un primer prototipo IA."));
+        }
+
+        return items;
+    }
+
+    private static int ClampPercent(decimal value)
+        => (int)Math.Round(Math.Max(0, Math.Min(100, value)));
+
+    private sealed record AiScenario(string Key, string Title, string Signal, string Icon, string Description);
+    private sealed record AiRecommendation(string Priority, string Title, string Detail);
+    private sealed record AiPipelineStage(string Number, string Title, string Detail);
+}

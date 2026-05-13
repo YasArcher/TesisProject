@@ -214,6 +214,16 @@
                         </select>
                     </label>
                     <label>
+                        <span>Mes</span>
+                        <select @bind="_draft.ArticleMonth">
+                            <option value="">Todos</option>
+                            @foreach (var item in Dashboard?.FilterOptions.ArticleMonths ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
                         <span>Cuartil</span>
                         <select @bind="_draft.Quartile">
                             <option value="">Todos</option>
@@ -398,6 +408,7 @@
         Filter.VenueName = Normalize(_draft.VenueName);
         Filter.VenueType = Normalize(_draft.VenueType);
         Filter.ArticleYear = _draft.ArticleYear;
+        Filter.ArticleMonth = Normalize(_draft.ArticleMonth);
         Filter.Quartile = Normalize(_draft.Quartile);
         Filter.IsOpenAccess = _draft.IsOpenAccess;
         Filter.IsProjectResult = _draft.IsProjectResult;
@@ -431,6 +442,7 @@
             VenueName = source.VenueName,
             VenueType = source.VenueType,
             ArticleYear = source.ArticleYear,
+            ArticleMonth = source.ArticleMonth,
             Quartile = source.Quartile,
             IsOpenAccess = source.IsOpenAccess,
             IsProjectResult = source.IsProjectResult,
@@ -468,6 +480,7 @@
             filter.VenueName,
             filter.VenueType,
             filter.ArticleYear?.ToString(),
+            filter.ArticleMonth,
             filter.Quartile,
             filter.IsOpenAccess?.ToString(),
             filter.IsProjectResult?.ToString(),

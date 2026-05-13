@@ -115,6 +115,17 @@ function Write-DashboardSummary {
         $Dashboard.articlesByFaculty.Count)
 }
 
+function Write-AuthorDashboardSummary {
+    param([object]$AuthorDashboard)
+
+    Write-Host ("OK autores: autores={0} | lista={1} | publicaciones={2} | coautorias={3} | vinculos autor-articulo={4}" -f `
+        $AuthorDashboard.kpis.totalAuthors,
+        $AuthorDashboard.authors.Count,
+        $AuthorDashboard.publications.Count,
+        $AuthorDashboard.coauthors.Count,
+        $AuthorDashboard.kpis.totalAuthorArticleLinks)
+}
+
 Write-Step "Validando ping"
 $ping = Invoke-RestMethod -Method Get -Uri "$BaseUrl/ping"
 if ($ping -ne "pong") {
@@ -152,6 +163,41 @@ if ($null -eq $dashboard) {
 }
 Write-DashboardSummary -Dashboard $dashboard
 
+Write-Step "Validando analitica de autores y coautoria"
+$authorDashboard = Invoke-Json -Method Get -Url "$BaseUrl/api/reporting/authors" -Headers $headers
+if ($null -eq $authorDashboard) {
+    throw "La analitica de autores no devolvio contenido."
+}
+
+if ($authorDashboard.kpis.totalAuthors -lt 100) {
+    throw "La analitica de autores devolvio menos autores de lo esperado: $($authorDashboard.kpis.totalAuthors)."
+}
+
+if ($authorDashboard.authors.Count -lt 100) {
+    throw "La lista de autores parece truncada: $($authorDashboard.authors.Count)."
+}
+
+if ($authorDashboard.publications.Count -lt 100) {
+    throw "La lista de publicaciones autorales parece incompleta: $($authorDashboard.publications.Count)."
+}
+
+Write-AuthorDashboardSummary -AuthorDashboard $authorDashboard
+
+if ($dashboard.filterOptions.articleMonths.Count -gt 0) {
+    Write-Step "Validando filtro de reportería por mes"
+    $month = $dashboard.filterOptions.articleMonths[0]
+    $monthDashboard = Invoke-Json -Method Get -Url "$BaseUrl/api/reporting/dashboard?ArticleMonth=$month" -Headers $headers
+    if ($null -eq $monthDashboard) {
+        throw "Dashboard filtrado por mes no devolvio contenido."
+    }
+
+    if ($monthDashboard.scientificProduction.totalArticles -gt $dashboard.scientificProduction.totalArticles) {
+        throw "El filtro por mes devolvio mas articulos que el dashboard general. Mes=$month"
+    }
+
+    Write-Host ("OK filtro mes {0}: articulos={1}" -f $month, $monthDashboard.scientificProduction.totalArticles)
+}
+
 Write-Step "Validando PDF institucional"
 $pdfPath = Join-Path $PSScriptRoot "smoke-report.pdf"
 Invoke-WebRequest -Method Get -Uri "$BaseUrl/api/reporting/dashboard/pdf" -Headers $headers -OutFile $pdfPath | Out-Null
@@ -160,6 +206,15 @@ if ($pdfInfo.Length -lt 1000) {
     throw "El PDF generado parece vacio o invalido: $($pdfInfo.Length) bytes."
 }
 Write-Host "OK PDF generado: $pdfPath ($($pdfInfo.Length) bytes)"
+
+Write-Step "Validando Excel institucional"
+$excelPath = Join-Path $PSScriptRoot "smoke-report.xlsx"
+Invoke-WebRequest -Method Get -Uri "$BaseUrl/api/reporting/dashboard/excel" -Headers $headers -OutFile $excelPath | Out-Null
+$excelInfo = Get-Item $excelPath
+if ($excelInfo.Length -lt 1000) {
+    throw "El Excel generado parece vacio o invalido: $($excelInfo.Length) bytes."
+}
+Write-Host "OK Excel generado: $excelPath ($($excelInfo.Length) bytes)"
 
 if ($CheckAuthorTermsGate) {
     Write-Step "Validando bloqueo de terminos para autores"

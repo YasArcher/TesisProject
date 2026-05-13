@@ -1,0 +1,62 @@
+@using tesisproject.shared.DTOs.Reports
+
+<section class="reports-dw-tabs" aria-label="Secciones de reportería institucional">
+    <button class="@GetTabClass("overview")"
+            type="button"
+            aria-pressed="@IsActive("overview")"
+            @onclick='() => OnTabSelected.InvokeAsync("overview")'>
+        <i class="bi bi-grid-1x2"></i>
+        <span>
+            Tablero institucional
+            <small>@((Dashboard?.ScientificProduction.TotalArticles ?? 0).ToString("N0")) artículos</small>
+        </span>
+    </button>
+
+    <button class="@GetTabClass("dashboard")"
+            type="button"
+            aria-pressed="@IsActive("dashboard")"
+            @onclick='() => OnTabSelected.InvokeAsync("dashboard")'>
+        <i class="bi bi-speedometer2"></i>
+        <span>
+            Dashboard
+            <small>Vista universal</small>
+        </span>
+    </button>
+
+    <button class="@GetTabClass("participation")"
+            type="button"
+            aria-pressed="@IsActive("participation")"
+            @onclick='() => OnTabSelected.InvokeAsync("participation")'>
+        <i class="bi bi-pie-chart"></i>
+        <span>
+            Porcentaje de participación
+            <small>Facultades y bases</small>
+        </span>
+    </button>
+
+    <button class="@GetTabClass("authors")"
+            type="button"
+            aria-pressed="@IsActive("authors")"
+            @onclick='() => OnTabSelected.InvokeAsync("authors")'>
+        <i class="bi bi-person-vcard"></i>
+        <span>
+            Autores y coautoría
+            <small>@AuthorSubtitle</small>
+        </span>
+    </button>
+</section>
+
+@code {
+    [Parameter] public InstitutionalReportingDashboardDto? Dashboard { get; set; }
+    [Parameter] public string ActiveTab { get; set; } = "overview";
+    [Parameter] public string AuthorSubtitle { get; set; } = "Pendiente de cargar";
+    [Parameter] public EventCallback<string> OnTabSelected { get; set; }
+
+    private bool IsActive(string tab)
+        => string.Equals(ActiveTab, tab, StringComparison.OrdinalIgnoreCase);
+
+    private string GetTabClass(string tab)
+        => IsActive(tab)
+            ? "reports-dw-tab reports-dw-tab--active"
+            : "reports-dw-tab";
+}

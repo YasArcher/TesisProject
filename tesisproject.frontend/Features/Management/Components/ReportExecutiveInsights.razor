@@ -55,7 +55,27 @@
             "Cuartil destacado",
             TopQuartileLabel,
             "Clasificación editorial con mayor concentración de artículos.",
-            "bi bi-award")
+            "bi bi-award"),
+        new(
+            "Acceso abierto",
+            OpenAccessLabel,
+            "Participación de artículos open access dentro de la selección.",
+            "bi bi-unlock"),
+        new(
+            "Trazabilidad autoral",
+            AuthorTraceLabel,
+            "Cobertura de artículos conectados con autores en el DW.",
+            "bi bi-person-lines-fill"),
+        new(
+            "Calidad de carga",
+            LoadQualityLabel,
+            "Filas exitosas frente al total procesado en staging.",
+            "bi bi-shield-check"),
+        new(
+            "Workflow",
+            WorkflowSignalLabel,
+            "Balance entre aprobaciones, devoluciones y duración promedio.",
+            "bi bi-diagram-3")
     ];
 
     private string TopFacultyLabel => BuildTopLabel(
@@ -74,6 +94,69 @@
         Dashboard?.ArticlesByQuartile.Select(x => (x.Name, x.TotalArticles)),
         "Sin cuartil");
 
+    private string OpenAccessLabel
+    {
+        get
+        {
+            var total = Dashboard?.ScientificProduction.TotalArticles ?? 0;
+            if (total <= 0)
+            {
+                return "Sin artículos";
+            }
+
+            var openAccess = Dashboard?.ScientificProduction.OpenAccessArticles ?? 0;
+            return $"{BuildPercent(openAccess, total)}% · {openAccess:N0}";
+        }
+    }
+
+    private string AuthorTraceLabel
+    {
+        get
+        {
+            var total = Dashboard?.ScientificProduction.TotalArticles ?? 0;
+            if (total <= 0)
+            {
+                return "Sin artículos";
+            }
+
+            var traced = Dashboard?.AuthorTraceCoverage.ArticlesWithAuthorTrace ?? 0;
+            return $"{BuildPercent(traced, total)}% · {traced:N0}";
+        }
+    }
+
+    private string LoadQualityLabel
+    {
+        get
+        {
+            var total = Dashboard?.LoadQuality.TotalRows ?? 0;
+            if (total <= 0)
+            {
+                return "Sin lotes";
+            }
+
+            var successful = Dashboard?.LoadQuality.SuccessfulRows ?? 0;
+            return $"{BuildPercent(successful, total)}% · {successful:N0}";
+        }
+    }
+
+    private string WorkflowSignalLabel
+    {
+        get
+        {
+            var workflow = Dashboard?.Workflow;
+            if (workflow is null || workflow.TotalStageExecutions <= 0)
+            {
+                return "Sin etapas";
+            }
+
+            var duration = workflow.AvgStageDurationSeconds.HasValue
+                ? FormatDuration(workflow.AvgStageDurationSeconds.Value)
+                : "sin duración";
+
+            return $"{workflow.ApprovedStages:N0} aprob. · {workflow.ReturnedStages:N0} dev. · {duration}";
+        }
+    }
+
     private static string BuildTopLabel(IEnumerable<(string Name, int Total)>? source, string fallback)
     {
         var item = source?
@@ -87,6 +170,31 @@
         }
 
         return $"{Shorten(item.Value.Name, 34)} · {item.Value.Total:N0}";
+    }
+
+    private static int BuildPercent(int value, int total)
+    {
+        if (total <= 0)
+        {
+            return 0;
+        }
+
+        return (int)Math.Round(Math.Max(0, Math.Min(100, value * 100m / total)));
+    }
+
+    private static string FormatDuration(decimal seconds)
+    {
+        if (seconds < 60)
+        {
+            return $"{seconds:N0}s";
+        }
+
+        if (seconds < 3600)
+        {
+            return $"{seconds / 60:N1}min";
+        }
+
+        return $"{seconds / 3600:N1}h";
     }
 
     private static string Shorten(string? value, int maxLength)

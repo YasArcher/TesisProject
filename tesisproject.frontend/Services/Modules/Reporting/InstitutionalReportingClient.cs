@@ -57,6 +57,7 @@ namespace tesisproject.frontend.Services.Implementations
             AddString(query, nameof(filter.DetailedField), filter.DetailedField);
             AddString(query, nameof(filter.VenueName), filter.VenueName);
             AddString(query, nameof(filter.VenueType), filter.VenueType);
+            AddString(query, nameof(filter.ArticleMonth), filter.ArticleMonth);
             AddString(query, nameof(filter.Quartile), filter.Quartile);
             AddString(query, nameof(filter.PeriodDateType), filter.PeriodDateType);
             AddString(query, nameof(filter.AuthorName), filter.AuthorName);

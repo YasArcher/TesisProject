@@ -5,21 +5,21 @@
     <div>
         <small>Bloque específico</small>
         <h2>PEDI IIIT</h2>
-        <p>Vista específica del resultado PEDI IIIT.</p>
+        <p>Artículos para PEDI IIIT.</p>
     </div>
 </div>
 
 @if (HasSpecificSummaryTrim)
 {
     <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-        Los bloques específicos muestran una vista ejecutiva resumida: PEDI IIIT presenta hasta 20 filas y TDD Total hasta 24.
+        Las filas incluyen indexaciones y pendientes.
     </div>
 }
 
 <article class="reports-dw-chart-card reports-dw-chart-card--wide">
     <ReportCardHeader IconClass="bi bi-database-check"
                       Title="PEDI IIIT"
-                      Description="Artículos, base, enlace y mes de publicación.">
+                      Description="Detalle reportable.">
         <div class="reports-dw-card-meta">
             <span><i class="bi bi-list-check"></i> @PediIiitScopeLabel</span>
             <span><i class="bi bi-funnel"></i> @ScopeLabel</span>
@@ -47,9 +47,19 @@
     {
         <div class="reports-dw-micro-grid">
             <article class="reports-dw-micro-card">
-                <small>Registros visibles</small>
+                <small>Artículos únicos</small>
+                <strong>@PediUniqueArticleCount.ToString("N0")</strong>
+                <span>Artículos registrados en el resultado</span>
+            </article>
+            <article class="reports-dw-micro-card">
+                <small>Filas reportables</small>
                 <strong>@((Dashboard?.PediIiitArticles.Count ?? 0).ToString("N0"))</strong>
-                <span>Disponible para lectura ejecutiva</span>
+                <span>Indexación o pendiente</span>
+            </article>
+            <article class="reports-dw-micro-card">
+                <small>Sin indexación</small>
+                <strong>@PediMissingIndexingCount.ToString("N0")</strong>
+                <span>Requieren completar base</span>
             </article>
             <article class="reports-dw-micro-card">
                 <small>Resultado de proyecto</small>
@@ -87,30 +97,48 @@
                     <tr>
                         <th>Título de artículo</th>
                         <th>Base de datos</th>
-                        <th class="reports-dw-col--mobile-hide">Enlace</th>
+                        <th class="reports-dw-col--mobile-hide">Revista / ISSN</th>
+                        <th class="reports-dw-col--mobile-hide">DOI</th>
+                        <th class="reports-dw-col--tablet-hide">Autor</th>
+                        <th class="reports-dw-col--tablet-hide">Línea de investigación</th>
+                        <th class="reports-dw-col--tablet-hide">Facultad</th>
                         <th class="reports-dw-col--tablet-hide">Mes de publicación</th>
                         <th class="reports-dw-col--mobile-hide">Proyecto</th>
+                        <th class="reports-dw-col--mobile-hide">Nombre proyecto</th>
+                        <th class="reports-dw-col--mobile-hide">Intercultural</th>
                         <th>Cuartil</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var article in Dashboard!.PediIiitArticles.Take(20))
+                    @foreach (var article in Dashboard!.PediIiitArticles)
                     {
                         <tr>
                             <td class="reports-dw-table-title">@article.Title</td>
                             <td><span class="reports-dw-pill reports-dw-pill--db">@article.IndexingSourceName</span></td>
                             <td class="reports-dw-col--mobile-hide">
-                                @if (string.IsNullOrWhiteSpace(article.PublicationUrl))
+                                <span>@article.VenueName</span>
+                                <small>@(string.IsNullOrWhiteSpace(article.Issn) ? "Sin ISSN" : article.Issn)</small>
+                            </td>
+                            <td class="reports-dw-col--mobile-hide">
+                                @if (string.IsNullOrWhiteSpace(article.Doi))
                                 {
-                                    <span>Sin enlace</span>
+                                    <span>Sin DOI</span>
                                 }
                                 else
                                 {
-                                    <a href="@article.PublicationUrl" target="_blank" rel="noopener noreferrer">Abrir publicación</a>
+                                    <span>@article.Doi</span>
                                 }
                             </td>
+                            <td class="reports-dw-col--tablet-hide">
+                                <span>@article.AuthorName</span>
+                                <small>@(string.IsNullOrWhiteSpace(article.AuthorIdentification) ? article.ParticipantType : article.AuthorIdentification)</small>
+                            </td>
+                            <td class="reports-dw-col--tablet-hide">@article.Career</td>
+                            <td class="reports-dw-col--tablet-hide">@article.Faculty</td>
                             <td class="reports-dw-col--tablet-hide">@article.PublicationMonth</td>
                             <td class="reports-dw-col--mobile-hide"><span class="@(article.IsProjectResult ? "reports-dw-pill reports-dw-pill--yes" : "reports-dw-pill")">@(article.IsProjectResult ? "Sí" : "No")</span></td>
+                            <td class="reports-dw-col--mobile-hide">@GetProjectNameLabel(article)</td>
+                            <td class="reports-dw-col--mobile-hide"><span class="@(article.HasInterculturalComponent ? "reports-dw-pill reports-dw-pill--yes" : "reports-dw-pill")">@(article.HasInterculturalComponent ? "Sí" : "No")</span></td>
                             <td><span class="reports-dw-pill reports-dw-pill--quartile">@article.Quartile</span></td>
                         </tr>
                     }
@@ -125,14 +153,14 @@
     <div>
         <small>Bloque específico</small>
         <h2>TDD Total</h2>
-        <p>Vista específica del resultado TDD Total.</p>
+        <p>Publicaciones para TDD Total.</p>
     </div>
 </div>
 
 <article class="reports-dw-chart-card reports-dw-chart-card--wide">
     <ReportCardHeader IconClass="bi bi-journal-text"
                       Title="TDD Total"
-                      Description="Publicaciones, base, cuartil, facultad y mes.">
+                      Description="Detalle reportable.">
         <div class="reports-dw-card-meta">
             <span><i class="bi bi-table"></i> @TddTotalScopeLabel</span>
             <span><i class="bi bi-building"></i> @((Dashboard?.ParticipationSummary.ByFaculty.Count ?? 0).ToString("N0")) facultades</span>
@@ -160,9 +188,19 @@
     {
         <div class="reports-dw-micro-grid">
             <article class="reports-dw-micro-card">
-                <small>Publicaciones visibles</small>
+                <small>Artículos únicos</small>
+                <strong>@TddUniqueArticleCount.ToString("N0")</strong>
+                <span>Publicaciones registradas</span>
+            </article>
+            <article class="reports-dw-micro-card">
+                <small>Filas reportables</small>
                 <strong>@((Dashboard?.TddTotalArticles.Count ?? 0).ToString("N0"))</strong>
-                <span>Resultado actual del bloque</span>
+                <span>Indexación o pendiente</span>
+            </article>
+            <article class="reports-dw-micro-card">
+                <small>Sin indexación</small>
+                <strong>@TddMissingIndexingCount.ToString("N0")</strong>
+                <span>Requieren completar base</span>
             </article>
             <article class="reports-dw-micro-card">
                 <small>Facultades visibles</small>
@@ -200,19 +238,31 @@
                     <tr>
                         <th>Título de publicación</th>
                         <th>Base de datos</th>
+                        <th class="reports-dw-col--mobile-hide">Revista / ISSN</th>
+                        <th class="reports-dw-col--mobile-hide">Autor</th>
                         <th>Cuartil</th>
                         <th class="reports-dw-col--tablet-hide">Facultad</th>
+                        <th class="reports-dw-col--mobile-hide">Proyecto</th>
                         <th class="reports-dw-col--mobile-hide">Mes</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var article in Dashboard!.TddTotalArticles.Take(24))
+                    @foreach (var article in Dashboard!.TddTotalArticles)
                     {
                         <tr>
                             <td class="reports-dw-table-title">@article.Title</td>
                             <td><span class="reports-dw-pill reports-dw-pill--db">@article.IndexingSourceName</span></td>
+                            <td class="reports-dw-col--mobile-hide">
+                                <span>@article.VenueName</span>
+                                <small>@(string.IsNullOrWhiteSpace(article.Issn) ? "Sin ISSN" : article.Issn)</small>
+                            </td>
+                            <td class="reports-dw-col--mobile-hide">
+                                <span>@article.AuthorName</span>
+                                <small>@article.ParticipantType</small>
+                            </td>
                             <td><span class="reports-dw-pill reports-dw-pill--quartile">@article.Quartile</span></td>
                             <td class="reports-dw-col--tablet-hide">@article.Faculty</td>
+                            <td class="reports-dw-col--mobile-hide">@GetProjectNameLabel(article)</td>
                             <td class="reports-dw-col--mobile-hide">@article.PublicationMonth</td>
                         </tr>
                     }
@@ -233,6 +283,14 @@
     private bool HasSpecificSummaryTrim =>
         (Dashboard?.PediIiitArticles.Count ?? 0) > 20
         || (Dashboard?.TddTotalArticles.Count ?? 0) > 24;
+
+    private int PediUniqueArticleCount => CountUniqueArticles(Dashboard?.PediIiitArticles);
+
+    private int TddUniqueArticleCount => CountUniqueArticles(Dashboard?.TddTotalArticles);
+
+    private int PediMissingIndexingCount => CountMissingIndexing(Dashboard?.PediIiitArticles);
+
+    private int TddMissingIndexingCount => CountMissingIndexing(Dashboard?.TddTotalArticles);
 
     private int MaxPediQuartileCount =>
         Math.Max(1, Dashboard?.PediIiitArticles
@@ -258,4 +316,19 @@
         var percent = Math.Clamp((value / (double)maxValue) * 100, 4, 100);
         return $"{percent:0.##}%";
     }
+
+    private static string GetProjectNameLabel(ReportingArticleIndexingDetailDto article)
+        => article.IsProjectResult
+            ? string.IsNullOrWhiteSpace(article.ProjectName) ? "Sin registrar" : article.ProjectName
+            : "-";
+
+    private static int CountUniqueArticles(IEnumerable<ReportingArticleIndexingDetailDto>? articles)
+        => articles?
+            .Select(x => x.ArticleId)
+            .Where(x => x > 0)
+            .Distinct()
+            .Count() ?? 0;
+
+    private static int CountMissingIndexing(IEnumerable<ReportingArticleIndexingDetailDto>? articles)
+        => articles?.Count(x => string.Equals(x.IndexingSourceName, "Sin indexación", StringComparison.OrdinalIgnoreCase)) ?? 0;
 }

@@ -280,6 +280,255 @@ a:hover,
     background: rgba(255, 255, 255, 0.1);
 }
 
+/* Sidebar guardrail: estilos globales para evitar desconfiguracion visual si CSS aislado queda cacheado o pisado. */
+body .sidebar.menu-bg {
+    width: 272px;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+    color: rgba(255,255,255,.94);
+    background:
+        radial-gradient(circle at top right, rgba(244, 206, 20, 0.08), transparent 24%),
+        linear-gradient(180deg, rgba(49, 73, 97, 0.99), rgba(67, 86, 99, 0.97) 48%, rgba(49, 73, 97, 0.98)) !important;
+}
+
+body .sidebar.is-collapsed {
+    width: 92px;
+}
+
+body .sidebar .sidebar-brand {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 2.2rem;
+    align-items: center;
+    gap: .75rem;
+    padding: .9rem .85rem;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    background: inherit;
+}
+
+body .sidebar .brand-identity {
+    display: grid;
+    grid-template-columns: 2.35rem minmax(0, 1fr);
+    align-items: center;
+    gap: .65rem;
+    min-width: 0;
+}
+
+body .sidebar .brand-mark {
+    width: 2.35rem;
+    height: 2.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: .9rem;
+    background: linear-gradient(145deg, #F4CE14, #E3DE61);
+    color: #313647;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,.35);
+}
+
+body .sidebar .brand-text,
+body .sidebar .label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body .sidebar .brand-kicker {
+    margin-bottom: .2rem;
+    color: rgba(244, 206, 20, 0.92);
+    font-size: .68rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+}
+
+body .sidebar .btn-collapse {
+    width: 2.2rem;
+    height: 2.2rem;
+    display: inline-grid;
+    place-items: center;
+    border-radius: .9rem;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.08) !important;
+    color: #fff !important;
+    padding: 0;
+}
+
+body .sidebar-nav {
+    flex: 1 1 auto;
+    padding: .85rem .72rem 1rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+body .sidebar-nav-stack {
+    display: flex;
+    flex-direction: column;
+    gap: .38rem;
+}
+
+body .sidebar .nav,
+body .sidebar .nav-item {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+body .sidebar .nav-link,
+body .sidebar .accordion-btn,
+body .sidebar-admin-shortcut {
+    width: 100%;
+    min-height: 2.78rem;
+    display: grid !important;
+    grid-template-columns: 1.72rem minmax(0, 1fr) 1.55rem;
+    align-items: center;
+    gap: .72rem;
+    box-sizing: border-box;
+    border: 1px solid transparent;
+    border-radius: .9rem;
+    padding: .64rem .72rem !important;
+    color: rgba(255,255,255,.92) !important;
+    text-decoration: none;
+    background: transparent;
+}
+
+body .sidebar-admin-shortcut {
+    grid-template-columns: 1.9rem minmax(0, 1fr) auto;
+    margin-bottom: .45rem;
+    border-color: rgba(110, 152, 194, 0.24);
+    background: linear-gradient(180deg, rgba(110, 152, 194, 0.18), rgba(244, 206, 20, 0.1));
+}
+
+body .sidebar .nav-link .icon,
+body .sidebar .accordion-btn .icon,
+body .sidebar-admin-shortcut .icon {
+    width: 1.72rem;
+    min-width: 1.72rem;
+    height: 1.72rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: .8rem;
+    background: rgba(255,255,255,.1);
+    font-size: .9rem;
+}
+
+body .sidebar .accordion-btn {
+    text-align: left;
+    cursor: pointer;
+}
+
+body .sidebar .accordion-btn .caret {
+    width: 1.42rem;
+    height: 1.42rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: end;
+    border-radius: 999px;
+    background: rgba(255,255,255,.08);
+    transform: rotate(-90deg);
+}
+
+body .sidebar .accordion-group {
+    position: relative;
+    border-radius: 1rem;
+}
+
+body .sidebar .accordion-group.open {
+    background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018));
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.035);
+}
+
+body .sidebar .accordion-group.open::before {
+    content: "";
+    position: absolute;
+    left: .18rem;
+    top: .72rem;
+    bottom: .72rem;
+    width: 3px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(244, 206, 20, .95), rgba(110, 152, 194, .42));
+}
+
+body .sidebar .accordion-group.open .accordion-btn .caret {
+    color: #F4CE14;
+    background: rgba(110, 152, 194, .18);
+    transform: rotate(0deg);
+}
+
+body .sidebar .accordion-panel {
+    overflow: hidden;
+    animation: sidebarGlobalAccordionIn .28s cubic-bezier(.16,1,.3,1);
+}
+
+body .sidebar .accordion-panel .nav {
+    display: flex;
+    flex-direction: column;
+    gap: .24rem;
+    margin: .42rem 0 .48rem .82rem;
+    padding-left: .46rem;
+    border-left: 1px solid rgba(244, 206, 20, .18);
+}
+
+body .sidebar .accordion-panel .nav-link {
+    grid-template-columns: 1.5rem minmax(0, 1fr) 0;
+    min-height: 2.48rem;
+    padding: .52rem .58rem !important;
+    gap: .58rem;
+}
+
+body .sidebar .nav-link:hover,
+body .sidebar .accordion-btn:hover {
+    background: rgba(255,255,255,.08);
+    border-color: rgba(110, 152, 194, .24);
+}
+
+body .sidebar-footer {
+    margin-top: auto;
+    padding: .9rem .95rem;
+    border-top: 1px solid rgba(255,255,255,.08);
+    color: rgba(255,255,255,.68);
+}
+
+body .sidebar.is-collapsed .sidebar-brand {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding-inline: .65rem;
+}
+
+body .sidebar.is-collapsed .brand-identity,
+body .sidebar.is-collapsed .nav-link,
+body .sidebar.is-collapsed .accordion-btn,
+body .sidebar.is-collapsed .sidebar-admin-shortcut {
+    grid-template-columns: 1.72rem !important;
+    justify-content: center;
+    justify-items: center;
+}
+
+body .sidebar.is-collapsed .brand-text,
+body .sidebar.is-collapsed .label,
+body .sidebar.is-collapsed .caret,
+body .sidebar.is-collapsed .badge {
+    display: none !important;
+}
+
+@keyframes sidebarGlobalAccordionIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+        clip-path: inset(0 0 100% 0 round .8rem);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        clip-path: inset(0 0 0 0 round .8rem);
+    }
+}
+
 .btn-primary {
     color: var(--app-color-white);
     background: linear-gradient(135deg, var(--app-color-primary), #437057);

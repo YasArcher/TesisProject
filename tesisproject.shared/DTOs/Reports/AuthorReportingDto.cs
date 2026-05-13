@@ -31,6 +31,7 @@ public sealed class AuthorReportingKpiDto
 public sealed class AuthorReportingSummaryDto
 {
     public int AuthorKey { get; set; }
+    public string AuthorIdentity { get; set; } = string.Empty;
     public string AuthorName { get; set; } = string.Empty;
     public string? Identification { get; set; }
     public string Affiliation { get; set; } = string.Empty;
@@ -45,11 +46,13 @@ public sealed class AuthorReportingSummaryDto
 public sealed class AuthorPublicationDto
 {
     public int AuthorKey { get; set; }
+    public string AuthorIdentity { get; set; } = string.Empty;
     public string AuthorName { get; set; } = string.Empty;
     public string? Identification { get; set; }
     public string Affiliation { get; set; } = string.Empty;
     public string ParticipantType { get; set; } = string.Empty;
     public bool IsPrimaryAuthor { get; set; }
+    public int ArticleKey { get; set; }
     public int ArticleId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Doi { get; set; }

@@ -54,6 +54,7 @@ public sealed class InstitutionalReportingFilterDto
     public string? VenueName { get; set; }
     public string? VenueType { get; set; }
     public int? ArticleYear { get; set; }
+    public string? ArticleMonth { get; set; }
     public string? Quartile { get; set; }
     public bool? IsOpenAccess { get; set; }
     public bool? IsProjectResult { get; set; }
@@ -90,6 +91,7 @@ public sealed class InstitutionalReportingFilterOptionsDto
     public List<string> Venues { get; set; } = new();
     public List<string> VenueTypes { get; set; } = new();
     public List<int> ArticleYears { get; set; } = new();
+    public List<string> ArticleMonths { get; set; } = new();
     public List<string> Quartiles { get; set; } = new();
     public List<string> Authors { get; set; } = new();
     public List<string> Affiliations { get; set; } = new();
@@ -204,13 +206,26 @@ public sealed class ReportingArticleIndexingDetailDto
 {
     public int ArticleId { get; set; }
     public string Title { get; set; } = string.Empty;
+    public string? Doi { get; set; }
     public string IndexingSourceName { get; set; } = string.Empty;
+    public string? VenueName { get; set; }
+    public string? Issn { get; set; }
+    public string? JournalUrl { get; set; }
     public string? PublicationUrl { get; set; }
     public DateTime? PublishedDate { get; set; }
     public string PublicationMonth { get; set; } = string.Empty;
+    public string? AuthorIdentification { get; set; }
+    public string? AuthorName { get; set; }
+    public string? ParticipantType { get; set; }
+    public string? Career { get; set; }
     public bool IsProjectResult { get; set; }
+    public string? ProjectName { get; set; }
+    public bool HasInterculturalComponent { get; set; }
     public string Quartile { get; set; } = string.Empty;
     public string Faculty { get; set; } = string.Empty;
+    public string? BroadField { get; set; }
+    public string? SpecificField { get; set; }
+    public string? DetailedField { get; set; }
 }
 
 public sealed class ReportingParticipationSummaryDto

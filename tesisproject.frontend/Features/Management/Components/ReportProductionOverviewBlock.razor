@@ -1,104 +1,109 @@
 @using tesisproject.shared.DTOs.Reports
 
-<div id="reports-block-production" class="reports-dw-section-heading">
-    <span><i class="bi bi-graph-up-arrow"></i></span>
-    <div>
-        <small>Producción</small>
-        <h2>Producción y ritmo temporal</h2>
-        <p>Volumen y evolución del resultado actual.</p>
-    </div>
-</div>
-
-@if (HasTemporalSummary)
-{
-    <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-        Vista resumida: hasta 12 meses y 12 días recientes.
-    </div>
-}
-
-<ReportChartCard Title="Producción por año"
-                 Description="Tendencia del resultado actual."
-                 Tooltip="Ayuda a identificar crecimiento, estabilización o caída de la producción visible en el filtro."
-                 HasData="@(Dashboard?.ArticlesByYear.Count > 0)"
-                 EmptyMessage="No hay distribución anual disponible."
-                 ChartId="chart-production-year"
-                 Height="@ProductionTrendHeight"
-                 Option="@ProductionTrendOption"
-                 Accent="blue"
-                 Density="primary" />
-
-<article class="reports-dw-chart-card reports-dw-chart-card--green">
-    <ReportCardHeader IconClass="bi bi-pie-chart"
-                      Title="Open Access"
-                      Description="Proporción abierta del resultado." />
-    <div class="reports-dw-donut-layout">
-        <div class="reports-dw-donut" style="@OpenAccessDonutStyle">
-            <span>@OpenAccessPercent%</span>
-        </div>
-        <div class="reports-dw-donut-legend">
-            <strong>@((Dashboard?.ScientificProduction.OpenAccessArticles ?? 0).ToString("N0")) OA</strong>
-            <span>@(((Dashboard?.ScientificProduction.TotalArticles ?? 0) - (Dashboard?.ScientificProduction.OpenAccessArticles ?? 0)).ToString("N0")) no OA</span>
+<section id="reports-block-production" class="reports-dw-production-block">
+    <div class="reports-dw-section-heading reports-dw-production-block__heading">
+        <span><i class="bi bi-graph-up-arrow"></i></span>
+        <div>
+            <small>Producción</small>
+            <h2>Producción y ritmo temporal</h2>
+            <p>Volumen, tendencia anual y señales principales del resultado.</p>
         </div>
     </div>
-</article>
 
-<ReportChartCard Title="Artículos por cuartil"
-                 Description="Volumen absoluto del resultado por cuartil."
-                 Tooltip="Muestra cuántos artículos visibles caen en cada cuartil dentro del resultado filtrado."
-                 HasData="@(Dashboard?.ArticlesByQuartile.Count > 0)"
-                 EmptyMessage="Sin cuartiles vinculados a artículos."
-                 ChartId="chart-production-quartiles"
-                 Height="320px"
-                 Option="@QuartileArticlesChartOption"
-                 Accent="gold"
-                 Density="compact" />
-
-<article class="reports-dw-chart-card reports-dw-chart-card--wide reports-dw-chart-card--ink">
-    <ReportCardHeader IconClass="bi bi-calendar3"
-                      Title="Ritmo de registro"
-                      Description="Cadencia reciente del resultado.">
-        <div class="reports-dw-card-meta">
-            <span><i class="bi bi-arrows"></i> Navegación temporal</span>
-        </div>
-    </ReportCardHeader>
-    <div class="reports-dw-subtabs">
-        <button type="button"
-                class="@(ProductionPeriodView == "months" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
-                @onclick="@(() => ProductionPeriodView = "months")">
-            Meses
-        </button>
-        <button type="button"
-                class="@(ProductionPeriodView == "days" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
-                @onclick="@(() => ProductionPeriodView = "days")">
-            Días
-        </button>
-    </div>
-
-    @if (ProductionPeriodView == "months")
+    @if (HasTemporalSummary)
     {
-        <ReportChartCard Title="Últimos meses"
-                         Description="Comparativo mensual reciente."
-                         HasData="@(RecentMonthItems.Count > 0)"
-                         EmptyMessage="Sin distribución mensual disponible."
-                         ChartId="chart-production-months"
-                         Height="320px"
-                         Option="@ProductionMonthsChartOption"
+        <div class="reports-dw-inline-note reports-dw-inline-note--soft reports-dw-production-block__note">
+            Ritmo calculado con últimos 12 meses y días recientes.
+        </div>
+    }
+
+    <div class="reports-dw-production-block__grid">
+        <ReportChartCard Title="Producción por año"
+                         Description="Tendencia anual del resultado visible."
+                         Tooltip="Ayuda a identificar crecimiento, estabilización o caída de la producción visible en el filtro."
+                         HasData="@(Dashboard?.ArticlesByYear.Count > 0)"
+                         EmptyMessage="No hay distribución anual disponible."
+                         ChartId="chart-production-year"
+                         Height="@ProductionTrendHeight"
+                         Option="@ProductionTrendOption"
                          Accent="blue"
-                         Density="compact" />
-    }
-    else
-    {
-        <ReportChartCard Title="Días con registro"
-                         Description="Actividad diaria reciente."
-                         HasData="@(RecentDayItems.Count > 0)"
-                         EmptyMessage="Sin distribución diaria disponible."
-                         ChartId="chart-production-days"
-                         Height="320px"
-                         Option="@ProductionDaysChartOption"
-                         Accent="sage"
-                         Density="compact" />
-    }
-</article>
+                         Density="production-primary" />
+
+        <div class="reports-dw-production-block__side">
+            <ReportChartCard Title="Artículos por cuartil"
+                             Description="Distribución por cuartil."
+                             HasData="@(Dashboard?.ArticlesByQuartile.Count > 0)"
+                             EmptyMessage="Sin cuartiles vinculados a artículos."
+                             ChartId="chart-production-quartiles"
+                             Height="230px"
+                             Option="@QuartileArticlesChartOption"
+                             Accent="gold"
+                             Density="production-compact" />
+
+            <article class="reports-dw-chart-card reports-dw-chart-card--green reports-dw-open-access-card">
+                <ReportCardHeader IconClass="bi bi-unlock"
+                                  Title="Open Access"
+                                  Description="Proporción abierta." />
+                <div class="reports-dw-donut-layout reports-dw-donut-layout--compact">
+                    <div class="reports-dw-donut reports-dw-donut--compact" style="@OpenAccessDonutStyle">
+                        <span>@OpenAccessPercent%</span>
+                    </div>
+                    <div class="reports-dw-donut-legend reports-dw-donut-legend--compact">
+                        <strong>@((Dashboard?.ScientificProduction.OpenAccessArticles ?? 0).ToString("N0")) abiertos</strong>
+                        <span>@ClosedAccessArticles.ToString("N0") restringidos</span>
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <article class="reports-dw-chart-card reports-dw-chart-card--wide reports-dw-chart-card--ink reports-dw-production-rhythm-card">
+            <ReportCardHeader IconClass="bi bi-calendar3"
+                              Title="Ritmo de registro"
+                              Description="Cadencia reciente según el filtro aplicado.">
+                <div class="reports-dw-card-meta">
+                    <span><i class="bi bi-calendar-range"></i> @CurrentTemporalRangeLabel</span>
+                </div>
+            </ReportCardHeader>
+            <div class="reports-dw-subtabs reports-dw-subtabs--compact">
+                <button type="button"
+                        class="@(ProductionPeriodView == "months" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
+                        @onclick="@(() => ProductionPeriodView = "months")">
+                    Meses
+                </button>
+                <button type="button"
+                        class="@(ProductionPeriodView == "days" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
+                        @onclick="@(() => ProductionPeriodView = "days")">
+                    Días
+                </button>
+            </div>
+
+            @if (ProductionPeriodView == "months")
+            {
+                <ReportChartCard Title="Últimos meses"
+                                 Description="@MonthRangeDescription"
+                                 HasData="@(RecentMonthItems.Count > 0)"
+                                 EmptyMessage="Sin distribución mensual disponible."
+                                 ChartId="chart-production-months"
+                                 Height="240px"
+                                 Option="@ProductionMonthsChartOption"
+                                 Accent="blue"
+                                 Density="production-compact" />
+            }
+            else
+            {
+                <ReportChartCard Title="Días con registro"
+                                 Description="@DayRangeDescription"
+                                 HasData="@(RecentDayItems.Count > 0)"
+                                 EmptyMessage="Sin distribución diaria disponible."
+                                 ChartId="chart-production-days"
+                                 Height="240px"
+                                 Option="@ProductionDaysChartOption"
+                                 Accent="sage"
+                                 Density="production-compact" />
+            }
+        </article>
+    </div>
+</section>
 
 @code {
     [Parameter] public InstitutionalReportingDashboardDto? Dashboard { get; set; }
@@ -118,20 +123,20 @@
             .ToList() ?? [];
 
     private string ProductionTrendHeight =>
-        ReportChartOptionsFactory.GetChartHeight(Dashboard?.ArticlesByYear.Count ?? 0);
+        ReportChartOptionsFactory.GetCompactChartHeight(Dashboard?.ArticlesByYear.Count ?? 0);
 
     private object? ProductionTrendOption =>
-        ReportChartOptionsFactory.BuildTrend(Dashboard?.ArticlesByYear);
+        ReportChartOptionsFactory.BuildTrend(Dashboard?.ArticlesByYear, compact: true);
 
     private object? QuartileArticlesChartOption =>
-        ReportChartOptionsFactory.BuildSummaryDonut(Dashboard?.ArticlesByQuartile, "Cuartiles");
+        ReportChartOptionsFactory.BuildSummaryDonut(Dashboard?.ArticlesByQuartile, "Cuartiles", compact: true, includeToolbox: true);
 
     private object? ProductionMonthsChartOption =>
         ReportChartOptionsFactory.BuildVerticalBar(
             RecentMonthItems.Select(x => x.Name).ToArray(),
             RecentMonthItems.Select(x => x.TotalArticles).ToArray(),
             "Artículos",
-            "#435663",
+            "#055052",
             true);
 
     private object? ProductionDaysChartOption =>
@@ -139,7 +144,7 @@
             RecentDayItems.Select(x => x.Name).ToArray(),
             RecentDayItems.Select(x => x.TotalArticles).ToArray(),
             "Artículos",
-            "#97B067",
+            "#408A71",
             true);
 
     private int MaxArticlesByYear =>
@@ -159,8 +164,37 @@
             ? 0
             : (int)Math.Round((Dashboard!.ScientificProduction.OpenAccessArticles / (double)Dashboard.ScientificProduction.TotalArticles) * 100);
 
+    private int ClosedAccessArticles =>
+        Math.Max(0, (Dashboard?.ScientificProduction.TotalArticles ?? 0) - (Dashboard?.ScientificProduction.OpenAccessArticles ?? 0));
+
     private string OpenAccessDonutStyle =>
-        $"background: conic-gradient(#97b067 0 {OpenAccessPercent}%, rgba(67, 86, 99, 0.12) {OpenAccessPercent}% 100%);";
+        $"background: conic-gradient(#408A71 0 {OpenAccessPercent}%, rgba(102, 11, 5, 0.14) {OpenAccessPercent}% 100%);";
+
+    private string CurrentTemporalRangeLabel =>
+        ProductionPeriodView == "months"
+            ? MonthRangeDescription
+            : DayRangeDescription;
+
+    private string MonthRangeDescription =>
+        BuildRangeDescription(RecentMonthItems, "meses");
+
+    private string DayRangeDescription =>
+        BuildRangeDescription(RecentDayItems, "días");
+
+    private static string BuildRangeDescription(IReadOnlyList<ReportingSummaryItemDto> items, string unitLabel)
+    {
+        if (items.Count == 0)
+        {
+            return $"Sin {unitLabel} disponibles.";
+        }
+
+        if (items.Count == 1)
+        {
+            return $"Mostrando {items[0].Name}.";
+        }
+
+        return $"Mostrando {items[0].Name} a {items[^1].Name}.";
+    }
 
     private static string GetBarWidth(int value, int maxValue)
     {

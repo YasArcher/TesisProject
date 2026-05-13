@@ -49,6 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRegistrationMatrixClient, RegistrationMatrixClient>();
         services.AddScoped<IExternalApiExplorerClient, ExternalApiExplorerClient>();
         services.AddScoped<IInstitutionalReportingClient, InstitutionalReportingClient>();
+        services.AddScoped<InstitutionalReportingPageStateStore>();
         services.AddScoped<ExportJsInterop>();
         services.AddScoped<IApiClient, ApiClient>();
 

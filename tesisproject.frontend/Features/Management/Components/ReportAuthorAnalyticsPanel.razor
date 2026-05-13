@@ -1,15 +1,6 @@
 @using tesisproject.shared.DTOs.Reports
 
 <section class="reports-dw-author-panel">
-    <div class="reports-dw-section-heading reports-dw-section-heading--ink">
-        <span><i class="bi bi-person-vcard"></i></span>
-        <div>
-            <small>Autores y coautoría</small>
-            <h2>Producción por autores</h2>
-            <p>Autores y trazabilidad del resultado actual.</p>
-        </div>
-    </div>
-
     @if (IsBusy && Dashboard is null)
     {
         <ReportEmptyState IconClass="bi bi-hourglass-split"
@@ -24,792 +15,342 @@
     }
     else
     {
-        <div class="reports-dw-author-kpi-grid">
-            <article class="reports-dw-card">
-                <span><i class="bi bi-people"></i></span>
-                <small>Autores únicos</small>
-                <strong>@Dashboard.Kpis.TotalAuthors.ToString("N0")</strong>
-                <em>@Dashboard.Kpis.AuthorsWithAffiliation.ToString("N0") con filiación</em>
-            </article>
-            <article class="reports-dw-card">
-                <span><i class="bi bi-journals"></i></span>
-                <small>Total institucional filtrado</small>
-                <strong>@Dashboard.Kpis.TotalArticles.ToString("N0")</strong>
-                <em>@Dashboard.Kpis.ArticlesWithAuthorTrace.ToString("N0") con trazabilidad autoral</em>
-            </article>
-            <article class="reports-dw-card">
-                <span><i class="bi bi-award"></i></span>
-                <small>Autoría principal</small>
-                <strong>@Dashboard.Kpis.PrimaryAuthorLinks.ToString("N0")</strong>
-                <em>@Dashboard.Kpis.CoauthorLinks.ToString("N0") coautorías</em>
-            </article>
-            <article class="reports-dw-card">
-                <span><i class="bi bi-diagram-3"></i></span>
-                <small>Promedio por artículo trazable</small>
-                <strong>@Dashboard.Kpis.AverageAuthorsPerArticle.ToString("N2")</strong>
-                <em>@Dashboard.Kpis.AuthorsWithOrcid.ToString("N0") autores con ORCID</em>
-            </article>
-        </div>
-
-        @if (Dashboard.Kpis.ArticlesWithoutAuthorTrace > 0)
-        {
-            <div class="reports-dw-inline-note">
-                @Dashboard.Kpis.ArticlesWithoutAuthorTrace de @Dashboard.Kpis.TotalArticles artículos del filtro actual aún no tienen trazabilidad autoral en el DW.
-            </div>
-        }
-
-        @if (IsFallbackSummary)
-        {
-            <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                Vista resumida disponible: esta lectura se derivó del tablero institucional para no dejar vacía la pestaña. El detalle de publicaciones, coautorías, ORCID y filiaciones específicas aparecerá cuando responda la analítica detallada.
-            </div>
-        }
-
-        @if (HasChartSummaries)
-        {
-            <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                Vista resumida: autores, filiaciones, bases y cuartiles muestran hasta 12 elementos. La serie mensual muestra 12 periodos recientes.
-            </div>
-        }
-
         @if (!IsFallbackSummary && Dashboard.Authors.Count > 0)
         {
-            <article class="reports-dw-chart-card reports-dw-chart-card--wide reports-dw-chart-card--blue">
-                <ReportCardHeader IconClass="bi bi-person-badge"
-                                  Title="Ficha dinámica de autor"
-                                  Description="Explora el detalle del autor o coautor seleccionado dentro del resultado actual." />
-
-                <div class="reports-dw-micro-grid">
-                    <article class="reports-dw-micro-card">
-                        <small>Autor enfocado</small>
-                        <strong>@SelectedAuthorDisplayName</strong>
-                        <span>@SelectedAuthorAffiliation</span>
-                    </article>
-                    <article class="reports-dw-micro-card">
-                        <small>Publicaciones</small>
-                        <strong>@SelectedAuthorTotalArticles.ToString("N0")</strong>
-                        <span>@SelectedAuthorPrimaryArticles.ToString("N0") principal · @SelectedAuthorCoauthorArticles.ToString("N0") coautor</span>
-                    </article>
-                    <article class="reports-dw-micro-card">
-                        <small>Coautores directos</small>
-                        <strong>@SelectedAuthorCoauthorCount.ToString("N0")</strong>
-                        <span>@SelectedAuthorSharedArticles.ToString("N0") vínculos compartidos</span>
-                    </article>
-                    <article class="reports-dw-micro-card">
-                        <small>Posición en el resultado</small>
-                        <strong>#@SelectedAuthorRank</strong>
-                        <span>@SelectedAuthorRelativePerformanceLabel</span>
-                    </article>
-                </div>
-
-                <div class="reports-dw-filter-grid">
-                    <div class="report-select-filter">
-                        <label for="reports-author-focus">Autor</label>
-                        <select id="reports-author-focus"
-                                class="form-select"
-                                value="@SelectedAuthorKey"
-                                @onchange="OnSelectedAuthorChanged">
-                            @foreach (var author in Dashboard.Authors.OrderByDescending(x => x.TotalArticles).ThenBy(x => x.AuthorName))
-                            {
-                                <option value="@author.AuthorKey">@author.AuthorName</option>
-                            }
-                        </select>
+            <article class="reports-dw-chart-card reports-dw-chart-card--wide reports-dw-author-hierarchy-shell">
+                <div class="reports-dw-author-hierarchy-shell__head">
+                    <div class="reports-dw-author-hierarchy-shell__title">
+                        <span><i class="bi bi-diagram-2"></i></span>
+                        <div>
+                            <small>Jerarquía autoral</small>
+                            <h3>Mapa de autores y publicaciones</h3>
+                        </div>
                     </div>
-                    <div class="report-select-filter">
-                        <label for="reports-coauthor-focus">Coautor vinculado</label>
-                        <select id="reports-coauthor-focus"
-                                class="form-select"
-                                value="@SelectedCoauthorKey"
-                                @onchange="OnSelectedCoauthorChanged">
-                            <option value="">Sin seleccionar</option>
-                            @foreach (var coauthor in SelectedAuthorCoauthorOptions)
-                            {
-                                <option value="@coauthor.CoauthorKey">@coauthor.CoauthorName</option>
-                            }
-                        </select>
-                    </div>
-                </div>
-
-                <div class="reports-dw-subtabs">
-                    <button type="button"
-                            class="@(AuthorSpotlightView == "summary" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
-                            @onclick="@(() => AuthorSpotlightView = "summary")">
-                        Resumen
-                    </button>
-                    <button type="button"
-                            class="@(AuthorSpotlightView == "publications" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
-                            @onclick="@(() => AuthorSpotlightView = "publications")">
-                        Publicaciones
-                    </button>
-                    <button type="button"
-                            class="@(AuthorSpotlightView == "coauthors" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
-                            @onclick="@(() => AuthorSpotlightView = "coauthors")">
-                        Coautores
-                    </button>
-                    <button type="button"
-                            class="@(AuthorSpotlightView == "timeline" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
-                            @onclick="@(() => AuthorSpotlightView = "timeline")">
-                        Trayectoria
-                    </button>
-                </div>
-
-                @if (AuthorSpotlightView == "summary")
-                {
-                    <div class="reports-dw-micro-grid">
-                        <article class="reports-dw-micro-card">
-                            <small>ORCID</small>
-                            <strong>@SelectedAuthorOrcid</strong>
-                            <span>@SelectedAuthorIdentityLabel</span>
-                        </article>
-                        <article class="reports-dw-micro-card">
-                            <small>Cobertura editorial</small>
-                            <strong>@SelectedAuthorDistinctSources.ToString("N0") bases visibles</strong>
-                            <span>@SelectedAuthorDistinctQuartiles.ToString("N0") cuartiles en el resultado</span>
-                        </article>
-                        <article class="reports-dw-micro-card">
-                            <small>Última actividad</small>
-                            <strong>@SelectedAuthorLastPublicationLabel</strong>
-                            <span>@SelectedAuthorSharedArticlesLabel</span>
-                        </article>
-                        <article class="reports-dw-micro-card">
-                            <small>Lectura docente visible</small>
-                            <strong>@SelectedAuthorPrimaryPercent%</strong>
-                            <span>@SelectedAuthorCoverageLabel</span>
-                        </article>
-                    </div>
-
-                    <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                        Facultad dominante: <strong>@SelectedAuthorTopFaculty</strong>.
-                        Línea dominante: <strong>@SelectedAuthorTopResearchLine</strong>.
-                        Cuartil más frecuente: <strong>@SelectedAuthorTopQuartile</strong>.
-                    </div>
-
-                    @if (SelectedCoauthor is not null)
-                    {
-                        <div class="reports-dw-inline-note">
-                            Estás viendo el cruce entre <strong>@SelectedAuthorDisplayName</strong> y <strong>@SelectedCoauthor.CoauthorName</strong>.
-                            <button type="button"
-                                    class="reports-dw-link-action"
-                                    @onclick="ClearSelectedCoauthor">
-                                Quitar foco de coautor
-                            </button>
-                            @if (CanFocusSelectedCoauthor)
+                    <div class="reports-dw-author-hierarchy-shell__actions">
+                        <div class="reports-dw-author-search-box">
+                            <i class="bi bi-search" aria-hidden="true"></i>
+                            <input id="reports-author-hierarchy-search"
+                                   type="search"
+                                   value="@AuthorSearchTerm"
+                                   @oninput="OnAuthorSearchChanged"
+                                   placeholder="Buscar autor, filiación, ID u ORCID" />
+                            @if (!string.IsNullOrWhiteSpace(AuthorSearchTerm))
                             {
                                 <button type="button"
-                                        class="reports-dw-link-action"
-                                        @onclick="FocusSelectedCoauthorAsAuthor">
-                                    Ver a @SelectedCoauthor.CoauthorName como autor principal
+                                        title="Limpiar búsqueda"
+                                        aria-label="Limpiar búsqueda de autor"
+                                        @onclick="ClearAuthorSearch">
+                                    <i class="bi bi-x-lg" aria-hidden="true"></i>
                                 </button>
                             }
                         </div>
-                    }
+                        <button type="button"
+                                class="reports-dw-author-picker-button"
+                                @onclick="OpenAuthorPicker">
+                            <i class="bi bi-person-lines-fill" aria-hidden="true"></i>
+                            <span>@Shorten(SelectedAuthorDisplayName, 28)</span>
+                        </button>
+                        <button type="button"
+                                class="reports-dw-author-hierarchy-filter-toggle"
+                                @onclick="ToggleHierarchyFilters">
+                            <i class="bi bi-sliders" aria-hidden="true"></i>
+                            @(_showHierarchyFilters ? "Ocultar filtros" : "Filtros")
+                        </button>
+                    </div>
+                </div>
 
-                    <div class="reports-dw-bars reports-dw-bars--compact">
-                        @foreach (var item in SelectedAuthorSourceItems)
-                        {
-                            <div class="reports-dw-bar-row">
-                                <span>@item.Name</span>
-                                <div class="reports-dw-bar-track">
-                                    <div class="reports-dw-bar-fill reports-dw-bar-fill--sage" style="width:@GetBarWidth(item.TotalArticles, SelectedAuthorMaxSourceCount)"></div>
+                @if (_showAuthorPicker)
+                {
+                    <div class="reports-dw-author-picker-backdrop" @onclick="CloseAuthorPicker">
+                        <div class="reports-dw-author-picker-modal" role="dialog" aria-modal="true" aria-labelledby="reports-author-picker-title" @onclick:stopPropagation="true">
+                            <header>
+                                <div>
+                                    <small>Selección de autor</small>
+                                    <strong id="reports-author-picker-title">@AuthorSearchResultLabel</strong>
                                 </div>
-                                <strong>@item.TotalArticles</strong>
-                            </div>
-                        }
-                    </div>
+                                <button type="button"
+                                        title="Cerrar"
+                                        aria-label="Cerrar selector de autores"
+                                        @onclick="CloseAuthorPicker">
+                                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                                </button>
+                            </header>
 
-                    @if (SelectedAuthorTopCoauthorsLabel is not null)
-                    {
-                        <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                            Coautores más frecuentes: @SelectedAuthorTopCoauthorsLabel
-                        </div>
-                    }
-                }
-                else if (AuthorSpotlightView == "publications")
-                {
-                    <div class="reports-dw-filter-grid">
-                        <div class="report-select-filter">
-                            <label for="reports-author-publication-source">Base</label>
-                            <select id="reports-author-publication-source"
-                                    class="form-select"
-                                    value="@SelectedPublicationSourceFilter"
-                                    @onchange="OnSelectedPublicationSourceChanged">
-                                <option value="">Todas</option>
-                                @foreach (var item in SelectedAuthorSourceFilterOptions)
-                                {
-                                    <option value="@item">@item</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="report-select-filter">
-                            <label for="reports-author-publication-quartile">Cuartil</label>
-                            <select id="reports-author-publication-quartile"
-                                    class="form-select"
-                                    value="@SelectedPublicationQuartileFilter"
-                                    @onchange="OnSelectedPublicationQuartileChanged">
-                                <option value="">Todos</option>
-                                @foreach (var item in SelectedAuthorQuartileFilterOptions)
-                                {
-                                    <option value="@item">@item</option>
-                                }
-                            </select>
-                        </div>
-                        <div class="report-select-filter">
-                            <label for="reports-author-publication-role">Rol</label>
-                            <select id="reports-author-publication-role"
-                                    class="form-select"
-                                    value="@SelectedPublicationRoleFilter"
-                                    @onchange="OnSelectedPublicationRoleChanged">
-                                <option value="">Todos</option>
-                                <option value="primary">Autor principal</option>
-                                <option value="coauthor">Coautor</option>
-                            </select>
-                        </div>
-                        <div class="report-select-filter">
-                            <label for="reports-author-publication-sort">Orden</label>
-                            <select id="reports-author-publication-sort"
-                                    class="form-select"
-                                    value="@SelectedPublicationSort"
-                                    @onchange="OnSelectedPublicationSortChanged">
-                                <option value="recent">Más recientes</option>
-                                <option value="oldest">Más antiguas</option>
-                                <option value="quartile">Cuartil</option>
-                                <option value="source">Base de datos</option>
-                                <option value="venue">Revista</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="reports-dw-micro-grid">
-                        <article class="reports-dw-micro-card">
-                            <small>Revistas visibles</small>
-                            <strong>@SelectedAuthorDistinctVenues.ToString("N0")</strong>
-                            <span>@SelectedAuthorTopVenue</span>
-                        </article>
-                        <article class="reports-dw-micro-card">
-                            <small>Campos visibles</small>
-                            <strong>@SelectedAuthorDistinctBroadFields.ToString("N0")</strong>
-                            <span>@SelectedAuthorTopBroadField</span>
-                        </article>
-                    </div>
-
-                    @if (SelectedAuthorPublications.Count > 12)
-                    {
-                        <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                            Mostrando 12 de @SelectedAuthorPublications.Count publicaciones @SelectedAuthorPublicationScopeLabel.
-                        </div>
-                    }
-                    else if (HasSelectedPublicationFilters)
-                    {
-                        <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                            Vista filtrada: @SelectedAuthorPublications.Count publicaciones @SelectedAuthorPublicationScopeLabel.
-                        </div>
-                    }
-                    <div class="reports-dw-table-wrap">
-                        <table class="reports-dw-table">
-                            <thead>
-                                <tr>
-                                    <th>Artículo</th>
-                                    <th>Revista</th>
-                                    <th>Base</th>
-                                    <th>Cuartil</th>
-                                    <th class="reports-dw-col--tablet-hide">Rol</th>
-                                    <th class="reports-dw-col--mobile-hide">Fecha</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in SelectedAuthorPublications.Take(12))
-                                {
-                                    <tr>
-                                        <td class="reports-dw-table-title">@item.Title</td>
-                                        <td>@item.VenueName</td>
-                                        <td>@item.IndexingSourceName</td>
-                                        <td><span class="reports-dw-pill">@item.Quartile</span></td>
-                                        <td class="reports-dw-col--tablet-hide">@(item.IsPrimaryAuthor ? "Principal" : "Coautor")</td>
-                                        <td class="reports-dw-col--mobile-hide">@((item.PublishedDate ?? item.CreatedDate)?.ToString("dd/MM/yyyy") ?? "Sin fecha")</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                }
-                else if (AuthorSpotlightView == "timeline")
-                {
-                    <div class="reports-dw-filter-grid">
-                        <div class="report-select-filter">
-                            <label for="reports-author-timeline-range">Ventana temporal</label>
-                            <select id="reports-author-timeline-range"
-                                    class="form-select"
-                                    value="@SelectedTimelineRange"
-                                    @onchange="OnSelectedTimelineRangeChanged">
-                                <option value="12m">Últimos 12 meses</option>
-                                <option value="24m">Últimos 24 meses</option>
-                                <option value="all">Histórico visible</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="reports-dw-micro-grid">
-                        <article class="reports-dw-micro-card">
-                            <small>Inicio visible</small>
-                            <strong>@SelectedAuthorFirstPublicationLabel</strong>
-                            <span>@SelectedAuthorActiveYearsCount.ToString("N0") años con producción</span>
-                        </article>
-                        <article class="reports-dw-micro-card">
-                            <small>Periodo reciente</small>
-                            <strong>@SelectedAuthorRecentArticles.ToString("N0")</strong>
-                            <span>publicaciones en los 24 meses visibles</span>
-                        </article>
-                        <article class="reports-dw-micro-card">
-                            <small>Base dominante reciente</small>
-                            <strong>@SelectedAuthorTopRecentSource</strong>
-                            <span>@SelectedAuthorTopRecentQuartile</span>
-                        </article>
-                    </div>
-
-                    @if (SelectedAuthorYearItems.Count > 0)
-                    {
-                        <div class="reports-dw-bars reports-dw-bars--compact">
-                            @foreach (var item in SelectedAuthorYearItems)
+                            @if (!HasAuthorSearchResults)
                             {
-                                <div class="reports-dw-bar-row">
-                                    <span>@item.Name</span>
-                                    <div class="reports-dw-bar-track">
-                                        <div class="reports-dw-bar-fill reports-dw-bar-fill--gold" style="width:@GetBarWidth(item.TotalArticles, SelectedAuthorMaxYearCount)"></div>
-                                    </div>
-                                    <strong>@item.TotalArticles</strong>
+                                <div class="reports-dw-author-picker-empty">
+                                    No hay autores para la búsqueda actual.
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="reports-dw-author-picker-groups">
+                                    @foreach (var group in AlphabetizedAuthorGroups)
+                                    {
+                                        <section class="reports-dw-author-picker-group">
+                                            <span>@group.Initial</span>
+                                            <div>
+                                                @foreach (var author in group.Authors)
+                                                {
+                                                    <button type="button"
+                                                            class="@GetAuthorPickerItemClass(author)"
+                                                            @onclick="@(() => SelectAuthorFromPicker(author.AuthorKey))">
+                                                        <strong>@author.AuthorName</strong>
+                                                        <small>@author.TotalArticles.ToString("N0") publicaciones · @NormalizeValue(author.Affiliation, "Sin filiación")</small>
+                                                    </button>
+                                                }
+                                            </div>
+                                        </section>
+                                    }
                                 </div>
                             }
                         </div>
-                    }
-
-                    <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                        Ventana activa: @SelectedTimelineRangeLabel.
-                    </div>
-
-                    <div class="reports-dw-table-wrap reports-dw-table-wrap--compact">
-                        <table class="reports-dw-table">
-                            <thead>
-                                <tr>
-                                    <th>Publicación reciente</th>
-                                    <th>Base</th>
-                                    <th>Cuartil</th>
-                                    <th class="reports-dw-col--mobile-hide">Fecha</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in SelectedAuthorRecentPublications)
-                                {
-                                    <tr>
-                                        <td class="reports-dw-table-title">@item.Title</td>
-                                        <td><span class="reports-dw-pill reports-dw-pill--db">@NormalizeValue(item.IndexingSourceName, "Sin base")</span></td>
-                                        <td><span class="reports-dw-pill reports-dw-pill--quartile">@NormalizeValue(item.Quartile, "Sin cuartil")</span></td>
-                                        <td class="reports-dw-col--mobile-hide">@((item.PublishedDate ?? item.CreatedDate)?.ToString("dd/MM/yyyy") ?? "Sin fecha")</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
                     </div>
                 }
-                else
-                {
-                    <div class="reports-dw-filter-grid">
-                        <div class="report-select-filter">
-                            <label for="reports-author-coauthor-sort">Orden de coautorías</label>
-                            <select id="reports-author-coauthor-sort"
-                                    class="form-select"
-                                    value="@SelectedCoauthorSort"
-                                    @onchange="OnSelectedCoauthorSortChanged">
-                                <option value="shared">Más artículos compartidos</option>
-                                <option value="name">Nombre</option>
-                                <option value="affiliation">Filiación</option>
-                            </select>
-                        </div>
+
+                <section class="reports-dw-author-view-panel reports-dw-author-hierarchy-panel">
+                    @{
+                        var hierarchyAuthorNodes = HierarchyAuthorNodes;
+                    }
+                    <div class="reports-dw-author-hierarchy-activebar">
+                        <strong>@AuthorHierarchyResultLabel</strong>
+                        @if (_hierarchyAuthorScope.Equals("visible", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <span><i class="bi bi-person-lines-fill" aria-hidden="true"></i>@AuthorHierarchyScopeLabel</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_hierarchyRoleFilter))
+                        {
+                            <span><i class="bi bi-person-check" aria-hidden="true"></i>@HierarchyRoleLabel</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_hierarchyFacultyFilter))
+                        {
+                            <span><i class="bi bi-building" aria-hidden="true"></i>@HierarchyFacultyLabel</span>
+                        }
+                        <span><i class="reports-dw-author-hierarchy-legend__primary"></i>Principal</span>
+                        <span><i class="reports-dw-author-hierarchy-legend__coauthor"></i>Coautor</span>
                     </div>
 
-                    @if (SelectedCoauthor is not null && SelectedAuthorSharedPublicationItems.Count > 0)
+                    @if (_showHierarchyFilters)
                     {
-                        <div class="reports-dw-micro-grid">
-                            <article class="reports-dw-micro-card">
-                                <small>Publicaciones compartidas</small>
-                                <strong>@SelectedAuthorSharedPublicationItems.Count.ToString("N0")</strong>
-                                <span>@SelectedCoauthor.CoauthorName</span>
-                            </article>
-                            <article class="reports-dw-micro-card">
-                                <small>Base dominante del cruce</small>
-                                <strong>@SelectedSharedTopSource</strong>
-                                <span>@SelectedSharedTopQuartile</span>
-                            </article>
-                            <article class="reports-dw-micro-card">
-                                <small>Ventana visible</small>
-                                <strong>@SelectedSharedFirstPublicationLabel</strong>
-                                <span>hasta @SelectedSharedLastPublicationLabel</span>
-                            </article>
-                        </div>
-
-                        <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                            Publicaciones compartidas visibles entre <strong>@SelectedAuthorDisplayName</strong> y <strong>@SelectedCoauthor.CoauthorName</strong>.
+                        <div class="reports-dw-filter-grid reports-dw-author-local-controls reports-dw-author-hierarchy-controls">
+                            <div class="report-select-filter">
+                                <label for="reports-author-hierarchy-scope">Alcance</label>
+                                <select id="reports-author-hierarchy-scope"
+                                        class="form-select"
+                                        value="@_hierarchyAuthorScope"
+                                        @onchange="OnHierarchyAuthorScopeChanged">
+                                    <option value="selected">Autor seleccionado</option>
+                                    <option value="visible">Autores visibles</option>
+                                </select>
+                            </div>
+                            <div class="report-select-filter">
+                                <label for="reports-author-hierarchy-role">Rol</label>
+                                <select id="reports-author-hierarchy-role"
+                                        class="form-select"
+                                        value="@_hierarchyRoleFilter"
+                                        @onchange="OnHierarchyRoleChanged">
+                                    <option value="">Todos</option>
+                                    <option value="primary">Autor principal</option>
+                                    <option value="coauthor">Coautor</option>
+                                </select>
+                            </div>
+                            <div class="report-select-filter">
+                                <label for="reports-author-hierarchy-faculty">Facultad</label>
+                                <select id="reports-author-hierarchy-faculty"
+                                        class="form-select"
+                                        value="@_hierarchyFacultyFilter"
+                                        @onchange="OnHierarchyFacultyChanged">
+                                    <option value="">Todas</option>
+                                    @foreach (var faculty in HierarchyFacultyOptions)
+                                    {
+                                        <option value="@faculty">@faculty</option>
+                                    }
+                                </select>
+                            </div>
                         </div>
                     }
 
-                    @if (SelectedAuthorCoauthors.Count > 10)
+                    @if (hierarchyAuthorNodes.Count == 0)
                     {
-                        <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                            Mostrando 10 de @SelectedAuthorCoauthors.Count coautores @SelectedAuthorCoauthorScopeLabel.
+                        <div class="reports-dw-author-publication-empty">
+                            <i class="bi bi-diagram-2"></i>
+                            <strong>Sin datos para la jerarquía</strong>
+                            <span>Ajusta el alcance, rol o facultad para revisar publicaciones del autor.</span>
                         </div>
                     }
-                    <div class="reports-dw-table-wrap reports-dw-table-wrap--compact">
-                        <table class="reports-dw-table">
-                            <thead>
-                                <tr>
-                                    <th>Coautor</th>
-                                    <th class="reports-dw-col--tablet-hide">Filiación</th>
-                                    <th>Artículos compartidos</th>
-                                    <th class="reports-dw-col--tablet-hide">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var item in SelectedAuthorCoauthors.Take(10))
-                                {
-                                    <tr>
-                                        <td class="reports-dw-table-title">@item.CoauthorName</td>
-                                        <td class="reports-dw-col--tablet-hide">@item.CoauthorAffiliation</td>
-                                        <td>@item.SharedArticles</td>
-                                        <td class="reports-dw-col--tablet-hide">
-                                            @if (CanFocusCoauthor(item.CoauthorKey))
+                    else
+                    {
+                        <div class="reports-dw-author-hierarchy-list">
+                            @foreach (var authorNode in hierarchyAuthorNodes)
+                            {
+                                <article class="reports-dw-author-hierarchy-author" @key="authorNode.Author.AuthorIdentity">
+                                    <div class="reports-dw-author-hierarchy-author__head">
+                                        <div class="reports-dw-author-hierarchy-donut" style="@GetHierarchyDonutStyle(authorNode)">
+                                            <span>@authorNode.TotalArticles.ToString("N0")</span>
+                                        </div>
+                                        <div>
+                                            <small>Autor</small>
+                                            <strong>@authorNode.Author.AuthorName</strong>
+                                            <span>@NormalizeValue(authorNode.Author.Affiliation, "Sin filiación")</span>
+                                            <em>@authorNode.TopFaculty</em>
+                                        </div>
+                                        <button type="button"
+                                                class="reports-dw-author-hierarchy-focus-button"
+                                                @onclick="@(() => FocusAuthor(authorNode.Author.AuthorKey))">
+                                            <i class="bi bi-bullseye" aria-hidden="true"></i>
+                                            Enfocar
+                                        </button>
+                                    </div>
+
+                                    <div class="reports-dw-author-hierarchy-metrics">
+                                        <span><strong>@authorNode.TotalArticles.ToString("N0")</strong><small>publicaciones</small></span>
+                                        <span><strong>@authorNode.PrimaryArticles.ToString("N0")</strong><small>principal</small></span>
+                                        <span><strong>@authorNode.CoauthorArticles.ToString("N0")</strong><small>coautor</small></span>
+                                    </div>
+
+                                    @if (authorNode.Publications.Count == 0)
+                                    {
+                                        <div class="reports-dw-author-hierarchy-empty">
+                                            Sin publicaciones dentro de los filtros de jerarquía.
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="reports-dw-author-hierarchy-tabs">
+                                            <button type="button"
+                                                    class='@GetHierarchyTabClass(authorNode, "publications")'
+                                                    @onclick='@(() => SetHierarchyAuthorTab(authorNode.Author.AuthorKey, "publications"))'>
+                                                <i class="bi bi-list-ul" aria-hidden="true"></i>
+                                                Publicaciones
+                                            </button>
+                                            <button type="button"
+                                                    class='@GetHierarchyTabClass(authorNode, "summary")'
+                                                    @onclick='@(() => SetHierarchyAuthorTab(authorNode.Author.AuthorKey, "summary"))'>
+                                                <i class="bi bi-pie-chart" aria-hidden="true"></i>
+                                                Resumen
+                                            </button>
+                                        </div>
+
+                                        <div class="reports-dw-author-hierarchy-treehead">
+                                            <div>
+                                                <small>Publicaciones registradas</small>
+                                                <strong>
+                                                    @GetHierarchyTreeSummary(authorNode)
+                                                </strong>
+                                            </div>
+
+                                            @if (authorNode.CanTogglePublicationDetail)
                                             {
                                                 <button type="button"
-                                                        class="reports-dw-link-action"
-                                                        @onclick="@(() => FocusAuthor(item.CoauthorKey))">
-                                                    Enfocar
+                                                        @onclick="@(() => ToggleHierarchyAuthorPublications(authorNode.Author.AuthorKey))">
+                                                    <i class="@GetHierarchyToggleIconClass(authorNode)" aria-hidden="true"></i>
+                                                    @(authorNode.IsExpanded ? "Contraer" : "Ver detalle")
                                                 </button>
                                             }
-                                        </td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
+                                        </div>
 
-                    @if (SelectedCoauthor is not null && SelectedAuthorSharedPublicationItems.Count > 0)
-                    {
-                        <div class="reports-dw-table-wrap reports-dw-table-wrap--compact">
-                            <table class="reports-dw-table">
-                                <thead>
-                                    <tr>
-                                        <th>Artículo compartido</th>
-                                        <th>Base</th>
-                                        <th>Cuartil</th>
-                                        <th class="reports-dw-col--mobile-hide">Fecha</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var item in SelectedAuthorSharedPublicationItems.Take(8))
-                                    {
-                                        <tr>
-                                            <td class="reports-dw-table-title">@item.Title</td>
-                                            <td><span class="reports-dw-pill reports-dw-pill--db">@NormalizeValue(item.IndexingSourceName, "Sin base")</span></td>
-                                            <td><span class="reports-dw-pill reports-dw-pill--quartile">@NormalizeValue(item.Quartile, "Sin cuartil")</span></td>
-                                            <td class="reports-dw-col--mobile-hide">@((item.PublishedDate ?? item.CreatedDate)?.ToString("dd/MM/yyyy") ?? "Sin fecha")</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    }
-                }
-            </article>
-        }
+                                        @if (GetHierarchyAuthorTab(authorNode.Author.AuthorKey) == "summary")
+                                        {
+                                            <div class="reports-dw-author-hierarchy-summary">
+                                                <article>
+                                                    <div class="reports-dw-author-hierarchy-pie" style="@GetHierarchyRolePieStyle(authorNode)">
+                                                        <span>@authorNode.TotalArticles.ToString("N0")</span>
+                                                    </div>
+                                                    <div class="reports-dw-author-hierarchy-pie-copy">
+                                                        <strong>Rol autoral</strong>
+                                                        <span>@authorNode.PrimaryArticles.ToString("N0") principal · @authorNode.CoauthorArticles.ToString("N0") coautoría</span>
+                                                        <div class="reports-dw-author-hierarchy-mini-legend">
+                                                            <i class="reports-dw-author-hierarchy-mini-legend__dark"></i>Principal
+                                                            <i class="reports-dw-author-hierarchy-mini-legend__red"></i>Coautoría
+                                                        </div>
+                                                    </div>
+                                                </article>
 
-        <section class="reports-dw-author-chart-grid">
-            <ReportChartCard Title="Autores con mayor producción"
-                             Description="Ranking autoral del resultado."
-                             HasData="@(Dashboard.Authors.Count > 0)"
-                             EmptyMessage="Sin autores para graficar."
-                             ChartId="chart-author-production"
-                             Height="@AuthorChartHeight"
-                             Option="@AuthorProductionChartOption"
-                             Accent="sage"
-                             Density="primary" />
-
-            <ReportChartCard Title="Filiaciones"
-                             Description="Distribución por filiación."
-                             HasData="@(Dashboard.ArticlesByAffiliation.Count > 0)"
-                             EmptyMessage="Sin filiaciones para graficar."
-                             ChartId="chart-author-affiliations"
-                             Height="320px"
-                             Option="@AffiliationDonutOption"
-                             Accent="green"
-                             Density="compact" />
-
-            <article class="reports-dw-chart-card reports-dw-chart-card--compact reports-dw-chart-card--gold">
-                <ReportCardHeader IconClass="bi bi-compass"
-                                  Title="Lectura global de autores"
-                                  Description="Este bloque resume el universo filtrado; la ficha superior profundiza el autor enfocado." />
-                <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                    Usa la ficha dinámica para revisar trayectoria, rol autoral, publicaciones y coautorías del autor seleccionado sin perder el contexto general de esta sección.
-                </div>
-            </article>
-        </section>
-
-        @if (IsFallbackSummary)
-        {
-            <section class="reports-dw-analytics-grid reports-dw-author-grid">
-                <article class="reports-dw-chart-card reports-dw-chart-card--wide reports-dw-chart-card--ink">
-                    <ReportCardHeader IconClass="bi bi-info-circle"
-                                      Title="Detalle autoral temporalmente resumido"
-                                      Description="Vista de continuidad mientras se recupera el detalle." />
-                    <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                        Puedes seguir consultando totales, trazabilidad, producción por autor, cuartil y comportamiento temporal. Las tablas detalladas de publicaciones y coautorías volverán a mostrarse cuando el origen autoral responda completamente.
-                    </div>
-                </article>
-
-                <article class="reports-dw-chart-card reports-dw-chart-card--blue">
-                    <ReportCardHeader IconClass="bi bi-calendar3"
-                                      Title="Producción por mes"
-                                      Description="Artículos por periodo." />
-                    <ReportBarList Items="@MonthBarItems"
-                                   FillVariant="gold"
-                                   EmptyMessage="Sin distribución mensual para autores." />
-                </article>
-
-                <article class="reports-dw-chart-card reports-dw-chart-card--sage">
-                    <ReportCardHeader IconClass="bi bi-person-lines-fill"
-                                      Title="Autores con mayor producción"
-                                      Description="Conteo por autor." />
-                    <ReportBarList Items="@AuthorBarItems" EmptyMessage="Sin autores para el filtro actual." />
-                </article>
-
-                <article class="reports-dw-chart-card reports-dw-chart-card--gold">
-                    <ReportCardHeader IconClass="bi bi-stars"
-                                      Title="Cuartiles"
-                                      Description="Publicaciones por cuartil." />
-                    <ReportBarList Items="@QuartileBarItems" FillVariant="sage" EmptyMessage="Sin cuartiles registrados." />
-                </article>
-            </section>
-        }
-        else
-        {
-        <section class="reports-dw-analytics-grid reports-dw-author-grid">
-            <article class="reports-dw-chart-card reports-dw-chart-card--gold">
-                <ReportCardHeader IconClass="bi bi-pie-chart"
-                                  Title="Autoría principal y coautoría"
-                                  Description="Participación docente visible." />
-                <div class="reports-dw-donut-layout">
-                    <div class="reports-dw-donut" style="@AuthorRoleDonutStyle">
-                        <span>@PrimaryAuthorPercent%</span>
-                    </div>
-                    <div class="reports-dw-donut-legend">
-                        <strong>@Dashboard.Kpis.PrimaryAuthorLinks.ToString("N0") autorías principales</strong>
-                        <span>@Dashboard.Kpis.CoauthorLinks.ToString("N0") coautorías registradas</span>
-                        <span>@Dashboard.Kpis.TotalAuthorArticleLinks.ToString("N0") participaciones totales</span>
-                    </div>
-                </div>
-            </article>
-
-            <article class="reports-dw-chart-card reports-dw-chart-card--blue">
-                <ReportCardHeader IconClass="bi bi-calendar3"
-                                  Title="Producción por mes"
-                                  Description="Artículos por periodo." />
-                <ReportBarList Items="@MonthBarItems"
-                               FillVariant="gold"
-                               EmptyMessage="Sin distribución mensual para autores." />
-            </article>
-
-            <article class="reports-dw-chart-card reports-dw-chart-card--sage">
-                <ReportCardHeader IconClass="bi bi-person-lines-fill"
-                                  Title="Autores con mayor producción"
-                                  Description="Conteo por autor." />
-                <ReportBarList Items="@AuthorBarItems" EmptyMessage="Sin autores para el filtro actual." />
-            </article>
-
-            <article class="reports-dw-chart-card reports-dw-chart-card--green">
-                <ReportCardHeader IconClass="bi bi-building"
-                                  Title="Filiaciones"
-                                  Description="Producción por filiación." />
-                <ReportBarList Items="@AffiliationBarItems" FillVariant="sage" EmptyMessage="Sin filiaciones registradas." />
-            </article>
-
-            <article class="reports-dw-chart-card reports-dw-chart-card--gold">
-                <ReportCardHeader IconClass="bi bi-stars"
-                                  Title="Cuartiles"
-                                  Description="Publicaciones por cuartil." />
-                <ReportBarList Items="@QuartileBarItems" FillVariant="sage" EmptyMessage="Sin cuartiles registrados." />
-            </article>
-
-            <article class="reports-dw-chart-card reports-dw-chart-card--wide reports-dw-chart-card--ink">
-                <ReportCardHeader IconClass="bi bi-table"
-                                  Title="Detalle analítico"
-                                  Description="Autores, publicaciones y coautorías." />
-                <div class="reports-dw-subtabs">
-                    <button type="button"
-                            class="@(AuthorDetailView == "authors" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
-                            @onclick="@(() => AuthorDetailView = "authors")">
-                        Autores
-                    </button>
-                    <button type="button"
-                            class="@(AuthorDetailView == "publications" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
-                            @onclick="@(() => AuthorDetailView = "publications")">
-                        Publicaciones
-                    </button>
-                    <button type="button"
-                            class="@(AuthorDetailView == "coauthors" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
-                            @onclick="@(() => AuthorDetailView = "coauthors")">
-                        Coautorías
-                    </button>
-                </div>
-
-                @if (AuthorDetailView == "authors")
-                {
-                    @if (Dashboard.Authors.Count > 25)
-                    {
-                        <div class="reports-dw-inline-note">
-                            Mostrando 25 de @Dashboard.Authors.Count autores del resultado actual.
-                        </div>
-                    }
-                    <div class="reports-dw-table-wrap reports-dw-table-wrap--compact">
-                        @if (Dashboard.Authors.Count == 0)
-                        {
-                            <ReportEmptyState IconClass="bi bi-person-x"
-                                              Title="Sin autores para mostrar"
-                                              Message="No existen autores que coincidan con los filtros aplicados." />
-                        }
-                        else
-                        {
-                            <table class="reports-dw-table">
-                                <thead>
-                                    <tr>
-                                        <th>Autor</th>
-                                        <th class="reports-dw-col--tablet-hide">Identificación</th>
-                                        <th>Filiación</th>
-                                        <th>Artículos</th>
-                                        <th>Principal</th>
-                                        <th class="reports-dw-col--tablet-hide">Coautoría</th>
-                                        <th class="reports-dw-col--mobile-hide">ORCID</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var item in Dashboard.Authors.Take(25))
-                                    {
-                                        <tr>
-                                            <td class="reports-dw-table-title">@item.AuthorName</td>
-                                            <td class="reports-dw-col--tablet-hide">@(string.IsNullOrWhiteSpace(item.Identification) ? "Sin identificación" : item.Identification)</td>
-                                            <td>@item.Affiliation</td>
-                                            <td>@item.TotalArticles</td>
-                                            <td>@item.PrimaryAuthorArticles</td>
-                                            <td class="reports-dw-col--tablet-hide">@item.CoauthorArticles</td>
-                                            <td class="reports-dw-col--mobile-hide">@(string.IsNullOrWhiteSpace(item.Orcid) ? "Sin ORCID" : item.Orcid)</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        }
-                    </div>
-                }
-                else if (AuthorDetailView == "publications")
-                {
-                    @if (Dashboard.Publications.Count > 40)
-                    {
-                        <div class="reports-dw-inline-note">
-                            Mostrando 40 de @Dashboard.Publications.Count publicaciones del resultado actual.
-                        </div>
-                    }
-                    <div class="reports-dw-table-wrap">
-                        @if (Dashboard.Publications.Count == 0)
-                        {
-                            <ReportEmptyState IconClass="bi bi-journal-x"
-                                              Title="Sin publicaciones vinculadas"
-                                              Message="No existen artículos de autores para los filtros seleccionados." />
-                        }
-                        else
-                        {
-                            <table class="reports-dw-table">
-                                <thead>
-                                    <tr>
-                                        <th>Autor</th>
-                                        <th class="reports-dw-col--mobile-hide">Identificación</th>
-                                        <th>Artículo</th>
-                                        <th>Revista</th>
-                                        <th>Base de datos</th>
-                                        <th>Cuartil</th>
-                                        <th class="reports-dw-col--mobile-hide">Enlace revista</th>
-                                        <th class="reports-dw-col--tablet-hide">ISSN</th>
-                                        <th class="reports-dw-col--tablet-hide">DOI</th>
-                                        <th class="reports-dw-col--tablet-hide">Filiación</th>
-                                        <th class="reports-dw-col--mobile-hide">Fecha</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var item in Dashboard.Publications.Take(40))
-                                    {
-                                        <tr>
-                                            <td>@item.AuthorName</td>
-                                            <td class="reports-dw-col--mobile-hide">@(string.IsNullOrWhiteSpace(item.Identification) ? "Sin identificación" : item.Identification)</td>
-                                            <td class="reports-dw-table-title">@item.Title</td>
-                                            <td>@item.VenueName</td>
-                                            <td>@item.IndexingSourceName</td>
-                                            <td><span class="reports-dw-pill">@item.Quartile</span></td>
-                                            <td class="reports-dw-col--mobile-hide">
-                                                @if (string.IsNullOrWhiteSpace(item.JournalUrl))
+                                                <article>
+                                                    <div class="reports-dw-author-hierarchy-pie" style="@GetHierarchySegmentPieStyle(authorNode.FacultySegments)">
+                                                        <span>@authorNode.DetailPublicationCount.ToString("N0")</span>
+                                                    </div>
+                                                    <div class="reports-dw-author-hierarchy-pie-copy">
+                                                        <strong>Facultades</strong>
+                                                        @foreach (var segment in authorNode.FacultySegments)
+                                                        {
+                                                            <span><i style="background:@segment.Color"></i>@segment.Name · @segment.Count.ToString("N0")</span>
+                                                        }
+                                                    </div>
+                                                </article>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="@GetHierarchyPublicationsClass(authorNode)">
+                                                @foreach (var publication in authorNode.Publications)
                                                 {
-                                                    <span>Sin enlace</span>
+                                                    <div class="reports-dw-author-hierarchy-publication" @key="GetPublicationIdentity(publication.Publication)">
+                                                        <div class="@GetHierarchyMarkerClass(publication.Publication)"></div>
+                                                        <div class="@GetHierarchyPublicationBodyClass(authorNode)">
+                                                            <div class="reports-dw-author-hierarchy-publication__title">
+                                                                <strong>@publication.Publication.Title</strong>
+                                                                <span>
+                                                                    <i class="bi bi-calendar3" aria-hidden="true"></i>
+                                                                    @((publication.Publication.PublishedDate ?? publication.Publication.CreatedDate)?.ToString("dd/MM/yyyy") ?? "Sin fecha")
+                                                                </span>
+                                                            </div>
+                                                            <div class="reports-dw-author-hierarchy-publication__compact">
+                                                                <div class="reports-dw-author-hierarchy-publication__meta">
+                                                                    <span class="@GetHierarchyRolePillClass(publication.Publication)">@(publication.Publication.IsPrimaryAuthor ? "Principal" : "Coautor")</span>
+                                                                    <span>@NormalizeValue(publication.Publication.Faculty, "Sin facultad")</span>
+                                                                    <span>@NormalizeValue(publication.Publication.IndexingSourceName, "Sin base")</span>
+                                                                    @if (authorNode.IsExpanded)
+                                                                    {
+                                                                        <span>@NormalizeValue(publication.Publication.Quartile, "Sin cuartil")</span>
+                                                                    }
+                                                                </div>
+                                                                @if (authorNode.IsExpanded)
+                                                                {
+                                                                    <div class="reports-dw-author-hierarchy-coauthors">
+                                                                        @if (publication.Coauthors.Count == 0)
+                                                                        {
+                                                                            <span>Sin coautores</span>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            @foreach (var coauthor in publication.Coauthors.Take(VisibleHierarchyCoauthors))
+                                                                            {
+                                                                                <button type="button"
+                                                                                        title="Enfocar coautor"
+                                                                                        @onclick="@(() => FocusAuthor(coauthor.AuthorKey))"
+                                                                                        disabled="@(!CanFocusCoauthor(coauthor.AuthorKey))">
+                                                                                    <i class="bi bi-person" aria-hidden="true"></i>
+                                                                                    @coauthor.AuthorName
+                                                                                </button>
+                                                                            }
+                                                                            @if (publication.Coauthors.Count > VisibleHierarchyCoauthors)
+                                                                            {
+                                                                                <span>+@(publication.Coauthors.Count - VisibleHierarchyCoauthors)</span>
+                                                                            }
+                                                                        }
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 }
-                                                else
-                                                {
-                                                    <a href="@item.JournalUrl" target="_blank" rel="noopener noreferrer">Abrir revista</a>
-                                                }
-                                            </td>
-                                            <td class="reports-dw-col--tablet-hide">@(string.IsNullOrWhiteSpace(item.Issn) ? "Sin ISSN" : item.Issn)</td>
-                                            <td class="reports-dw-col--tablet-hide">@(string.IsNullOrWhiteSpace(item.Doi) ? "Sin DOI" : item.Doi)</td>
-                                            <td class="reports-dw-col--tablet-hide">@item.Affiliation</td>
-                                            <td class="reports-dw-col--mobile-hide">@((item.PublishedDate ?? item.CreatedDate)?.ToString("dd/MM/yyyy") ?? "Sin fecha")</td>
-                                        </tr>
+                                            </div>
+                                        }
+
+                                        @if (authorNode.HasOfficialTotalGap)
+                                        {
+                                            <div class="reports-dw-inline-note reports-dw-inline-note--soft">
+                                                Total oficial: @authorNode.TotalArticles.ToString("N0"). Detalle disponible en la jerarquía: @authorNode.DetailPublicationCount.ToString("N0").
+                                            </div>
+                                        }
                                     }
-                                </tbody>
-                            </table>
-                        }
-                    </div>
-                }
-                else
-                {
-                    @if (Dashboard.Coauthors.Count > 20)
-                    {
-                        <div class="reports-dw-inline-note">
-                            Mostrando 20 de @Dashboard.Coauthors.Count relaciones de coautoría del resultado actual.
+                                </article>
+                            }
                         </div>
                     }
-                    <div class="reports-dw-table-wrap reports-dw-table-wrap--compact">
-                        @if (Dashboard.Coauthors.Count == 0)
-                        {
-                            <ReportEmptyState IconClass="bi bi-diagram-2"
-                                              Title="Sin coautorías frecuentes"
-                                              Message="No existen relaciones de coautoría para el filtro aplicado." />
-                        }
-                        else
-                        {
-                            <table class="reports-dw-table">
-                                <thead>
-                                    <tr>
-                                        <th>Autor</th>
-                                        <th>Coautor</th>
-                                        <th>Artículos</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach (var item in Dashboard.Coauthors.Take(20))
-                                    {
-                                        <tr>
-                                            <td>@item.AuthorName</td>
-                                            <td>@item.CoauthorName</td>
-                                            <td>@item.SharedArticles</td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        }
-                    </div>
-                }
+                </section>
             </article>
-        </section>
         }
     }
 </section>
@@ -819,16 +360,62 @@
     [Parameter] public bool IsBusy { get; set; }
     [Parameter] public bool IsFallbackSummary { get; set; }
     [Parameter] public string ScopeLabel { get; set; } = string.Empty;
-    private string AuthorDetailView { get; set; } = "authors";
-    private string AuthorSpotlightView { get; set; } = "summary";
     private int? _selectedAuthorKey;
     private int? _selectedCoauthorKey;
+    private string _authorSearchTerm = string.Empty;
     private string? _selectedPublicationSource;
     private string? _selectedPublicationQuartile;
     private string? _selectedPublicationRole;
     private string _selectedPublicationSort = "recent";
     private string _selectedCoauthorSort = "shared";
     private string _selectedTimelineRange = "24m";
+    private bool _showHierarchyFilters;
+    private bool _showAuthorPicker;
+    private string _hierarchyAuthorScope = "selected";
+    private string _hierarchyRoleFilter = string.Empty;
+    private string _hierarchyFacultyFilter = string.Empty;
+    private AuthorReportingDashboardDto? _coauthorLookupDashboard;
+    private Dictionary<string, IReadOnlyList<HierarchyCoauthorNode>>? _publicationCoauthorsByIdentity;
+    private Dictionary<int, string> _hierarchyAuthorTabs = [];
+
+    protected override void OnParametersSet()
+    {
+        if (!ReferenceEquals(_coauthorLookupDashboard, Dashboard))
+        {
+            _coauthorLookupDashboard = Dashboard;
+            _publicationCoauthorsByIdentity = null;
+        }
+
+        if (Dashboard?.Authors.Count > 0)
+        {
+            var hasSelectedAuthor = _selectedAuthorKey.HasValue
+                && Dashboard.Authors.Any(x => x.AuthorKey == _selectedAuthorKey.Value);
+
+            if (!hasSelectedAuthor)
+            {
+                _selectedAuthorKey = Dashboard.Authors
+                    .OrderByDescending(x => x.TotalArticles)
+                    .ThenBy(x => x.AuthorName)
+                    .First()
+                    .AuthorKey;
+
+                _selectedCoauthorKey = null;
+                ClearPublicationFilters();
+            }
+
+            if (_selectedCoauthorKey.HasValue
+                && !Dashboard.Coauthors.Any(x => x.AuthorKey == SelectedAuthorKey && x.CoauthorKey == _selectedCoauthorKey.Value))
+            {
+                _selectedCoauthorKey = null;
+            }
+
+            return;
+        }
+
+        _selectedAuthorKey = null;
+        _selectedCoauthorKey = null;
+        ClearPublicationFilters();
+    }
 
     private int SelectedAuthorKey
     {
@@ -852,13 +439,115 @@
         Dashboard?.Authors.FirstOrDefault(x => x.AuthorKey == SelectedAuthorKey)
         ?? Dashboard?.Authors.OrderByDescending(x => x.TotalArticles).ThenBy(x => x.AuthorName).FirstOrDefault();
 
+    private string AuthorSearchTerm => _authorSearchTerm;
+
+    private IReadOnlyList<AuthorReportingSummaryDto> OrderedAuthorOptions =>
+        Dashboard?.Authors
+            .OrderByDescending(x => x.TotalArticles)
+            .ThenBy(x => x.AuthorName)
+            .ToList() ?? [];
+
+    private IReadOnlyList<AuthorReportingSummaryDto> FilteredAuthorOptions
+    {
+        get
+        {
+            var authors = OrderedAuthorOptions;
+            if (string.IsNullOrWhiteSpace(_authorSearchTerm))
+            {
+                return authors;
+            }
+
+            var term = _authorSearchTerm.Trim();
+            return authors
+                .Where(x => MatchesAuthorSearch(x, term))
+                .ToList();
+        }
+    }
+
+    private IReadOnlyList<AuthorReportingSummaryDto> AuthorSelectOptions
+    {
+        get
+        {
+            var filteredAuthors = FilteredAuthorOptions;
+            if (SelectedAuthor is null || filteredAuthors.Any(x => x.AuthorKey == SelectedAuthor.AuthorKey))
+            {
+                return filteredAuthors;
+            }
+
+            return new[] { SelectedAuthor }
+                .Concat(filteredAuthors)
+                .ToList();
+        }
+    }
+
+    private bool HasAuthorSearchResults => FilteredAuthorOptions.Count > 0;
+
+    private IReadOnlyList<AuthorAlphabetGroup> AlphabetizedAuthorGroups =>
+        FilteredAuthorOptions
+            .OrderBy(x => x.AuthorName)
+            .GroupBy(GetAuthorInitial)
+            .Select(g => new AuthorAlphabetGroup(g.Key, g.ToList()))
+            .OrderBy(x => x.Initial)
+            .ToList();
+
+    private string AuthorSearchResultLabel =>
+        string.IsNullOrWhiteSpace(_authorSearchTerm)
+            ? $"{OrderedAuthorOptions.Count:N0} autores disponibles"
+            : $"{FilteredAuthorOptions.Count:N0} coincidencias de {OrderedAuthorOptions.Count:N0} autores";
+
+    private IReadOnlyList<string> HierarchyFacultyOptions =>
+        Dashboard?.Publications
+            .Select(x => NormalizeValue(x.Faculty, string.Empty))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList() ?? [];
+
+    private IReadOnlyList<HierarchyAuthorNode> HierarchyAuthorNodes =>
+        GetHierarchyAuthors()
+            .Select(BuildHierarchyAuthorNode)
+            .Where(x => x.TotalArticles > 0 || _hierarchyAuthorScope.Equals("selected", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+    private string AuthorHierarchyScopeLabel =>
+        _hierarchyAuthorScope.Equals("visible", StringComparison.OrdinalIgnoreCase)
+            ? "Autores visibles por búsqueda"
+            : "Autor seleccionado";
+
+    private string AuthorHierarchyResultLabel =>
+        _hierarchyAuthorScope.Equals("visible", StringComparison.OrdinalIgnoreCase)
+            ? $"{Math.Min(FilteredAuthorOptions.Count, VisibleHierarchyAuthors):N0} de {FilteredAuthorOptions.Count:N0} autores visibles"
+            : $"{SelectedAuthorDisplayName} · {SelectedAuthorTotalArticles:N0} {HierarchyPublicationCountLabel}";
+
+    private string HierarchyRoleLabel =>
+        _hierarchyRoleFilter switch
+        {
+            "primary" => "Autor principal",
+            "coauthor" => "Coautor",
+            _ => "Todos los roles"
+        };
+
+    private string HierarchyFacultyLabel =>
+        string.IsNullOrWhiteSpace(_hierarchyFacultyFilter)
+            ? "Todas las facultades"
+            : _hierarchyFacultyFilter;
+
+    private bool HasHierarchyPublicationFilters =>
+        !string.IsNullOrWhiteSpace(_hierarchyRoleFilter)
+        || !string.IsNullOrWhiteSpace(_hierarchyFacultyFilter);
+
+    private string HierarchyPublicationCountLabel =>
+        HasHierarchyPublicationFilters ? "publicaciones filtradas" : "publicaciones";
+
+    private HashSet<int> _expandedHierarchyAuthorKeys = [];
+
     private IReadOnlyList<AuthorPublicationDto> RawSelectedAuthorPublications
     {
         get
         {
             var publications = DeduplicateAuthorPublications(
                 Dashboard?.Publications
-                    .Where(x => x.AuthorKey == SelectedAuthorKey)
+                    .Where(MatchesSelectedAuthorPublication)
                     .ToList() ?? []);
 
             if (SelectedCoauthor is null)
@@ -870,14 +559,14 @@
             }
 
             var selectedCoauthorIdentity = NormalizeValue(SelectedCoauthor.CoauthorName, "Sin coautor");
-            var sharedArticleIds = Dashboard?.Publications
+            var sharedArticleKeys = Dashboard?.Publications
                 .Where(x => NormalizeValue(x.AuthorName, "Sin autor")
                     .Equals(selectedCoauthorIdentity, StringComparison.OrdinalIgnoreCase))
-                .Select(x => x.ArticleId)
-                .ToHashSet() ?? new HashSet<int>();
+                .Select(GetPublicationIdentity)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase) ?? [];
 
             return publications
-                .Where(x => sharedArticleIds.Contains(x.ArticleId))
+                .Where(x => sharedArticleKeys.Contains(GetPublicationIdentity(x)))
                 .OrderByDescending(x => x.PublishedDate ?? x.CreatedDate)
                 .ThenBy(x => x.Title)
                 .ToList();
@@ -910,7 +599,7 @@
         SelectedAuthorPublications
             .Where(x => !string.IsNullOrWhiteSpace(x.IndexingSourceName))
             .GroupBy(x => x.IndexingSourceName.Trim(), StringComparer.OrdinalIgnoreCase)
-            .Select(g => new ReportingSummaryItemDto { Name = g.Key, TotalArticles = g.Select(x => x.ArticleId).Distinct().Count() })
+            .Select(g => new ReportingSummaryItemDto { Name = g.Key, TotalArticles = g.Select(GetPublicationIdentity).Distinct(StringComparer.OrdinalIgnoreCase).Count() })
             .OrderByDescending(x => x.TotalArticles)
             .ThenBy(x => x.Name)
             .Take(6)
@@ -1042,6 +731,47 @@
         || !string.IsNullOrWhiteSpace(_selectedPublicationQuartile)
         || !string.IsNullOrWhiteSpace(_selectedPublicationRole);
 
+    private string SelectedAuthorPublicationVisibilityLabel =>
+        HasSelectedPublicationFilters
+            ? $"{RawSelectedAuthorPublications.Count:N0} registros antes de filtros"
+            : "sin filtros locales aplicados";
+
+    private string SelectedPublicationSourceLabel =>
+        string.IsNullOrWhiteSpace(_selectedPublicationSource)
+            ? "Todas las bases"
+            : _selectedPublicationSource!;
+
+    private string SelectedPublicationQuartileLabel =>
+        string.IsNullOrWhiteSpace(_selectedPublicationQuartile)
+            ? "Todos los cuartiles"
+            : _selectedPublicationQuartile!;
+
+    private string SelectedPublicationRoleLabel =>
+        _selectedPublicationRole switch
+        {
+            "primary" => "Autor principal",
+            "coauthor" => "Coautor",
+            _ => "Todos los roles"
+        };
+
+    private string SelectedPublicationSortLabel =>
+        _selectedPublicationSort switch
+        {
+            "oldest" => "Orden: más antiguas",
+            "quartile" => "Orden: cuartil",
+            "source" => "Orden: base de datos",
+            "venue" => "Orden: revista",
+            _ => "Orden: más recientes"
+        };
+
+    private string SelectedCoauthorSortLabel =>
+        _selectedCoauthorSort switch
+        {
+            "name" => "Orden: nombre",
+            "affiliation" => "Orden: filiación",
+            _ => "Orden: más colaboración"
+        };
+
     private int SelectedAuthorPrimaryPercent =>
         SelectedAuthorTotalArticles <= 0
             ? 0
@@ -1147,6 +877,14 @@
             _ => "últimos 24 meses visibles"
         };
 
+    private string SelectedTimelinePublicationCountLabel =>
+        _selectedTimelineRange switch
+        {
+            "12m" => "publicaciones en los últimos 12 meses",
+            "all" => "publicaciones en el histórico visible",
+            _ => "publicaciones en los últimos 24 meses"
+        };
+
     private string? SelectedAuthorTopCoauthorsLabel =>
         SelectedAuthorCoauthors.Count == 0
             ? null
@@ -1154,6 +892,20 @@
                 SelectedAuthorCoauthors
                     .Take(3)
                     .Select(x => $"{x.CoauthorName} ({x.SharedArticles})"));
+
+    private AuthorCoauthorDto? SelectedAuthorMainCoauthor =>
+        SelectedAuthorCoauthors
+            .OrderByDescending(x => x.SharedArticles)
+            .ThenBy(x => x.CoauthorName)
+            .FirstOrDefault();
+
+    private string SelectedAuthorMainCoauthorName =>
+        SelectedAuthorMainCoauthor?.CoauthorName ?? "Sin coautor";
+
+    private string SelectedAuthorMainCoauthorSharedLabel =>
+        SelectedAuthorMainCoauthor is null
+            ? "sin artículos compartidos"
+            : $"{SelectedAuthorMainCoauthor.SharedArticles:N0} artículos compartidos";
 
     private IReadOnlyList<AuthorPublicationDto> SelectedAuthorSharedPublicationItems =>
         SelectedCoauthor is null
@@ -1192,34 +944,41 @@
         SelectedCoauthor is not null && CanFocusCoauthor(SelectedCoauthor.CoauthorKey);
 
     private bool HasChartSummaries =>
-        (Dashboard?.Authors.Count ?? 0) > 12
-        || (Dashboard?.ArticlesByAffiliation.Count ?? 0) > 12
-        || (Dashboard?.ArticlesByIndexingSource.Count ?? 0) > 12
-        || (Dashboard?.ArticlesByQuartile.Count ?? 0) > 12
+        (Dashboard?.Authors.Count ?? 0) > VisibleAuthorChartItems
+        || (Dashboard?.ArticlesByAffiliation.Count ?? 0) > VisibleAuthorChartItems
+        || (Dashboard?.ArticlesByIndexingSource.Count ?? 0) > VisibleAuthorChartItems
+        || (Dashboard?.ArticlesByQuartile.Count ?? 0) > VisibleAuthorChartItems
         || (Dashboard?.ArticlesByMonth.Count ?? 0) > 12;
 
+    private const int VisibleAuthorChartItems = 20;
+    private const int VisibleAuthorPublicationRows = 50;
+    private const int VisibleAuthorCoauthorRows = 12;
+    private const int VisibleHierarchyAuthors = 8;
+    private const int VisibleHierarchyPublicationsPerAuthor = 1;
+    private const int VisibleHierarchyCoauthors = 3;
+
     private IEnumerable<ReportBarItem> AuthorBarItems =>
-        Dashboard?.Authors.Take(12).Select(x => new ReportBarItem(x.AuthorName, x.TotalArticles, x.Affiliation)) ?? [];
+        Dashboard?.Authors.Take(VisibleAuthorChartItems).Select(x => new ReportBarItem(x.AuthorName, x.TotalArticles, x.Affiliation)) ?? [];
 
     private IEnumerable<ReportBarItem> AffiliationBarItems =>
-        Dashboard?.ArticlesByAffiliation.Take(12).Select(ToBarItem) ?? [];
+        Dashboard?.ArticlesByAffiliation.Take(VisibleAuthorChartItems).Select(ToBarItem) ?? [];
 
     private IEnumerable<ReportBarItem> IndexingBarItems =>
-        Dashboard?.ArticlesByIndexingSource.Take(12).Select(ToBarItem) ?? [];
+        Dashboard?.ArticlesByIndexingSource.Take(VisibleAuthorChartItems).Select(ToBarItem) ?? [];
 
     private IEnumerable<ReportBarItem> QuartileBarItems =>
-        Dashboard?.ArticlesByQuartile.Take(12).Select(ToBarItem) ?? [];
+        Dashboard?.ArticlesByQuartile.Take(VisibleAuthorChartItems).Select(ToBarItem) ?? [];
 
     private IEnumerable<ReportBarItem> MonthBarItems =>
         Dashboard?.ArticlesByMonth.TakeLast(12).Select(ToBarItem) ?? [];
 
-    private string AuthorChartHeight => ReportChartOptionsFactory.GetChartHeight(Dashboard?.Authors.Count ?? 0);
+    private string AuthorChartHeight => ReportChartOptionsFactory.GetChartHeight(Math.Min(Dashboard?.Authors.Count ?? 0, VisibleAuthorChartItems));
 
     private string MonthChartHeight => ReportChartOptionsFactory.GetChartHeight(Dashboard?.ArticlesByMonth.Count ?? 0);
 
     private object? AuthorProductionChartOption => ReportChartOptionsFactory.BuildHorizontalBar(
-        Dashboard?.Authors.Take(12).Select(x => Shorten(x.AuthorName, 28)).ToArray(),
-        Dashboard?.Authors.Take(12).Select(x => x.TotalArticles).ToArray(),
+        Dashboard?.Authors.Take(VisibleAuthorChartItems).Select(x => Shorten(x.AuthorName, 34)).ToArray(),
+        Dashboard?.Authors.Take(VisibleAuthorChartItems).Select(x => x.TotalArticles).ToArray(),
         "#2F5249");
 
     private object? AffiliationDonutOption => ReportChartOptionsFactory.BuildSummaryDonut(
@@ -1249,12 +1008,34 @@
     {
         if (int.TryParse(args.Value?.ToString(), out var selected))
         {
-            _selectedAuthorKey = selected;
+            SelectAuthor(selected, expand: false);
         }
+    }
 
-        _selectedCoauthorKey = null;
-        ClearPublicationFilters();
-        AuthorSpotlightView = "summary";
+    private void OnAuthorSearchChanged(ChangeEventArgs args)
+    {
+        _authorSearchTerm = args.Value?.ToString() ?? string.Empty;
+    }
+
+    private void ClearAuthorSearch()
+    {
+        _authorSearchTerm = string.Empty;
+    }
+
+    private void OpenAuthorPicker()
+    {
+        _showAuthorPicker = true;
+    }
+
+    private void CloseAuthorPicker()
+    {
+        _showAuthorPicker = false;
+    }
+
+    private void SelectAuthorFromPicker(int authorKey)
+    {
+        SelectAuthor(authorKey, expand: false);
+        _showAuthorPicker = false;
     }
 
     private void OnSelectedCoauthorChanged(ChangeEventArgs args)
@@ -1306,6 +1087,31 @@
         _selectedTimelineRange = string.IsNullOrWhiteSpace(raw) ? "24m" : raw.Trim();
     }
 
+    private void OnHierarchyAuthorScopeChanged(ChangeEventArgs args)
+    {
+        var raw = args.Value?.ToString();
+        _hierarchyAuthorScope = string.IsNullOrWhiteSpace(raw) ? "selected" : raw.Trim();
+    }
+
+    private void OnHierarchyRoleChanged(ChangeEventArgs args)
+    {
+        var raw = args.Value?.ToString();
+        _hierarchyRoleFilter = string.IsNullOrWhiteSpace(raw) ? string.Empty : raw.Trim();
+        _expandedHierarchyAuthorKeys.Clear();
+    }
+
+    private void OnHierarchyFacultyChanged(ChangeEventArgs args)
+    {
+        var raw = args.Value?.ToString();
+        _hierarchyFacultyFilter = string.IsNullOrWhiteSpace(raw) ? string.Empty : raw.Trim();
+        _expandedHierarchyAuthorKeys.Clear();
+    }
+
+    private void ToggleHierarchyFilters()
+    {
+        _showHierarchyFilters = !_showHierarchyFilters;
+    }
+
     private void ClearPublicationFilters()
     {
         _selectedPublicationSource = null;
@@ -1316,6 +1122,14 @@
     private void ClearSelectedCoauthor()
     {
         _selectedCoauthorKey = null;
+    }
+
+    private void SelectCoauthor(int coauthorKey)
+    {
+        if (SelectedAuthorCoauthors.Any(x => x.CoauthorKey == coauthorKey))
+        {
+            _selectedCoauthorKey = coauthorKey;
+        }
     }
 
     private void FocusSelectedCoauthorAsAuthor()
@@ -1337,9 +1151,40 @@
         }
 
         _selectedAuthorKey = authorKey;
+        SelectAuthor(authorKey, expand: true);
+    }
+
+    private void SelectAuthor(int authorKey, bool expand)
+    {
+        _selectedAuthorKey = authorKey;
         _selectedCoauthorKey = null;
+        _hierarchyAuthorScope = "selected";
+        _expandedHierarchyAuthorKeys.Clear();
+        if (expand)
+        {
+            _expandedHierarchyAuthorKeys.Add(authorKey);
+        }
+
         ClearPublicationFilters();
-        AuthorSpotlightView = "summary";
+    }
+
+    private bool IsHierarchyAuthorExpanded(int authorKey) =>
+        _expandedHierarchyAuthorKeys.Contains(authorKey);
+
+    private void ToggleHierarchyAuthorPublications(int authorKey)
+    {
+        if (!_expandedHierarchyAuthorKeys.Add(authorKey))
+        {
+            _expandedHierarchyAuthorKeys.Remove(authorKey);
+        }
+    }
+
+    private string GetHierarchyAuthorTab(int authorKey) =>
+        _hierarchyAuthorTabs.TryGetValue(authorKey, out var tab) ? tab : "publications";
+
+    private void SetHierarchyAuthorTab(int authorKey, string tab)
+    {
+        _hierarchyAuthorTabs[authorKey] = tab;
     }
 
     private static ReportBarItem ToBarItem(ReportingSummaryItemDto item)
@@ -1348,7 +1193,7 @@
     private static IReadOnlyList<AuthorPublicationDto> DeduplicateAuthorPublications(IEnumerable<AuthorPublicationDto> publications)
     {
         return publications
-            .GroupBy(x => x.ArticleId)
+            .GroupBy(GetPublicationIdentity, StringComparer.OrdinalIgnoreCase)
             .Select(g => g
                 .OrderByDescending(x => x.IsPrimaryAuthor)
                 .ThenByDescending(x => x.PublishedDate ?? x.CreatedDate)
@@ -1398,6 +1243,229 @@
                 .ThenBy(x => x.CoauthorName)
         };
     }
+
+    private IEnumerable<AuthorReportingSummaryDto> GetHierarchyAuthors()
+    {
+        if (_hierarchyAuthorScope.Equals("visible", StringComparison.OrdinalIgnoreCase))
+        {
+            return FilteredAuthorOptions.Take(VisibleHierarchyAuthors);
+        }
+
+        return SelectedAuthor is null ? [] : [SelectedAuthor];
+    }
+
+    private HierarchyAuthorNode BuildHierarchyAuthorNode(AuthorReportingSummaryDto author)
+    {
+        var allPublications = DeduplicateAuthorPublications(
+            Dashboard?.Publications
+                .Where(x => MatchesAuthorPublication(x, author))
+                .ToList() ?? []);
+
+        var filteredPublications = allPublications
+            .Where(MatchesHierarchyRole)
+            .Where(MatchesHierarchyFaculty)
+            .OrderByDescending(x => x.PublishedDate ?? x.CreatedDate)
+            .ThenBy(x => x.Title)
+            .ToList();
+
+        var isExpanded = IsHierarchyAuthorExpanded(author.AuthorKey);
+        var detailLimit = isExpanded
+            ? filteredPublications.Count
+            : VisibleHierarchyPublicationsPerAuthor;
+
+        var publicationNodes = filteredPublications
+            .Take(detailLimit)
+            .Select(x => new HierarchyPublicationNode(x, GetPublicationCoauthors(x, author.AuthorKey)))
+            .ToList();
+
+        var totalArticles = HasHierarchyPublicationFilters ? filteredPublications.Count : author.TotalArticles;
+        var primaryArticles = HasHierarchyPublicationFilters
+            ? filteredPublications.Count(x => x.IsPrimaryAuthor)
+            : author.PrimaryAuthorArticles;
+        var coauthorArticles = HasHierarchyPublicationFilters
+            ? filteredPublications.Count(x => !x.IsPrimaryAuthor)
+            : author.CoauthorArticles;
+        var facultySource = HasHierarchyPublicationFilters ? filteredPublications : allPublications;
+
+        return new HierarchyAuthorNode(
+            author,
+            totalArticles,
+            primaryArticles,
+            coauthorArticles,
+            GetDominantPublicationValue(facultySource, x => x.Faculty, "Sin facultad dominante"),
+            publicationNodes,
+            BuildHierarchySegments(facultySource, x => x.Faculty, "Sin facultad"),
+            totalArticles,
+            filteredPublications.Count,
+            isExpanded,
+            filteredPublications.Count > VisibleHierarchyPublicationsPerAuthor);
+    }
+
+    private IReadOnlyList<HierarchyCoauthorNode> GetPublicationCoauthors(AuthorPublicationDto publication, int authorKey)
+    {
+        var publicationIdentity = GetPublicationIdentity(publication);
+
+        return PublicationCoauthorsByIdentity.TryGetValue(publicationIdentity, out var coauthors)
+            ? coauthors.Where(x => x.AuthorKey != authorKey).ToList()
+            : [];
+    }
+
+    private Dictionary<string, IReadOnlyList<HierarchyCoauthorNode>> PublicationCoauthorsByIdentity =>
+        _publicationCoauthorsByIdentity ??= BuildPublicationCoauthorLookup();
+
+    private Dictionary<string, IReadOnlyList<HierarchyCoauthorNode>> BuildPublicationCoauthorLookup()
+    {
+        return Dashboard?.Publications
+            .GroupBy(GetPublicationIdentity, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<HierarchyCoauthorNode>)g
+                    .GroupBy(x => x.AuthorKey)
+                    .Select(authorGroup => new HierarchyCoauthorNode(
+                        authorGroup.Key,
+                        NormalizeValue(authorGroup.First().AuthorName, "Sin autor")))
+                    .OrderBy(x => x.AuthorName)
+                    .ToList(),
+                StringComparer.OrdinalIgnoreCase) ?? [];
+    }
+
+    private bool MatchesSelectedAuthorPublication(AuthorPublicationDto publication) =>
+        SelectedAuthor is not null && MatchesAuthorPublication(publication, SelectedAuthor);
+
+    private static bool MatchesAuthorPublication(AuthorPublicationDto publication, AuthorReportingSummaryDto author)
+    {
+        if (!string.IsNullOrWhiteSpace(author.AuthorIdentity)
+            && !string.IsNullOrWhiteSpace(publication.AuthorIdentity))
+        {
+            return publication.AuthorIdentity.Equals(author.AuthorIdentity, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return publication.AuthorKey == author.AuthorKey;
+    }
+
+    private static string GetPublicationIdentity(AuthorPublicationDto publication)
+    {
+        if (publication.ArticleKey > 0)
+        {
+            return $"dw:{publication.ArticleKey}";
+        }
+
+        if (publication.ArticleId > 0)
+        {
+            return $"oltp:{publication.ArticleId}";
+        }
+
+        return $"title:{NormalizeValue(publication.Title, "Sin título")}|{publication.PublishedDate:O}|{publication.Year}";
+    }
+
+    private bool MatchesHierarchyRole(AuthorPublicationDto publication) =>
+        string.IsNullOrWhiteSpace(_hierarchyRoleFilter)
+        || (_hierarchyRoleFilter.Equals("primary", StringComparison.OrdinalIgnoreCase) && publication.IsPrimaryAuthor)
+        || (_hierarchyRoleFilter.Equals("coauthor", StringComparison.OrdinalIgnoreCase) && !publication.IsPrimaryAuthor);
+
+    private bool MatchesHierarchyFaculty(AuthorPublicationDto publication) =>
+        string.IsNullOrWhiteSpace(_hierarchyFacultyFilter)
+        || NormalizeValue(publication.Faculty, string.Empty)
+            .Equals(_hierarchyFacultyFilter, StringComparison.OrdinalIgnoreCase);
+
+    private static string GetHierarchyDonutStyle(HierarchyAuthorNode authorNode)
+    {
+        var primaryPercent = authorNode.TotalArticles <= 0
+            ? 0
+            : (int)Math.Round((authorNode.PrimaryArticles / (double)authorNode.TotalArticles) * 100);
+
+        return $"background: conic-gradient(#2f5249 0 {primaryPercent}%, #f4ce14 {primaryPercent}% 100%);";
+    }
+
+    private static string GetHierarchyToggleIconClass(HierarchyAuthorNode authorNode) =>
+        authorNode.IsExpanded ? "bi bi-chevron-up" : "bi bi-chevron-down";
+
+    private static string GetHierarchyPublicationsClass(HierarchyAuthorNode authorNode) =>
+        authorNode.IsExpanded
+            ? "reports-dw-author-hierarchy-publications reports-dw-author-hierarchy-publications--expanded"
+            : "reports-dw-author-hierarchy-publications";
+
+    private static string GetHierarchyPublicationBodyClass(HierarchyAuthorNode authorNode) =>
+        authorNode.IsExpanded
+            ? "reports-dw-author-hierarchy-publication__body reports-dw-author-hierarchy-publication__body--expanded"
+            : "reports-dw-author-hierarchy-publication__body";
+
+    private static string GetHierarchyTreeSummary(HierarchyAuthorNode authorNode) =>
+        authorNode.IsExpanded
+            ? $"{authorNode.Publications.Count:N0} publicaciones listadas"
+            : $"{authorNode.Publications.Count:N0} de {authorNode.DetailPublicationCount:N0} en vista compacta";
+
+    private string GetHierarchyTabClass(HierarchyAuthorNode authorNode, string tab) =>
+        GetHierarchyAuthorTab(authorNode.Author.AuthorKey).Equals(tab, StringComparison.OrdinalIgnoreCase)
+            ? "reports-dw-author-hierarchy-tab reports-dw-author-hierarchy-tab--active"
+            : "reports-dw-author-hierarchy-tab";
+
+    private static string GetHierarchyRolePieStyle(HierarchyAuthorNode authorNode)
+    {
+        var primaryPercent = authorNode.TotalArticles <= 0
+            ? 0
+            : (int)Math.Round((authorNode.PrimaryArticles / (double)authorNode.TotalArticles) * 100);
+
+        return $"background: conic-gradient(#3E0703 0 {primaryPercent}%, #8C1007 {primaryPercent}% 100%);";
+    }
+
+    private static string GetHierarchySegmentPieStyle(IReadOnlyList<HierarchySegment> segments)
+    {
+        if (segments.Count == 0)
+        {
+            return "background: conic-gradient(#3E0703 0 100%);";
+        }
+
+        var total = Math.Max(1, segments.Sum(x => x.Count));
+        var current = 0d;
+        var stops = new List<string>();
+
+        foreach (var segment in segments)
+        {
+            var next = current + (segment.Count / (double)total * 100);
+            stops.Add($"{segment.Color} {current:0.##}% {next:0.##}%");
+            current = next;
+        }
+
+        return $"background: conic-gradient({string.Join(", ", stops)});";
+    }
+
+    private static IReadOnlyList<HierarchySegment> BuildHierarchySegments(
+        IEnumerable<AuthorPublicationDto> publications,
+        Func<AuthorPublicationDto, string> selector,
+        string fallback)
+    {
+        var colors = new[] { "#3E0703", "#660B05", "#8C1007", "#B84A3C" };
+
+        return publications
+            .Select(selector)
+            .Select(x => NormalizeValue(x, fallback))
+            .GroupBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(g => g.Count())
+            .ThenBy(g => g.Key)
+            .Take(colors.Length)
+            .Select((g, index) => new HierarchySegment(g.Key, g.Count(), colors[index]))
+            .ToList();
+    }
+
+    private static string GetAuthorPickerItemClass(AuthorReportingSummaryDto author) =>
+        "reports-dw-author-picker-item";
+
+    private static char GetAuthorInitial(AuthorReportingSummaryDto author)
+    {
+        var name = NormalizeValue(author.AuthorName, "#").Trim();
+        return string.IsNullOrWhiteSpace(name) ? '#' : char.ToUpperInvariant(name[0]);
+    }
+
+    private static string GetHierarchyMarkerClass(AuthorPublicationDto publication) =>
+        publication.IsPrimaryAuthor
+            ? "reports-dw-author-hierarchy-publication__marker reports-dw-author-hierarchy-publication__marker--primary"
+            : "reports-dw-author-hierarchy-publication__marker reports-dw-author-hierarchy-publication__marker--coauthor";
+
+    private static string GetHierarchyRolePillClass(AuthorPublicationDto publication) =>
+        publication.IsPrimaryAuthor
+            ? "reports-dw-author-hierarchy-role reports-dw-author-hierarchy-role--primary"
+            : "reports-dw-author-hierarchy-role reports-dw-author-hierarchy-role--coauthor";
 
     private bool MatchesSelectedPublicationSource(AuthorPublicationDto publication) =>
         string.IsNullOrWhiteSpace(_selectedPublicationSource)
@@ -1461,6 +1529,27 @@
     private static string NormalizeValue(string? value, string fallback) =>
         string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
 
+    private static bool MatchesAuthorSearch(AuthorReportingSummaryDto author, string term) =>
+        ContainsSearchText(author.AuthorName, term)
+        || ContainsSearchText(author.Affiliation, term)
+        || ContainsSearchText(author.Identification, term)
+        || ContainsSearchText(author.Orcid, term)
+        || ContainsSearchText(author.ParticipantType, term);
+
+    private static bool ContainsSearchText(string? value, string term) =>
+        !string.IsNullOrWhiteSpace(value)
+        && value.Contains(term, StringComparison.OrdinalIgnoreCase);
+
+    private static string GetPublicationRolePillClass(AuthorPublicationDto publication) =>
+        publication.IsPrimaryAuthor
+            ? "reports-dw-author-role-pill reports-dw-author-role-pill--primary"
+            : "reports-dw-author-role-pill";
+
+    private string GetCoauthorFocusStateLabel(AuthorCoauthorDto coauthor) =>
+        SelectedCoauthorKey == coauthor.CoauthorKey
+            ? "cruce seleccionado"
+            : $"{coauthor.SharedArticles:N0} artículos compartidos";
+
     private static string GetBarWidth(int value, int maxValue)
     {
         if (maxValue <= 0 || value <= 0)
@@ -1482,4 +1571,32 @@
         var value = text.Trim();
         return value.Length <= maxLength ? value : $"{value[..Math.Max(0, maxLength - 1)]}...";
     }
+
+    private sealed record HierarchyAuthorNode(
+        AuthorReportingSummaryDto Author,
+        int TotalArticles,
+        int PrimaryArticles,
+        int CoauthorArticles,
+        string TopFaculty,
+        IReadOnlyList<HierarchyPublicationNode> Publications,
+        IReadOnlyList<HierarchySegment> FacultySegments,
+        int FilteredPublicationCount,
+        int DetailPublicationCount,
+        bool IsExpanded,
+        bool HasMorePublications)
+    {
+        public bool CanTogglePublicationDetail => DetailPublicationCount > VisibleHierarchyPublicationsPerAuthor || IsExpanded;
+
+        public bool HasOfficialTotalGap => TotalArticles > DetailPublicationCount;
+    }
+
+    private sealed record HierarchyPublicationNode(
+        AuthorPublicationDto Publication,
+        IReadOnlyList<HierarchyCoauthorNode> Coauthors);
+
+    private sealed record HierarchyCoauthorNode(int AuthorKey, string AuthorName);
+
+    private sealed record HierarchySegment(string Name, int Count, string Color);
+
+    private sealed record AuthorAlphabetGroup(char Initial, IReadOnlyList<AuthorReportingSummaryDto> Authors);
 }

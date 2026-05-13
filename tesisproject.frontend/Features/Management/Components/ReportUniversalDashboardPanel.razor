@@ -1,0 +1,287 @@
+@using tesisproject.shared.DTOs.Reports
+
+<section class="reports-universal-dashboard">
+    <div class="reports-dw-section-heading reports-dw-section-heading--workflow reports-universal-dashboard__heading">
+        <span><i class="bi bi-speedometer2"></i></span>
+        <div>
+            <small>Dashboard</small>
+            <h2>Vista universal de datos</h2>
+            <p>@ScopeLabel</p>
+        </div>
+    </div>
+
+    <div class="reports-universal-dashboard__kpis">
+        @foreach (var kpi in KpiItems)
+        {
+            <article>
+                <i class="@kpi.Icon"></i>
+                <small>@kpi.Label</small>
+                <strong>@kpi.Value</strong>
+                <span>@kpi.Detail</span>
+            </article>
+        }
+    </div>
+
+    <div class="reports-universal-dashboard__summary">
+        <span><i class="bi bi-grid-1x2"></i></span>
+        <p>Vista consolidada para leer producción, calidad editorial, cobertura, carga operativa y distribución institucional desde el mismo panel.</p>
+    </div>
+
+    <div class="reports-universal-dashboard__chart-grid">
+        <div class="reports-universal-dashboard__chart reports-universal-dashboard__chart--wide">
+            <ReportChartCard ChartId="dashboard-year-trend"
+                             IconClass="bi bi-activity"
+                             Title="Producción anual"
+                             Description="Evolución de artículos por año visible."
+                             Option="@ReportChartOptionsFactory.BuildTrend(Dashboard?.ArticlesByYear, compact: true)"
+                             Height="270px"
+                             Accent="quality"
+                             Density="compact" />
+        </div>
+
+        <div class="reports-universal-dashboard__chart reports-universal-dashboard__chart--third">
+            <ReportChartCard ChartId="dashboard-open-access-gauge"
+                             IconClass="bi bi-unlock"
+                             Title="Cobertura Open Access"
+                             Description="Proporción de acceso abierto."
+                             Option="@ReportChartOptionsFactory.BuildGauge("Open Access", OpenAccessPercent)"
+                             Height="270px"
+                             Accent="executive"
+                             Density="compact" />
+        </div>
+
+        <div class="reports-universal-dashboard__chart reports-universal-dashboard__chart--half">
+            <ReportChartCard ChartId="dashboard-open-access-year"
+                             IconClass="bi bi-bar-chart-steps"
+                             Title="Open Access por año"
+                             Description="Comparación anual de acceso abierto y restringido."
+                             Option="@ReportChartOptionsFactory.BuildOpenAccessStackedBar(Dashboard?.OpenAccessByYear)"
+                             Height="280px"
+                             Accent="workflow"
+                             Density="compact" />
+        </div>
+
+        <div class="reports-universal-dashboard__chart reports-universal-dashboard__chart--half">
+            <ReportChartCard ChartId="dashboard-month-heatmap"
+                             IconClass="bi bi-calendar3"
+                             Title="Intensidad mensual"
+                             Description="Meses con mayor concentración de registros."
+                             Option="@ReportChartOptionsFactory.BuildMonthHeatmap(Dashboard?.ArticlesByMonth)"
+                             Height="280px"
+                             Accent="quality"
+                             Density="compact" />
+        </div>
+
+        <div class="reports-universal-dashboard__chart reports-universal-dashboard__chart--half">
+            <ReportChartCard ChartId="dashboard-faculty-treemap"
+                             IconClass="bi bi-diagram-3"
+                             Title="Facultades"
+                             Description="Peso relativo por facultad."
+                             Option="@ReportChartOptionsFactory.BuildTreemap(Dashboard?.ArticlesByFaculty, "Facultades")"
+                             Height="330px"
+                             Accent="executive"
+                             Density="compact" />
+        </div>
+
+        <div class="reports-universal-dashboard__chart reports-universal-dashboard__chart--half">
+            <ReportChartCard ChartId="dashboard-researchline-treemap"
+                             IconClass="bi bi-bezier2"
+                             Title="Líneas de investigación"
+                             Description="Concentración por línea registrada."
+                             Option="@ReportChartOptionsFactory.BuildTreemap(Dashboard?.ArticlesByResearchLine, "Líneas")"
+                             Height="330px"
+                             Accent="quality"
+                             Density="compact" />
+        </div>
+
+        <div class="reports-universal-dashboard__chart reports-universal-dashboard__chart--third">
+            <ReportChartCard ChartId="dashboard-quartile-donut"
+                             IconClass="bi bi-pie-chart"
+                             Title="Cuartiles"
+                             Description="Distribución de artículos por cuartil."
+                             Option="@ReportChartOptionsFactory.BuildSummaryDonut(Dashboard?.ArticlesByQuartile, "Cuartiles", compact: true, includeToolbox: true, insideCountLabels: true)"
+                             Height="285px"
+                             Accent="quality"
+                             Density="compact" />
+        </div>
+
+        <div class="reports-universal-dashboard__chart reports-universal-dashboard__chart--third">
+            <ReportChartCard ChartId="dashboard-indexing-rose"
+                             IconClass="bi bi-hdd-network"
+                             Title="Bases de indexación"
+                             Description="Fuentes con mayor volumen visible."
+                             Option="@ReportChartOptionsFactory.BuildRoseDonut(IndexingSummaryItems, "Bases")"
+                             Height="285px"
+                             Accent="workflow"
+                             Density="compact" />
+        </div>
+
+        <div class="reports-universal-dashboard__chart reports-universal-dashboard__chart--third">
+            <ReportChartCard ChartId="dashboard-status-donut"
+                             IconClass="bi bi-flag"
+                             Title="Estado editorial"
+                             Description="Estado actual de publicación."
+                             Option="@ReportChartOptionsFactory.BuildSummaryDonut(Dashboard?.ArticlesByPublicationStatus, "Estados", compact: true, includeToolbox: true, insideCountLabels: true)"
+                             Height="285px"
+                             Accent="executive"
+                             Density="compact" />
+        </div>
+
+        <div class="reports-universal-dashboard__chart reports-universal-dashboard__chart--half">
+            <ReportChartCard ChartId="dashboard-coverage-radar"
+                             IconClass="bi bi-broadcast-pin"
+                             Title="Cobertura de catálogos"
+                             Description="Dimensiones disponibles para filtrar y analizar."
+                             Option="@ReportChartOptionsFactory.BuildRadar(CoverageRadarLabels, CoverageRadarValues, "Cobertura")"
+                             Height="310px"
+                             Accent="quality"
+                             Density="compact" />
+        </div>
+
+        <div class="reports-universal-dashboard__chart reports-universal-dashboard__chart--half">
+            <ReportChartCard ChartId="dashboard-venue-scatter"
+                             IconClass="bi bi-stars"
+                             Title="Métricas de revistas"
+                             Description="SJR, CiteScore e H-index por revista."
+                             Option="@ReportChartOptionsFactory.BuildVenueMetricScatter(Dashboard?.VenueMetricsByYear)"
+                             Height="310px"
+                             Accent="executive"
+                             Density="compact" />
+        </div>
+
+        <div class="reports-universal-dashboard__chart reports-universal-dashboard__chart--half">
+            <ReportChartCard ChartId="dashboard-field-treemap"
+                             IconClass="bi bi-layers"
+                             Title="Campos de conocimiento"
+                             Description="Distribución por campo amplio."
+                             Option="@ReportChartOptionsFactory.BuildTreemap(FieldSummaryItems, "Campos")"
+                             Height="310px"
+                             Accent="workflow"
+                             Density="compact" />
+        </div>
+
+        <div class="reports-universal-dashboard__chart reports-universal-dashboard__chart--half">
+            <ReportChartCard ChartId="dashboard-load-workflow"
+                             IconClass="bi bi-arrow-repeat"
+                             Title="Carga y flujo"
+                             Description="Eventos operativos disponibles en el modelo."
+                             Option="@ReportChartOptionsFactory.BuildVerticalBar(LoadWorkflowLabels, LoadWorkflowValues, "Eventos", "#055052")"
+                             Height="310px"
+                             Accent="quality"
+                             Density="compact" />
+        </div>
+    </div>
+
+    <article class="reports-dw-chart-card reports-universal-dashboard__packages-card">
+        <ReportCardHeader IconClass="bi bi-boxes"
+                          Title="Paquetes disponibles"
+                          Description="Bloques de datos que alimentan filtros, reportes y análisis." />
+        <div class="reports-universal-dashboard__packages">
+            @foreach (var package in DataPackages)
+            {
+                <span>
+                    <i class="@package.Icon"></i>
+                    <strong>@package.Value.ToString("N0")</strong>
+                    <small>@package.Label</small>
+                </span>
+            }
+        </div>
+    </article>
+</section>
+
+@code {
+    [Parameter] public InstitutionalReportingDashboardDto? Dashboard { get; set; }
+    [Parameter] public string ScopeLabel { get; set; } = "Vista general institucional";
+
+    private int OpenAccessPercent =>
+        (Dashboard?.ScientificProduction.TotalArticles ?? 0) <= 0
+            ? 0
+            : (int)Math.Round((Dashboard!.ScientificProduction.OpenAccessArticles / (double)Dashboard.ScientificProduction.TotalArticles) * 100);
+
+    private IReadOnlyList<DashboardKpi> KpiItems =>
+    [
+        new("bi bi-file-earmark-text", "Artículos", (Dashboard?.ScientificProduction.TotalArticles ?? 0).ToString("N0"), "Total visible"),
+        new("bi bi-unlock", "Open Access", (Dashboard?.ScientificProduction.OpenAccessArticles ?? 0).ToString("N0"), $"{OpenAccessPercent}% del total"),
+        new("bi bi-kanban", "Proyectos", (Dashboard?.ScientificProduction.ProjectResultArticles ?? 0).ToString("N0"), "Vinculados"),
+        new("bi bi-globe-americas", "Interculturalidad", (Dashboard?.ScientificProduction.InterculturalArticles ?? 0).ToString("N0"), "Con componente"),
+        new("bi bi-people", "Autores", (Dashboard?.FilterOptions.Authors.Count ?? 0).ToString("N0"), "Catálogo visible"),
+        new("bi bi-building", "Facultades", (Dashboard?.FilterOptions.Faculties.Count ?? 0).ToString("N0"), "Cobertura"),
+        new("bi bi-journal-richtext", "Revistas", (Dashboard?.FilterOptions.Venues.Count ?? 0).ToString("N0"), "Fuentes"),
+        new("bi bi-hdd-network", "Bases", (Dashboard?.FilterOptions.IndexingSources.Count ?? 0).ToString("N0"), "Indexación"),
+        new("bi bi-diagram-2", "Líneas", (Dashboard?.FilterOptions.ResearchLines.Count ?? 0).ToString("N0"), "Investigación"),
+        new("bi bi-layers", "Campos", (Dashboard?.FilterOptions.BroadFields.Count ?? 0).ToString("N0"), "Conocimiento")
+    ];
+
+    private IReadOnlyList<ReportingSummaryItemDto> IndexingSummaryItems =>
+        Dashboard?.ArticlesByIndexingSource
+            .Select(x => new ReportingSummaryItemDto { Name = x.IndexingSourceName, TotalArticles = x.TotalArticles })
+            .ToList()
+        ?? [];
+
+    private IReadOnlyList<ReportingSummaryItemDto> FieldSummaryItems =>
+        Dashboard?.ArticlesByField
+            .GroupBy(x => string.IsNullOrWhiteSpace(x.BroadField) ? "Sin campo" : x.BroadField)
+            .Select(x => new ReportingSummaryItemDto { Name = x.Key, TotalArticles = x.Sum(item => item.TotalArticles) })
+            .OrderByDescending(x => x.TotalArticles)
+            .ToList()
+        ?? [];
+
+    private string[] CoverageRadarLabels =>
+    [
+        "Autores",
+        "Facultades",
+        "Revistas",
+        "Bases",
+        "Líneas",
+        "Campos"
+    ];
+
+    private int[] CoverageRadarValues =>
+    [
+        Dashboard?.FilterOptions.Authors.Count ?? 0,
+        Dashboard?.FilterOptions.Faculties.Count ?? 0,
+        Dashboard?.FilterOptions.Venues.Count ?? 0,
+        Dashboard?.FilterOptions.IndexingSources.Count ?? 0,
+        Dashboard?.FilterOptions.ResearchLines.Count ?? 0,
+        Dashboard?.FilterOptions.BroadFields.Count ?? 0
+    ];
+
+    private string[] LoadWorkflowLabels =>
+    [
+        "Lotes",
+        "Filas OK",
+        "Errores",
+        "Flujos",
+        "Aprobados",
+        "Devueltos"
+    ];
+
+    private int[] LoadWorkflowValues =>
+    [
+        Dashboard?.LoadQuality.TotalBatches ?? 0,
+        Dashboard?.LoadQuality.SuccessfulRows ?? 0,
+        Dashboard?.LoadQuality.ErrorRows ?? 0,
+        Dashboard?.Workflow.TotalStageExecutions ?? 0,
+        Dashboard?.Workflow.ApprovedStages ?? 0,
+        Dashboard?.Workflow.ReturnedStages ?? 0
+    ];
+
+    private IReadOnlyList<DashboardPackage> DataPackages =>
+    [
+        new("bi bi-calendar3", "Años", Dashboard?.FilterOptions.ArticleYears.Count ?? 0),
+        new("bi bi-bookmarks", "Cuartiles", Dashboard?.FilterOptions.Quartiles.Count ?? 0),
+        new("bi bi-tags", "Estados", Dashboard?.FilterOptions.PublicationStatuses.Count ?? 0),
+        new("bi bi-building", "Facultades", Dashboard?.FilterOptions.Faculties.Count ?? 0),
+        new("bi bi-diagram-2", "Líneas", Dashboard?.FilterOptions.ResearchLines.Count ?? 0),
+        new("bi bi-layers", "Campos", Dashboard?.FilterOptions.BroadFields.Count ?? 0),
+        new("bi bi-upload", "Lotes", Dashboard?.LoadQuality.TotalBatches ?? 0),
+        new("bi bi-check2-circle", "Filas OK", Dashboard?.LoadQuality.SuccessfulRows ?? 0),
+        new("bi bi-x-octagon", "Filas con error", Dashboard?.LoadQuality.ErrorRows ?? 0),
+        new("bi bi-arrow-repeat", "Flujos", Dashboard?.Workflow.TotalStageExecutions ?? 0),
+        new("bi bi-check-circle", "Aprobados", Dashboard?.Workflow.ApprovedStages ?? 0),
+        new("bi bi-arrow-counterclockwise", "Devueltos", Dashboard?.Workflow.ReturnedStages ?? 0)
+    ];
+
+    private sealed record DashboardKpi(string Icon, string Label, string Value, string Detail);
+    private sealed record DashboardPackage(string Icon, string Label, int Value);
+}

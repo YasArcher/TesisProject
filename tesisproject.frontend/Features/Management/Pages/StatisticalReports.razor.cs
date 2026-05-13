@@ -21,6 +21,7 @@ namespace tesisproject.frontend.Features.Management.Pages
         [Inject] private HttpClient Http { get; set; } = default!;
         [Inject] private IJSRuntime JS { get; set; } = default!;
         [Inject] private IInstitutionalReportingClient InstitutionalReporting { get; set; } = default!;
+        [Inject] private InstitutionalReportingPageStateStore ReportingState { get; set; } = default!;
         // =========================================================
         // ESTADO BASE
         // =========================================================
@@ -37,15 +38,12 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected bool _isLoadingAuthorReporting = false;
         protected string? _authorReportingError;
         protected DateTime? _institutionalLastLoadedAt;
+        protected string? _activeReportPreset;
         protected bool _showPdfComposer = false;
-        protected bool _isPdfPreviewGenerating = false;
-        protected string? _pdfPreviewError;
-        protected string? _pdfPreviewBase64;
-        protected string _pdfPreviewGeneratedAtLabel = string.Empty;
-        private byte[]? _pdfPreviewBytes;
-        private string? _pdfPreviewRequestSignature;
+        protected ReportPdfComposerState _pdfComposerState = new();
         private int _pdfComposerRenderKey;
-        protected InstitutionalReportingFilterDto _pdfComposerSelection = CreateDefaultPdfSelection();
+        protected InstitutionalReportingFilterDto _pdfComposerSelection = ReportPdfRequestBuilder.CreateDefaultSelection();
+        protected bool _isExportingExcel = false;
         private CancellationTokenSource? _institutionalLoadCts;
         private CancellationTokenSource? _authorLoadCts;
 
@@ -54,19 +52,30 @@ namespace tesisproject.frontend.Features.Management.Pages
         // =========================================================
         protected override async Task OnInitializedAsync()
         {
+            if (TryRestoreReportingState())
+            {
+                if (_authorDashboardUsingFallback)
+                {
+                    ClearAuthorFallbackState();
+                }
+
+                if (ShouldLoadAuthorDashboard && !_isLoadingAuthorReporting)
+                {
+                    await LoadAuthorReportingAsync(ReportInstitutionalFilterState.Clone(_institutionalFilter));
+                }
+
+                StateHasChanged();
+                return;
+            }
+
             StateHasChanged();
 
             try
             {
-                var filterSnapshot = CloneInstitutionalFilter(_institutionalFilter);
-                await Task.WhenAll(
-                    LoadInstitutionalReportingAsync(filterSnapshot: filterSnapshot),
-                    LoadAuthorReportingAsync(filterSnapshot));
-
-                if (_authorReportingDashboard is null && string.IsNullOrWhiteSpace(_authorReportingError))
-                {
-                    await LoadAuthorReportingAsync(filterSnapshot, allowRetry: false);
-                }
+                var filterSnapshot = ReportInstitutionalFilterState.Clone(_institutionalFilter);
+                await LoadInstitutionalReportingAsync(filterSnapshot: filterSnapshot);
+                StateHasChanged();
+                await LoadAuthorReportingAsync(filterSnapshot);
             }
             finally
             {
@@ -81,8 +90,8 @@ namespace tesisproject.frontend.Features.Management.Pages
             _institutionalLoadCts = new CancellationTokenSource();
             var requestCts = _institutionalLoadCts;
             var requestFilter = filterSnapshot is null
-                ? CloneInstitutionalFilter(_institutionalFilter)
-                : CloneInstitutionalFilter(filterSnapshot);
+                ? ReportInstitutionalFilterState.Clone(_institutionalFilter)
+                : ReportInstitutionalFilterState.Clone(filterSnapshot);
 
             var canRefreshInPlace = keepCurrentDashboard && _institutionalDashboard != null;
 
@@ -101,7 +110,7 @@ namespace tesisproject.frontend.Features.Management.Pages
             {
                 _institutionalDashboard = await InstitutionalReporting.GetDashboardAsync(requestFilter, requestCts.Token);
                 _institutionalLastLoadedAt = DateTime.Now;
-                EnsureAuthorDashboardFallbackAvailability();
+                SaveReportingState();
             }
             catch (OperationCanceledException) when (requestCts.IsCancellationRequested)
             {
@@ -115,6 +124,7 @@ namespace tesisproject.frontend.Features.Management.Pages
                 }
 
                 _institutionalReportingError = $"No se pudo cargar la reportería institucional: {ex.Message}";
+                SaveReportingState();
                 Console.Error.WriteLine(ex);
             }
             finally
@@ -136,8 +146,8 @@ namespace tesisproject.frontend.Features.Management.Pages
             _authorLoadCts = new CancellationTokenSource();
             var requestCts = _authorLoadCts;
             var requestFilter = filterSnapshot is null
-                ? CloneInstitutionalFilter(_institutionalFilter)
-                : CloneInstitutionalFilter(filterSnapshot);
+                ? ReportInstitutionalFilterState.Clone(_institutionalFilter)
+                : ReportInstitutionalFilterState.Clone(filterSnapshot);
 
             _isLoadingAuthorReporting = true;
             _authorReportingError = null;
@@ -155,16 +165,10 @@ namespace tesisproject.frontend.Features.Management.Pages
                     throw new InvalidOperationException("El servicio de autores no devolvió un resultado válido.");
                 }
 
-                if (ShouldUseAuthorFallback(dashboard))
-                {
-                    _authorReportingDashboard = BuildAuthorDashboardFallback();
-                    _authorDashboardUsingFallback = _authorReportingDashboard is not null;
-                }
-                else
-                {
-                    _authorReportingDashboard = dashboard;
-                    _authorDashboardUsingFallback = false;
-                }
+                _authorReportingDashboard = dashboard;
+                _authorDashboardUsingFallback = false;
+
+                SaveReportingState();
             }
             catch (OperationCanceledException) when (requestCts.IsCancellationRequested)
             {
@@ -186,19 +190,10 @@ namespace tesisproject.frontend.Features.Management.Pages
                     }
                 }
 
-                var fallbackDashboard = BuildAuthorDashboardFallback();
-                if (fallbackDashboard is not null)
-                {
-                    _authorReportingDashboard = fallbackDashboard;
-                    _authorDashboardUsingFallback = true;
-                    _authorReportingError = "La analítica detallada de autores no respondió como esperaba. Se muestra un resumen autoral derivado del tablero institucional.";
-                }
-                else
-                {
-                    _authorReportingDashboard = null;
-                    _authorDashboardUsingFallback = false;
-                    _authorReportingError = $"No se pudo cargar la analítica de autores: {ex.Message}";
-                }
+                _authorReportingDashboard = null;
+                _authorDashboardUsingFallback = false;
+                _authorReportingError = $"No se pudo cargar la analítica de autores: {ex.Message}";
+                SaveReportingState();
                 Console.Error.WriteLine(ex);
             }
             finally
@@ -221,11 +216,12 @@ namespace tesisproject.frontend.Features.Management.Pages
             try
             {
                 await InstitutionalReporting.RunFullLoadAsync();
-                var filterSnapshot = CloneInstitutionalFilter(_institutionalFilter);
+                var filterSnapshot = ReportInstitutionalFilterState.Clone(_institutionalFilter);
 
                 await Task.WhenAll(
                     LoadInstitutionalReportingAsync(filterSnapshot: filterSnapshot),
                     LoadAuthorReportingAsync(filterSnapshot));
+                SaveReportingState();
 
             }
             catch (Exception ex)
@@ -241,238 +237,126 @@ namespace tesisproject.frontend.Features.Management.Pages
         }
 
         protected string FormatEtlDate(DateTime? value)
-        {
-            return value.HasValue
-                ? value.Value.ToString("dd/MM/yyyy HH:mm")
-                : "Sin fecha";
-        }
+            => ReportInstitutionalStatusText.FormatEtlDate(value);
 
         protected string GetEtlStatusClass(string? status)
-        {
-            return string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase)
-                ? "reports-dw-status reports-dw-status--success"
-                : "reports-dw-status reports-dw-status--warning";
-        }
+            => ReportInstitutionalStatusText.GetEtlStatusClass(status);
 
         protected static string GetInstitutionalStatusLabel(string? status)
-        {
-            return string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase)
-                ? "actualizada"
-                : "pendiente de actualización";
-        }
+            => ReportInstitutionalStatusText.GetInstitutionalStatusLabel(status);
 
         protected bool HasInstitutionalReportingData =>
-            (_institutionalDashboard?.ScientificProduction.TotalArticles ?? 0) > 0
-            || (_institutionalDashboard?.ParticipationSummary.TotalArticles ?? 0) > 0
-            || (_institutionalDashboard?.RecentArticles.Count ?? 0) > 0
-            || (_institutionalDashboard?.PediIiitArticles.Count ?? 0) > 0
-            || (_institutionalDashboard?.TddTotalArticles.Count ?? 0) > 0;
+            ReportInstitutionalStatusText.HasReportingData(_institutionalDashboard);
 
         protected bool IsInstitutionalBlockingBusy =>
             _isLoadingInstitutionalReporting
             || _isRefreshingInstitutionalReporting
-            || _isRunningInstitutionalEtl
-            || _isLoadingAuthorReporting;
+            || _isRunningInstitutionalEtl;
 
         protected string InstitutionalBlockingBusyTitle
-        {
-            get
-            {
-                if (_isRunningInstitutionalEtl)
-                {
-                    return "Actualizando modelo analítico";
-                }
-
-                return _isRefreshingInstitutionalReporting
-                    ? "Aplicando filtros de reportería"
-                    : "Cargando reportería institucional";
-            }
-        }
+            => ReportInstitutionalStatusText.GetBlockingTitle(
+                _isRunningInstitutionalEtl,
+                _isRefreshingInstitutionalReporting);
 
         protected string InstitutionalBlockingBusyMessage
-        {
-            get
-            {
-                if (_isRunningInstitutionalEtl)
-                {
-                    return "Estamos ejecutando el ETL y sincronizando los indicadores del DW. Mantén esta pantalla abierta.";
-                }
-
-                return _isRefreshingInstitutionalReporting
-                    ? "Se están recalculando los bloques, tablas y porcentajes con los filtros seleccionados."
-                    : "Estamos preparando los indicadores institucionales, filtros y bloques analíticos.";
-            }
-        }
+            => ReportInstitutionalStatusText.GetBlockingMessage(
+                _isRunningInstitutionalEtl,
+                _isRefreshingInstitutionalReporting);
 
         protected int ProjectResultPercent =>
-            (_institutionalDashboard?.ScientificProduction.TotalArticles ?? 0) <= 0
-                ? 0
-                : (int)Math.Round((_institutionalDashboard!.ScientificProduction.ProjectResultArticles / (double)_institutionalDashboard.ScientificProduction.TotalArticles) * 100);
+            ReportInstitutionalStatusText.GetProjectResultPercent(_institutionalDashboard);
 
         protected string InstitutionalLastLoadedLabel =>
-            _institutionalLastLoadedAt.HasValue
-                ? _institutionalLastLoadedAt.Value.ToString("dd/MM/yyyy HH:mm:ss")
-                : "Sin lectura reciente";
+            ReportInstitutionalStatusText.GetLastLoadedLabel(_institutionalLastLoadedAt);
 
         protected string InstitutionalScopeLabel =>
-            ActiveInstitutionalFilterChips.Count == 0
-                ? "Vista general institucional"
-                : $"{ActiveInstitutionalFilterChips.Count} filtros activos";
+            ReportInstitutionalStatusText.GetScopeLabel(ActiveInstitutionalFilterCount);
 
         protected string GetActiveFilterSummaryLabel() =>
-            ActiveInstitutionalFilterChips.Count switch
-            {
-                0 => "Sin segmentación adicional",
-                1 => "1 criterio aplicado",
-                _ => $"{ActiveInstitutionalFilterChips.Count} criterios aplicados"
-            };
+            ReportInstitutionalStatusText.GetActiveFilterSummaryLabel(ActiveInstitutionalFilterCount);
 
         protected string InstitutionalDataPulseLabel =>
-            $"{(_institutionalDashboard?.ScientificProduction.TotalArticles ?? 0):N0} artículos · {(_institutionalDashboard?.ParticipationSummary.TotalIndexingLinks ?? 0):N0} indexaciones · {(_institutionalDashboard?.ParticipationSummary.ByFaculty.Count ?? 0):N0} facultades";
+            ReportInstitutionalStatusText.GetDataPulseLabel(_institutionalDashboard);
 
         protected string PediIiitScopeLabel =>
-            $"{(_institutionalDashboard?.PediIiitArticles.Count ?? 0):N0} registros disponibles · mostrando hasta 20";
+            ReportInstitutionalStatusText.GetPediIiitScopeLabel(_institutionalDashboard);
 
         protected string TddTotalScopeLabel =>
-            $"{(_institutionalDashboard?.TddTotalArticles.Count ?? 0):N0} registros disponibles · mostrando hasta 24";
+            ReportInstitutionalStatusText.GetTddTotalScopeLabel(_institutionalDashboard);
 
         protected string ParticipationScopeLabel =>
-            $"{(_institutionalDashboard?.ParticipationSummary.TotalArticles ?? 0):N0} artículos · {(_institutionalDashboard?.ParticipationSummary.TotalIndexingLinks ?? 0):N0} vínculos";
+            ReportInstitutionalStatusText.GetParticipationScopeLabel(_institutionalDashboard);
 
         protected string InstitutionalPeriodLabel =>
-            string.Equals(_institutionalFilter.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase)
-                ? "Fecha de publicación"
-                : "Fecha de registro";
+            ReportInstitutionalFilterState.GetPeriodLabel(_institutionalFilter);
 
         protected IReadOnlyList<(string Label, string Value)> ActiveInstitutionalFilterChips
-        {
-            get
-            {
-                var chips = new List<(string Label, string Value)>();
+            => ReportInstitutionalFilterState.BuildActiveChips(_institutionalFilter);
 
-                AddDateChip(chips, "Creación desde", _institutionalFilter.CreatedFrom);
-                AddDateChip(chips, "Creación hasta", _institutionalFilter.CreatedTo);
-                AddDateChip(chips, "Publicación desde", _institutionalFilter.PublishedFrom);
-                AddDateChip(chips, "Publicación hasta", _institutionalFilter.PublishedTo);
-                AddChip(chips, "Periodo", _institutionalFilter.AcademicTerm);
-                AddChip(chips, "Estado", _institutionalFilter.PublicationStatus);
-                AddChip(chips, "Línea", _institutionalFilter.ResearchLine);
-                AddChip(chips, "Facultad", _institutionalFilter.Faculty);
-                AddChip(chips, "Base de datos", _institutionalFilter.IndexingSource);
-                AddChip(chips, "Campo amplio", _institutionalFilter.BroadField);
-                AddChip(chips, "Campo específico", _institutionalFilter.SpecificField);
-                AddChip(chips, "Campo detallado", _institutionalFilter.DetailedField);
-                AddChip(chips, "Revista", _institutionalFilter.VenueName);
-                AddChip(chips, "Tipo de publicación", _institutionalFilter.VenueType);
-                AddChip(chips, "Cuartil", _institutionalFilter.Quartile);
-                AddChip(chips, "Autor", _institutionalFilter.AuthorName);
-                AddChip(chips, "Coautor", _institutionalFilter.CoauthorName);
-                AddChip(chips, "Filiación autor", _institutionalFilter.AuthorAffiliation);
-                AddChip(chips, "Tipo participante", _institutionalFilter.ParticipantType);
-                if (_institutionalFilter.HasOrcid.HasValue)
-                {
-                    chips.Add(("ORCID", _institutionalFilter.HasOrcid.Value ? "Con ORCID" : "Sin ORCID"));
-                }
-
-                if (string.Equals(_institutionalFilter.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase))
-                {
-                    AddChip(chips, "Periodo temporal", InstitutionalPeriodLabel);
-                }
-
-                if (_institutionalFilter.ArticleYear.HasValue)
-                {
-                    chips.Add(("Año", _institutionalFilter.ArticleYear.Value.ToString()));
-                }
-
-                if (_institutionalFilter.IsOpenAccess.HasValue)
-                {
-                    chips.Add(("Acceso", _institutionalFilter.IsOpenAccess.Value ? "Open Access" : "No Open Access"));
-                }
-
-                if (_institutionalFilter.IsProjectResult.HasValue)
-                {
-                    chips.Add(("Proyecto", _institutionalFilter.IsProjectResult.Value ? "Sí" : "No"));
-                }
-
-                if (_institutionalFilter.HasInterculturalComponent.HasValue)
-                {
-                    chips.Add(("Interculturalidad", _institutionalFilter.HasInterculturalComponent.Value ? "Sí" : "No"));
-                }
-
-                if (_institutionalFilter.OnlyPrimaryAuthors == true)
-                {
-                    chips.Add(("Autoría", "Solo autor principal"));
-                }
-
-                return chips;
-            }
-        }
-
-        private static void AddChip(List<(string Label, string Value)> chips, string label, string? value)
-        {
-            if (!string.IsNullOrWhiteSpace(value))
-            {
-                chips.Add((label, value.Trim()));
-            }
-        }
-
-        private static void AddDateChip(List<(string Label, string Value)> chips, string label, DateTime? value)
-        {
-            if (value.HasValue)
-            {
-                chips.Add((label, value.Value.ToString("dd/MM/yyyy")));
-            }
-        }
+        protected int ActiveInstitutionalFilterCount => ActiveInstitutionalFilterChips.Count;
 
         protected async Task ApplyInstitutionalFiltersAsync()
         {
-            var filterSnapshot = CloneInstitutionalFilter(_institutionalFilter);
-            await Task.WhenAll(
-                LoadInstitutionalReportingAsync(keepCurrentDashboard: true, filterSnapshot: filterSnapshot),
-                LoadAuthorReportingAsync(filterSnapshot));
+            var filterSnapshot = ReportInstitutionalFilterState.Clone(_institutionalFilter);
+            ResetAuthorDashboardForFilterChange();
+            await LoadInstitutionalReportingAsync(keepCurrentDashboard: true, filterSnapshot: filterSnapshot);
+
+            if (IsAuthorTabActive)
+            {
+                await LoadAuthorReportingAsync(filterSnapshot);
+            }
+
+            SaveReportingState();
             StateHasChanged();
         }
 
         protected async Task ClearInstitutionalFiltersAsync()
         {
             _institutionalFilter = new InstitutionalReportingFilterDto();
-            _authorReportingDashboard = null;
-            _authorDashboardUsingFallback = false;
-            var filterSnapshot = CloneInstitutionalFilter(_institutionalFilter);
-            await Task.WhenAll(
-                LoadInstitutionalReportingAsync(keepCurrentDashboard: true, filterSnapshot: filterSnapshot),
-                LoadAuthorReportingAsync(filterSnapshot));
+            ResetAuthorDashboardForFilterChange();
+            var filterSnapshot = ReportInstitutionalFilterState.Clone(_institutionalFilter);
+            await LoadInstitutionalReportingAsync(keepCurrentDashboard: true, filterSnapshot: filterSnapshot);
+
+            if (IsAuthorTabActive)
+            {
+                await LoadAuthorReportingAsync(filterSnapshot);
+            }
+
+            SaveReportingState();
             StateHasChanged();
         }
 
         protected void ToggleInstitutionalFilters()
         {
             _showInstitutionalFilters = !_showInstitutionalFilters;
+            SaveReportingState();
         }
 
         protected void OpenPdfComposer()
         {
+            if (!CanOpenPdfComposer)
+            {
+                return;
+            }
+
             _pdfComposerRenderKey++;
             _showPdfComposer = true;
-            _isPdfPreviewGenerating = false;
-            _pdfPreviewError = null;
-            _pdfPreviewBase64 = null;
-            _pdfPreviewGeneratedAtLabel = string.Empty;
-            _pdfPreviewBytes = null;
-            _pdfPreviewRequestSignature = null;
+            _pdfComposerState.ResetForOpen();
 
             if (_pdfComposerSelection is null)
             {
-                _pdfComposerSelection = CreateDefaultPdfSelection();
+                _pdfComposerSelection = ReportPdfRequestBuilder.CreateDefaultSelection();
             }
 
+            SaveReportingState();
             StateHasChanged();
         }
 
         protected Task ClosePdfComposer()
         {
             _showPdfComposer = false;
-            _isPdfPreviewGenerating = false;
+            _pdfComposerState.Close();
+            SaveReportingState();
             return Task.CompletedTask;
         }
 
@@ -483,62 +367,62 @@ namespace tesisproject.frontend.Features.Management.Pages
         }
 
         protected bool IsPdfPreviewCurrent
-            => _pdfPreviewBytes is not null
-            && string.Equals(_pdfPreviewRequestSignature, BuildPdfRequestSignature(BuildPdfRequestFilter()), StringComparison.Ordinal);
+            => _pdfComposerState.IsPreviewCurrent(BuildPdfRequestSignature(BuildPdfRequestFilter()));
 
         protected bool CanDownloadPdf
-            => !_isPdfPreviewGenerating && IsPdfPreviewCurrent;
+            => _pdfComposerState.CanDownload(BuildPdfRequestSignature(BuildPdfRequestFilter()));
+
+        protected bool CanOpenPdfComposer
+            => _institutionalDashboard is not null
+            && HasInstitutionalReportingData
+            && !IsInstitutionalBlockingBusy;
+
+        protected bool CanExportExcel
+            => _institutionalDashboard is not null
+            && HasInstitutionalReportingData
+            && !IsInstitutionalBlockingBusy
+            && !_isExportingExcel;
 
         protected async Task GeneratePdfPreviewAsync()
         {
-            if (!HasAnyPdfSectionSelected(_pdfComposerSelection))
+            if (!ReportPdfRequestBuilder.HasAnySectionSelected(_pdfComposerSelection))
             {
-                _pdfPreviewBytes = null;
-                _pdfPreviewBase64 = null;
-                _pdfPreviewRequestSignature = null;
-                _pdfPreviewGeneratedAtLabel = string.Empty;
-                _pdfPreviewError = "Selecciona al menos un bloque antes de generar la vista previa del PDF.";
+                _pdfComposerState.StoreValidationError("Selecciona al menos un bloque antes de generar la vista previa del PDF.");
                 StateHasChanged();
                 return;
             }
 
-            _isPdfPreviewGenerating = true;
-            _pdfPreviewError = null;
+            _pdfComposerState.MarkGenerating();
             StateHasChanged();
 
             try
             {
                 var requestFilter = BuildPdfRequestFilter();
                 var bytes = await RequestDashboardPdfAsync(requestFilter);
-                _pdfPreviewBytes = bytes;
-                _pdfPreviewBase64 = Convert.ToBase64String(bytes);
-                _pdfPreviewRequestSignature = BuildPdfRequestSignature(requestFilter);
-                _pdfPreviewGeneratedAtLabel = $"Vista previa generada: {DateTime.Now:dd/MM/yyyy HH:mm}";
+                _pdfComposerState.StorePreview(bytes, BuildPdfRequestSignature(requestFilter), DateTime.Now);
             }
             catch (Exception ex)
             {
-                _pdfPreviewBytes = null;
-                _pdfPreviewBase64 = null;
-                _pdfPreviewRequestSignature = null;
-                _pdfPreviewGeneratedAtLabel = string.Empty;
-                _pdfPreviewError = $"No fue posible generar la vista previa del PDF: {ex.Message}";
+                _pdfComposerState.StoreGenerationError($"No fue posible generar la vista previa del PDF: {ex.Message}");
                 Console.Error.WriteLine(ex);
             }
             finally
             {
-                _isPdfPreviewGenerating = false;
+                _pdfComposerState.FinishGenerating();
                 StateHasChanged();
             }
         }
 
         protected async Task DownloadPdfAsync()
         {
-            if (!HasAnyPdfSectionSelected(_pdfComposerSelection) || !IsPdfPreviewCurrent || _pdfPreviewBytes is null)
+            if (!ReportPdfRequestBuilder.HasAnySectionSelected(_pdfComposerSelection)
+                || !IsPdfPreviewCurrent
+                || _pdfComposerState.PreviewBytes is null)
             {
                 return;
             }
 
-            var base64 = Convert.ToBase64String(_pdfPreviewBytes);
+            var base64 = Convert.ToBase64String(_pdfComposerState.PreviewBytes);
             await JS.InvokeVoidAsync(
                 "tesisExport.downloadFileFromBase64",
                 $"reporte-institucional-{DateTime.Now:yyyyMMddHHmm}.pdf",
@@ -546,38 +430,108 @@ namespace tesisproject.frontend.Features.Management.Pages
                 base64);
         }
 
-        protected void ShowInstitutionalOverview()
+        protected async Task DownloadExcelAsync()
         {
-            _institutionalReportTab = "overview";
-        }
-
-        protected void ShowInstitutionalParticipation()
-        {
-            _institutionalReportTab = "participation";
-        }
-
-        protected async Task ShowInstitutionalAuthors()
-        {
-            _institutionalReportTab = "authors";
-            if (_authorReportingDashboard is null && !_isLoadingAuthorReporting)
+            if (!CanExportExcel)
             {
-                await LoadAuthorReportingAsync(CloneInstitutionalFilter(_institutionalFilter));
+                return;
             }
+
+            _isExportingExcel = true;
+            _institutionalReportingError = null;
+            StateHasChanged();
+
+            try
+            {
+                var filter = ReportInstitutionalFilterState.Clone(_institutionalFilter);
+                var url = InstitutionalReportingClient.BuildDashboardUrl(filter, "api/reporting/dashboard/excel");
+                using var response = await Http.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                var base64 = Convert.ToBase64String(bytes);
+                await JS.InvokeVoidAsync(
+                    "tesisExport.downloadFileFromBase64",
+                    $"reporte-institucional-{DateTime.Now:yyyyMMddHHmm}.xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    base64);
+            }
+            catch (Exception ex)
+            {
+                _institutionalReportingError = $"No fue posible exportar Excel: {ex.Message}";
+                Console.Error.WriteLine(ex);
+            }
+            finally
+            {
+                _isExportingExcel = false;
+                StateHasChanged();
+            }
+        }
+
+        protected async Task SelectInstitutionalReportTabAsync(string tab)
+        {
+            _institutionalReportTab = tab?.ToLowerInvariant() switch
+            {
+                "participation" => "participation",
+                "dashboard" => "dashboard",
+                "authors" => "authors",
+                _ => "overview"
+            };
+
+            if (IsAuthorTabActive
+                && ShouldLoadAuthorDashboard
+                && !_isLoadingAuthorReporting)
+            {
+                StateHasChanged();
+                await LoadAuthorReportingAsync(ReportInstitutionalFilterState.Clone(_institutionalFilter));
+            }
+
+            SaveReportingState();
+        }
+
+        protected async Task ApplyReportPresetAsync(string preset)
+        {
+            if (IsInstitutionalBlockingBusy)
+            {
+                return;
+            }
+
+            _activeReportPreset = NormalizeReportPreset(preset);
+            _institutionalReportTab = _activeReportPreset switch
+            {
+                "tdd-management" => "participation",
+                _ => "overview"
+            };
+
+            _pdfComposerSelection = BuildPresetPdfSelection(_activeReportPreset);
+            OpenPdfComposer();
+
+            if (IsAuthorTabActive
+                && ShouldLoadAuthorDashboard
+                && !_isLoadingAuthorReporting)
+            {
+                await LoadAuthorReportingAsync(ReportInstitutionalFilterState.Clone(_institutionalFilter));
+            }
+
+            SaveReportingState();
+            StateHasChanged();
         }
 
         protected async Task ApplyAuthorFiltersAsync()
         {
-            var filterSnapshot = CloneInstitutionalFilter(_institutionalFilter);
+            var filterSnapshot = ReportInstitutionalFilterState.Clone(_institutionalFilter);
             await LoadInstitutionalReportingAsync(keepCurrentDashboard: true, filterSnapshot: filterSnapshot);
             await LoadAuthorReportingAsync(filterSnapshot);
+            SaveReportingState();
             StateHasChanged();
         }
 
         protected async Task ClearAuthorFiltersAsync()
         {
-            var filterSnapshot = CloneInstitutionalFilter(_institutionalFilter);
+            var filterSnapshot = ReportInstitutionalFilterState.Clone(_institutionalFilter);
             await LoadInstitutionalReportingAsync(keepCurrentDashboard: true, filterSnapshot: filterSnapshot);
             await LoadAuthorReportingAsync(filterSnapshot);
+            SaveReportingState();
             StateHasChanged();
         }
 
@@ -588,197 +542,149 @@ namespace tesisproject.frontend.Features.Management.Pages
                     ? $"{_authorReportingDashboard.Kpis.TotalAuthors:N0} autores (resumen)"
                     : !string.IsNullOrWhiteSpace(_authorReportingError)
                         ? "Error de carga"
-                        : _authorReportingDashboard is null
-                            ? "Pendiente de cargar"
-                            : $"{_authorReportingDashboard.Kpis.TotalAuthors:N0} autores";
+                            : _authorReportingDashboard is null
+                                ? "Pendiente de cargar"
+                                : $"{_authorReportingDashboard.Kpis.TotalAuthors:N0} autores";
 
-        private void EnsureAuthorDashboardFallbackAvailability()
+        private bool IsAuthorTabActive
+            => string.Equals(_institutionalReportTab, "authors", StringComparison.OrdinalIgnoreCase);
+
+        private bool ShouldLoadAuthorDashboard
+            => _authorReportingDashboard is null || _authorDashboardUsingFallback;
+
+        private void ResetAuthorDashboardForFilterChange()
         {
-            if (_authorReportingDashboard is not null || _isLoadingAuthorReporting)
-            {
-                return;
-            }
-
-            var fallbackDashboard = BuildAuthorDashboardFallback();
-            if (fallbackDashboard is null)
-            {
-                return;
-            }
-
-            _authorReportingDashboard = fallbackDashboard;
-            _authorDashboardUsingFallback = true;
-
-            if (string.IsNullOrWhiteSpace(_authorReportingError))
-            {
-                _authorReportingError = "Se muestra un resumen autoral derivado del tablero institucional mientras se completa la analítica detallada.";
-            }
+            _authorLoadCts?.Cancel();
+            _authorReportingDashboard = null;
+            _authorDashboardUsingFallback = false;
+            _authorReportingError = null;
+            _isLoadingAuthorReporting = false;
+            ReportingState.ClearAuthorState();
         }
 
-        private bool ShouldUseAuthorFallback(AuthorReportingDashboardDto dashboard)
+        private void ClearAuthorFallbackState()
         {
-            return dashboard.Kpis.TotalAuthors == 0
-                && (_institutionalDashboard?.ArticlesByAuthor.Count ?? 0) > 0;
+            _authorReportingDashboard = null;
+            _authorDashboardUsingFallback = false;
+            if (string.Equals(_authorReportingError, ReportAuthorFallbackBuilder.AvailabilityMessage, StringComparison.Ordinal)
+                || string.Equals(_authorReportingError, ReportAuthorFallbackBuilder.ErrorMessage, StringComparison.Ordinal))
+            {
+                _authorReportingError = null;
+            }
+
+            ReportingState.ClearAuthorState();
         }
 
-        private AuthorReportingDashboardDto? BuildAuthorDashboardFallback()
+        private bool TryRestoreReportingState()
         {
-            if (_institutionalDashboard is null)
+            if (!ReportingState.HasFreshInstitutionalDashboard)
             {
-                return null;
+                return false;
             }
 
-            var authorItems = _institutionalDashboard.ArticlesByAuthor
-                .Where(x => x.TotalArticles > 0)
-                .ToList();
+            _institutionalDashboard = ReportingState.InstitutionalDashboard;
+            _authorReportingDashboard = ReportingState.AuthorDashboard;
+            _authorDashboardUsingFallback = ReportingState.AuthorDashboardUsingFallback;
+            _institutionalFilter = ReportInstitutionalFilterState.Clone(ReportingState.Filter);
+            _institutionalReportTab = string.IsNullOrWhiteSpace(ReportingState.ActiveTab)
+                ? "overview"
+                : ReportingState.ActiveTab;
+            _activeReportPreset = ReportingState.ActivePreset;
+            _institutionalReportingError = ReportingState.InstitutionalError;
+            _authorReportingError = ReportingState.AuthorError;
+            _institutionalLastLoadedAt = ReportingState.LastLoadedAt;
+            _isLoadingInstitutionalReporting = false;
+            _isRefreshingInstitutionalReporting = false;
+            _isLoadingAuthorReporting = false;
+            _isRunningInstitutionalEtl = false;
 
-            if (authorItems.Count == 0)
-            {
-                return null;
-            }
+            return true;
+        }
 
-            var tracedArticles = _institutionalDashboard.AuthorTraceCoverage.ArticlesWithAuthorTrace;
-            var totalArticles = _institutionalDashboard.ScientificProduction.TotalArticles;
-
-            return new AuthorReportingDashboardDto
-            {
-                Kpis = new AuthorReportingKpiDto
-                {
-                    TotalAuthors = authorItems.Count,
-                    TotalArticles = totalArticles,
-                    ArticlesWithAuthorTrace = tracedArticles,
-                    ArticlesWithoutAuthorTrace = _institutionalDashboard.AuthorTraceCoverage.ArticlesWithoutAuthorTrace,
-                    TotalAuthorArticleLinks = authorItems.Sum(x => x.TotalArticles),
-                    PrimaryAuthorLinks = 0,
-                    CoauthorLinks = 0,
-                    AuthorsWithOrcid = 0,
-                    AuthorsWithAffiliation = 0,
-                    AverageAuthorsPerArticle = tracedArticles <= 0
-                        ? 0
-                        : Math.Round(authorItems.Sum(x => x.TotalArticles) / (decimal)tracedArticles, 2)
-                },
-                FilterOptions = new AuthorReportingFilterOptionsDto
-                {
-                    Authors = authorItems.Select(x => x.Name).ToList()
-                },
-                Authors = authorItems
-                    .Select((x, index) => new AuthorReportingSummaryDto
-                    {
-                        AuthorKey = index + 1,
-                        AuthorName = x.Name,
-                        Affiliation = "Sin detalle",
-                        ParticipantType = "Sin detalle",
-                        TotalArticles = x.TotalArticles,
-                        PrimaryAuthorArticles = 0,
-                        CoauthorArticles = 0
-                    })
-                    .ToList(),
-                Publications = new List<AuthorPublicationDto>(),
-                Coauthors = new List<AuthorCoauthorDto>(),
-                ArticlesByAffiliation = new List<ReportingSummaryItemDto>(),
-                ArticlesByFaculty = _institutionalDashboard.ArticlesByFaculty
-                    .Select(x => new ReportingSummaryItemDto { Name = x.Name, TotalArticles = x.TotalArticles })
-                    .ToList(),
-                ArticlesByIndexingSource = _institutionalDashboard.ArticlesByIndexingSource
-                    .Select(x => new ReportingSummaryItemDto { Name = x.IndexingSourceName, TotalArticles = x.TotalArticles })
-                    .ToList(),
-                ArticlesByQuartile = _institutionalDashboard.ArticlesByQuartile
-                    .Select(x => new ReportingSummaryItemDto { Name = x.Name, TotalArticles = x.TotalArticles })
-                    .ToList(),
-                ArticlesByMonth = _institutionalDashboard.ArticlesByMonth
-                    .Select(x => new ReportingSummaryItemDto { Name = x.Name, TotalArticles = x.TotalArticles })
-                    .ToList()
-            };
+        private void SaveReportingState()
+        {
+            ReportingState.InstitutionalDashboard = _institutionalDashboard;
+            ReportingState.AuthorDashboard = _authorReportingDashboard;
+            ReportingState.AuthorDashboardUsingFallback = _authorDashboardUsingFallback;
+            ReportingState.Filter = ReportInstitutionalFilterState.Clone(_institutionalFilter);
+            ReportingState.ActiveTab = _institutionalReportTab;
+            ReportingState.ActivePreset = _activeReportPreset;
+            ReportingState.InstitutionalError = _institutionalReportingError;
+            ReportingState.AuthorError = _authorReportingError;
+            ReportingState.LastLoadedAt = _institutionalLastLoadedAt;
         }
 
         private InstitutionalReportingFilterDto BuildPdfRequestFilter()
         {
-            var filter = CloneInstitutionalFilter(_institutionalFilter);
-            filter.IncludePdfKpis = _pdfComposerSelection.IncludePdfKpis;
-            filter.IncludePdfFilters = _pdfComposerSelection.IncludePdfFilters;
-            filter.IncludePdfPeriod = _pdfComposerSelection.IncludePdfPeriod;
-            filter.IncludePdfFields = _pdfComposerSelection.IncludePdfFields;
-            filter.IncludePdfVenues = _pdfComposerSelection.IncludePdfVenues;
-            filter.IncludePdfAuthors = _pdfComposerSelection.IncludePdfAuthors;
-            filter.IncludePdfPediIiit = _pdfComposerSelection.IncludePdfPediIiit;
-            filter.IncludePdfTddTotal = _pdfComposerSelection.IncludePdfTddTotal;
-            filter.IncludePdfParticipation = _pdfComposerSelection.IncludePdfParticipation;
-            filter.IncludePdfArticles = _pdfComposerSelection.IncludePdfArticles;
+            var filter = ReportInstitutionalFilterState.Clone(_institutionalFilter);
+            ReportPdfRequestBuilder.ApplySelection(filter, _pdfComposerSelection);
             return filter;
         }
 
         private async Task<byte[]> RequestDashboardPdfAsync(InstitutionalReportingFilterDto requestFilter, CancellationToken ct = default)
         {
-            var url = InstitutionalReportingClient.BuildDashboardUrl(
-                requestFilter,
-                "api/reporting/dashboard/pdf",
-                includePdfOptions: true);
+            var url = ReportPdfRequestBuilder.BuildDashboardPdfUrl(requestFilter);
 
             using var response = await Http.GetAsync(url, ct);
             response.EnsureSuccessStatusCode();
             return await response.Content.ReadAsByteArrayAsync(ct);
         }
 
-        private static InstitutionalReportingFilterDto CreateDefaultPdfSelection()
-            => new();
+        private static string BuildPdfRequestSignature(InstitutionalReportingFilterDto filter)
+            => ReportPdfRequestBuilder.BuildDashboardPdfUrl(filter);
 
-        private static bool HasAnyPdfSectionSelected(InstitutionalReportingFilterDto selection)
-            => selection.IncludePdfKpis
-            || selection.IncludePdfFilters
-            || selection.IncludePdfPeriod
-            || selection.IncludePdfFields
-            || selection.IncludePdfVenues
-            || selection.IncludePdfAuthors
-            || selection.IncludePdfPediIiit
-            || selection.IncludePdfTddTotal
-            || selection.IncludePdfParticipation
-            || selection.IncludePdfArticles;
-
-        private static InstitutionalReportingFilterDto CloneInstitutionalFilter(InstitutionalReportingFilterDto source)
-            => new()
+        private static string NormalizeReportPreset(string? preset)
+            => preset?.Trim().ToLowerInvariant() switch
             {
-                CreatedFrom = source.CreatedFrom,
-                CreatedTo = source.CreatedTo,
-                PublishedFrom = source.PublishedFrom,
-                PublishedTo = source.PublishedTo,
-                AcademicTerm = source.AcademicTerm,
-                PublicationStatus = source.PublicationStatus,
-                ResearchLine = source.ResearchLine,
-                Faculty = source.Faculty,
-                IndexingSource = source.IndexingSource,
-                BroadField = source.BroadField,
-                SpecificField = source.SpecificField,
-                DetailedField = source.DetailedField,
-                VenueName = source.VenueName,
-                VenueType = source.VenueType,
-                ArticleYear = source.ArticleYear,
-                Quartile = source.Quartile,
-                IsOpenAccess = source.IsOpenAccess,
-                IsProjectResult = source.IsProjectResult,
-                HasInterculturalComponent = source.HasInterculturalComponent,
-                PeriodDateType = source.PeriodDateType,
-                AuthorName = source.AuthorName,
-                AuthorAffiliation = source.AuthorAffiliation,
-                ParticipantType = source.ParticipantType,
-                HasOrcid = source.HasOrcid,
-                OnlyPrimaryAuthors = source.OnlyPrimaryAuthors,
-                CoauthorName = source.CoauthorName,
-                IncludePdfKpis = source.IncludePdfKpis,
-                IncludePdfFilters = source.IncludePdfFilters,
-                IncludePdfPeriod = source.IncludePdfPeriod,
-                IncludePdfFields = source.IncludePdfFields,
-                IncludePdfVenues = source.IncludePdfVenues,
-                IncludePdfAuthors = source.IncludePdfAuthors,
-                IncludePdfPediIiit = source.IncludePdfPediIiit,
-                IncludePdfTddTotal = source.IncludePdfTddTotal,
-                IncludePdfParticipation = source.IncludePdfParticipation,
-                IncludePdfArticles = source.IncludePdfArticles
+                "pedi-quarter" => "pedi-quarter",
+                "tdd-management" => "tdd-management",
+                "pedi-iiit" => "pedi-iiit",
+                "tdd-total" => "tdd-total",
+                _ => "pedi-quarter"
             };
 
-        private static string BuildPdfRequestSignature(InstitutionalReportingFilterDto filter)
-            => InstitutionalReportingClient.BuildDashboardUrl(
-                filter,
-                "api/reporting/dashboard/pdf",
-                includePdfOptions: true);
+        private static InstitutionalReportingFilterDto BuildPresetPdfSelection(string? preset)
+        {
+            var selection = new InstitutionalReportingFilterDto
+            {
+                IncludePdfKpis = true,
+                IncludePdfFilters = true,
+                IncludePdfPeriod = true,
+                IncludePdfFields = false,
+                IncludePdfVenues = false,
+                IncludePdfAuthors = false,
+                IncludePdfPediIiit = false,
+                IncludePdfTddTotal = false,
+                IncludePdfParticipation = false,
+                IncludePdfArticles = true
+            };
+
+            switch (NormalizeReportPreset(preset))
+            {
+                case "pedi-quarter":
+                    selection.IncludePdfFields = true;
+                    selection.IncludePdfVenues = true;
+                    selection.IncludePdfAuthors = true;
+                    selection.IncludePdfPediIiit = true;
+                    selection.IncludePdfParticipation = true;
+                    break;
+                case "tdd-management":
+                    selection.IncludePdfVenues = true;
+                    selection.IncludePdfAuthors = true;
+                    selection.IncludePdfTddTotal = true;
+                    selection.IncludePdfParticipation = true;
+                    break;
+                case "pedi-iiit":
+                    selection.IncludePdfPediIiit = true;
+                    break;
+                case "tdd-total":
+                    selection.IncludePdfTddTotal = true;
+                    selection.IncludePdfParticipation = true;
+                    break;
+            }
+
+            return selection;
+        }
 
         public void Dispose()
         {

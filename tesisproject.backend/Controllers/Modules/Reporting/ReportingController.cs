@@ -52,6 +52,18 @@ public sealed class ReportingController : ControllerBase
         return File(bytes, "application/pdf", $"reporte-institucional-{DateTime.UtcNow:yyyyMMddHHmm}.pdf");
     }
 
+    [HttpGet("dashboard/excel")]
+    public async Task<IActionResult> GetDashboardExcel(
+        [FromQuery] InstitutionalReportingFilterDto filter,
+        CancellationToken ct)
+    {
+        var bytes = await _reporting.GenerateDashboardExcelAsync(filter, ct);
+        return File(
+            bytes,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            $"reporte-institucional-{DateTime.UtcNow:yyyyMMddHHmm}.xlsx");
+    }
+
     [HttpPost("etl/full")]
     [Authorize(Roles = AppRoles.Admin)]
     public async Task<ActionResult<ReportingHealthDto>> RunFullLoad(CancellationToken ct)

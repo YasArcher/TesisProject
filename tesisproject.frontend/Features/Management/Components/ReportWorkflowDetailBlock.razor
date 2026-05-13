@@ -5,18 +5,18 @@
     <div>
         <small>Flujo y detalle</small>
         <h2>Seguimiento operativo</h2>
-        <p>Revisión reciente y detalle filtrado.</p>
+        <p>Revisión y detalle filtrado.</p>
     </div>
 </div>
 
 <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-    La revisión reciente es institucional. Las tablas sí responden al filtro actual.
+    Revisión institucional; tablas según filtro.
 </div>
 
 <article class="reports-dw-chart-card reports-dw-chart-card--wide reports-dw-chart-card--ink">
     <ReportCardHeader IconClass="bi bi-layout-text-window-reverse"
                       Title="Seguimiento y detalle"
-                      Description="Revisión, revistas y artículos del resultado." />
+                      Description="Revisión, revistas y artículos." />
 
     <div class="reports-dw-subtabs">
         <button type="button"
@@ -65,7 +65,7 @@
                 </article>
             </div>
             <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                Vista operativa: se muestran hasta 6 lotes recientes del flujo institucional.
+                Últimos 6 lotes del flujo.
             </div>
             <div class="reports-dw-workflow-list">
                 @foreach (var item in Dashboard!.WorkflowCurrentStages.Take(6))
@@ -83,7 +83,7 @@
         @if ((Dashboard?.ArticlesByVenue.Count ?? 0) > 8)
         {
             <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                Vista resumida: mostrando hasta 8 revistas con métricas recientes.
+                Mostrando 8 revistas principales.
             </div>
         }
         <div class="reports-dw-table-wrap">
@@ -134,7 +134,7 @@
         @if ((Dashboard?.RecentArticles.Count ?? 0) > 12)
         {
             <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                Vista resumida: mostrando hasta 12 artículos recientes del resultado actual.
+                Mostrando 12 artículos recientes.
             </div>
         }
         <div class="reports-dw-table-wrap">

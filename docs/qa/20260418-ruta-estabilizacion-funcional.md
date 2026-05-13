@@ -15,10 +15,16 @@ Dejar una ruta repetible de verificacion antes de seguir puliendo UX, reporterí
 
 ## Smoke tecnico minimo
 
-Ejecutar despues de levantar backend:
+Ejecutar con backend levantado:
 
 ```powershell
 .\tests\smoke\invoke-system-smoke.ps1
+```
+
+O ejecutar el smoke levantando el backend automaticamente y esperando a que `/ping` responda:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tests\smoke\run-system-smoke-with-backend.ps1
 ```
 
 Validaciones incluidas:

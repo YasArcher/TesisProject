@@ -118,11 +118,24 @@ public sealed class ReportingArticleIndexingDetailRow
     public int ArticleKey { get; set; }
     public int ArticleId { get; set; }
     public string? Title { get; set; }
+    public string? Doi { get; set; }
     public string? IndexingSourceName { get; set; }
+    public string? VenueName { get; set; }
+    public string? Issn { get; set; }
+    public string? JournalUrl { get; set; }
     public string? PublicationUrl { get; set; }
     public DateTime? PublishedDate { get; set; }
+    public short? ArticleYear { get; set; }
     public bool IsProjectResult { get; set; }
+    public bool HasInterculturalComponent { get; set; }
     public string? FacultyName { get; set; }
+    public string? ResearchLine { get; set; }
+    public string? BroadFieldName { get; set; }
+    public string? SpecificFieldName { get; set; }
+    public string? DetailedFieldName { get; set; }
+    public string? AuthorIdentification { get; set; }
+    public string? AuthorName { get; set; }
+    public string? ParticipantType { get; set; }
     public string? Quartile { get; set; }
 }
 

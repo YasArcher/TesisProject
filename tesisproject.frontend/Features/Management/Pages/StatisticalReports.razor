@@ -25,75 +25,14 @@
     }
 
     <section class="reports-dw-panel">
-        <div class="reports-dw-panel__header">
-            <div class="reports-dw-panel__title">
-                <span class="reports-dw-panel__icon">
-                    <i class="bi bi-diagram-3"></i>
-                </span>
-                <div>
-                    <h2>Producción académica</h2>
-                </div>
-            </div>
-
-            @if (_isLoadingInstitutionalReporting && _institutionalDashboard is null)
-            {
-                <div class="reports-dw-panel__actions">
-                    <span class="reports-dw-status reports-dw-status--loading">
-                        <i class="bi bi-arrow-repeat"></i>
-                        Preparando indicadores
-                    </span>
-                </div>
-            }
-            else if (!string.IsNullOrWhiteSpace(_institutionalReportingError) && _institutionalDashboard is null)
-            {
-                <div class="reports-dw-panel__actions">
-                    <span class="reports-dw-status reports-dw-status--warning">
-                        <i class="bi bi-exclamation-triangle"></i>
-                        Sin datos disponibles
-                    </span>
-                    <AuthorizeView Roles="Admin">
-                        <Authorized>
-                            <button class="reports-dw-etl-button" @onclick="RunEtlAndReload" disabled="@IsInstitutionalBlockingBusy">
-                                <i class="bi bi-arrow-clockwise"></i>
-                                Actualizar información
-                            </button>
-                        </Authorized>
-                    </AuthorizeView>
-                </div>
-            }
-            else
-            {
-                <div class="reports-dw-panel__actions">
-                    @if (_isRefreshingInstitutionalReporting)
-                    {
-                        <span class="reports-dw-status reports-dw-status--loading">
-                            <i class="bi bi-arrow-repeat"></i>
-                            Actualizando vista
-                        </span>
-                    }
-                    <span class="@GetEtlStatusClass(_institutionalDashboard?.Health.LastEtlStatus)">
-                        <i class="bi bi-database-check"></i>
-                        Información @GetInstitutionalStatusLabel(_institutionalDashboard?.Health.LastEtlStatus)
-                    </span>
-                    <AuthorizeView Roles="Admin">
-                        <Authorized>
-                            <button class="reports-dw-etl-button" @onclick="RunEtlAndReload" disabled="@IsInstitutionalBlockingBusy">
-                                @if (_isRunningInstitutionalEtl)
-                                {
-                                    <i class="bi bi-arrow-repeat"></i>
-                                    <span>Actualizando...</span>
-                                }
-                                else
-                                {
-                                    <i class="bi bi-arrow-clockwise"></i>
-                                    <span>Actualizar información</span>
-                                }
-                            </button>
-                        </Authorized>
-                    </AuthorizeView>
-                </div>
-            }
-        </div>
+        <ReportInstitutionalPanelHeader IsInitialLoading="@(_isLoadingInstitutionalReporting && _institutionalDashboard is null)"
+                                        ShowUnavailableState="@(!string.IsNullOrWhiteSpace(_institutionalReportingError) && _institutionalDashboard is null)"
+                                        IsRefreshing="@_isRefreshingInstitutionalReporting"
+                                        IsRunningEtl="@_isRunningInstitutionalEtl"
+                                        IsBusy="@IsInstitutionalBlockingBusy"
+                                        EtlStatusClass="@GetEtlStatusClass(_institutionalDashboard?.Health.LastEtlStatus)"
+                                        EtlStatusLabel="@GetInstitutionalStatusLabel(_institutionalDashboard?.Health.LastEtlStatus)"
+                                        OnRunEtl="RunEtlAndReload" />
 
         @if (!string.IsNullOrWhiteSpace(_institutionalReportingError))
         {
@@ -114,44 +53,17 @@
         && _institutionalDashboard is not null
         && HasInstitutionalReportingData)
     {
-        <section class="reports-dw-tabs" aria-label="Secciones de reportería institucional">
-            <button class="@(_institutionalReportTab == "overview" ? "reports-dw-tab reports-dw-tab--active" : "reports-dw-tab")"
-                    type="button"
-                    aria-pressed="@(_institutionalReportTab == "overview")"
-                    @onclick="ShowInstitutionalOverview">
-                <i class="bi bi-grid-1x2"></i>
-                <span>
-                    Tablero institucional
-                    <small>@((_institutionalDashboard?.ScientificProduction.TotalArticles ?? 0).ToString("N0")) artículos</small>
-                </span>
-            </button>
-            <button class="@(_institutionalReportTab == "participation" ? "reports-dw-tab reports-dw-tab--active" : "reports-dw-tab")"
-                    type="button"
-                    aria-pressed="@(_institutionalReportTab == "participation")"
-                    @onclick="ShowInstitutionalParticipation">
-                <i class="bi bi-pie-chart"></i>
-                <span>
-                    Porcentaje de participación
-                    <small>Facultades y bases</small>
-                </span>
-            </button>
-            <button class="@(_institutionalReportTab == "authors" ? "reports-dw-tab reports-dw-tab--active" : "reports-dw-tab")"
-                    type="button"
-                    aria-pressed="@(_institutionalReportTab == "authors")"
-                    @onclick="ShowInstitutionalAuthors">
-                <i class="bi bi-person-vcard"></i>
-                <span>
-                    Autores y coautoría
-                    <small>@AuthorTabSubtitle</small>
-                </span>
-            </button>
-        </section>
+        <ReportInstitutionalSectionTabs Dashboard="@_institutionalDashboard"
+                                        ActiveTab="@_institutionalReportTab"
+                                        AuthorSubtitle="@AuthorTabSubtitle"
+                                        OnTabSelected="SelectInstitutionalReportTabAsync" />
     }
 
     <button class="reports-dw-floating-filter"
             type="button"
             aria-label="Abrir filtros"
             title="Filtros"
+            disabled="@IsInstitutionalBlockingBusy"
             @onclick="ToggleInstitutionalFilters">
         <i class="bi bi-sliders2-vertical"></i>
         <span>Filtros</span>
@@ -161,9 +73,20 @@
             type="button"
             aria-label="Generar PDF"
             title="Generar PDF"
+            disabled="@(!CanOpenPdfComposer)"
             @onclick="OpenPdfComposer">
         <i class="bi bi-file-earmark-pdf"></i>
         <span>PDF</span>
+    </button>
+
+    <button class="reports-dw-floating-excel"
+            type="button"
+            aria-label="Exportar Excel"
+            title="Exportar Excel"
+            disabled="@(!CanExportExcel)"
+            @onclick="DownloadExcelAsync">
+        <i class="bi bi-file-earmark-excel"></i>
+        <span>@(_isExportingExcel ? "..." : "Excel")</span>
     </button>
 
     @if (_showInstitutionalFilters)
@@ -210,94 +133,65 @@
         && _institutionalDashboard is not null
         && HasInstitutionalReportingData)
     {
-        <section class="reports-dw-toolbar">
-            <div class="reports-dw-toolbar__meta">
-                <span><i class="bi bi-grid-1x2"></i>@InstitutionalScopeLabel</span>
-                <span><i class="bi bi-clock-history"></i>@InstitutionalLastLoadedLabel</span>
-            </div>
-        </section>
-
-        <section class="reports-dw-filter-summary">
-            <div class="reports-dw-filter-summary__title">
-                <span><i class="bi bi-funnel"></i></span>
-                <div>
-                    <strong>Filtros activos</strong>
-                    <small>@GetActiveFilterSummaryLabel()</small>
-                </div>
-            </div>
-
-            @if (ActiveInstitutionalFilterChips.Count == 0)
-            {
-                <div class="reports-dw-filter-summary__empty">
-                    Consolidado institucional completo.
-                </div>
-            }
-            else
-            {
-                <div class="reports-dw-filter-chips">
-                    @foreach (var chip in ActiveInstitutionalFilterChips)
-                    {
-                        <span>
-                            <small>@chip.Label</small>
-                            @chip.Value
-                        </span>
-                    }
-                </div>
-            }
-        </section>
-
         @if (_institutionalReportTab == "overview")
         {
-        <section class="reports-dw-content-shell">
-        <section class="reports-dw-analytics-grid @(_isRefreshingInstitutionalReporting ? "reports-dw-analytics-grid--refreshing" : string.Empty)">
-            @if (_isRefreshingInstitutionalReporting)
-            {
-                <div class="reports-dw-refresh-overlay">
-                    <i class="bi bi-arrow-repeat"></i>
-                    Actualizando indicadores filtrados...
-                </div>
-            }
+            <section class="reports-dw-content-shell">
+                <section class="reports-dw-analytics-grid @(_isRefreshingInstitutionalReporting ? "reports-dw-analytics-grid--refreshing" : string.Empty)">
+                    @if (_isRefreshingInstitutionalReporting)
+                    {
+                        <div class="reports-dw-refresh-overlay">
+                            <i class="bi bi-arrow-repeat"></i>
+                            Actualizando indicadores filtrados...
+                        </div>
+                    }
 
-            <ReportProductionOverviewBlock Dashboard="@_institutionalDashboard" />
+                    <ReportProductionOverviewBlock Dashboard="@_institutionalDashboard" />
 
-            <ReportQualityMetricsBlock Dashboard="@_institutionalDashboard" />
+                    <ReportQualityMetricsBlock Dashboard="@_institutionalDashboard" />
 
-            <ReportPeopleConcentrationBlock Dashboard="@_institutionalDashboard" />
+                    <ReportPeopleConcentrationBlock Dashboard="@_institutionalDashboard" />
 
-            <ReportSpecificArticleBlocks Dashboard="@_institutionalDashboard"
-                                         ScopeLabel="@InstitutionalScopeLabel"
-                                         PediIiitScopeLabel="@PediIiitScopeLabel"
-                                         TddTotalScopeLabel="@TddTotalScopeLabel" />
+                    <ReportSpecificArticleBlocks Dashboard="@_institutionalDashboard"
+                                                 ScopeLabel="@InstitutionalScopeLabel"
+                                                 PediIiitScopeLabel="@PediIiitScopeLabel"
+                                                 TddTotalScopeLabel="@TddTotalScopeLabel" />
 
-            <ReportWorkflowDetailBlock Dashboard="@_institutionalDashboard" />
-        </section>
-        </section>
+                    <ReportWorkflowDetailBlock Dashboard="@_institutionalDashboard" />
+                </section>
+            </section>
         }
         else if (_institutionalReportTab == "participation")
         {
-        <section class="reports-dw-content-shell">
-            <ReportParticipationPanel Dashboard="@_institutionalDashboard"
-                                      ParticipationScopeLabel="@ParticipationScopeLabel" />
-        </section>
+            <section class="reports-dw-content-shell">
+                <ReportParticipationPanel Dashboard="@_institutionalDashboard"
+                                          ParticipationScopeLabel="@ParticipationScopeLabel" />
+            </section>
+        }
+        else if (_institutionalReportTab == "dashboard")
+        {
+            <section class="reports-dw-content-shell">
+                <ReportUniversalDashboardPanel Dashboard="@_institutionalDashboard"
+                                               ScopeLabel="@InstitutionalScopeLabel" />
+            </section>
         }
         else
         {
             <section class="reports-dw-content-shell">
-            @if (!string.IsNullOrWhiteSpace(_authorReportingError))
-            {
-                <div class="@(_authorDashboardUsingFallback ? "reports-dw-info-card" : "reports-dw-error-card")">
-                    <i class="bi @(_authorDashboardUsingFallback ? "bi-info-circle" : "bi-exclamation-triangle")"></i>
-                    <div>
-                        <strong>@(_authorDashboardUsingFallback ? "Resumen autoral disponible" : "No pude cargar autores")</strong>
-                        <span>@_authorReportingError</span>
+                @if (!string.IsNullOrWhiteSpace(_authorReportingError))
+                {
+                    <div class="@(_authorDashboardUsingFallback ? "reports-dw-info-card" : "reports-dw-error-card")">
+                        <i class="bi @(_authorDashboardUsingFallback ? "bi-info-circle" : "bi-exclamation-triangle")"></i>
+                        <div>
+                            <strong>@(_authorDashboardUsingFallback ? "Resumen autoral disponible" : "No pude cargar autores")</strong>
+                            <span>@_authorReportingError</span>
+                        </div>
                     </div>
-                </div>
-            }
+                }
 
-            <ReportAuthorAnalyticsPanel Dashboard="@_authorReportingDashboard"
-                                        IsBusy="@_isLoadingAuthorReporting"
-                                        IsFallbackSummary="@_authorDashboardUsingFallback"
-                                        ScopeLabel="@InstitutionalScopeLabel" />
+                <ReportAuthorAnalyticsPanel Dashboard="@_authorReportingDashboard"
+                                            IsBusy="@_isLoadingAuthorReporting"
+                                            IsFallbackSummary="@_authorDashboardUsingFallback"
+                                            ScopeLabel="@InstitutionalScopeLabel" />
             </section>
         }
     }
@@ -305,12 +199,12 @@
     <ReportPdfComposerModal @key="_pdfComposerRenderKey"
                             Visible="@_showPdfComposer"
                             Selection="@_pdfComposerSelection"
-                            IsGeneratingPreview="@_isPdfPreviewGenerating"
+                            IsGeneratingPreview="@_pdfComposerState.IsGeneratingPreview"
                             CanDownload="@CanDownloadPdf"
                             IsPreviewCurrent="@IsPdfPreviewCurrent"
-                            PreviewBase64="@_pdfPreviewBase64"
-                            PreviewError="@_pdfPreviewError"
-                            GeneratedAtLabel="@_pdfPreviewGeneratedAtLabel"
+                            PreviewBase64="@_pdfComposerState.PreviewBase64"
+                            PreviewError="@_pdfComposerState.PreviewError"
+                            GeneratedAtLabel="@_pdfComposerState.GeneratedAtLabel"
                             OnClose="ClosePdfComposer"
                             OnGeneratePreview="GeneratePdfPreviewAsync"
                             OnDownload="DownloadPdfAsync"

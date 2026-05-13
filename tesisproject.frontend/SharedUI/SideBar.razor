@@ -3,18 +3,22 @@
 @namespace tesisproject.frontend.SharedUI
 @implements IDisposable
 @inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
 
-<div class="sidebar menu-bg h-100 d-flex flex-column @(_collapsed ? "is-collapsed" : null)">
-    <div class="sidebar-brand d-flex align-items-center justify-content-between px-3 py-3 border-bottom border-white-20">
-        <div class="d-flex align-items-center brand-identity">
-            <div class="brand-mark d-inline-flex align-items-center justify-content-center me-2">
+<div class="sidebar menu-bg @(_collapsed ? "is-collapsed" : null)">
+    <div class="sidebar-brand">
+        <div class="brand-identity">
+            <div class="brand-mark">
                 <span class="fw-bold">SI</span>
             </div>
-            <div class="brand-text">
-                <div class="brand-kicker">Plataforma</div>
-                <div class="fw-semibold lh-1">Sistema Integrado</div>
-                <small class="opacity-75 lh-1">de Documentación</small>
-            </div>
+            @if (!_collapsed)
+            {
+                <div class="brand-text">
+                    <div class="brand-kicker">Plataforma</div>
+                    <div class="fw-semibold lh-1">Sistema Integrado</div>
+                    <small class="opacity-75 lh-1">de Documentación</small>
+                </div>
+            }
         </div>
         <button type="button"
                 class="btn btn-sm text-white bg-transparent opacity-75 btn-collapse"
@@ -31,14 +35,17 @@
         </button>
     </div>
 
-    <nav class="sidebar-nav flex-grow-1 px-2 py-3">
+    <nav class="sidebar-nav">
         @if (IsAdmin)
         {
             <div class="sidebar-admin-shortcut-wrap mb-3">
                 <NavLink href="/management/security-administration" class="sidebar-admin-shortcut" ActiveClass="active">
                     <span class="icon">🔐</span>
-                    <span class="label">Usuarios y roles</span>
-                    <span class="badge">Admin</span>
+                    @if (!_collapsed)
+                    {
+                        <span class="label">Usuarios y roles</span>
+                        <span class="badge">Admin</span>
+                    }
                 </NavLink>
             </div>
         }
@@ -46,22 +53,28 @@
         <div class="sidebar-nav-stack">
             @if (IsUodideOnly || IsAreaTecnicaOnly)
             {
-                <ul class="nav flex-column gap-2 sidebar-direct-links">
+                <ul class="nav flex-column sidebar-direct-links">
                     <li class="nav-item">
-                        <NavLink href="/management/workflow-review" Match="NavLinkMatch.Prefix" class="nav-link px-3 py-2 text-white-90" ActiveClass="active" title="Revisión de envíos">
+                        <NavLink href="/management/workflow-review" Match="NavLinkMatch.Prefix" class="nav-link sidebar-link" ActiveClass="active" title="Revisión de envíos">
                             <span class="icon">✓</span>
-                            <span class="label">Revisión de envíos</span>
+                            @if (!_collapsed)
+                            {
+                                <span class="label">Revisión de envíos</span>
+                            }
                         </NavLink>
                     </li>
                 </ul>
             }
             else if (CanSeeArticlesGroup)
             {
-                <ul class="nav flex-column gap-2 sidebar-direct-links">
+                <ul class="nav flex-column sidebar-direct-links">
                     <li class="nav-item">
-                        <NavLink href="/panel/principal" Match="NavLinkMatch.Prefix" class="nav-link px-3 py-2 text-white-90" ActiveClass="active" title="Panel principal">
+                        <NavLink href="/panel/principal" Match="NavLinkMatch.Prefix" class="nav-link sidebar-link" ActiveClass="active" title="Panel principal">
                             <span class="icon">⌂</span>
-                            <span class="label">Panel principal</span>
+                            @if (!_collapsed)
+                            {
+                                <span class="label">Panel principal</span>
+                            }
                         </NavLink>
                     </li>
                 </ul>
@@ -69,119 +82,154 @@
 
             @if (CanSeeArticlesGroup && !IsUodideOnly && !IsAreaTecnicaOnly)
             {
-                <div class="accordion-group @(GroupClass(_openArticles))">
-                    <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-85"
+                <div class="accordion-group @(GroupClass(ArticlesSection))">
+                    <button type="button" class="accordion-btn"
                             title="Artículos"
-                            @onclick="() => ToggleSection(nameof(_openArticles))">
+                            aria-expanded="@IsSectionOpen(ArticlesSection)"
+                            @onclick="() => ToggleSection(ArticlesSection)">
                         <span class="icon">📝</span>
-                        <span class="label">Artículos</span>
-                        <span class="caret">▾</span>
+                        @if (!_collapsed)
+                        {
+                            <span class="label">Artículos</span>
+                            <span class="caret">▾</span>
+                        }
                     </button>
-                    <div class="accordion-panel">
+                    @if (IsSectionOpen(ArticlesSection))
+                    {
+                    <div class="accordion-panel is-rendered">
                         <ul class="nav flex-column ms-4 my-2 gap-1">
                             @if (CanRegisterArticles)
                             {
-                                <li class="nav-item"><NavLink href="/articulos/registrar" Match="NavLinkMatch.Prefix" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Registrar artículo"><span class="icon">✎</span><span class="label">Registrar artículo</span></NavLink></li>
+                                <li class="nav-item"><NavLink href="/articulos/registrar" Match="NavLinkMatch.Prefix" class="nav-link sidebar-link" ActiveClass="active" title="Registrar artículo"><span class="icon">✎</span><span class="label">Registrar artículo</span></NavLink></li>
                             }
                             @if (CanAccessWorkflow)
                             {
-                                <li class="nav-item"><NavLink href="/management/workflow-review" Match="NavLinkMatch.Prefix" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Revisión de envíos"><span class="icon">✓</span><span class="label">Revisión de envíos</span></NavLink></li>
+                                <li class="nav-item"><NavLink href="/management/workflow-review" Match="NavLinkMatch.Prefix" class="nav-link sidebar-link" ActiveClass="active" title="Revisión de envíos"><span class="icon">✓</span><span class="label">Revisión de envíos</span></NavLink></li>
                             }
                             @if (CanManageConfiguration)
                             {
-                                <li class="nav-item"><NavLink href="/configuration" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Configuración"><span class="icon">⚙</span><span class="label">Configuración</span></NavLink></li>
+                                <li class="nav-item"><NavLink href="/configuration" class="nav-link sidebar-link" ActiveClass="active" title="Configuración"><span class="icon">⚙</span><span class="label">Configuración</span></NavLink></li>
                             }
                             @if (CanSeeArticleListing)
                             {
-                                <li class="nav-item"><NavLink href="/articulos/listado" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Listado de artículos"><span class="icon">≣</span><span class="label">Listado de artículos</span></NavLink></li>
+                                <li class="nav-item"><NavLink href="/articulos/listado" class="nav-link sidebar-link" ActiveClass="active" title="Listado de artículos"><span class="icon">≣</span><span class="label">Listado de artículos</span></NavLink></li>
                             }
                         </ul>
                     </div>
+                    }
                 </div>
             }
 
             @if (CanSeeImportGroup && !IsUodideOnly && !IsAreaTecnicaOnly)
             {
-                <div class="accordion-group @(GroupClass(_openImportFlow))">
-                    <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-85"
+                <div class="accordion-group @(GroupClass(ImportSection))">
+                    <button type="button" class="accordion-btn"
                             title="Captura e importación"
-                            @onclick="() => ToggleSection(nameof(_openImportFlow))">
+                            aria-expanded="@IsSectionOpen(ImportSection)"
+                            @onclick="() => ToggleSection(ImportSection)">
                         <span class="icon">📥</span>
-                        <span class="label">Captura e importación</span>
-                        <span class="caret">▾</span>
+                        @if (!_collapsed)
+                        {
+                            <span class="label">Captura e importación</span>
+                            <span class="caret">▾</span>
+                        }
                     </button>
-                    <div class="accordion-panel">
+                    @if (IsSectionOpen(ImportSection))
+                    {
+                    <div class="accordion-panel is-rendered">
                         <ul class="nav flex-column ms-4 my-2 gap-1">
                             @if (CanManageConfiguration)
                             {
-                                <li class="nav-item"><NavLink href="/management/registration-matrix" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Matriz de registro"><span class="icon">▦</span><span class="label">Matriz de registro</span></NavLink></li>
-                                <li class="nav-item"><NavLink href="/management/exportinformation" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Carga masiva"><span class="icon">⇪</span><span class="label">Carga masiva</span></NavLink></li>
-                                <li class="nav-item"><NavLink href="/management/externalapis" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="APIs externas"><span class="icon">◎</span><span class="label">APIs externas</span></NavLink></li>
+                                <li class="nav-item"><NavLink href="/management/registration-matrix" class="nav-link sidebar-link" ActiveClass="active" title="Matriz de registro"><span class="icon">▦</span><span class="label">Matriz de registro</span></NavLink></li>
+                                <li class="nav-item"><NavLink href="/management/exportinformation" class="nav-link sidebar-link" ActiveClass="active" title="Carga masiva"><span class="icon">⇪</span><span class="label">Carga masiva</span></NavLink></li>
+                                <li class="nav-item"><NavLink href="/management/externalapis" class="nav-link sidebar-link" ActiveClass="active" title="APIs externas"><span class="icon">◎</span><span class="label">APIs externas</span></NavLink></li>
                             }
                         </ul>
                     </div>
+                    }
                 </div>
             }
 
             @if (CanSeeAnalysisGroup && !IsUodideOnly && !IsAreaTecnicaOnly)
             {
-                <div class="accordion-group @(GroupClass(_openAnalysis))">
-                    <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-85"
+                <div class="accordion-group @(GroupClass(AnalysisSection))">
+                    <button type="button" class="accordion-btn"
                             title="Reportes y análisis"
-                            @onclick="() => ToggleSection(nameof(_openAnalysis))">
+                            aria-expanded="@IsSectionOpen(AnalysisSection)"
+                            @onclick="() => ToggleSection(AnalysisSection)">
                         <span class="icon">📊</span>
-                        <span class="label">Reportes y análisis</span>
-                        <span class="caret">▾</span>
+                        @if (!_collapsed)
+                        {
+                            <span class="label">Reportes y análisis</span>
+                            <span class="caret">▾</span>
+                        }
                     </button>
-                    <div class="accordion-panel">
+                    @if (IsSectionOpen(AnalysisSection))
+                    {
+                    <div class="accordion-panel is-rendered">
                         <ul class="nav flex-column ms-4 my-2 gap-1">
-                            <li class="nav-item"><NavLink href="/management/statisticalreports" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Reportería"><span class="icon">◔</span><span class="label">Reportería</span></NavLink></li>
+                            <li class="nav-item"><NavLink href="/management/statisticalreports" class="nav-link sidebar-link" ActiveClass="active" title="Reportería"><span class="icon">◔</span><span class="label">Reportería</span></NavLink></li>
                         </ul>
                     </div>
+                    }
                 </div>
             }
 
             @if (IsAdmin)
             {
-                <div class="accordion-group @(GroupClass(_openAdministration))">
-                    <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-85"
+                <div class="accordion-group @(GroupClass(AdministrationSection))">
+                    <button type="button" class="accordion-btn"
                             title="Control institucional"
-                            @onclick="() => ToggleSection(nameof(_openAdministration))">
+                            aria-expanded="@IsSectionOpen(AdministrationSection)"
+                            @onclick="() => ToggleSection(AdministrationSection)">
                         <span class="icon">🔐</span>
-                        <span class="label">Control institucional</span>
-                        <span class="caret">▾</span>
+                        @if (!_collapsed)
+                        {
+                            <span class="label">Control institucional</span>
+                            <span class="caret">▾</span>
+                        }
                     </button>
-                    <div class="accordion-panel">
+                    @if (IsSectionOpen(AdministrationSection))
+                    {
+                    <div class="accordion-panel is-rendered">
                         <ul class="nav flex-column ms-4 my-2 gap-1">
-                            <li class="nav-item"><NavLink href="/management/security-administration" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Usuarios y roles"><span class="icon">⌘</span><span class="label">Usuarios y roles</span></NavLink></li>
+                            <li class="nav-item"><NavLink href="/management/security-administration" class="nav-link sidebar-link" ActiveClass="active" title="Usuarios y roles"><span class="icon">⌘</span><span class="label">Usuarios y roles</span></NavLink></li>
                         </ul>
                     </div>
+                    }
                 </div>
             }
 
-            <div class="accordion-group @(GroupClass(_openSupport))">
-                <button type="button" class="accordion-btn d-flex align-items-center gap-2 px-3 py-2 text-white-85"
+            <div class="accordion-group @(GroupClass(SupportSection))">
+                <button type="button" class="accordion-btn"
                         title="Soporte y cuenta"
-                        @onclick="() => ToggleSection(nameof(_openSupport))">
+                        aria-expanded="@IsSectionOpen(SupportSection)"
+                        @onclick="() => ToggleSection(SupportSection)">
                     <span class="icon">🛟</span>
-                    <span class="label">Soporte y cuenta</span>
-                    <span class="caret">▾</span>
+                    @if (!_collapsed)
+                    {
+                        <span class="label">Soporte y cuenta</span>
+                        <span class="caret">▾</span>
+                    }
                 </button>
-                <div class="accordion-panel">
+                @if (IsSectionOpen(SupportSection))
+                {
+                <div class="accordion-panel is-rendered">
                     <ul class="nav flex-column ms-4 my-2 gap-1">
-                        <li class="nav-item"><NavLink href="/management/support" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Centro de ayuda"><span class="icon">?</span><span class="label">Centro de ayuda</span></NavLink></li>
+                        <li class="nav-item"><NavLink href="/management/support" class="nav-link sidebar-link" ActiveClass="active" title="Centro de ayuda"><span class="icon">?</span><span class="label">Centro de ayuda</span></NavLink></li>
                         @if (CanSeeManual)
                         {
-                            <li class="nav-item"><NavLink href="/help/manual" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Manual de usuario"><span class="icon">☰</span><span class="label">Manual de usuario</span></NavLink></li>
+                            <li class="nav-item"><NavLink href="/help/manual" class="nav-link sidebar-link" ActiveClass="active" title="Manual de usuario"><span class="icon">☰</span><span class="label">Manual de usuario</span></NavLink></li>
                         }
-                        <li class="nav-item"><NavLink href="/perfilview" class="nav-link px-3 py-2 text-white-85" ActiveClass="active" title="Perfil"><span class="icon">◉</span><span class="label">Perfil</span></NavLink></li>
+                        <li class="nav-item"><NavLink href="/perfilview" class="nav-link sidebar-link" ActiveClass="active" title="Perfil"><span class="icon">◉</span><span class="label">Perfil</span></NavLink></li>
                     </ul>
                 </div>
+                }
             </div>
         </div>
     </nav>
 
-    <div class="mt-auto px-3 py-3 border-top border-white-20">
+    <div class="sidebar-footer">
         <small class="opacity-75">&copy; @DateTime.Now.Year</small>
     </div>
 </div>
@@ -189,12 +237,14 @@
 @code {
     [Parameter] public EventCallback<bool> CollapseChanged { get; set; }
 
+    private const string ArticlesSection = "articles";
+    private const string ImportSection = "import";
+    private const string AnalysisSection = "analysis";
+    private const string AdministrationSection = "administration";
+    private const string SupportSection = "support";
+
     private bool _collapsed;
-    private bool _openArticles = true;
-    private bool _openImportFlow = true;
-    private bool _openAnalysis = true;
-    private bool _openAdministration = true;
-    private bool _openSupport = true;
+    private string? _openSection;
 
     private bool IsAdmin { get; set; }
     private bool IsAnalyst { get; set; }
@@ -216,12 +266,15 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadRoleStateAsync();
+        OpenSectionForCurrentRoute();
         AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        NavManager.LocationChanged += OnLocationChanged;
     }
 
     private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
     {
         await LoadRoleStateAsync(task);
+        OpenSectionForCurrentRoute();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -242,27 +295,65 @@
     private async Task Toggle()
     {
         _collapsed = !_collapsed;
+        if (_collapsed)
+        {
+            _openSection = null;
+        }
+        else
+        {
+            OpenSectionForCurrentRoute();
+        }
+
         await CollapseChanged.InvokeAsync(_collapsed);
     }
 
-    private void ToggleSection(string key)
+    private async Task ToggleSection(string key)
     {
-        if (_collapsed) return;
-        switch (key)
+        if (_collapsed)
         {
-            case nameof(_openArticles): _openArticles = !_openArticles; break;
-            case nameof(_openImportFlow): _openImportFlow = !_openImportFlow; break;
-            case nameof(_openAnalysis): _openAnalysis = !_openAnalysis; break;
-            case nameof(_openAdministration): _openAdministration = !_openAdministration; break;
-            case nameof(_openSupport): _openSupport = !_openSupport; break;
+            _collapsed = false;
+            await CollapseChanged.InvokeAsync(false);
         }
+
+        _openSection = _openSection == key ? null : key;
         StateHasChanged();
     }
 
-    private string GroupClass(bool open) => open ? "open" : "";
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        if (!_collapsed)
+        {
+            OpenSectionForCurrentRoute();
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OpenSectionForCurrentRoute()
+    {
+        var path = NavManager.ToBaseRelativePath(NavManager.Uri).Split('?', '#')[0].Trim('/').ToLowerInvariant();
+
+        _openSection = path switch
+        {
+            "articulos/registrar" or "articulos/listado" or "configuration" or "management/workflow-review"
+                when CanSeeArticlesGroup && !IsUodideOnly && !IsAreaTecnicaOnly => ArticlesSection,
+            "management/registration-matrix" or "management/exportinformation" or "management/externalapis"
+                when CanSeeImportGroup && !IsUodideOnly && !IsAreaTecnicaOnly => ImportSection,
+            "management/statisticalreports"
+                when CanSeeAnalysisGroup && !IsUodideOnly && !IsAreaTecnicaOnly => AnalysisSection,
+            "management/security-administration"
+                when IsAdmin => AdministrationSection,
+            "management/support" or "help/manual" or "perfilview" => SupportSection,
+            _ => null
+        };
+    }
+
+    private bool IsSectionOpen(string key) => !_collapsed && _openSection == key;
+
+    private string GroupClass(string key) => IsSectionOpen(key) ? "open" : "";
 
     public void Dispose()
     {
         AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        NavManager.LocationChanged -= OnLocationChanged;
     }
 }
