@@ -2300,7 +2300,7 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
 
         var filtered = ApplyAuthorFilters(rows, filter).ToList();
         var authorArticlePairs = filtered
-            .GroupBy(x => new { x.AuthorIdentity, x.ArticleKey })
+            .GroupBy(x => new { AuthorIdentity = GetCanonicalAuthorIdentity(x), x.ArticleKey })
             .Select(g => g.First())
             .ToList();
 
@@ -2319,7 +2319,10 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             ? filtered.Select(x => x.ArticleKey).Distinct().Count()
             : articlesWithAuthorTrace;
 
-        var totalAuthors = filtered.Select(x => x.AuthorIdentity).Distinct().Count();
+        var totalAuthors = filtered
+            .Select(GetCanonicalAuthorIdentity)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count();
         var primaryLinks = authorArticlePairs.Count(x => x.IsPrimaryAuthor);
 
         var dashboard = new AuthorReportingDashboardDto
@@ -2335,13 +2338,13 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
                 CoauthorLinks = Math.Max(0, authorArticlePairs.Count - primaryLinks),
                 AuthorsWithOrcid = filtered
                     .Where(x => !string.IsNullOrWhiteSpace(x.Orcid))
-                    .Select(x => x.AuthorIdentity)
-                    .Distinct()
+                    .Select(GetCanonicalAuthorIdentity)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Count(),
                 AuthorsWithAffiliation = filtered
                     .Where(x => !string.IsNullOrWhiteSpace(x.Affiliation))
-                    .Select(x => x.AuthorIdentity)
-                    .Distinct()
+                    .Select(GetCanonicalAuthorIdentity)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
                     .Count(),
                 AverageAuthorsPerArticle = effectiveArticlesWithAuthorTrace == 0
                     ? 0
@@ -2822,25 +2825,17 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
     private static List<AuthorReportingSummaryDto> BuildAuthorSummaries(List<ReportingAuthorPublicationRow> authorArticlePairs)
     {
         return authorArticlePairs
-            .GroupBy(x => new
-            {
-                x.AuthorIdentity,
-                Name = Normalize(x.AuthorName, "Sin autor"),
-                Affiliation = Normalize(x.Affiliation, "Sin filiación"),
-                ParticipantType = Normalize(x.ParticipantType, "Sin tipo"),
-                x.Email,
-                x.Orcid
-            })
+            .GroupBy(GetCanonicalAuthorIdentity, StringComparer.OrdinalIgnoreCase)
             .Select(g => new AuthorReportingSummaryDto
             {
                 AuthorKey = g.Min(x => x.AuthorKey),
-                AuthorIdentity = g.Key.AuthorIdentity,
-                AuthorName = g.Key.Name,
+                AuthorIdentity = g.Key,
+                AuthorName = GetMostUsefulValue(g.Select(x => x.AuthorName), "Sin autor"),
                 Identification = g.Select(x => x.Identification).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)),
-                Affiliation = g.Key.Affiliation,
-                ParticipantType = g.Key.ParticipantType,
-                Email = g.Key.Email,
-                Orcid = g.Key.Orcid,
+                Affiliation = GetMostUsefulValue(g.Select(x => x.Affiliation), "Sin filiación"),
+                ParticipantType = GetMostUsefulValue(g.Select(x => x.ParticipantType), "Sin tipo"),
+                Email = g.Select(x => x.Email).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)),
+                Orcid = g.Select(x => x.Orcid).FirstOrDefault(x => !string.IsNullOrWhiteSpace(x)),
                 TotalArticles = g.Select(x => x.ArticleKey).Distinct().Count(),
                 PrimaryAuthorArticles = g.Where(x => x.IsPrimaryAuthor).Select(x => x.ArticleKey).Distinct().Count(),
                 CoauthorArticles = g.Where(x => !x.IsPrimaryAuthor).Select(x => x.ArticleKey).Distinct().Count()
@@ -2853,14 +2848,14 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
     private static List<AuthorPublicationDto> BuildAuthorPublications(List<ReportingAuthorPublicationRow> rows)
     {
         return rows
-            .GroupBy(x => new { x.AuthorIdentity, x.ArticleKey })
+            .GroupBy(x => new { AuthorIdentity = GetCanonicalAuthorIdentity(x), x.ArticleKey })
             .Select(g =>
             {
                 var row = g.First();
                 return new AuthorPublicationDto
                 {
                     AuthorKey = row.AuthorKey,
-                    AuthorIdentity = row.AuthorIdentity,
+                    AuthorIdentity = g.Key.AuthorIdentity,
                     AuthorName = Normalize(row.AuthorName, "Sin autor"),
                     Identification = row.Identification,
                     Affiliation = Normalize(row.Affiliation, "Sin filiación"),
@@ -2905,7 +2900,7 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         foreach (var article in articleAuthors)
         {
             var authors = article
-                .GroupBy(x => x.AuthorIdentity)
+                .GroupBy(GetCanonicalAuthorIdentity, StringComparer.OrdinalIgnoreCase)
                 .Select(g => g.First())
                 .ToList();
 
@@ -3095,6 +3090,67 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             .ToList();
 
         return items.Count == 0 ? fallback : string.Join(", ", items);
+    }
+
+    private static string GetCanonicalAuthorIdentity(ReportingAuthorPublicationRow row)
+    {
+        var identification = NormalizeAuthorKeyValue(row.Identification);
+        if (!string.IsNullOrWhiteSpace(identification))
+        {
+            return $"id:{identification}";
+        }
+
+        var orcid = NormalizeAuthorKeyValue(row.Orcid);
+        if (!string.IsNullOrWhiteSpace(orcid))
+        {
+            return $"orcid:{orcid}";
+        }
+
+        var email = NormalizeAuthorKeyValue(row.Email);
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            return $"email:{email}";
+        }
+
+        var name = NormalizeAuthorName(row.AuthorName);
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            return $"name:{name}";
+        }
+
+        return string.IsNullOrWhiteSpace(row.AuthorIdentity)
+            ? $"key:{row.AuthorKey}"
+            : $"raw:{NormalizeAuthorKeyValue(row.AuthorIdentity)}";
+    }
+
+    private static string GetMostUsefulValue(IEnumerable<string?> values, string fallback)
+    {
+        return values
+            .Select(x => Normalize(x, fallback))
+            .Where(x => !string.IsNullOrWhiteSpace(x) && !x.Equals(fallback, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(g => g.Count())
+            .ThenBy(g => g.Key.Length)
+            .Select(g => g.Key)
+            .FirstOrDefault() ?? fallback;
+    }
+
+    private static string NormalizeAuthorKeyValue(string? value)
+        => string.IsNullOrWhiteSpace(value)
+            ? string.Empty
+            : string.Concat(value.Trim().Where(c => !char.IsWhiteSpace(c))).ToUpperInvariant();
+
+    private static string NormalizeAuthorName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        var parts = value.Trim()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        return string.Join(' ', parts).ToUpperInvariant();
     }
 
     private static string Normalize(string? value, string fallback)

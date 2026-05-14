@@ -54,6 +54,9 @@ namespace tesisproject.backend.Data
         public DbSet<RegistrationMatrixColumn> RegistrationMatrixColumns => Set<RegistrationMatrixColumn>();
         public DbSet<RegistrationMatrixRow> RegistrationMatrixRows => Set<RegistrationMatrixRow>();
         public DbSet<RegistrationMatrixCell> RegistrationMatrixCells => Set<RegistrationMatrixCell>();
+        public DbSet<IntelligenceTrainingRun> IntelligenceTrainingRuns => Set<IntelligenceTrainingRun>();
+        public DbSet<IntelligenceTrainingAlgorithmMetric> IntelligenceTrainingAlgorithmMetrics => Set<IntelligenceTrainingAlgorithmMetric>();
+        public DbSet<ReportingPerformanceMetric> ReportingPerformanceMetrics => Set<ReportingPerformanceMetric>();
 
         protected override void OnModelCreating(ModelBuilder m)
         {
@@ -175,6 +178,65 @@ namespace tesisproject.backend.Data
                  .WithMany(s => s.ArticleIndexings)
                  .HasForeignKey(x => x.IndexingSourceId)
                  .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            // =============== Intelligence Training ======
+            m.Entity<IntelligenceTrainingRun>(e =>
+            {
+                e.Property(x => x.Trigger).HasMaxLength(60).IsRequired();
+                e.Property(x => x.Status).HasMaxLength(60).IsRequired();
+                e.Property(x => x.ActiveModelVersion).HasMaxLength(160).IsRequired();
+                e.Property(x => x.PromotedAlgorithm).HasMaxLength(160).IsRequired();
+                e.Property(x => x.SelectionReason).HasMaxLength(800).IsRequired();
+                e.Property(x => x.Summary).HasMaxLength(800).IsRequired();
+                e.Property(x => x.DatasetName).HasMaxLength(180).IsRequired();
+                e.Property(x => x.Target).HasMaxLength(180).IsRequired();
+                e.Property(x => x.ValidationStrategy).HasMaxLength(800).IsRequired();
+                e.Property(x => x.FeatureWindow).HasMaxLength(120).IsRequired();
+                e.Property(x => x.BestAlgorithm).HasMaxLength(160).IsRequired();
+                e.Property(x => x.BestMetric).HasMaxLength(40).IsRequired();
+                e.Property(x => x.BestMetricValue).HasPrecision(18, 4);
+                e.Property(x => x.RetrainingPolicy).HasMaxLength(800).IsRequired();
+                e.Property(x => x.CreatedByUserId).HasMaxLength(450);
+                e.Property(x => x.CreatedBy).HasMaxLength(256);
+                e.HasIndex(x => x.RunId).IsUnique();
+                e.HasIndex(x => x.StartedAt);
+                e.HasIndex(x => x.ActiveModelVersion);
+            });
+
+            m.Entity<IntelligenceTrainingAlgorithmMetric>(e =>
+            {
+                e.Property(x => x.Algorithm).HasMaxLength(160).IsRequired();
+                e.Property(x => x.Family).HasMaxLength(80).IsRequired();
+                e.Property(x => x.Purpose).HasMaxLength(600).IsRequired();
+                e.Property(x => x.MetricName).HasMaxLength(40).IsRequired();
+                e.Property(x => x.Mae).HasPrecision(18, 4);
+                e.Property(x => x.Rmse).HasPrecision(18, 4);
+                e.Property(x => x.Mape).HasPrecision(18, 4);
+                e.Property(x => x.Score).HasPrecision(18, 4);
+                e.Property(x => x.Status).HasMaxLength(60).IsRequired();
+                e.Property(x => x.ThesisUse).HasMaxLength(800).IsRequired();
+                e.HasOne(x => x.TrainingRun)
+                 .WithMany(x => x.AlgorithmMetrics)
+                 .HasForeignKey(x => x.IntelligenceTrainingRunId)
+                 .OnDelete(DeleteBehavior.Cascade);
+                e.HasIndex(x => new { x.IntelligenceTrainingRunId, x.IsBest });
+            });
+
+            // =============== Reporting Performance =====
+            m.Entity<ReportingPerformanceMetric>(e =>
+            {
+                e.Property(x => x.Operation).HasMaxLength(80).IsRequired();
+                e.Property(x => x.Module).HasMaxLength(80).IsRequired();
+                e.Property(x => x.UserId).HasMaxLength(450);
+                e.Property(x => x.UserName).HasMaxLength(256);
+                e.Property(x => x.Roles).HasMaxLength(500);
+                e.Property(x => x.FilterSummaryJson).HasMaxLength(4000);
+                e.Property(x => x.ErrorMessage).HasMaxLength(1000);
+                e.HasIndex(x => x.StartedAtUtc);
+                e.HasIndex(x => x.Operation);
+                e.HasIndex(x => x.UserId);
+                e.HasIndex(x => new { x.Operation, x.StartedAtUtc });
             });
 
             // =============== AcademicTerm ===============

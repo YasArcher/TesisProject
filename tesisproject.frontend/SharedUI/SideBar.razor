@@ -169,6 +169,7 @@
                     <div class="accordion-panel is-rendered">
                         <ul class="nav flex-column ms-4 my-2 gap-1">
                             <li class="nav-item"><NavLink href="/management/statisticalreports" class="nav-link sidebar-link" ActiveClass="active" title="Reportería"><span class="icon">◔</span><span class="label">Reportería</span></NavLink></li>
+                            <li class="nav-item"><NavLink href="/management/intelligence" class="nav-link sidebar-link" ActiveClass="active" title="Inteligencia IA"><span class="icon">✦</span><span class="label">Inteligencia IA</span></NavLink></li>
                         </ul>
                     </div>
                     }
@@ -338,7 +339,7 @@
                 when CanSeeArticlesGroup && !IsUodideOnly && !IsAreaTecnicaOnly => ArticlesSection,
             "management/registration-matrix" or "management/exportinformation" or "management/externalapis"
                 when CanSeeImportGroup && !IsUodideOnly && !IsAreaTecnicaOnly => ImportSection,
-            "management/statisticalreports"
+            "management/statisticalreports" or "management/intelligence"
                 when CanSeeAnalysisGroup && !IsUodideOnly && !IsAreaTecnicaOnly => AnalysisSection,
             "management/security-administration"
                 when IsAdmin => AdministrationSection,

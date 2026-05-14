@@ -18,6 +18,7 @@ using tesisproject.backend.Reporting.Data;
 using tesisproject.backend.Services;
 using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Interfaces;
+using tesisproject.backend.Services.Modules.Intelligence;
 using tesisproject.backend.Services.Modules.Reporting;
 using tesisproject.shared.Abstractions.Auth;
 
@@ -70,6 +71,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IRegistrationMatrixService, RegistrationMatrixService>();
         services.AddScoped<IExternalApiExplorerService, ExternalApiExplorerService>();
         services.AddScoped<IInstitutionalReportingService, InstitutionalReportingService>();
+        services.AddScoped<IReportingPerformanceMetricsService, ReportingPerformanceMetricsService>();
+        services.AddScoped<IInstitutionalIntelligenceService, InstitutionalIntelligenceService>();
         services.AddMemoryCache();
         services.Configure<ExternalApiExplorerOptions>(config.GetSection("ExternalApis"));
         services.Configure<LegacyReportingOptions>(config.GetSection("LegacyReporting"));
