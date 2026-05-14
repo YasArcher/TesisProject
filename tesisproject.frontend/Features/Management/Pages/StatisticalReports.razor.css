@@ -597,9 +597,33 @@
     box-shadow: 0 22px 42px rgba(47, 82, 73, 0.28);
 }
 
+.reports-dw-floating-author-pdf {
+    position: fixed;
+    top: calc(50% + 13.2rem);
+    right: 1.15rem;
+    z-index: 55;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    transform: translateY(-50%);
+    border: 1px solid rgba(67, 86, 99, 0.16);
+    border-radius: 999px;
+    background: linear-gradient(135deg, #003638, #408A71);
+    color: #fff8d4;
+    padding: 0.9rem 1.08rem;
+    box-shadow: 0 18px 36px rgba(0, 54, 56, 0.22);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.reports-dw-floating-author-pdf:hover:not(:disabled) {
+    transform: translateY(-50%) translateX(-2px);
+    box-shadow: 0 22px 42px rgba(0, 54, 56, 0.28);
+}
+
 .reports-dw-floating-filter:disabled,
 .reports-dw-floating-pdf:disabled,
-.reports-dw-floating-excel:disabled {
+.reports-dw-floating-excel:disabled,
+.reports-dw-floating-author-pdf:disabled {
     cursor: not-allowed;
     opacity: 0.48;
     box-shadow: none;
@@ -607,12 +631,14 @@
 }
 
 .reports-dw-floating-pdf i,
-.reports-dw-floating-excel i {
+.reports-dw-floating-excel i,
+.reports-dw-floating-author-pdf i {
     font-size: 1.15rem;
 }
 
 .reports-dw-floating-pdf span,
-.reports-dw-floating-excel span {
+.reports-dw-floating-excel span,
+.reports-dw-floating-author-pdf span {
     font-size: 0.8rem;
     font-weight: 900;
     letter-spacing: 0.04em;

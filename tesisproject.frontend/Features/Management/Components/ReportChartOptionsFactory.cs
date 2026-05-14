@@ -477,7 +477,11 @@ public static class ReportChartOptionsFactory
 
         var years = parsed.Select(x => x.Year.ToString()).Distinct().ToArray();
         var data = parsed
-            .Select(x => new object[] { x.Month - 1, Array.IndexOf(years, x.Year.ToString()), x.Total })
+            .Select(x => new Dictionary<string, object>
+            {
+                ["name"] = $"{x.Year}-{x.Month:00}",
+                ["value"] = new object[] { x.Month - 1, Array.IndexOf(years, x.Year.ToString()), x.Total }
+            })
             .ToArray();
 
         return new
@@ -485,7 +489,7 @@ public static class ReportChartOptionsFactory
             tooltip = new
             {
                 position = "top",
-                formatter = "Mes {b}: {c} artículos"
+                formatter = "{b}: {@[2]} artículos"
             },
             toolbox = BuildToolbox(),
             grid = new { left = "9%", right = "5%", bottom = "10%", top = "14%" },
@@ -656,7 +660,7 @@ public static class ReportChartOptionsFactory
     public static object? BuildVenueMetricScatter(IEnumerable<ReportingVenueMetricDto>? metrics)
     {
         var data = metrics?
-            .Where(x => x.Sjr.HasValue || x.CiteScore.HasValue || x.HIndex.HasValue)
+            .Where(x => (x.Sjr.HasValue && x.Sjr.Value > 0) || (x.CiteScore.HasValue && x.CiteScore.Value > 0))
             .OrderByDescending(x => x.Year)
             .Take(40)
             .Select((x, index) => new Dictionary<string, object>

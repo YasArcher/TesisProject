@@ -10,7 +10,9 @@
 </div>
 
 <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-    Revisión institucional; tablas según filtro.
+    @(HasScopedFilters
+        ? "Las tablas respetan filtros; la revisión operativa se muestra solo en vista general institucional."
+        : "Revisión institucional; tablas según filtro.")
 </div>
 
 <article class="reports-dw-chart-card reports-dw-chart-card--wide reports-dw-chart-card--ink">
@@ -41,7 +43,7 @@
         @if ((Dashboard?.WorkflowCurrentStages.Count ?? 0) == 0)
         {
             <ReportEmptyState Title="Sin procesos de revisión"
-                              Message="No existen procesos recientes visibles en este momento."
+                              Message="@WorkflowEmptyMessage"
                               IconClass="bi bi-signpost-split" />
         }
         else
@@ -178,5 +180,14 @@
 
 @code {
     [Parameter] public InstitutionalReportingDashboardDto? Dashboard { get; set; }
+    [Parameter] public string ScopeLabel { get; set; } = "Vista general institucional";
     private string WorkflowDetailView { get; set; } = "workflow";
+
+    private bool HasScopedFilters =>
+        !string.Equals(ScopeLabel, "Vista general institucional", StringComparison.OrdinalIgnoreCase);
+
+    private string WorkflowEmptyMessage =>
+        HasScopedFilters
+            ? "Limpia los filtros analíticos para revisar lotes, aprobaciones y devoluciones globales."
+            : "No existen procesos recientes visibles en este momento.";
 }

@@ -47,6 +47,9 @@ namespace tesisproject.frontend.Services.Implementations
             AddDate(query, nameof(filter.CreatedTo), filter.CreatedTo);
             AddDate(query, nameof(filter.PublishedFrom), filter.PublishedFrom);
             AddDate(query, nameof(filter.PublishedTo), filter.PublishedTo);
+            AddString(query, nameof(filter.ArticleTitle), filter.ArticleTitle);
+            AddString(query, nameof(filter.ArticleDoi), filter.ArticleDoi);
+            AddString(query, nameof(filter.ProjectName), filter.ProjectName);
             AddString(query, nameof(filter.AcademicTerm), filter.AcademicTerm);
             AddString(query, nameof(filter.PublicationStatus), filter.PublicationStatus);
             AddString(query, nameof(filter.ResearchLine), filter.ResearchLine);
@@ -99,6 +102,7 @@ namespace tesisproject.frontend.Services.Implementations
             {
                 AddBool(query, nameof(filter.IncludePdfKpis), filter.IncludePdfKpis);
                 AddBool(query, nameof(filter.IncludePdfFilters), filter.IncludePdfFilters);
+                AddBool(query, nameof(filter.IncludePdfCharts), filter.IncludePdfCharts);
                 AddBool(query, nameof(filter.IncludePdfPeriod), filter.IncludePdfPeriod);
                 AddBool(query, nameof(filter.IncludePdfFields), filter.IncludePdfFields);
                 AddBool(query, nameof(filter.IncludePdfVenues), filter.IncludePdfVenues);

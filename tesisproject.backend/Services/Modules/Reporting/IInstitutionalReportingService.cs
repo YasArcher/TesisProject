@@ -8,6 +8,8 @@ public interface IInstitutionalReportingService
     Task<InstitutionalReportingDashboardDto> GetDashboardAsync(InstitutionalReportingFilterDto? filter = null, CancellationToken ct = default);
     Task<AuthorReportingDashboardDto> GetAuthorDashboardAsync(InstitutionalReportingFilterDto? filter = null, CancellationToken ct = default);
     Task<byte[]> GenerateDashboardPdfAsync(InstitutionalReportingFilterDto? filter = null, CancellationToken ct = default);
+    Task<byte[]> GenerateDashboardPdfAsync(InstitutionalPdfReportRequestDto request, CancellationToken ct = default);
+    Task<byte[]> GenerateAuthorPdfAsync(InstitutionalReportingFilterDto? filter = null, CancellationToken ct = default);
     Task<byte[]> GenerateDashboardExcelAsync(InstitutionalReportingFilterDto? filter = null, CancellationToken ct = default);
     Task<ReportingHealthDto> RunFullLoadAsync(CancellationToken ct = default);
 }

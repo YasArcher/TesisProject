@@ -89,6 +89,19 @@
         <span>@(_isExportingExcel ? "..." : "Excel")</span>
     </button>
 
+    @if (_institutionalReportTab == "authors")
+    {
+        <button class="reports-dw-floating-author-pdf"
+                type="button"
+                aria-label="Descargar PDF de autores"
+                title="PDF de autores"
+                disabled="@(!CanExportAuthorPdf)"
+                @onclick="DownloadAuthorPdfAsync">
+            <i class="bi bi-file-person"></i>
+            <span>@(_isExportingAuthorPdf ? "..." : "Autores")</span>
+        </button>
+    }
+
     @if (_showInstitutionalFilters)
     {
         <div class="reports-filter-drawer" aria-label="Panel de filtros">
@@ -156,7 +169,8 @@
                                                  PediIiitScopeLabel="@PediIiitScopeLabel"
                                                  TddTotalScopeLabel="@TddTotalScopeLabel" />
 
-                    <ReportWorkflowDetailBlock Dashboard="@_institutionalDashboard" />
+                    <ReportWorkflowDetailBlock Dashboard="@_institutionalDashboard"
+                                               ScopeLabel="@InstitutionalScopeLabel" />
                 </section>
             </section>
         }
@@ -191,7 +205,8 @@
                 <ReportAuthorAnalyticsPanel Dashboard="@_authorReportingDashboard"
                                             IsBusy="@_isLoadingAuthorReporting"
                                             IsFallbackSummary="@_authorDashboardUsingFallback"
-                                            ScopeLabel="@InstitutionalScopeLabel" />
+                                            ScopeLabel="@InstitutionalScopeLabel"
+                                            OnPdfScopeChanged="HandleAuthorPdfScopeChanged" />
             </section>
         }
     }

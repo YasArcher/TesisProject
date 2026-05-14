@@ -30,42 +30,54 @@
 
     <EditForm Model="_model" OnValidSubmit="HandleLogin">
         <DataAnnotationsValidator />
-        <ValidationSummary class="login-card__validation" />
 
         <div class="login-card__field">
-            <label>Correo institucional</label>
+            <label for="login-email">Correo institucional</label>
             <div class="login-card__input-shell">
-                <span class="login-card__input-icon">✉</span>
+                <i class="bi bi-envelope login-card__input-icon" aria-hidden="true"></i>
                 <InputText
+                    id="login-email"
                     @bind-Value="_model.Email"
                     class="login-card__input"
+                    autocomplete="email"
+                    inputmode="email"
                     placeholder="usuario@uta.edu.ec" />
             </div>
+            <ValidationMessage For="@(() => _model.Email)" class="login-card__validation" />
         </div>
 
         <div class="login-card__field">
-            <label>Contraseña</label>
+            <label for="login-password">Contraseña</label>
             <div class="login-card__input-shell">
-                <span class="login-card__input-icon">🔒</span>
+                <i class="bi bi-lock login-card__input-icon" aria-hidden="true"></i>
                 <InputText
+                    id="login-password"
                     @bind-Value="_model.Password"
                     type="@(ShowPassword ? "text" : "password")"
                     class="login-card__input login-card__input--password"
+                    autocomplete="current-password"
                     placeholder="Ingresa tu contraseña" />
-                <button type="button" class="login-card__toggle" @onclick="TogglePassword">
-                    @(ShowPassword ? "Ocultar" : "Ver")
+                <button
+                    type="button"
+                    class="login-card__toggle"
+                    aria-label="@(ShowPassword ? "Ocultar contraseña" : "Mostrar contraseña")"
+                    title="@(ShowPassword ? "Ocultar contraseña" : "Mostrar contraseña")"
+                    @onclick="TogglePassword">
+                    <i class="bi @(ShowPassword ? "bi-eye-slash" : "bi-eye")" aria-hidden="true"></i>
                 </button>
             </div>
+            <ValidationMessage For="@(() => _model.Password)" class="login-card__validation" />
         </div>
 
         <div class="login-card__meta">
-            <span>Acceso protegido con JWT</span>
+            <span>Acceso seguro</span>
             <span>Sesión institucional</span>
         </div>
 
         <button class="login-card__submit" disabled="@_busy">
             @if (_busy)
             {
+                <span class="login-card__spinner" aria-hidden="true"></span>
                 <span>Ingresando…</span>
             }
             else
@@ -77,7 +89,7 @@
 
     @if (!string.IsNullOrEmpty(_error))
     {
-        <div class="login-card__error">@_error</div>
+        <div class="login-card__error" role="alert" aria-live="assertive">@_error</div>
     }
 </div>
 

@@ -26,11 +26,14 @@
     <article class="reports-dw-chart-card reports-dw-chart-card--ink reports-dw-chart-card--compact">
         <ReportCardHeader IconClass="bi bi-database"
                           Title="Participación por base"
-                          Description="@($"Total visible: {Dashboard?.ParticipationSummary.TotalIndexingLinks.ToString("N0") ?? "0"} vínculos de indexación.")">
+                          Description="@($"Total visible: {IndexingParticipationTotal.ToString("N0")} apariciones artículo-base.")">
             <div class="reports-dw-card-meta">
                 <span><i class="bi bi-database-check"></i> @((Dashboard?.ParticipationSummary.ByIndexingSource.Count ?? 0).ToString("N0")) bases</span>
             </div>
         </ReportCardHeader>
+        <div class="reports-dw-inline-note reports-dw-inline-note--soft">
+            Un artículo puede aparecer en más de una base; este bloque mide presencia por base.
+        </div>
         <ReportBarList Items="@IndexingBarItems"
                        ShowPercentage="true"
                        EmptyMessage="Sin bases de datos registradas para el filtro actual." />
@@ -53,7 +56,7 @@
     <article class="reports-dw-chart-card reports-dw-chart-card--wide reports-dw-chart-card--blue">
         <ReportCardHeader IconClass="bi bi-diagram-3"
                           Title="Detalle de participación"
-                          Description="Facultades y cruce base-facultad." />
+                          Description="Facultades y cruces artículo-base por facultad." />
         <div class="reports-dw-subtabs">
             <button type="button"
                     class="@(ParticipationDetailView == "pie" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
@@ -118,7 +121,7 @@
                         }
                         <tr class="reports-dw-table-total">
                             <td colspan="2">Total general</td>
-                            <td>@((Dashboard?.ParticipationSummary.TotalIndexingLinks ?? 0).ToString("N0"))</td>
+                            <td>@IndexingFacultyVisibleTotal.ToString("N0")</td>
                         </tr>
                     </tbody>
                 </table>
@@ -136,13 +139,25 @@
         Dashboard?.ParticipationSummary.ByFaculty.Select(ToBarItem) ?? [];
 
     private IEnumerable<ReportBarItem> IndexingBarItems =>
-        Dashboard?.ParticipationSummary.ByIndexingSource.Select(ToBarItem) ?? [];
+        Dashboard?.ParticipationSummary.ByIndexingSource.Select(ToIndexingBarItem) ?? [];
 
     private IEnumerable<ReportBarItem> QuartileBarItems =>
         Dashboard?.ParticipationSummary.ByQuartile.Select(ToBarItem) ?? [];
 
     private static ReportBarItem ToBarItem(ReportingParticipationItemDto item)
         => new(item.Name, item.TotalArticles, item.Name, item.Percentage);
+
+    private ReportBarItem ToIndexingBarItem(ReportingParticipationItemDto item)
+        => new(item.Name, item.TotalArticles, item.Name, CalculatePercentage(item.TotalArticles, IndexingParticipationTotal));
+
+    private int IndexingParticipationTotal =>
+        Dashboard?.ParticipationSummary.ByIndexingSource.Sum(x => x.TotalArticles) ?? 0;
+
+    private int IndexingFacultyVisibleTotal =>
+        Dashboard?.ParticipationSummary.IndexingByFaculty.Sum(x => x.TotalArticles) ?? 0;
+
+    private static decimal CalculatePercentage(int value, int total)
+        => total <= 0 ? 0 : Math.Round((decimal)value * 100 / total, 2);
 
     private IReadOnlyList<ReportingParticipationItemDto> FacultyParticipationPieItems
     {

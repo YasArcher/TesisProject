@@ -19,13 +19,14 @@
             <div>
                 <div class="profile-hero__kicker">Cuenta institucional</div>
                 <div class="flex items-center gap-3">
-                    <span class="profile-hero__icon">◉</span>
+                    <span class="profile-hero__icon"><i class="bi bi-person-badge"></i></span>
                     <h1 class="profile-hero__title">Perfil de usuario</h1>
                 </div>
                 <div class="profile-hero__copy">Información básica de tu cuenta institucional y accesos habilitados dentro del sistema.</div>
             </div>
             <button class="profile-hero__logout"
                     @onclick="LogoutAsync">
+                <i class="bi bi-box-arrow-right"></i>
                 Cerrar sesión
             </button>
         </div>
@@ -45,7 +46,7 @@
                     @Initials
                 </div>
                 <div>
-                    <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon">◎</span><span>Usuario autenticado</span></div>
+                    <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon"><i class="bi bi-shield-check"></i></span><span>Usuario autenticado</span></div>
                     <div class="profile-card__title">@FullName</div>
                     <div class="profile-card__subtle">@Email</div>
                 </div>
@@ -64,7 +65,7 @@
         </section>
 
         <section class="profile-card">
-            <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon">⌘</span><span>Accesos habilitados</span></div>
+            <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon"><i class="bi bi-key"></i></span><span>Accesos habilitados</span></div>
             @if (Roles.Count == 0)
             {
                 <div class="profile-card__subtle mt-3">Tu cuenta no tiene accesos especiales asignados por el momento.</div>
@@ -82,9 +83,9 @@
         </section>
 
         <section class="profile-card profile-card--agreement">
-            <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon">✓</span><span>Acuerdo de información</span></div>
+            <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon"><i class="bi bi-file-earmark-check"></i></span><span>Acuerdo de información</span></div>
             <div class="profile-agreement">
-                <div class="profile-agreement__icon">@AgreementIcon</div>
+                <div class="profile-agreement__icon"><i class="@AgreementIcon"></i></div>
                 <div>
                     <div class="profile-agreement__title">@AgreementTitle</div>
                     <div class="profile-card__subtle">@AgreementDescription</div>
@@ -120,7 +121,7 @@
     private DateTime? TermsAcceptedAt { get; set; }
     private string? TermsVersion { get; set; }
     private bool IsAuthor => Roles.Any(IsAuthorRole);
-    private string AgreementIcon => !IsAuthor ? "i" : HasAcceptedTerms ? "✓" : "!";
+    private string AgreementIcon => !IsAuthor ? "bi bi-info-lg" : HasAcceptedTerms ? "bi bi-check2" : "bi bi-exclamation-lg";
     private string AgreementTitle => !IsAuthor
         ? "Acuerdo no requerido para este rol"
         : HasAcceptedTerms

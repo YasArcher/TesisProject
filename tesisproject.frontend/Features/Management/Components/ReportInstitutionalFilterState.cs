@@ -17,6 +17,9 @@ public static class ReportInstitutionalFilterState
         AddDateChip(chips, "Creación hasta", filter.CreatedTo);
         AddDateChip(chips, "Publicación desde", filter.PublishedFrom);
         AddDateChip(chips, "Publicación hasta", filter.PublishedTo);
+        AddChip(chips, "Título", filter.ArticleTitle);
+        AddChip(chips, "DOI", filter.ArticleDoi);
+        AddChip(chips, "Proyecto", filter.ProjectName);
         AddChip(chips, "Periodo", filter.AcademicTerm);
         AddChip(chips, "Estado", filter.PublicationStatus);
         AddChip(chips, "Línea", filter.ResearchLine);
@@ -80,6 +83,9 @@ public static class ReportInstitutionalFilterState
             CreatedTo = source.CreatedTo,
             PublishedFrom = source.PublishedFrom,
             PublishedTo = source.PublishedTo,
+            ArticleTitle = source.ArticleTitle,
+            ArticleDoi = source.ArticleDoi,
+            ProjectName = source.ProjectName,
             AcademicTerm = source.AcademicTerm,
             PublicationStatus = source.PublicationStatus,
             ResearchLine = source.ResearchLine,
@@ -105,6 +111,7 @@ public static class ReportInstitutionalFilterState
             CoauthorName = source.CoauthorName,
             IncludePdfKpis = source.IncludePdfKpis,
             IncludePdfFilters = source.IncludePdfFilters,
+            IncludePdfCharts = source.IncludePdfCharts,
             IncludePdfPeriod = source.IncludePdfPeriod,
             IncludePdfFields = source.IncludePdfFields,
             IncludePdfVenues = source.IncludePdfVenues,

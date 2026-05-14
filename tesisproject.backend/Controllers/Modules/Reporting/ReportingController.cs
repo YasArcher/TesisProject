@@ -52,6 +52,24 @@ public sealed class ReportingController : ControllerBase
         return File(bytes, "application/pdf", $"reporte-institucional-{DateTime.UtcNow:yyyyMMddHHmm}.pdf");
     }
 
+    [HttpPost("dashboard/pdf")]
+    public async Task<IActionResult> PostDashboardPdf(
+        [FromBody] InstitutionalPdfReportRequestDto request,
+        CancellationToken ct)
+    {
+        var bytes = await _reporting.GenerateDashboardPdfAsync(request, ct);
+        return File(bytes, "application/pdf", $"reporte-institucional-{DateTime.UtcNow:yyyyMMddHHmm}.pdf");
+    }
+
+    [HttpGet("authors/pdf")]
+    public async Task<IActionResult> GetAuthorsPdf(
+        [FromQuery] InstitutionalReportingFilterDto filter,
+        CancellationToken ct)
+    {
+        var bytes = await _reporting.GenerateAuthorPdfAsync(filter, ct);
+        return File(bytes, "application/pdf", $"reporte-autores-{DateTime.UtcNow:yyyyMMddHHmm}.pdf");
+    }
+
     [HttpGet("dashboard/excel")]
     public async Task<IActionResult> GetDashboardExcel(
         [FromQuery] InstitutionalReportingFilterDto filter,

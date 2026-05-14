@@ -48,7 +48,7 @@
                                 class="reports-dw-author-picker-button"
                                 @onclick="OpenAuthorPicker">
                             <i class="bi bi-person-lines-fill" aria-hidden="true"></i>
-                            <span>@Shorten(SelectedAuthorDisplayName, 28)</span>
+                            <span>@SelectedAuthorPickerLabel</span>
                         </button>
                         <button type="button"
                                 class="reports-dw-author-hierarchy-filter-toggle"
@@ -65,7 +65,7 @@
                         <div class="reports-dw-author-picker-modal" role="dialog" aria-modal="true" aria-labelledby="reports-author-picker-title" @onclick:stopPropagation="true">
                             <header>
                                 <div>
-                                    <small>Selección de autor</small>
+                                    <small>Selección de autores</small>
                                     <strong id="reports-author-picker-title">@AuthorSearchResultLabel</strong>
                                 </div>
                                 <button type="button"
@@ -75,6 +75,24 @@
                                     <i class="bi bi-x-lg" aria-hidden="true"></i>
                                 </button>
                             </header>
+
+                            @if (SelectedAuthorOptions.Count > 0)
+                            {
+                                <div class="reports-dw-author-picker-selected">
+                                    <strong>@SelectedAuthorOptions.Count autor(es) seleccionados</strong>
+                                    <div>
+                                        @foreach (var author in SelectedAuthorOptions)
+                                        {
+                                            <button type="button"
+                                                    title="Enfocar autor"
+                                                    @onclick="@(() => FocusAuthor(author.AuthorKey))">
+                                                @Shorten(author.AuthorName, 28)
+                                                <i class="bi bi-bullseye" aria-hidden="true"></i>
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            }
 
                             @if (!HasAuthorSearchResults)
                             {
@@ -94,9 +112,12 @@
                                                 {
                                                     <button type="button"
                                                             class="@GetAuthorPickerItemClass(author)"
-                                                            @onclick="@(() => SelectAuthorFromPicker(author.AuthorKey))">
+                                                            @onclick="@(() => ToggleAuthorFromPicker(author.AuthorKey))">
                                                         <strong>@author.AuthorName</strong>
-                                                        <small>@author.TotalArticles.ToString("N0") publicaciones · @NormalizeValue(author.Affiliation, "Sin filiación")</small>
+                                                        <small>
+                                                            @(IsAuthorSelected(author.AuthorKey) ? "Seleccionado" : "Agregar") ·
+                                                            @author.TotalArticles.ToString("N0") publicaciones · @NormalizeValue(author.Affiliation, "Sin filiación")
+                                                        </small>
                                                     </button>
                                                 }
                                             </div>
@@ -112,6 +133,58 @@
                     @{
                         var hierarchyAuthorNodes = HierarchyAuthorNodes;
                     }
+                    <section class="reports-dw-author-snapshot-panel">
+                        <div class="reports-dw-author-snapshot-panel__head">
+                            <div>
+                                <small>Lectura rápida</small>
+                                <strong>Resumen analítico de autores</strong>
+                            </div>
+                            <span>@AuthorSnapshotScopeLabel</span>
+                        </div>
+
+                        <div class="reports-dw-author-snapshot-grid">
+                            <ReportChartCard Title="Rol autoral"
+                                             Description="Principal frente a coautoría."
+                                             HasData="@HasAuthorRoleSnapshot"
+                                             EmptyMessage="Sin roles autorales disponibles."
+                                             ChartId="chart-author-role-snapshot"
+                                             Height="210px"
+                                             Option="@AuthorRoleSnapshotOption"
+                                             Accent="green"
+                                             Density="author-snapshot" />
+
+                            <ReportChartCard Title="Carga por autor"
+                                             Description="Distribución por volumen individual."
+                                             HasData="@(AuthorLoadBuckets.Count > 0)"
+                                             EmptyMessage="Sin carga autoral disponible."
+                                             ChartId="chart-author-load-snapshot"
+                                             Height="210px"
+                                             Option="@AuthorLoadSnapshotOption"
+                                             Accent="sage"
+                                             Density="author-snapshot" />
+
+                            <ReportChartCard Title="Intensidad de coautoría"
+                                             Description="Colaboraciones por autor."
+                                             HasData="@(CoauthorIntensityBuckets.Count > 0)"
+                                             EmptyMessage="Sin coautorías disponibles."
+                                             ChartId="chart-author-coauthor-snapshot"
+                                             Height="210px"
+                                             Option="@CoauthorIntensitySnapshotOption"
+                                             Accent="blue"
+                                             Density="author-snapshot" />
+
+                            <ReportChartCard Title="Cobertura de identificación"
+                                             Description="ORCID y filiación registrados."
+                                             HasData="@HasIdentificationCoverage"
+                                             EmptyMessage="Sin cobertura de identificación."
+                                             ChartId="chart-author-coverage-snapshot"
+                                             Height="210px"
+                                             Option="@IdentificationCoverageSnapshotOption"
+                                             Accent="gold"
+                                             Density="author-snapshot" />
+                        </div>
+                    </section>
+
                     <div class="reports-dw-author-hierarchy-activebar">
                         <strong>@AuthorHierarchyResultLabel</strong>
                         @if (_hierarchyAuthorScope.Equals("visible", StringComparison.OrdinalIgnoreCase))
@@ -252,6 +325,24 @@
                                         @if (GetHierarchyAuthorTab(authorNode.Author.AuthorKey) == "summary")
                                         {
                                             <div class="reports-dw-author-hierarchy-summary">
+                                                <div class="reports-dw-author-hierarchy-summary-strip">
+                                                    <span>
+                                                        <small>Detalle visible</small>
+                                                        <strong>@authorNode.DetailPublicationCount.ToString("N0")</strong>
+                                                    </span>
+                                                    <span>
+                                                        <small>Principal</small>
+                                                        <strong>@authorNode.PrimaryArticles.ToString("N0")</strong>
+                                                    </span>
+                                                    <span>
+                                                        <small>Coautoría</small>
+                                                        <strong>@authorNode.CoauthorArticles.ToString("N0")</strong>
+                                                    </span>
+                                                    <span>
+                                                        <small>Facultad dominante</small>
+                                                        <strong>@authorNode.TopFaculty</strong>
+                                                    </span>
+                                                </div>
                                                 <article>
                                                     <div class="reports-dw-author-hierarchy-pie" style="@GetHierarchyRolePieStyle(authorNode)">
                                                         <span>@authorNode.TotalArticles.ToString("N0")</span>
@@ -298,11 +389,11 @@
                                                             <div class="reports-dw-author-hierarchy-publication__compact">
                                                                 <div class="reports-dw-author-hierarchy-publication__meta">
                                                                     <span class="@GetHierarchyRolePillClass(publication.Publication)">@(publication.Publication.IsPrimaryAuthor ? "Principal" : "Coautor")</span>
-                                                                    <span>@NormalizeValue(publication.Publication.Faculty, "Sin facultad")</span>
-                                                                    <span>@NormalizeValue(publication.Publication.IndexingSourceName, "Sin base")</span>
+                                                                    <span class="@GetHierarchyMetaPillClass(publication.Publication.Faculty, "faculty")">@NormalizeValue(publication.Publication.Faculty, "Sin facultad")</span>
+                                                                    <span class="@GetHierarchyMetaPillClass(publication.Publication.IndexingSourceName, "source")">@NormalizeValue(publication.Publication.IndexingSourceName, "Sin base")</span>
                                                                     @if (authorNode.IsExpanded)
                                                                     {
-                                                                        <span>@NormalizeValue(publication.Publication.Quartile, "Sin cuartil")</span>
+                                                                        <span class="@GetHierarchyMetaPillClass(publication.Publication.Quartile, "quartile")">@NormalizeValue(publication.Publication.Quartile, "Sin cuartil")</span>
                                                                     }
                                                                 </div>
                                                                 @if (authorNode.IsExpanded)
@@ -317,9 +408,9 @@
                                                                             @foreach (var coauthor in publication.Coauthors.Take(VisibleHierarchyCoauthors))
                                                                             {
                                                                                 <button type="button"
-                                                                                        title="Enfocar coautor"
-                                                                                        @onclick="@(() => FocusAuthor(coauthor.AuthorKey))"
-                                                                                        disabled="@(!CanFocusCoauthor(coauthor.AuthorKey))">
+                                                                                        title="@GetHierarchyCoauthorFocusTitle(coauthor)"
+                                                                                        @onclick="@(() => FocusHierarchyCoauthor(coauthor))"
+                                                                                        disabled="@(!CanFocusHierarchyCoauthor(coauthor))">
                                                                                     <i class="bi bi-person" aria-hidden="true"></i>
                                                                                     @coauthor.AuthorName
                                                                                 </button>
@@ -360,8 +451,10 @@
     [Parameter] public bool IsBusy { get; set; }
     [Parameter] public bool IsFallbackSummary { get; set; }
     [Parameter] public string ScopeLabel { get; set; } = string.Empty;
+    [Parameter] public EventCallback<InstitutionalReportingFilterDto> OnPdfScopeChanged { get; set; }
     private int? _selectedAuthorKey;
     private int? _selectedCoauthorKey;
+    private HashSet<int> _selectedAuthorKeys = [];
     private string _authorSearchTerm = string.Empty;
     private string? _selectedPublicationSource;
     private string? _selectedPublicationQuartile;
@@ -377,13 +470,35 @@
     private AuthorReportingDashboardDto? _coauthorLookupDashboard;
     private Dictionary<string, IReadOnlyList<HierarchyCoauthorNode>>? _publicationCoauthorsByIdentity;
     private Dictionary<int, string> _hierarchyAuthorTabs = [];
+    private IReadOnlyList<AuthorReportingSummaryDto>? _selectedAuthorOptionsCache;
+    private IReadOnlyList<AuthorReportingSummaryDto>? _orderedAuthorOptionsCache;
+    private IReadOnlyList<AuthorReportingSummaryDto>? _filteredAuthorOptionsCache;
+    private IReadOnlyList<AuthorAlphabetGroup>? _alphabetizedAuthorGroupsCache;
+    private IReadOnlyList<string>? _hierarchyFacultyOptionsCache;
+    private IReadOnlyList<HierarchyAuthorNode>? _hierarchyAuthorNodesCache;
+    private IReadOnlyList<AuthorReportingSummaryDto>? _snapshotAuthorsCache;
+    private IReadOnlyList<AuthorPublicationDto>? _snapshotPublicationLinksCache;
+    private IReadOnlyList<AuthorPublicationDto>? _snapshotPublicationsCache;
+    private IReadOnlyList<ReportingSummaryItemDto>? _authorLoadBucketsCache;
+    private IReadOnlyList<ReportingSummaryItemDto>? _coauthorIntensityBucketsCache;
+    private int? _snapshotPrimaryPublicationsCache;
+    private int? _snapshotCoauthorPublicationsCache;
+    private object? _authorRoleSnapshotOptionCache;
+    private bool _authorRoleSnapshotOptionBuilt;
+    private object? _authorLoadSnapshotOptionCache;
+    private bool _authorLoadSnapshotOptionBuilt;
+    private object? _coauthorIntensitySnapshotOptionCache;
+    private bool _coauthorIntensitySnapshotOptionBuilt;
+    private object? _identificationCoverageSnapshotOptionCache;
+    private bool _identificationCoverageSnapshotOptionBuilt;
+    private const string PdfAuthorNameSeparator = "||";
 
     protected override void OnParametersSet()
     {
         if (!ReferenceEquals(_coauthorLookupDashboard, Dashboard))
         {
             _coauthorLookupDashboard = Dashboard;
-            _publicationCoauthorsByIdentity = null;
+            InvalidateAuthorComputedState(includeCoauthorLookup: true);
         }
 
         if (Dashboard?.Authors.Count > 0)
@@ -403,6 +518,18 @@
                 ClearPublicationFilters();
             }
 
+            var visibleAuthorKeys = Dashboard.Authors.Select(x => x.AuthorKey).ToHashSet();
+            _selectedAuthorKeys.RemoveWhere(authorKey => !visibleAuthorKeys.Contains(authorKey));
+            if (_selectedAuthorKey.HasValue)
+            {
+                _selectedAuthorKeys.Add(_selectedAuthorKey.Value);
+            }
+
+            if (_selectedAuthorKeys.Count == 0 && _selectedAuthorKey.HasValue)
+            {
+                _selectedAuthorKeys.Add(_selectedAuthorKey.Value);
+            }
+
             if (_selectedCoauthorKey.HasValue
                 && !Dashboard.Coauthors.Any(x => x.AuthorKey == SelectedAuthorKey && x.CoauthorKey == _selectedCoauthorKey.Value))
             {
@@ -414,6 +541,7 @@
 
         _selectedAuthorKey = null;
         _selectedCoauthorKey = null;
+        _selectedAuthorKeys.Clear();
         ClearPublicationFilters();
     }
 
@@ -441,8 +569,23 @@
 
     private string AuthorSearchTerm => _authorSearchTerm;
 
+    private IReadOnlyList<AuthorReportingSummaryDto> SelectedAuthorOptions =>
+        _selectedAuthorOptionsCache ??= Dashboard?.Authors
+            .Where(x => _selectedAuthorKeys.Contains(x.AuthorKey))
+            .OrderByDescending(x => x.TotalArticles)
+            .ThenBy(x => x.AuthorName)
+            .ToList() ?? [];
+
+    private string SelectedAuthorPickerLabel =>
+        SelectedAuthorOptions.Count switch
+        {
+            0 => Shorten(SelectedAuthorDisplayName, 28),
+            1 => Shorten(SelectedAuthorOptions[0].AuthorName, 28),
+            _ => $"{SelectedAuthorOptions.Count:N0} autores"
+        };
+
     private IReadOnlyList<AuthorReportingSummaryDto> OrderedAuthorOptions =>
-        Dashboard?.Authors
+        _orderedAuthorOptionsCache ??= Dashboard?.Authors
             .OrderByDescending(x => x.TotalArticles)
             .ThenBy(x => x.AuthorName)
             .ToList() ?? [];
@@ -451,14 +594,19 @@
     {
         get
         {
+            if (_filteredAuthorOptionsCache is not null)
+            {
+                return _filteredAuthorOptionsCache;
+            }
+
             var authors = OrderedAuthorOptions;
             if (string.IsNullOrWhiteSpace(_authorSearchTerm))
             {
-                return authors;
+                return _filteredAuthorOptionsCache = authors;
             }
 
             var term = _authorSearchTerm.Trim();
-            return authors
+            return _filteredAuthorOptionsCache = authors
                 .Where(x => MatchesAuthorSearch(x, term))
                 .ToList();
         }
@@ -483,7 +631,7 @@
     private bool HasAuthorSearchResults => FilteredAuthorOptions.Count > 0;
 
     private IReadOnlyList<AuthorAlphabetGroup> AlphabetizedAuthorGroups =>
-        FilteredAuthorOptions
+        _alphabetizedAuthorGroupsCache ??= FilteredAuthorOptions
             .OrderBy(x => x.AuthorName)
             .GroupBy(GetAuthorInitial)
             .Select(g => new AuthorAlphabetGroup(g.Key, g.ToList()))
@@ -496,7 +644,7 @@
             : $"{FilteredAuthorOptions.Count:N0} coincidencias de {OrderedAuthorOptions.Count:N0} autores";
 
     private IReadOnlyList<string> HierarchyFacultyOptions =>
-        Dashboard?.Publications
+        _hierarchyFacultyOptionsCache ??= Dashboard?.Publications
             .Select(x => NormalizeValue(x.Faculty, string.Empty))
             .Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -504,7 +652,7 @@
             .ToList() ?? [];
 
     private IReadOnlyList<HierarchyAuthorNode> HierarchyAuthorNodes =>
-        GetHierarchyAuthors()
+        _hierarchyAuthorNodesCache ??= GetHierarchyAuthors()
             .Select(BuildHierarchyAuthorNode)
             .Where(x => x.TotalArticles > 0 || _hierarchyAuthorScope.Equals("selected", StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -518,6 +666,67 @@
         _hierarchyAuthorScope.Equals("visible", StringComparison.OrdinalIgnoreCase)
             ? $"{Math.Min(FilteredAuthorOptions.Count, VisibleHierarchyAuthors):N0} de {FilteredAuthorOptions.Count:N0} autores visibles"
             : $"{SelectedAuthorDisplayName} · {SelectedAuthorTotalArticles:N0} {HierarchyPublicationCountLabel}";
+
+    private string AuthorSnapshotScopeLabel =>
+        _hierarchyAuthorScope.Equals("visible", StringComparison.OrdinalIgnoreCase)
+            ? $"{FilteredAuthorOptions.Count:N0} autores en búsqueda"
+            : $"{SelectedAuthorOptions.Count:N0} autor(es) seleccionados";
+
+    private IReadOnlyList<AuthorReportingSummaryDto> SnapshotAuthors =>
+        _snapshotAuthorsCache ??= _hierarchyAuthorScope.Equals("visible", StringComparison.OrdinalIgnoreCase)
+            ? FilteredAuthorOptions
+            : SelectedAuthorOptions.Count == 0 && SelectedAuthor is not null
+                ? [SelectedAuthor]
+                : SelectedAuthorOptions;
+
+    private IReadOnlyList<AuthorPublicationDto> SnapshotPublicationLinks =>
+        _snapshotPublicationLinksCache ??= Dashboard?.Publications
+            .Where(MatchesSnapshotAuthorPublication)
+            .Where(MatchesHierarchyRole)
+            .Where(MatchesHierarchyFaculty)
+            .Where(MatchesSelectedPublicationSource)
+            .Where(MatchesSelectedPublicationQuartile)
+            .Where(MatchesSelectedPublicationRole)
+            .ToList() ?? [];
+
+    private IReadOnlyList<AuthorPublicationDto> SnapshotPublications =>
+        _snapshotPublicationsCache ??= DeduplicateAuthorPublications(SnapshotPublicationLinks);
+
+    private bool HasAuthorRoleSnapshot => SnapshotPublications.Count > 0;
+
+    private int SnapshotPrimaryPublications
+    {
+        get
+        {
+            _snapshotPrimaryPublicationsCache ??= SnapshotPublicationLinks.Count(x => x.IsPrimaryAuthor);
+            return _snapshotPrimaryPublicationsCache.Value;
+        }
+    }
+
+    private int SnapshotCoauthorPublications
+    {
+        get
+        {
+            _snapshotCoauthorPublicationsCache ??= SnapshotPublicationLinks.Count(x => !x.IsPrimaryAuthor);
+            return _snapshotCoauthorPublicationsCache.Value;
+        }
+    }
+
+    private object? AuthorRoleSnapshotOption => GetAuthorRoleSnapshotOption();
+
+    private IReadOnlyList<ReportingSummaryItemDto> AuthorLoadBuckets =>
+        _authorLoadBucketsCache ??= BuildAuthorLoadBuckets(SnapshotAuthors, SnapshotPublicationLinks);
+
+    private object? AuthorLoadSnapshotOption => GetAuthorLoadSnapshotOption();
+
+    private IReadOnlyList<ReportingSummaryItemDto> CoauthorIntensityBuckets =>
+        _coauthorIntensityBucketsCache ??= BuildCoauthorIntensityBuckets(SnapshotAuthors);
+
+    private object? CoauthorIntensitySnapshotOption => GetCoauthorIntensitySnapshotOption();
+
+    private bool HasIdentificationCoverage => SnapshotAuthors.Count > 0;
+
+    private object? IdentificationCoverageSnapshotOption => GetIdentificationCoverageSnapshotOption();
 
     private string HierarchyRoleLabel =>
         _hierarchyRoleFilter switch
@@ -996,6 +1205,107 @@
         "#435663",
         true);
 
+    private void InvalidateAuthorComputedState(bool includeCoauthorLookup = false)
+    {
+        _selectedAuthorOptionsCache = null;
+        _orderedAuthorOptionsCache = null;
+        _filteredAuthorOptionsCache = null;
+        _alphabetizedAuthorGroupsCache = null;
+        _hierarchyFacultyOptionsCache = null;
+        _hierarchyAuthorNodesCache = null;
+
+        if (includeCoauthorLookup)
+        {
+            _publicationCoauthorsByIdentity = null;
+        }
+
+        InvalidateAuthorSnapshotState();
+    }
+
+    private void InvalidateAuthorSnapshotState()
+    {
+        _snapshotAuthorsCache = null;
+        _snapshotPublicationLinksCache = null;
+        _snapshotPublicationsCache = null;
+        _authorLoadBucketsCache = null;
+        _coauthorIntensityBucketsCache = null;
+        _snapshotPrimaryPublicationsCache = null;
+        _snapshotCoauthorPublicationsCache = null;
+        _authorRoleSnapshotOptionCache = null;
+        _authorRoleSnapshotOptionBuilt = false;
+        _authorLoadSnapshotOptionCache = null;
+        _authorLoadSnapshotOptionBuilt = false;
+        _coauthorIntensitySnapshotOptionCache = null;
+        _coauthorIntensitySnapshotOptionBuilt = false;
+        _identificationCoverageSnapshotOptionCache = null;
+        _identificationCoverageSnapshotOptionBuilt = false;
+    }
+
+    private object? GetAuthorRoleSnapshotOption()
+    {
+        if (!_authorRoleSnapshotOptionBuilt)
+        {
+            _authorRoleSnapshotOptionCache = ReportChartOptionsFactory.BuildAuthorRoleDonut(
+                SnapshotPrimaryPublications,
+                SnapshotCoauthorPublications);
+            _authorRoleSnapshotOptionBuilt = true;
+        }
+
+        return _authorRoleSnapshotOptionCache;
+    }
+
+    private object? GetAuthorLoadSnapshotOption()
+    {
+        if (!_authorLoadSnapshotOptionBuilt)
+        {
+            _authorLoadSnapshotOptionCache = ReportChartOptionsFactory.BuildSummaryDonut(
+                AuthorLoadBuckets,
+                "Carga",
+                compact: true,
+                insideCountLabels: true);
+            _authorLoadSnapshotOptionBuilt = true;
+        }
+
+        return _authorLoadSnapshotOptionCache;
+    }
+
+    private object? GetCoauthorIntensitySnapshotOption()
+    {
+        if (!_coauthorIntensitySnapshotOptionBuilt)
+        {
+            _coauthorIntensitySnapshotOptionCache = ReportChartOptionsFactory.BuildHorizontalBar(
+                CoauthorIntensityBuckets.Select(x => x.Name).ToArray(),
+                CoauthorIntensityBuckets.Select(x => x.TotalArticles).ToArray(),
+                "#055052",
+                usePalette: true,
+                showEndLabels: true);
+            _coauthorIntensitySnapshotOptionBuilt = true;
+        }
+
+        return _coauthorIntensitySnapshotOptionCache;
+    }
+
+    private object? GetIdentificationCoverageSnapshotOption()
+    {
+        if (!_identificationCoverageSnapshotOptionBuilt)
+        {
+            _identificationCoverageSnapshotOptionCache = ReportChartOptionsFactory.BuildHorizontalBar(
+                ["Con ORCID", "Sin ORCID", "Con filiación", "Sin filiación"],
+                [
+                    SnapshotAuthors.Count(x => !string.IsNullOrWhiteSpace(x.Orcid)),
+                    SnapshotAuthors.Count(x => string.IsNullOrWhiteSpace(x.Orcid)),
+                    SnapshotAuthors.Count(x => HasUsefulAuthorAffiliation(x.Affiliation)),
+                    SnapshotAuthors.Count(x => !HasUsefulAuthorAffiliation(x.Affiliation))
+                ],
+                "#2F5249",
+                usePalette: true,
+                showEndLabels: true);
+            _identificationCoverageSnapshotOptionBuilt = true;
+        }
+
+        return _identificationCoverageSnapshotOptionCache;
+    }
+
     private int PrimaryAuthorPercent =>
         (Dashboard?.Kpis.TotalAuthorArticleLinks ?? 0) <= 0
             ? 0
@@ -1015,11 +1325,15 @@
     private void OnAuthorSearchChanged(ChangeEventArgs args)
     {
         _authorSearchTerm = args.Value?.ToString() ?? string.Empty;
+        InvalidateAuthorComputedState();
+        QueuePdfScopeChanged();
     }
 
     private void ClearAuthorSearch()
     {
         _authorSearchTerm = string.Empty;
+        InvalidateAuthorComputedState();
+        QueuePdfScopeChanged();
     }
 
     private void OpenAuthorPicker()
@@ -1032,10 +1346,25 @@
         _showAuthorPicker = false;
     }
 
-    private void SelectAuthorFromPicker(int authorKey)
+    private void ToggleAuthorFromPicker(int authorKey)
     {
-        SelectAuthor(authorKey, expand: false);
-        _showAuthorPicker = false;
+        if (!_selectedAuthorKeys.Add(authorKey))
+        {
+            _selectedAuthorKeys.Remove(authorKey);
+        }
+
+        if (_selectedAuthorKeys.Count == 0)
+        {
+            _selectedAuthorKeys.Add(authorKey);
+        }
+
+        _selectedAuthorKey = authorKey;
+        _selectedCoauthorKey = null;
+        _hierarchyAuthorScope = "selected";
+        _expandedHierarchyAuthorKeys.Clear();
+        ClearPublicationFilters();
+        InvalidateAuthorComputedState();
+        QueuePdfScopeChanged();
     }
 
     private void OnSelectedCoauthorChanged(ChangeEventArgs args)
@@ -1055,18 +1384,21 @@
     {
         var raw = args.Value?.ToString();
         _selectedPublicationSource = string.IsNullOrWhiteSpace(raw) ? null : raw.Trim();
+        InvalidateAuthorSnapshotState();
     }
 
     private void OnSelectedPublicationQuartileChanged(ChangeEventArgs args)
     {
         var raw = args.Value?.ToString();
         _selectedPublicationQuartile = string.IsNullOrWhiteSpace(raw) ? null : raw.Trim();
+        InvalidateAuthorSnapshotState();
     }
 
     private void OnSelectedPublicationRoleChanged(ChangeEventArgs args)
     {
         var raw = args.Value?.ToString();
         _selectedPublicationRole = string.IsNullOrWhiteSpace(raw) ? null : raw.Trim();
+        InvalidateAuthorSnapshotState();
     }
 
     private void OnSelectedPublicationSortChanged(ChangeEventArgs args)
@@ -1091,6 +1423,8 @@
     {
         var raw = args.Value?.ToString();
         _hierarchyAuthorScope = string.IsNullOrWhiteSpace(raw) ? "selected" : raw.Trim();
+        InvalidateAuthorComputedState();
+        QueuePdfScopeChanged();
     }
 
     private void OnHierarchyRoleChanged(ChangeEventArgs args)
@@ -1098,6 +1432,8 @@
         var raw = args.Value?.ToString();
         _hierarchyRoleFilter = string.IsNullOrWhiteSpace(raw) ? string.Empty : raw.Trim();
         _expandedHierarchyAuthorKeys.Clear();
+        InvalidateAuthorComputedState();
+        QueuePdfScopeChanged();
     }
 
     private void OnHierarchyFacultyChanged(ChangeEventArgs args)
@@ -1105,6 +1441,8 @@
         var raw = args.Value?.ToString();
         _hierarchyFacultyFilter = string.IsNullOrWhiteSpace(raw) ? string.Empty : raw.Trim();
         _expandedHierarchyAuthorKeys.Clear();
+        InvalidateAuthorComputedState();
+        QueuePdfScopeChanged();
     }
 
     private void ToggleHierarchyFilters()
@@ -1114,9 +1452,18 @@
 
     private void ClearPublicationFilters()
     {
+        var hadFilters = !string.IsNullOrWhiteSpace(_selectedPublicationSource)
+            || !string.IsNullOrWhiteSpace(_selectedPublicationQuartile)
+            || !string.IsNullOrWhiteSpace(_selectedPublicationRole);
+
         _selectedPublicationSource = null;
         _selectedPublicationQuartile = null;
         _selectedPublicationRole = null;
+
+        if (hadFilters)
+        {
+            InvalidateAuthorSnapshotState();
+        }
     }
 
     private void ClearSelectedCoauthor()
@@ -1141,22 +1488,42 @@
     }
 
     private bool CanFocusCoauthor(int coauthorKey) =>
-        Dashboard?.Authors.Any(x => x.AuthorKey == coauthorKey) == true;
+        FindAuthor(coauthorKey, null) is not null;
+
+    private bool CanFocusHierarchyCoauthor(HierarchyCoauthorNode coauthor) =>
+        FindAuthor(coauthor.AuthorKey, coauthor.AuthorName) is not null;
+
+    private string GetHierarchyCoauthorFocusTitle(HierarchyCoauthorNode coauthor) =>
+        CanFocusHierarchyCoauthor(coauthor)
+            ? $"Ver detalle de {coauthor.AuthorName}"
+            : "Autor no disponible en el catálogo visible";
 
     private void FocusAuthor(int authorKey)
     {
-        if (!CanFocusCoauthor(authorKey))
+        var author = FindAuthor(authorKey, null);
+        if (author is null)
         {
             return;
         }
 
-        _selectedAuthorKey = authorKey;
-        SelectAuthor(authorKey, expand: true);
+        SelectAuthor(author.AuthorKey, expand: true);
+    }
+
+    private void FocusHierarchyCoauthor(HierarchyCoauthorNode coauthor)
+    {
+        var author = FindAuthor(coauthor.AuthorKey, coauthor.AuthorName);
+        if (author is null)
+        {
+            return;
+        }
+
+        SelectAuthor(author.AuthorKey, expand: true);
     }
 
     private void SelectAuthor(int authorKey, bool expand)
     {
         _selectedAuthorKey = authorKey;
+        _selectedAuthorKeys.Add(authorKey);
         _selectedCoauthorKey = null;
         _hierarchyAuthorScope = "selected";
         _expandedHierarchyAuthorKeys.Clear();
@@ -1166,6 +1533,66 @@
         }
 
         ClearPublicationFilters();
+        InvalidateAuthorComputedState();
+        QueuePdfScopeChanged();
+    }
+
+    private void QueuePdfScopeChanged()
+    {
+        if (!OnPdfScopeChanged.HasDelegate)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () => await OnPdfScopeChanged.InvokeAsync(BuildAuthorPdfScopeFilter()));
+    }
+
+    private InstitutionalReportingFilterDto BuildAuthorPdfScopeFilter()
+    {
+        var filter = new InstitutionalReportingFilterDto
+        {
+            Faculty = string.IsNullOrWhiteSpace(_hierarchyFacultyFilter) ? null : _hierarchyFacultyFilter.Trim(),
+            OnlyPrimaryAuthors = _hierarchyRoleFilter.Equals("primary", StringComparison.OrdinalIgnoreCase) ? true : null
+        };
+
+        if (_hierarchyAuthorScope.Equals("visible", StringComparison.OrdinalIgnoreCase))
+        {
+            filter.AuthorName = string.IsNullOrWhiteSpace(_authorSearchTerm) ? null : _authorSearchTerm.Trim();
+        }
+        else
+        {
+            var selectedNames = SelectedAuthorOptions
+                .Select(x => x.AuthorName)
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
+
+            filter.AuthorName = selectedNames.Count == 0
+                ? SelectedAuthor?.AuthorName
+                : string.Join(PdfAuthorNameSeparator, selectedNames);
+        }
+
+        return filter;
+    }
+
+    private AuthorReportingSummaryDto? FindAuthor(int authorKey, string? authorName)
+    {
+        var authors = Dashboard?.Authors;
+        if (authors is null || authors.Count == 0)
+        {
+            return null;
+        }
+
+        var byKey = authors.FirstOrDefault(x => x.AuthorKey == authorKey);
+        if (byKey is not null)
+        {
+            return byKey;
+        }
+
+        var normalizedName = NormalizeValue(authorName, string.Empty);
+        return string.IsNullOrWhiteSpace(normalizedName)
+            ? null
+            : authors.FirstOrDefault(x => NormalizeValue(x.AuthorName, string.Empty)
+                .Equals(normalizedName, StringComparison.OrdinalIgnoreCase));
     }
 
     private bool IsHierarchyAuthorExpanded(int authorKey) =>
@@ -1177,6 +1604,8 @@
         {
             _expandedHierarchyAuthorKeys.Remove(authorKey);
         }
+
+        _hierarchyAuthorNodesCache = null;
     }
 
     private string GetHierarchyAuthorTab(int authorKey) =>
@@ -1244,6 +1673,83 @@
         };
     }
 
+    private static IReadOnlyList<ReportingSummaryItemDto> BuildAuthorLoadBuckets(
+        IReadOnlyList<AuthorReportingSummaryDto> authors,
+        IReadOnlyList<AuthorPublicationDto> publicationLinks)
+    {
+        if (authors.Count == 0)
+        {
+            return [];
+        }
+
+        var countsByAuthor = publicationLinks
+            .GroupBy(x => string.IsNullOrWhiteSpace(x.AuthorIdentity)
+                ? x.AuthorKey.ToString()
+                : x.AuthorIdentity.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.Select(GetPublicationIdentity).Distinct(StringComparer.OrdinalIgnoreCase).Count(),
+                StringComparer.OrdinalIgnoreCase);
+
+        var authorPublicationCounts = authors
+            .Select(author =>
+            {
+                var identity = string.IsNullOrWhiteSpace(author.AuthorIdentity)
+                    ? author.AuthorKey.ToString()
+                    : author.AuthorIdentity.Trim();
+
+                return countsByAuthor.TryGetValue(identity, out var count) ? count : 0;
+            })
+            .Where(x => x > 0)
+            .ToList();
+
+        if (authorPublicationCounts.Count == 0)
+        {
+            return [];
+        }
+
+        var buckets = new[]
+        {
+            new ReportingSummaryItemDto { Name = "1 publicación", TotalArticles = authorPublicationCounts.Count(x => x == 1) },
+            new ReportingSummaryItemDto { Name = "2-3 publicaciones", TotalArticles = authorPublicationCounts.Count(x => x is >= 2 and <= 3) },
+            new ReportingSummaryItemDto { Name = "4-6 publicaciones", TotalArticles = authorPublicationCounts.Count(x => x is >= 4 and <= 6) },
+            new ReportingSummaryItemDto { Name = "7+ publicaciones", TotalArticles = authorPublicationCounts.Count(x => x >= 7) }
+        };
+
+        return buckets.Where(x => x.TotalArticles > 0).ToList();
+    }
+
+    private IReadOnlyList<ReportingSummaryItemDto> BuildCoauthorIntensityBuckets(IReadOnlyList<AuthorReportingSummaryDto> authors)
+    {
+        if (authors.Count == 0 || Dashboard?.Coauthors.Count is not > 0)
+        {
+            return [];
+        }
+
+        var intensityByAuthor = authors.ToDictionary(
+            author => author.AuthorKey,
+            author => Dashboard.Coauthors
+                .Where(x => x.AuthorKey == author.AuthorKey)
+                .Sum(x => x.SharedArticles));
+
+        var buckets = new[]
+        {
+            new ReportingSummaryItemDto { Name = "0-1 vínculos", TotalArticles = intensityByAuthor.Count(x => x.Value <= 1) },
+            new ReportingSummaryItemDto { Name = "2-5 vínculos", TotalArticles = intensityByAuthor.Count(x => x.Value is >= 2 and <= 5) },
+            new ReportingSummaryItemDto { Name = "6-10 vínculos", TotalArticles = intensityByAuthor.Count(x => x.Value is >= 6 and <= 10) },
+            new ReportingSummaryItemDto { Name = "11+ vínculos", TotalArticles = intensityByAuthor.Count(x => x.Value >= 11) }
+        };
+
+        return buckets.Where(x => x.TotalArticles > 0).ToList();
+    }
+
+    private static bool HasUsefulAuthorAffiliation(string? affiliation)
+    {
+        var value = NormalizeValue(affiliation, string.Empty);
+        return !string.IsNullOrWhiteSpace(value)
+            && !value.Equals("Sin filiación", StringComparison.OrdinalIgnoreCase);
+    }
+
     private IEnumerable<AuthorReportingSummaryDto> GetHierarchyAuthors()
     {
         if (_hierarchyAuthorScope.Equals("visible", StringComparison.OrdinalIgnoreCase))
@@ -1251,7 +1757,10 @@
             return FilteredAuthorOptions.Take(VisibleHierarchyAuthors);
         }
 
-        return SelectedAuthor is null ? [] : [SelectedAuthor];
+        var selectedAuthors = SelectedAuthorOptions;
+        return selectedAuthors.Count == 0
+            ? SelectedAuthor is null ? [] : [SelectedAuthor]
+            : selectedAuthors;
     }
 
     private HierarchyAuthorNode BuildHierarchyAuthorNode(AuthorReportingSummaryDto author)
@@ -1332,6 +1841,9 @@
     private bool MatchesSelectedAuthorPublication(AuthorPublicationDto publication) =>
         SelectedAuthor is not null && MatchesAuthorPublication(publication, SelectedAuthor);
 
+    private bool MatchesSnapshotAuthorPublication(AuthorPublicationDto publication) =>
+        SnapshotAuthors.Any(author => MatchesAuthorPublication(publication, author));
+
     private static bool MatchesAuthorPublication(AuthorPublicationDto publication, AuthorReportingSummaryDto author)
     {
         if (!string.IsNullOrWhiteSpace(author.AuthorIdentity)
@@ -1374,7 +1886,7 @@
             ? 0
             : (int)Math.Round((authorNode.PrimaryArticles / (double)authorNode.TotalArticles) * 100);
 
-        return $"background: conic-gradient(#2f5249 0 {primaryPercent}%, #f4ce14 {primaryPercent}% 100%);";
+        return $"background: conic-gradient(#055052 0 {primaryPercent}%, #8C1007 {primaryPercent}% 100%);";
     }
 
     private static string GetHierarchyToggleIconClass(HierarchyAuthorNode authorNode) =>
@@ -1406,14 +1918,14 @@
             ? 0
             : (int)Math.Round((authorNode.PrimaryArticles / (double)authorNode.TotalArticles) * 100);
 
-        return $"background: conic-gradient(#3E0703 0 {primaryPercent}%, #8C1007 {primaryPercent}% 100%);";
+        return $"background: conic-gradient(#055052 0 {primaryPercent}%, #8C1007 {primaryPercent}% 100%);";
     }
 
     private static string GetHierarchySegmentPieStyle(IReadOnlyList<HierarchySegment> segments)
     {
         if (segments.Count == 0)
         {
-            return "background: conic-gradient(#3E0703 0 100%);";
+            return "background: conic-gradient(#055052 0 100%);";
         }
 
         var total = Math.Max(1, segments.Sum(x => x.Count));
@@ -1435,7 +1947,7 @@
         Func<AuthorPublicationDto, string> selector,
         string fallback)
     {
-        var colors = new[] { "#3E0703", "#660B05", "#8C1007", "#B84A3C" };
+        var colors = new[] { "#055052", "#408A71", "#628141", "#8C1007", "#435663" };
 
         return publications
             .Select(selector)
@@ -1448,8 +1960,12 @@
             .ToList();
     }
 
-    private static string GetAuthorPickerItemClass(AuthorReportingSummaryDto author) =>
-        "reports-dw-author-picker-item";
+    private string GetAuthorPickerItemClass(AuthorReportingSummaryDto author) =>
+        IsAuthorSelected(author.AuthorKey)
+            ? "reports-dw-author-picker-item reports-dw-author-picker-item--active"
+            : "reports-dw-author-picker-item";
+
+    private bool IsAuthorSelected(int authorKey) => _selectedAuthorKeys.Contains(authorKey);
 
     private static char GetAuthorInitial(AuthorReportingSummaryDto author)
     {
@@ -1466,6 +1982,14 @@
         publication.IsPrimaryAuthor
             ? "reports-dw-author-hierarchy-role reports-dw-author-hierarchy-role--primary"
             : "reports-dw-author-hierarchy-role reports-dw-author-hierarchy-role--coauthor";
+
+    private static string GetHierarchyMetaPillClass(string? value, string type)
+    {
+        var normalized = NormalizeValue(value, string.Empty);
+        var hash = Math.Abs((long)StringComparer.OrdinalIgnoreCase.GetHashCode(normalized));
+        var tone = hash % 5;
+        return $"reports-dw-author-hierarchy-meta-pill reports-dw-author-hierarchy-meta-pill--{type} reports-dw-author-hierarchy-meta-pill--tone-{tone}";
+    }
 
     private bool MatchesSelectedPublicationSource(AuthorPublicationDto publication) =>
         string.IsNullOrWhiteSpace(_selectedPublicationSource)

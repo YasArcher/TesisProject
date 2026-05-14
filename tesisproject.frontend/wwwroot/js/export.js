@@ -102,6 +102,86 @@ window.tesisExport = {
       URL.revokeObjectURL(url);
     }
   },
+  collectReportChartImages: async function (charts) {
+    if (!Array.isArray(charts) || !window.echarts) {
+      return [];
+    }
+
+    await new Promise(resolve => window.requestAnimationFrame(resolve));
+    await new Promise(resolve => window.requestAnimationFrame(resolve));
+
+    const images = [];
+    const maxImages = 4;
+    const maxDataUrlLength = 1800000;
+
+    for (const chart of charts) {
+      if (images.length >= maxImages) {
+        break;
+      }
+
+      const id = chart?.chartId || chart?.ChartId;
+      if (!id) {
+        continue;
+      }
+
+      const el = document.getElementById(id);
+      if (!el) {
+        continue;
+      }
+
+      const bounds = el.getBoundingClientRect();
+      if (bounds.width < 40 || bounds.height < 40) {
+        continue;
+      }
+
+      const style = window.getComputedStyle(el);
+      if (style.display === "none" || style.visibility === "hidden" || style.opacity === "0") {
+        continue;
+      }
+
+      const instance = window.echarts.getInstanceByDom(el);
+      if (!instance) {
+        continue;
+      }
+
+      try {
+        instance.resize();
+        let base64Png = instance.getDataURL({
+          type: "png",
+          pixelRatio: 1,
+          backgroundColor: "#ffffff"
+        });
+
+        if (base64Png && base64Png.length > maxDataUrlLength) {
+          base64Png = instance.getDataURL({
+            type: "jpeg",
+            pixelRatio: 1,
+            backgroundColor: "#ffffff",
+            quality: 0.74
+          });
+        }
+
+        const isSupportedImage =
+          typeof base64Png === "string" &&
+          (base64Png.startsWith("data:image/png;base64,") || base64Png.startsWith("data:image/jpeg;base64,"));
+
+        if (isSupportedImage && base64Png.length <= maxDataUrlLength) {
+          images.push({
+            ChartId: id,
+            Title: chart.title || chart.Title || id,
+            Section: chart.section || chart.Section || "General",
+            Base64Png: base64Png
+          });
+        } else if (base64Png) {
+          console.warn("Gráfico omitido por tamaño para PDF", id, base64Png.length);
+        }
+      } catch (error) {
+        console.warn("No se pudo exportar el gráfico", id, error);
+      }
+    }
+
+    return images;
+  },
   renderPdfPreview: async function (container, base64) {
     if (!container || !base64 || !window.pdfjsLib) {
       return false;

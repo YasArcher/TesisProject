@@ -36,6 +36,8 @@ internal static class ReportingFilterApplicator
             query = query.Where(x => x.PublishedDate < filter.PublishedTo.Value.Date.AddDays(1));
         }
 
+        query = ApplyContainsFilter(query, filter.ArticleTitle, x => x.Title);
+        query = ApplyContainsFilter(query, filter.ArticleDoi, x => x.Doi);
         query = ApplyStringFilter(query, filter.AcademicTerm, x => x.AcademicTerm);
         query = ApplyStringFilter(query, filter.PublicationStatus, x => x.PublicationStatus);
         query = ApplyStringFilter(query, filter.ResearchLine, x => x.ResearchLine);
@@ -84,6 +86,8 @@ internal static class ReportingFilterApplicator
             || filter.CreatedTo.HasValue
             || filter.PublishedFrom.HasValue
             || filter.PublishedTo.HasValue
+            || !string.IsNullOrWhiteSpace(filter.ArticleTitle)
+            || !string.IsNullOrWhiteSpace(filter.ArticleDoi)
             || !string.IsNullOrWhiteSpace(filter.AcademicTerm)
             || !string.IsNullOrWhiteSpace(filter.PublicationStatus)
             || !string.IsNullOrWhiteSpace(filter.ResearchLine)
@@ -99,7 +103,8 @@ internal static class ReportingFilterApplicator
             || !string.IsNullOrWhiteSpace(filter.Quartile)
             || filter.IsOpenAccess.HasValue
             || filter.IsProjectResult.HasValue
-            || filter.HasInterculturalComponent.HasValue;
+            || filter.HasInterculturalComponent.HasValue
+            || !string.IsNullOrWhiteSpace(filter.ProjectName);
     }
 
     public static bool HasAuthorScopedFilters(InstitutionalReportingFilterDto? filter)
@@ -180,6 +185,19 @@ internal static class ReportingFilterApplicator
         return query.Where(ExpressionEqual(selector, value.Trim()));
     }
 
+    private static IQueryable<ReportingArticleDetailRow> ApplyContainsFilter(
+        IQueryable<ReportingArticleDetailRow> query,
+        string? value,
+        Expression<Func<ReportingArticleDetailRow, string?>> selector)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return query;
+        }
+
+        return query.Where(ExpressionContains(selector, value.Trim()));
+    }
+
     private static Expression<Func<ReportingArticleDetailRow, bool>> ExpressionEqual(
         Expression<Func<ReportingArticleDetailRow, string?>> selector,
         string value)
@@ -187,6 +205,21 @@ internal static class ReportingFilterApplicator
         var body = Expression.Equal(
             selector.Body,
             Expression.Constant(value));
+
+        return Expression.Lambda<Func<ReportingArticleDetailRow, bool>>(body, selector.Parameters);
+    }
+
+    private static Expression<Func<ReportingArticleDetailRow, bool>> ExpressionContains(
+        Expression<Func<ReportingArticleDetailRow, string?>> selector,
+        string value)
+    {
+        var notNull = Expression.NotEqual(selector.Body, Expression.Constant(null, typeof(string)));
+        var contains = Expression.Call(
+            selector.Body,
+            nameof(string.Contains),
+            Type.EmptyTypes,
+            Expression.Constant(value));
+        var body = Expression.AndAlso(notNull, contains);
 
         return Expression.Lambda<Func<ReportingArticleDetailRow, bool>>(body, selector.Parameters);
     }

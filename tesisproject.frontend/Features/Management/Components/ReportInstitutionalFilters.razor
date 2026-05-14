@@ -33,6 +33,38 @@
         <div class="reports-dw-filter-sections">
             <details class="reports-dw-filter-section">
                 <summary class="reports-dw-filter-section-title">
+                    <i class="bi bi-search"></i>
+                    <div>
+                        <strong>Búsqueda directa</strong>
+                        <small>Título, DOI y proyecto</small>
+                    </div>
+                    <span class="reports-dw-filter-section-chevron"><i class="bi bi-chevron-down"></i></span>
+                </summary>
+                <div class="reports-dw-filter-grid">
+                    <label>
+                        <span>Título del artículo</span>
+                        <input type="search"
+                               placeholder="Buscar por título"
+                               @bind="_draft.ArticleTitle" />
+                    </label>
+                    <label>
+                        <span>DOI</span>
+                        <input type="search"
+                               placeholder="10.xxxx/..."
+                               @bind="_draft.ArticleDoi" />
+                    </label>
+                    <label>
+                        <span>Nombre de proyecto</span>
+                        <input type="search"
+                               placeholder="Disponible cuando el DW exponga proyecto"
+                               @bind="_draft.ProjectName"
+                               disabled />
+                    </label>
+                </div>
+            </details>
+
+            <details class="reports-dw-filter-section">
+                <summary class="reports-dw-filter-section-title">
                     <i class="bi bi-calendar-range"></i>
                     <div>
                         <strong>Periodo de análisis</strong>
@@ -264,28 +296,28 @@
                 <summary class="reports-dw-filter-section-title">
                     <i class="bi bi-people"></i>
                     <div>
-                        <strong>Autores y coautoría</strong>
-                        <small>Autor, filiación y participación</small>
+                        <strong>Participación autoral</strong>
+                        <small>Filtra toda la reportería por autor, coautor, filiación o rol</small>
                     </div>
                     <span class="reports-dw-filter-section-chevron"><i class="bi bi-chevron-down"></i></span>
                 </summary>
                 <div class="reports-dw-filter-grid">
                     <label>
-                        <span>Autor</span>
+                        <span>Autor en el reporte</span>
                         <input type="search"
                                list="reports-author-options"
                                placeholder="Nombre del autor"
                                @bind="_draft.AuthorName" />
                     </label>
                     <label>
-                        <span>Coautor</span>
+                        <span>Coautor relacionado</span>
                         <input type="search"
                                list="reports-author-options"
                                placeholder="Nombre del coautor"
                                @bind="_draft.CoauthorName" />
                     </label>
                     <label>
-                        <span>Filiación autor</span>
+                        <span>Filiación institucional</span>
                         <select @bind="_draft.AuthorAffiliation">
                             <option value="">Todas</option>
                             @foreach (var item in Dashboard?.FilterOptions.Affiliations ?? new())
@@ -295,7 +327,7 @@
                         </select>
                     </label>
                     <label>
-                        <span>Tipo participante</span>
+                        <span>Tipo de participación</span>
                         <select @bind="_draft.ParticipantType">
                             <option value="">Todos</option>
                             @foreach (var item in Dashboard?.FilterOptions.ParticipantTypes ?? new())
@@ -313,7 +345,7 @@
                         </select>
                     </label>
                     <label>
-                        <span>Rol de autoría</span>
+                        <span>Alcance de autoría</span>
                         <select @bind="_draft.OnlyPrimaryAuthors">
                             <option value="">Todos los roles</option>
                             <option value="true">Solo autor principal</option>
@@ -397,6 +429,9 @@
         Filter.CreatedTo = _draft.CreatedTo;
         Filter.PublishedFrom = _draft.PublishedFrom;
         Filter.PublishedTo = _draft.PublishedTo;
+        Filter.ArticleTitle = Normalize(_draft.ArticleTitle);
+        Filter.ArticleDoi = Normalize(_draft.ArticleDoi);
+        Filter.ProjectName = Normalize(_draft.ProjectName);
         Filter.AcademicTerm = Normalize(_draft.AcademicTerm);
         Filter.PublicationStatus = Normalize(_draft.PublicationStatus);
         Filter.ResearchLine = Normalize(_draft.ResearchLine);
@@ -431,6 +466,9 @@
             CreatedTo = source.CreatedTo,
             PublishedFrom = source.PublishedFrom,
             PublishedTo = source.PublishedTo,
+            ArticleTitle = source.ArticleTitle,
+            ArticleDoi = source.ArticleDoi,
+            ProjectName = source.ProjectName,
             AcademicTerm = source.AcademicTerm,
             PublicationStatus = source.PublicationStatus,
             ResearchLine = source.ResearchLine,
@@ -469,6 +507,9 @@
             filter.CreatedTo?.ToString("yyyy-MM-dd"),
             filter.PublishedFrom?.ToString("yyyy-MM-dd"),
             filter.PublishedTo?.ToString("yyyy-MM-dd"),
+            filter.ArticleTitle,
+            filter.ArticleDoi,
+            filter.ProjectName,
             filter.AcademicTerm,
             filter.PublicationStatus,
             filter.ResearchLine,

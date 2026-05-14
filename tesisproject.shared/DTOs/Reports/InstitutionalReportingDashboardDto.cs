@@ -43,6 +43,9 @@ public sealed class InstitutionalReportingFilterDto
     public DateTime? CreatedTo { get; set; }
     public DateTime? PublishedFrom { get; set; }
     public DateTime? PublishedTo { get; set; }
+    public string? ArticleTitle { get; set; }
+    public string? ArticleDoi { get; set; }
+    public string? ProjectName { get; set; }
     public string? AcademicTerm { get; set; }
     public string? PublicationStatus { get; set; }
     public string? ResearchLine { get; set; }
@@ -68,6 +71,7 @@ public sealed class InstitutionalReportingFilterDto
     public string? CoauthorName { get; set; }
     public bool IncludePdfKpis { get; set; } = true;
     public bool IncludePdfFilters { get; set; } = true;
+    public bool IncludePdfCharts { get; set; } = true;
     public bool IncludePdfPeriod { get; set; } = true;
     public bool IncludePdfFields { get; set; } = true;
     public bool IncludePdfVenues { get; set; } = true;

@@ -124,16 +124,19 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             _db.VenueMetricsByYear.AsNoTracking());
         var details = await SafeListAsync(detailsQuery, "dw.vw_Articles_Detail", ct);
         LogDashboardStep("detalle artículos", stepWatch);
-        var authorRows = await LoadAuthorDashboardRowsAsync(ct);
+        var authorRows = await GetCachedListAsync(
+            "author-dashboard-rows",
+            LoadAuthorDashboardRowsAsync,
+            ct);
         LogDashboardStep("autores ligeros", stepWatch);
         var periodDateSelector = BuildPeriodDateSelector(filter);
         var loadQuality = await SafeFirstOrDefaultAsync(_db.LoadQualityKpis.AsNoTracking(), "dw.vw_KPI_CalidadCarga", ct);
         LogDashboardStep("KPI calidad", stepWatch);
         var workflow = await SafeFirstOrDefaultAsync(_db.WorkflowKpis.AsNoTracking(), "dw.vw_KPI_Workflow", ct);
         LogDashboardStep("KPI workflow", stepWatch);
-        var venueMetrics = await SafeListAsync(
-            _db.VenueMetricsByYear.AsNoTracking().OrderByDescending(x => x.YearNumber).ThenBy(x => x.VenueName),
-            "dw.vw_VenueMetrics_ByYear",
+        var venueMetrics = await GetCachedListAsync(
+            "venue-metrics-by-year",
+            LoadVenueMetricsAsync,
             ct);
         LogDashboardStep("métricas revistas", stepWatch);
         var workflowStages = await SafeListAsync(
@@ -407,25 +410,146 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         return dashboard;
     }
 
-    public async Task<byte[]> GenerateDashboardPdfAsync(InstitutionalReportingFilterDto? filter = null, CancellationToken ct = default)
+    public Task<byte[]> GenerateDashboardPdfAsync(InstitutionalReportingFilterDto? filter = null, CancellationToken ct = default)
+        => GenerateDashboardPdfAsync(new InstitutionalPdfReportRequestDto { Filter = filter ?? new InstitutionalReportingFilterDto() }, ct);
+
+    public async Task<byte[]> GenerateDashboardPdfAsync(InstitutionalPdfReportRequestDto request, CancellationToken ct = default)
     {
+        var filter = request.Filter ?? new InstitutionalReportingFilterDto();
+        var chartImages = (request.Charts ?? [])
+            .Where(x => !string.IsNullOrWhiteSpace(x.Base64Png))
+            .Take(6)
+            .ToList();
         var dashboard = await GetDashboardAsync(filter, ct);
         var filterChips = BuildPdfFilterChips(filter);
         var generatedAt = DateTime.Now;
-        var includeKpis = filter?.IncludePdfKpis ?? true;
-        var includeFilters = filter?.IncludePdfFilters ?? true;
-        var includePeriod = filter?.IncludePdfPeriod ?? true;
-        var includeFields = filter?.IncludePdfFields ?? true;
-        var includeVenues = filter?.IncludePdfVenues ?? true;
-        var includeAuthors = filter?.IncludePdfAuthors ?? true;
-        var includePediIiit = filter?.IncludePdfPediIiit ?? true;
-        var includeTddTotal = filter?.IncludePdfTddTotal ?? true;
-        var includeParticipation = filter?.IncludePdfParticipation ?? true;
-        var includeArticles = filter?.IncludePdfArticles ?? true;
+        var includeKpis = filter.IncludePdfKpis;
+        var includeFilters = filter.IncludePdfFilters;
+        var includeCharts = filter.IncludePdfCharts;
+        var includePeriod = filter.IncludePdfPeriod;
+        var includeFields = filter.IncludePdfFields;
+        var includeVenues = filter.IncludePdfVenues;
+        var includeAuthors = filter.IncludePdfAuthors;
+        var includePediIiit = filter.IncludePdfPediIiit;
+        var includeTddTotal = filter.IncludePdfTddTotal;
+        var includeParticipation = filter.IncludePdfParticipation;
+        var includeArticles = filter.IncludePdfArticles;
         var authorDashboard = includeAuthors
             ? await GetAuthorDashboardAsync(filter, ct)
             : null;
 
+        return BuildDashboardPdfDocument(
+            dashboard,
+            filter,
+            filterChips,
+            generatedAt,
+            chartImages,
+            includeKpis,
+            includeFilters,
+            includeCharts,
+            includePeriod,
+            includeFields,
+            includeVenues,
+            includeAuthors,
+            includePediIiit,
+            includeTddTotal,
+            includeParticipation,
+            includeArticles,
+            authorDashboard);
+    }
+
+    public async Task<byte[]> GenerateAuthorPdfAsync(InstitutionalReportingFilterDto? filter = null, CancellationToken ct = default)
+    {
+        var effectiveFilter = filter ?? new InstitutionalReportingFilterDto();
+        var dashboard = await GetAuthorDashboardAsync(effectiveFilter, ct);
+        var filterChips = BuildPdfFilterChips(effectiveFilter);
+        var generatedAt = DateTime.Now;
+
+        return BuildAuthorPdfDocument(dashboard, effectiveFilter, filterChips, generatedAt);
+    }
+
+    private static byte[] BuildDashboardPdfDocument(
+        InstitutionalReportingDashboardDto dashboard,
+        InstitutionalReportingFilterDto filter,
+        List<(string Label, string Value)> filterChips,
+        DateTime generatedAt,
+        List<ReportChartImageDto> chartImages,
+        bool includeKpis,
+        bool includeFilters,
+        bool includeCharts,
+        bool includePeriod,
+        bool includeFields,
+        bool includeVenues,
+        bool includeAuthors,
+        bool includePediIiit,
+        bool includeTddTotal,
+        bool includeParticipation,
+        bool includeArticles,
+        AuthorReportingDashboardDto? authorDashboard)
+    {
+        try
+        {
+            return BuildDashboardPdfDocumentCore(
+                dashboard,
+                filter,
+                filterChips,
+                generatedAt,
+                chartImages,
+                includeKpis,
+                includeFilters,
+                includeCharts,
+                includePeriod,
+                includeFields,
+                includeVenues,
+                includeAuthors,
+                includePediIiit,
+                includeTddTotal,
+                includeParticipation,
+                includeArticles,
+                authorDashboard);
+        }
+        catch when (includeCharts && chartImages.Count > 0)
+        {
+            return BuildDashboardPdfDocumentCore(
+                dashboard,
+                filter,
+                filterChips,
+                generatedAt,
+                [],
+                includeKpis,
+                includeFilters,
+                includeCharts,
+                includePeriod,
+                includeFields,
+                includeVenues,
+                includeAuthors,
+                includePediIiit,
+                includeTddTotal,
+                includeParticipation,
+                includeArticles,
+                authorDashboard);
+        }
+    }
+
+    private static byte[] BuildDashboardPdfDocumentCore(
+        InstitutionalReportingDashboardDto dashboard,
+        InstitutionalReportingFilterDto filter,
+        List<(string Label, string Value)> filterChips,
+        DateTime generatedAt,
+        List<ReportChartImageDto> chartImages,
+        bool includeKpis,
+        bool includeFilters,
+        bool includeCharts,
+        bool includePeriod,
+        bool includeFields,
+        bool includeVenues,
+        bool includeAuthors,
+        bool includePediIiit,
+        bool includeTddTotal,
+        bool includeParticipation,
+        bool includeArticles,
+        AuthorReportingDashboardDto? authorDashboard)
+    {
         return Document.Create(container =>
         {
             container.Page(page =>
@@ -475,6 +599,27 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
                     {
                         column.Item().Element(section => PdfSectionHeader(section, "Filtros aplicados", "Criterios usados para generar este reporte."));
                         column.Item().Element(element => PdfFilterSummary(element, filterChips));
+                    }
+
+                    if (includeCharts && chartImages.Count > 0)
+                    {
+                        column.Item().Element(section => PdfSectionHeader(section, "Gráficos incluidos", "Imágenes exportadas desde los gráficos visibles del panel al momento de generar el PDF."));
+                        foreach (var chartGroup in chartImages.GroupBy(x => string.IsNullOrWhiteSpace(x.Section) ? "General" : x.Section))
+                        {
+                            column.Item().Element(item => PdfChartGroup(item, chartGroup.Key, chartGroup));
+                        }
+                    }
+                    else if (includeCharts)
+                    {
+                        column.Item().Element(section => PdfSectionHeader(section, "Gráficos incluidos", "No se recibieron imágenes de gráficos desde la pantalla actual."));
+                        column.Item()
+                            .Border(1)
+                            .BorderColor("#E7EAEC")
+                            .Background("#FFFFFF")
+                            .Padding(8)
+                            .Text("No fue posible capturar gráficos visibles para este PDF. Abre el panel que contiene los gráficos, espera a que terminen de renderizar y genera nuevamente la vista previa.")
+                            .FontSize(8)
+                            .FontColor("#45474B");
                     }
 
                     if (includePeriod && (dashboard.ArticlesByYear.Count > 0 || dashboard.ArticlesByMonth.Count > 0 || dashboard.ArticlesByDay.Count > 0))
@@ -727,6 +872,397 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
                 });
             });
         }).GeneratePdf();
+    }
+
+    private static byte[] BuildAuthorPdfDocument(
+        AuthorReportingDashboardDto dashboard,
+        InstitutionalReportingFilterDto filter,
+        List<(string Label, string Value)> filterChips,
+        DateTime generatedAt)
+    {
+        var selectedAuthor = string.IsNullOrWhiteSpace(filter.AuthorName)
+            ? "Vista general de autores"
+            : $"Autor: {filter.AuthorName.Trim()}";
+        var isFocusedAuthorReport = !string.IsNullOrWhiteSpace(filter.AuthorName);
+        var authorLimit = isFocusedAuthorReport ? 12 : 18;
+        var publicationLimitPerAuthor = isFocusedAuthorReport ? 16 : 8;
+        var authorNodes = dashboard.Authors
+            .OrderByDescending(x => x.TotalArticles)
+            .ThenBy(x => x.AuthorName)
+            .Take(authorLimit)
+            .Select(author => new
+            {
+                Author = author,
+                Publications = GetPdfAuthorPublications(dashboard.Publications, author, publicationLimitPerAuthor),
+                Coauthors = GetPdfAuthorCoauthors(dashboard.Coauthors, author, 8)
+            })
+            .ToList();
+
+        return Document.Create(container =>
+        {
+            container.Page(page =>
+            {
+                page.Size(PageSizes.A4.Landscape());
+                page.Margin(22);
+                page.DefaultTextStyle(text => text.FontSize(8).FontColor("#45474B"));
+
+                page.Header().Element(header =>
+                {
+                    header
+                        .Background("#2F5249")
+                        .Padding(16)
+                        .Column(column =>
+                        {
+                            column.Spacing(4);
+                            column.Item().Text("Universidad Técnica de Ambato").FontSize(9).FontColor("#FFF8D4").SemiBold();
+                            column.Item().Text("Reporte de autores y coautoría").FontSize(19).FontColor("#FFFFFF").Bold();
+                            column.Item().Text($"{selectedAuthor} · Generado el {generatedAt:dd/MM/yyyy HH:mm}")
+                                .FontSize(8)
+                                .FontColor("#E3DE61");
+                        });
+                });
+
+                page.Content().PaddingVertical(14).Column(column =>
+                {
+                    column.Spacing(12);
+
+                    column.Item().Element(section => PdfSectionHeader(section, "Resumen autoral", "Indicadores principales de autores, vínculos y trazabilidad."));
+                    column.Item().Row(row =>
+                    {
+                        row.Spacing(8);
+                        row.RelativeItem().Element(item => PdfKpiCard(item, "Autores únicos", dashboard.Kpis.TotalAuthors.ToString("N0"), "Participantes identificados"));
+                        row.RelativeItem().Element(item => PdfKpiCard(item, "Artículos trazados", dashboard.Kpis.TotalArticles.ToString("N0"), "Publicaciones con autoría"));
+                        row.RelativeItem().Element(item => PdfKpiCard(item, "Vínculos autor-artículo", dashboard.Kpis.TotalAuthorArticleLinks.ToString("N0"), "Autoría principal y coautorías"));
+                        row.RelativeItem().Element(item => PdfKpiCard(item, "Promedio autores", dashboard.Kpis.AverageAuthorsPerArticle.ToString("0.##"), "Autores por artículo"));
+                    });
+
+                    column.Item().Row(row =>
+                    {
+                        row.Spacing(8);
+                        row.RelativeItem().Element(item => PdfKpiCard(item, "Autoría principal", dashboard.Kpis.PrimaryAuthorLinks.ToString("N0"), "Vínculos como autor principal"));
+                        row.RelativeItem().Element(item => PdfKpiCard(item, "Coautorías", dashboard.Kpis.CoauthorLinks.ToString("N0"), "Vínculos como coautor"));
+                        row.RelativeItem().Element(item => PdfKpiCard(item, "Con ORCID", dashboard.Kpis.AuthorsWithOrcid.ToString("N0"), "Autores con ORCID registrado"));
+                        row.RelativeItem().Element(item => PdfKpiCard(item, "Con filiación", dashboard.Kpis.AuthorsWithAffiliation.ToString("N0"), "Autores con filiación"));
+                    });
+
+                    column.Item().Element(section => PdfSectionHeader(section, "Filtros aplicados", "Criterios usados para construir este reporte de autores."));
+                    column.Item().Element(element => PdfFilterSummary(element, filterChips));
+
+                    if (authorNodes.Count > 0)
+                    {
+                        var hierarchySubtitle = isFocusedAuthorReport
+                            ? "Lectura jerárquica del autor seleccionado y sus publicaciones."
+                            : "Lectura jerárquica de los autores con mayor volumen dentro del alcance actual.";
+
+                        column.Item().Element(section => PdfSectionHeader(section, "Jerarquía de autores y publicaciones", hierarchySubtitle));
+                        foreach (var node in authorNodes)
+                        {
+                            column.Item().Element(item => PdfAuthorHierarchyBlock(
+                                item,
+                                node.Author,
+                                node.Publications,
+                                node.Coauthors,
+                                publicationLimitPerAuthor));
+                        }
+                    }
+
+                    if (dashboard.ArticlesByFaculty.Count > 0 || dashboard.ArticlesByIndexingSource.Count > 0 || dashboard.ArticlesByQuartile.Count > 0)
+                    {
+                        column.Item().Element(section => PdfSectionHeader(section, "Distribuciones autorales", "Resumen por facultad, base de indexación y cuartil."));
+                        column.Item().Element(item => PdfCompactCard(item, "Facultades", dashboard.ArticlesByFaculty.Select(x => (x.Name, x.TotalArticles)).Take(10), "#2F5249"));
+                        column.Item().Element(item => PdfCompactCard(item, "Indexación", dashboard.ArticlesByIndexingSource.Select(x => (x.Name, x.TotalArticles)).Take(10), "#435663"));
+                        column.Item().Element(item => PdfCompactCard(item, "Cuartiles", dashboard.ArticlesByQuartile.Select(x => (x.Name, x.TotalArticles)).Take(10), "#7A1E19"));
+                    }
+                });
+
+                page.Footer().Row(row =>
+                {
+                    row.RelativeItem().Text("DIDE · Universidad Técnica de Ambato").FontSize(8).FontColor("#7A7A7A");
+                    row.ConstantItem(130).AlignRight().Text(text =>
+                    {
+                        text.Span("Página ").FontSize(8).FontColor("#7A7A7A");
+                        text.CurrentPageNumber().FontSize(8).FontColor("#7A7A7A");
+                        text.Span(" de ").FontSize(8).FontColor("#7A7A7A");
+                        text.TotalPages().FontSize(8).FontColor("#7A7A7A");
+                    });
+                });
+            });
+        }).GeneratePdf();
+    }
+
+    private static void PdfAuthorHierarchyBlock(
+        IContainer container,
+        AuthorReportingSummaryDto author,
+        IReadOnlyList<AuthorPublicationDto> publications,
+        IReadOnlyList<AuthorCoauthorDto> coauthors,
+        int publicationLimit)
+    {
+        container
+            .Border(1)
+            .BorderColor("#DCE4E1")
+            .Background("#FFFFFF")
+            .Padding(10)
+            .Column(column =>
+            {
+                column.Spacing(8);
+                column.Item()
+                    .Background("#F5F7F8")
+                    .BorderLeft(4)
+                    .BorderColor("#2F5249")
+                    .Padding(9)
+                    .Row(row =>
+                    {
+                        row.RelativeItem().Column(authorColumn =>
+                        {
+                            authorColumn.Spacing(4);
+                            authorColumn.Item().Text(ShortenForPdf(author.AuthorName, 84)).FontSize(10).Bold().FontColor("#313647");
+                            authorColumn.Item().Text(ShortenForPdf($"{author.Affiliation} · {author.Identification ?? author.Orcid ?? "Sin identificación"}", 120))
+                                .FontSize(7)
+                                .FontColor("#667078");
+                            authorColumn.Item().Text(BuildAuthorPdfReadingLine(author, publications, coauthors))
+                                .FontSize(7)
+                                .FontColor("#2F5249");
+                        });
+                        row.ConstantItem(92)
+                            .AlignRight()
+                            .Background("#EAF2ED")
+                            .PaddingVertical(5)
+                            .PaddingHorizontal(7)
+                            .Text($"{author.TotalArticles:N0} publicaciones")
+                            .FontSize(8)
+                            .Bold()
+                            .FontColor("#2F5249");
+                    });
+
+                column.Item().Row(row =>
+                {
+                    row.Spacing(6);
+                    row.RelativeItem().Element(item => PdfMiniMetric(item, "Principal", author.PrimaryAuthorArticles));
+                    row.RelativeItem().Element(item => PdfMiniMetric(item, "Coautor", author.CoauthorArticles));
+                    row.RelativeItem().Element(item => PdfMiniMetric(item, "Publicaciones listadas", publications.Count));
+                });
+
+                if (publications.Count > 0)
+                {
+                    column.Item().Column(publicationColumn =>
+                    {
+                        publicationColumn.Spacing(4);
+                        for (var index = 0; index < publications.Count; index++)
+                        {
+                            publicationColumn.Item().Element(item => PdfAuthorPublicationCard(item, publications[index], index + 1));
+                        }
+                    });
+
+                    if (author.TotalArticles > publicationLimit)
+                    {
+                        column.Item()
+                            .Text($"Se muestran {publications.Count:N0} publicaciones de {author.TotalArticles:N0} asociadas al autor.")
+                            .FontSize(7)
+                            .FontColor("#667078");
+                    }
+                }
+                else
+                {
+                    column.Item().Text("Sin publicaciones detalladas disponibles para este autor dentro del alcance actual.")
+                        .FontSize(7)
+                        .FontColor("#667078");
+                }
+
+                if (coauthors.Count > 0)
+                {
+                    column.Item()
+                        .Background("#FAFBFC")
+                        .Border(1)
+                        .BorderColor("#EEF1F2")
+                        .Padding(7)
+                        .Column(coauthorColumn =>
+                    {
+                        coauthorColumn.Spacing(5);
+                        coauthorColumn.Item().Text("Coautorías frecuentes").FontSize(7).Bold().FontColor("#313647");
+                        coauthorColumn.Item().Row(row =>
+                        {
+                            row.Spacing(4);
+                            foreach (var coauthor in coauthors.Take(5))
+                            {
+                                row.AutoItem().Element(item => PdfAuthorChip(
+                                    item,
+                                    $"{ShortenForPdf(coauthor.CoauthorName, 24)} · {coauthor.SharedArticles:N0}",
+                                    "#435663",
+                                    "#EEF1F2"));
+                            }
+                        });
+                    });
+                }
+            });
+    }
+
+    private static void PdfAuthorPublicationCard(IContainer container, AuthorPublicationDto publication, int index)
+    {
+        var roleLabel = publication.IsPrimaryAuthor ? "Autor principal" : "Coautor";
+        var roleColor = publication.IsPrimaryAuthor ? "#2F5249" : "#7A1E19";
+        var roleBackground = publication.IsPrimaryAuthor ? "#EAF2ED" : "#F7EAE8";
+        var yearLabel = publication.Year?.ToString() ?? "S/D";
+        var quartileLabel = string.IsNullOrWhiteSpace(publication.Quartile) ? "Sin cuartil" : publication.Quartile;
+
+        container
+            .Border(1)
+            .BorderColor("#EEF1F2")
+            .Background(publication.IsPrimaryAuthor ? "#FCFEFC" : "#FFFFFF")
+            .Padding(6)
+            .Column(column =>
+            {
+                column.Spacing(4);
+                column.Item().Row(row =>
+                {
+                    row.ConstantItem(24)
+                        .AlignCenter()
+                        .Background(roleBackground)
+                        .PaddingVertical(3)
+                        .Text(index.ToString("00"))
+                        .FontSize(7)
+                        .Bold()
+                        .FontColor(roleColor);
+                    row.RelativeItem().Text(ShortenForPdf(publication.Title, 118))
+                        .FontSize(8)
+                        .Bold()
+                        .FontColor("#313647");
+                    row.ConstantItem(92)
+                        .AlignRight()
+                        .Text(roleLabel)
+                        .FontSize(7)
+                        .Bold()
+                        .FontColor(roleColor);
+                });
+
+                column.Item().Row(row =>
+                {
+                    row.Spacing(4);
+                    row.AutoItem().Element(item => PdfAuthorChip(item, yearLabel, "#435663", "#EEF1F2"));
+                    row.AutoItem().Element(item => PdfAuthorChip(item, quartileLabel, "#7A1E19", "#F7EAE8"));
+                    row.AutoItem().Element(item => PdfAuthorChip(item, ShortenForPdf(publication.IndexingSourceName, 20), "#2F5249", "#EAF2ED"));
+                    row.RelativeItem().Text(ShortenForPdf(publication.VenueName, 60))
+                        .FontSize(7)
+                        .FontColor("#667078");
+                });
+
+                column.Item().Text(ShortenForPdf($"{publication.Faculty} · {publication.ResearchLine}", 112))
+                    .FontSize(7)
+                    .FontColor("#667078");
+
+                if (!string.IsNullOrWhiteSpace(publication.Doi))
+                {
+                    column.Item().Text(ShortenForPdf($"DOI: {publication.Doi}", 112))
+                        .FontSize(6.5f)
+                        .FontColor("#8A949A");
+                }
+            });
+    }
+
+    private static void PdfAuthorChip(IContainer container, string label, string color, string background)
+    {
+        container
+            .Background(background)
+            .PaddingHorizontal(5)
+            .PaddingVertical(2)
+            .Text(label)
+            .FontSize(6.5f)
+            .Bold()
+            .FontColor(color);
+    }
+
+    private static void PdfMiniMetric(IContainer container, string label, int value)
+    {
+        container
+            .Border(1)
+            .BorderColor("#EEF1F2")
+            .Background("#FAFBFC")
+            .PaddingVertical(5)
+            .PaddingHorizontal(7)
+            .Row(row =>
+            {
+                row.RelativeItem().Text(label).FontSize(7).FontColor("#667078");
+                row.ConstantItem(42).AlignRight().Text(value.ToString("N0")).FontSize(8).Bold().FontColor("#313647");
+            });
+    }
+
+    private static string BuildAuthorPdfReadingLine(
+        AuthorReportingSummaryDto author,
+        IReadOnlyList<AuthorPublicationDto> publications,
+        IReadOnlyList<AuthorCoauthorDto> coauthors)
+    {
+        var dominantFaculty = GetDominantPdfValue(publications.Select(x => x.Faculty), "sin facultad dominante");
+        var dominantQuartile = GetDominantPdfValue(publications.Select(x => x.Quartile), "sin cuartil dominante");
+        var coauthorCount = coauthors.Count;
+        return $"{author.PrimaryAuthorArticles:N0} como principal · {author.CoauthorArticles:N0} como coautor · {dominantFaculty} · {dominantQuartile} · {coauthorCount:N0} coautorías visibles";
+    }
+
+    private static string GetDominantPdfValue(IEnumerable<string?> values, string fallback)
+    {
+        return values
+            .Select(x => Normalize(x, string.Empty))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .GroupBy(x => x, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(x => x.Count())
+            .ThenBy(x => x.Key)
+            .Select(x => x.Key)
+            .FirstOrDefault() ?? fallback;
+    }
+
+    private static IReadOnlyList<AuthorPublicationDto> GetPdfAuthorPublications(
+        IEnumerable<AuthorPublicationDto> publications,
+        AuthorReportingSummaryDto author,
+        int take)
+    {
+        return publications
+            .Where(publication => PdfPublicationMatchesAuthor(publication, author))
+            .GroupBy(GetPdfPublicationIdentity, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group
+                .OrderByDescending(x => x.IsPrimaryAuthor)
+                .ThenByDescending(x => x.PublishedDate ?? x.CreatedDate)
+                .First())
+            .OrderByDescending(x => x.PublishedDate ?? x.CreatedDate)
+            .ThenBy(x => x.Title)
+            .Take(take)
+            .ToList();
+    }
+
+    private static IReadOnlyList<AuthorCoauthorDto> GetPdfAuthorCoauthors(
+        IEnumerable<AuthorCoauthorDto> coauthors,
+        AuthorReportingSummaryDto author,
+        int take)
+    {
+        return coauthors
+            .Where(x => x.AuthorKey == author.AuthorKey || string.Equals(x.AuthorName, author.AuthorName, StringComparison.OrdinalIgnoreCase))
+            .GroupBy(x => new { x.CoauthorKey, Name = Normalize(x.CoauthorName, "Sin coautor") })
+            .Select(group => group
+                .OrderByDescending(x => x.SharedArticles)
+                .First())
+            .OrderByDescending(x => x.SharedArticles)
+            .ThenBy(x => x.CoauthorName)
+            .Take(take)
+            .ToList();
+    }
+
+    private static bool PdfPublicationMatchesAuthor(AuthorPublicationDto publication, AuthorReportingSummaryDto author)
+    {
+        return publication.AuthorKey == author.AuthorKey
+            || string.Equals(publication.AuthorIdentity, author.AuthorIdentity, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(publication.AuthorName, author.AuthorName, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetPdfPublicationIdentity(AuthorPublicationDto publication)
+    {
+        if (publication.ArticleKey > 0)
+        {
+            return publication.ArticleKey.ToString();
+        }
+
+        if (!string.IsNullOrWhiteSpace(publication.Doi))
+        {
+            return publication.Doi.Trim();
+        }
+
+        return Normalize(publication.Title, "Sin título");
     }
 
     public async Task<byte[]> GenerateDashboardExcelAsync(InstitutionalReportingFilterDto? filter = null, CancellationToken ct = default)
@@ -1149,6 +1685,96 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             });
     }
 
+    private static void PdfChartGroup(
+        IContainer container,
+        string section,
+        IEnumerable<ReportChartImageDto> charts)
+    {
+        var materialized = charts
+            .Select(x => new
+            {
+                Chart = x,
+                Bytes = TryDecodePngImage(x.Base64Png)
+            })
+            .Where(x => x.Bytes is { Length: > 0 })
+            .ToList();
+
+        if (materialized.Count == 0)
+        {
+            container
+                .Border(1)
+                .BorderColor("#E7EAEC")
+                .Background("#FFFFFF")
+                .Padding(8)
+                .Text($"No se pudieron decodificar imágenes para la sección {section}.")
+                .FontSize(8)
+                .FontColor("#45474B");
+            return;
+        }
+
+        container
+            .Border(1)
+            .BorderColor("#E7EAEC")
+            .Background("#FFFFFF")
+            .Padding(8)
+            .Column(column =>
+            {
+                column.Spacing(8);
+                column.Item()
+                    .Background("#055052")
+                    .PaddingVertical(4)
+                    .PaddingHorizontal(6)
+                    .Text(section)
+                    .FontSize(8)
+                    .SemiBold()
+                    .FontColor("#FFFFFF");
+
+                foreach (var item in materialized)
+                {
+                    column.Item().Text(ShortenForPdf(item.Chart.Title, 86)).FontSize(8).Bold().FontColor("#313647");
+                    column.Item()
+                        .Border(1)
+                        .BorderColor("#EEF1F2")
+                        .Padding(5)
+                        .MaxHeight(230)
+                        .Image(item.Bytes!)
+                        .FitArea();
+                }
+            });
+    }
+
+    private static byte[]? TryDecodePngImage(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var base64 = value.Trim();
+        var commaIndex = base64.IndexOf(',');
+        if (commaIndex >= 0)
+        {
+            base64 = base64[(commaIndex + 1)..];
+        }
+
+        try
+        {
+            var bytes = Convert.FromBase64String(base64);
+            if (bytes.Length < 16)
+            {
+                return null;
+            }
+
+            var isPng = bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47;
+            var isJpeg = bytes[0] == 0xFF && bytes[1] == 0xD8;
+            return isPng || isJpeg ? bytes : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     private static void PdfHeaderCell(TableDescriptor table, string text)
     {
         table.Cell()
@@ -1208,6 +1834,9 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         AddPdfDate(chips, "Creación hasta", filter.CreatedTo);
         AddPdfDate(chips, "Publicación desde", filter.PublishedFrom);
         AddPdfDate(chips, "Publicación hasta", filter.PublishedTo);
+        AddPdfChip(chips, "Título", filter.ArticleTitle);
+        AddPdfChip(chips, "DOI", filter.ArticleDoi);
+        AddPdfChip(chips, "Proyecto", filter.ProjectName);
         AddPdfChip(chips, "Periodo académico", filter.AcademicTerm);
         AddPdfChip(chips, "Estado", filter.PublicationStatus);
         AddPdfChip(chips, "Línea de investigación", filter.ResearchLine);
@@ -1266,7 +1895,10 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
     {
         if (!string.IsNullOrWhiteSpace(value))
         {
-            chips.Add((label, value.Trim()));
+            var normalizedValue = label.Equals("Autor", StringComparison.OrdinalIgnoreCase)
+                ? string.Join(", ", SplitAuthorNameFilter(value))
+                : value.Trim();
+            chips.Add((label, normalizedValue));
         }
     }
 
@@ -1622,9 +2254,9 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
     {
         var totalWatch = Stopwatch.StartNew();
         var stepWatch = Stopwatch.StartNew();
-        var venueMetrics = await SafeListAsync(
-            _db.VenueMetricsByYear.AsNoTracking().OrderByDescending(x => x.YearNumber).ThenBy(x => x.VenueName),
-            "dw.vw_VenueMetrics_ByYear",
+        var venueMetrics = await GetCachedListAsync(
+            "venue-metrics-by-year",
+            LoadVenueMetricsAsync,
             ct);
         LogDashboardStep("autores métricas revistas", stepWatch);
         var details = await SafeListAsync(
@@ -1655,8 +2287,12 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             .Distinct()
             .ToHashSet();
 
-        var rows = (await LoadAuthorPublicationRowsAsync(ct))
+        var rows = (await GetCachedListAsync(
+                "author-publication-rows",
+                LoadAuthorPublicationRowsAsync,
+                ct))
             .Where(x => scopedArticleKeys.Contains(x.ArticleKey))
+            .Select(CloneAuthorPublicationRow)
             .ToList();
         LogDashboardStep("autores vínculos ligeros", stepWatch);
         EnrichAuthorPublicationRows(rows, details, articleIndexingDetails);
@@ -1742,6 +2378,30 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             dashboard.Coauthors.Count);
 
         return dashboard;
+    }
+
+    private async Task<List<T>> GetCachedListAsync<T>(
+        string key,
+        Func<CancellationToken, Task<List<T>>> factory,
+        CancellationToken ct)
+    {
+        var cacheKey = $"reporting:lookup:{Volatile.Read(ref _cacheVersion)}:{key}";
+        if (_cache.TryGetValue(cacheKey, out List<T>? cached) && cached is not null)
+        {
+            return cached;
+        }
+
+        var rows = await factory(ct);
+        _cache.Set(cacheKey, rows, TimeSpan.FromMinutes(5));
+        return rows;
+    }
+
+    private Task<List<ReportingVenueMetricRow>> LoadVenueMetricsAsync(CancellationToken ct)
+    {
+        return SafeListAsync(
+            _db.VenueMetricsByYear.AsNoTracking().OrderByDescending(x => x.YearNumber).ThenBy(x => x.VenueName),
+            "dw.vw_VenueMetrics_ByYear",
+            ct);
     }
 
     private Task<List<ReportingAuthorPublicationRow>> LoadAuthorDashboardRowsAsync(CancellationToken ct)
@@ -1856,6 +2516,46 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             ct);
     }
 
+    private static ReportingAuthorPublicationRow CloneAuthorPublicationRow(ReportingAuthorPublicationRow row)
+    {
+        return new ReportingAuthorPublicationRow
+        {
+            AuthorKey = row.AuthorKey,
+            AuthorIdentity = row.AuthorIdentity,
+            AuthorName = row.AuthorName,
+            Identification = row.Identification,
+            Affiliation = row.Affiliation,
+            ParticipantType = row.ParticipantType,
+            Email = row.Email,
+            Orcid = row.Orcid,
+            IsPrimaryAuthor = row.IsPrimaryAuthor,
+            ArticleKey = row.ArticleKey,
+            ArticleId = row.ArticleId,
+            Title = row.Title,
+            Doi = row.Doi,
+            Issn = row.Issn,
+            JournalUrl = row.JournalUrl,
+            PublicationUrl = row.PublicationUrl,
+            PublishedDate = row.PublishedDate,
+            CreatedDate = row.CreatedDate,
+            ArticleYear = row.ArticleYear,
+            VenueName = row.VenueName,
+            VenueType = row.VenueType,
+            PublicationStatus = row.PublicationStatus,
+            AcademicTerm = row.AcademicTerm,
+            IsOpenAccess = row.IsOpenAccess,
+            IsProjectResult = row.IsProjectResult,
+            HasInterculturalComponent = row.HasInterculturalComponent,
+            IndexingSourceName = row.IndexingSourceName,
+            Quartile = row.Quartile,
+            FacultyName = row.FacultyName,
+            ResearchLine = row.ResearchLine,
+            BroadFieldName = row.BroadFieldName,
+            SpecificFieldName = row.SpecificFieldName,
+            DetailedFieldName = row.DetailedFieldName
+        };
+    }
+
     private static void EnrichAuthorPublicationRows(
         List<ReportingAuthorPublicationRow> rows,
         List<ReportingArticleDetailRow> details,
@@ -1956,6 +2656,8 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             query = query.Where(x => x.ArticleYear == filter.ArticleYear.Value);
         }
 
+        query = FilterByContainsText(query, filter.ArticleTitle, x => x.Title);
+        query = FilterByContainsText(query, filter.ArticleDoi, x => x.Doi);
         if (!string.IsNullOrWhiteSpace(filter.ArticleMonth)
             && DateTime.TryParse($"{filter.ArticleMonth.Trim()}-01", out var monthStart))
         {
@@ -2015,8 +2717,10 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
 
         if (!string.IsNullOrWhiteSpace(filter.AuthorName))
         {
-            var selected = filter.AuthorName.Trim();
-            query = query.Where(x => ContainsText(x.AuthorName, selected));
+            var selectedAuthors = SplitAuthorNameFilter(filter.AuthorName);
+            query = selectedAuthors.Count == 0
+                ? query
+                : query.Where(x => selectedAuthors.Any(author => ContainsText(x.AuthorName, author)));
         }
 
         if (filter.OnlyPrimaryAuthors == true)
@@ -2025,6 +2729,34 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         }
 
         return query;
+    }
+
+    private static IReadOnlyList<string> SplitAuthorNameFilter(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return [];
+        }
+
+        return value
+            .Split("||", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static IEnumerable<ReportingAuthorPublicationRow> FilterByContainsText(
+        IEnumerable<ReportingAuthorPublicationRow> rows,
+        string? selected,
+        Func<ReportingAuthorPublicationRow, string?> selector)
+    {
+        if (string.IsNullOrWhiteSpace(selected))
+        {
+            return rows;
+        }
+
+        var value = selected.Trim();
+        return rows.Where(x => ContainsText(selector(x), value));
     }
 
     private static IEnumerable<ReportingAuthorPublicationRow> ApplyAuthorOptionsScope(
@@ -2042,6 +2774,8 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             CreatedTo = filter.CreatedTo,
             PublishedFrom = filter.PublishedFrom,
             PublishedTo = filter.PublishedTo,
+            ArticleTitle = filter.ArticleTitle,
+            ArticleDoi = filter.ArticleDoi,
             AcademicTerm = filter.AcademicTerm,
             PublicationStatus = filter.PublicationStatus,
             ResearchLine = filter.ResearchLine,
@@ -2119,7 +2853,7 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
     private static List<AuthorPublicationDto> BuildAuthorPublications(List<ReportingAuthorPublicationRow> rows)
     {
         return rows
-            .GroupBy(x => new { x.AuthorIdentity, x.ArticleKey, Indexing = Normalize(x.IndexingSourceName, "Sin base de datos") })
+            .GroupBy(x => new { x.AuthorIdentity, x.ArticleKey })
             .Select(g =>
             {
                 var row = g.First();
@@ -2143,8 +2877,8 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
                     CreatedDate = row.CreatedDate,
                     Year = row.ArticleYear,
                     VenueName = Normalize(row.VenueName, "Sin revista"),
-                    IndexingSourceName = Normalize(row.IndexingSourceName, "Sin base de datos"),
-                    Quartile = Normalize(row.Quartile, "Sin cuartil"),
+                    IndexingSourceName = JoinDistinct(g.Select(x => x.IndexingSourceName), "Sin base de datos"),
+                    Quartile = JoinDistinct(g.Select(x => x.Quartile), "Sin cuartil"),
                     Faculty = Normalize(row.FacultyName, "Sin facultad"),
                     ResearchLine = Normalize(row.ResearchLine, "Sin línea"),
                     BroadField = Normalize(row.BroadFieldName, "Sin campo amplio"),
@@ -2349,6 +3083,18 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .OrderBy(x => x)
             .ToList();
+    }
+
+    private static string JoinDistinct(IEnumerable<string?> values, string fallback)
+    {
+        var items = values
+            .Select(x => Normalize(x, fallback))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(x => x)
+            .ToList();
+
+        return items.Count == 0 ? fallback : string.Join(", ", items);
     }
 
     private static string Normalize(string? value, string fallback)

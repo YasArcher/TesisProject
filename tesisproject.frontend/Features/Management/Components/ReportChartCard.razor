@@ -25,7 +25,7 @@
         }
     </div>
 
-    @if (!HasData)
+    @if (!ShouldRenderChart)
     {
         <p class="text-xs text-slate-400">@EmptyMessage</p>
     }
@@ -64,4 +64,6 @@
         "ink" => "Resumen",
         _ => "Visualización"
     };
+
+    private bool ShouldRenderChart => HasData || Option is not null;
 }

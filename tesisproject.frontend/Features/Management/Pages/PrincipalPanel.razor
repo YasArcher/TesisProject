@@ -86,7 +86,7 @@
                     @foreach (var action in SpotlightActions)
                     {
                         <a class="@action.CssClass" href="@action.Href">
-                            <span class="principal-action__icon">@action.Icon</span>
+                            <span class="principal-action__icon"><i class="@action.Icon"></i></span>
                             <span>@action.Title</span>
                         </a>
                     }
@@ -100,7 +100,7 @@
                 <article class="principal-kpi-card @(metric.Highlight ? "principal-kpi-card--highlight" : string.Empty)">
                     <div class="principal-kpi-card__top">
                         <span class="principal-kpi-card__label">@metric.Title</span>
-                        <span class="principal-kpi-card__icon">@metric.Icon</span>
+                        <span class="principal-kpi-card__icon"><i class="@metric.Icon"></i></span>
                     </div>
                     <div class="principal-kpi-card__value">@metric.Value</div>
                     <p class="principal-kpi-card__description">@metric.Description</p>
@@ -124,7 +124,7 @@
                     @foreach (var shortcut in QuickActions)
                     {
                         <a class="principal-shortcut" href="@shortcut.Href">
-                            <div class="principal-shortcut__icon">@shortcut.Icon</div>
+                            <div class="principal-shortcut__icon"><i class="@shortcut.Icon"></i></div>
                             <div>
                                 <div class="principal-shortcut__title">@shortcut.Title</div>
                                 <div class="principal-shortcut__description">@shortcut.Description</div>
@@ -185,10 +185,10 @@
 
     private IReadOnlyList<DashboardMetric> DashboardMetrics => new[]
     {
-        new DashboardMetric("Proyectos activos", _kpisLoading ? "..." : KpiProjectsActive.ToString(), "Panorama de iniciativas registradas", "↺", $"{Math.Max(KpiProjectsActive, 1)} frentes abiertos"),
-        new DashboardMetric("Publicaciones", _kpisLoading ? "..." : KpiPublications.ToString(), "Volumen de artículos en el sistema", "⌘", $"{Math.Max(KpiPublications, 1)} artículos totales", true),
-        new DashboardMetric("Aceptados", _kpisLoading ? "..." : KpiInExecution.ToString(), "Seguimiento de artículos en estado aceptado", "✓", $"{Math.Max(KpiInExecution, 1)} en seguimiento"),
-        new DashboardMetric("Altas del mes", _kpisLoading ? "..." : KpiNewThisMonth.ToString(), "Movimientos recientes en el mes actual", "↑", $"{Math.Max(KpiNewThisMonth, 1)} registros recientes")
+        new DashboardMetric("Proyectos activos", _kpisLoading ? "..." : KpiProjectsActive.ToString(), "Panorama de iniciativas registradas", "bi bi-kanban", $"{Math.Max(KpiProjectsActive, 1)} frentes abiertos"),
+        new DashboardMetric("Publicaciones", _kpisLoading ? "..." : KpiPublications.ToString(), "Volumen de artículos en el sistema", "bi bi-journal-text", $"{Math.Max(KpiPublications, 1)} artículos totales", true),
+        new DashboardMetric("Aceptados", _kpisLoading ? "..." : KpiInExecution.ToString(), "Seguimiento de artículos en estado aceptado", "bi bi-check2-circle", $"{Math.Max(KpiInExecution, 1)} en seguimiento"),
+        new DashboardMetric("Altas del mes", _kpisLoading ? "..." : KpiNewThisMonth.ToString(), "Movimientos recientes en el mes actual", "bi bi-graph-up-arrow", $"{Math.Max(KpiNewThisMonth, 1)} registros recientes")
     };
 
     private IReadOnlyList<QuickAction> QuickActions
@@ -199,24 +199,24 @@
 
             if (IsAdmin || IsAuthor || IsUodide || IsAreaTecnica)
             {
-                actions.Add(new QuickAction("Revisión de envíos", "Monitorea el flujo del artículo según tu rol actual.", "/management/workflow-review", "☍"));
+                actions.Add(new QuickAction("Revisión de envíos", "Monitorea el flujo del artículo según tu rol actual.", "/management/workflow-review", "bi bi-arrow-repeat"));
             }
 
             if (IsAdmin || IsAuthor || IsAnalyst)
             {
-                actions.Add(new QuickAction("Registro manual", "Trabaja sobre el formulario activo y mutable.", "/articulos/registrar", "✎"));
+                actions.Add(new QuickAction("Registro manual", "Trabaja sobre el formulario activo y mutable.", "/articulos/registrar", "bi bi-pencil-square"));
             }
 
             if (IsAdmin || IsAnalyst)
             {
-                actions.Add(new QuickAction("Formulario dinámico", "Configura campos, formularios y reglas activas.", "/configuration", "⚙"));
-                actions.Add(new QuickAction("Carga masiva", "Valida staging, corrige filas y procesa lotes.", "/management/exportinformation", "⇪"));
-                actions.Add(new QuickAction("Explorador externo", "Consulta DOI, autores y fuentes académicas.", "/management/externalapis", "◎"));
+                actions.Add(new QuickAction("Formulario dinámico", "Configura campos, formularios y reglas activas.", "/configuration", "bi bi-sliders2-vertical"));
+                actions.Add(new QuickAction("Carga masiva", "Valida staging, corrige filas y procesa lotes.", "/management/exportinformation", "bi bi-cloud-arrow-up"));
+                actions.Add(new QuickAction("Explorador externo", "Consulta DOI, autores y fuentes académicas.", "/management/externalapis", "bi bi-search"));
             }
 
             if (IsAdmin)
             {
-                actions.Add(new QuickAction("Seguridad y roles", "Administra usuarios, permisos y asignaciones.", "/management/security-administration", "🔐"));
+                actions.Add(new QuickAction("Seguridad y roles", "Administra usuarios, permisos y asignaciones.", "/management/security-administration", "bi bi-shield-lock"));
             }
 
             return actions;
@@ -231,18 +231,18 @@
 
             if (IsAdmin || IsAuthor || IsAnalyst)
             {
-                actions.Add(new HeroAction("Registrar artículo", "/articulos/registrar", "+", "principal-action principal-action--solid"));
+                actions.Add(new HeroAction("Registrar artículo", "/articulos/registrar", "bi bi-plus-lg", "principal-action principal-action--solid"));
             }
 
             if (IsAdmin || IsUodide || IsAreaTecnica || IsAuthor)
             {
-                actions.Add(new HeroAction("Ir a revisión", "/management/workflow-review", "✓", "principal-action principal-action--ghost"));
+                actions.Add(new HeroAction("Ir a revisión", "/management/workflow-review", "bi bi-check2-circle", "principal-action principal-action--ghost"));
             }
 
             if (IsAdmin || IsAnalyst)
             {
-                actions.Add(new HeroAction("Ir a carga masiva", "/management/exportinformation", "⇪", "principal-action principal-action--ghost"));
-                actions.Add(new HeroAction("Consultar APIs externas", "/management/externalapis", "↗", "principal-action principal-action--ghost"));
+                actions.Add(new HeroAction("Ir a carga masiva", "/management/exportinformation", "bi bi-cloud-arrow-up", "principal-action principal-action--ghost"));
+                actions.Add(new HeroAction("Consultar APIs externas", "/management/externalapis", "bi bi-box-arrow-up-right", "principal-action principal-action--ghost"));
             }
 
             return actions;

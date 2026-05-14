@@ -72,6 +72,9 @@
                 <span>Fuentes de indexación presentes</span>
             </article>
         </div>
+        <div class="reports-dw-inline-note reports-dw-inline-note--soft">
+            Las barras resumen filas reportables; un artículo puede aparecer más de una vez si está en varias bases.
+        </div>
         <div class="reports-dw-bars reports-dw-bars--compact">
             @foreach (var item in Dashboard?.PediIiitArticles
                 .GroupBy(x => string.IsNullOrWhiteSpace(x.Quartile) ? "Sin cuartil" : x.Quartile)
@@ -213,6 +216,9 @@
                 <span>Indexaciones presentes</span>
             </article>
         </div>
+        <div class="reports-dw-inline-note reports-dw-inline-note--soft">
+            Las barras resumen filas reportables; un artículo puede aparecer más de una vez si está en varias bases.
+        </div>
         <div class="reports-dw-bars reports-dw-bars--compact">
             @foreach (var item in Dashboard?.TddTotalArticles
                 .GroupBy(x => string.IsNullOrWhiteSpace(x.Faculty) ? "Sin facultad" : x.Faculty)
@@ -242,7 +248,8 @@
                         <th class="reports-dw-col--mobile-hide">Autor</th>
                         <th>Cuartil</th>
                         <th class="reports-dw-col--tablet-hide">Facultad</th>
-                        <th class="reports-dw-col--mobile-hide">Proyecto</th>
+                        <th class="reports-dw-col--mobile-hide">Resultado proyecto</th>
+                        <th class="reports-dw-col--mobile-hide">Nombre proyecto</th>
                         <th class="reports-dw-col--mobile-hide">Mes</th>
                     </tr>
                 </thead>
@@ -262,6 +269,7 @@
                             </td>
                             <td><span class="reports-dw-pill reports-dw-pill--quartile">@article.Quartile</span></td>
                             <td class="reports-dw-col--tablet-hide">@article.Faculty</td>
+                            <td class="reports-dw-col--mobile-hide"><span class="@(article.IsProjectResult ? "reports-dw-pill reports-dw-pill--yes" : "reports-dw-pill")">@(article.IsProjectResult ? "Sí" : "No")</span></td>
                             <td class="reports-dw-col--mobile-hide">@GetProjectNameLabel(article)</td>
                             <td class="reports-dw-col--mobile-hide">@article.PublicationMonth</td>
                         </tr>

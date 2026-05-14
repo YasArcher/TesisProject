@@ -38,7 +38,7 @@
                     <div class="reports-pdf-composer__sidebar-head">
                         <div>
                             <strong>Contenido del reporte</strong>
-                            <small>@SelectedCount bloque(s) seleccionados</small>
+                            <small>@SelectedCount de @TotalCount bloque(s) seleccionados</small>
                         </div>
                         <div class="reports-pdf-composer__quick-actions">
                             <button type="button" @onclick="SelectAllAsync">Todo</button>
@@ -47,20 +47,53 @@
                     </div>
 
                     <div class="reports-pdf-composer__options">
-                        @foreach (var option in Options)
+                        @foreach (var group in OptionGroups)
                         {
-                            <label class="@(option.GetValue(Selection)
-                                ? "reports-pdf-composer__option reports-pdf-composer__option--selected"
-                                : "reports-pdf-composer__option")">
-                                <input type="checkbox" checked="@option.GetValue(Selection)" @onchange="args => OnOptionChangedAsync(option, args.Value is true)" />
-                                <span class="reports-pdf-composer__option-icon">
-                                    <i class="@option.Icon"></i>
-                                </span>
-                                <span class="reports-pdf-composer__option-copy">
-                                    <strong>@option.Label</strong>
-                                    <small>@option.Description</small>
-                                </span>
-                            </label>
+                            <section class="reports-pdf-composer__group">
+                                <div class="reports-pdf-composer__group-head">
+                                    <span class="reports-pdf-composer__group-icon">
+                                        <i class="@group.Icon"></i>
+                                    </span>
+                                    <div>
+                                        <strong>@group.Label</strong>
+                                        <small>@GetGroupSelectionLabel(group)</small>
+                                    </div>
+                                    <div class="reports-pdf-composer__group-actions">
+                                        <button type="button"
+                                                title="Seleccionar grupo"
+                                                aria-label="Seleccionar @group.Label"
+                                                @onclick="() => SetGroupAsync(group, true)">
+                                            <i class="bi bi-check2"></i>
+                                        </button>
+                                        <button type="button"
+                                                title="Limpiar grupo"
+                                                aria-label="Limpiar @group.Label"
+                                                @onclick="() => SetGroupAsync(group, false)">
+                                            <i class="bi bi-dash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <p>@group.Description</p>
+
+                                <div class="reports-pdf-composer__group-options">
+                                    @foreach (var option in group.Options)
+                                    {
+                                        <label class="@(option.GetValue(Selection)
+                                            ? "reports-pdf-composer__option reports-pdf-composer__option--selected"
+                                            : "reports-pdf-composer__option")">
+                                            <input type="checkbox" checked="@option.GetValue(Selection)" @onchange="args => OnOptionChangedAsync(option, args.Value is true)" />
+                                            <span class="reports-pdf-composer__option-icon">
+                                                <i class="@option.Icon"></i>
+                                            </span>
+                                            <span class="reports-pdf-composer__option-copy">
+                                                <strong>@option.Label</strong>
+                                                <small>@option.Description</small>
+                                            </span>
+                                        </label>
+                                    }
+                                </div>
+                            </section>
                         }
                     </div>
                 </aside>
@@ -80,7 +113,7 @@
                     @if (!IsPreviewCurrent)
                     {
                         <div class="reports-pdf-composer__notice">
-                            La selección cambió. Actualiza la vista previa para descargar la versión correcta.
+                            La selección cambió. Actualiza la vista previa antes de descargar.
                         </div>
                     }
                     @if (!HasSelectedSections)
@@ -175,28 +208,60 @@
 
     private string PreviewSubtitle
         => string.IsNullOrWhiteSpace(PreviewBase64)
-            ? "El documento aparecerá aquí antes de descargarlo."
-            : "Este es el documento real que se descargará.";
+            ? SelectedCount == 0
+                ? "Selecciona contenido para preparar el documento."
+                : $"Listo para generar con {SelectedCount} bloque(s)."
+            : $"Documento generado con {SelectedCount} bloque(s) activos.";
 
     private string? ResolvedPreviewError => PreviewError ?? _renderPreviewError;
 
     private int SelectedCount => Options.Count(option => option.GetValue(Selection));
 
+    private int TotalCount => Options.Count;
+
     private bool HasSelectedSections => SelectedCount > 0;
 
-    private static IReadOnlyList<PdfSectionOption> Options { get; } =
+    private static IReadOnlyList<PdfSectionGroup> OptionGroups { get; } =
     [
-        new("Indicadores", "Totales principales del reporte.", "bi bi-speedometer2", x => x.IncludePdfKpis, (x, value) => x.IncludePdfKpis = value),
-        new("Filtros aplicados", "Resumen del contexto usado.", "bi bi-funnel", x => x.IncludePdfFilters, (x, value) => x.IncludePdfFilters = value),
-        new("Producción por periodo", "Año, mes y día.", "bi bi-calendar3", x => x.IncludePdfPeriod, (x, value) => x.IncludePdfPeriod = value),
-        new("Campos de conocimiento", "Campo amplio, específico y detallado.", "bi bi-diagram-3", x => x.IncludePdfFields, (x, value) => x.IncludePdfFields = value),
-        new("Revistas e indexación", "Revistas, cuartiles y bases de datos.", "bi bi-journal-richtext", x => x.IncludePdfVenues, (x, value) => x.IncludePdfVenues = value),
-        new("Autores y coautoría", "Autores, coautorías, líneas y facultades.", "bi bi-people", x => x.IncludePdfAuthors, (x, value) => x.IncludePdfAuthors = value),
-        new("PEDI IIIT", "Bloque específico PEDI IIIT.", "bi bi-grid-1x2", x => x.IncludePdfPediIiit, (x, value) => x.IncludePdfPediIiit = value),
-        new("TDD Total", "Bloque específico TDD Total.", "bi bi-table", x => x.IncludePdfTddTotal, (x, value) => x.IncludePdfTddTotal = value),
-        new("Participación", "Facultades, bases y cuartiles.", "bi bi-pie-chart", x => x.IncludePdfParticipation, (x, value) => x.IncludePdfParticipation = value),
-        new("Artículos incluidos", "Muestra final de artículos.", "bi bi-file-earmark-text", x => x.IncludePdfArticles, (x, value) => x.IncludePdfArticles = value)
+        new(
+            "Base del documento",
+            "Elementos generales para entender el contexto del reporte.",
+            "bi bi-file-earmark-check",
+            [
+                new("Indicadores", "Totales principales.", "bi bi-speedometer2", x => x.IncludePdfKpis, (x, value) => x.IncludePdfKpis = value),
+                new("Filtros aplicados", "Criterios usados.", "bi bi-funnel", x => x.IncludePdfFilters, (x, value) => x.IncludePdfFilters = value)
+            ]),
+        new(
+            "Vista general",
+            "Producción científica, ritmo temporal y gráficos visibles.",
+            "bi bi-bar-chart-line",
+            [
+                new("Gráficos visibles", "Captura del panel actual.", "bi bi-image", x => x.IncludePdfCharts, (x, value) => x.IncludePdfCharts = value),
+                new("Producción por periodo", "Año, mes y día.", "bi bi-calendar3", x => x.IncludePdfPeriod, (x, value) => x.IncludePdfPeriod = value),
+                new("Campos de conocimiento", "Campos amplio, específico y detallado.", "bi bi-diagram-3", x => x.IncludePdfFields, (x, value) => x.IncludePdfFields = value),
+                new("Revistas e indexación", "Revistas, cuartiles y bases.", "bi bi-journal-richtext", x => x.IncludePdfVenues, (x, value) => x.IncludePdfVenues = value)
+            ]),
+        new(
+            "Autores y participación",
+            "Bloques centrados en autoría, coautoría y participación institucional.",
+            "bi bi-people",
+            [
+                new("Autores y coautoría", "Autores, coautores, líneas y facultades.", "bi bi-person-lines-fill", x => x.IncludePdfAuthors, (x, value) => x.IncludePdfAuthors = value),
+                new("Participación", "Facultades, bases y cuartiles.", "bi bi-pie-chart", x => x.IncludePdfParticipation, (x, value) => x.IncludePdfParticipation = value)
+            ]),
+        new(
+            "Reportes específicos",
+            "Tablas institucionales listas para revisión o entrega.",
+            "bi bi-table",
+            [
+                new("PEDI IIIT", "Bloque específico PEDI IIIT.", "bi bi-grid-1x2", x => x.IncludePdfPediIiit, (x, value) => x.IncludePdfPediIiit = value),
+                new("TDD Total", "Bloque específico TDD Total.", "bi bi-table", x => x.IncludePdfTddTotal, (x, value) => x.IncludePdfTddTotal = value),
+                new("Artículos incluidos", "Muestra final de artículos.", "bi bi-file-earmark-text", x => x.IncludePdfArticles, (x, value) => x.IncludePdfArticles = value)
+            ])
     ];
+
+    private static IReadOnlyList<PdfSectionOption> Options { get; } =
+        OptionGroups.SelectMany(group => group.Options).ToList();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -267,6 +332,28 @@
 
         await OnSelectionChanged.InvokeAsync();
     }
+
+    private async Task SetGroupAsync(PdfSectionGroup group, bool value)
+    {
+        foreach (var option in group.Options)
+        {
+            option.SetValue(Selection, value);
+        }
+
+        await OnSelectionChanged.InvokeAsync();
+    }
+
+    private string GetGroupSelectionLabel(PdfSectionGroup group)
+    {
+        var selected = group.Options.Count(option => option.GetValue(Selection));
+        return $"{selected} de {group.Options.Count} activos";
+    }
+
+    private sealed record PdfSectionGroup(
+        string Label,
+        string Description,
+        string Icon,
+        IReadOnlyList<PdfSectionOption> Options);
 
     private sealed record PdfSectionOption(
         string Label,

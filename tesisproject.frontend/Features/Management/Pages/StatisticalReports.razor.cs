@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
@@ -44,8 +45,33 @@ namespace tesisproject.frontend.Features.Management.Pages
         private int _pdfComposerRenderKey;
         protected InstitutionalReportingFilterDto _pdfComposerSelection = ReportPdfRequestBuilder.CreateDefaultSelection();
         protected bool _isExportingExcel = false;
+        protected bool _isExportingAuthorPdf = false;
+        protected InstitutionalReportingFilterDto _authorPdfScopeFilter = new();
         private CancellationTokenSource? _institutionalLoadCts;
         private CancellationTokenSource? _authorLoadCts;
+
+        private static readonly IReadOnlyList<ReportChartCaptureDefinition> PdfChartCaptureDefinitions =
+        [
+            new("chart-production-year", "Tendencia de producción por año", "Producción científica"),
+            new("chart-production-quartiles", "Artículos por cuartil", "Producción científica"),
+            new("chart-production-months", "Ritmo mensual de registro", "Producción científica"),
+            new("chart-quality-indexing", "Indexación por volumen", "Calidad editorial"),
+            new("chart-quality-status", "Estado de publicación", "Calidad editorial"),
+            new("chart-quality-venues-quartile", "Revistas por cuartil", "Calidad editorial"),
+            new("dashboard-year-trend", "Producción anual", "Dashboard"),
+            new("dashboard-open-access-gauge", "Cobertura Open Access", "Dashboard"),
+            new("dashboard-open-access-year", "Open Access por año", "Dashboard"),
+            new("dashboard-month-heatmap", "Intensidad mensual", "Dashboard"),
+            new("dashboard-faculty-treemap", "Facultades", "Dashboard"),
+            new("dashboard-researchline-treemap", "Líneas de investigación", "Dashboard"),
+            new("dashboard-quartile-donut", "Cuartiles", "Dashboard"),
+            new("dashboard-indexing-rose", "Bases de indexación", "Dashboard"),
+            new("dashboard-status-donut", "Estado editorial", "Dashboard"),
+            new("dashboard-coverage-radar", "Opciones disponibles", "Dashboard"),
+            new("dashboard-venue-scatter", "Métricas de revistas", "Dashboard"),
+            new("dashboard-field-treemap", "Campos de conocimiento", "Dashboard"),
+            new("dashboard-load-workflow", "Carga y flujo", "Dashboard")
+        ];
 
         // =========================================================
         // CICLO DE VIDA
@@ -298,13 +324,9 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected async Task ApplyInstitutionalFiltersAsync()
         {
             var filterSnapshot = ReportInstitutionalFilterState.Clone(_institutionalFilter);
+            var shouldRefreshAuthors = ShouldRefreshAuthorDashboardWithFilters;
             ResetAuthorDashboardForFilterChange();
-            await LoadInstitutionalReportingAsync(keepCurrentDashboard: true, filterSnapshot: filterSnapshot);
-
-            if (IsAuthorTabActive)
-            {
-                await LoadAuthorReportingAsync(filterSnapshot);
-            }
+            await RefreshReportingForFilterAsync(filterSnapshot, shouldRefreshAuthors);
 
             SaveReportingState();
             StateHasChanged();
@@ -313,14 +335,10 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected async Task ClearInstitutionalFiltersAsync()
         {
             _institutionalFilter = new InstitutionalReportingFilterDto();
+            var shouldRefreshAuthors = ShouldRefreshAuthorDashboardWithFilters;
             ResetAuthorDashboardForFilterChange();
             var filterSnapshot = ReportInstitutionalFilterState.Clone(_institutionalFilter);
-            await LoadInstitutionalReportingAsync(keepCurrentDashboard: true, filterSnapshot: filterSnapshot);
-
-            if (IsAuthorTabActive)
-            {
-                await LoadAuthorReportingAsync(filterSnapshot);
-            }
+            await RefreshReportingForFilterAsync(filterSnapshot, shouldRefreshAuthors);
 
             SaveReportingState();
             StateHasChanged();
@@ -382,6 +400,14 @@ namespace tesisproject.frontend.Features.Management.Pages
             && HasInstitutionalReportingData
             && !IsInstitutionalBlockingBusy
             && !_isExportingExcel;
+
+        protected bool CanExportAuthorPdf
+            => IsAuthorTabActive
+            && _authorReportingDashboard is not null
+            && !_authorDashboardUsingFallback
+            && !_isLoadingAuthorReporting
+            && !IsInstitutionalBlockingBusy
+            && !_isExportingAuthorPdf;
 
         protected async Task GeneratePdfPreviewAsync()
         {
@@ -468,6 +494,69 @@ namespace tesisproject.frontend.Features.Management.Pages
             }
         }
 
+        protected async Task DownloadAuthorPdfAsync()
+        {
+            if (!CanExportAuthorPdf)
+            {
+                return;
+            }
+
+            _isExportingAuthorPdf = true;
+            _authorReportingError = null;
+            StateHasChanged();
+
+            try
+            {
+                var filter = ReportInstitutionalFilterState.Clone(_institutionalFilter);
+                ApplyAuthorPdfScope(filter, _authorPdfScopeFilter);
+                var url = InstitutionalReportingClient.BuildDashboardUrl(filter, "api/reporting/authors/pdf");
+                using var response = await Http.GetAsync(url);
+                response.EnsureSuccessStatusCode();
+
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                var base64 = Convert.ToBase64String(bytes);
+                await JS.InvokeVoidAsync(
+                    "tesisExport.downloadFileFromBase64",
+                    $"reporte-autores-{DateTime.Now:yyyyMMddHHmm}.pdf",
+                    "application/pdf",
+                    base64);
+            }
+            catch (Exception ex)
+            {
+                _authorReportingError = $"No fue posible generar el PDF de autores: {ex.Message}";
+                Console.Error.WriteLine(ex);
+            }
+            finally
+            {
+                _isExportingAuthorPdf = false;
+                StateHasChanged();
+            }
+        }
+
+        protected Task HandleAuthorPdfScopeChanged(InstitutionalReportingFilterDto scope)
+        {
+            _authorPdfScopeFilter = ReportInstitutionalFilterState.Clone(scope);
+            return Task.CompletedTask;
+        }
+
+        private static void ApplyAuthorPdfScope(InstitutionalReportingFilterDto target, InstitutionalReportingFilterDto scope)
+        {
+            if (!string.IsNullOrWhiteSpace(scope.AuthorName))
+            {
+                target.AuthorName = scope.AuthorName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(scope.Faculty))
+            {
+                target.Faculty = scope.Faculty;
+            }
+
+            if (scope.OnlyPrimaryAuthors.HasValue)
+            {
+                target.OnlyPrimaryAuthors = scope.OnlyPrimaryAuthors;
+            }
+        }
+
         protected async Task SelectInstitutionalReportTabAsync(string tab)
         {
             _institutionalReportTab = tab?.ToLowerInvariant() switch
@@ -520,8 +609,7 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected async Task ApplyAuthorFiltersAsync()
         {
             var filterSnapshot = ReportInstitutionalFilterState.Clone(_institutionalFilter);
-            await LoadInstitutionalReportingAsync(keepCurrentDashboard: true, filterSnapshot: filterSnapshot);
-            await LoadAuthorReportingAsync(filterSnapshot);
+            await RefreshReportingForFilterAsync(filterSnapshot, refreshAuthors: true);
             SaveReportingState();
             StateHasChanged();
         }
@@ -529,8 +617,7 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected async Task ClearAuthorFiltersAsync()
         {
             var filterSnapshot = ReportInstitutionalFilterState.Clone(_institutionalFilter);
-            await LoadInstitutionalReportingAsync(keepCurrentDashboard: true, filterSnapshot: filterSnapshot);
-            await LoadAuthorReportingAsync(filterSnapshot);
+            await RefreshReportingForFilterAsync(filterSnapshot, refreshAuthors: true);
             SaveReportingState();
             StateHasChanged();
         }
@@ -551,6 +638,24 @@ namespace tesisproject.frontend.Features.Management.Pages
 
         private bool ShouldLoadAuthorDashboard
             => _authorReportingDashboard is null || _authorDashboardUsingFallback;
+
+        private bool ShouldRefreshAuthorDashboardWithFilters
+            => IsAuthorTabActive || _authorReportingDashboard is not null || _authorDashboardUsingFallback;
+
+        private async Task RefreshReportingForFilterAsync(
+            InstitutionalReportingFilterDto filterSnapshot,
+            bool refreshAuthors)
+        {
+            if (refreshAuthors)
+            {
+                await Task.WhenAll(
+                    LoadInstitutionalReportingAsync(keepCurrentDashboard: true, filterSnapshot: filterSnapshot),
+                    LoadAuthorReportingAsync(filterSnapshot));
+                return;
+            }
+
+            await LoadInstitutionalReportingAsync(keepCurrentDashboard: true, filterSnapshot: filterSnapshot);
+        }
 
         private void ResetAuthorDashboardForFilterChange()
         {
@@ -623,11 +728,44 @@ namespace tesisproject.frontend.Features.Management.Pages
 
         private async Task<byte[]> RequestDashboardPdfAsync(InstitutionalReportingFilterDto requestFilter, CancellationToken ct = default)
         {
-            var url = ReportPdfRequestBuilder.BuildDashboardPdfUrl(requestFilter);
+            var charts = requestFilter.IncludePdfCharts
+                ? await CapturePdfChartImagesAsync()
+                : [];
 
-            using var response = await Http.GetAsync(url, ct);
-            response.EnsureSuccessStatusCode();
+            var request = new InstitutionalPdfReportRequestDto
+            {
+                Filter = requestFilter,
+                Charts = charts
+            };
+
+            using var response = await Http.PostAsJsonAsync(ReportPdfRequestBuilder.DashboardPdfEndpoint, request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync(ct);
+                var detail = string.IsNullOrWhiteSpace(error)
+                    ? response.ReasonPhrase
+                    : error;
+
+                throw new InvalidOperationException($"El backend no pudo generar el PDF ({(int)response.StatusCode}). {detail}");
+            }
+
             return await response.Content.ReadAsByteArrayAsync(ct);
+        }
+
+        private async Task<List<ReportChartImageDto>> CapturePdfChartImagesAsync()
+        {
+            try
+            {
+                var charts = await JS.InvokeAsync<List<ReportChartImageDto>>(
+                    "tesisExport.collectReportChartImages",
+                    PdfChartCaptureDefinitions);
+
+                return charts ?? [];
+            }
+            catch
+            {
+                return [];
+            }
         }
 
         private static string BuildPdfRequestSignature(InstitutionalReportingFilterDto filter)
@@ -649,6 +787,7 @@ namespace tesisproject.frontend.Features.Management.Pages
             {
                 IncludePdfKpis = true,
                 IncludePdfFilters = true,
+                IncludePdfCharts = true,
                 IncludePdfPeriod = true,
                 IncludePdfFields = false,
                 IncludePdfVenues = false,
@@ -697,5 +836,6 @@ namespace tesisproject.frontend.Features.Management.Pages
             _authorLoadCts = null;
         }
 
+        private sealed record ReportChartCaptureDefinition(string ChartId, string Title, string Section);
     }
 }

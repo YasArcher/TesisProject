@@ -16,6 +16,7 @@ public static class ReportPdfRequestBuilder
     {
         target.IncludePdfKpis = selection.IncludePdfKpis;
         target.IncludePdfFilters = selection.IncludePdfFilters;
+        target.IncludePdfCharts = selection.IncludePdfCharts;
         target.IncludePdfPeriod = selection.IncludePdfPeriod;
         target.IncludePdfFields = selection.IncludePdfFields;
         target.IncludePdfVenues = selection.IncludePdfVenues;
@@ -29,6 +30,7 @@ public static class ReportPdfRequestBuilder
     public static bool HasAnySectionSelected(InstitutionalReportingFilterDto selection)
         => selection.IncludePdfKpis
         || selection.IncludePdfFilters
+        || selection.IncludePdfCharts
         || selection.IncludePdfPeriod
         || selection.IncludePdfFields
         || selection.IncludePdfVenues
