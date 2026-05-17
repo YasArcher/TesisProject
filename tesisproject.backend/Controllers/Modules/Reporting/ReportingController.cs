@@ -124,6 +124,38 @@ public sealed class ReportingController : ControllerBase
             });
     }
 
+    [HttpGet("dataset/excel")]
+    public async Task<IActionResult> GetRawDatasetExcel(CancellationToken ct)
+    {
+        return await TrackFileActionAsync(
+            "RawDatasetExcel",
+            new InstitutionalReportingFilterDto(),
+            async () =>
+            {
+                var bytes = await _reporting.GenerateRawDatasetExcelAsync(ct);
+                return (bytes, File(
+                    bytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    $"dataset-reporteria-dide-{DateTime.UtcNow:yyyyMMddHHmm}.xlsx"));
+            });
+    }
+
+    [HttpGet("dataset/csv")]
+    public async Task<IActionResult> GetRawDatasetCsv(CancellationToken ct)
+    {
+        return await TrackFileActionAsync(
+            "RawDatasetCsv",
+            new InstitutionalReportingFilterDto(),
+            async () =>
+            {
+                var bytes = await _reporting.GenerateRawDatasetCsvZipAsync(ct);
+                return (bytes, File(
+                    bytes,
+                    "application/zip",
+                    $"dataset-reporteria-dide-{DateTime.UtcNow:yyyyMMddHHmm}.zip"));
+            });
+    }
+
     [HttpGet("performance")]
     public async Task<ActionResult<ReportingPerformanceSummaryDto>> GetPerformanceSummary(
         [FromQuery] DateTime? from,

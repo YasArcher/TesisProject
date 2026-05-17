@@ -176,6 +176,15 @@
                                 <div class="security-role-card__code">@role.Name</div>
                             }
                             <div class="security-role-card__description">@GetRoleDescription(role.Name)</div>
+                            <div class="security-capability-list">
+                                @foreach (var capability in GetRoleCapabilities(role.Name))
+                                {
+                                    <span class="@GetCapabilityClass(capability.Key)">
+                                        <i class="@capability.Icon"></i>
+                                        @capability.Label
+                                    </span>
+                                }
+                            </div>
                         </article>
                     }
                 </div>
@@ -215,6 +224,18 @@
                                     <span class="security-role-chip">@GetRoleDisplayName(role)</span>
                                 }
                             </div>
+                            <div class="security-selected-user__capabilities">
+                                <small>Acciones habilitadas</small>
+                                <div class="security-capability-list security-capability-list--compact">
+                                    @foreach (var capability in SelectedUserCapabilities)
+                                    {
+                                        <span class="@GetCapabilityClass(capability.Key)">
+                                            <i class="@capability.Icon"></i>
+                                            @capability.Label
+                                        </span>
+                                    }
+                                </div>
+                            </div>
                         </aside>
 
                         <div class="security-permission-grid">
@@ -226,6 +247,15 @@
                                         <span>
                                             <span class="security-role-option__title">@GetRoleDisplayName(role.Name)</span>
                                             <span class="security-role-option__description">@GetRoleDescription(role.Name)</span>
+                                            <span class="security-capability-list security-capability-list--inline">
+                                                @foreach (var capability in GetRoleCapabilities(role.Name))
+                                                {
+                                                    <span class="@GetCapabilityClass(capability.Key)">
+                                                        <i class="@capability.Icon"></i>
+                                                        @capability.Label
+                                                    </span>
+                                                }
+                                            </span>
                                         </span>
                                     </div>
                                     <input type="checkbox"
@@ -282,6 +312,15 @@
                                     <div>
                                         <div class="security-role-option__title">@GetRoleDisplayName(role.Name)</div>
                                         <div class="security-role-option__description">@GetRoleDescription(role.Name)</div>
+                                        <div class="security-capability-list security-capability-list--inline">
+                                            @foreach (var capability in GetRoleCapabilities(role.Name))
+                                            {
+                                                <span class="@GetCapabilityClass(capability.Key)">
+                                                    <i class="@capability.Icon"></i>
+                                                    @capability.Label
+                                                </span>
+                                            }
+                                        </div>
                                     </div>
                                     <input type="checkbox"
                                            class="form-check-input"
@@ -342,6 +381,7 @@
     private readonly List<IdentityRoleListItemDto> Roles = [];
     private readonly HashSet<string> CreateUserRoles = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> SelectedUserRoles = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly IReadOnlyList<RoleCapability> EmptyCapabilities = [];
 
     private CreateUserFormModel CreateUserModel { get; set; } = new();
     private CreateRoleFormModel CreateRoleModel { get; set; } = new();
@@ -368,6 +408,14 @@
 
             return matchesText && matchesRole;
         });
+
+    private IReadOnlyList<RoleCapability> SelectedUserCapabilities
+        => SelectedUserRoles
+            .SelectMany(GetRoleCapabilities)
+            .GroupBy(x => x.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .OrderBy(x => x.SortOrder)
+            .ToList();
 
     protected override async Task OnInitializedAsync()
     {
@@ -600,6 +648,70 @@
             _ => "Perfil disponible para asignación dentro del sistema."
         };
 
+    private static IReadOnlyList<RoleCapability> GetRoleCapabilities(string roleName)
+        => roleName switch
+        {
+            "Admin" =>
+            [
+                Capability("security"), Capability("register"), Capability("directSave"),
+                Capability("matrix"), Capability("bulk"), Capability("externalApis"),
+                Capability("reporting"), Capability("configuration"), Capability("workflow"),
+                Capability("process")
+            ],
+            "Analyst" =>
+            [
+                Capability("register"), Capability("directSave"), Capability("matrix"),
+                Capability("bulk"), Capability("externalApis"), Capability("reporting"),
+                Capability("configuration")
+            ],
+            "Author" =>
+            [
+                Capability("register"), Capability("matrix"), Capability("externalApis"),
+                Capability("workflowTracking")
+            ],
+            "WorkflowReviewerUodide" =>
+            [
+                Capability("workflow"), Capability("bulk")
+            ],
+            "WorkflowReviewerAreaTecnica" =>
+            [
+                Capability("workflow"), Capability("bulk"), Capability("reporting")
+            ],
+            "WorkflowProcessorAreaTecnica" =>
+            [
+                Capability("workflow"), Capability("process"), Capability("bulk"), Capability("reporting")
+            ],
+            _ => EmptyCapabilities
+        };
+
+    private static RoleCapability Capability(string key)
+        => key switch
+        {
+            "security" => new(key, "Usuarios y roles", "bi bi-shield-lock", 10),
+            "register" => new(key, "Registro", "bi bi-pencil-square", 20),
+            "directSave" => new(key, "Guardado directo", "bi bi-database-check", 30),
+            "matrix" => new(key, "Matriz", "bi bi-grid-3x3-gap", 40),
+            "bulk" => new(key, "Carga masiva", "bi bi-upload", 50),
+            "externalApis" => new(key, "APIs externas", "bi bi-cloud-arrow-down", 60),
+            "reporting" => new(key, "Reportería / IA", "bi bi-bar-chart", 70),
+            "configuration" => new(key, "Configuración", "bi bi-gear", 80),
+            "workflow" => new(key, "Revisión workflow", "bi bi-diagram-3", 90),
+            "workflowTracking" => new(key, "Seguimiento workflow", "bi bi-eye", 100),
+            "process" => new(key, "Procesamiento", "bi bi-check2-circle", 110),
+            _ => new(key, key, "bi bi-dot", 999)
+        };
+
+    private static string GetCapabilityClass(string key)
+        => key switch
+        {
+            "security" => "security-capability security-capability--danger",
+            "directSave" or "process" => "security-capability security-capability--strong",
+            "reporting" or "externalApis" => "security-capability security-capability--analysis",
+            "bulk" or "matrix" => "security-capability security-capability--capture",
+            "workflow" or "workflowTracking" => "security-capability security-capability--workflow",
+            _ => "security-capability"
+        };
+
     private string GetSecurityTabClass(string tab)
         => string.Equals(ActiveSecurityTab, tab, StringComparison.OrdinalIgnoreCase)
             ? "security-workspace-tab security-workspace-tab--active"
@@ -654,4 +766,6 @@
         [Required]
         public string Name { get; set; } = string.Empty;
     }
+
+    private sealed record RoleCapability(string Key, string Label, string Icon, int SortOrder);
 }

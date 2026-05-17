@@ -46,6 +46,8 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected InstitutionalReportingFilterDto _pdfComposerSelection = ReportPdfRequestBuilder.CreateDefaultSelection();
         protected bool _isExportingExcel = false;
         protected bool _isExportingAuthorPdf = false;
+        protected bool _isExportingRawDataset = false;
+        protected bool _showExportMenu = false;
         protected InstitutionalReportingFilterDto _authorPdfScopeFilter = new();
         private CancellationTokenSource? _institutionalLoadCts;
         private CancellationTokenSource? _authorLoadCts;
@@ -357,6 +359,7 @@ namespace tesisproject.frontend.Features.Management.Pages
                 return;
             }
 
+            _showExportMenu = false;
             _pdfComposerRenderKey++;
             _showPdfComposer = true;
             _pdfComposerState.ResetForOpen();
@@ -400,6 +403,23 @@ namespace tesisproject.frontend.Features.Management.Pages
             && HasInstitutionalReportingData
             && !IsInstitutionalBlockingBusy
             && !_isExportingExcel;
+
+        protected bool CanExportRawDataset
+            => _institutionalDashboard is not null
+            && HasInstitutionalReportingData
+            && !IsInstitutionalBlockingBusy
+            && !_isExportingRawDataset;
+
+        protected bool CanOpenExportMenu
+            => CanOpenPdfComposer
+            || CanExportExcel
+            || CanExportRawDataset
+            || CanExportAuthorPdf;
+
+        protected string ExportButtonLabel
+            => _isExportingExcel || _isExportingAuthorPdf || _isExportingRawDataset
+                ? "..."
+                : "Exportar";
 
         protected bool CanExportAuthorPdf
             => IsAuthorTabActive
@@ -464,6 +484,7 @@ namespace tesisproject.frontend.Features.Management.Pages
             }
 
             _isExportingExcel = true;
+            _showExportMenu = false;
             _institutionalReportingError = null;
             StateHasChanged();
 
@@ -494,6 +515,71 @@ namespace tesisproject.frontend.Features.Management.Pages
             }
         }
 
+        protected void ToggleExportMenu()
+        {
+            if (!CanOpenExportMenu && !_showExportMenu)
+            {
+                return;
+            }
+
+            _showExportMenu = !_showExportMenu;
+        }
+
+        protected async Task DownloadRawDatasetExcelAsync()
+        {
+            await DownloadRawDatasetAsync(
+                "api/reporting/dataset/excel",
+                $"dataset-reporteria-dide-{DateTime.Now:yyyyMMddHHmm}.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                "Excel");
+        }
+
+        protected async Task DownloadRawDatasetCsvAsync()
+        {
+            await DownloadRawDatasetAsync(
+                "api/reporting/dataset/csv",
+                $"dataset-reporteria-dide-{DateTime.Now:yyyyMMddHHmm}.zip",
+                "application/zip",
+                "CSV");
+        }
+
+        private async Task DownloadRawDatasetAsync(string endpoint, string fileName, string contentType, string formatLabel)
+        {
+            if (!CanExportRawDataset)
+            {
+                return;
+            }
+
+            _isExportingRawDataset = true;
+            _showExportMenu = false;
+            _institutionalReportingError = null;
+            StateHasChanged();
+
+            try
+            {
+                using var response = await Http.GetAsync(endpoint);
+                response.EnsureSuccessStatusCode();
+
+                var bytes = await response.Content.ReadAsByteArrayAsync();
+                var base64 = Convert.ToBase64String(bytes);
+                await JS.InvokeVoidAsync(
+                    "tesisExport.downloadFileFromBase64",
+                    fileName,
+                    contentType,
+                    base64);
+            }
+            catch (Exception ex)
+            {
+                _institutionalReportingError = $"No fue posible exportar el dataset en {formatLabel}: {ex.Message}";
+                Console.Error.WriteLine(ex);
+            }
+            finally
+            {
+                _isExportingRawDataset = false;
+                StateHasChanged();
+            }
+        }
+
         protected async Task DownloadAuthorPdfAsync()
         {
             if (!CanExportAuthorPdf)
@@ -502,6 +588,7 @@ namespace tesisproject.frontend.Features.Management.Pages
             }
 
             _isExportingAuthorPdf = true;
+            _showExportMenu = false;
             _authorReportingError = null;
             StateHasChanged();
 

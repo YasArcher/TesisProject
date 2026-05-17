@@ -69,38 +69,50 @@
         <span>Filtros</span>
     </button>
 
-    <button class="reports-dw-floating-pdf"
-            type="button"
-            aria-label="Generar PDF"
-            title="Generar PDF"
-            disabled="@(!CanOpenPdfComposer)"
-            @onclick="OpenPdfComposer">
-        <i class="bi bi-file-earmark-pdf"></i>
-        <span>PDF</span>
-    </button>
-
-    <button class="reports-dw-floating-excel"
-            type="button"
-            aria-label="Exportar Excel"
-            title="Exportar Excel"
-            disabled="@(!CanExportExcel)"
-            @onclick="DownloadExcelAsync">
-        <i class="bi bi-file-earmark-excel"></i>
-        <span>@(_isExportingExcel ? "..." : "Excel")</span>
-    </button>
-
-    @if (_institutionalReportTab == "authors")
-    {
-        <button class="reports-dw-floating-author-pdf"
+    <div class="reports-dw-floating-export-wrap">
+        <button class="reports-dw-floating-export"
                 type="button"
-                aria-label="Descargar PDF de autores"
-                title="PDF de autores"
-                disabled="@(!CanExportAuthorPdf)"
-                @onclick="DownloadAuthorPdfAsync">
-            <i class="bi bi-file-person"></i>
-            <span>@(_isExportingAuthorPdf ? "..." : "Autores")</span>
+                aria-label="Abrir opciones de exportación"
+                title="Exportar"
+                disabled="@(!CanOpenExportMenu)"
+                @onclick="ToggleExportMenu">
+            <i class="bi bi-download"></i>
+            <span>@ExportButtonLabel</span>
         </button>
-    }
+
+        @if (_showExportMenu)
+        {
+            <div class="reports-dw-export-menu" role="menu" aria-label="Opciones de exportación">
+                <div>
+                    <strong>Exportar reportería</strong>
+                    <small>PDF, Excel y dataset bruto para análisis externo.</small>
+                </div>
+                <button type="button" role="menuitem" disabled="@(!CanOpenPdfComposer)" @onclick="OpenPdfComposer">
+                    <i class="bi bi-file-earmark-pdf"></i>
+                    <span>PDF institucional</span>
+                </button>
+                @if (_institutionalReportTab == "authors")
+                {
+                    <button type="button" role="menuitem" disabled="@(!CanExportAuthorPdf)" @onclick="DownloadAuthorPdfAsync">
+                        <i class="bi bi-file-person"></i>
+                        <span>PDF de autores</span>
+                    </button>
+                }
+                <button type="button" role="menuitem" disabled="@(!CanExportExcel)" @onclick="DownloadExcelAsync">
+                    <i class="bi bi-file-earmark-excel"></i>
+                    <span>Excel institucional</span>
+                </button>
+                <button type="button" role="menuitem" disabled="@(!CanExportRawDataset)" @onclick="DownloadRawDatasetExcelAsync">
+                    <i class="bi bi-file-earmark-spreadsheet"></i>
+                    <span>Dataset Excel</span>
+                </button>
+                <button type="button" role="menuitem" disabled="@(!CanExportRawDataset)" @onclick="DownloadRawDatasetCsvAsync">
+                    <i class="bi bi-filetype-csv"></i>
+                    <span>Dataset CSV ZIP</span>
+                </button>
+            </div>
+        }
+    </div>
 
     @if (_showInstitutionalFilters)
     {

@@ -599,7 +599,7 @@
 
 .reports-dw-floating-author-pdf {
     position: fixed;
-    top: calc(50% + 13.2rem);
+    top: calc(50% + 17.6rem);
     right: 1.15rem;
     z-index: 55;
     display: inline-flex;
@@ -620,9 +620,97 @@
     box-shadow: 0 22px 42px rgba(0, 54, 56, 0.28);
 }
 
+.reports-dw-floating-export-wrap {
+    position: fixed;
+    top: calc(50% + 4.4rem);
+    right: 1.15rem;
+    z-index: 58;
+    display: grid;
+    justify-items: end;
+    gap: 0.55rem;
+    transform: translateY(-50%);
+}
+
+.reports-dw-floating-export {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    border: 1px solid rgba(0, 54, 56, 0.18);
+    border-radius: 999px;
+    background: linear-gradient(135deg, #003638, #628141);
+    color: #fff8d4;
+    padding: 0.9rem 1.08rem;
+    box-shadow: 0 18px 36px rgba(0, 54, 56, 0.22);
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.reports-dw-floating-export:hover:not(:disabled) {
+    transform: translateX(-2px);
+    box-shadow: 0 22px 42px rgba(0, 54, 56, 0.28);
+}
+
+.reports-dw-export-menu {
+    width: min(17.5rem, calc(100vw - 2rem));
+    border: 1px solid rgba(0, 54, 56, 0.14);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.96);
+    padding: 0.75rem;
+    box-shadow: 0 22px 46px rgba(49, 54, 71, 0.2);
+    backdrop-filter: blur(12px);
+}
+
+.reports-dw-export-menu div {
+    display: grid;
+    gap: 0.12rem;
+    margin-bottom: 0.45rem;
+    padding: 0 0.15rem 0.45rem;
+    border-bottom: 1px solid rgba(67, 86, 99, 0.1);
+}
+
+.reports-dw-export-menu strong {
+    color: var(--report-deep-teal);
+    font-size: 0.82rem;
+    font-weight: 950;
+}
+
+.reports-dw-export-menu small {
+    color: #66716e;
+    font-size: 0.72rem;
+    line-height: 1.35;
+}
+
+.reports-dw-export-menu button {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 0.55rem;
+    border: 0;
+    border-radius: 0.72rem;
+    background: transparent;
+    color: #313647;
+    padding: 0.62rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 900;
+    text-align: left;
+    transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.reports-dw-export-menu button:hover:not(:disabled) {
+    background: rgba(64, 138, 113, 0.12);
+    color: var(--report-deep-teal);
+    transform: translateX(-1px);
+}
+
+.reports-dw-export-menu button:disabled {
+    cursor: not-allowed;
+    opacity: 0.46;
+}
+
 .reports-dw-floating-filter:disabled,
 .reports-dw-floating-pdf:disabled,
 .reports-dw-floating-excel:disabled,
+.reports-dw-floating-dataset:disabled,
+.reports-dw-floating-export:disabled,
 .reports-dw-floating-author-pdf:disabled {
     cursor: not-allowed;
     opacity: 0.48;
@@ -632,12 +720,16 @@
 
 .reports-dw-floating-pdf i,
 .reports-dw-floating-excel i,
+.reports-dw-floating-dataset i,
+.reports-dw-floating-export i,
 .reports-dw-floating-author-pdf i {
     font-size: 1.15rem;
 }
 
 .reports-dw-floating-pdf span,
 .reports-dw-floating-excel span,
+.reports-dw-floating-dataset span,
+.reports-dw-floating-export span,
 .reports-dw-floating-author-pdf span {
     font-size: 0.8rem;
     font-weight: 900;
@@ -3306,10 +3398,17 @@
 
 .reports-dw-floating-filter,
 .reports-dw-floating-pdf,
-.reports-dw-floating-excel {
+.reports-dw-floating-excel,
+.reports-dw-floating-dataset,
+.reports-dw-floating-export {
     right: 0.85rem;
     border-radius: 0.95rem;
     padding: 0.78rem 0.9rem;
+}
+
+.reports-dw-floating-dataset-wrap,
+.reports-dw-floating-export-wrap {
+    right: 0.85rem;
 }
 
 @media (max-width: 1100px) {
@@ -3325,14 +3424,23 @@
 
     .reports-dw-floating-filter,
     .reports-dw-floating-pdf,
-    .reports-dw-floating-excel {
+    .reports-dw-floating-excel,
+    .reports-dw-floating-dataset,
+    .reports-dw-floating-export {
         right: 0.5rem;
         padding: 0.68rem;
     }
 
+    .reports-dw-floating-dataset-wrap,
+    .reports-dw-floating-export-wrap {
+        right: 0.5rem;
+    }
+
     .reports-dw-floating-filter span,
     .reports-dw-floating-pdf span,
-    .reports-dw-floating-excel span {
+    .reports-dw-floating-excel span,
+    .reports-dw-floating-dataset span,
+    .reports-dw-floating-export span {
         display: none;
     }
 

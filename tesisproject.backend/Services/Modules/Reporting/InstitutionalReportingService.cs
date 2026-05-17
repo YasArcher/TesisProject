@@ -4,8 +4,11 @@ using Microsoft.Extensions.Caching.Memory;
 using QuestPDF.Fluent;
 using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
+using System.Globalization;
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Threading;
+using System.Text;
 using tesisproject.backend.Reporting.Data;
 using tesisproject.backend.Reporting.Models;
 using tesisproject.shared.DTOs.Reports;
@@ -18,6 +21,14 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
     private readonly ILogger<InstitutionalReportingService> _logger;
     private readonly IMemoryCache _cache;
     private static int _cacheVersion;
+
+    private sealed record RawReportingDataset(
+        List<ReportingArticleDetailRow> Articles,
+        List<ReportingAuthorPublicationRow> Authors,
+        List<ReportingArticleIndexingDetailRow> Indexing,
+        List<ReportingVenueMetricRow> VenueMetrics,
+        List<WorkflowCurrentStageRow> WorkflowStages,
+        List<ReportingEtlRunRow> EtlRuns);
 
     static InstitutionalReportingService()
     {
@@ -1284,6 +1295,66 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         return stream.ToArray();
     }
 
+    public async Task<byte[]> GenerateRawDatasetExcelAsync(CancellationToken ct = default)
+    {
+        var dataset = await BuildRawReportingDatasetAsync(ct);
+
+        using var workbook = new XLWorkbook();
+        BuildRawDatasetSummaryWorksheet(workbook, dataset);
+        BuildRawDatasetArticlesWorksheet(workbook, dataset.Articles);
+        BuildRawDatasetAuthorsWorksheet(workbook, dataset.Authors);
+        BuildRawDatasetIndexingWorksheet(workbook, dataset.Indexing);
+        BuildRawDatasetVenueMetricsWorksheet(workbook, dataset.VenueMetrics);
+        BuildRawDatasetWorkflowWorksheet(workbook, dataset.WorkflowStages);
+        BuildRawDatasetEtlWorksheet(workbook, dataset.EtlRuns);
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        return stream.ToArray();
+    }
+
+    public async Task<byte[]> GenerateRawDatasetCsvZipAsync(CancellationToken ct = default)
+    {
+        var dataset = await BuildRawReportingDatasetAsync(ct);
+
+        using var stream = new MemoryStream();
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            WriteCsvEntry(
+                archive,
+                "articulos.csv",
+                RawArticleHeaders,
+                dataset.Articles.Select(ToRawArticleRow));
+            WriteCsvEntry(
+                archive,
+                "autores_publicaciones.csv",
+                RawAuthorHeaders,
+                dataset.Authors.Select(ToRawAuthorRow));
+            WriteCsvEntry(
+                archive,
+                "indexaciones.csv",
+                RawIndexingHeaders,
+                dataset.Indexing.Select(ToRawIndexingRow));
+            WriteCsvEntry(
+                archive,
+                "metricas_revistas.csv",
+                RawVenueMetricHeaders,
+                dataset.VenueMetrics.Select(ToRawVenueMetricRow));
+            WriteCsvEntry(
+                archive,
+                "workflow.csv",
+                RawWorkflowHeaders,
+                dataset.WorkflowStages.Select(ToRawWorkflowRow));
+            WriteCsvEntry(
+                archive,
+                "etl.csv",
+                RawEtlHeaders,
+                dataset.EtlRuns.Select(ToRawEtlRow));
+        }
+
+        return stream.ToArray();
+    }
+
     public async Task<ReportingHealthDto> RunFullLoadAsync(CancellationToken ct = default)
     {
         try
@@ -1298,6 +1369,342 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         }
 
         return await GetHealthAsync(ct);
+    }
+
+    private static readonly string[] RawArticleHeaders =
+    [
+        "FactArticlePublicationId", "ArticleKey", "ArticleId_OLTP", "Titulo", "DOI", "Anio",
+        "UrlPublicacion", "OpenAccess", "ResultadoProyecto", "Interculturalidad", "Revista",
+        "TipoRevista", "EstadoPublicacion", "PeriodoAcademico", "LineaInvestigacion", "Facultad",
+        "CampoAmplio", "CampoEspecifico", "CampoDetallado", "FechaRegistro", "FechaPublicacion",
+        "Paginas", "ArticleCount"
+    ];
+
+    private static readonly string[] RawAuthorHeaders =
+    [
+        "AuthorKey", "AuthorIdentity", "Autor", "Identificacion", "Filiacion", "TipoParticipacion",
+        "Email", "Orcid", "EsAutorPrincipal", "ArticleKey", "ArticleId", "Titulo", "DOI", "ISSN",
+        "UrlRevista", "UrlPublicacion", "FechaPublicacion", "FechaRegistro", "Anio", "Revista",
+        "TipoRevista", "EstadoPublicacion", "PeriodoAcademico", "OpenAccess", "ResultadoProyecto",
+        "Interculturalidad", "BaseIndexacion", "Cuartil", "Facultad", "LineaInvestigacion",
+        "CampoAmplio", "CampoEspecifico", "CampoDetallado"
+    ];
+
+    private static readonly string[] RawIndexingHeaders =
+    [
+        "ArticleKey", "ArticleId", "Titulo", "DOI", "BaseIndexacion", "Revista", "ISSN",
+        "UrlRevista", "UrlPublicacion", "FechaPublicacion", "Anio", "ResultadoProyecto",
+        "Interculturalidad", "Facultad", "LineaInvestigacion", "CampoAmplio", "CampoEspecifico",
+        "CampoDetallado", "IdentificacionAutor", "Autor", "TipoParticipacion", "Cuartil"
+    ];
+
+    private static readonly string[] RawVenueMetricHeaders =
+    [
+        "Anio", "Revista", "TipoRevista", "SJR", "CiteScore", "HIndex", "Cuartil"
+    ];
+
+    private static readonly string[] RawWorkflowHeaders =
+    [
+        "BatchId_OLTP", "Workflow", "Etapa", "GrupoEtapa", "EstadoEtapa", "FechaInicioKey",
+        "FechaFinKey", "DuracionSegundos", "Aprobado", "Devuelto"
+    ];
+
+    private static readonly string[] RawEtlHeaders =
+    [
+        "EtlRunId", "Proceso", "Inicio", "Fin", "Estado", "Notas"
+    ];
+
+    private async Task<RawReportingDataset> BuildRawReportingDatasetAsync(CancellationToken ct)
+    {
+        var details = await SafeListAsync(
+            _db.ArticleDetails.AsNoTracking().OrderBy(x => x.ArticleId_OLTP),
+            "dataset dw.vw_Articles_Detail",
+            ct);
+        var venueMetrics = await SafeListAsync(
+            _db.VenueMetricsByYear.AsNoTracking().OrderByDescending(x => x.YearNumber).ThenBy(x => x.VenueName),
+            "dataset dw.vw_VenueMetrics_ByYear",
+            ct);
+        var authorRows = await LoadAuthorPublicationRowsAsync(ct);
+        var indexingDetails = await BuildArticleIndexingDetailsAsync(details, null, authorRows, venueMetrics, ct);
+        var workflowStages = await SafeListAsync(
+            _db.WorkflowCurrentStages.AsNoTracking().OrderBy(x => x.WorkflowName).ThenBy(x => x.BatchId_OLTP),
+            "dataset dw.vw_Workflow_Batches_ByCurrentStage",
+            ct);
+        var etlRuns = await SafeListAsync(
+            _db.EtlRuns.AsNoTracking().OrderByDescending(x => x.EtlRunId),
+            "dataset etl.EtlRun",
+            ct);
+
+        EnrichAuthorPublicationRows(authorRows, details, indexingDetails);
+
+        return new RawReportingDataset(
+            details,
+            authorRows
+                .OrderBy(x => x.ArticleId)
+                .ThenByDescending(x => x.IsPrimaryAuthor)
+                .ThenBy(x => x.AuthorName)
+                .ToList(),
+            indexingDetails
+                .OrderBy(x => x.ArticleId)
+                .ThenBy(x => x.IndexingSourceName)
+                .ToList(),
+            venueMetrics,
+            workflowStages,
+            etlRuns);
+    }
+
+    private static void BuildRawDatasetSummaryWorksheet(XLWorkbook workbook, RawReportingDataset dataset)
+    {
+        var sheet = workbook.Worksheets.Add("Resumen dataset");
+        WriteExcelTitle(sheet, "Dataset bruto para BI y analítica externa");
+        sheet.Cell(2, 1).Value = "Generado";
+        sheet.Cell(2, 2).Value = DateTime.Now;
+        sheet.Cell(2, 2).Style.DateFormat.Format = "dd/MM/yyyy HH:mm";
+
+        WriteExcelTable(
+            sheet,
+            4,
+            new[] { "Tabla", "Registros", "Uso sugerido" },
+            new[]
+            {
+                new object?[] { "Articulos", dataset.Articles.Count, "Base principal de producción científica" },
+                new object?[] { "Autores_Publicaciones", dataset.Authors.Count, "Relación autor/artículo para coautoría y participación" },
+                new object?[] { "Indexaciones", dataset.Indexing.Count, "Relación artículo/base de indexación" },
+                new object?[] { "Metricas_Revistas", dataset.VenueMetrics.Count, "Indicadores bibliométricos por revista y año" },
+                new object?[] { "Workflow", dataset.WorkflowStages.Count, "Trazabilidad de procesos de carga/revisión" },
+                new object?[] { "ETL", dataset.EtlRuns.Count, "Auditoría de cargas analíticas" }
+            });
+
+        ApplyExcelWorksheetDefaults(sheet);
+    }
+
+    private static void BuildRawDatasetArticlesWorksheet(XLWorkbook workbook, IEnumerable<ReportingArticleDetailRow> rows)
+    {
+        var sheet = workbook.Worksheets.Add("Articulos");
+        WriteExcelTitle(sheet, "Artículos");
+        WriteExcelTable(sheet, 3, RawArticleHeaders, rows.Select(ToRawArticleRow));
+        ApplyRawDateFormats(sheet, 4, 20, 21);
+        ApplyExcelWorksheetDefaults(sheet);
+    }
+
+    private static void BuildRawDatasetAuthorsWorksheet(XLWorkbook workbook, IEnumerable<ReportingAuthorPublicationRow> rows)
+    {
+        var sheet = workbook.Worksheets.Add("Autores_Publicaciones");
+        WriteExcelTitle(sheet, "Autores y publicaciones");
+        WriteExcelTable(sheet, 3, RawAuthorHeaders, rows.Select(ToRawAuthorRow));
+        ApplyRawDateFormats(sheet, 4, 17, 18);
+        ApplyExcelWorksheetDefaults(sheet);
+    }
+
+    private static void BuildRawDatasetIndexingWorksheet(XLWorkbook workbook, IEnumerable<ReportingArticleIndexingDetailRow> rows)
+    {
+        var sheet = workbook.Worksheets.Add("Indexaciones");
+        WriteExcelTitle(sheet, "Indexaciones");
+        WriteExcelTable(sheet, 3, RawIndexingHeaders, rows.Select(ToRawIndexingRow));
+        ApplyRawDateFormats(sheet, 4, 10);
+        ApplyExcelWorksheetDefaults(sheet);
+    }
+
+    private static void BuildRawDatasetVenueMetricsWorksheet(XLWorkbook workbook, IEnumerable<ReportingVenueMetricRow> rows)
+    {
+        var sheet = workbook.Worksheets.Add("Metricas_Revistas");
+        WriteExcelTitle(sheet, "Métricas de revistas");
+        WriteExcelTable(sheet, 3, RawVenueMetricHeaders, rows.Select(ToRawVenueMetricRow));
+        ApplyExcelWorksheetDefaults(sheet);
+    }
+
+    private static void BuildRawDatasetWorkflowWorksheet(XLWorkbook workbook, IEnumerable<WorkflowCurrentStageRow> rows)
+    {
+        var sheet = workbook.Worksheets.Add("Workflow");
+        WriteExcelTitle(sheet, "Workflow");
+        WriteExcelTable(sheet, 3, RawWorkflowHeaders, rows.Select(ToRawWorkflowRow));
+        ApplyExcelWorksheetDefaults(sheet);
+    }
+
+    private static void BuildRawDatasetEtlWorksheet(XLWorkbook workbook, IEnumerable<ReportingEtlRunRow> rows)
+    {
+        var sheet = workbook.Worksheets.Add("ETL");
+        WriteExcelTitle(sheet, "Ejecuciones ETL");
+        WriteExcelTable(sheet, 3, RawEtlHeaders, rows.Select(ToRawEtlRow));
+        ApplyRawDateFormats(sheet, 4, 3, 4);
+        ApplyExcelWorksheetDefaults(sheet);
+    }
+
+    private static object?[] ToRawArticleRow(ReportingArticleDetailRow row) =>
+    [
+        row.FactArticlePublicationId,
+        row.ArticleKey,
+        row.ArticleId_OLTP,
+        ExcelText(row.Title),
+        ExcelText(row.Doi),
+        row.ArticleYear,
+        ExcelText(row.PublicationUrl),
+        row.IsOpenAccess ? "Sí" : "No",
+        row.IsProjectResult ? "Sí" : "No",
+        row.HasInterculturalComponent ? "Sí" : "No",
+        ExcelText(row.VenueName),
+        ExcelText(row.VenueType),
+        ExcelText(row.PublicationStatus),
+        ExcelText(row.AcademicTerm),
+        ExcelText(row.ResearchLine),
+        ExcelText(row.FacultyName),
+        ExcelText(row.BroadFieldName),
+        ExcelText(row.SpecificFieldName),
+        ExcelText(row.DetailedFieldName),
+        row.CreatedDate,
+        row.PublishedDate,
+        row.PageCount,
+        row.ArticleCount
+    ];
+
+    private static object?[] ToRawAuthorRow(ReportingAuthorPublicationRow row) =>
+    [
+        row.AuthorKey,
+        ExcelText(row.AuthorIdentity),
+        ExcelText(row.AuthorName),
+        ExcelText(row.Identification),
+        ExcelText(row.Affiliation),
+        ExcelText(row.ParticipantType),
+        ExcelText(row.Email),
+        ExcelText(row.Orcid),
+        row.IsPrimaryAuthor ? "Sí" : "No",
+        row.ArticleKey,
+        row.ArticleId,
+        ExcelText(row.Title),
+        ExcelText(row.Doi),
+        ExcelText(row.Issn),
+        ExcelText(row.JournalUrl),
+        ExcelText(row.PublicationUrl),
+        row.PublishedDate,
+        row.CreatedDate,
+        row.ArticleYear,
+        ExcelText(row.VenueName),
+        ExcelText(row.VenueType),
+        ExcelText(row.PublicationStatus),
+        ExcelText(row.AcademicTerm),
+        row.IsOpenAccess ? "Sí" : "No",
+        row.IsProjectResult ? "Sí" : "No",
+        row.HasInterculturalComponent ? "Sí" : "No",
+        ExcelText(row.IndexingSourceName),
+        ExcelText(row.Quartile),
+        ExcelText(row.FacultyName),
+        ExcelText(row.ResearchLine),
+        ExcelText(row.BroadFieldName),
+        ExcelText(row.SpecificFieldName),
+        ExcelText(row.DetailedFieldName)
+    ];
+
+    private static object?[] ToRawIndexingRow(ReportingArticleIndexingDetailRow row) =>
+    [
+        row.ArticleKey,
+        row.ArticleId,
+        ExcelText(row.Title),
+        ExcelText(row.Doi),
+        ExcelText(row.IndexingSourceName),
+        ExcelText(row.VenueName),
+        ExcelText(row.Issn),
+        ExcelText(row.JournalUrl),
+        ExcelText(row.PublicationUrl),
+        row.PublishedDate,
+        row.ArticleYear,
+        row.IsProjectResult ? "Sí" : "No",
+        row.HasInterculturalComponent ? "Sí" : "No",
+        ExcelText(row.FacultyName),
+        ExcelText(row.ResearchLine),
+        ExcelText(row.BroadFieldName),
+        ExcelText(row.SpecificFieldName),
+        ExcelText(row.DetailedFieldName),
+        ExcelText(row.AuthorIdentification),
+        ExcelText(row.AuthorName),
+        ExcelText(row.ParticipantType),
+        ExcelText(row.Quartile)
+    ];
+
+    private static object?[] ToRawVenueMetricRow(ReportingVenueMetricRow row) =>
+    [
+        row.YearNumber,
+        ExcelText(row.VenueName),
+        ExcelText(row.VenueType),
+        row.SJR,
+        row.CiteScore,
+        row.HIndex,
+        ExcelText(row.Quartile)
+    ];
+
+    private static object?[] ToRawWorkflowRow(WorkflowCurrentStageRow row) =>
+    [
+        row.BatchId_OLTP,
+        ExcelText(row.WorkflowName),
+        ExcelText(row.StageName),
+        ExcelText(row.StageGroupName),
+        ExcelText(row.StageStatus),
+        row.StartDateKey,
+        row.EndDateKey,
+        row.StageDurationSeconds,
+        row.ApprovedFlag ? "Sí" : "No",
+        row.ReturnedFlag ? "Sí" : "No"
+    ];
+
+    private static object?[] ToRawEtlRow(ReportingEtlRunRow row) =>
+    [
+        row.EtlRunId,
+        ExcelText(row.ProcessName),
+        row.StartedAt,
+        row.FinishedAt,
+        ExcelText(row.Status),
+        ExcelText(row.Notes)
+    ];
+
+    private static void ApplyRawDateFormats(IXLWorksheet sheet, int firstDataRow, params int[] columns)
+    {
+        var lastRow = sheet.LastRowUsed()?.RowNumber() ?? firstDataRow;
+        if (lastRow < firstDataRow)
+        {
+            return;
+        }
+
+        foreach (var column in columns)
+        {
+            sheet.Range(firstDataRow, column, lastRow, column).Style.DateFormat.Format = "dd/MM/yyyy";
+        }
+    }
+
+    private static void WriteCsvEntry(
+        ZipArchive archive,
+        string fileName,
+        IReadOnlyList<string> headers,
+        IEnumerable<object?[]> rows)
+    {
+        var entry = archive.CreateEntry(fileName, CompressionLevel.Fastest);
+        using var stream = entry.Open();
+        using var writer = new StreamWriter(stream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+
+        writer.WriteLine(string.Join(";", headers.Select(EscapeCsvValue)));
+        foreach (var row in rows)
+        {
+            writer.WriteLine(string.Join(";", row.Select(EscapeCsvValue)));
+        }
+    }
+
+    private static string EscapeCsvValue(object? value)
+    {
+        var text = value switch
+        {
+            null => string.Empty,
+            DateTime date => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            DateTimeOffset date => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            decimal number => number.ToString(CultureInfo.InvariantCulture),
+            double number => number.ToString(CultureInfo.InvariantCulture),
+            float number => number.ToString(CultureInfo.InvariantCulture),
+            _ => value.ToString() ?? string.Empty
+        };
+
+        if (text.Contains(';') || text.Contains('"') || text.Contains('\n') || text.Contains('\r'))
+        {
+            return $"\"{text.Replace("\"", "\"\"")}\"";
+        }
+
+        return text;
     }
 
     private static void BuildExcelSummaryWorksheet(

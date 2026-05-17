@@ -463,6 +463,69 @@
     color: var(--app-color-text-muted);
 }
 
+.security-capability-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.42rem;
+    margin-top: 0.85rem;
+}
+
+.security-capability-list--inline {
+    margin-top: 0.6rem;
+}
+
+.security-capability-list--compact {
+    margin-top: 0.45rem;
+}
+
+.security-capability {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    border: 1px solid rgba(67, 86, 99, 0.1);
+    border-radius: 999px;
+    background: rgba(245, 247, 248, 0.88);
+    color: #313647;
+    padding: 0.34rem 0.58rem;
+    font-size: 0.72rem;
+    font-weight: 850;
+    line-height: 1;
+}
+
+.security-capability i {
+    font-size: 0.78rem;
+}
+
+.security-capability--analysis {
+    border-color: rgba(0, 54, 56, 0.14);
+    background: rgba(64, 138, 113, 0.1);
+    color: #003638;
+}
+
+.security-capability--capture {
+    border-color: rgba(98, 129, 65, 0.18);
+    background: rgba(151, 176, 103, 0.14);
+    color: #285A48;
+}
+
+.security-capability--workflow {
+    border-color: rgba(244, 206, 20, 0.24);
+    background: rgba(255, 248, 212, 0.78);
+    color: #665400;
+}
+
+.security-capability--strong {
+    border-color: rgba(67, 86, 99, 0.16);
+    background: rgba(49, 54, 71, 0.08);
+    color: #313647;
+}
+
+.security-capability--danger {
+    border-color: rgba(140, 16, 7, 0.16);
+    background: rgba(140, 16, 7, 0.08);
+    color: #660B05;
+}
+
 .security-role-card__foot {
     margin-top: 0.8rem;
     font-size: 0.82rem;
@@ -535,6 +598,21 @@
     margin-top: 0.25rem;
     color: var(--app-color-text-muted);
     font-size: 0.92rem;
+}
+
+.security-selected-user__capabilities {
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(67, 86, 99, 0.1);
+}
+
+.security-selected-user__capabilities small {
+    display: block;
+    color: #7a7a7a;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 .security-role-option {

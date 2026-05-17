@@ -11,5 +11,7 @@ public interface IInstitutionalReportingService
     Task<byte[]> GenerateDashboardPdfAsync(InstitutionalPdfReportRequestDto request, CancellationToken ct = default);
     Task<byte[]> GenerateAuthorPdfAsync(InstitutionalReportingFilterDto? filter = null, CancellationToken ct = default);
     Task<byte[]> GenerateDashboardExcelAsync(InstitutionalReportingFilterDto? filter = null, CancellationToken ct = default);
+    Task<byte[]> GenerateRawDatasetExcelAsync(CancellationToken ct = default);
+    Task<byte[]> GenerateRawDatasetCsvZipAsync(CancellationToken ct = default);
     Task<ReportingHealthDto> RunFullLoadAsync(CancellationToken ct = default);
 }
