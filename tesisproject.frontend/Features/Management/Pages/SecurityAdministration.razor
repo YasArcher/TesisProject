@@ -1,34 +1,44 @@
 @page "/management/security-administration"
-@attribute [Authorize(Roles = "Admin")]
+@attribute [Authorize(Roles = "Admin,SecurityAdministrator,RoleManager")]
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Authorization
+@using tesisproject.frontend.Services.Interfaces
 @using tesisproject.frontend.Services.Platform.Auth
 @using tesisproject.shared.DTOs.Auth
+@using tesisproject.shared.DTOs.Workflow
 @inject IIdentityAdministrationClient IdentityAdministrationClient
+@inject IRegistrationWorkflowSettingsClient RegistrationWorkflowSettingsClient
 
 <PageTitle>Usuarios y roles</PageTitle>
 
 <div class="module-shell app-page-shell app-shell-warm py-4 security-admin-page">
-    <section class="module-hero module-hero--blue mb-4">
-        <div class="d-flex flex-column gap-3 flex-lg-row justify-content-between align-items-lg-center">
-            <div>
-                <div class="module-kicker">Administración institucional</div>
-                <div class="d-flex align-items-center gap-3">
-                    <span class="security-hero__icon">⌘</span>
-                    <h1 class="h3 mb-1">Usuarios y roles</h1>
+    <section class="module-hero module-hero--blue security-hero mb-4">
+        <div class="security-hero__layout">
+            <div class="security-hero__content">
+                <span class="security-hero__icon">⌘</span>
+                <div>
+                    <div class="module-kicker security-hero__kicker">Administración institucional</div>
+                    <h1 class="security-hero__title">Usuarios y roles</h1>
+                    <p class="security-hero__copy">Administra cuentas internas, responsabilidades operativas y permisos del personal que gestiona el sistema.</p>
                 </div>
-                <p class="mb-0 text-white-75">Organiza accesos, responsabilidades y permisos operativos del sistema.</p>
             </div>
-            <div class="d-flex flex-wrap gap-2">
-                <button class="btn btn-outline-light fw-semibold" @onclick="OpenCreateRoleModal">
+            <div class="security-hero__side">
+                <div class="security-hero__badges" aria-label="Resumen del módulo">
+                    <span>@Users.Count cuenta(s) interna(s)</span>
+                    <span>@Roles.Count rol(es)</span>
+                    <span>@Users.Count(x => !x.IsLockedOut) activo(s)</span>
+                </div>
+                <div class="security-hero__actions">
+                <button class="security-hero-button security-hero-button--ghost" @onclick="OpenCreateRoleModal">
                     Nuevo perfil
                 </button>
-                <button class="btn btn-light fw-semibold" @onclick="OpenCreateUserModal">
-                    Nuevo usuario
+                <button class="security-hero-button security-hero-button--primary" @onclick="OpenCreateUserModal">
+                    Nueva cuenta
                 </button>
-                <button class="btn btn-light fw-semibold" @onclick="ReloadAsync" disabled="@IsBusy">
+                <button class="security-hero-button security-hero-button--soft" @onclick="ReloadAsync" disabled="@IsBusy">
                     @(IsBusy ? "Actualizando..." : "Actualizar panel")
                 </button>
+                </div>
             </div>
         </div>
     </section>
@@ -49,7 +59,7 @@
                 <span class="security-mini-stat__icon">◉</span>
                 <span>
                     <strong>@Users.Count</strong>
-                    <small>usuarios</small>
+                    <small>cuentas internas</small>
                 </span>
             </article>
             <article class="security-mini-stat">
@@ -67,8 +77,26 @@
                 </span>
             </article>
         </div>
+        <div class="security-flow-panel">
+            <div class="security-flow-panel__copy">
+                <span class="security-flow-panel__kicker">Flujo institucional</span>
+                <strong>@RegistrationWorkflowSettings.EntryModeLabel</strong>
+                <small>@RegistrationWorkflowDescription</small>
+            </div>
+            <div class="security-flow-panel__controls">
+                <select class="security-flow-select" @bind="SelectedRegistrationEntryMode" aria-label="Modo de registro">
+                    @foreach (var option in RegistrationWorkflowSettings.EntryModeOptions)
+                    {
+                        <option value="@option.Value">@option.Label</option>
+                    }
+                </select>
+                <button type="button" class="security-pill-action security-pill-action--primary" @onclick="SaveRegistrationWorkflowSettingsAsync" disabled="@IsBusy">
+                    Guardar flujo
+                </button>
+            </div>
+        </div>
         <div class="security-command-center__actions">
-            <button type="button" class="security-pill-action security-pill-action--primary" @onclick="OpenCreateUserModal">+ Usuario</button>
+            <button type="button" class="security-pill-action security-pill-action--primary" @onclick="OpenCreateUserModal">+ Cuenta</button>
             <button type="button" class="security-pill-action" @onclick="OpenCreateRoleModal"># Perfil</button>
         </div>
     </section>
@@ -76,7 +104,7 @@
     <section class="security-workspace">
         <div class="security-workspace__tabs" role="tablist" aria-label="Administración de accesos">
             <button type="button" class="@GetSecurityTabClass("users")" @onclick='() => SetSecurityTab("users")'>
-                <span>Usuarios</span>
+                <span>Cuentas</span>
                 <small>@FilteredUsers.Count()</small>
             </button>
             <button type="button" class="@GetSecurityTabClass("roles")" @onclick='() => SetSecurityTab("roles")'>
@@ -85,7 +113,7 @@
             </button>
             <button type="button" class="@GetSecurityTabClass("permissions")" @onclick='() => SetSecurityTab("permissions")'>
                 <span>Permisos</span>
-                <small>@(SelectedUser is null ? "Elegir usuario" : "Editando")</small>
+                <small>@(SelectedUser is null ? "Elegir cuenta" : "Editando")</small>
             </button>
         </div>
 
@@ -95,8 +123,8 @@
                 <div class="security-panel__header">
                     <div>
                         <div class="security-admin-card__eyebrow">Directorio operativo</div>
-                        <h2 class="h5 mb-1">Usuarios registrados</h2>
-                        <p class="text-muted mb-0">Busca una cuenta y selecciónala para ajustar sus permisos.</p>
+                        <h2 class="h5 mb-1">Cuentas internas registradas</h2>
+                        <p class="text-muted mb-0">Busca personal operativo de la dirección y selecciona una cuenta para ajustar sus permisos.</p>
                     </div>
                     <div class="security-filter-bar">
                         <input class="security-filter-input" placeholder="Buscar por nombre o correo" @bind="UserSearchTerm" @bind:event="oninput" />
@@ -110,10 +138,15 @@
                     </div>
                 </div>
 
+                <div class="security-context-note">
+                    <strong>Alcance del panel:</strong>
+                    este listado no representa el padrón completo de autores de la universidad. Los autores institucionales pueden validarse desde el directorio o API universitaria y recibir el rol Autor al acceder.
+                </div>
+
                 <div class="security-user-grid">
                     @if (!FilteredUsers.Any())
                     {
-                        <div class="security-empty-state">No encontramos usuarios con los filtros actuales.</div>
+                        <div class="security-empty-state">No encontramos cuentas internas con los filtros actuales.</div>
                     }
                     else
                     {
@@ -154,38 +187,64 @@
                 <div class="security-panel__header">
                     <div>
                         <div class="security-admin-card__eyebrow">Mapa de responsabilidades</div>
-                        <h2 class="h5 mb-1">Roles del sistema</h2>
-                        <p class="text-muted mb-0">Vista resumida de los perfiles que ordenan el flujo institucional.</p>
+                        <h2 class="h5 mb-1">Roles y permisos operativos</h2>
+                        <p class="text-muted mb-0">Vista resumida de responsabilidades internas y permisos funcionales asignables.</p>
                     </div>
                     <button class="security-pill-action" @onclick="ToggleAdvancedRoleEditor">
                         @(ShowAdvancedRoleEditor ? "Ocultar códigos" : "Ver códigos internos")
                     </button>
                 </div>
 
-                <div class="security-role-grid">
-                    @foreach (var role in Roles)
+                <div class="security-group-tabs" role="tablist" aria-label="Grupos de roles">
+                    @foreach (var groupName in AvailableRoleGroups)
                     {
-                        <article class="security-role-card">
-                            <div class="security-role-card__top">
-                                <span class="security-role-card__icon">@GetRoleIcon(role.Name)</span>
-                                <span class="security-role-card__count">@role.UserCount usuario(s)</span>
+                        <button type="button"
+                                class="@GetRoleGroupTabClass(ActiveRoleGroup, groupName)"
+                                @onclick="() => ActiveRoleGroup = groupName">
+                            <span>@GetRoleGroupTitle(groupName)</span>
+                            <small>@GetRolesForGroup(groupName).Count()</small>
+                        </button>
+                    }
+                </div>
+
+                <div class="security-role-sections">
+                    @foreach (var group in GroupRoles(Roles).Where(x => x.Key == ActiveRoleGroup))
+                    {
+                        <section class="security-role-section">
+                            <div class="security-role-section__header">
+                                <div>
+                                    <span class="security-admin-card__eyebrow">@group.Key</span>
+                                    <h3>@GetRoleGroupTitle(group.Key)</h3>
+                                </div>
+                                <span>@group.Count() rol(es)</span>
                             </div>
-                            <div class="security-role-card__title">@GetRoleDisplayName(role.Name)</div>
-                            @if (ShowAdvancedRoleEditor)
-                            {
-                                <div class="security-role-card__code">@role.Name</div>
-                            }
-                            <div class="security-role-card__description">@GetRoleDescription(role.Name)</div>
-                            <div class="security-capability-list">
-                                @foreach (var capability in GetRoleCapabilities(role.Name))
+                            <div class="security-role-grid">
+                                @foreach (var role in group)
                                 {
-                                    <span class="@GetCapabilityClass(capability.Key)">
-                                        <i class="@capability.Icon"></i>
-                                        @capability.Label
-                                    </span>
+                                    <article class="security-role-card">
+                                        <div class="security-role-card__top">
+                                            <span class="security-role-card__icon">@GetRoleIcon(role.Name)</span>
+                                            <span class="security-role-card__count">@GetRoleCountLabel(role)</span>
+                                        </div>
+                                        <div class="security-role-card__title">@GetRoleDisplayName(role.Name)</div>
+                                        @if (ShowAdvancedRoleEditor)
+                                        {
+                                            <div class="security-role-card__code">@role.Name</div>
+                                        }
+                                        <div class="security-role-card__description">@GetRoleDescription(role.Name)</div>
+                                        <div class="security-capability-list">
+                                            @foreach (var capability in GetRoleCapabilities(role.Name))
+                                            {
+                                                <span class="@GetCapabilityClass(capability.Key)">
+                                                    <i class="@capability.Icon"></i>
+                                                    @capability.Label
+                                                </span>
+                                            }
+                                        </div>
+                                    </article>
                                 }
                             </div>
-                        </article>
+                        </section>
                     }
                 </div>
             </div>
@@ -196,8 +255,8 @@
                 <div class="security-panel__header">
                     <div>
                         <div class="security-admin-card__eyebrow">Asignación de permisos</div>
-                        <h2 class="h5 mb-1">Responsabilidades del usuario</h2>
-                        <p class="text-muted mb-0">Modifica solo los roles necesarios para mantener limpio el acceso operativo.</p>
+                        <h2 class="h5 mb-1">Responsabilidades de la cuenta interna</h2>
+                        <p class="text-muted mb-0">Modifica solo los permisos necesarios para mantener limpio el acceso operativo.</p>
                     </div>
                     @if (SelectedUser is not null)
                     {
@@ -209,7 +268,7 @@
 
                 @if (SelectedUser is null)
                 {
-                    <div class="security-empty-state security-empty-state--large">Selecciona un usuario desde la pestaña Usuarios para administrar sus permisos.</div>
+                    <div class="security-empty-state security-empty-state--large">Selecciona una cuenta interna desde la pestaña Cuentas para administrar sus permisos.</div>
                 }
                 else
                 {
@@ -238,31 +297,56 @@
                             </div>
                         </aside>
 
-                        <div class="security-permission-grid">
-                            @foreach (var role in Roles)
+                        <div class="security-permission-sections">
+                            <div class="security-group-tabs security-group-tabs--stacked" role="tablist" aria-label="Grupos de permisos">
+                                @foreach (var groupName in AvailableRoleGroups)
+                                {
+                                    <button type="button"
+                                            class="@GetRoleGroupTabClass(ActivePermissionGroup, groupName)"
+                                            @onclick="() => ActivePermissionGroup = groupName">
+                                        <span>@GetRoleGroupTitle(groupName)</span>
+                                        <small>@GetRolesForGroup(groupName).Count()</small>
+                                    </button>
+                                }
+                            </div>
+
+                            @foreach (var group in GroupRoles(Roles).Where(x => x.Key == ActivePermissionGroup))
                             {
-                                <label class="security-role-option">
-                                    <div class="security-role-option__main">
-                                        <span class="security-role-card__icon">@GetRoleIcon(role.Name)</span>
-                                        <span>
-                                            <span class="security-role-option__title">@GetRoleDisplayName(role.Name)</span>
-                                            <span class="security-role-option__description">@GetRoleDescription(role.Name)</span>
-                                            <span class="security-capability-list security-capability-list--inline">
-                                                @foreach (var capability in GetRoleCapabilities(role.Name))
-                                                {
-                                                    <span class="@GetCapabilityClass(capability.Key)">
-                                                        <i class="@capability.Icon"></i>
-                                                        @capability.Label
-                                                    </span>
-                                                }
-                                            </span>
-                                        </span>
+                                <section class="security-role-section security-role-section--compact">
+                                    <div class="security-role-section__header">
+                                        <div>
+                                            <span class="security-admin-card__eyebrow">@group.Key</span>
+                                            <h3>@GetRoleGroupTitle(group.Key)</h3>
+                                        </div>
                                     </div>
-                                    <input type="checkbox"
-                                           class="form-check-input"
-                                           checked="@SelectedUserRoles.Contains(role.Name)"
-                                           @onchange="args => ToggleSelectedUserRole(role.Name, args.Value as bool?)" />
-                                </label>
+                                    <div class="security-permission-grid">
+                                        @foreach (var role in group)
+                                        {
+                                            <label class="security-role-option">
+                                                <div class="security-role-option__main">
+                                                    <span class="security-role-card__icon">@GetRoleIcon(role.Name)</span>
+                                                    <span>
+                                                        <span class="security-role-option__title">@GetRoleDisplayName(role.Name)</span>
+                                                        <span class="security-role-option__description">@GetRoleDescription(role.Name)</span>
+                                                        <span class="security-capability-list security-capability-list--inline">
+                                                            @foreach (var capability in GetRoleCapabilities(role.Name))
+                                                            {
+                                                                <span class="@GetCapabilityClass(capability.Key)">
+                                                                    <i class="@capability.Icon"></i>
+                                                                    @capability.Label
+                                                                </span>
+                                                            }
+                                                        </span>
+                                                    </span>
+                                                </div>
+                                                <input type="checkbox"
+                                                       class="form-check-input"
+                                                       checked="@SelectedUserRoles.Contains(role.Name)"
+                                                       @onchange="args => ToggleSelectedUserRole(role.Name, args.Value as bool?)" />
+                                            </label>
+                                        }
+                                    </div>
+                                </section>
                             }
                         </div>
                     </div>
@@ -278,8 +362,8 @@
                 <div class="security-admin-modal__header">
                     <div>
                         <div class="security-admin-card__eyebrow">Nuevo acceso</div>
-                        <h2 class="h4 mb-1">Registrar usuario</h2>
-                        <p class="text-muted mb-0">Completa los datos básicos y selecciona las responsabilidades iniciales.</p>
+                        <h2 class="h4 mb-1">Registrar cuenta interna</h2>
+                        <p class="text-muted mb-0">Completa los datos del personal operativo y selecciona sus responsabilidades iniciales.</p>
                     </div>
                     <button type="button" class="security-admin-modal__close" @onclick="CloseCreateUserModalAsync">×</button>
                 </div>
@@ -299,8 +383,12 @@
                         </div>
                         <div class="col-12">
                             <label class="form-label">Nombre completo</label>
-                            <InputText @bind-Value="CreateUserModel.FullName" class="form-control" placeholder="Nombre del funcionario o docente" />
+                            <InputText @bind-Value="CreateUserModel.FullName" class="form-control" placeholder="Nombre del funcionario interno" />
                         </div>
+                    </div>
+
+                    <div class="security-context-note security-context-note--compact mt-3">
+                        El rol Autor institucional puede aplicarse a personas validadas por el directorio universitario. No es necesario crear aquí todas las cuentas de autores de la universidad.
                     </div>
 
                     <div class="mt-4">
@@ -333,7 +421,7 @@
 
                     <div class="security-admin-modal__actions">
                         <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreateUserModalAsync">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" disabled="@IsBusy">@(IsBusy ? "Creando..." : "Crear usuario")</button>
+                        <button type="submit" class="btn btn-primary" disabled="@IsBusy">@(IsBusy ? "Creando..." : "Crear cuenta")</button>
                     </div>
                 </EditForm>
             </div>
@@ -382,6 +470,8 @@
     private readonly HashSet<string> CreateUserRoles = new(StringComparer.OrdinalIgnoreCase);
     private readonly HashSet<string> SelectedUserRoles = new(StringComparer.OrdinalIgnoreCase);
     private static readonly IReadOnlyList<RoleCapability> EmptyCapabilities = [];
+    private const string LegacyAreaTecnicaProcessorRole = "WorkflowProcessorAreaTecnica";
+    private const string AreaTecnicaReviewerRole = "WorkflowReviewerAreaTecnica";
 
     private CreateUserFormModel CreateUserModel { get; set; } = new();
     private CreateRoleFormModel CreateRoleModel { get; set; } = new();
@@ -393,8 +483,15 @@
     private string? ErrorMessage { get; set; }
     private string? SuccessMessage { get; set; }
     private string ActiveSecurityTab { get; set; } = "users";
+    private string ActiveRoleGroup { get; set; } = "Perfiles institucionales";
+    private string ActivePermissionGroup { get; set; } = "Perfiles institucionales";
     private string UserSearchTerm { get; set; } = string.Empty;
     private string RoleFilter { get; set; } = string.Empty;
+    private RegistrationWorkflowSettingsDto RegistrationWorkflowSettings { get; set; } = BuildDefaultRegistrationWorkflowSettings();
+    private string SelectedRegistrationEntryMode { get; set; } = RegistrationEntryModes.AuthorAndUodide;
+    private string RegistrationWorkflowDescription
+        => RegistrationWorkflowSettings.EntryModeOptions.FirstOrDefault(x => x.Value == SelectedRegistrationEntryMode)?.Description
+           ?? RegistrationWorkflowSettings.Description;
 
     private IEnumerable<IdentityUserListItemDto> FilteredUsers
         => Users.Where(user =>
@@ -409,6 +506,9 @@
             return matchesText && matchesRole;
         });
 
+    private IReadOnlyList<string> AvailableRoleGroups
+        => GroupRoles(Roles).Select(x => x.Key).ToList();
+
     private IReadOnlyList<RoleCapability> SelectedUserCapabilities
         => SelectedUserRoles
             .SelectMany(GetRoleCapabilities)
@@ -416,6 +516,56 @@
             .Select(g => g.First())
             .OrderBy(x => x.SortOrder)
             .ToList();
+
+    private static IEnumerable<IGrouping<string, IdentityRoleListItemDto>> GroupRoles(IEnumerable<IdentityRoleListItemDto> roles)
+        => roles
+            .GroupBy(role => GetRoleGroup(role.Name))
+            .OrderBy(group => GetRoleGroupOrder(group.Key))
+            .ThenBy(group => group.Key);
+
+    private IEnumerable<IdentityRoleListItemDto> GetRolesForGroup(string group)
+        => Roles.Where(role => string.Equals(GetRoleGroup(role.Name), group, StringComparison.OrdinalIgnoreCase));
+
+    private static string GetRoleGroupTabClass(string activeGroup, string group)
+        => string.Equals(activeGroup, group, StringComparison.OrdinalIgnoreCase)
+            ? "security-group-tab security-group-tab--active"
+            : "security-group-tab";
+
+    private static string GetRoleGroupTitle(string group)
+        => group switch
+        {
+            "Perfiles institucionales" => "Responsabilidad institucional",
+            "Registro" => "Captura y registro",
+            "Workflow" => "Revisión y seguimiento",
+            "Reportería e IA" => "Análisis, reportes e inteligencia",
+            "Configuración" => "Configuración operativa",
+            "Seguridad" => "Administración de accesos",
+            _ => "Otros permisos"
+        };
+
+    private static int GetRoleGroupOrder(string group)
+        => group switch
+        {
+            "Perfiles institucionales" => 10,
+            "Registro" => 20,
+            "Workflow" => 30,
+            "Reportería e IA" => 40,
+            "Configuración" => 50,
+            "Seguridad" => 60,
+            _ => 999
+        };
+
+    private static string GetRoleGroup(string roleName)
+        => roleName switch
+        {
+            "Admin" or "Analyst" or "Author" or "WorkflowReviewerUodide" or "WorkflowReviewerAreaTecnica" or "WorkflowProcessorAreaTecnica" => "Perfiles institucionales",
+            "ArticleRegistrationUser" or "RegistrationMatrixUser" or "DirectArticleSaveUser" or "BulkImportUser" or "ExternalApiUser" => "Registro",
+            "WorkflowTrackingUser" => "Workflow",
+            "ReportingViewer" or "ReportingExporter" or "ReportingAdvancedUser" or "IntelligenceViewer" or "IntelligenceTrainer" => "Reportería e IA",
+            "ConfigurationManager" or "CatalogManager" => "Configuración",
+            "SecurityAdministrator" or "RoleManager" => "Seguridad",
+            _ => "Otros"
+        };
 
     protected override async Task OnInitializedAsync()
     {
@@ -431,9 +581,16 @@
         {
             var roles = await IdentityAdministrationClient.GetRolesAsync();
             var users = await IdentityAdministrationClient.GetUsersAsync();
+            RegistrationWorkflowSettings = await RegistrationWorkflowSettingsClient.GetAsync()
+                ?? BuildDefaultRegistrationWorkflowSettings();
+            SelectedRegistrationEntryMode = RegistrationWorkflowSettings.EntryMode;
 
             Roles.Clear();
-            Roles.AddRange(roles.OrderBy(x => GetRoleDisplayName(x.Name)));
+            Roles.AddRange(roles
+                .Where(x => !IsLegacyAreaTecnicaProcessorRole(x.Name))
+                .OrderBy(x => GetRoleDisplayName(x.Name)));
+
+            EnsureActiveRoleGroups();
 
             Users.Clear();
             Users.AddRange(users.OrderBy(x => x.FullName).ThenBy(x => x.Email));
@@ -451,6 +608,27 @@
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    private void EnsureActiveRoleGroups()
+    {
+        var groups = AvailableRoleGroups;
+        if (groups.Count == 0)
+        {
+            ActiveRoleGroup = "Perfiles institucionales";
+            ActivePermissionGroup = "Perfiles institucionales";
+            return;
+        }
+
+        if (!groups.Contains(ActiveRoleGroup, StringComparer.OrdinalIgnoreCase))
+        {
+            ActiveRoleGroup = groups[0];
+        }
+
+        if (!groups.Contains(ActivePermissionGroup, StringComparer.OrdinalIgnoreCase))
+        {
+            ActivePermissionGroup = groups[0];
         }
     }
 
@@ -477,7 +655,7 @@
 
             CreateUserModel = new();
             CreateUserRoles.Clear();
-            SuccessMessage = $"El usuario {user.Email} fue creado correctamente.";
+            SuccessMessage = $"La cuenta {user.Email} fue creada correctamente.";
             ShowCreateUserModal = false;
             await ReloadAsync();
         }
@@ -515,6 +693,29 @@
         catch (Exception ex)
         {
             ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private async Task SaveRegistrationWorkflowSettingsAsync()
+    {
+        ErrorMessage = null;
+        SuccessMessage = null;
+        IsBusy = true;
+        try
+        {
+            RegistrationWorkflowSettings = await RegistrationWorkflowSettingsClient.UpdateAsync(
+                new UpdateRegistrationWorkflowSettingsRequest { EntryMode = SelectedRegistrationEntryMode })
+                ?? RegistrationWorkflowSettings;
+            SelectedRegistrationEntryMode = RegistrationWorkflowSettings.EntryMode;
+            SuccessMessage = $"Modo de registro actualizado: {RegistrationWorkflowSettings.EntryModeLabel}.";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"No pude guardar el modo de registro: {ex.Message}";
         }
         finally
         {
@@ -561,7 +762,7 @@
 
         foreach (var role in SelectedUser.Roles)
         {
-            SelectedUserRoles.Add(role);
+            SelectedUserRoles.Add(NormalizeAssignableRole(role));
         }
     }
 
@@ -629,10 +830,25 @@
         {
             "Admin" => "Administrador",
             "Analyst" => "Analista",
-            "Author" => "Autor",
+            "Author" => "Autor institucional",
             "WorkflowReviewerUodide" => "Revisor UODIDE",
             "WorkflowReviewerAreaTecnica" => "Revisor Área Técnica",
-            "WorkflowProcessorAreaTecnica" => "Procesador Área Técnica",
+            "WorkflowProcessorAreaTecnica" => "Revisor Área Técnica",
+            "ExternalApiUser" => "Acceso a APIs externas",
+            "ArticleRegistrationUser" => "Permiso: registrar artículos",
+            "RegistrationMatrixUser" => "Permiso: matriz de registro",
+            "DirectArticleSaveUser" => "Permiso: guardado directo",
+            "BulkImportUser" => "Permiso: carga masiva",
+            "ReportingViewer" => "Permiso: ver reportería",
+            "ReportingExporter" => "Permiso: exportar reportes",
+            "ReportingAdvancedUser" => "Permiso: reportería avanzada",
+            "IntelligenceViewer" => "Permiso: ver IA",
+            "IntelligenceTrainer" => "Permiso: entrenar IA",
+            "ConfigurationManager" => "Permiso: configuración",
+            "CatalogManager" => "Permiso: catálogos",
+            "WorkflowTrackingUser" => "Permiso: seguimiento workflow",
+            "SecurityAdministrator" => "Permiso: seguridad",
+            "RoleManager" => "Permiso: roles",
             _ => roleName
         };
 
@@ -641,12 +857,32 @@
         {
             "Admin" => "Administra usuarios, accesos, seguridad y la operación general del sistema.",
             "Analyst" => "Gestiona configuración, catálogos, formularios y módulos operativos de apoyo.",
-            "Author" => "Registra artículos y da seguimiento a sus observaciones y validaciones.",
-            "WorkflowReviewerUodide" => "Realiza la validación inicial institucional y puede corregir la información registrada.",
-            "WorkflowReviewerAreaTecnica" => "Ejecuta la validación técnica final antes del procesamiento definitivo.",
-            "WorkflowProcessorAreaTecnica" => "Procesa el envío aprobado hacia la base principal del sistema.",
+            "Author" => "Rol aplicado a autores validados por el directorio o API universitaria; no implica que todos estén creados como cuentas internas en este panel.",
+            "WorkflowReviewerUodide" => "Registra información cuando la institución lo requiera y realiza la validación inicial institucional.",
+            "WorkflowReviewerAreaTecnica" => "Ejecuta la validación técnica final y procesa la información aprobada hacia la base principal.",
+            "WorkflowProcessorAreaTecnica" => "Perfil legado equivalente a Revisor Área Técnica.",
+            "ExternalApiUser" => "Permite consultar fuentes académicas externas como apoyo al registro, sin cambiar el rol operativo del usuario.",
+            "ArticleRegistrationUser" => "Permite crear artículos desde el formulario individual y enviarlos a revisión.",
+            "RegistrationMatrixUser" => "Permite usar la matriz de registro para capturar varios artículos y enviarlos a revisión.",
+            "DirectArticleSaveUser" => "Permite guardar artículos directamente en la base final; debe asignarse de forma restringida.",
+            "BulkImportUser" => "Permite usar carga masiva y gestionar lotes de staging.",
+            "ReportingViewer" => "Permite consultar paneles, KPIs, gráficos y reportes institucionales.",
+            "ReportingExporter" => "Permite generar y descargar exportables de reportes.",
+            "ReportingAdvancedUser" => "Permite usar vistas avanzadas de reportería y análisis institucional.",
+            "IntelligenceViewer" => "Permite consultar predicciones y recomendaciones del módulo de IA.",
+            "IntelligenceTrainer" => "Permite ejecutar reentrenamientos y revisar resultados del laboratorio IA.",
+            "ConfigurationManager" => "Permite administrar formularios dinámicos, campos, catálogos y reglas.",
+            "CatalogManager" => "Permite administrar catálogos institucionales de apoyo.",
+            "WorkflowTrackingUser" => "Permite consultar el estado de envíos sin validar etapas.",
+            "SecurityAdministrator" => "Permite administrar usuarios y accesos del sistema.",
+            "RoleManager" => "Permite gestionar perfiles y asignaciones de roles.",
             _ => "Perfil disponible para asignación dentro del sistema."
         };
+
+    private static string GetRoleCountLabel(IdentityRoleListItemDto role)
+        => string.Equals(role.Name, "Author", StringComparison.OrdinalIgnoreCase)
+            ? $"{role.UserCount} cuenta(s) local(es)"
+            : $"{role.UserCount} cuenta(s)";
 
     private static IReadOnlyList<RoleCapability> GetRoleCapabilities(string roleName)
         => roleName switch
@@ -671,16 +907,34 @@
             ],
             "WorkflowReviewerUodide" =>
             [
-                Capability("workflow"), Capability("bulk")
+                Capability("register"), Capability("matrix"), Capability("workflow"), Capability("bulk")
             ],
             "WorkflowReviewerAreaTecnica" =>
             [
-                Capability("workflow"), Capability("bulk"), Capability("reporting")
+                Capability("workflow"), Capability("process"), Capability("bulk"), Capability("reporting")
             ],
             "WorkflowProcessorAreaTecnica" =>
             [
                 Capability("workflow"), Capability("process"), Capability("bulk"), Capability("reporting")
             ],
+            "ExternalApiUser" =>
+            [
+                Capability("externalApis")
+            ],
+            "ArticleRegistrationUser" => [Capability("register")],
+            "RegistrationMatrixUser" => [Capability("matrix")],
+            "DirectArticleSaveUser" => [Capability("directSave")],
+            "BulkImportUser" => [Capability("bulk")],
+            "ReportingViewer" => [Capability("reporting")],
+            "ReportingExporter" => [Capability("reporting"), Capability("export")],
+            "ReportingAdvancedUser" => [Capability("reporting"), Capability("advancedReporting")],
+            "IntelligenceViewer" => [Capability("intelligence")],
+            "IntelligenceTrainer" => [Capability("intelligence"), Capability("training")],
+            "ConfigurationManager" => [Capability("configuration")],
+            "CatalogManager" => [Capability("catalogs")],
+            "WorkflowTrackingUser" => [Capability("workflowTracking")],
+            "SecurityAdministrator" => [Capability("security")],
+            "RoleManager" => [Capability("security"), Capability("roles")],
             _ => EmptyCapabilities
         };
 
@@ -694,10 +948,16 @@
             "bulk" => new(key, "Carga masiva", "bi bi-upload", 50),
             "externalApis" => new(key, "APIs externas", "bi bi-cloud-arrow-down", 60),
             "reporting" => new(key, "Reportería / IA", "bi bi-bar-chart", 70),
+            "export" => new(key, "Exportación", "bi bi-download", 75),
+            "advancedReporting" => new(key, "Reportería avanzada", "bi bi-graph-up", 76),
+            "intelligence" => new(key, "Inteligencia IA", "bi bi-cpu", 77),
+            "training" => new(key, "Entrenamiento IA", "bi bi-arrow-repeat", 78),
             "configuration" => new(key, "Configuración", "bi bi-gear", 80),
+            "catalogs" => new(key, "Catálogos", "bi bi-list-ul", 82),
             "workflow" => new(key, "Revisión workflow", "bi bi-diagram-3", 90),
             "workflowTracking" => new(key, "Seguimiento workflow", "bi bi-eye", 100),
             "process" => new(key, "Procesamiento", "bi bi-check2-circle", 110),
+            "roles" => new(key, "Gestión de roles", "bi bi-person-gear", 115),
             _ => new(key, key, "bi bi-dot", 999)
         };
 
@@ -706,7 +966,7 @@
         {
             "security" => "security-capability security-capability--danger",
             "directSave" or "process" => "security-capability security-capability--strong",
-            "reporting" or "externalApis" => "security-capability security-capability--analysis",
+            "reporting" or "externalApis" or "export" or "advancedReporting" or "intelligence" or "training" => "security-capability security-capability--analysis",
             "bulk" or "matrix" => "security-capability security-capability--capture",
             "workflow" or "workflowTracking" => "security-capability security-capability--workflow",
             _ => "security-capability"
@@ -725,8 +985,60 @@
             "Author" => "AU",
             "WorkflowReviewerUodide" => "U",
             "WorkflowReviewerAreaTecnica" => "T",
-            "WorkflowProcessorAreaTecnica" => "P",
+            "WorkflowProcessorAreaTecnica" => "T",
+            "ExternalApiUser" => "API",
+            "ArticleRegistrationUser" => "REG",
+            "RegistrationMatrixUser" => "MAT",
+            "DirectArticleSaveUser" => "DB",
+            "BulkImportUser" => "CSV",
+            "ReportingViewer" => "BI",
+            "ReportingExporter" => "EXP",
+            "ReportingAdvancedUser" => "BIA",
+            "IntelligenceViewer" => "IA",
+            "IntelligenceTrainer" => "ML",
+            "ConfigurationManager" => "CFG",
+            "CatalogManager" => "CAT",
+            "WorkflowTrackingUser" => "WF",
+            "SecurityAdministrator" => "SEC",
+            "RoleManager" => "ROL",
             _ => "#"
+        };
+
+    private static bool IsLegacyAreaTecnicaProcessorRole(string roleName)
+        => string.Equals(roleName, LegacyAreaTecnicaProcessorRole, StringComparison.OrdinalIgnoreCase);
+
+    private static string NormalizeAssignableRole(string roleName)
+        => IsLegacyAreaTecnicaProcessorRole(roleName)
+            ? AreaTecnicaReviewerRole
+            : roleName;
+
+    private static RegistrationWorkflowSettingsDto BuildDefaultRegistrationWorkflowSettings()
+        => new()
+        {
+            EntryMode = RegistrationEntryModes.AuthorAndUodide,
+            EntryModeLabel = "Autores y Revisor UODIDE",
+            Description = "Autores y Revisor UODIDE pueden iniciar registros.",
+            EntryModeOptions =
+            [
+                new()
+                {
+                    Value = RegistrationEntryModes.AuthorAndUodide,
+                    Label = "Autores y Revisor UODIDE",
+                    Description = "Autores y Revisor UODIDE pueden iniciar registros; luego UODIDE valida y Área Técnica procesa."
+                },
+                new()
+                {
+                    Value = RegistrationEntryModes.AuthorOnly,
+                    Label = "Solo autores",
+                    Description = "Solo los autores inician registros; UODIDE mantiene su rol de validación inicial."
+                },
+                new()
+                {
+                    Value = RegistrationEntryModes.UodideOnly,
+                    Label = "Solo Revisor UODIDE",
+                    Description = "Los autores no inician registros; UODIDE registra, valida y remite a Área Técnica."
+                }
+            ]
         };
 
     private static string GetUserDisplayName(IdentityUserListItemDto user)

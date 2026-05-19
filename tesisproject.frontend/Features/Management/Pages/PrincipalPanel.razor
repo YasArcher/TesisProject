@@ -7,9 +7,11 @@
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Articles
 @using tesisproject.shared.DTOs.Catalogs
+@using tesisproject.shared.DTOs.Workflow
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IArticlesClient ArticlesClient
 @inject ICatalogsService CatalogsService
+@inject IRegistrationWorkflowSettingsClient RegistrationWorkflowSettingsClient
 @implements IDisposable
 
 <div class="principal-shell">
@@ -175,6 +177,17 @@
     private bool IsAuthor { get; set; }
     private bool IsUodide { get; set; }
     private bool IsAreaTecnica { get; set; }
+    private bool IsExternalApiUser { get; set; }
+    private bool CanRegisterByPermission { get; set; }
+    private bool CanViewReportingByPermission { get; set; }
+    private bool CanUseIntelligenceByPermission { get; set; }
+    private string RegistrationEntryMode { get; set; } = RegistrationEntryModes.AuthorAndUodide;
+    private bool CanInitiateRegistration
+        => IsAdmin
+           || IsAnalyst
+           || CanRegisterByPermission
+           || (IsAuthor && RegistrationEntryMode != RegistrationEntryModes.UodideOnly)
+           || (IsUodide && RegistrationEntryMode != RegistrationEntryModes.AuthorOnly);
 
     private bool _kpisLoading = true;
     private int KpiProjectsActive;
@@ -202,7 +215,7 @@
                 actions.Add(new QuickAction("Revisión de envíos", "Monitorea el flujo del artículo según tu rol actual.", "/management/workflow-review", "bi bi-arrow-repeat"));
             }
 
-            if (IsAdmin || IsAuthor || IsAnalyst)
+            if (CanInitiateRegistration)
             {
                 actions.Add(new QuickAction("Registro manual", "Trabaja sobre el formulario activo y mutable.", "/articulos/registrar", "bi bi-pencil-square"));
             }
@@ -211,7 +224,21 @@
             {
                 actions.Add(new QuickAction("Formulario dinámico", "Configura campos, formularios y reglas activas.", "/configuration", "bi bi-sliders2-vertical"));
                 actions.Add(new QuickAction("Carga masiva", "Valida staging, corrige filas y procesa lotes.", "/management/exportinformation", "bi bi-cloud-arrow-up"));
+            }
+
+            if (IsAdmin || IsAnalyst || IsAuthor || IsExternalApiUser)
+            {
                 actions.Add(new QuickAction("Explorador externo", "Consulta DOI, autores y fuentes académicas.", "/management/externalapis", "bi bi-search"));
+            }
+
+            if (IsAdmin || IsAnalyst || IsAreaTecnica || CanViewReportingByPermission)
+            {
+                actions.Add(new QuickAction("Reportería", "Consulta indicadores, gráficos y exportables institucionales.", "/management/statisticalreports", "bi bi-bar-chart"));
+            }
+
+            if (IsAdmin || IsAnalyst || CanUseIntelligenceByPermission)
+            {
+                actions.Add(new QuickAction("Inteligencia IA", "Consulta predicciones, recomendaciones y entrenamiento.", "/management/intelligence", "bi bi-cpu"));
             }
 
             if (IsAdmin)
@@ -229,7 +256,7 @@
         {
             var actions = new List<HeroAction>();
 
-            if (IsAdmin || IsAuthor || IsAnalyst)
+            if (CanInitiateRegistration)
             {
                 actions.Add(new HeroAction("Registrar artículo", "/articulos/registrar", "bi bi-plus-lg", "principal-action principal-action--solid"));
             }
@@ -242,6 +269,10 @@
             if (IsAdmin || IsAnalyst)
             {
                 actions.Add(new HeroAction("Ir a carga masiva", "/management/exportinformation", "bi bi-cloud-arrow-up", "principal-action principal-action--ghost"));
+            }
+
+            if (IsAdmin || IsAnalyst || IsAuthor || IsExternalApiUser)
+            {
                 actions.Add(new HeroAction("Consultar APIs externas", "/management/externalapis", "bi bi-box-arrow-up-right", "principal-action principal-action--ghost"));
             }
 
@@ -285,6 +316,12 @@
                 IsAuthor = user.IsInRole("Author");
                 IsUodide = user.IsInRole("WorkflowReviewerUodide");
                 IsAreaTecnica = user.IsInRole("WorkflowReviewerAreaTecnica") || user.IsInRole("WorkflowProcessorAreaTecnica");
+                IsExternalApiUser = user.IsInRole("ExternalApiUser");
+                CanRegisterByPermission = user.IsInRole("ArticleRegistrationUser");
+                CanViewReportingByPermission = user.IsInRole("ReportingViewer") || user.IsInRole("ReportingExporter") || user.IsInRole("ReportingAdvancedUser");
+                CanUseIntelligenceByPermission = user.IsInRole("IntelligenceViewer") || user.IsInRole("IntelligenceTrainer");
+                RegistrationEntryMode = (await RegistrationWorkflowSettingsClient.GetAsync())?.EntryMode
+                    ?? RegistrationEntryModes.AuthorAndUodide;
                 UserRole = ResolvePrimaryRole(user);
             }
         }
@@ -375,8 +412,8 @@
     private static string ResolvePrimaryRole(ClaimsPrincipal user)
     {
         if (user.IsInRole("Admin")) return "Administrador";
-        if (user.IsInRole("WorkflowProcessorAreaTecnica")) return "Área Técnica - procesamiento";
         if (user.IsInRole("WorkflowReviewerAreaTecnica")) return "Área Técnica";
+        if (user.IsInRole("WorkflowProcessorAreaTecnica")) return "Área Técnica";
         if (user.IsInRole("WorkflowReviewerUodide")) return "UODIDE";
         if (user.IsInRole("Author")) return "Autor";
         if (user.IsInRole("Analyst")) return "Analista";

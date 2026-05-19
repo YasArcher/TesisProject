@@ -1,8 +1,10 @@
 @page "/configuration"
+@attribute [Authorize(Roles = "Admin,Analyst,ConfigurationManager,CatalogManager")]
 @using Blazored.LocalStorage
 @using tesisproject.frontend.Features.Management.Components
 @using tesisproject.frontend.SharedUI
 @using tesisproject.shared.DTOs.Configuration
+@using tesisproject.shared.Validation
 
 @inject IFormConfigurationClient FormConfigurationClient
 @inject ILocalStorageService LocalStorage
@@ -237,6 +239,39 @@
                                 <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Ayuda para el usuario</span>
                                 <textarea class="w-full rounded-xl border px-3 py-2" rows="2" placeholder="Mensaje o instrucción para completar el campo" @bind="NewField.HelpText"></textarea>
                             </label>
+                            <div class="configuration-validation-panel">
+                                <div class="configuration-validation-panel__head">
+                                    <div>
+                                        <div class="configuration-validation-panel__eyebrow">Validación del registro</div>
+                                        <strong>Control de datos del campo</strong>
+                                    </div>
+                                    <span>@GetValidationPresetShortLabel(NewFieldValidationPreset)</span>
+                                </div>
+                                <p>@GetValidationHelperText(NewFieldValidationPreset)</p>
+                                <div class="configuration-validation-panel__grid">
+                                    <label>
+                                        <span>Regla</span>
+                                        <select class="rounded-xl border px-3 py-2" value="@NewFieldValidationPreset" @onchange="OnNewFieldValidationPresetChanged">
+                                        @foreach (var option in ValidationPresetOptions)
+                                        {
+                                            <option value="@option.Key">@option.Label</option>
+                                        }
+                                        </select>
+                                    </label>
+                                    <label>
+                                        <span>Valor de referencia</span>
+                                        <input class="rounded-xl border px-3 py-2" placeholder="@GetValidationValuePlaceholder(NewFieldValidationPreset)" value="@NewFieldValidationValue" @onchange="OnNewFieldValidationValueChanged" disabled="@(!ValidationPresetNeedsValue(NewFieldValidationPreset))" />
+                                    </label>
+                                    <label>
+                                        <span>Mensaje al usuario</span>
+                                        <input class="rounded-xl border px-3 py-2" placeholder="Mensaje de error" value="@NewFieldValidationMessage" @onchange="OnNewFieldValidationMessageChanged" disabled="@(string.IsNullOrWhiteSpace(NewFieldValidationPreset))" />
+                                    </label>
+                                </div>
+                                <div class="configuration-validation-panel__preview">
+                                    <i class="bi bi-info-circle"></i>
+                                    <span>@GetValidationPreview(NewField.FieldLabel, NewFieldValidationPreset, NewFieldValidationValue, NewFieldValidationMessage)</span>
+                                </div>
+                            </div>
                             <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                 <label class="inline-flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" @bind="NewField.IsRequired" /> Requerido</label>
                                 <label class="inline-flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" @bind="NewField.IsActive" /> Activo</label>
@@ -294,6 +329,39 @@
                                                                 <input class="rounded-xl border px-3 py-2" value="@field.MaxLength" type="number" placeholder="Cantidad máxima de caracteres" @onchange="e => field.MaxLength = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null" />
                                                             </div>
                                                             <textarea class="mt-3 w-full rounded-xl border px-3 py-2" rows="2" @onchange="e => field.HelpText = e.Value?.ToString()">@field.HelpText</textarea>
+                                                            <div class="configuration-validation-panel configuration-validation-panel--compact">
+                                                                <div class="configuration-validation-panel__head">
+                                                                    <div>
+                                                                        <div class="configuration-validation-panel__eyebrow">Validación del registro</div>
+                                                                        <strong>Control de datos</strong>
+                                                                    </div>
+                                                                    <span>@GetValidationPresetShortLabel(GetValidationPreset(field.ValidationRule))</span>
+                                                                </div>
+                                                                <p>@GetValidationHelperText(GetValidationPreset(field.ValidationRule))</p>
+                                                                <div class="configuration-validation-panel__grid">
+                                                                    <label>
+                                                                        <span>Regla</span>
+                                                                        <select class="rounded-xl border px-3 py-2" value="@GetValidationPreset(field.ValidationRule)" @onchange="e => SetFieldValidationPreset(field, e.Value?.ToString())">
+                                                                        @foreach (var option in ValidationPresetOptions)
+                                                                        {
+                                                                            <option value="@option.Key">@option.Label</option>
+                                                                        }
+                                                                        </select>
+                                                                    </label>
+                                                                    <label>
+                                                                        <span>Valor</span>
+                                                                        <input class="rounded-xl border px-3 py-2" placeholder="@GetValidationValuePlaceholder(GetValidationPreset(field.ValidationRule))" value="@GetValidationRuleValue(field.ValidationRule)" @onchange="e => SetFieldValidationValue(field, e.Value?.ToString())" disabled="@(!ValidationPresetNeedsValue(GetValidationPreset(field.ValidationRule)))" />
+                                                                    </label>
+                                                                    <label>
+                                                                        <span>Error</span>
+                                                                        <input class="rounded-xl border px-3 py-2" placeholder="Mensaje de error" value="@GetValidationRuleMessage(field.ValidationRule)" @onchange="e => SetFieldValidationMessage(field, e.Value?.ToString())" disabled="@(string.IsNullOrWhiteSpace(GetValidationPreset(field.ValidationRule)))" />
+                                                                    </label>
+                                                                </div>
+                                                                <div class="configuration-validation-panel__preview">
+                                                                    <i class="bi bi-info-circle"></i>
+                                                                    <span>@GetValidationPreview(field.FieldLabel, GetValidationPreset(field.ValidationRule), GetValidationRuleValue(field.ValidationRule), GetValidationRuleMessage(field.ValidationRule))</span>
+                                                                </div>
+                                                            </div>
                                                             <div class="mt-3 flex flex-wrap gap-4">
                                                                 <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsActive" @onchange="e => field.IsActive = e.Value is bool b && b" /> Activo</label>
                                                                 <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsRequired" @onchange="e => field.IsRequired = e.Value is bool b && b" /> Requerido</label>
@@ -343,6 +411,39 @@
                                                                 <input class="rounded-xl border px-3 py-2" value="@field.MaxLength" type="number" placeholder="Cantidad máxima de caracteres" @onchange="e => field.MaxLength = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null" />
                                                             </div>
                                                             <textarea class="mt-3 w-full rounded-xl border px-3 py-2" rows="2" @onchange="e => field.HelpText = e.Value?.ToString()">@field.HelpText</textarea>
+                                                            <div class="configuration-validation-panel configuration-validation-panel--physical">
+                                                                <div class="configuration-validation-panel__head">
+                                                                    <div>
+                                                                        <div class="configuration-validation-panel__eyebrow">Validación del registro</div>
+                                                                        <strong>Control de datos</strong>
+                                                                    </div>
+                                                                    <span>@GetValidationPresetShortLabel(GetValidationPreset(field.ValidationRule))</span>
+                                                                </div>
+                                                                <p>@GetValidationHelperText(GetValidationPreset(field.ValidationRule))</p>
+                                                                <div class="configuration-validation-panel__grid">
+                                                                    <label>
+                                                                        <span>Regla</span>
+                                                                        <select class="rounded-xl border px-3 py-2" value="@GetValidationPreset(field.ValidationRule)" @onchange="e => SetFieldValidationPreset(field, e.Value?.ToString())">
+                                                                        @foreach (var option in ValidationPresetOptions)
+                                                                        {
+                                                                            <option value="@option.Key">@option.Label</option>
+                                                                        }
+                                                                        </select>
+                                                                    </label>
+                                                                    <label>
+                                                                        <span>Valor</span>
+                                                                        <input class="rounded-xl border px-3 py-2" placeholder="@GetValidationValuePlaceholder(GetValidationPreset(field.ValidationRule))" value="@GetValidationRuleValue(field.ValidationRule)" @onchange="e => SetFieldValidationValue(field, e.Value?.ToString())" disabled="@(!ValidationPresetNeedsValue(GetValidationPreset(field.ValidationRule)))" />
+                                                                    </label>
+                                                                    <label>
+                                                                        <span>Error</span>
+                                                                        <input class="rounded-xl border px-3 py-2" placeholder="Mensaje de error" value="@GetValidationRuleMessage(field.ValidationRule)" @onchange="e => SetFieldValidationMessage(field, e.Value?.ToString())" disabled="@(string.IsNullOrWhiteSpace(GetValidationPreset(field.ValidationRule)))" />
+                                                                    </label>
+                                                                </div>
+                                                                <div class="configuration-validation-panel__preview">
+                                                                    <i class="bi bi-info-circle"></i>
+                                                                    <span>@GetValidationPreview(field.FieldLabel, GetValidationPreset(field.ValidationRule), GetValidationRuleValue(field.ValidationRule), GetValidationRuleMessage(field.ValidationRule))</span>
+                                                                </div>
+                                                            </div>
                                                             <div class="mt-3 flex flex-wrap gap-4">
                                                                 <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsActive" @onchange="e => field.IsActive = e.Value is bool b && b" /> Activo</label>
                                                                 <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsRequired" @onchange="e => field.IsRequired = e.Value is bool b && b" /> Requerido</label>
@@ -395,7 +496,12 @@
                                     <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Catálogo a administrar</label>
                                     <select class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" @bind="SelectedCatalogKey" @bind:after="OnCatalogKeyChangedWithPersistenceAsync">
                                         <option value="academic-terms">Períodos académicos</option>
+                                        <option value="publication-statuses">Estados de publicación</option>
                                         <option value="research-lines">Líneas de investigación</option>
+                                        <option value="faculties">Facultades</option>
+                                        <option value="projects">Proyectos</option>
+                                        <option value="indexing-sources">Fuentes de indexación</option>
+                                        <option value="venues">Revistas y venues</option>
                                         <option value="broad-fields">Campos amplios</option>
                                         <option value="specific-fields">Campos específicos</option>
                                         <option value="detailed-fields">Campos detallados</option>
@@ -428,6 +534,30 @@
                                                 <option value="@parent.Id">@parent.Name @(!string.IsNullOrWhiteSpace(parent.Code) ? $"({parent.Code})" : string.Empty)</option>
                                             }
                                         </select>
+                                    </div>
+                                }
+
+                                @if (CatalogSupportsVenueMetadata())
+                                {
+                                    <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                        <div>
+                                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Tipo</label>
+                                            <select class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" @bind="NewCatalogItem.Type">
+                                                <option value="">Revista</option>
+                                                <option value="Journal">Revista</option>
+                                                <option value="Conference">Conferencia</option>
+                                                <option value="Book">Libro</option>
+                                                <option value="Other">Otro</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">ISSN</label>
+                                            <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" placeholder="0000-0000" @bind="NewCatalogItem.IssnCode" />
+                                        </div>
+                                        <div>
+                                            <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">URL</label>
+                                            <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm" placeholder="https://..." @bind="NewCatalogItem.JournalUrl" />
+                                        </div>
                                     </div>
                                 }
 
@@ -478,6 +608,17 @@
                                                                 {
                                                                     <span class="rounded-full bg-[#fff5e7] px-2 py-1 font-semibold text-[#8b5a16]">@GetCatalogParentSummary(item)</span>
                                                                 }
+                                                                @if (CatalogSupportsVenueMetadata())
+                                                                {
+                                                                    @if (!string.IsNullOrWhiteSpace(item.Type))
+                                                                    {
+                                                                        <span class="rounded-full bg-[#f1f5f9] px-2 py-1 font-semibold text-slate-700">@item.Type</span>
+                                                                    }
+                                                                    @if (!string.IsNullOrWhiteSpace(item.IssnCode))
+                                                                    {
+                                                                        <span class="rounded-full bg-[#eef5f6] px-2 py-1 font-semibold text-[#12343b]">ISSN @item.IssnCode</span>
+                                                                    }
+                                                                }
                                                                 <span class="rounded-full bg-emerald-100 px-2 py-1 font-semibold text-emerald-800">Disponible</span>
                                                             </div>
                                                         </div>
@@ -508,6 +649,30 @@
                                                                     <option value="@parent.Id" selected="@(item.ParentId == parent.Id)">@parent.Name @(!string.IsNullOrWhiteSpace(parent.Code) ? $"({parent.Code})" : string.Empty)</option>
                                                                 }
                                                             </select>
+                                                        </div>
+                                                    }
+
+                                                    @if (CatalogSupportsVenueMetadata())
+                                                    {
+                                                        <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
+                                                            <div>
+                                                                <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Tipo</label>
+                                                                <select class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" value="@item.Type" @onchange="e => item.Type = e.Value?.ToString()">
+                                                                    <option value="">Revista</option>
+                                                                    <option value="Journal">Revista</option>
+                                                                    <option value="Conference">Conferencia</option>
+                                                                    <option value="Book">Libro</option>
+                                                                    <option value="Other">Otro</option>
+                                                                </select>
+                                                            </div>
+                                                            <div>
+                                                                <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">ISSN</label>
+                                                                <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" value="@item.IssnCode" placeholder="0000-0000" @onchange="e => item.IssnCode = e.Value?.ToString()" />
+                                                            </div>
+                                                            <div>
+                                                                <label class="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">URL</label>
+                                                                <input class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm" value="@item.JournalUrl" placeholder="https://..." @onchange="e => item.JournalUrl = e.Value?.ToString()" />
+                                                            </div>
                                                         </div>
                                                     }
 
@@ -708,6 +873,9 @@
     private AddFieldToFormRequest AddFieldRequest { get; set; } = new() { IsVisible = true, IsEditable = true, DisplayOrder = 100 };
     private UpsertCatalogItemRequest NewCatalogItem { get; set; } = new();
     private CreateDynamicFieldOptionRequest NewOption { get; set; } = new() { DisplayOrder = 1, IsActive = true };
+    private string NewFieldValidationPreset { get; set; } = string.Empty;
+    private string? NewFieldValidationValue { get; set; }
+    private string? NewFieldValidationMessage { get; set; }
     private int PendingFormId { get; set; }
     private int PendingFormFieldId { get; set; }
     private int PendingFieldId { get; set; }
@@ -831,6 +999,9 @@
             {
                 Message = $"Campo dinámico '{created.FieldLabel}' creado.";
                 NewField = new CreateDynamicFieldRequest { EntityName = created.EntityName, DataType = "string", IsActive = true, IsEditable = true, IsVisible = true, IsFilterable = true, SourceType = "Dynamic", DisplayOrder = created.DisplayOrder + 1 };
+                NewFieldValidationPreset = string.Empty;
+                NewFieldValidationValue = null;
+                NewFieldValidationMessage = null;
                 if (SelectedForm is not null && SelectedForm.EntityName == created.EntityName)
                 {
                     AvailableFields = await FormConfigurationClient.GetFieldsAsync(created.EntityName);
@@ -1057,7 +1228,12 @@
         return key switch
         {
             "academic-terms" => "Períodos académicos",
+            "publication-statuses" => "Estados de publicación",
             "research-lines" => "Líneas de investigación",
+            "faculties" => "Facultades",
+            "projects" => "Proyectos",
+            "indexing-sources" => "Fuentes de indexación",
+            "venues" => "Revistas y venues",
             "broad-fields" => "Campos amplios",
             "specific-fields" => "Campos específicos",
             "detailed-fields" => "Campos detallados",
@@ -1070,7 +1246,12 @@
         return SelectedCatalogKey switch
         {
             "academic-terms" => "Administra los períodos que luego podrán asociarse al registro académico.",
+            "publication-statuses" => "Define los estados que describen el ciclo de publicación de los artículos.",
             "research-lines" => "Mantén actualizadas las líneas de investigación disponibles para clasificar artículos.",
+            "faculties" => "Administra las facultades usadas en registro, reportería, filtros y análisis institucional.",
+            "projects" => "Registra proyectos institucionales para vincular producción científica con resultados de investigación.",
+            "indexing-sources" => "Mantén las fuentes donde se indexan los artículos para análisis editorial y reportería.",
+            "venues" => "Administra revistas, conferencias u otros medios de publicación usados por el registro.",
             "broad-fields" => "Crea la base de la clasificación OCDE antes de registrar niveles dependientes.",
             "specific-fields" => "Cada campo específico debe quedar vinculado a un campo amplio existente.",
             "detailed-fields" => "Cada campo detallado debe quedar vinculado a un campo específico ya creado.",
@@ -1083,7 +1264,12 @@
         return SelectedCatalogKey switch
         {
             "academic-terms" => "Registra períodos con un nombre claro y consistente para que puedan reutilizarse en artículos y reportes.",
+            "publication-statuses" => "Usa nombres breves y estables; aparecerán como estado del artículo dentro del registro.",
             "research-lines" => "Registra líneas de investigación con el nombre que verá el usuario final en formularios y filtros.",
+            "faculties" => "Registra nombre y código institucional para mejorar búsquedas y carga masiva.",
+            "projects" => "Registra el código y nombre del proyecto para asociarlo después desde el formulario de artículos.",
+            "indexing-sources" => "Registra fuentes como Scopus, WoS u otras bases usadas por la institución.",
+            "venues" => "Registra el nombre del medio y, cuando aplique, ISSN y URL para normalizar artículos.",
             "broad-fields" => "Empieza aquí si vas a construir una nueva rama de clasificación.",
             "specific-fields" => "Antes de crear un campo específico, debes tener listo su campo amplio relacionado.",
             "detailed-fields" => "Antes de crear un campo detallado, debes tener listo su campo específico relacionado.",
@@ -1095,6 +1281,9 @@
     {
         return SelectedCatalogKey switch
         {
+            "faculties" => "El código es opcional, pero ayuda a normalizar matrices y reportes cuando existen abreviaturas institucionales.",
+            "projects" => "El código del proyecto permite identificarlo en cargas masivas aunque el nombre sea largo.",
+            "venues" => "El ISSN y la URL son opcionales, pero ayudan a consolidar revistas y evitar duplicados.",
             "broad-fields" => "Orden recomendado: primero crea el campo amplio. Después podrás registrar sus campos específicos.",
             "specific-fields" => "Orden real del modelo: Campo amplio -> Campo específico. Aquí debes escoger el campo amplio padre.",
             "detailed-fields" => "Orden real del modelo: Campo amplio -> Campo específico -> Campo detallado. Aquí debes escoger el campo específico padre.",
@@ -1136,6 +1325,173 @@
             _ => dataType
         };
     }
+
+    private static readonly IReadOnlyList<(string Key, string Label)> ValidationPresetOptions =
+    [
+        ("", "Sin validación adicional"),
+        ("numeric", "Solo números"),
+        ("numericExactLength", "Solo números con longitud exacta"),
+        ("letters", "Solo letras"),
+        ("alphanumeric", "Letras y números"),
+        ("exactLength", "Longitud exacta"),
+        ("minLength", "Longitud mínima"),
+        ("maxLength", "Longitud máxima"),
+        ("email", "Correo electrónico"),
+        ("url", "URL"),
+        ("noFutureDate", "Fecha no futura"),
+        ("minNumber", "Número mínimo"),
+        ("maxNumber", "Número máximo"),
+        ("regex", "Patrón personalizado")
+    ];
+
+    private static bool ValidationPresetNeedsValue(string? preset)
+        => preset is "numericExactLength" or "exactLength" or "minLength" or "maxLength" or "minNumber" or "maxNumber" or "regex";
+
+    private static string GetValidationValuePlaceholder(string? preset)
+        => preset switch
+        {
+            "numericExactLength" => "Ej. 10",
+            "exactLength" => "Ej. 10",
+            "minLength" => "Ej. 3",
+            "maxLength" => "Ej. 100",
+            "minNumber" => "Ej. 0",
+            "maxNumber" => "Ej. 100",
+            "regex" => "Ej. ^\\d{10}$",
+            _ => "Sin valor"
+        };
+
+    private static string GetValidationPresetShortLabel(string? preset)
+        => string.IsNullOrWhiteSpace(preset)
+            ? "Sin regla"
+            : ValidationPresetOptions.FirstOrDefault(x => x.Key == preset).Label ?? "Regla activa";
+
+    private static string GetValidationHelperText(string? preset)
+        => preset switch
+        {
+            "numeric" => "Acepta únicamente dígitos. Útil para cédulas, códigos internos o identificadores numéricos.",
+            "numericExactLength" => "Acepta solo dígitos y exige una cantidad exacta. Ejemplo: cédula con 10 números.",
+            "letters" => "Acepta letras y espacios. Útil para nombres o descripciones sin números.",
+            "alphanumeric" => "Acepta letras, números y espacios. Útil para códigos legibles o referencias mixtas.",
+            "exactLength" => "Exige una cantidad exacta de caracteres, sin importar si son letras o números.",
+            "minLength" => "Exige una longitud mínima para evitar valores demasiado cortos.",
+            "maxLength" => "Limita la longitud máxima para evitar textos excesivos.",
+            "email" => "Valida que el valor tenga formato de correo electrónico.",
+            "url" => "Valida que el valor sea una dirección web completa con http o https.",
+            "noFutureDate" => "Evita que el usuario registre fechas posteriores al día actual.",
+            "minNumber" => "Exige que el número sea mayor o igual al valor definido.",
+            "maxNumber" => "Exige que el número sea menor o igual al valor definido.",
+            "regex" => "Usa un patrón técnico personalizado. Conviene reservarlo para casos especiales.",
+            _ => "Sin regla adicional: el sistema solo aplicará obligatorio, tipo de dato y longitud máxima si están configurados."
+        };
+
+    private static string GetValidationPreview(string? fieldLabel, string? preset, string? value, string? message)
+    {
+        var label = string.IsNullOrWhiteSpace(fieldLabel) ? "Este campo" : fieldLabel.Trim();
+        if (string.IsNullOrWhiteSpace(preset))
+        {
+            return "Sin validación adicional configurada para este campo.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(message))
+        {
+            return $"Mensaje visible: {message.Trim()}";
+        }
+
+        return preset switch
+        {
+            "numeric" => $"{label} solo debe contener números.",
+            "numericExactLength" => $"{label} debe contener exactamente {NormalizeUiValue(value) ?? "N"} números.",
+            "letters" => $"{label} solo debe contener letras.",
+            "alphanumeric" => $"{label} solo debe contener letras y números.",
+            "exactLength" => $"{label} debe tener exactamente {NormalizeUiValue(value) ?? "N"} caracteres.",
+            "minLength" => $"{label} debe tener al menos {NormalizeUiValue(value) ?? "N"} caracteres.",
+            "maxLength" => $"{label} no debe superar {NormalizeUiValue(value) ?? "N"} caracteres.",
+            "email" => $"{label} debe contener un correo válido.",
+            "url" => $"{label} debe contener una URL válida.",
+            "noFutureDate" => $"{label} no puede ser una fecha futura.",
+            "minNumber" => $"{label} debe ser mayor o igual a {NormalizeUiValue(value) ?? "N"}.",
+            "maxNumber" => $"{label} debe ser menor o igual a {NormalizeUiValue(value) ?? "N"}.",
+            "regex" => $"{label} debe cumplir el patrón definido.",
+            _ => $"{label} será validado con la regla seleccionada."
+        };
+    }
+
+    private static string GetValidationPreset(string? validationRule)
+        => DynamicFieldValidationEngine.Parse(validationRule).Rules.FirstOrDefault()?.Type ?? string.Empty;
+
+    private static string? GetValidationRuleValue(string? validationRule)
+        => DynamicFieldValidationEngine.Parse(validationRule).Rules.FirstOrDefault()?.Value;
+
+    private static string? GetValidationRuleMessage(string? validationRule)
+        => DynamicFieldValidationEngine.Parse(validationRule).Rules.FirstOrDefault()?.Message;
+
+    private static string? BuildValidationRule(string? preset, string? value, string? message)
+    {
+        if (string.IsNullOrWhiteSpace(preset))
+        {
+            return null;
+        }
+
+        return DynamicFieldValidationEngine.Serialize(new DynamicFieldValidationRuleSet
+        {
+            Rules =
+            [
+                new DynamicFieldValidationRule
+                {
+                    Type = preset.Trim(),
+                    Value = ValidationPresetNeedsValue(preset) ? NormalizeUiValue(value) : null,
+                    Message = NormalizeUiValue(message)
+                }
+            ]
+        });
+    }
+
+    private void OnNewFieldValidationPresetChanged(ChangeEventArgs args)
+    {
+        NewFieldValidationPreset = args.Value?.ToString() ?? string.Empty;
+        if (!ValidationPresetNeedsValue(NewFieldValidationPreset))
+        {
+            NewFieldValidationValue = null;
+        }
+
+        NewField.ValidationRule = BuildValidationRule(NewFieldValidationPreset, NewFieldValidationValue, NewFieldValidationMessage);
+    }
+
+    private void OnNewFieldValidationValueChanged(ChangeEventArgs args)
+    {
+        NewFieldValidationValue = args.Value?.ToString();
+        NewField.ValidationRule = BuildValidationRule(NewFieldValidationPreset, NewFieldValidationValue, NewFieldValidationMessage);
+    }
+
+    private void OnNewFieldValidationMessageChanged(ChangeEventArgs args)
+    {
+        NewFieldValidationMessage = args.Value?.ToString();
+        NewField.ValidationRule = BuildValidationRule(NewFieldValidationPreset, NewFieldValidationValue, NewFieldValidationMessage);
+    }
+
+    private static void SetFieldValidationPreset(FieldCatalogItemDto field, string? preset)
+    {
+        var currentValue = GetValidationRuleValue(field.ValidationRule);
+        var currentMessage = GetValidationRuleMessage(field.ValidationRule);
+        field.ValidationRule = BuildValidationRule(preset, ValidationPresetNeedsValue(preset) ? currentValue : null, currentMessage);
+    }
+
+    private static void SetFieldValidationValue(FieldCatalogItemDto field, string? value)
+    {
+        var preset = GetValidationPreset(field.ValidationRule);
+        var currentMessage = GetValidationRuleMessage(field.ValidationRule);
+        field.ValidationRule = BuildValidationRule(preset, value, currentMessage);
+    }
+
+    private static void SetFieldValidationMessage(FieldCatalogItemDto field, string? message)
+    {
+        var preset = GetValidationPreset(field.ValidationRule);
+        var currentValue = GetValidationRuleValue(field.ValidationRule);
+        field.ValidationRule = BuildValidationRule(preset, currentValue, message);
+    }
+
+    private static string? NormalizeUiValue(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private string GetActiveTabHelperText()
     {
@@ -1345,14 +1701,20 @@
         return source.Where(x =>
             ContainsIgnoreCase(x.Name, term) ||
             ContainsIgnoreCase(x.Code, term) ||
-            ContainsIgnoreCase(x.ParentName, term));
+            ContainsIgnoreCase(x.ParentName, term) ||
+            ContainsIgnoreCase(x.Type, term) ||
+            ContainsIgnoreCase(x.IssnCode, term) ||
+            ContainsIgnoreCase(x.JournalUrl, term));
     }
 
     private bool CatalogRequiresParent()
         => SelectedCatalogKey is "specific-fields" or "detailed-fields";
 
     private bool CatalogSupportsCode()
-        => SelectedCatalogKey is "specific-fields" or "detailed-fields";
+        => SelectedCatalogKey is "faculties" or "projects" or "specific-fields" or "detailed-fields";
+
+    private bool CatalogSupportsVenueMetadata()
+        => SelectedCatalogKey is "venues";
 
     private string GetCatalogParentLabel()
     {
@@ -1427,12 +1789,22 @@
         FieldSearchTerm = state.FieldSearchTerm ?? string.Empty;
         CatalogSearchTerm = state.CatalogSearchTerm ?? string.Empty;
         OptionSearchTerm = state.OptionSearchTerm ?? string.Empty;
-        SelectedCatalogKey = string.IsNullOrWhiteSpace(state.SelectedCatalogKey) || string.Equals(state.SelectedCatalogKey, "venues", StringComparison.OrdinalIgnoreCase)
-            ? SelectedCatalogKey
-            : state.SelectedCatalogKey;
+        SelectedCatalogKey = IsSupportedCatalogKey(state.SelectedCatalogKey) ? state.SelectedCatalogKey! : SelectedCatalogKey;
         SelectedFormId = state.SelectedFormId;
         SelectedDynamicFieldId = state.SelectedDynamicFieldId;
     }
+
+    private static bool IsSupportedCatalogKey(string? catalogKey)
+        => catalogKey is "academic-terms"
+            or "publication-statuses"
+            or "research-lines"
+            or "faculties"
+            or "projects"
+            or "indexing-sources"
+            or "venues"
+            or "broad-fields"
+            or "specific-fields"
+            or "detailed-fields";
 
     private async Task PersistUiStateAsync()
     {

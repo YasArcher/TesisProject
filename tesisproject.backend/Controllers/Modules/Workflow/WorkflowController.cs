@@ -162,7 +162,9 @@ namespace tesisproject.backend.Controllers
                 return true;
             }
 
-            var canSeeAsAuthor = roleNames.Any(x => string.Equals(x, AppRoles.Author, StringComparison.OrdinalIgnoreCase))
+            var canSeeAsAuthor = roleNames.Any(x =>
+                    string.Equals(x, AppRoles.Author, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(x, AppRoles.WorkflowTrackingUser, StringComparison.OrdinalIgnoreCase))
                 && (await _service.GetAuthorInboxAsync(userId, 200, ct)).Any(x => x.ImportBatchId == batchId);
 
             if (canSeeAsAuthor)

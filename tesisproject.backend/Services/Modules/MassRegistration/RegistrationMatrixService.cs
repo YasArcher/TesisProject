@@ -324,7 +324,7 @@ namespace tesisproject.backend.Services.Implementations
             }
 
             var detail = MapDetail(matrix);
-            var batchResult = await _bulkImportService.CreateBatchFromMatrixAsync(detail, request.ValidateAfterCreate, request.UseAuthorWorkflow, userId, ct);
+            var batchResult = await _bulkImportService.CreateBatchFromMatrixAsync(detail, request.ValidateAfterCreate, request.UseAuthorWorkflow, userId, request.RowParticipants, ct);
 
             matrix.Status = "SentToStaging";
             matrix.LastImportBatchId = batchResult.Batch.Summary.ImportBatchId;

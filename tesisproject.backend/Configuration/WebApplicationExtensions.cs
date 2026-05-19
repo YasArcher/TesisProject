@@ -61,6 +61,7 @@ public static class WebApplicationExtensions
             }
 
             await EnsureIdentitySchemaAsync(db, logger);
+            await EnsureInstitutionalSettingsSchemaAsync(db, logger);
             await EnsureRegistrationMatrixModuleTablesAsync(db, logger);
             await EnsureWorkflowModuleSchemaAsync(db, logger);
 
@@ -337,6 +338,30 @@ END;
 
         await db.Database.ExecuteSqlRawAsync(sql);
         logger.LogInformation("Registration matrix module tables verified.");
+    }
+
+    private static async Task EnsureInstitutionalSettingsSchemaAsync(AppDbContext db, ILogger logger)
+    {
+        const string sql = @"
+IF OBJECT_ID(N'[dbo].[InstitutionalSetting]', N'U') IS NULL
+BEGIN
+    CREATE TABLE [dbo].[InstitutionalSetting](
+        [Key] NVARCHAR(120) NOT NULL PRIMARY KEY,
+        [Value] NVARCHAR(4000) NOT NULL,
+        [UpdatedAt] DATETIME2 NOT NULL,
+        [UpdatedByUserId] NVARCHAR(450) NULL
+    );
+END;
+
+IF NOT EXISTS (SELECT 1 FROM [dbo].[InstitutionalSetting] WHERE [Key] = N'RegistrationWorkflow.EntryMode')
+BEGIN
+    INSERT INTO [dbo].[InstitutionalSetting]([Key], [Value], [UpdatedAt], [UpdatedByUserId])
+    VALUES (N'RegistrationWorkflow.EntryMode', N'AuthorAndUodide', SYSUTCDATETIME(), NULL);
+END;
+";
+
+        await db.Database.ExecuteSqlRawAsync(sql);
+        logger.LogInformation("Institutional settings schema verified.");
     }
 
     private static async Task EnsureWorkflowModuleSchemaAsync(AppDbContext db, ILogger logger)

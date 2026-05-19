@@ -20,6 +20,7 @@ using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.Services.Modules.Intelligence;
 using tesisproject.backend.Services.Modules.Reporting;
+using tesisproject.backend.Services.Modules.Workflow;
 using tesisproject.shared.Abstractions.Auth;
 
 namespace tesisproject.backend.Configuration;
@@ -68,6 +69,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IArticleAggregatePersistenceService, ArticleAggregatePersistenceService>();
         services.AddScoped<IBulkImportService, BulkImportService>();
         services.AddScoped<IWorkflowService, WorkflowService>();
+        services.AddScoped<IRegistrationWorkflowSettingsService, RegistrationWorkflowSettingsService>();
         services.AddScoped<IRegistrationMatrixService, RegistrationMatrixService>();
         services.AddScoped<IExternalApiExplorerService, ExternalApiExplorerService>();
         services.AddScoped<IInstitutionalReportingService, InstitutionalReportingService>();
@@ -192,18 +194,25 @@ public static class ServiceCollectionExtensions
                 policy.RequireAuthenticatedUser());
 
             options.AddPolicy(AppPolicies.SecurityAdministration, policy =>
-                policy.RequireRole(AppRoles.Admin));
+                policy.RequireRole(AppRoles.Admin, AppRoles.SecurityAdministrator, AppRoles.RoleManager));
 
             options.AddPolicy(AppPolicies.AuthorSubmission, policy =>
-                policy.RequireRole(AppRoles.Admin, AppRoles.Analyst, AppRoles.Author));
+                policy.RequireRole(
+                    AppRoles.Admin,
+                    AppRoles.Analyst,
+                    AppRoles.Author,
+                    AppRoles.WorkflowReviewerUodide,
+                    AppRoles.ArticleRegistrationUser,
+                    AppRoles.RegistrationMatrixUser));
 
             options.AddPolicy(AppPolicies.ArticlesWrite, policy =>
-                policy.RequireRole(AppRoles.Admin, AppRoles.Analyst));
+                policy.RequireRole(AppRoles.Admin, AppRoles.Analyst, AppRoles.DirectArticleSaveUser));
 
             options.AddPolicy(AppPolicies.WorkflowAccess, policy =>
                 policy.RequireRole(
                     AppRoles.Admin,
                     AppRoles.Author,
+                    AppRoles.WorkflowTrackingUser,
                     AppRoles.WorkflowReviewerUodide,
                     AppRoles.WorkflowReviewerAreaTecnica,
                     AppRoles.WorkflowProcessorAreaTecnica));
@@ -212,31 +221,43 @@ public static class ServiceCollectionExtensions
                 policy.RequireRole(
                     AppRoles.Admin,
                     AppRoles.WorkflowReviewerUodide,
-                    AppRoles.WorkflowReviewerAreaTecnica));
+                    AppRoles.WorkflowReviewerAreaTecnica,
+                    AppRoles.WorkflowProcessorAreaTecnica));
 
             options.AddPolicy(AppPolicies.WorkflowProcess, policy =>
                 policy.RequireRole(
                     AppRoles.Admin,
+                    AppRoles.WorkflowReviewerAreaTecnica,
                     AppRoles.WorkflowProcessorAreaTecnica));
 
             options.AddPolicy(AppPolicies.BulkImportAccess, policy =>
                 policy.RequireRole(
                     AppRoles.Admin,
                     AppRoles.Analyst,
+                    AppRoles.BulkImportUser,
                     AppRoles.WorkflowReviewerUodide,
                     AppRoles.WorkflowReviewerAreaTecnica,
                     AppRoles.WorkflowProcessorAreaTecnica));
 
             options.AddPolicy(AppPolicies.ConfigurationAdministration, policy =>
-                policy.RequireRole(AppRoles.Admin, AppRoles.Analyst));
+                policy.RequireRole(AppRoles.Admin, AppRoles.Analyst, AppRoles.ConfigurationManager, AppRoles.CatalogManager));
 
             options.AddPolicy(AppPolicies.ExternalApiAccess, policy =>
-                policy.RequireRole(AppRoles.Admin, AppRoles.Analyst, AppRoles.Author));
+                policy.RequireRole(
+                    AppRoles.Admin,
+                    AppRoles.Analyst,
+                    AppRoles.Author,
+                    AppRoles.ExternalApiUser));
 
             options.AddPolicy(AppPolicies.ReportingAccess, policy =>
                 policy.RequireRole(
                     AppRoles.Admin,
                     AppRoles.Analyst,
+                    AppRoles.ReportingViewer,
+                    AppRoles.ReportingExporter,
+                    AppRoles.ReportingAdvancedUser,
+                    AppRoles.IntelligenceViewer,
+                    AppRoles.IntelligenceTrainer,
                     AppRoles.WorkflowReviewerAreaTecnica,
                     AppRoles.WorkflowProcessorAreaTecnica));
         });

@@ -1,4 +1,5 @@
 @page "/management/intelligence"
+@attribute [Authorize(Roles = "Admin,Analyst,IntelligenceViewer,IntelligenceTrainer")]
 @using tesisproject.shared.DTOs.Intelligence
 @using tesisproject.shared.DTOs.Reports
 @inject IInstitutionalIntelligenceClient IntelligenceClient

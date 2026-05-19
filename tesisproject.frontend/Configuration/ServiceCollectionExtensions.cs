@@ -46,6 +46,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IFormConfigurationClient, FormConfigurationClient>();
         services.AddScoped<IBulkImportClient, BulkImportClient>();
         services.AddScoped<IWorkflowClient, WorkflowClient>();
+        services.AddScoped<IRegistrationWorkflowSettingsClient, RegistrationWorkflowSettingsClient>();
         services.AddScoped<IRegistrationMatrixClient, RegistrationMatrixClient>();
         services.AddScoped<IExternalApiExplorerClient, ExternalApiExplorerClient>();
         services.AddScoped<IInstitutionalReportingClient, InstitutionalReportingClient>();

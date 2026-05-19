@@ -17,13 +17,16 @@ namespace tesisproject.backend.Controllers
     public class ArticleRegistrationController : ControllerBase
     {
         private readonly IArticleRegistrationService _articleRegistrationService;
+        private readonly IRegistrationWorkflowSettingsService _registrationWorkflowSettings;
         private readonly UserManager<ApplicationUser> _userManager;
 
         public ArticleRegistrationController(
             IArticleRegistrationService articleRegistrationService,
+            IRegistrationWorkflowSettingsService registrationWorkflowSettings,
             UserManager<ApplicationUser> userManager)
         {
             _articleRegistrationService = articleRegistrationService;
+            _registrationWorkflowSettings = registrationWorkflowSettings;
             _userManager = userManager;
         }
 
@@ -56,6 +59,14 @@ namespace tesisproject.backend.Controllers
         {
             try
             {
+                if (!await _registrationWorkflowSettings.CanInitiateArticleRegistrationAsync(User, ct))
+                {
+                    return Problem(
+                        title: "Registro no habilitado para tu rol.",
+                        detail: "El modo institucional actual no permite que este perfil inicie registros de artículos.",
+                        statusCode: StatusCodes.Status403Forbidden);
+                }
+
                 if (!await HasAcceptedAuthorTermsAsync())
                 {
                     return BadRequest(new { message = "Debes aceptar los términos y condiciones de manejo de información antes de enviar artículos a revisión." });

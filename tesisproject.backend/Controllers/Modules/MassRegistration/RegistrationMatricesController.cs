@@ -15,13 +15,16 @@ namespace tesisproject.backend.Controllers
     public class RegistrationMatricesController : ControllerBase
     {
         private readonly IRegistrationMatrixService _service;
+        private readonly IRegistrationWorkflowSettingsService _workflowSettings;
         private readonly UserManager<ApplicationUser> _userManager;
 
         public RegistrationMatricesController(
             IRegistrationMatrixService service,
+            IRegistrationWorkflowSettingsService workflowSettings,
             UserManager<ApplicationUser> userManager)
         {
             _service = service;
+            _workflowSettings = workflowSettings;
             _userManager = userManager;
         }
 
@@ -64,6 +67,11 @@ namespace tesisproject.backend.Controllers
         {
             try
             {
+                if (!await CanInitiateRegistrationAsync(ct))
+                {
+                    return RegistrationNotEnabledProblem();
+                }
+
                 if (!await HasAcceptedAuthorTermsAsync())
                 {
                     return BadRequest(new { message = "Debes aceptar los términos y condiciones de manejo de información antes de crear matrices de registro." });
@@ -117,6 +125,11 @@ namespace tesisproject.backend.Controllers
         [Authorize(Policy = AppPolicies.AuthorSubmission)]
         public async Task<ActionResult<RegistrationMatrixDetailDto>> AddRow(int matrixId, CancellationToken ct = default)
         {
+            if (!await CanInitiateRegistrationAsync(ct))
+            {
+                return RegistrationNotEnabledProblem();
+            }
+
             if (!await CanAccessMatrixAsync(matrixId, ct))
             {
                 return NotFound();
@@ -137,6 +150,11 @@ namespace tesisproject.backend.Controllers
         {
             try
             {
+                if (!await CanInitiateRegistrationAsync(ct))
+                {
+                    return RegistrationNotEnabledProblem();
+                }
+
                 if (!await CanAccessMatrixAsync(matrixId, ct))
                 {
                     return NotFound();
@@ -160,6 +178,11 @@ namespace tesisproject.backend.Controllers
         [Authorize(Policy = AppPolicies.AuthorSubmission)]
         public async Task<IActionResult> DeleteRow(int matrixId, int rowId, CancellationToken ct = default)
         {
+            if (!await CanInitiateRegistrationAsync(ct))
+            {
+                return RegistrationNotEnabledProblem();
+            }
+
             if (!await CanAccessMatrixAsync(matrixId, ct))
             {
                 return NotFound();
@@ -179,6 +202,11 @@ namespace tesisproject.backend.Controllers
         {
             try
             {
+                if (!await CanInitiateRegistrationAsync(ct))
+                {
+                    return RegistrationNotEnabledProblem();
+                }
+
                 if (!await CanAccessMatrixAsync(matrixId, ct))
                 {
                     return NotFound();
@@ -209,6 +237,15 @@ namespace tesisproject.backend.Controllers
 
         private bool CanManageMatrices()
             => User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Analyst);
+
+        private Task<bool> CanInitiateRegistrationAsync(CancellationToken ct)
+            => _workflowSettings.CanInitiateMatrixRegistrationAsync(User, ct);
+
+        private ObjectResult RegistrationNotEnabledProblem()
+            => Problem(
+                title: "Registro no habilitado para tu rol.",
+                detail: "El modo institucional actual no permite que este perfil inicie o edite matrices de registro.",
+                statusCode: StatusCodes.Status403Forbidden);
 
         private string? GetCurrentUserId()
             => User?.FindFirstValue(ClaimTypes.NameIdentifier)

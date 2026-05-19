@@ -1,9 +1,12 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Components.Routing
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Workflow
 @namespace tesisproject.frontend.SharedUI
 @implements IDisposable
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavManager
+@inject IRegistrationWorkflowSettingsClient RegistrationWorkflowSettingsClient
 
 <div class="sidebar menu-bg @(_collapsed ? "is-collapsed" : null)">
     <div class="sidebar-brand">
@@ -51,7 +54,7 @@
         }
 
         <div class="sidebar-nav-stack">
-            @if (IsUodideOnly || IsAreaTecnicaOnly)
+            @if (IsAreaTecnicaOnly)
             {
                 <ul class="nav flex-column sidebar-direct-links">
                     <li class="nav-item">
@@ -80,7 +83,7 @@
                 </ul>
             }
 
-            @if (CanSeeArticlesGroup && !IsUodideOnly && !IsAreaTecnicaOnly)
+            @if (CanSeeArticlesGroup && !IsAreaTecnicaOnly)
             {
                 <div class="accordion-group @(GroupClass(ArticlesSection))">
                     <button type="button" class="accordion-btn"
@@ -120,7 +123,7 @@
                 </div>
             }
 
-            @if (CanSeeImportGroup && !IsUodideOnly && !IsAreaTecnicaOnly)
+            @if (CanSeeImportGroup && !IsAreaTecnicaOnly)
             {
                 <div class="accordion-group @(GroupClass(ImportSection))">
                     <button type="button" class="accordion-btn"
@@ -138,10 +141,16 @@
                     {
                     <div class="accordion-panel is-rendered">
                         <ul class="nav flex-column ms-4 my-2 gap-1">
-                            @if (CanManageConfiguration)
+                            @if (CanUseRegistrationMatrix)
                             {
                                 <li class="nav-item"><NavLink href="/management/registration-matrix" class="nav-link sidebar-link" ActiveClass="active" title="Matriz de registro"><span class="icon">▦</span><span class="label">Matriz de registro</span></NavLink></li>
+                            }
+                            @if (CanUseBulkImport)
+                            {
                                 <li class="nav-item"><NavLink href="/management/exportinformation" class="nav-link sidebar-link" ActiveClass="active" title="Carga masiva"><span class="icon">⇪</span><span class="label">Carga masiva</span></NavLink></li>
+                            }
+                            @if (CanUseExternalApis)
+                            {
                                 <li class="nav-item"><NavLink href="/management/externalapis" class="nav-link sidebar-link" ActiveClass="active" title="APIs externas"><span class="icon">◎</span><span class="label">APIs externas</span></NavLink></li>
                             }
                         </ul>
@@ -150,7 +159,7 @@
                 </div>
             }
 
-            @if (CanSeeAnalysisGroup && !IsUodideOnly && !IsAreaTecnicaOnly)
+            @if (CanSeeAnalysisGroup && !IsAreaTecnicaOnly)
             {
                 <div class="accordion-group @(GroupClass(AnalysisSection))">
                     <button type="button" class="accordion-btn"
@@ -169,8 +178,14 @@
                     <div class="accordion-panel is-rendered">
                         <usl class="nav flex-column ms-4 my-2 gap-1">
 
-                                <li class="nav-item"><NavLink href="/management/statisticalreports" class="nav-link sidebar-link" ActiveClass="active" title="Reportería"><span class="icon">◔</span><span class="label">Reportería</span></NavLink></li>
-                                <li class="nav-item"><NavLink href="/management/intelligence" class="nav-link sidebar-link" ActiveClass="active" title="Inteligencia Artificial"><span class="icon">◔</span><span class="label">Inteligencia Artificial</span></NavLink></li>
+                                @if (IsAdmin || IsAnalyst || IsAreaTecnica || CanViewReportingByPermission)
+                                {
+                                    <li class="nav-item"><NavLink href="/management/statisticalreports" class="nav-link sidebar-link" ActiveClass="active" title="Reportería"><span class="icon">◔</span><span class="label">Reportería</span></NavLink></li>
+                                }
+                                @if (IsAdmin || IsAnalyst || CanUseIntelligenceByPermission)
+                                {
+                                    <li class="nav-item"><NavLink href="/management/intelligence" class="nav-link sidebar-link" ActiveClass="active" title="Inteligencia Artificial"><span class="icon">◔</span><span class="label">Inteligencia Artificial</span></NavLink></li>
+                                }
                         </usl>
                     </div>
                     }
@@ -253,16 +268,30 @@
     private bool IsAuthor { get; set; }
     private bool IsUodide { get; set; }
     private bool IsAreaTecnica { get; set; }
-    private bool IsUodideOnly => IsUodide && !IsAdmin && !IsAnalyst && !IsAuthor && !IsAreaTecnica;
-    private bool IsAreaTecnicaOnly => IsAreaTecnica && !IsAdmin && !IsAnalyst && !IsAuthor && !IsUodide;
+    private bool IsExternalApiUser { get; set; }
+    private bool CanRegisterByPermission { get; set; }
+    private bool CanUseMatrixByPermission { get; set; }
+    private bool CanUseBulkImportByPermission { get; set; }
+    private bool CanViewReportingByPermission { get; set; }
+    private bool CanUseIntelligenceByPermission { get; set; }
+    private bool CanManageConfigurationByPermission { get; set; }
+    private bool CanTrackWorkflowByPermission { get; set; }
+    private string RegistrationEntryMode { get; set; } = RegistrationEntryModes.AuthorAndUodide;
+    private bool IsUodideOnly => IsUodide && !IsAdmin && !IsAnalyst && !IsAuthor && !IsAreaTecnica && !IsExternalApiUser;
+    private bool IsAreaTecnicaOnly => IsAreaTecnica && !IsAdmin && !IsAnalyst && !IsAuthor && !IsUodide && !IsExternalApiUser;
 
-    private bool CanRegisterArticles => IsAdmin || IsAnalyst || IsAuthor;
-    private bool CanAccessWorkflow => IsAdmin || IsAuthor || IsUodide || IsAreaTecnica;
-    private bool CanManageConfiguration => IsAdmin || IsAnalyst;
+    private bool AuthorRegistrationEnabled => RegistrationEntryMode != RegistrationEntryModes.UodideOnly;
+    private bool UodideRegistrationEnabled => RegistrationEntryMode != RegistrationEntryModes.AuthorOnly;
+    private bool CanRegisterArticles => IsAdmin || IsAnalyst || CanRegisterByPermission || (IsAuthor && AuthorRegistrationEnabled) || (IsUodide && UodideRegistrationEnabled);
+    private bool CanAccessWorkflow => IsAdmin || IsAuthor || IsUodide || IsAreaTecnica || CanTrackWorkflowByPermission;
+    private bool CanManageConfiguration => IsAdmin || IsAnalyst || CanManageConfigurationByPermission;
     private bool CanSeeArticlesGroup => CanRegisterArticles || CanAccessWorkflow;
-    private bool CanSeeImportGroup => CanManageConfiguration || IsAdmin;
-    private bool CanSeeAnalysisGroup => IsAdmin || IsAnalyst || IsAreaTecnica;
-    private bool CanSeeArticleListing => IsAdmin || IsAnalyst || IsAreaTecnica;
+    private bool CanUseRegistrationMatrix => IsAdmin || IsAnalyst || CanUseMatrixByPermission || (IsAuthor && AuthorRegistrationEnabled) || (IsUodide && UodideRegistrationEnabled);
+    private bool CanUseExternalApis => IsAdmin || IsAnalyst || IsAuthor || IsExternalApiUser;
+    private bool CanUseBulkImport => IsAdmin || IsAnalyst || CanUseBulkImportByPermission;
+    private bool CanSeeImportGroup => CanManageConfiguration || CanUseRegistrationMatrix || CanUseExternalApis || CanUseBulkImport;
+    private bool CanSeeAnalysisGroup => IsAdmin || IsAnalyst || IsAreaTecnica || CanViewReportingByPermission || CanUseIntelligenceByPermission;
+    private bool CanSeeArticleListing => IsAdmin || IsAnalyst || IsAreaTecnica || CanViewReportingByPermission;
     private bool CanSeeManual => IsAdmin || IsAnalyst || IsUodide || IsAreaTecnica;
 
     protected override async Task OnInitializedAsync()
@@ -292,6 +321,24 @@
         IsAuthor = user.IsInRole("Author");
         IsUodide = user.IsInRole("WorkflowReviewerUodide");
         IsAreaTecnica = user.IsInRole("WorkflowReviewerAreaTecnica") || user.IsInRole("WorkflowProcessorAreaTecnica");
+        IsExternalApiUser = user.IsInRole("ExternalApiUser");
+        CanRegisterByPermission = user.IsInRole("ArticleRegistrationUser");
+        CanUseMatrixByPermission = user.IsInRole("RegistrationMatrixUser");
+        CanUseBulkImportByPermission = user.IsInRole("BulkImportUser");
+        CanViewReportingByPermission = user.IsInRole("ReportingViewer") || user.IsInRole("ReportingExporter") || user.IsInRole("ReportingAdvancedUser");
+        CanUseIntelligenceByPermission = user.IsInRole("IntelligenceViewer") || user.IsInRole("IntelligenceTrainer");
+        CanManageConfigurationByPermission = user.IsInRole("ConfigurationManager") || user.IsInRole("CatalogManager");
+        CanTrackWorkflowByPermission = user.IsInRole("WorkflowTrackingUser");
+
+        try
+        {
+            var settings = await RegistrationWorkflowSettingsClient.GetAsync();
+            RegistrationEntryMode = settings?.EntryMode ?? RegistrationEntryModes.AuthorAndUodide;
+        }
+        catch
+        {
+            RegistrationEntryMode = RegistrationEntryModes.AuthorAndUodide;
+        }
     }
 
     private async Task Toggle()
@@ -337,11 +384,11 @@
         _openSection = path switch
         {
             "articulos/registrar" or "articulos/listado" or "configuration" or "management/workflow-review"
-                when CanSeeArticlesGroup && !IsUodideOnly && !IsAreaTecnicaOnly => ArticlesSection,
+                when CanSeeArticlesGroup && !IsAreaTecnicaOnly => ArticlesSection,
             "management/registration-matrix" or "management/exportinformation" or "management/externalapis"
-                when CanSeeImportGroup && !IsUodideOnly && !IsAreaTecnicaOnly => ImportSection,
+                when CanSeeImportGroup && !IsAreaTecnicaOnly => ImportSection,
             "management/statisticalreports" or "management/intelligence"
-                when CanSeeAnalysisGroup && !IsUodideOnly && !IsAreaTecnicaOnly => AnalysisSection,
+                when CanSeeAnalysisGroup && !IsAreaTecnicaOnly => AnalysisSection,
             "management/security-administration"
                 when IsAdmin => AdministrationSection,
             "management/support" or "help/manual" or "perfilview" => SupportSection,

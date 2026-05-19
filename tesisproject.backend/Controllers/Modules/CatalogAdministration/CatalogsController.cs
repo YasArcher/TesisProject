@@ -293,6 +293,16 @@ namespace tesisproject.backend.Controllers
                     .Select(x => new CatalogAdminItemDto { Id = x.ResearchLineId, Name = x.Name })
                     .ToListAsync(ct),
 
+                "publication-statuses" => await _db.PublicationStatuses
+                    .OrderBy(x => x.Name)
+                    .Select(x => new CatalogAdminItemDto { Id = x.PublicationStatusId, Name = x.Name })
+                    .ToListAsync(ct),
+
+                "indexing-sources" => await _db.IndexingSources
+                    .OrderBy(x => x.Name)
+                    .Select(x => new CatalogAdminItemDto { Id = x.IndexingSourceId, Name = x.Name })
+                    .ToListAsync(ct),
+
                 "faculties" => await _db.Faculties
                     .OrderBy(x => x.Name)
                     .Select(x => new CatalogAdminItemDto { Id = x.FacultyId, Name = x.Name, Code = x.Code })
@@ -325,6 +335,16 @@ namespace tesisproject.backend.Controllers
                         Name = x.Name,
                         ParentId = x.SpecificFieldId,
                         ParentName = x.SpecificField.Name,
+                        Code = x.Code
+                    })
+                    .ToListAsync(ct),
+
+                "projects" => await _db.Projects
+                    .OrderBy(x => x.Name)
+                    .Select(x => new CatalogAdminItemDto
+                    {
+                        Id = x.Id,
+                        Name = x.Name,
                         Code = x.Code
                     })
                     .ToListAsync(ct),
@@ -367,6 +387,19 @@ namespace tesisproject.backend.Controllers
                     await _db.SaveChangesAsync(ct);
                     return new CatalogAdminItemDto { Id = researchLine.ResearchLineId, Name = researchLine.Name };
 
+                case "publication-statuses":
+                    var nextPublicationStatusId = await ResolveNextPublicationStatusIdAsync(ct);
+                    var publicationStatus = new PublicationStatus { PublicationStatusId = nextPublicationStatusId, Name = request.Name.Trim() };
+                    _db.PublicationStatuses.Add(publicationStatus);
+                    await _db.SaveChangesAsync(ct);
+                    return new CatalogAdminItemDto { Id = publicationStatus.PublicationStatusId, Name = publicationStatus.Name };
+
+                case "indexing-sources":
+                    var indexingSource = new IndexingSource { Name = request.Name.Trim(), IsActive = true };
+                    _db.IndexingSources.Add(indexingSource);
+                    await _db.SaveChangesAsync(ct);
+                    return new CatalogAdminItemDto { Id = indexingSource.IndexingSourceId, Name = indexingSource.Name };
+
                 case "faculties":
                     var faculty = new Faculty { Name = request.Name.Trim(), Code = NormalizeNullable(request.Code) };
                     _db.Faculties.Add(faculty);
@@ -392,6 +425,16 @@ namespace tesisproject.backend.Controllers
                     _db.DetailedFields.Add(detailedField);
                     await _db.SaveChangesAsync(ct);
                     return new CatalogAdminItemDto { Id = detailedField.DetailedFieldId, Name = detailedField.Name, ParentId = detailedField.SpecificFieldId, Code = detailedField.Code };
+
+                case "projects":
+                    var project = new Project
+                    {
+                        Name = request.Name.Trim(),
+                        Code = string.IsNullOrWhiteSpace(request.Code) ? GenerateProjectCode(request.Name) : request.Code.Trim()
+                    };
+                    _db.Projects.Add(project);
+                    await _db.SaveChangesAsync(ct);
+                    return new CatalogAdminItemDto { Id = project.Id, Name = project.Name, Code = project.Code };
 
                 case "venues":
                     var venue = new Venue
@@ -430,6 +473,21 @@ namespace tesisproject.backend.Controllers
                     await _db.SaveChangesAsync(ct);
                     return new CatalogAdminItemDto { Id = researchLine.ResearchLineId, Name = researchLine.Name };
 
+                case "publication-statuses":
+                    var publicationStatus = await _db.PublicationStatuses.FirstOrDefaultAsync(x => x.PublicationStatusId == id, ct);
+                    if (publicationStatus is null) return null;
+                    publicationStatus.Name = request.Name.Trim();
+                    await _db.SaveChangesAsync(ct);
+                    return new CatalogAdminItemDto { Id = publicationStatus.PublicationStatusId, Name = publicationStatus.Name };
+
+                case "indexing-sources":
+                    var indexingSource = await _db.IndexingSources.FirstOrDefaultAsync(x => x.IndexingSourceId == id, ct);
+                    if (indexingSource is null) return null;
+                    indexingSource.Name = request.Name.Trim();
+                    indexingSource.IsActive = true;
+                    await _db.SaveChangesAsync(ct);
+                    return new CatalogAdminItemDto { Id = indexingSource.IndexingSourceId, Name = indexingSource.Name };
+
                 case "faculties":
                     var faculty = await _db.Faculties.FirstOrDefaultAsync(x => x.FacultyId == id, ct);
                     if (faculty is null) return null;
@@ -463,6 +521,14 @@ namespace tesisproject.backend.Controllers
                     await _db.SaveChangesAsync(ct);
                     return new CatalogAdminItemDto { Id = detailedField.DetailedFieldId, Name = detailedField.Name, ParentId = detailedField.SpecificFieldId, Code = detailedField.Code };
 
+                case "projects":
+                    var project = await _db.Projects.FirstOrDefaultAsync(x => x.Id == id, ct);
+                    if (project is null) return null;
+                    project.Name = request.Name.Trim();
+                    project.Code = string.IsNullOrWhiteSpace(request.Code) ? project.Code : request.Code.Trim();
+                    await _db.SaveChangesAsync(ct);
+                    return new CatalogAdminItemDto { Id = project.Id, Name = project.Name, Code = project.Code };
+
                 case "venues":
                     var venue = await _db.Venues.FirstOrDefaultAsync(x => x.VenueId == id, ct);
                     if (venue is null) return null;
@@ -483,6 +549,31 @@ namespace tesisproject.backend.Controllers
 
         private static string? NormalizeNullable(string? value)
             => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+        private async Task<byte> ResolveNextPublicationStatusIdAsync(CancellationToken ct)
+        {
+            var currentMax = await _db.PublicationStatuses
+                .Select(x => (int?)x.PublicationStatusId)
+                .MaxAsync(ct) ?? 0;
+
+            if (currentMax >= byte.MaxValue)
+            {
+                throw new InvalidOperationException("No se pueden crear más estados de publicación porque se alcanzó el límite del catálogo.");
+            }
+
+            return (byte)(currentMax + 1);
+        }
+
+        private static string GenerateProjectCode(string name)
+        {
+            var source = string.IsNullOrWhiteSpace(name) ? "PROY" : name.Trim();
+            var chars = source
+                .Where(char.IsLetterOrDigit)
+                .Take(8)
+                .ToArray();
+
+            return chars.Length == 0 ? "PROY" : new string(chars).ToUpperInvariant();
+        }
 
         private async Task<bool> TableExistsAsync(string tableName, CancellationToken ct)
         {

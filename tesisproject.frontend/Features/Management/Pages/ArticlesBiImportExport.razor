@@ -1,5 +1,6 @@
 @page "/management/exportinformation"
 @page "/management/article-review-staging"
+@attribute [Authorize(Roles = "Admin,Analyst,BulkImportUser,WorkflowReviewerUodide,WorkflowReviewerAreaTecnica,WorkflowProcessorAreaTecnica")]
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Authorization
@@ -787,7 +788,7 @@
         || NavManager.Uri.Contains("/management/uodide-review-staging-frame", StringComparison.OrdinalIgnoreCase)
         || NavManager.Uri.Contains("/management/area-tecnica-review-staging", StringComparison.OrdinalIgnoreCase)
         || NavManager.Uri.Contains("/management/area-tecnica-review-staging-frame", StringComparison.OrdinalIgnoreCase);
-    private bool CanProcessInCurrentContext => CanProcessCurrentBatch && (!IsReviewStagingMode || UserRoles.Contains("Admin") || UserRoles.Contains("WorkflowProcessorAreaTecnica"));
+    private bool CanProcessInCurrentContext => CanProcessCurrentBatch && (!IsReviewStagingMode || UserRoles.Contains("Admin") || UserRoles.Contains("WorkflowReviewerAreaTecnica") || UserRoles.Contains("WorkflowProcessorAreaTecnica"));
     private string PageTitleText => IsReviewStagingMode ? (CurrentReviewContext?.PageTitle ?? "Staging de revisión de artículos") : "Carga masiva dinámica";
     private string PageHeading => IsReviewStagingMode ? (CurrentReviewContext?.PageHeading ?? "Staging de revisión de artículos") : "Carga masiva dinámica";
     private string PageEyebrow => IsReviewStagingMode ? (CurrentReviewContext?.PageEyebrow ?? "Revisión institucional") : "Operación de carga";

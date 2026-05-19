@@ -184,7 +184,9 @@ namespace tesisproject.backend.Services.Implementations
                 .Take(Math.Max(1, take))
                 .ToListAsync(ct);
 
-            return workflows.Select(x => MapInboxItem(x, userId)).ToList();
+            var displayNames = await BuildWorkflowUserDisplayNamesAsync(workflows, ct);
+
+            return workflows.Select(x => MapInboxItem(x, userId, displayNames)).ToList();
         }
 
         public async Task<List<WorkflowInboxItemDto>> GetAuthorInboxAsync(string? userId, int take = 50, CancellationToken ct = default)
@@ -220,7 +222,9 @@ namespace tesisproject.backend.Services.Implementations
                 .Take(Math.Max(1, take))
                 .ToListAsync(ct);
 
-            return workflows.Select(x => MapInboxItem(x, normalizedUserId)).ToList();
+            var displayNames = await BuildWorkflowUserDisplayNamesAsync(workflows, ct);
+
+            return workflows.Select(x => MapInboxItem(x, normalizedUserId, displayNames)).ToList();
         }
 
         private async Task<HashSet<string>> ResolveAuthorReferencesAsync(string normalizedUserId, CancellationToken ct)
@@ -262,7 +266,13 @@ namespace tesisproject.backend.Services.Implementations
         public async Task<WorkflowBatchDetailDto?> GetBatchWorkflowAsync(int importBatchId, CancellationToken ct = default)
         {
             var workflow = await LoadWorkflowAggregateAsync(importBatchId, ct);
-            return workflow is null ? null : MapWorkflow(workflow);
+            if (workflow is null)
+            {
+                return null;
+            }
+
+            var displayNames = await BuildWorkflowUserDisplayNamesAsync([workflow], ct);
+            return MapWorkflow(workflow, displayNames);
         }
 
         public async Task<WorkflowBatchDetailDto> ClaimCurrentStageAsync(int importBatchId, string? userId, IReadOnlyCollection<string> roleNames, string? comments, CancellationToken ct = default)
@@ -589,7 +599,7 @@ namespace tesisproject.backend.Services.Implementations
                 .FirstOrDefaultAsync(x => x.ImportBatchId == importBatchId, ct);
         }
 
-        private WorkflowBatchDetailDto MapWorkflow(WorkflowInstance workflow)
+        private WorkflowBatchDetailDto MapWorkflow(WorkflowInstance workflow, IReadOnlyDictionary<string, string> displayNames)
         {
             var processedRows = workflow.Batch?.Rows.Count(x => x.RowStatus == "Processed") ?? 0;
             var effectiveStatus = ResolveEffectiveWorkflowStatus(workflow.Status, workflow.Batch?.Status, processedRows);
@@ -607,7 +617,7 @@ namespace tesisproject.backend.Services.Implementations
                 CurrentStageGroupKey = workflow.CurrentStageDefinition?.StageGroupKey,
                 CurrentStageGroupName = workflow.CurrentStageDefinition?.StageGroupName,
                 SubmittedByUserId = workflow.SubmittedByUserId,
-                SubmittedByUserName = BuildReferenceDisplayName(workflow.SubmittedByUserId),
+                SubmittedByUserName = BuildReferenceDisplayName(workflow.SubmittedByUserId, displayNames),
                 SubmittedAt = workflow.SubmittedAt,
                 LastActionAt = workflow.LastActionAt,
                 CompletedAt = workflow.CompletedAt,
@@ -630,9 +640,9 @@ namespace tesisproject.backend.Services.Implementations
                         CanProcessBatch = x.WorkflowStageDefinition?.CanProcessBatch ?? false,
                         IsFinalStage = x.WorkflowStageDefinition?.IsFinalStage ?? false,
                         AssignedToUserId = x.AssignedToUserId,
-                        AssignedToUserName = BuildReferenceDisplayName(x.AssignedToUserId),
+                        AssignedToUserName = BuildReferenceDisplayName(x.AssignedToUserId, displayNames),
                         ApprovedByUserId = x.ApprovedByUserId,
-                        ApprovedByUserName = BuildReferenceDisplayName(x.ApprovedByUserId),
+                        ApprovedByUserName = BuildReferenceDisplayName(x.ApprovedByUserId, displayNames),
                         StartedAt = x.StartedAt,
                         CompletedAt = x.CompletedAt,
                         ReturnedAt = x.ReturnedAt,
@@ -649,7 +659,7 @@ namespace tesisproject.backend.Services.Implementations
                         FromStatus = x.FromStatus,
                         ToStatus = x.ToStatus,
                         PerformedByUserId = x.PerformedByUserId,
-                        PerformedByUserName = BuildReferenceDisplayName(x.PerformedByUserId),
+                        PerformedByUserName = BuildReferenceDisplayName(x.PerformedByUserId, displayNames),
                         PerformedAt = x.PerformedAt,
                         Comments = x.Comments
                     })
@@ -657,7 +667,7 @@ namespace tesisproject.backend.Services.Implementations
             };
         }
 
-        private WorkflowInboxItemDto MapInboxItem(WorkflowInstance workflow, string? currentUserId)
+        private WorkflowInboxItemDto MapInboxItem(WorkflowInstance workflow, string? currentUserId, IReadOnlyDictionary<string, string> displayNames)
         {
             var currentStage = workflow.CurrentStageDefinition;
             var currentStageInstance = currentStage is null
@@ -688,9 +698,9 @@ namespace tesisproject.backend.Services.Implementations
                 CurrentStageGroupName = currentStage?.StageGroupName,
                 ResponsibleRoleName = currentStage?.ResponsibleRoleId,
                 SubmittedByUserId = workflow.SubmittedByUserId,
-                SubmittedByUserName = BuildReferenceDisplayName(workflow.SubmittedByUserId),
+                SubmittedByUserName = BuildReferenceDisplayName(workflow.SubmittedByUserId, displayNames),
                 AssignedToUserId = currentStageInstance?.AssignedToUserId,
-                AssignedToUserName = BuildReferenceDisplayName(currentStageInstance?.AssignedToUserId),
+                AssignedToUserName = BuildReferenceDisplayName(currentStageInstance?.AssignedToUserId, displayNames),
                 TotalRows = workflow.Batch?.TotalRows ?? 0,
                 ErrorRows = workflow.Batch?.ErrorRows ?? 0,
                 ValidRows = validRows,
@@ -805,9 +815,80 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
-        private static string? BuildReferenceDisplayName(string? value)
+        private async Task<Dictionary<string, string>> BuildWorkflowUserDisplayNamesAsync(IEnumerable<WorkflowInstance> workflows, CancellationToken ct)
         {
-            return string.IsNullOrWhiteSpace(value) ? null : value;
+            var references = workflows
+                .SelectMany(workflow =>
+                {
+                    var values = new List<string?>();
+                    values.Add(workflow.SubmittedByUserId);
+                    values.AddRange(workflow.StageInstances.Select(x => x.AssignedToUserId));
+                    values.AddRange(workflow.StageInstances.Select(x => x.ApprovedByUserId));
+                    values.AddRange(workflow.ActionLogs.Select(x => x.PerformedByUserId));
+                    return values;
+                })
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x!.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var displayNames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            if (references.Count == 0)
+            {
+                return displayNames;
+            }
+
+            var users = await _db.Users
+                .AsNoTracking()
+                .Where(x => references.Contains(x.Id)
+                            || (x.UserName != null && references.Contains(x.UserName))
+                            || (x.Email != null && references.Contains(x.Email)))
+                .Select(x => new
+                {
+                    x.Id,
+                    x.UserName,
+                    x.Email,
+                    x.FullName
+                })
+                .ToListAsync(ct);
+
+            foreach (var user in users)
+            {
+                var displayName = !string.IsNullOrWhiteSpace(user.FullName)
+                    ? user.FullName.Trim()
+                    : !string.IsNullOrWhiteSpace(user.Email)
+                        ? user.Email.Trim()
+                        : !string.IsNullOrWhiteSpace(user.UserName)
+                            ? user.UserName.Trim()
+                            : user.Id;
+
+                AddDisplayName(displayNames, user.Id, displayName);
+                AddDisplayName(displayNames, user.UserName, displayName);
+                AddDisplayName(displayNames, user.Email, displayName);
+            }
+
+            return displayNames;
+        }
+
+        private static void AddDisplayName(IDictionary<string, string> displayNames, string? reference, string displayName)
+        {
+            if (!string.IsNullOrWhiteSpace(reference) && !displayNames.ContainsKey(reference.Trim()))
+            {
+                displayNames[reference.Trim()] = displayName;
+            }
+        }
+
+        private static string? BuildReferenceDisplayName(string? value, IReadOnlyDictionary<string, string> displayNames)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            var reference = value.Trim();
+            return displayNames.TryGetValue(reference, out var displayName)
+                ? displayName
+                : reference;
         }
 
         private sealed class WorkflowActionContext

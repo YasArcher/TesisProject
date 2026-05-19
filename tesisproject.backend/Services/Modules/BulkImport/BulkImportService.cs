@@ -11,6 +11,7 @@ using tesisproject.shared.DTOs.Articles;
 using tesisproject.shared.DTOs.ExternalApis;
 using tesisproject.shared.DTOs.Imports;
 using tesisproject.shared.DTOs.MassRegistration;
+using tesisproject.shared.Validation;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -614,7 +615,7 @@ namespace tesisproject.backend.Services.Implementations
                     ImportBatchId = batch.ImportBatchId,
                     ImportBatchRowId = row.ImportBatchRowId,
                     ErrorCode = "AUTHOR_SUBMISSION_PARTICIPANTS_PENDING",
-                    ErrorMessage = $"El envío incluye {request.Participants.Count} participantes. Esta fase inicial del workflow conserva el detalle completo en RawJson y expone como editable el participante principal mientras se completa la fase multiparicipante del staging.",
+                    ErrorMessage = $"El envío incluye {request.Participants.Count} participantes. Esta fase inicial del workflow conserva el detalle completo en RawJson y expone como editable el participante principal mientras se completa la fase multiparticipante del staging.",
                     Severity = "Warning",
                     CreatedAt = now
                 });
@@ -636,7 +637,7 @@ namespace tesisproject.backend.Services.Implementations
             };
         }
 
-        public async Task<BulkImportActionResultDto> CreateBatchFromMatrixAsync(RegistrationMatrixDetailDto matrix, bool validateAfterCreate, bool useAuthorWorkflow, string? userId, CancellationToken ct = default)
+        public async Task<BulkImportActionResultDto> CreateBatchFromMatrixAsync(RegistrationMatrixDetailDto matrix, bool validateAfterCreate, bool useAuthorWorkflow, string? userId, IReadOnlyList<RegistrationMatrixRowParticipantDto>? rowParticipants = null, CancellationToken ct = default)
         {
             if (matrix is null || matrix.Summary is null)
             {
@@ -654,8 +655,16 @@ namespace tesisproject.backend.Services.Implementations
 
             await ArticleVenueModelHelper.EnsureVenueCompositeFieldsAsync(_db, ct);
 
+            var participantFieldIds = (rowParticipants ?? [])
+                .SelectMany(x => x.Participants ?? [])
+                .SelectMany(x => x.Cells ?? [])
+                .Select(x => x.FieldId)
+                .Distinct()
+                .ToList();
+
             var columnFieldIds = (matrix.Columns ?? new List<RegistrationMatrixColumnDto>())
                 .Select(x => x.FieldId)
+                .Concat(participantFieldIds)
                 .Distinct()
                 .ToList();
 
@@ -691,10 +700,10 @@ namespace tesisproject.backend.Services.Implementations
                     Origin = useAuthorWorkflow ? "author-registration-matrix" : "registration-matrix",
                     FileName = matrix.Summary.Name,
                     SourceType = useAuthorWorkflow ? "AuthorMatrixSubmission" : "MatrixDraft",
-                    ArticleFieldIds = fields.Where(x => x.EntityName == "Article").OrderBy(x => columnOrder[x.FieldId]).Select(x => x.FieldId).ToList(),
-                    ParticipantFieldIds = fields.Where(x => x.EntityName == "ArticleParticipant").OrderBy(x => columnOrder[x.FieldId]).Select(x => x.FieldId).ToList(),
+                    ArticleFieldIds = fields.Where(x => x.EntityName == "Article").OrderBy(x => columnOrder.TryGetValue(x.FieldId, out var articleOrder) ? articleOrder : int.MaxValue).Select(x => x.FieldId).ToList(),
+                    ParticipantFieldIds = fields.Where(x => x.EntityName == "ArticleParticipant").OrderBy(x => columnOrder.TryGetValue(x.FieldId, out var participantOrder) ? participantOrder : int.MaxValue).ThenBy(x => x.DisplayOrder).Select(x => x.FieldId).ToList(),
                     RequiredArticleFieldIds = requiredFieldContract.ArticleFieldIds,
-                    RequiredParticipantFieldIds = requiredFieldContract.ParticipantFieldIds
+                    RequiredParticipantFieldIds = useAuthorWorkflow && (rowParticipants?.Count ?? 0) > 0 ? [] : requiredFieldContract.ParticipantFieldIds
                 }, preserveRequiredContractOnlyWhenTrimmed: true),
                 TotalRows = validRows.Count,
                 SuccessfulRows = 0,
@@ -722,6 +731,9 @@ namespace tesisproject.backend.Services.Implementations
 
             var normalizer = await BulkImportNormalizerCache.CreateAsync(_db, ct);
             var rowValues = new List<ImportBatchRowValue>();
+            var participantsByRowId = (rowParticipants ?? [])
+                .GroupBy(x => x.RegistrationMatrixRowId)
+                .ToDictionary(x => x.Key, x => x.First().Participants ?? []);
 
             for (var index = 0; index < validRows.Count; index++)
             {
@@ -752,7 +764,9 @@ namespace tesisproject.backend.Services.Implementations
                     });
                 }
 
-                batchRow.RawJson = rawData.Count == 0 ? null : JsonSerializer.Serialize(rawData);
+                batchRow.RawJson = useAuthorWorkflow && participantsByRowId.Count > 0
+                    ? JsonSerializer.Serialize(BuildAggregateRequestFromMatrixRow(matrixRow, fieldsById, participantsByRowId))
+                    : rawData.Count == 0 ? null : JsonSerializer.Serialize(rawData);
             }
 
             if (rowValues.Count > 0)
@@ -775,6 +789,195 @@ namespace tesisproject.backend.Services.Implementations
                 Batch = await GetBatchAsync(batch.ImportBatchId, 25, ct) ?? new BulkImportBatchDetailDto()
             };
         }
+
+        private static RegisterArticleAggregateRequest BuildAggregateRequestFromMatrixRow(
+            RegistrationMatrixRowDto matrixRow,
+            Dictionary<int, FieldCatalogEntry> fieldsById,
+            Dictionary<int, List<RegistrationMatrixParticipantDto>> participantsByRowId)
+        {
+            var request = new RegisterArticleAggregateRequest
+            {
+                FormKey = "ArticleManualForm"
+            };
+
+            foreach (var cell in matrixRow.Cells.Where(x => !string.IsNullOrWhiteSpace(x.RawValue)))
+            {
+                if (!fieldsById.TryGetValue(cell.FieldId, out var field))
+                {
+                    continue;
+                }
+
+                ApplyMatrixCellToAggregate(request, field, cell.RawValue!.Trim());
+            }
+
+            if (participantsByRowId.TryGetValue(matrixRow.RegistrationMatrixRowId, out var participants))
+            {
+                var index = 1;
+                foreach (var participantDraft in participants.OrderBy(x => x.Index <= 0 ? int.MaxValue : x.Index))
+                {
+                    var participant = new ArticleParticipantAggregateDto
+                    {
+                        Index = participantDraft.Index <= 0 ? index : participantDraft.Index,
+                        Participacion = index == 1 ? "Autor" : "Coautor",
+                        ParticipantType = "Docente",
+                        IsPrimaryAuthor = index == 1
+                    };
+
+                    foreach (var cell in participantDraft.Cells.Where(x => !string.IsNullOrWhiteSpace(x.RawValue)))
+                    {
+                        if (!fieldsById.TryGetValue(cell.FieldId, out var field))
+                        {
+                            continue;
+                        }
+
+                        ApplyMatrixParticipantCell(participant, field, cell.RawValue!.Trim());
+                    }
+
+                    request.Participants.Add(participant);
+                    index++;
+                }
+            }
+
+            return request;
+        }
+
+        private static void ApplyMatrixCellToAggregate(RegisterArticleAggregateRequest request, FieldCatalogEntry field, string value)
+        {
+            if (!string.Equals(field.EntityName, "Article", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            switch (ResolveMatrixArticleKey(field))
+            {
+                case "Title": request.Article.Title = value; break;
+                case "Doi": request.Article.Doi = value; break;
+                case "Year": request.Article.Year = TryParseShort(value); break;
+                case "PublishedAt": request.Article.PublishedAt = TryParseDate(value); break;
+                case "PageCount": request.Article.PageCount = TryParseInt(value); break;
+                case "PublicationUrl": request.Article.PublicationUrl = value; break;
+                case "IsProjectResult": request.Article.IsProjectResult = TryParseBool(value); break;
+                case "HasInterculturalComponent": request.Article.HasInterculturalComponent = TryParseBool(value); break;
+                case "ProceedingsName": request.Article.ProceedingsName = value; break;
+                case "Proceedings": request.Article.Proceedings = value; break;
+                case "EventName": request.Article.EventName = value; break;
+                case "GroupName": request.Article.GroupName = value; break;
+                case "Filiacion": request.Article.Filiacion = value; break;
+                case "AcademicTermId": request.Article.AcademicTermId = TryParseInt(value); break;
+                case "PublicationStatusId": request.Article.PublicationStatusId = TryParseByte(value); break;
+                case "ResearchLineId": request.Article.ResearchLineId = TryParseInt(value); break;
+                case "FacultyId": request.Article.FacultyId = TryParseInt(value); break;
+                case "BroadFieldId": request.Article.BroadFieldId = TryParseInt(value); break;
+                case "SpecificFieldId": request.Article.SpecificFieldId = TryParseInt(value); break;
+                case "DetailedFieldId": request.Article.DetailedFieldId = TryParseInt(value); break;
+                case "IsOpenAccess": request.Article.IsOpenAccess = TryParseBool(value); break;
+                case "ExternalSource": request.Article.ExternalSource = value; break;
+                case "ExternalId": request.Article.ExternalId = value; break;
+                case "JournalName": request.Venue.JournalName = value; break;
+                case "IssnCode": request.Venue.IssnCode = value; break;
+                case "IssueNumber": request.Venue.IssueNumber = value; break;
+                case "VolumeNumber": request.Venue.VolumeNumber = value; break;
+                case "JournalUrl": request.Venue.JournalUrl = value; break;
+                case "VenueType": request.Venue.Type = value; break;
+                case "Sjr": request.VenueMetric.Sjr = TryParseDecimal(value); break;
+                case "Quartile": request.VenueMetric.Quartile = value; break;
+                default:
+                    if (field.IsDynamic)
+                    {
+                        request.DynamicFields.Add(BuildDynamicValue(field, value));
+                    }
+
+                    break;
+            }
+        }
+
+        private static string ResolveMatrixArticleKey(FieldCatalogEntry field)
+        {
+            if (string.Equals(field.FieldKey, "VenueId", StringComparison.OrdinalIgnoreCase)
+                || ArticleVenueModelHelper.IsCompositeVenueField(field.FieldKey))
+            {
+                return field.FieldKey;
+            }
+
+            var physical = field.PhysicalColumnName ?? string.Empty;
+            var physicalTable = field.PhysicalTableName ?? string.Empty;
+            var label = field.FieldLabel ?? string.Empty;
+
+            if ((string.Equals(physicalTable, "dbo.Venues", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(physicalTable, "Venues", StringComparison.OrdinalIgnoreCase))
+                && string.Equals(physical, "Name", StringComparison.OrdinalIgnoreCase))
+            {
+                return "JournalName";
+            }
+
+            if (label.Contains("revista", StringComparison.OrdinalIgnoreCase)
+                && label.Contains("nombre", StringComparison.OrdinalIgnoreCase))
+            {
+                return "JournalName";
+            }
+
+            return field.FieldKey;
+        }
+
+        private static void ApplyMatrixParticipantCell(ArticleParticipantAggregateDto participant, FieldCatalogEntry field, string value)
+        {
+            if (!string.Equals(field.EntityName, "ArticleParticipant", StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            switch (field.FieldKey)
+            {
+                case "Index": participant.Index = TryParseInt(value) ?? participant.Index; break;
+                case "Identificacion": participant.Identificacion = value; break;
+                case "Nombre": participant.Nombre = value; break;
+                case "Participacion": participant.Participacion = value; break;
+                case "ParticipantType": participant.ParticipantType = value; break;
+                case "InstitutionalPersonId": participant.InstitutionalPersonId = TryParseInt(value); break;
+                case "IsPrimaryAuthor": participant.IsPrimaryAuthor = TryParseBool(value); break;
+                case "Email": participant.Email = value; break;
+                case "Orcid": participant.Orcid = value; break;
+                case "Affiliation": participant.Affiliation = value; break;
+                case "ExternalAuthorId": participant.ExternalAuthorId = value; break;
+                default:
+                    if (field.IsDynamic)
+                    {
+                        participant.DynamicFields.Add(BuildDynamicValue(field, value));
+                    }
+
+                    break;
+            }
+        }
+
+        private static DynamicFieldValueInputDto BuildDynamicValue(FieldCatalogEntry field, string value)
+            => new()
+            {
+                FieldId = field.FieldId,
+                FieldKey = field.FieldKey,
+                ValueString = value,
+                ValueInt = TryParseInt(value),
+                ValueDecimal = TryParseDecimal(value),
+                ValueDate = TryParseDate(value),
+                ValueBit = bool.TryParse(value, out var parsed) ? parsed : null
+            };
+
+        private static int? TryParseInt(string value)
+            => int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;
+
+        private static short? TryParseShort(string value)
+            => short.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;
+
+        private static byte? TryParseByte(string value)
+            => byte.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;
+
+        private static decimal? TryParseDecimal(string value)
+            => decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed) ? parsed : null;
+
+        private static DateTime? TryParseDate(string value)
+            => DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed) ? parsed : null;
+
+        private static bool TryParseBool(string value)
+            => bool.TryParse(value, out var parsed) ? parsed : value is "1" or "Si" or "Sí" or "si" or "sí";
 
         private async Task AddExternalArticleRowAsync(
             int batchId,
@@ -1029,7 +1232,8 @@ namespace tesisproject.backend.Services.Implementations
         {
             var validation = await ValidateBatchAsync(batchId, ct);
             var batchSourceType = validation.Batch.Summary.SourceType ?? string.Empty;
-            var isAuthorSubmission = string.Equals(batchSourceType, "AuthorSubmission", StringComparison.OrdinalIgnoreCase);
+            var isAuthorSubmission = string.Equals(batchSourceType, "AuthorSubmission", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(batchSourceType, "AuthorMatrixSubmission", StringComparison.OrdinalIgnoreCase);
 
             if (validation.Batch.Summary.ErrorRows > 0)
             {
@@ -1717,7 +1921,7 @@ namespace tesisproject.backend.Services.Implementations
 
             var rows = await _db.ImportBatchRows.Where(x => x.ImportBatchId == batchId).ToListAsync(ct);
             var rowErrorIds = await _db.ImportBatchErrors
-                .Where(x => x.ImportBatchId == batchId && x.ImportBatchRowId != null)
+                .Where(x => x.ImportBatchId == batchId && x.ImportBatchRowId != null && x.Severity == "Error")
                 .Select(x => x.ImportBatchRowId!.Value)
                 .Distinct()
                 .ToListAsync(ct);
@@ -1857,9 +2061,24 @@ namespace tesisproject.backend.Services.Implementations
 
         private async Task<List<FieldCatalogEntry>> ResolveRequiredProcessFieldsByEntityAsync(string entityName, CancellationToken ct)
         {
-            var activeFormId = await _db.FormDefinitions
+            var preferredFormKey = entityName.Equals("Article", StringComparison.OrdinalIgnoreCase)
+                ? "ArticleManualForm"
+                : entityName.Equals("ArticleParticipant", StringComparison.OrdinalIgnoreCase)
+                    ? "ArticleParticipantForm"
+                    : null;
+
+            var formQuery = _db.FormDefinitions
                 .AsNoTracking()
-                .Where(x => x.EntityName == entityName && x.IsActive)
+                .Where(x => x.EntityName == entityName && x.IsActive);
+
+            var activeFormId = !string.IsNullOrWhiteSpace(preferredFormKey)
+                ? await formQuery
+                    .Where(x => x.FormKey == preferredFormKey)
+                    .Select(x => (int?)x.FormId)
+                    .FirstOrDefaultAsync(ct)
+                : null;
+
+            activeFormId ??= await formQuery
                 .OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt)
                 .ThenByDescending(x => x.FormId)
                 .Select(x => (int?)x.FormId)
@@ -2003,7 +2222,15 @@ namespace tesisproject.backend.Services.Implementations
             var rowValues = await _db.ImportBatchRowValues
                 .Include(x => x.Field)
                 .Include(x => x.Row)
-                .Where(x => x.Row != null && x.Row.ImportBatchId == batchId && x.Field != null && relevantKeys.Contains(x.Field.FieldKey))
+                .Where(x => x.Row != null
+                    && x.Row.ImportBatchId == batchId
+                    && x.Field != null
+                    && x.Field.EntityName == "Article"
+                    && (relevantKeys.Contains(x.Field.FieldKey)
+                        || x.Field.PhysicalTableName == "dbo.Venues"
+                        || x.Field.PhysicalTableName == "Venues"
+                        || x.Field.PhysicalTableName == "dbo.VenueMetrics"
+                        || x.Field.PhysicalTableName == "VenueMetrics"))
                 .ToListAsync(ct);
 
             if (rowValues.Count == 0)
@@ -2030,7 +2257,8 @@ namespace tesisproject.backend.Services.Implementations
             {
                 var valuesByKey = rowGroup
                     .Where(x => x.Field != null)
-                    .ToDictionary(x => x.Field!.FieldKey, x => x, StringComparer.OrdinalIgnoreCase);
+                    .GroupBy(x => ResolveImportArticleFieldKey(x.Field!))
+                    .ToDictionary(x => x.Key, x => x.First(), StringComparer.OrdinalIgnoreCase);
 
                 var venueInput = new ArticleVenueInputDto
                 {
@@ -2116,6 +2344,35 @@ namespace tesisproject.backend.Services.Implementations
             return pipeIndex >= 0 ? trimmed[..pipeIndex].Trim() : trimmed;
         }
 
+        private static string ResolveImportArticleFieldKey(FieldCatalogEntry field)
+        {
+            if (string.Equals(field.FieldKey, "VenueId", StringComparison.OrdinalIgnoreCase)
+                || ArticleVenueModelHelper.IsCompositeVenueField(field.FieldKey)
+                || string.Equals(field.FieldKey, "Year", StringComparison.OrdinalIgnoreCase))
+            {
+                return field.FieldKey;
+            }
+
+            var physical = field.PhysicalColumnName ?? string.Empty;
+            var physicalTable = field.PhysicalTableName ?? string.Empty;
+            var label = field.FieldLabel ?? string.Empty;
+
+            if ((string.Equals(physicalTable, "dbo.Venues", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(physicalTable, "Venues", StringComparison.OrdinalIgnoreCase))
+                && string.Equals(physical, "Name", StringComparison.OrdinalIgnoreCase))
+            {
+                return "JournalName";
+            }
+
+            if (label.Contains("revista", StringComparison.OrdinalIgnoreCase)
+                && label.Contains("nombre", StringComparison.OrdinalIgnoreCase))
+            {
+                return "JournalName";
+            }
+
+            return field.FieldKey;
+        }
+
         private static Dictionary<string, string?> ParseRawJson(string? rawJson)
         {
             if (string.IsNullOrWhiteSpace(rawJson))
@@ -2150,12 +2407,12 @@ namespace tesisproject.backend.Services.Implementations
                     return new NormalizedValueResult(value, "string", false, $"El valor '{value}' no coincide con una opción activa para {field.FieldLabel}.");
                 }
 
-                return new NormalizedValueResult(option.OptionValue, "string", true, null);
+                return ApplyConfiguredFieldValidation(field, value, option.OptionValue, "string", true, null);
             }
 
             if (TryNormalizeReference(field, value, cache, out var referenceResult))
             {
-                return referenceResult;
+                return ApplyConfiguredFieldValidation(field, value, referenceResult.NormalizedValue, referenceResult.ValueType, referenceResult.IsValid, referenceResult.ValidationMessage);
             }
 
             var dataType = (field.DataType ?? string.Empty).Trim().ToLowerInvariant();
@@ -2163,7 +2420,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (TryParseBool(value, out var boolValue))
                 {
-                    return new NormalizedValueResult(boolValue ? "1" : "0", "bit", true, null);
+                    return ApplyConfiguredFieldValidation(field, value, boolValue ? "1" : "0", "bit", true, null);
                 }
 
                 return new NormalizedValueResult(value, "bit", false, $"El valor '{value}' no es un booleano válido para {field.FieldLabel}.");
@@ -2173,7 +2430,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var dt) || DateTime.TryParse(value, out dt))
                 {
-                    return new NormalizedValueResult(dt.ToString("yyyy-MM-dd"), "datetime", true, null);
+                    return ApplyConfiguredFieldValidation(field, value, dt.ToString("yyyy-MM-dd"), "datetime", true, null);
                 }
 
                 return new NormalizedValueResult(value, "datetime", false, $"El valor '{value}' no es una fecha válida para {field.FieldLabel}.");
@@ -2183,7 +2440,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var dec) || decimal.TryParse(value, NumberStyles.Any, new CultureInfo("es-EC"), out dec))
                 {
-                    return new NormalizedValueResult(dec.ToString(CultureInfo.InvariantCulture), "decimal", true, null);
+                    return ApplyConfiguredFieldValidation(field, value, dec.ToString(CultureInfo.InvariantCulture), "decimal", true, null);
                 }
 
                 return new NormalizedValueResult(value, "decimal", false, $"El valor '{value}' no es numérico para {field.FieldLabel}.");
@@ -2193,14 +2450,85 @@ namespace tesisproject.backend.Services.Implementations
             {
                 if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var iv) || int.TryParse(value, out iv))
                 {
-                    return new NormalizedValueResult(iv.ToString(CultureInfo.InvariantCulture), "int", true, null);
+                    return ApplyConfiguredFieldValidation(field, value, iv.ToString(CultureInfo.InvariantCulture), "int", true, null);
                 }
 
                 return new NormalizedValueResult(value, "int", false, $"El valor '{value}' no es entero para {field.FieldLabel}.");
             }
 
-            return new NormalizedValueResult(value, "string", true, null);
+            return ApplyConfiguredFieldValidation(field, value, value, "string", true, null);
         }
+
+        private static NormalizedValueResult ApplyConfiguredFieldValidation(
+            FieldCatalogEntry field,
+            string rawValue,
+            string? normalizedValue,
+            string valueType,
+            bool isValid,
+            string? validationMessage)
+        {
+            if (!isValid)
+            {
+                return new NormalizedValueResult(normalizedValue, valueType, isValid, validationMessage);
+            }
+
+            var businessValidationMessage = ValidateKnownRegistrationRule(field, rawValue);
+            if (!string.IsNullOrWhiteSpace(businessValidationMessage))
+            {
+                return new NormalizedValueResult(normalizedValue ?? rawValue, valueType, false, businessValidationMessage);
+            }
+
+            var configuredValidationMessage = DynamicFieldValidationEngine.Validate(
+                field.FieldLabel,
+                field.DataType,
+                false,
+                field.MaxLength,
+                field.ValidationRule,
+                new DynamicFieldValidationValue { Text = rawValue });
+
+            return string.IsNullOrWhiteSpace(configuredValidationMessage)
+                ? new NormalizedValueResult(normalizedValue, valueType, true, null)
+                : new NormalizedValueResult(normalizedValue ?? rawValue, valueType, false, configuredValidationMessage);
+        }
+
+        private static string? ValidateKnownRegistrationRule(FieldCatalogEntry field, string rawValue)
+        {
+            var key = field.PhysicalColumnName ?? field.FieldKey;
+            var value = rawValue.Trim();
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            return key switch
+            {
+                "PageCount" when int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var pageCount) && pageCount > 1000
+                    => "Numero de paginas no debe superar 1000.",
+                "Quartile" when !IsAllowedQuartile(value)
+                    => "Cuartil debe ser Q1, Q2, Q3 o Q4.",
+                "Participacion" when !IsAllowedParticipation(value)
+                    => "Participacion debe ser Autor o Coautor.",
+                "ParticipantType" when !IsAllowedParticipantType(value)
+                    => "Tipo de participante debe ser Docente, Estudiante, Externo u Otro.",
+                "Identificacion" when !System.Text.RegularExpressions.Regex.IsMatch(value, @"^\d{10}$")
+                    => "Identificacion debe contener exactamente 10 numeros.",
+                _ => null
+            };
+        }
+
+        private static bool IsAllowedQuartile(string value)
+            => value.Trim().ToUpperInvariant() is "Q1" or "Q2" or "Q3" or "Q4";
+
+        private static bool IsAllowedParticipation(string value)
+            => value.Trim().Equals("Autor", StringComparison.OrdinalIgnoreCase)
+               || value.Trim().Equals("Coautor", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsAllowedParticipantType(string value)
+            => value.Trim().Equals("Docente", StringComparison.OrdinalIgnoreCase)
+               || value.Trim().Equals("Estudiante", StringComparison.OrdinalIgnoreCase)
+               || value.Trim().Equals("Externo", StringComparison.OrdinalIgnoreCase)
+               || value.Trim().Equals("Otro", StringComparison.OrdinalIgnoreCase);
 
         private static bool TryNormalizeReference(FieldCatalogEntry field, string value, BulkImportNormalizerCache cache, out NormalizedValueResult result)
         {

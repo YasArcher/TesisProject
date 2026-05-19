@@ -3,6 +3,7 @@ using tesisproject.backend.Data;
 using tesisproject.backend.Data.Entities;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Articles;
+using tesisproject.shared.Validation;
 
 namespace tesisproject.backend.Services.Implementations
 {
@@ -61,25 +62,83 @@ namespace tesisproject.backend.Services.Implementations
                 throw new InvalidOperationException($"Existen indices de participante repetidos: {string.Join(", ", duplicatedIndexes)}.");
             }
 
-            var articleFields = await _db.FieldCatalogEntries
-                .AsNoTracking()
-                .Where(x => x.EntityName == "Article" && x.IsActive)
-                .ToListAsync(ct);
+            if (request.Article.PageCount is > 1000)
+            {
+                throw new InvalidOperationException("Numero de paginas no debe superar 1000.");
+            }
 
-            var participantFields = await _db.FieldCatalogEntries
-                .AsNoTracking()
-                .Where(x => x.EntityName == "ArticleParticipant" && x.IsActive)
-                .ToListAsync(ct);
+            if (!string.IsNullOrWhiteSpace(request.VenueMetric?.Quartile) && !IsAllowedQuartile(request.VenueMetric.Quartile))
+            {
+                throw new InvalidOperationException("Cuartil debe ser Q1, Q2, Q3 o Q4.");
+            }
+
+            ValidateParticipantBusinessRules(request.Participants);
+
+            var articleFields = await ResolveValidationFieldsAsync("Article", request.FormKey, ct);
+            var participantFields = await ResolveValidationFieldsAsync("ArticleParticipant", "ArticleParticipantForm", ct);
 
             ValidateRequiredPhysicalFieldsForArticle(request.Article, articleFields);
             ValidateVenueData(request, articleFields);
             ValidateRequiredPhysicalFieldsForParticipants(request.Participants, participantFields);
+            ValidateConfiguredPhysicalFieldsForArticle(request, articleFields);
+            ValidateConfiguredPhysicalFieldsForParticipants(request.Participants, participantFields);
             ValidateDynamicFields(request.DynamicFields, articleFields, "Article");
 
             foreach (var participant in request.Participants)
             {
                 ValidateDynamicFields(participant.DynamicFields, participantFields, "ArticleParticipant");
             }
+        }
+
+        private async Task<List<FieldCatalogEntry>> ResolveValidationFieldsAsync(string entityName, string? formKey, CancellationToken ct)
+        {
+            var normalizedFormKey = (formKey ?? string.Empty).Trim();
+            var normalizedEntityName = (entityName ?? string.Empty).Trim();
+
+            var formQuery = _db.FormDefinitions
+                .AsNoTracking()
+                .Include(x => x.Fields)
+                    .ThenInclude(x => x.Field)
+                        .ThenInclude(x => x!.Options)
+                .Where(x => x.EntityName == normalizedEntityName && x.IsActive);
+
+            FormDefinition? form = null;
+            if (!string.IsNullOrWhiteSpace(normalizedFormKey))
+            {
+                form = await formQuery.FirstOrDefaultAsync(x => x.FormKey == normalizedFormKey, ct);
+            }
+
+            form ??= await formQuery
+                .OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt)
+                .ThenByDescending(x => x.FormId)
+                .FirstOrDefaultAsync(ct);
+
+            if (form is not null)
+            {
+                return form.Fields
+                    .Where(x => x.Field is not null && x.Field.IsActive && x.IsVisible && x.IsEditable)
+                    .Where(x => !string.Equals(x.Field!.FieldKey, "VenueId", StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(x => x.DisplayOrder)
+                    .ThenBy(x => x.FieldId)
+                    .Select(x =>
+                    {
+                        var field = x.Field!;
+                        field.IsRequired = x.IsRequired;
+                        field.IsVisible = x.IsVisible;
+                        field.IsEditable = x.IsEditable;
+                        return field;
+                    })
+                    .ToList();
+            }
+
+            return await _db.FieldCatalogEntries
+                .AsNoTracking()
+                .Include(x => x.Options)
+                .Where(x => x.EntityName == normalizedEntityName && x.IsActive && x.IsVisible && x.IsEditable)
+                .Where(x => !string.Equals(x.FieldKey, "VenueId", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(x => x.DisplayOrder)
+                .ThenBy(x => x.FieldId)
+                .ToListAsync(ct);
         }
 
         public async Task<RegisterArticleAggregateResponse> PersistAsync(RegisterArticleAggregateRequest request, CancellationToken ct = default)
@@ -186,7 +245,7 @@ namespace tesisproject.backend.Services.Implementations
         private static void ValidateVenueData(RegisterArticleAggregateRequest request, List<FieldCatalogEntry> articleFields)
         {
             var requiredVenueFields = articleFields
-                .Where(x => x.IsRequired && !x.IsDynamic && (string.Equals(x.FieldKey, "VenueId", StringComparison.OrdinalIgnoreCase) || ArticleVenueModelHelper.IsCompositeVenueField(x.FieldKey)))
+                .Where(x => x.IsRequired && !x.IsDynamic && IsVenueValidationField(x))
                 .ToList();
 
             if (requiredVenueFields.Count == 0)
@@ -196,7 +255,7 @@ namespace tesisproject.backend.Services.Implementations
 
             foreach (var field in requiredVenueFields)
             {
-                var hasValue = field.FieldKey switch
+                var hasValue = ResolveArticleValidationKey(field) switch
                 {
                     "VenueId" => ArticleVenueModelHelper.HasVenueContent(request.Venue),
                     "JournalName" => !string.IsNullOrWhiteSpace(request.Venue?.JournalName),
@@ -220,7 +279,7 @@ namespace tesisproject.backend.Services.Implementations
             ArticleAggregateCoreDto article,
             List<FieldCatalogEntry> articleFields)
         {
-            foreach (var field in articleFields.Where(x => x.IsRequired && !x.IsDynamic && !ArticleVenueModelHelper.IsCompositeVenueField(x.FieldKey)))
+            foreach (var field in articleFields.Where(x => x.IsRequired && !x.IsDynamic && !IsVenueValidationField(x)))
             {
                 if (!HasArticlePhysicalValue(article, field))
                 {
@@ -245,6 +304,87 @@ namespace tesisproject.backend.Services.Implementations
             }
         }
 
+        private static void ValidateParticipantBusinessRules(List<ArticleParticipantAggregateDto> participants)
+        {
+            var count = participants.Count;
+            var expectedIndexes = Enumerable.Range(1, count).ToHashSet();
+            var providedIndexes = participants.Select(x => x.Index).ToList();
+
+            if (providedIndexes.Any(index => !expectedIndexes.Contains(index)))
+            {
+                throw new InvalidOperationException($"El orden de participantes debe estar entre 1 y {count}, segun la cantidad registrada.");
+            }
+
+            if (providedIndexes.Distinct().Count() != providedIndexes.Count)
+            {
+                throw new InvalidOperationException("El orden de participantes no puede repetirse.");
+            }
+
+            foreach (var participant in participants)
+            {
+                if (!string.IsNullOrWhiteSpace(participant.Identificacion)
+                    && !System.Text.RegularExpressions.Regex.IsMatch(participant.Identificacion.Trim(), @"^\d{10}$"))
+                {
+                    throw new InvalidOperationException($"Identificacion debe contener exactamente 10 numeros (participante {participant.Index}).");
+                }
+
+                if (!string.IsNullOrWhiteSpace(participant.Participacion) && !IsAllowedParticipation(participant.Participacion))
+                {
+                    throw new InvalidOperationException($"Participacion debe ser Autor o Coautor (participante {participant.Index}).");
+                }
+
+                if (!string.IsNullOrWhiteSpace(participant.ParticipantType) && !IsAllowedParticipantType(participant.ParticipantType))
+                {
+                    throw new InvalidOperationException($"Tipo de participante debe ser Docente, Estudiante, Externo u Otro (participante {participant.Index}).");
+                }
+            }
+        }
+
+        private static void ValidateConfiguredPhysicalFieldsForArticle(
+            RegisterArticleAggregateRequest request,
+            List<FieldCatalogEntry> articleFields)
+        {
+            foreach (var field in articleFields.Where(x => !x.IsDynamic))
+            {
+                var validationMessage = DynamicFieldValidationEngine.Validate(
+                    field.FieldLabel,
+                    field.DataType,
+                    field.IsRequired && !string.Equals(field.FieldKey, "VenueId", StringComparison.OrdinalIgnoreCase),
+                    field.MaxLength,
+                    field.ValidationRule,
+                    ToArticlePhysicalValidationValue(request, field));
+
+                if (!string.IsNullOrWhiteSpace(validationMessage))
+                {
+                    throw new InvalidOperationException(validationMessage);
+                }
+            }
+        }
+
+        private static void ValidateConfiguredPhysicalFieldsForParticipants(
+            List<ArticleParticipantAggregateDto> participants,
+            List<FieldCatalogEntry> participantFields)
+        {
+            foreach (var participant in participants)
+            {
+                foreach (var field in participantFields.Where(x => !x.IsDynamic))
+                {
+                    var validationMessage = DynamicFieldValidationEngine.Validate(
+                        field.FieldLabel,
+                        field.DataType,
+                        field.IsRequired,
+                        field.MaxLength,
+                        field.ValidationRule,
+                        ToParticipantPhysicalValidationValue(participant, field));
+
+                    if (!string.IsNullOrWhiteSpace(validationMessage))
+                    {
+                        throw new InvalidOperationException($"{validationMessage} (participante {participant.Index}).");
+                    }
+                }
+            }
+        }
+
         private static void ValidateDynamicFields(
             List<DynamicFieldValueInputDto> values,
             List<FieldCatalogEntry> availableFields,
@@ -259,9 +399,17 @@ namespace tesisproject.backend.Services.Implementations
                     (x.FieldId.HasValue && x.FieldId.Value == field.FieldId) ||
                     (!string.IsNullOrWhiteSpace(x.FieldKey) && string.Equals(x.FieldKey, field.FieldKey, StringComparison.OrdinalIgnoreCase)));
 
-                if (match is null || !HasAnyDynamicValue(match))
+                var validationMessage = DynamicFieldValidationEngine.Validate(
+                    field.FieldLabel,
+                    field.DataType,
+                    field.IsRequired,
+                    field.MaxLength,
+                    field.ValidationRule,
+                    ToValidationValue(match));
+
+                if (!string.IsNullOrWhiteSpace(validationMessage))
                 {
-                    throw new InvalidOperationException($"El campo dinamico requerido '{field.FieldLabel}' de {entityName} no fue informado.");
+                    throw new InvalidOperationException($"{validationMessage} ({entityName}).");
                 }
             }
 
@@ -272,6 +420,19 @@ namespace tesisproject.backend.Services.Implementations
                 {
                     var token = value.FieldKey ?? value.FieldId?.ToString() ?? "desconocido";
                     throw new InvalidOperationException($"No existe un campo dinamico activo para '{token}' en {entityName}.");
+                }
+
+                var validationMessage = DynamicFieldValidationEngine.Validate(
+                    field.FieldLabel,
+                    field.DataType,
+                    field.IsRequired,
+                    field.MaxLength,
+                    field.ValidationRule,
+                    ToValidationValue(value));
+
+                if (!string.IsNullOrWhiteSpace(validationMessage))
+                {
+                    throw new InvalidOperationException($"{validationMessage} ({entityName}).");
                 }
             }
         }
@@ -365,6 +526,111 @@ namespace tesisproject.backend.Services.Implementations
                 || !string.IsNullOrWhiteSpace(value.ValueJson);
         }
 
+        private static DynamicFieldValidationValue ToValidationValue(DynamicFieldValueInputDto? value)
+        {
+            if (value is null)
+            {
+                return new DynamicFieldValidationValue();
+            }
+
+            return new DynamicFieldValidationValue
+            {
+                Text = value.ValueString,
+                Int = value.ValueInt,
+                Decimal = value.ValueDecimal,
+                Date = value.ValueDate,
+                Bool = value.ValueBit,
+                Json = value.ValueJson
+            };
+        }
+
+        private static DynamicFieldValidationValue ToArticlePhysicalValidationValue(
+            RegisterArticleAggregateRequest request,
+            FieldCatalogEntry field)
+        {
+            var article = request.Article;
+            var key = ResolveArticleValidationKey(field);
+
+            return key switch
+            {
+                "Title" => Text(article.Title),
+                "Doi" => Text(article.Doi),
+                "Year" => Int(article.Year),
+                "PublishedAt" => Date(article.PublishedAt),
+                "PageCount" => Int(article.PageCount),
+                "PublicationUrl" => Text(article.PublicationUrl),
+                "ProceedingsName" => Text(article.ProceedingsName),
+                "Proceedings" => Text(article.Proceedings),
+                "EventName" => Text(article.EventName),
+                "GroupName" => Text(article.GroupName),
+                "Filiacion" => Text(article.Filiacion),
+                "JournalName" => Text(request.Venue?.JournalName),
+                "IssnCode" => Text(request.Venue?.IssnCode),
+                "IssueNumber" => Text(request.Venue?.IssueNumber),
+                "VolumeNumber" => Text(request.Venue?.VolumeNumber),
+                "JournalUrl" => Text(request.Venue?.JournalUrl),
+                "Sjr" => Decimal(request.VenueMetric?.Sjr),
+                "Quartile" => Text(request.VenueMetric?.Quartile),
+                "AcademicTermId" => Int(article.AcademicTermId),
+                "PublicationStatusId" => Int(article.PublicationStatusId),
+                "ResearchLineId" => Int(article.ResearchLineId),
+                "BroadFieldId" => Int(article.BroadFieldId),
+                "SpecificFieldId" => Int(article.SpecificFieldId),
+                "DetailedFieldId" => Int(article.DetailedFieldId),
+                "FacultyId" => Int(article.FacultyId),
+                "ExternalSource" => Text(article.ExternalSource),
+                "ExternalId" => Text(article.ExternalId),
+                "IsProjectResult" => Bool(article.IsProjectResult),
+                "HasInterculturalComponent" => Bool(article.HasInterculturalComponent),
+                "IsOpenAccess" => Bool(article.IsOpenAccess),
+                _ => new DynamicFieldValidationValue()
+            };
+        }
+
+        private static DynamicFieldValidationValue ToParticipantPhysicalValidationValue(
+            ArticleParticipantAggregateDto participant,
+            FieldCatalogEntry field)
+        {
+            var key = ResolveArticleValidationKey(field);
+
+            return key switch
+            {
+                "Index" => Int(participant.Index),
+                "Identificacion" => Text(participant.Identificacion),
+                "Nombre" => Text(participant.Nombre),
+                "Participacion" => Text(participant.Participacion),
+                "ParticipantType" => Text(participant.ParticipantType),
+                "InstitutionalPersonId" => Int(participant.InstitutionalPersonId),
+                "IsPrimaryAuthor" => Bool(participant.IsPrimaryAuthor),
+                "Email" => Text(participant.Email),
+                "Orcid" => Text(participant.Orcid),
+                "Affiliation" => Text(participant.Affiliation),
+                "ExternalAuthorId" => Text(participant.ExternalAuthorId),
+                _ => new DynamicFieldValidationValue()
+            };
+        }
+
+        private static DynamicFieldValidationValue Text(string? value) => new() { Text = value };
+        private static DynamicFieldValidationValue Int(int? value) => new() { Int = value };
+        private static DynamicFieldValidationValue Int(short? value) => new() { Int = value };
+        private static DynamicFieldValidationValue Int(byte? value) => new() { Int = value };
+        private static DynamicFieldValidationValue Decimal(decimal? value) => new() { Decimal = value };
+        private static DynamicFieldValidationValue Date(DateTime? value) => new() { Date = value };
+        private static DynamicFieldValidationValue Bool(bool value) => new() { Bool = value };
+
+        private static bool IsAllowedQuartile(string value)
+            => value.Trim().ToUpperInvariant() is "Q1" or "Q2" or "Q3" or "Q4";
+
+        private static bool IsAllowedParticipation(string value)
+            => value.Trim().Equals("Autor", StringComparison.OrdinalIgnoreCase)
+               || value.Trim().Equals("Coautor", StringComparison.OrdinalIgnoreCase);
+
+        private static bool IsAllowedParticipantType(string value)
+            => value.Trim().Equals("Docente", StringComparison.OrdinalIgnoreCase)
+               || value.Trim().Equals("Estudiante", StringComparison.OrdinalIgnoreCase)
+               || value.Trim().Equals("Externo", StringComparison.OrdinalIgnoreCase)
+               || value.Trim().Equals("Otro", StringComparison.OrdinalIgnoreCase);
+
         private static string? Normalize(string? value)
         {
             return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
@@ -387,13 +653,13 @@ namespace tesisproject.backend.Services.Implementations
                 "EventName" => !string.IsNullOrWhiteSpace(article.EventName),
                 "GroupName" => !string.IsNullOrWhiteSpace(article.GroupName),
                 "Filiacion" => !string.IsNullOrWhiteSpace(article.Filiacion),
-                "JournalName" => false,
-                "IssnCode" => false,
-                "IssueNumber" => false,
-                "VolumeNumber" => false,
-                "JournalUrl" => false,
-                "Sjr" => false,
-                "Quartile" => false,
+                "JournalName" => true,
+                "IssnCode" => true,
+                "IssueNumber" => true,
+                "VolumeNumber" => true,
+                "JournalUrl" => true,
+                "Sjr" => true,
+                "Quartile" => true,
                 "VenueId" => true,
                 "AcademicTermId" => article.AcademicTermId.HasValue,
                 "PublicationStatusId" => article.PublicationStatusId.HasValue,
@@ -408,6 +674,44 @@ namespace tesisproject.backend.Services.Implementations
                 "IsOpenAccess" => true,
                 _ => true
             };
+        }
+
+        private static bool IsVenueValidationField(FieldCatalogEntry field)
+            => string.Equals(field.FieldKey, "VenueId", StringComparison.OrdinalIgnoreCase)
+               || ArticleVenueModelHelper.IsCompositeVenueField(field.FieldKey)
+               || string.Equals(field.PhysicalTableName, "dbo.Venues", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(field.PhysicalTableName, "Venues", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(field.PhysicalTableName, "dbo.VenueMetrics", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(field.PhysicalTableName, "VenueMetrics", StringComparison.OrdinalIgnoreCase)
+               || (field.FieldLabel.Contains("revista", StringComparison.OrdinalIgnoreCase)
+                   && field.FieldLabel.Contains("nombre", StringComparison.OrdinalIgnoreCase));
+
+        private static string ResolveArticleValidationKey(FieldCatalogEntry field)
+        {
+            if (ArticleVenueModelHelper.IsCompositeVenueField(field.FieldKey)
+                || string.Equals(field.FieldKey, "VenueId", StringComparison.OrdinalIgnoreCase))
+            {
+                return field.FieldKey;
+            }
+
+            var physical = field.PhysicalColumnName ?? string.Empty;
+            var label = field.FieldLabel ?? string.Empty;
+            var physicalTable = field.PhysicalTableName ?? string.Empty;
+
+            if ((string.Equals(physicalTable, "dbo.Venues", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(physicalTable, "Venues", StringComparison.OrdinalIgnoreCase))
+                && string.Equals(physical, "Name", StringComparison.OrdinalIgnoreCase))
+            {
+                return "JournalName";
+            }
+
+            if (label.Contains("revista", StringComparison.OrdinalIgnoreCase)
+                && label.Contains("nombre", StringComparison.OrdinalIgnoreCase))
+            {
+                return "JournalName";
+            }
+
+            return string.IsNullOrWhiteSpace(physical) ? field.FieldKey : physical;
         }
 
         private static bool HasParticipantPhysicalValue(ArticleParticipantAggregateDto participant, FieldCatalogEntry field)

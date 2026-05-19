@@ -1,7 +1,7 @@
 
 @page "/articulos/registrar"
 @page "/articulos/editar/{ArticleId:int}"
-@attribute [Authorize(Roles = "Admin,Analyst,Author")]
+@attribute [Authorize(Roles = "Admin,Analyst,Author,WorkflowReviewerUodide,ArticleRegistrationUser")]
 
 @using Blazored.LocalStorage
 @using Microsoft.AspNetCore.Authorization
@@ -16,6 +16,7 @@
 @using tesisproject.shared.DTOs.Configuration
 @using tesisproject.shared.DTOs.ExternalApis
 @using tesisproject.shared.DTOs.Imports
+@using tesisproject.shared.Validation
 
 @inject IFormConfigurationClient FormConfigurationClient
 @inject IApiClient ApiClient
@@ -59,6 +60,15 @@
                      Message="Se eliminarán los datos cargados para ese participante antes de guardar."
                      OnCancel="CancelRemoveParticipant"
                      OnConfirm="ConfirmRemoveParticipant" />
+    <AppConfirmPanel
+                     Visible="@IsOptionalSubmissionConfirmOpen"
+                     Eyebrow="Campos pendientes"
+                     Title="Enviar con campos opcionales incompletos"
+                     Message="@OptionalSubmissionMessage"
+                     ConfirmText="Enviar de todas formas"
+                     CancelText="Seguir completando"
+                     OnCancel="CancelOptionalSubmission"
+                     OnConfirm="ConfirmOptionalSubmissionAsync" />
 
     @if (ShouldShowTermsGate)
     {
@@ -368,6 +378,9 @@
     private bool IsLoading { get; set; } = true;
     private bool IsSaving { get; set; }
     private bool IsSummaryDrawerOpen { get; set; }
+    private bool HasAttemptedSubmission { get; set; }
+    private bool IsOptionalSubmissionConfirmOpen { get; set; }
+    private string OptionalSubmissionMessage { get; set; } = string.Empty;
     private bool IsAdminExperience { get; set; }
     private bool IsAuthorExperience { get; set; }
     private AuthMeResponse? CurrentUser { get; set; }
@@ -668,7 +681,7 @@
             return;
         }
 
-        if (!await PrepareSubmissionAsync())
+        if (!await PrepareSubmissionAsync(requireOptionalConfirmation: false))
         {
             return;
         }
@@ -707,7 +720,7 @@
             return;
         }
 
-        if (!await PrepareSubmissionAsync())
+        if (!await PrepareSubmissionAsync(requireOptionalConfirmation: true))
         {
             return;
         }
@@ -725,9 +738,9 @@
                 return;
             }
 
-            SuccessMessage = $"Envío enviado a revisión correctamente. Lote {result.Batch.Summary.BatchCode} creado para staging.";
-            WarningMessage = result.Message;
+            SuccessMessage = BuildSubmissionSuccessMessage(result);
             await ResetFormAsync();
+            HasAttemptedSubmission = false;
         }
         catch (Exception ex)
         {
@@ -739,11 +752,14 @@
         }
     }
 
-    private Task<bool> PrepareSubmissionAsync()
+    private Task<bool> PrepareSubmissionAsync(bool requireOptionalConfirmation)
     {
+        HasAttemptedSubmission = true;
         ErrorMessage = string.Empty;
         SuccessMessage = string.Empty;
         WarningMessage = string.Empty;
+        IsOptionalSubmissionConfirmOpen = false;
+        OptionalSubmissionMessage = string.Empty;
 
         if (ArticleId > 0)
         {
@@ -758,7 +774,102 @@
             return Task.FromResult(false);
         }
 
+        if (requireOptionalConfirmation)
+        {
+            var optionalPendingFields = GetPendingOptionalFields().Take(10).ToList();
+            if (optionalPendingFields.Count > 0)
+            {
+                OptionalSubmissionMessage = BuildOptionalSubmissionMessage(optionalPendingFields);
+                IsOptionalSubmissionConfirmOpen = true;
+                return Task.FromResult(false);
+            }
+        }
+
         return Task.FromResult(true);
+    }
+
+    private Task CancelOptionalSubmission()
+    {
+        IsOptionalSubmissionConfirmOpen = false;
+        OptionalSubmissionMessage = string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private async Task ConfirmOptionalSubmissionAsync()
+    {
+        IsOptionalSubmissionConfirmOpen = false;
+        OptionalSubmissionMessage = string.Empty;
+        await SubmitForReviewAfterOptionalConfirmationAsync();
+    }
+
+    private async Task SubmitForReviewAfterOptionalConfirmationAsync()
+    {
+        try
+        {
+            IsSaving = true;
+
+            var request = BuildRegisterRequest();
+            var result = await ApiClient.PostAsync<RegisterArticleAggregateRequest, BulkImportActionResultDto>("api/articles/aggregate/submit-for-review", request);
+
+            if (result?.Batch?.Summary is null)
+            {
+                ErrorMessage = "El backend no devolvió el lote de revisión esperado.";
+                return;
+            }
+
+            SuccessMessage = BuildSubmissionSuccessMessage(result);
+            await ResetFormAsync();
+            HasAttemptedSubmission = false;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"No fue posible enviar el artículo a revisión: {ex.Message}";
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private IEnumerable<string> GetPendingOptionalFields()
+    {
+        foreach (var field in ArticleSections.SelectMany(x => x.Fields).Where(IsVisibleField))
+        {
+            if (!field.Definition.IsRequired && !IsLowSignalOptionalField(field) && !HasValue(field))
+            {
+                yield return $"Artículo: {field.Definition.FieldLabel}";
+            }
+        }
+
+        foreach (var participant in Participants)
+        {
+            foreach (var field in participant.Sections.SelectMany(x => x.Fields).Where(IsVisibleField))
+            {
+                if (!field.Definition.IsRequired && !IsLowSignalOptionalField(field) && !HasValue(field))
+                {
+                    yield return $"Participante {participant.Index}: {field.Definition.FieldLabel}";
+                }
+            }
+        }
+    }
+
+    private static string BuildOptionalSubmissionMessage(IReadOnlyList<string> fields)
+    {
+        var listed = string.Join(", ", fields);
+        return $"Los campos obligatorios están completos, pero todavía hay campos opcionales sin información: {listed}. Puedes seguir completándolos o enviar el registro a revisión de todas formas.";
+    }
+
+    private static bool IsLowSignalOptionalField(DynamicFieldState field)
+        => IsBoolField(field)
+           || field.Definition.FieldKey.Equals("ExternalSource", StringComparison.OrdinalIgnoreCase)
+           || field.Definition.FieldKey.Equals("ExternalId", StringComparison.OrdinalIgnoreCase)
+           || field.Definition.FieldKey.Equals("InstitutionalPersonId", StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildSubmissionSuccessMessage(BulkImportActionResultDto result)
+    {
+        var batchCode = result.Batch.Summary.BatchCode;
+        var detail = string.IsNullOrWhiteSpace(result.Message) ? string.Empty : $" {result.Message}";
+        return $"Envío enviado a revisión correctamente. Lote {batchCode} creado para staging.{detail}";
     }
 
     private RegisterArticleAggregateRequest BuildRegisterRequest()
@@ -776,6 +887,7 @@
 
     private async Task ResetFormAsync()
     {
+        HasAttemptedSubmission = false;
         if (ArticleForm is not null)
         {
             ArticleSections = BuildSections(ArticleForm);
@@ -792,6 +904,7 @@
 
     private async Task ClearFormAsync()
     {
+        HasAttemptedSubmission = false;
         await ResetFormAsync();
         ErrorMessage = string.Empty;
         WarningMessage = string.Empty;
@@ -936,7 +1049,7 @@
         var dto = new ArticleVenueInputDto();
         foreach (var field in ArticleSections.SelectMany(x => x.Fields).Where(x => !x.Definition.IsDynamic))
         {
-            switch (field.Definition.FieldKey)
+            switch (ResolveVenueFieldKey(field))
             {
                 case "VenueId": dto.VenueId = field.CatalogValue; break;
                 case "JournalName": dto.JournalName = field.TextValue; break;
@@ -948,6 +1061,47 @@
         }
 
         return dto;
+    }
+
+    private static string ResolveVenueFieldKey(DynamicFieldState field)
+    {
+        var key = field.Definition.FieldKey;
+        var physical = field.Definition.PhysicalColumnName;
+        var label = field.Definition.FieldLabel;
+
+        if (key.Equals("IssnCode", StringComparison.OrdinalIgnoreCase)
+            || physical?.Equals("IssnCode", StringComparison.OrdinalIgnoreCase) == true
+            || label.Contains("ISSN", StringComparison.OrdinalIgnoreCase))
+        {
+            return "IssnCode";
+        }
+
+        if (key.Equals("IssueNumber", StringComparison.OrdinalIgnoreCase)
+            || physical?.Equals("IssueNumber", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "IssueNumber";
+        }
+
+        if (key.Equals("VolumeNumber", StringComparison.OrdinalIgnoreCase)
+            || physical?.Equals("VolumeNumber", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "VolumeNumber";
+        }
+
+        if (key.Equals("JournalUrl", StringComparison.OrdinalIgnoreCase)
+            || physical?.Equals("JournalUrl", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            return "JournalUrl";
+        }
+
+        if (key.Equals("JournalName", StringComparison.OrdinalIgnoreCase)
+            || physical?.Equals("Name", StringComparison.OrdinalIgnoreCase) == true
+            || (label.Contains("nombre", StringComparison.OrdinalIgnoreCase) && label.Contains("revista", StringComparison.OrdinalIgnoreCase)))
+        {
+            return "JournalName";
+        }
+
+        return key;
     }
 
     private ArticleVenueMetricInputDto BuildVenueMetricRequest()
@@ -1026,6 +1180,9 @@
         if (!string.IsNullOrWhiteSpace(articleValidation)) return articleValidation;
         if (Participants.Count == 0) return "Debe registrar al menos un participante.";
 
+        var businessValidation = ValidateBusinessRules();
+        if (!string.IsNullOrWhiteSpace(businessValidation)) return businessValidation;
+
         foreach (var participant in Participants)
         {
             var validation = ValidateScope(participant.Sections, $"participante {participant.Index}");
@@ -1037,11 +1194,76 @@
 
     private static string? ValidateScope(List<DynamicSectionState> sections, string scopeLabel)
     {
-        foreach (var field in sections.SelectMany(x => x.Fields).Where(x => x.Definition.IsRequired))
+        foreach (var field in sections.SelectMany(x => x.Fields).Where(IsVisibleField))
         {
-            if (!HasValue(field))
+            var validationMessage = DynamicFieldValidationEngine.Validate(
+                field.Definition.FieldLabel,
+                field.Definition.DataType,
+                field.Definition.IsRequired,
+                field.Definition.MaxLength,
+                field.Definition.ValidationRule,
+                ToValidationValue(field));
+
+            if (!string.IsNullOrWhiteSpace(validationMessage))
             {
-                return $"El campo requerido '{field.Definition.FieldLabel}' no fue informado para {scopeLabel}.";
+                return $"{validationMessage} Revisa {scopeLabel}.";
+            }
+        }
+
+        return null;
+    }
+
+    private string? ValidateBusinessRules()
+    {
+        var pageCount = ArticleSections.SelectMany(x => x.Fields).FirstOrDefault(IsPageCountField)?.IntValue;
+        if (pageCount is > 1000)
+        {
+            return "Numero de paginas no debe superar 1000.";
+        }
+
+        var quartile = ArticleSections.SelectMany(x => x.Fields).FirstOrDefault(IsQuartileField);
+        var quartileValue = quartile is null ? null : GetFixedOptionValue(quartile);
+        if (!string.IsNullOrWhiteSpace(quartileValue) && !IsAllowedQuartile(quartileValue))
+        {
+            return "Cuartil debe ser Q1, Q2, Q3 o Q4.";
+        }
+
+        var expectedIndexes = Enumerable.Range(1, Participants.Count).ToHashSet();
+        var providedIndexes = Participants
+            .Select(participant => participant.Sections.SelectMany(x => x.Fields).FirstOrDefault(IsParticipantIndexField)?.IntValue ?? participant.Index)
+            .ToList();
+
+        if (providedIndexes.Any(index => !expectedIndexes.Contains(index)))
+        {
+            return $"El orden de participantes debe estar entre 1 y {Participants.Count}.";
+        }
+
+        if (providedIndexes.Distinct().Count() != providedIndexes.Count)
+        {
+            return "El orden de participantes no puede repetirse.";
+        }
+
+        foreach (var participant in Participants)
+        {
+            var fields = participant.Sections.SelectMany(x => x.Fields).ToList();
+            var identification = fields.FirstOrDefault(IsIdentificationField)?.TextValue;
+            if (!string.IsNullOrWhiteSpace(identification) && !System.Text.RegularExpressions.Regex.IsMatch(identification.Trim(), @"^\d{10}$"))
+            {
+                return $"Identificacion debe contener exactamente 10 numeros. Revisa participante {participant.Index}.";
+            }
+
+            var participation = fields.FirstOrDefault(IsParticipationField);
+            var participationValue = participation is null ? null : GetFixedOptionValue(participation);
+            if (!string.IsNullOrWhiteSpace(participationValue) && !IsAllowedParticipation(participationValue))
+            {
+                return $"Participacion debe ser Autor o Coautor. Revisa participante {participant.Index}.";
+            }
+
+            var participantType = fields.FirstOrDefault(IsParticipantTypeField);
+            var participantTypeValue = participantType is null ? null : GetFixedOptionValue(participantType);
+            if (!string.IsNullOrWhiteSpace(participantTypeValue) && !IsAllowedParticipantType(participantTypeValue))
+            {
+                return $"Tipo de participante debe ser Docente, Estudiante, Externo u Otro. Revisa participante {participant.Index}.";
             }
         }
 
@@ -1146,6 +1368,32 @@
             }
             builder.CloseElement();
         }
+        else if (HasFixedOptions(field))
+        {
+            builder.OpenElement(seq++, "select");
+            builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm shadow-sm outline-none");
+            builder.AddAttribute(seq++, "value", BindConverter.FormatValue(GetFixedOptionValue(field)));
+            builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => SetFixedOptionValue(field, e.Value?.ToString())));
+            builder.OpenElement(seq++, "option"); builder.AddAttribute(seq++, "value", ""); builder.AddContent(seq++, field.Definition.Placeholder ?? "Seleccionar..."); builder.CloseElement();
+            foreach (var option in GetFixedOptions(field))
+            {
+                builder.OpenElement(seq++, "option"); builder.AddAttribute(seq++, "value", option.Value); builder.AddContent(seq++, option.Label); builder.CloseElement();
+            }
+            builder.CloseElement();
+        }
+        else if (IsParticipantIndexField(field))
+        {
+            var maxOrder = Math.Max(1, Participants.Count);
+            builder.OpenElement(seq++, "select");
+            builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm shadow-sm outline-none");
+            builder.AddAttribute(seq++, "value", BindConverter.FormatValue(field.IntValue));
+            builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.IntValue = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null));
+            for (var option = 1; option <= maxOrder; option++)
+            {
+                builder.OpenElement(seq++, "option"); builder.AddAttribute(seq++, "value", option); builder.AddContent(seq++, option.ToString()); builder.CloseElement();
+            }
+            builder.CloseElement();
+        }
         else if (HasStaticOptions(field))
         {
             builder.OpenElement(seq++, "select");
@@ -1173,7 +1421,7 @@
         }
         else if (IsIntField(field))
         {
-            builder.OpenElement(seq++, "input"); builder.AddAttribute(seq++, "type", "number"); builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm shadow-sm"); builder.AddAttribute(seq++, "value", field.IntValue?.ToString()); builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.IntValue = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null)); builder.CloseElement();
+            builder.OpenElement(seq++, "input"); builder.AddAttribute(seq++, "type", "number"); builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm shadow-sm"); builder.AddAttribute(seq++, "min", "0"); if (IsPageCountField(field)) builder.AddAttribute(seq++, "max", "1000"); builder.AddAttribute(seq++, "value", field.IntValue?.ToString()); builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.IntValue = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null)); builder.CloseElement();
         }
         else if (IsDecimalField(field))
         {
@@ -1181,7 +1429,7 @@
         }
         else
         {
-            builder.OpenElement(seq++, "input"); builder.AddAttribute(seq++, "type", string.Equals(field.Definition.FieldKey, "Email", StringComparison.OrdinalIgnoreCase) ? "email" : "text"); builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm shadow-sm"); builder.AddAttribute(seq++, "placeholder", field.Definition.Placeholder); if (field.Definition.MaxLength.HasValue) builder.AddAttribute(seq++, "maxlength", field.Definition.MaxLength.Value); builder.AddAttribute(seq++, "value", field.TextValue); builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.TextValue = e.Value?.ToString())); builder.CloseElement();
+            builder.OpenElement(seq++, "input"); builder.AddAttribute(seq++, "type", string.Equals(field.Definition.FieldKey, "Email", StringComparison.OrdinalIgnoreCase) ? "email" : "text"); builder.AddAttribute(seq++, "class", "w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm shadow-sm"); builder.AddAttribute(seq++, "placeholder", field.Definition.Placeholder); if (field.Definition.MaxLength.HasValue || IsIdentificationField(field)) builder.AddAttribute(seq++, "maxlength", IsIdentificationField(field) ? 10 : field.Definition.MaxLength!.Value); if (IsIdentificationField(field)) builder.AddAttribute(seq++, "inputmode", "numeric"); builder.AddAttribute(seq++, "value", field.TextValue); builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e => field.TextValue = e.Value?.ToString())); builder.CloseElement();
         }
 
         if (!string.IsNullOrWhiteSpace(field.Definition.HelpText) && !IsBoolField(field))
@@ -1230,6 +1478,7 @@
     private static bool HasValue(DynamicFieldState field)
     {
         if (NeedsCatalogItems(field)) return field.CatalogValue.HasValue;
+        if (HasFixedOptions(field)) return !string.IsNullOrWhiteSpace(GetFixedOptionValue(field));
         if (HasStaticOptions(field)) return !string.IsNullOrWhiteSpace(field.OptionValue);
         if (IsBoolField(field)) return field.BoolValue.HasValue;
         if (IsIntField(field)) return field.IntValue.HasValue;
@@ -1239,14 +1488,50 @@
         return !string.IsNullOrWhiteSpace(field.TextValue);
     }
 
+    private static DynamicFieldValidationValue ToValidationValue(DynamicFieldState field)
+        => new()
+        {
+            Text = !string.IsNullOrWhiteSpace(field.OptionValue) ? field.OptionValue : field.TextValue,
+            Int = field.CatalogValue ?? field.IntValue,
+            Decimal = field.DecimalValue,
+            Date = field.DateValue,
+            Bool = field.BoolValue,
+            Json = field.JsonValue
+        };
+
     private static bool IsVisibleField(DynamicFieldState field) => field.Definition.IsVisible && field.Definition.IsEditable;
     private static bool HasStaticOptions(DynamicFieldState field) => field.Definition.Options?.Count > 0;
+    private static bool HasFixedOptions(DynamicFieldState field) => IsQuartileField(field) || IsParticipationField(field) || IsParticipantTypeField(field);
     private static bool NeedsCatalogItems(DynamicFieldState field) => string.Equals(field.Definition.SourceType, "CatalogReference", StringComparison.OrdinalIgnoreCase) || string.Equals(field.Definition.DataType, "fk", StringComparison.OrdinalIgnoreCase);
     private static bool IsBoolField(DynamicFieldState field) => string.Equals(field.Definition.DataType, "bool", StringComparison.OrdinalIgnoreCase) || string.Equals(field.Definition.DataType, "bit", StringComparison.OrdinalIgnoreCase);
     private static bool IsIntField(DynamicFieldState field) => string.Equals(field.Definition.DataType, "int", StringComparison.OrdinalIgnoreCase);
     private static bool IsDecimalField(DynamicFieldState field) => string.Equals(field.Definition.DataType, "decimal", StringComparison.OrdinalIgnoreCase);
     private static bool IsDateField(DynamicFieldState field) => string.Equals(field.Definition.DataType, "date", StringComparison.OrdinalIgnoreCase) || string.Equals(field.Definition.DataType, "datetime", StringComparison.OrdinalIgnoreCase);
     private static bool IsDependentCatalogField(DynamicFieldState field) => field.Definition.FieldKey is "SpecificFieldId" or "DetailedFieldId";
+    private static bool IsPageCountField(DynamicFieldState field) => field.Definition.FieldKey.Equals("PageCount", StringComparison.OrdinalIgnoreCase);
+    private static bool IsQuartileField(DynamicFieldState field) => field.Definition.FieldKey.Equals("Quartile", StringComparison.OrdinalIgnoreCase);
+    private static bool IsParticipantIndexField(DynamicFieldState field) => field.Definition.FieldKey.Equals("Index", StringComparison.OrdinalIgnoreCase);
+    private static bool IsParticipationField(DynamicFieldState field) => field.Definition.FieldKey.Equals("Participacion", StringComparison.OrdinalIgnoreCase);
+    private static bool IsParticipantTypeField(DynamicFieldState field) => field.Definition.FieldKey.Equals("ParticipantType", StringComparison.OrdinalIgnoreCase);
+    private static bool IsIdentificationField(DynamicFieldState field) => field.Definition.FieldKey.Equals("Identificacion", StringComparison.OrdinalIgnoreCase);
+    private static IReadOnlyList<(string Value, string Label)> GetFixedOptions(DynamicFieldState field)
+        => IsQuartileField(field)
+            ? [("Q1", "Q1"), ("Q2", "Q2"), ("Q3", "Q3"), ("Q4", "Q4")]
+            : IsParticipationField(field)
+                ? [("Autor", "Autor"), ("Coautor", "Coautor")]
+                : IsParticipantTypeField(field)
+                    ? [("Docente", "Docente"), ("Estudiante", "Estudiante"), ("Externo", "Externo"), ("Otro", "Otro")]
+                    : [];
+    private static string? GetFixedOptionValue(DynamicFieldState field)
+        => !string.IsNullOrWhiteSpace(field.OptionValue) ? field.OptionValue : field.TextValue;
+    private static void SetFixedOptionValue(DynamicFieldState field, string? value)
+    {
+        field.OptionValue = value;
+        field.TextValue = value;
+    }
+    private static bool IsAllowedQuartile(string value) => value.Trim().ToUpperInvariant() is "Q1" or "Q2" or "Q3" or "Q4";
+    private static bool IsAllowedParticipation(string value) => value.Trim().Equals("Autor", StringComparison.OrdinalIgnoreCase) || value.Trim().Equals("Coautor", StringComparison.OrdinalIgnoreCase);
+    private static bool IsAllowedParticipantType(string value) => value.Trim().Equals("Docente", StringComparison.OrdinalIgnoreCase) || value.Trim().Equals("Estudiante", StringComparison.OrdinalIgnoreCase) || value.Trim().Equals("Externo", StringComparison.OrdinalIgnoreCase) || value.Trim().Equals("Otro", StringComparison.OrdinalIgnoreCase);
     private static string GetFieldColumnClass(DynamicFieldState field) => field.Definition.ColumnSpan.GetValueOrDefault() >= 2 ? "md:col-span-2" : "md:col-span-1";
     private IEnumerable<DynamicSectionState> GetFilteredArticleSections()
     {
@@ -1285,10 +1570,14 @@
         await PersistUiStateAsync();
     }
 
-    private static string GetFieldCardClass(DynamicFieldState field)
+    private string GetFieldCardClass(DynamicFieldState field)
     {
         var spanClass = GetFieldColumnClass(field);
-        var accent = field.Definition.IsRequired
+        var accent = HasAttemptedSubmission && field.Definition.IsRequired && IsVisibleField(field) && !HasValue(field)
+            ? "border-rose-300 bg-rose-50"
+            : HasAttemptedSubmission && !field.Definition.IsRequired && IsVisibleField(field) && !IsLowSignalOptionalField(field) && !HasValue(field)
+                ? "border-amber-300 bg-amber-50"
+                : field.Definition.IsRequired
             ? "border-[#f2d2a8] bg-[#fffaf3]"
             : "border-[#dbe6e9] bg-[#fbfcfd]";
 
