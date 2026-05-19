@@ -1,6 +1,6 @@
 @page "/management/exportinformation"
 @page "/management/article-review-staging"
-@attribute [Authorize(Roles = "Admin,Analyst,BulkImportUser,WorkflowReviewerUodide,WorkflowReviewerAreaTecnica,WorkflowProcessorAreaTecnica")]
+@attribute [Authorize(Roles = "Admin,Analyst,BulkImportUser,WorkflowReviewerUodide,WorkflowReviewerAreaTecnica,WorkflowProcessorAreaTecnica,Author,WorkflowTrackingUser")]
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Authorization
@@ -167,6 +167,7 @@
 
             <aside class="space-y-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-auto">
                 <BulkImportCurrentBatchSidebar Batch="CurrentBatch"
+                                               Title="@(IsAuthorCorrectionStage ? "Corrección actual" : "Lote actual")"
                                                BatchReviewHint="@GetBatchReviewHint()"
                                                OperationalGuidance="@GetOperationalGuidance()"
                                                RequiredContractSummary="@GetRequiredContractSummary()"
@@ -181,14 +182,21 @@
                                                IsGeneratingTemplate="IsGeneratingTemplate"
                                                IsValidatingBatch="IsValidatingBatch"
                                                IsProcessingBatch="IsProcessingBatch"
+                                               IsSavingCorrections="IsSavingCorrections"
                                                CanDownloadTemplate="@(CurrentBatch?.Template is not null && !IsReviewStagingMode)"
                                                CanProcess="@CanProcessInCurrentContext"
+                                               CanPrepareNextLoad="@(!IsReviewStagingMode)"
+                                               CanShowDownloadTemplate="@(!IsReviewStagingMode)"
+                                               CanShowValidate="@(!IsAuthorCorrectionStage)"
+                                               CanShowProcess="@(!IsAuthorCorrectionStage)"
+                                               IsAuthorCorrectionMode="@IsAuthorCorrectionStage"
                                                StageCards="CurrentBatchStageCards"
                                                OnPrepareNextLoad="@(IsReviewStagingMode ? NoOpPrepareNextLoad : PrepareNextLoad)"
                                                OnRefresh="RefreshCurrentBatchAsync"
                                                OnDownloadTemplate="DownloadTemplateFromBatchAsync"
                                                OnValidate="RequestValidateCurrentBatch"
-                                               OnProcess="RequestProcessCurrentBatch" />
+                                               OnProcess="RequestProcessCurrentBatch"
+                                               OnFinishCorrection="RequestFinishAuthorCorrection" />
             </aside>
         </div>
         @if (CurrentBatch is not null)
@@ -572,8 +580,8 @@
                     @if (IsCorrectionMode)
                     {
                         <div class="mt-6 space-y-3">
-                            <button class="w-full rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60" disabled="@IsSavingCorrections" @onclick="SaveRowCorrectionsAsync">@(IsSavingCorrections ? "Guardando y validando..." : "Guardar correcciones y revalidar lote")</button>
-                            <button class="w-full rounded-xl border border-[#c17c2f] bg-[#fff4e4] px-4 py-3 text-sm font-semibold text-[#8b5a16] disabled:opacity-60" disabled="@(!CanSaveAndMoveNext || IsSavingCorrections)" @onclick="SaveAndOpenNextErrorAsync">@(IsSavingCorrections ? "Guardando..." : "Guardar y siguiente error")</button>
+                            <button class="w-full rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60" disabled="@IsSavingCorrections" @onclick="SaveRowCorrectionsAsync">@(IsSavingCorrections ? "Guardando y verificando..." : GetSaveCorrectionButtonText())</button>
+                            <button class="w-full rounded-xl border border-[#c17c2f] bg-[#fff4e4] px-4 py-3 text-sm font-semibold text-[#8b5a16] disabled:opacity-60" disabled="@(!CanSaveAndMoveNext || IsSavingCorrections)" @onclick="SaveAndOpenNextErrorAsync">@(IsSavingCorrections ? "Guardando..." : GetSaveNextCorrectionButtonText())</button>
                             <button class="w-full rounded-xl border border-[#d9e5e8] bg-white px-4 py-3 text-sm font-semibold text-slate-700" @onclick="CancelCorrectionMode">Cancelar edición</button>
                         </div>
                     }
@@ -612,6 +620,7 @@
     private ReviewStagingContextDefinition? CurrentReviewContext => ResolveReviewStagingContext();
     private bool IsUodideWorkflowStage => string.Equals(CurrentReviewContext?.Key, "uodide", StringComparison.OrdinalIgnoreCase);
     private bool IsAreaTecnicaWorkflowStage => string.Equals(CurrentReviewContext?.Key, "area-tecnica", StringComparison.OrdinalIgnoreCase);
+    private bool IsAuthorCorrectionStage => string.Equals(CurrentReviewContext?.Key, "author-correction", StringComparison.OrdinalIgnoreCase);
     private string ArticleFieldSearchTerm = string.Empty;
     private string ParticipantFieldSearchTerm = string.Empty;
     private string PreviewSearchTerm = string.Empty;
@@ -780,12 +789,21 @@
         && CurrentBatch.Summary.TotalRows > 0
         && CurrentBatch.Summary.ErrorRows == 0
         && CurrentBatch.Summary.ValidRows > 0;
+    private bool CanAccessBulkImportWorkspace()
+        => UserRoles.Contains("Admin")
+        || UserRoles.Contains("Analyst")
+        || UserRoles.Contains("BulkImportUser")
+        || UserRoles.Contains("WorkflowReviewerUodide")
+        || UserRoles.Contains("WorkflowReviewerAreaTecnica")
+        || UserRoles.Contains("WorkflowProcessorAreaTecnica");
     private bool IsReviewStagingMode =>
         !string.IsNullOrWhiteSpace(EffectiveReviewStagingContextKey)
         || NavManager.Uri.Contains("/management/article-review-staging", StringComparison.OrdinalIgnoreCase)
         || NavManager.Uri.Contains("/management/article-review-staging-frame", StringComparison.OrdinalIgnoreCase)
         || NavManager.Uri.Contains("/management/uodide-review-staging", StringComparison.OrdinalIgnoreCase)
         || NavManager.Uri.Contains("/management/uodide-review-staging-frame", StringComparison.OrdinalIgnoreCase)
+        || NavManager.Uri.Contains("/management/author-correction-staging", StringComparison.OrdinalIgnoreCase)
+        || NavManager.Uri.Contains("/management/author-correction-staging-frame", StringComparison.OrdinalIgnoreCase)
         || NavManager.Uri.Contains("/management/area-tecnica-review-staging", StringComparison.OrdinalIgnoreCase)
         || NavManager.Uri.Contains("/management/area-tecnica-review-staging-frame", StringComparison.OrdinalIgnoreCase);
     private bool CanProcessInCurrentContext => CanProcessCurrentBatch && (!IsReviewStagingMode || UserRoles.Contains("Admin") || UserRoles.Contains("WorkflowReviewerAreaTecnica") || UserRoles.Contains("WorkflowProcessorAreaTecnica"));
@@ -865,6 +883,11 @@
                 .Where(x => x.Type == System.Security.Claims.ClaimTypes.Role && !string.IsNullOrWhiteSpace(x.Value))
                 .Select(x => x.Value)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            if (!IsReviewStagingMode && !CanAccessBulkImportWorkspace())
+            {
+                throw new InvalidOperationException("Tu usuario no tiene permisos para abrir el módulo de carga masiva.");
+            }
+
             ArticleFields = await FormConfigurationClient.GetFieldsAsync("Article");
             ParticipantFields = await FormConfigurationClient.GetFieldsAsync("ArticleParticipant");
             ArticleForm = await FormConfigurationClient.GetResolvedFormAsync("ArticleManualForm");
@@ -1063,7 +1086,9 @@
             ClearMessages();
             IsOpeningBatch = true;
             var previewRows = previewRowsOverride ?? CurrentPreviewRows;
-            CurrentBatch = await BulkImportClient.GetBatchAsync(batchId, previewRows);
+            CurrentBatch = IsReviewStagingMode
+                ? await WorkflowClient.GetBatchPreviewAsync(batchId, previewRows)
+                : await BulkImportClient.GetBatchAsync(batchId, previewRows);
             NormalizePreviewPagination();
             SelectedPreviewRow = null;
             if (CurrentBatch is null)
@@ -1191,7 +1216,9 @@
             ClearMessages();
             IsValidatingBatch = true;
             var batchId = CurrentBatch.Summary.ImportBatchId;
-            var result = await BulkImportClient.ValidateBatchAsync(CurrentBatch.Summary.ImportBatchId);
+            var result = IsReviewStagingMode
+                ? await WorkflowClient.ValidateBatchAsync(CurrentBatch.Summary.ImportBatchId)
+                : await BulkImportClient.ValidateBatchAsync(CurrentBatch.Summary.ImportBatchId);
             if (result is not null)
             {
                 ExpandPreviewToWholeBatch(result.Batch.Summary.TotalRows);
@@ -1257,6 +1284,49 @@
             ? "Voy a procesar el envío ya aprobado para integrarlo en la base principal."
             : "Voy a persistir en el modelo híbrido todas las filas válidas del lote actual. Conviene hacerlo solo cuando los errores pendientes estén controlados.";
         PendingActionConfirmText = IsReviewStagingMode ? "Procesar envío" : "Procesar lote";
+    }
+
+    private async Task RequestFinishAuthorCorrection()
+    {
+        if (!IsAuthorCorrectionStage)
+        {
+            return;
+        }
+
+        if (IsBatchBusy || IsSavingCorrections)
+        {
+            ShowFeedback("warning", "Operación en curso", "Espera un momento", "Hay una operación activa sobre la corrección. Espera a que termine antes de salir.");
+            return;
+        }
+
+        if (CurrentBatch is not null)
+        {
+            var batchId = CurrentBatch.Summary.ImportBatchId;
+            await OpenBatchAsync(batchId);
+        }
+
+        PendingAction = PendingBulkAction.FinishCorrection;
+        if (CurrentBatch is null)
+        {
+            PendingActionTitle = "Volver al workflow";
+            PendingActionMessage = "No hay un envío abierto en esta corrección. Volverás a revisión de envíos.";
+            PendingActionConfirmText = "Volver";
+            return;
+        }
+
+        if (CurrentBatch.Summary.ErrorRows == 0 && CurrentBatch.Summary.ValidRows > 0)
+        {
+            PendingActionTitle = "Corrección lista";
+            PendingActionMessage = "El envío ya no tiene observaciones de validación. Volverás a revisión de envíos para reenviarlo a UODIDE.";
+            PendingActionConfirmText = "Volver y reenviar";
+            return;
+        }
+
+        PendingActionTitle = "Corrección incompleta";
+        PendingActionMessage = CurrentBatch.Summary.ErrorRows > 0
+            ? $"Aún quedan {CurrentBatch.Summary.ErrorRows} fila(s) con observaciones. Puedes salir y continuar después, pero el botón Reenviar seguirá bloqueado hasta que la corrección quede limpia."
+            : "Aún no hay filas válidas para reenviar. Puedes salir y continuar después, pero deberás guardar/revalidar las correcciones antes de reenviar.";
+        PendingActionConfirmText = "Salir sin terminar";
     }
 
     private async Task ProcessCurrentBatchAsync()
@@ -1621,7 +1691,9 @@
                     .ToList()
             };
 
-            var result = await BulkImportClient.CorrectRowAsync(CurrentBatch.Summary.ImportBatchId, SelectedPreviewRow.ImportBatchRowId, request);
+            var result = IsReviewStagingMode
+                ? await WorkflowClient.CorrectRowAsync(CurrentBatch.Summary.ImportBatchId, SelectedPreviewRow.ImportBatchRowId, request)
+                : await BulkImportClient.CorrectRowAsync(CurrentBatch.Summary.ImportBatchId, SelectedPreviewRow.ImportBatchRowId, request);
             if (result is null)
             {
                 RowModalErrorMessage = "No recibí respuesta al guardar la corrección.";
@@ -2467,6 +2539,12 @@
         PendingActionConfirmText = "Confirmar";
     }
 
+    private string GetSaveCorrectionButtonText()
+        => IsAuthorCorrectionStage ? "Guardar y verificar corrección" : "Guardar correcciones y revalidar lote";
+
+    private string GetSaveNextCorrectionButtonText()
+        => IsAuthorCorrectionStage ? "Guardar y revisar siguiente observación" : "Guardar y siguiente error";
+
     private async Task ConfirmPendingActionAsync()
     {
         var action = PendingAction;
@@ -2482,6 +2560,9 @@
                 break;
             case PendingBulkAction.Process:
                 await ProcessCurrentBatchAsync();
+                break;
+            case PendingBulkAction.FinishCorrection:
+                NavManager.NavigateTo("/management/workflow-review");
                 break;
         }
     }
@@ -2680,7 +2761,8 @@
         None,
         Upload,
         Validate,
-        Process
+        Process,
+        FinishCorrection
     }
 
     private sealed class BatchErrorRowGroup

@@ -61,9 +61,36 @@ namespace tesisproject.frontend.Services.Implementations
             return await response.Content.ReadFromJsonAsync<BulkImportBatchDetailDto>(cancellationToken: ct);
         }
 
+        public async Task<BulkImportActionResultDto?> ValidateBatchAsync(int batchId, CancellationToken ct = default)
+        {
+            using var response = await _http.PostAsync($"api/workflows/import-batches/{batchId}/validate", null, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude validar el envío.", ct));
+            }
+
+            return await response.Content.ReadFromJsonAsync<BulkImportActionResultDto>(cancellationToken: ct);
+        }
+
+        public async Task<BulkImportActionResultDto?> CorrectRowAsync(int batchId, int rowId, BulkImportRowCorrectionRequest request, CancellationToken ct = default)
+        {
+            using var response = await _http.PutAsJsonAsync($"api/workflows/import-batches/{batchId}/rows/{rowId}", request, ct);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude corregir la fila del envío.", ct));
+            }
+
+            return await response.Content.ReadFromJsonAsync<BulkImportActionResultDto>(cancellationToken: ct);
+        }
+
         public async Task<WorkflowBatchDetailDto?> ClaimAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)
         {
             return await PostActionAsync(batchId, "claim", request, "No pude tomar la etapa del workflow.", ct);
+        }
+
+        public async Task<WorkflowBatchDetailDto?> DeclineAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)
+        {
+            return await PostActionAsync(batchId, "decline", request, "No pude devolver el caso sin tomarlo.", ct);
         }
 
         public async Task<WorkflowBatchDetailDto?> ReturnAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)
@@ -71,9 +98,24 @@ namespace tesisproject.frontend.Services.Implementations
             return await PostActionAsync(batchId, "return", request, "No pude devolver la etapa del workflow.", ct);
         }
 
+        public async Task<WorkflowBatchDetailDto?> ReturnToUodideAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)
+        {
+            return await PostActionAsync(batchId, "return-to-uodide", request, "No pude devolver la etapa a UODIDE.", ct);
+        }
+
         public async Task<WorkflowBatchDetailDto?> ApproveAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)
         {
             return await PostActionAsync(batchId, "approve", request, "No pude aprobar la etapa del workflow.", ct);
+        }
+
+        public async Task<WorkflowBatchDetailDto?> ResubmitAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)
+        {
+            return await PostActionAsync(batchId, "resubmit", request, "No pude reenviar el caso a UODIDE.", ct);
+        }
+
+        public async Task<WorkflowBatchDetailDto?> CancelAsync(int batchId, WorkflowActionRequest request, CancellationToken ct = default)
+        {
+            return await PostActionAsync(batchId, "cancel", request, "No pude eliminar el envío devuelto.", ct);
         }
 
         private async Task<WorkflowBatchDetailDto?> PostActionAsync(int batchId, string action, WorkflowActionRequest request, string fallback, CancellationToken ct)

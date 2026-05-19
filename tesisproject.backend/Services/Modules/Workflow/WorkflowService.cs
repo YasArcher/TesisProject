@@ -17,6 +17,7 @@ namespace tesisproject.backend.Services.Implementations
         private const string AssignedStatus = "Assigned";
         private const string InReviewStatus = "InReview";
         private const string ReturnedStatus = "Returned";
+        private const string CancelledStatus = "Cancelled";
         private const string AdminRole = "Admin";
         private readonly AppDbContext _db;
 
@@ -169,6 +170,7 @@ namespace tesisproject.backend.Services.Implementations
                     .ThenInclude(x => x!.Rows)
                 .Include(x => x.StageInstances)
                     .ThenInclude(x => x.WorkflowStageDefinition)
+                .Include(x => x.ActionLogs)
                 .Where(x => x.CurrentStageDefinition != null);
 
             if (!normalizedRoles.Contains(AdminRole))
@@ -212,9 +214,12 @@ namespace tesisproject.backend.Services.Implementations
                     .ThenInclude(x => x!.Rows)
                 .Include(x => x.StageInstances)
                     .ThenInclude(x => x.WorkflowStageDefinition)
+                .Include(x => x.ActionLogs)
                 .AsQueryable();
 
-            query = query.Where(x => x.SubmittedByUserId != null && authorReferences.Contains(x.SubmittedByUserId));
+            query = query.Where(x => x.SubmittedByUserId != null
+                && authorReferences.Contains(x.SubmittedByUserId)
+                && x.Status != CancelledStatus);
 
             var workflows = await query
                 .OrderByDescending(x => x.LastActionAt ?? x.SubmittedAt)
@@ -225,6 +230,36 @@ namespace tesisproject.backend.Services.Implementations
             var displayNames = await BuildWorkflowUserDisplayNamesAsync(workflows, ct);
 
             return workflows.Select(x => MapInboxItem(x, normalizedUserId, displayNames)).ToList();
+        }
+
+        public async Task<bool> CanAuthorAccessBatchAsync(string? userId, int importBatchId, bool requireReturnedStatus = false, CancellationToken ct = default)
+        {
+            var normalizedUserId = NormalizeReference(userId);
+            if (string.IsNullOrWhiteSpace(normalizedUserId))
+            {
+                return false;
+            }
+
+            var authorReferences = await ResolveAuthorReferencesAsync(normalizedUserId, ct);
+            if (authorReferences.Count == 0)
+            {
+                authorReferences.Add(normalizedUserId);
+            }
+
+            var query = _db.WorkflowInstances
+                .AsNoTracking()
+                .Where(x => x.ImportBatchId == importBatchId
+                    && x.SubmittedByUserId != null
+                    && authorReferences.Contains(x.SubmittedByUserId)
+                    && x.Status != CancelledStatus);
+
+            if (requireReturnedStatus)
+            {
+                query = query.Where(x => x.Status == ReturnedStatus
+                    || x.StageInstances.Any(stage => stage.Status == ReturnedStatus));
+            }
+
+            return await query.AnyAsync(ct);
         }
 
         private async Task<HashSet<string>> ResolveAuthorReferencesAsync(string normalizedUserId, CancellationToken ct)
@@ -324,15 +359,21 @@ namespace tesisproject.backend.Services.Implementations
 
         public async Task<WorkflowBatchDetailDto> ReturnCurrentStageAsync(int importBatchId, string? userId, IReadOnlyCollection<string> roleNames, string? comments, CancellationToken ct = default)
         {
+            if (string.IsNullOrWhiteSpace(comments))
+            {
+                throw new InvalidOperationException("Para devolver el envío al autor debes registrar una observación.");
+            }
+
             var context = await GetActionContextAsync(importBatchId, userId, roleNames, ct);
             EnsureAssignedReviewer(context);
 
             var now = DateTime.UtcNow;
             var fromStatus = context.StageInstance.Status;
+            var authorComments = EnsureAuthorVisibleComment(comments);
             context.StageInstance.Status = ReturnedStatus;
             context.StageInstance.ReturnedAt = now;
             context.StageInstance.CompletedAt = null;
-            context.StageInstance.Notes = comments?.Trim();
+            context.StageInstance.Notes = authorComments;
             context.Workflow.Status = ReturnedStatus;
             context.Workflow.LastActionAt = now;
 
@@ -345,7 +386,127 @@ namespace tesisproject.backend.Services.Implementations
                 ToStatus = ReturnedStatus,
                 PerformedByUserId = context.UserId,
                 PerformedAt = now,
-                Comments = comments
+                Comments = authorComments
+            });
+
+            await _db.SaveChangesAsync(ct);
+            return (await GetBatchWorkflowAsync(importBatchId, ct))!;
+        }
+
+        public async Task<WorkflowBatchDetailDto> ReturnCurrentStageToPreviousStageAsync(int importBatchId, string? userId, IReadOnlyCollection<string> roleNames, string? comments, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(comments))
+            {
+                throw new InvalidOperationException("Para devolver el envío a UODIDE debes registrar una observación.");
+            }
+
+            var context = await GetActionContextAsync(importBatchId, userId, roleNames, ct);
+            EnsureAssignedReviewer(context);
+
+            if (!string.Equals(context.StageDefinition.StageGroupKey, "area-tecnica", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Solo Área Técnica puede devolver una revisión a UODIDE.");
+            }
+
+            var previousStageDefinition = context.Workflow.WorkflowDefinition!.Stages
+                .Where(x => x.IsActive && x.DisplayOrder < context.StageDefinition.DisplayOrder)
+                .OrderByDescending(x => x.DisplayOrder)
+                .FirstOrDefault()
+                ?? throw new InvalidOperationException("No se pudo resolver la etapa UODIDE anterior.");
+
+            var previousStageInstance = context.Workflow.StageInstances
+                .FirstOrDefault(x => x.WorkflowStageDefinitionId == previousStageDefinition.WorkflowStageDefinitionId)
+                ?? throw new InvalidOperationException("No se pudo resolver la instancia UODIDE anterior.");
+
+            var now = DateTime.UtcNow;
+            var fromStatus = context.StageInstance.Status;
+            var reviewerComments = EnsureUodideVisibleComment(comments);
+
+            previousStageInstance.Status = PendingStatus;
+            previousStageInstance.AssignedToUserId = null;
+            previousStageInstance.ApprovedByUserId = null;
+            previousStageInstance.StartedAt = null;
+            previousStageInstance.CompletedAt = null;
+            previousStageInstance.ReturnedAt = null;
+            previousStageInstance.Notes = reviewerComments;
+
+            context.StageInstance.Status = PendingStatus;
+            context.StageInstance.AssignedToUserId = null;
+            context.StageInstance.ApprovedByUserId = null;
+            context.StageInstance.StartedAt = null;
+            context.StageInstance.CompletedAt = null;
+            context.StageInstance.ReturnedAt = null;
+            context.StageInstance.Notes = null;
+
+            context.Workflow.Status = SubmittedStatus;
+            context.Workflow.CurrentStageDefinitionId = previousStageDefinition.WorkflowStageDefinitionId;
+            context.Workflow.CompletedAt = null;
+            context.Workflow.LastActionAt = now;
+
+            _db.WorkflowActionLogs.Add(new WorkflowActionLog
+            {
+                WorkflowInstanceId = context.Workflow.WorkflowInstanceId,
+                WorkflowStageInstanceId = context.StageInstance.WorkflowStageInstanceId,
+                ActionType = "returned_to_uodide",
+                FromStatus = fromStatus,
+                ToStatus = SubmittedStatus,
+                PerformedByUserId = context.UserId,
+                PerformedAt = now,
+                Comments = reviewerComments
+            });
+
+            await _db.SaveChangesAsync(ct);
+            return (await GetBatchWorkflowAsync(importBatchId, ct))!;
+        }
+
+        public async Task<WorkflowBatchDetailDto> DeclineCurrentStageAsync(int importBatchId, string? userId, IReadOnlyCollection<string> roleNames, string? comments, CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(comments))
+            {
+                throw new InvalidOperationException("Para no tomar el caso debes registrar una observación para el autor.");
+            }
+
+            var context = await GetActionContextAsync(importBatchId, userId, roleNames, ct);
+            var normalizedAssigned = NormalizeReference(context.StageInstance.AssignedToUserId);
+            var normalizedUser = NormalizeReference(context.UserId);
+
+            if (!string.IsNullOrWhiteSpace(normalizedAssigned) &&
+                !string.Equals(normalizedAssigned, normalizedUser, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("El caso ya fue tomado por otro revisor y no puede ser rechazado desde esta cuenta.");
+            }
+
+            var currentStatus = NormalizeStatus(context.StageInstance.Status);
+            if (currentStatus == ApprovedStatus)
+            {
+                throw new InvalidOperationException("La etapa actual ya fue aprobada.");
+            }
+
+            if (currentStatus == ReturnedStatus)
+            {
+                throw new InvalidOperationException("La etapa actual ya fue devuelta al autor.");
+            }
+
+            var now = DateTime.UtcNow;
+            var fromStatus = context.StageInstance.Status;
+            context.StageInstance.Status = ReturnedStatus;
+            context.StageInstance.ReturnedAt = now;
+            context.StageInstance.CompletedAt = null;
+            context.StageInstance.AssignedToUserId = null;
+            context.StageInstance.Notes = comments.Trim();
+            context.Workflow.Status = ReturnedStatus;
+            context.Workflow.LastActionAt = now;
+
+            _db.WorkflowActionLogs.Add(new WorkflowActionLog
+            {
+                WorkflowInstanceId = context.Workflow.WorkflowInstanceId,
+                WorkflowStageInstanceId = context.StageInstance.WorkflowStageInstanceId,
+                ActionType = "declined",
+                FromStatus = fromStatus,
+                ToStatus = ReturnedStatus,
+                PerformedByUserId = context.UserId,
+                PerformedAt = now,
+                Comments = comments.Trim()
             });
 
             await _db.SaveChangesAsync(ct);
@@ -411,6 +572,150 @@ namespace tesisproject.backend.Services.Implementations
                 PerformedByUserId = context.UserId,
                 PerformedAt = now,
                 Comments = comments
+            });
+
+            await _db.SaveChangesAsync(ct);
+            return (await GetBatchWorkflowAsync(importBatchId, ct))!;
+        }
+
+        public async Task<WorkflowBatchDetailDto> ResubmitReturnedBatchAsync(int importBatchId, string? userId, string? comments, CancellationToken ct = default)
+        {
+            var workflow = await LoadMutableAuthorWorkflowAsync(importBatchId, userId, ct);
+            if (!string.Equals(workflow.Status, ReturnedStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Solo se pueden reenviar envíos devueltos con observaciones.");
+            }
+
+            if (workflow.Batch is null)
+            {
+                throw new InvalidOperationException("No se encontró el lote asociado al envío devuelto.");
+            }
+
+            if (workflow.Batch.ErrorRows > 0)
+            {
+                throw new InvalidOperationException($"El envío todavía tiene {workflow.Batch.ErrorRows} fila(s) con error. Corrige la matriz y vuelve a validar antes de reenviar.");
+            }
+
+            var validRows = workflow.Batch.Rows.Count(x => string.Equals(x.RowStatus, "Valid", StringComparison.OrdinalIgnoreCase));
+            if (validRows <= 0)
+            {
+                throw new InvalidOperationException("Antes de reenviar debes validar la matriz corregida y dejar al menos una fila lista para revisión.");
+            }
+
+            var now = DateTime.UtcNow;
+            workflow.Status = SubmittedStatus;
+            workflow.LastActionAt = now;
+            workflow.CompletedAt = null;
+
+            var currentStageDefinition = workflow.CurrentStageDefinition
+                ?? workflow.WorkflowDefinition?.Stages
+                    .Where(x => x.IsActive)
+                    .OrderBy(x => x.DisplayOrder)
+                    .FirstOrDefault()
+                ?? throw new InvalidOperationException("No se pudo resolver la etapa UODIDE del workflow.");
+
+            workflow.CurrentStageDefinitionId = currentStageDefinition.WorkflowStageDefinitionId;
+            var currentStageDisplayOrder = currentStageDefinition.DisplayOrder;
+            var stageDefinitionsById = workflow.WorkflowDefinition?.Stages
+                .Where(x => x.IsActive)
+                .ToDictionary(x => x.WorkflowStageDefinitionId)
+                ?? new Dictionary<int, WorkflowStageDefinition>();
+
+            foreach (var stage in workflow.StageInstances)
+            {
+                if (!stageDefinitionsById.TryGetValue(stage.WorkflowStageDefinitionId, out var stageDefinition))
+                {
+                    continue;
+                }
+
+                if (stageDefinition.DisplayOrder < currentStageDisplayOrder)
+                {
+                    continue;
+                }
+
+                if (stage.WorkflowStageDefinitionId == currentStageDefinition.WorkflowStageDefinitionId)
+                {
+                    stage.Status = SubmittedStatus;
+                    stage.AssignedToUserId = null;
+                    stage.ApprovedByUserId = null;
+                    stage.StartedAt = null;
+                    stage.CompletedAt = null;
+                    stage.ReturnedAt = null;
+                    stage.Notes = null;
+                }
+                else
+                {
+                    stage.Status = PendingStatus;
+                    stage.AssignedToUserId = null;
+                    stage.ApprovedByUserId = null;
+                    stage.StartedAt = null;
+                    stage.CompletedAt = null;
+                    stage.ReturnedAt = null;
+                    stage.Notes = null;
+                }
+            }
+
+            if (workflow.Batch is not null)
+            {
+                workflow.Batch.Status = "Submitted";
+                workflow.Batch.FinishedAt = null;
+            }
+
+            _db.WorkflowActionLogs.Add(new WorkflowActionLog
+            {
+                WorkflowInstanceId = workflow.WorkflowInstanceId,
+                WorkflowStageInstanceId = workflow.StageInstances.FirstOrDefault(x => x.WorkflowStageDefinitionId == currentStageDefinition.WorkflowStageDefinitionId)?.WorkflowStageInstanceId,
+                ActionType = "resubmitted",
+                FromStatus = ReturnedStatus,
+                ToStatus = SubmittedStatus,
+                PerformedByUserId = NormalizeReference(userId),
+                PerformedAt = now,
+                Comments = string.IsNullOrWhiteSpace(comments) ? "[Para UODIDE] Envío corregido y reenviado por el autor." : comments.Trim()
+            });
+
+            await _db.SaveChangesAsync(ct);
+            return (await GetBatchWorkflowAsync(importBatchId, ct))!;
+        }
+
+        public async Task<WorkflowBatchDetailDto> CancelReturnedBatchAsync(int importBatchId, string? userId, string? comments, CancellationToken ct = default)
+        {
+            var workflow = await LoadMutableAuthorWorkflowAsync(importBatchId, userId, ct);
+            if (!string.Equals(workflow.Status, ReturnedStatus, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Solo se pueden eliminar envíos devueltos con observaciones.");
+            }
+
+            var now = DateTime.UtcNow;
+            workflow.Status = CancelledStatus;
+            workflow.CurrentStageDefinitionId = null;
+            workflow.CompletedAt = now;
+            workflow.LastActionAt = now;
+
+            foreach (var stage in workflow.StageInstances)
+            {
+                if (!string.Equals(stage.Status, ApprovedStatus, StringComparison.OrdinalIgnoreCase))
+                {
+                    stage.Status = CancelledStatus;
+                    stage.CompletedAt = now;
+                    stage.AssignedToUserId = null;
+                }
+            }
+
+            if (workflow.Batch is not null)
+            {
+                workflow.Batch.Status = CancelledStatus;
+                workflow.Batch.FinishedAt = now;
+            }
+
+            _db.WorkflowActionLogs.Add(new WorkflowActionLog
+            {
+                WorkflowInstanceId = workflow.WorkflowInstanceId,
+                ActionType = "cancelled",
+                FromStatus = ReturnedStatus,
+                ToStatus = CancelledStatus,
+                PerformedByUserId = NormalizeReference(userId),
+                PerformedAt = now,
+                Comments = string.IsNullOrWhiteSpace(comments) ? "[Nota interna] Envío eliminado por el autor." : comments.Trim()
             });
 
             await _db.SaveChangesAsync(ct);
@@ -677,7 +982,17 @@ namespace tesisproject.backend.Services.Implementations
             var validRows = workflow.Batch?.Rows.Count(x => x.RowStatus == "Valid") ?? 0;
             var processedRows = workflow.Batch?.Rows.Count(x => x.RowStatus == "Processed") ?? 0;
             var effectiveStatus = ResolveEffectiveWorkflowStatus(workflow.Status, workflow.Batch?.Status, processedRows);
+            var latestAction = workflow.ActionLogs
+                .OrderByDescending(x => x.PerformedAt)
+                .FirstOrDefault();
+            var latestAuthorObservation = workflow.ActionLogs
+                .OrderByDescending(x => x.PerformedAt)
+                .Select(x => x.Comments)
+                .FirstOrDefault(x => !string.IsNullOrWhiteSpace(x) && x.StartsWith("[Para autor]", StringComparison.OrdinalIgnoreCase));
             var assignedToUserId = currentStageInstance?.AssignedToUserId;
+            var normalizedCurrentUserId = NormalizeReference(currentUserId);
+            var isAssignedToCurrentUser = !string.IsNullOrWhiteSpace(assignedToUserId) &&
+                                          string.Equals(assignedToUserId, normalizedCurrentUserId, StringComparison.OrdinalIgnoreCase);
             var canOperateCurrentStage = currentStageInstance is not null &&
                                          !string.Equals(currentStageInstance.Status, ApprovedStatus, StringComparison.OrdinalIgnoreCase) &&
                                          !string.Equals(currentStageInstance.Status, ReturnedStatus, StringComparison.OrdinalIgnoreCase) &&
@@ -707,17 +1022,16 @@ namespace tesisproject.backend.Services.Implementations
                 ProcessedRows = processedRows,
                 SubmittedAt = workflow.SubmittedAt,
                 LastActionAt = workflow.LastActionAt,
+                LastActionType = latestAction?.ActionType,
+                LatestAuthorObservation = CleanAudiencePrefix(latestAuthorObservation),
                 CanClaim = canOperateCurrentStage &&
-                           (string.IsNullOrWhiteSpace(assignedToUserId) ||
-                            string.Equals(assignedToUserId, NormalizeReference(currentUserId), StringComparison.OrdinalIgnoreCase)),
+                           string.IsNullOrWhiteSpace(assignedToUserId),
                 CanReturn = canOperateCurrentStage &&
                             currentStage?.CanReturn == true &&
-                            (string.IsNullOrWhiteSpace(assignedToUserId) ||
-                             string.Equals(assignedToUserId, NormalizeReference(currentUserId), StringComparison.OrdinalIgnoreCase)),
+                            isAssignedToCurrentUser,
                 CanApprove = canOperateCurrentStage &&
                              currentStage?.CanApprove == true &&
-                             (string.IsNullOrWhiteSpace(assignedToUserId) ||
-                              string.Equals(assignedToUserId, NormalizeReference(currentUserId), StringComparison.OrdinalIgnoreCase)),
+                             isAssignedToCurrentUser,
                 CanProcessBatch = currentStage?.CanProcessBatch == true &&
                                   string.Equals(effectiveStatus, ApprovedStatus, StringComparison.OrdinalIgnoreCase) &&
                                   processedRows < (workflow.Batch?.TotalRows ?? 0)
@@ -783,6 +1097,33 @@ namespace tesisproject.backend.Services.Implementations
             };
         }
 
+        private async Task<WorkflowInstance> LoadMutableAuthorWorkflowAsync(int importBatchId, string? userId, CancellationToken ct)
+        {
+            var normalizedUserId = NormalizeReference(userId);
+            if (string.IsNullOrWhiteSpace(normalizedUserId))
+            {
+                throw new InvalidOperationException("No se pudo resolver el usuario autor.");
+            }
+
+            var authorReferences = await ResolveAuthorReferencesAsync(normalizedUserId, ct);
+            var workflow = await _db.WorkflowInstances
+                .Include(x => x.WorkflowDefinition)
+                    .ThenInclude(x => x!.Stages)
+                .Include(x => x.CurrentStageDefinition)
+                .Include(x => x.StageInstances)
+                .Include(x => x.Batch)
+                    .ThenInclude(x => x!.Rows)
+                .FirstOrDefaultAsync(x => x.ImportBatchId == importBatchId, ct)
+                ?? throw new InvalidOperationException("El envío no tiene un workflow configurado.");
+
+            if (workflow.SubmittedByUserId is null || !authorReferences.Contains(workflow.SubmittedByUserId))
+            {
+                throw new InvalidOperationException("Solo el autor que realizó el envío puede modificar este caso devuelto.");
+            }
+
+            return workflow;
+        }
+
         private static HashSet<string> NormalizeRoles(IReadOnlyCollection<string> roleNames)
         {
             return (roleNames ?? Array.Empty<string>())
@@ -794,6 +1135,22 @@ namespace tesisproject.backend.Services.Implementations
         private static string? NormalizeReference(string? value)
         {
             return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+
+        private static string EnsureAuthorVisibleComment(string comments)
+        {
+            var trimmed = comments.Trim();
+            return trimmed.StartsWith("[Para autor]", StringComparison.OrdinalIgnoreCase)
+                ? trimmed
+                : $"[Para autor] {CleanAudiencePrefix(trimmed)}";
+        }
+
+        private static string EnsureUodideVisibleComment(string comments)
+        {
+            var trimmed = comments.Trim();
+            return trimmed.StartsWith("[Para UODIDE]", StringComparison.OrdinalIgnoreCase)
+                ? trimmed
+                : $"[Para UODIDE] {CleanAudiencePrefix(trimmed)}";
         }
 
         private static string NormalizeStatus(string? status)
@@ -889,6 +1246,21 @@ namespace tesisproject.backend.Services.Implementations
             return displayNames.TryGetValue(reference, out var displayName)
                 ? displayName
                 : reference;
+        }
+
+        private static string? CleanAudiencePrefix(string? comment)
+        {
+            if (string.IsNullOrWhiteSpace(comment))
+            {
+                return null;
+            }
+
+            return comment
+                .Replace("[Para autor]", string.Empty, StringComparison.OrdinalIgnoreCase)
+                .Replace("[Para UODIDE]", string.Empty, StringComparison.OrdinalIgnoreCase)
+                .Replace("[Para siguiente revisor]", string.Empty, StringComparison.OrdinalIgnoreCase)
+                .Replace("[Nota interna]", string.Empty, StringComparison.OrdinalIgnoreCase)
+                .Trim();
         }
 
         private sealed class WorkflowActionContext

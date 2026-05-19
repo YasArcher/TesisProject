@@ -44,6 +44,8 @@ namespace tesisproject.shared.DTOs.Workflow
         public int ProcessedRows { get; set; }
         public DateTime? SubmittedAt { get; set; }
         public DateTime? LastActionAt { get; set; }
+        public string? LastActionType { get; set; }
+        public string? LatestAuthorObservation { get; set; }
         public bool CanClaim { get; set; }
         public bool CanReturn { get; set; }
         public bool CanApprove { get; set; }

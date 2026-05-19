@@ -59,6 +59,68 @@
     border-color: rgba(151, 176, 103, 0.45) !important;
 }
 
+.workflow-panel {
+    position: relative;
+    overflow: hidden;
+}
+
+.workflow-panel::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0.38rem;
+    pointer-events: none;
+}
+
+.workflow-panel--validation {
+    background:
+        radial-gradient(circle at top right, rgba(64, 138, 113, 0.08), transparent 24%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(242, 248, 245, 0.96)) !important;
+}
+
+.workflow-panel--validation::before {
+    background: linear-gradient(180deg, #408a71, #055052);
+}
+
+.workflow-panel--author-validation {
+    border-color: rgba(98, 129, 65, 0.22) !important;
+}
+
+.workflow-panel--uodide-validation {
+    border-color: rgba(5, 80, 82, 0.24) !important;
+}
+
+.workflow-panel--tech-validation {
+    border-color: rgba(49, 54, 71, 0.22) !important;
+}
+
+.workflow-panel--detail-flow {
+    background:
+        radial-gradient(circle at top right, rgba(49, 54, 71, 0.08), transparent 24%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(247, 248, 250, 0.97)) !important;
+    border-color: rgba(49, 54, 71, 0.18) !important;
+}
+
+.workflow-panel--detail-flow::before {
+    background: linear-gradient(180deg, #313647, #2f4858);
+}
+
+.workflow-panel-eyebrow {
+    margin-bottom: 0.15rem;
+    font-size: 0.66rem;
+    font-weight: 950;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.workflow-panel-eyebrow--validation {
+    color: #055052;
+}
+
+.workflow-panel-eyebrow--detail {
+    color: #313647;
+}
+
 .workflow-review-page button[class*="rounded-[1.3rem]"] {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 248, 0.96));
     position: relative;
@@ -137,8 +199,8 @@
 }
 
 .workflow-section__icon--detail {
-    background: linear-gradient(145deg, rgba(49, 54, 71, 0.14), rgba(255, 255, 255, 0.98));
-    color: #313647;
+    background: linear-gradient(145deg, rgba(49, 54, 71, 0.95), rgba(47, 72, 88, 0.9));
+    color: #fff;
 }
 
 .workflow-author-tabs,
@@ -151,6 +213,15 @@
     border-radius: 1.35rem;
     background: linear-gradient(180deg, rgba(245, 247, 248, 0.96), rgba(255, 248, 212, 0.46));
     border: 1px solid rgba(67, 86, 99, 0.08);
+}
+
+.workflow-detail-tabs {
+    background: linear-gradient(180deg, rgba(49, 54, 71, 0.06), rgba(255, 255, 255, 0.86));
+    border-color: rgba(49, 54, 71, 0.1);
+}
+
+.workflow-panel--detail-flow .workflow-tab--active {
+    background: linear-gradient(135deg, rgba(49, 54, 71, 1), rgba(47, 72, 88, 0.96));
 }
 
 .workflow-author-tabs--compact {
@@ -408,6 +479,19 @@
     transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
 }
 
+.workflow-panel--validation .workflow-author-submission-card,
+.workflow-panel--validation .workflow-author-article-card {
+    border-left: 4px solid rgba(64, 138, 113, 0.72);
+}
+
+.workflow-panel--uodide-validation .workflow-uodide-submission-card {
+    border-left: 4px solid rgba(5, 80, 82, 0.72);
+}
+
+.workflow-panel--tech-validation .workflow-area-submission-card {
+    border-left: 4px solid rgba(49, 54, 71, 0.72);
+}
+
 .workflow-author-submission-card:hover {
     transform: translateY(-1px);
     border-color: rgba(64, 138, 113, 0.38);
@@ -449,6 +533,30 @@
         linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(232, 243, 237, 0.96));
 }
 
+.workflow-area-submission-card {
+    background:
+        radial-gradient(circle at top right, rgba(49, 54, 71, 0.1), transparent 28%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(246, 247, 244, 0.96));
+}
+
+.workflow-area-submission-card--pending {
+    border-color: rgba(49, 54, 71, 0.16);
+}
+
+.workflow-area-submission-card--reviewing {
+    border-color: rgba(40, 90, 72, 0.26);
+    background:
+        radial-gradient(circle at top right, rgba(98, 129, 65, 0.13), transparent 28%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(241, 247, 238, 0.96));
+}
+
+.workflow-area-submission-card--ready {
+    border-color: rgba(98, 129, 65, 0.34);
+    background:
+        radial-gradient(circle at top right, rgba(98, 129, 65, 0.18), transparent 28%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(236, 246, 231, 0.98));
+}
+
 .workflow-submission-card-layout {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr) auto;
@@ -487,6 +595,14 @@
 
 .workflow-submission-avatar--uodide {
     background: linear-gradient(135deg, #003638, #055052);
+}
+
+.workflow-submission-avatar--tech {
+    background: linear-gradient(135deg, #313647, #285a48);
+}
+
+.workflow-submission-avatar--tech-ready {
+    background: linear-gradient(135deg, #055052, #628141);
 }
 
 .workflow-submission-title {
@@ -533,9 +649,32 @@
     transition: all 160ms ease;
 }
 
-.workflow-inline-action:hover {
+.workflow-inline-action:hover:not(:disabled) {
     background: rgba(244, 206, 20, 0.22);
     transform: translateY(-1px);
+}
+
+.workflow-inline-action:disabled {
+    cursor: not-allowed;
+    opacity: 0.52;
+    transform: none;
+}
+
+.workflow-inline-action--review {
+    background: rgba(5, 80, 82, 0.08);
+    color: #003638;
+    border-color: rgba(5, 80, 82, 0.16);
+}
+
+.workflow-inline-action--success {
+    background: rgba(64, 138, 113, 0.14);
+    color: #055052;
+}
+
+.workflow-inline-action--danger {
+    background: rgba(140, 16, 7, 0.08);
+    color: #660b05;
+    border-color: rgba(140, 16, 7, 0.16);
 }
 
 .workflow-inline-action__icon {
@@ -570,9 +709,80 @@
     color: #055052;
 }
 
+.workflow-return-observation {
+    margin-top: 0.72rem;
+    border: 1px solid rgba(140, 16, 7, 0.14);
+    border-radius: 0.95rem;
+    background:
+        radial-gradient(circle at top right, rgba(244, 206, 20, 0.12), transparent 28%),
+        rgba(255, 248, 212, 0.38);
+    padding: 0.72rem 0.78rem;
+}
+
+.workflow-return-observation span {
+    display: block;
+    color: #8c1007;
+    font-size: 0.66rem;
+    font-weight: 950;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.workflow-return-observation p {
+    margin-top: 0.28rem;
+    color: #3e0703;
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.workflow-return-readiness {
+    margin-top: 0.5rem;
+    border: 1px solid rgba(140, 16, 7, 0.12);
+    border-radius: 0.85rem;
+    background: rgba(255, 248, 212, 0.42);
+    padding: 0.62rem 0.72rem;
+}
+
+.workflow-return-readiness--ready {
+    border-color: rgba(64, 138, 113, 0.18);
+    background: rgba(64, 138, 113, 0.1);
+}
+
+.workflow-return-readiness span {
+    display: block;
+    color: #660b05;
+    font-size: 0.65rem;
+    font-weight: 950;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.workflow-return-readiness--ready span {
+    color: #055052;
+}
+
+.workflow-return-readiness p {
+    margin-top: 0.24rem;
+    color: var(--workflow-heading);
+    font-size: 0.76rem;
+    line-height: 1.4;
+}
+
 .workflow-inline-chip--uodide {
     background: rgba(5, 80, 82, 0.1);
     color: #055052;
+}
+
+.workflow-inline-chip--tech {
+    background: rgba(49, 54, 71, 0.08);
+    color: #313647;
+    border: 1px solid rgba(49, 54, 71, 0.1);
+}
+
+.workflow-inline-chip--tech-ready {
+    background: rgba(98, 129, 65, 0.16);
+    color: #285a48;
+    border: 1px solid rgba(98, 129, 65, 0.18);
 }
 
 .workflow-inline-chip--registrant {
@@ -635,6 +845,20 @@
     border: 1px solid rgba(67, 86, 99, 0.1);
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(245, 247, 248, 0.96));
     box-shadow: var(--app-shadow-sm);
+}
+
+.workflow-panel--detail-flow .workflow-author-detail-card,
+.workflow-panel--detail-flow .workflow-author-detail-section,
+.workflow-panel--detail-flow .workflow-author-stage-card,
+.workflow-panel--detail-flow .workflow-author-note-card {
+    border-color: rgba(49, 54, 71, 0.12);
+    background:
+        radial-gradient(circle at top right, rgba(49, 54, 71, 0.04), transparent 30%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(247, 248, 250, 0.97));
+}
+
+.workflow-panel--detail-flow .workflow-card-eyebrow {
+    color: #313647;
 }
 
 .workflow-author-detail-card {
@@ -804,6 +1028,135 @@
     box-shadow: 0 26px 70px rgba(17, 24, 39, 0.24);
     display: flex;
     flex-direction: column;
+}
+
+.workflow-case-modal {
+    width: min(620px, 100%);
+    max-height: calc(100vh - 3rem);
+    overflow: hidden;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(245, 247, 248, 0.98));
+    box-shadow: 0 26px 70px rgba(17, 24, 39, 0.24);
+}
+
+.workflow-case-modal__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.15rem 1.25rem 0.95rem;
+    border-bottom: 1px solid rgba(67, 86, 99, 0.12);
+    background:
+        radial-gradient(circle at top right, rgba(64, 138, 113, 0.14), transparent 30%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(240, 247, 243, 0.9));
+}
+
+.workflow-case-modal__body {
+    display: grid;
+    gap: 1rem;
+    padding: 1.15rem 1.25rem 1.25rem;
+}
+
+.workflow-case-summary {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 0.85rem;
+    border: 1px solid rgba(64, 138, 113, 0.16);
+    border-radius: 1.1rem;
+    background:
+        radial-gradient(circle at top right, rgba(98, 129, 65, 0.11), transparent 28%),
+        rgba(255, 255, 255, 0.84);
+    padding: 0.9rem;
+}
+
+.workflow-case-summary__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.85rem;
+    background: linear-gradient(135deg, #003638, #408a71);
+    color: #fff;
+    font-weight: 950;
+}
+
+.workflow-case-summary__title {
+    color: var(--workflow-heading);
+    font-size: 0.98rem;
+    font-weight: 950;
+    line-height: 1.25;
+}
+
+.workflow-case-summary__meta {
+    margin-top: 0.25rem;
+    color: var(--workflow-muted);
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.workflow-case-modal__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.6rem;
+}
+
+.workflow-case-action {
+    border: 1px solid rgba(67, 86, 99, 0.14);
+    border-radius: 0.9rem;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--workflow-heading);
+    padding: 0.68rem 0.95rem;
+    font-size: 0.82rem;
+    font-weight: 900;
+    transition: all 160ms ease;
+}
+
+.workflow-case-action:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--app-shadow-sm);
+}
+
+.workflow-case-action--primary {
+    border-color: transparent;
+    background: linear-gradient(135deg, #003638, #408a71);
+    color: #fff;
+}
+
+.workflow-case-action--warning {
+    border-color: rgba(140, 16, 7, 0.18);
+    background: linear-gradient(135deg, rgba(140, 16, 7, 0.1), rgba(255, 248, 212, 0.86));
+    color: #660b05;
+}
+
+.workflow-case-textarea {
+    min-height: 8rem;
+    resize: vertical;
+    border: 1px solid rgba(67, 86, 99, 0.14);
+    border-radius: 1.1rem;
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--workflow-heading);
+    padding: 0.85rem 0.95rem;
+    font-size: 0.9rem;
+    line-height: 1.55;
+}
+
+.workflow-case-textarea:focus {
+    outline: none;
+    border-color: rgba(64, 138, 113, 0.46);
+    box-shadow: 0 0 0 4px rgba(64, 138, 113, 0.12);
+}
+
+.workflow-case-validation {
+    border-radius: 0.9rem;
+    background: rgba(140, 16, 7, 0.08);
+    border: 1px solid rgba(140, 16, 7, 0.14);
+    color: #660b05;
+    font-size: 0.82rem;
+    font-weight: 800;
+    padding: 0.65rem 0.75rem;
 }
 
 .workflow-modal-card__header {

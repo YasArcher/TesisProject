@@ -60,6 +60,46 @@ namespace tesisproject.backend.Controllers
             }
         }
 
+        [HttpPost("{batchId:int}/validate")]
+        public async Task<ActionResult<BulkImportActionResultDto>> ValidateBatch(int batchId, CancellationToken ct = default)
+        {
+            try
+            {
+                if (!await CanAccessBatchWorkflowAsync(batchId, ct, authorRequiresReturnedStatus: true))
+                {
+                    return Forbid();
+                }
+
+                return Ok(await _bulkImportService.ValidateBatchAsync(batchId, ct));
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("{batchId:int}/rows/{rowId:int}")]
+        public async Task<ActionResult<BulkImportActionResultDto>> CorrectRow(int batchId, int rowId, [FromBody] BulkImportRowCorrectionRequest request, CancellationToken ct = default)
+        {
+            try
+            {
+                if (!await CanAccessBatchWorkflowAsync(batchId, ct, authorRequiresReturnedStatus: true))
+                {
+                    return Forbid();
+                }
+
+                return Ok(await _bulkImportService.CorrectRowAsync(batchId, rowId, request, ct));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return Problem(title: "No pude corregir la fila del envío.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+            }
+        }
+
         [HttpGet("inbox/review")]
         [Authorize(Policy = AppPolicies.WorkflowReview)]
         public async Task<ActionResult<List<WorkflowInboxItemDto>>> GetReviewInbox([FromQuery] int take = 50, CancellationToken ct = default)
@@ -122,6 +162,34 @@ namespace tesisproject.backend.Controllers
             }
         }
 
+        [HttpPost("{batchId:int}/return-to-uodide")]
+        [Authorize(Policy = AppPolicies.WorkflowReview)]
+        public async Task<ActionResult<WorkflowBatchDetailDto>> ReturnToUodide(int batchId, [FromBody] WorkflowActionRequest request, CancellationToken ct = default)
+        {
+            try
+            {
+                return Ok(await _service.ReturnCurrentStageToPreviousStageAsync(batchId, GetCurrentUserId(), GetCurrentRoleNames(), request?.Comments, ct));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("{batchId:int}/decline")]
+        [Authorize(Policy = AppPolicies.WorkflowReview)]
+        public async Task<ActionResult<WorkflowBatchDetailDto>> Decline(int batchId, [FromBody] WorkflowActionRequest request, CancellationToken ct = default)
+        {
+            try
+            {
+                return Ok(await _service.DeclineCurrentStageAsync(batchId, GetCurrentUserId(), GetCurrentRoleNames(), request?.Comments, ct));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpPost("{batchId:int}/approve")]
         [Authorize(Policy = AppPolicies.WorkflowReview)]
         public async Task<ActionResult<WorkflowBatchDetailDto>> Approve(int batchId, [FromBody] WorkflowActionRequest request, CancellationToken ct = default)
@@ -129,6 +197,32 @@ namespace tesisproject.backend.Controllers
             try
             {
                 return Ok(await _service.ApproveCurrentStageAsync(batchId, GetCurrentUserId(), GetCurrentRoleNames(), request?.Comments, ct));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("{batchId:int}/resubmit")]
+        public async Task<ActionResult<WorkflowBatchDetailDto>> Resubmit(int batchId, [FromBody] WorkflowActionRequest? request, CancellationToken ct = default)
+        {
+            try
+            {
+                return Ok(await _service.ResubmitReturnedBatchAsync(batchId, GetCurrentUserId(), request?.Comments, ct));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("{batchId:int}/cancel")]
+        public async Task<ActionResult<WorkflowBatchDetailDto>> Cancel(int batchId, [FromBody] WorkflowActionRequest? request, CancellationToken ct = default)
+        {
+            try
+            {
+                return Ok(await _service.CancelReturnedBatchAsync(batchId, GetCurrentUserId(), request?.Comments, ct));
             }
             catch (InvalidOperationException ex)
             {
@@ -152,7 +246,7 @@ namespace tesisproject.backend.Controllers
                 ?? new List<string>();
         }
 
-        private async Task<bool> CanAccessBatchWorkflowAsync(int batchId, CancellationToken ct)
+        private async Task<bool> CanAccessBatchWorkflowAsync(int batchId, CancellationToken ct, bool authorRequiresReturnedStatus = false)
         {
             var userId = GetCurrentUserId();
             var roleNames = GetCurrentRoleNames();
@@ -165,7 +259,7 @@ namespace tesisproject.backend.Controllers
             var canSeeAsAuthor = roleNames.Any(x =>
                     string.Equals(x, AppRoles.Author, StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(x, AppRoles.WorkflowTrackingUser, StringComparison.OrdinalIgnoreCase))
-                && (await _service.GetAuthorInboxAsync(userId, 200, ct)).Any(x => x.ImportBatchId == batchId);
+                && await _service.CanAuthorAccessBatchAsync(userId, batchId, authorRequiresReturnedStatus, ct);
 
             if (canSeeAsAuthor)
             {
