@@ -177,7 +177,12 @@
                                 <div class="flex flex-wrap gap-2">
                                     <button type="button" class="external-api-dataset-modal__secondary" @onclick="DownloadInstitutionalDatasetCsvAsync">Descargar CSV</button>
                                     <button type="button" class="external-api-dataset-modal__secondary" @onclick="DownloadInstitutionalDatasetJsonAsync">Descargar JSON</button>
-                                    <button type="button" class="external-api-dataset-modal__secondary disabled:cursor-not-allowed disabled:opacity-60" disabled>Enviar a staging - Guardar en Base de datos</button>
+                                    <button type="button"
+                                            class="external-api-dataset-modal__secondary disabled:cursor-not-allowed disabled:opacity-60"
+                                            disabled="@(!InstitutionalDatasetArticles.Any() || IsSendingInstitutionalDatasetToStaging)"
+                                            @onclick="SendInstitutionalDatasetToStagingAsync">
+                                        @(IsSendingInstitutionalDatasetToStaging ? "Enviando dataset..." : "Enviar dataset a staging")
+                                    </button>
                                 </div>
                             </div>
 
@@ -361,6 +366,7 @@
     private bool IsRunningQuery;
     private bool IsSendingToStaging;
     private bool IsSendingSelectionToStaging;
+    private bool IsSendingInstitutionalDatasetToStaging;
     private bool IsStagingConfirmVisible;
     private string? ErrorMessage;
     private string? SuccessMessage;
@@ -369,6 +375,7 @@
     private List<ExternalApiQuerySidebar.ExternalApiRecentQueryItem> RecentQueries { get; set; } = new();
     private ExternalArticlePreviewDto? PendingSingleStagingArticle;
     private bool PendingSelectionStagingSend;
+    private bool PendingInstitutionalDatasetStagingSend;
     private string ResultsSearchText = string.Empty;
     private bool FilterOnlyWithDoi;
     private bool FilterOnlyOpenAccess;
@@ -426,15 +433,21 @@
         !string.IsNullOrWhiteSpace(SelectedAuthorId)
         || !string.IsNullOrWhiteSpace(SelectedAffiliationId);
 
-    private bool IsBusyOverlayVisible => IsLoading || IsRunningQuery || IsSendingToStaging || IsSendingSelectionToStaging || IsLoadingInstitutionalDataset;
+    private bool IsBusyOverlayVisible => IsLoading || IsRunningQuery || IsSendingToStaging || IsSendingSelectionToStaging || IsSendingInstitutionalDatasetToStaging || IsLoadingInstitutionalDataset;
     private string StagingConfirmTitle => PendingSelectionStagingSend
         ? "Enviar selección de artículos a staging"
+        : PendingInstitutionalDatasetStagingSend
+            ? "Enviar dataset institucional a staging"
         : "Enviar artículo a staging";
     private string StagingConfirmActionLabel => PendingSelectionStagingSend
         ? "Enviar selección"
+        : PendingInstitutionalDatasetStagingSend
+            ? "Enviar dataset"
         : "Enviar artículo";
     private string StagingConfirmMessage => PendingSelectionStagingSend
         ? $"Se generará un lote con {SelectedExternalArticles.Count} artículo(s) seleccionados. Mientras se procesa el envío no podrás seguir interactuando con esta pantalla."
+        : PendingInstitutionalDatasetStagingSend
+            ? $"Se generará un lote en staging con {InstitutionalDatasetArticles.Length} artículo(s) recuperados por filiación Universidad Técnica de Ambato. Luego podrás validar y corregir antes del registro definitivo."
         : "Se enviará este artículo al staging institucional para revisión técnica posterior. ¿Deseas continuar?";
 
     private string CurrentBusyEyebrow => IsLoading
@@ -443,7 +456,9 @@
             ? "Preparando dataset"
         : IsRunningQuery
             ? "Consultando proveedor"
-            : "Procesando envío";
+        : IsSendingInstitutionalDatasetToStaging
+            ? "Enviando dataset"
+        : "Procesando envío";
 
     private string CurrentBusyTitle => IsLoading
         ? "Estamos cargando los conectores académicos"
@@ -451,7 +466,9 @@
             ? "Estamos reuniendo los artículos institucionales"
         : IsRunningQuery
             ? "Estamos consultando la fuente seleccionada"
-            : "Estamos enviando artículos al staging";
+        : IsSendingInstitutionalDatasetToStaging
+            ? "Estamos creando el lote institucional en staging"
+        : "Estamos enviando artículos al staging";
 
     private string CurrentBusyMessage => IsLoading
         ? "Espera un momento mientras dejamos listo el módulo con sus proveedores, ayudas visuales y paneles de resultados."
@@ -459,7 +476,9 @@
             ? "Estamos recorriendo Scopus y consolidando el dataset de la Universidad Técnica de Ambato. Por ahora bloqueamos la pantalla para evitar acciones duplicadas."
         : IsRunningQuery
             ? "No necesitas hacer nada más por ahora. Estamos resolviendo la consulta, leyendo la respuesta y preparando los artículos mapeables."
-            : "Mantendremos esta pantalla protegida hasta completar el envío para evitar acciones duplicadas o inconsistencias.";
+        : IsSendingInstitutionalDatasetToStaging
+            ? "Estamos enviando los artículos institucionales recuperados a staging para que sean validados antes del registro definitivo."
+        : "Mantendremos esta pantalla protegida hasta completar el envío para evitar acciones duplicadas o inconsistencias.";
 
     private static string GetLastResultArticleKey(ExternalArticlePreviewDto article)
         => !string.IsNullOrWhiteSpace(article.ExternalId)
@@ -1011,6 +1030,13 @@
             return;
         }
 
+        if (PendingInstitutionalDatasetStagingSend)
+        {
+            PendingInstitutionalDatasetStagingSend = false;
+            await ExecuteSendInstitutionalDatasetToStagingAsync();
+            return;
+        }
+
         if (PendingSingleStagingArticle is not null)
         {
             var article = PendingSingleStagingArticle;
@@ -1024,7 +1050,70 @@
         IsStagingConfirmVisible = false;
         PendingSingleStagingArticle = null;
         PendingSelectionStagingSend = false;
+        PendingInstitutionalDatasetStagingSend = false;
         return Task.CompletedTask;
+    }
+
+    private async Task SendInstitutionalDatasetToStagingAsync()
+    {
+        if (!InstitutionalDatasetArticles.Any())
+        {
+            ErrorMessage = "Primero prepara el dataset institucional antes de enviarlo a staging.";
+            return;
+        }
+
+        PendingSingleStagingArticle = null;
+        PendingSelectionStagingSend = false;
+        PendingInstitutionalDatasetStagingSend = true;
+        IsStagingConfirmVisible = true;
+        await Task.CompletedTask;
+    }
+
+    private async Task ExecuteSendInstitutionalDatasetToStagingAsync()
+    {
+        if (!InstitutionalDatasetArticles.Any())
+        {
+            ErrorMessage = "Primero prepara el dataset institucional antes de enviarlo a staging.";
+            return;
+        }
+
+        try
+        {
+            IsSendingInstitutionalDatasetToStaging = true;
+            ErrorMessage = null;
+            SuccessMessage = null;
+
+            var result = await ExternalApiExplorerClient.SendScopusInstitutionalDatasetToStagingAsync(new ScopusInstitutionalStagingImportRequest
+            {
+                InstitutionName = DefaultInstitutionName,
+                ChunkSize = 250,
+                ValidateAfterCreate = true
+            });
+
+            if (result is not null && result.BatchCount > 0)
+            {
+                SuccessMessage = result.Message;
+                IsInstitutionalDatasetModalVisible = false;
+
+                var firstBatch = result.Batches.FirstOrDefault();
+                if (firstBatch is not null && firstBatch.ImportBatchId > 0)
+                {
+                    NavManager.NavigateTo($"/management/exportinformation?batchId={firstBatch.ImportBatchId}");
+                }
+            }
+            else if (result is not null)
+            {
+                SuccessMessage = result.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"No fue posible enviar el dataset institucional a staging: {ex.Message}";
+        }
+        finally
+        {
+            IsSendingInstitutionalDatasetToStaging = false;
+        }
     }
 
     private async Task ExecuteSendSelectedToStagingAsync()

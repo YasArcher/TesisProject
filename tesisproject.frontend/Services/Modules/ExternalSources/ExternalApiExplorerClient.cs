@@ -21,5 +21,8 @@ namespace tesisproject.frontend.Services.Implementations
 
         public Task<ExternalArticlePreviewDto?> EnrichArticleAsync(string providerKey, ExternalArticlePreviewDto article, CancellationToken ct = default)
             => _api.PostAsync<ExternalArticlePreviewDto, ExternalArticlePreviewDto>($"api/external-api-explorer/providers/{providerKey}/enrich", article, ct);
+
+        public Task<ScopusInstitutionalStagingImportResultDto?> SendScopusInstitutionalDatasetToStagingAsync(ScopusInstitutionalStagingImportRequest request, CancellationToken ct = default)
+            => _api.PostAsync<ScopusInstitutionalStagingImportRequest, ScopusInstitutionalStagingImportResultDto>("api/external-api-explorer/scopus/institutional-staging", request, ct);
     }
 }

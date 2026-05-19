@@ -105,4 +105,33 @@ namespace tesisproject.shared.DTOs.ExternalApis
         public int Score { get; set; }
         public int DocumentCount { get; set; }
     }
+
+    public class ScopusInstitutionalStagingImportRequest
+    {
+        public string InstitutionName { get; set; } = "Universidad Técnica de Ambato";
+        public int ChunkSize { get; set; } = 250;
+        public bool ValidateAfterCreate { get; set; } = true;
+    }
+
+    public class ScopusInstitutionalStagingImportResultDto
+    {
+        public string ProviderKey { get; set; } = "scopus";
+        public string ProviderName { get; set; } = "Scopus";
+        public string InstitutionName { get; set; } = string.Empty;
+        public int TotalRecovered { get; set; }
+        public int TotalSentToStaging { get; set; }
+        public int ChunkSize { get; set; }
+        public int BatchCount { get; set; }
+        public string Message { get; set; } = string.Empty;
+        public List<ScopusInstitutionalStagingBatchDto> Batches { get; set; } = new();
+    }
+
+    public class ScopusInstitutionalStagingBatchDto
+    {
+        public int ImportBatchId { get; set; }
+        public string BatchCode { get; set; } = string.Empty;
+        public int Rows { get; set; }
+        public int ErrorRows { get; set; }
+        public string Status { get; set; } = string.Empty;
+    }
 }
