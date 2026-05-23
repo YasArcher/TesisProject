@@ -111,6 +111,9 @@ namespace tesisproject.shared.DTOs.Imports
     {
         public string Message { get; set; } = string.Empty;
         public BulkImportBatchDetailDto Batch { get; set; } = new();
+        public int InsertedRows { get; set; }
+        public int DuplicateRows { get; set; }
+        public int FailedRows { get; set; }
     }
 
     public class BulkImportRowCorrectionCellDto

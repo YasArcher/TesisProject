@@ -1,5 +1,5 @@
 @page "/panel/principal"
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Admin,Analyst,WorkflowReviewerUodide,WorkflowReviewerAreaTecnica,WorkflowProcessorAreaTecnica,ReportingViewer,ReportingExporter,ReportingAdvancedUser,IntelligenceViewer,IntelligenceTrainer")]
 
 @using System.Security.Claims
 @using System.Threading

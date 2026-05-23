@@ -20,13 +20,17 @@
                 <i class="bi bi-cpu"></i>
                 @HealthLabel
             </span>
+            <span class="ai-hero__meta">
+                <i class="bi bi-clock-history"></i>
+                @LastAiGeneratedLabel
+            </span>
             <button type="button" class="ai-action-button" @onclick="LoadDashboardAsync" disabled="@_isLoading">
                 <i class="bi bi-arrow-clockwise"></i>
-                <span>@(_isLoading ? "Actualizando" : "Actualizar")</span>
+                <span>@(_isLoading ? "Actualizando lectura" : "Actualizar lectura")</span>
             </button>
             <button type="button" class="ai-action-button ai-action-button--primary" @onclick="RunTrainingAsync" disabled="@(_isLoading || _isTraining)">
                 <i class="bi bi-play-circle"></i>
-                <span>@(_isTraining ? "Entrenando" : "Reentrenar")</span>
+                <span>@(_isTraining ? "Entrenando modelo" : "Reentrenar modelo")</span>
             </button>
         </div>
     </section>
@@ -91,6 +95,29 @@
         </article>
     </section>
 
+    <section class="ai-focus-strip-panel app-section-card" aria-label="Foco de decisión IA">
+        <div class="ai-focus-strip-panel__head">
+            <div>
+                <span>Foco de decisión</span>
+                <strong>@SelectedDecisionFocus.Title</strong>
+            </div>
+            <small>@SelectedDecisionFocus.Description</small>
+        </div>
+
+        <div class="ai-focus-strip">
+            @foreach (var item in DecisionFocusItems)
+            {
+                <button type="button"
+                        class="@GetFocusPillClass(item.Key)"
+                        @onclick="() => SelectDecisionFocus(item.Key)">
+                    <span>@item.Icon</span>
+                    <strong>@item.Title</strong>
+                    <em>@item.Status</em>
+                </button>
+            }
+        </div>
+    </section>
+
     <section class="ai-decision-tabs" aria-label="Niveles de lectura IA">
         <button type="button"
                 class="@GetDecisionModeClass(SummaryDecisionMode)"
@@ -126,16 +153,38 @@
         </article>
 
         <article class="ai-executive-card">
-            <span>Lectura para decidir</span>
-            <strong>@ExecutiveDecisionTitle</strong>
-            <small>@ExecutiveDecisionDetail</small>
+            <span>Próximo mes</span>
+            <strong>@NextForecastLabel</strong>
+            <small>@NextForecastRangeLabel</small>
         </article>
 
         <article class="ai-executive-card">
             <span>Acción recomendada</span>
-            <strong>@ExecutiveRecommendationTitle</strong>
-            <small>@ExecutiveRecommendationAction</small>
+            <strong>@ProductionRecommendationTitle</strong>
+            <small>@ProductionRecommendationAction</small>
         </article>
+    </section>
+
+    <section class="ai-production-brief app-section-card">
+        <div>
+            <span>@ExecutiveDecisionTitle</span>
+            <strong>@ProductionTrendLabel</strong>
+            <small>@ExecutiveDecisionDetail</small>
+        </div>
+        <div class="ai-production-brief__stats">
+            <article>
+                <small>Histórico usado</small>
+                <strong>@HistoricalMonthsLabel</strong>
+            </article>
+            <article>
+                <small>Confianza</small>
+                <strong>@((_intelligence?.ProductionForecast.ConfidenceScore ?? 0).ToString("N0"))%</strong>
+            </article>
+            <article>
+                <small>Modelo</small>
+                <strong>@(_intelligence?.ProductionForecast.Algorithm ?? "Sin algoritmo")</strong>
+            </article>
+        </div>
     </section>
 
     <section class="ai-workbench ai-workbench--executive">
@@ -210,23 +259,9 @@
         <div class="ai-section-heading">
             <span class="app-inline-chip app-inline-chip--success">
                 <i class="bi bi-bullseye"></i>
-                Interés del usuario
+                Análisis seleccionado
             </span>
-            <h2>Qué quieres analizar</h2>
-        </div>
-
-        <div class="ai-focus-grid">
-            @foreach (var item in DecisionFocusItems)
-            {
-                <button type="button"
-                        class="@GetFocusClass(item.Key)"
-                        @onclick="() => SelectDecisionFocus(item.Key)">
-                    <span>@item.Icon</span>
-                    <strong>@item.Title</strong>
-                    <small>@item.Description</small>
-                    <em>@item.Status</em>
-                </button>
-            }
+            <h2>@SelectedDecisionFocus.Title</h2>
         </div>
 
         <div class="ai-focus-result ai-compact-result">
@@ -278,8 +313,21 @@
                 }
                 else
                 {
+                    <div class="ai-faculty-decision-summary">
+                        <article>
+                            <span>Mayor producción esperada</span>
+                            <strong>@TopFacultyForecast.Faculty</strong>
+                            <small>@TopFacultyForecast.NextSixMonthsTotal.ToString("N1") artículos estimados · @TopFacultyForecast.ConfidenceScore.ToString("N0")% confianza</small>
+                        </article>
+                        <article>
+                            <span>Atención prioritaria</span>
+                            <strong>@PriorityFacultyForecast.Faculty</strong>
+                            <small>@PriorityFacultyForecast.Recommendation</small>
+                        </article>
+                    </div>
+
                     <div class="ai-faculty-grid">
-                        @foreach (var faculty in FacultyForecasts)
+                        @foreach (var faculty in VisibleFacultyForecasts)
                         {
                             <article class="ai-faculty-card">
                                 <div class="ai-faculty-card__top">
@@ -318,6 +366,13 @@
                             </article>
                         }
                     </div>
+
+                    @if (FacultyForecasts.Count > VisibleFacultyForecasts.Count)
+                    {
+                        <div class="ai-faculty-more-note">
+                            Se priorizan @VisibleFacultyForecasts.Count facultades para lectura rápida. Hay @(FacultyForecasts.Count - VisibleFacultyForecasts.Count) adicionales disponibles para una vista detallada posterior.
+                        </div>
+                    }
                 }
             </section>
         }
@@ -715,6 +770,32 @@
 
     private IReadOnlyList<IntelligenceFacultyForecastDto> FacultyForecasts => _intelligence?.FacultyForecasts ?? [];
 
+    private IReadOnlyList<IntelligenceFacultyForecastDto> VisibleFacultyForecasts =>
+        FacultyForecasts
+            .OrderByDescending(x => x.NextSixMonthsTotal)
+            .ThenByDescending(x => x.TotalArticles)
+            .Take(3)
+            .ToList();
+
+    private IntelligenceFacultyForecastDto TopFacultyForecast =>
+        FacultyForecasts
+            .OrderByDescending(x => x.NextSixMonthsTotal)
+            .ThenByDescending(x => x.TotalArticles)
+            .FirstOrDefault()
+        ?? new IntelligenceFacultyForecastDto
+        {
+            Faculty = "Sin facultad",
+            Recommendation = "No hay datos suficientes para priorizar facultades."
+        };
+
+    private IntelligenceFacultyForecastDto PriorityFacultyForecast =>
+        FacultyForecasts
+            .OrderBy(x => x.ConfidenceScore < 40 ? 0 : 1)
+            .ThenBy(x => string.Equals(x.TrendLabel, "Descendente", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
+            .ThenByDescending(x => x.TotalArticles)
+            .FirstOrDefault()
+        ?? TopFacultyForecast;
+
     private IReadOnlyList<IntelligenceSegmentForecastDto> ResearchLineForecasts => _intelligence?.ResearchLineForecasts ?? [];
 
     private IReadOnlyList<IntelligenceEditorialRecommendationDto> EditorialRecommendations => _intelligence?.EditorialRecommendations ?? [];
@@ -789,6 +870,78 @@
 
     private string ExecutiveRecommendationAction => Recommendations.FirstOrDefault()?.SuggestedAction
         ?? "Actualiza la lectura IA cuando existan nuevos registros.";
+
+    private IntelligenceRecommendationDto? ProductionRecommendation =>
+        Recommendations.FirstOrDefault(x =>
+            ContainsDecisionText(x.Title, "predic")
+            || ContainsDecisionText(x.Detail, "predic")
+            || ContainsDecisionText(x.SuggestedAction, "predic")
+            || ContainsDecisionText(x.SuggestedAction, "mensual"))
+        ?? Recommendations.FirstOrDefault();
+
+    private string ProductionRecommendationTitle =>
+        ProductionRecommendation?.Title ?? "Comparar avance mensual";
+
+    private string ProductionRecommendationAction =>
+        ProductionRecommendation?.SuggestedAction
+        ?? "Usa la predicción como referencia para comparar la producción real del siguiente mes.";
+
+    private IntelligenceForecastPointDto? NextForecastPoint =>
+        _intelligence?.ProductionForecast.Forecast.FirstOrDefault();
+
+    private string NextForecastLabel =>
+        NextForecastPoint is null
+            ? "Sin dato"
+            : $"{NextForecastPoint.Period} · {NextForecastPoint.Value:N1}";
+
+    private string NextForecastRangeLabel
+    {
+        get
+        {
+            var point = NextForecastPoint;
+            if (point is null)
+            {
+                return "Ejecuta la lectura IA cuando exista serie mensual suficiente.";
+            }
+
+            return point.LowerBound.HasValue && point.UpperBound.HasValue
+                ? $"Rango esperado: {point.LowerBound.Value:N1} a {point.UpperBound.Value:N1} artículos."
+                : "Usa este valor como referencia inicial de seguimiento.";
+        }
+    }
+
+    private string HistoricalMonthsLabel =>
+        _intelligence?.ProductionForecast.History.Count is > 0
+            ? $"{_intelligence.ProductionForecast.History.Count:N0} meses"
+            : "Sin serie";
+
+    private string ProductionTrendLabel
+    {
+        get
+        {
+            var history = _intelligence?.ProductionForecast.History;
+            if (history is null || history.Count < 2)
+            {
+                return "Sin tendencia suficiente";
+            }
+
+            var recent = history.TakeLast(Math.Min(3, history.Count)).Select(x => x.Value).Average();
+            var previous = history.Take(Math.Max(0, history.Count - Math.Min(3, history.Count))).TakeLast(Math.Min(3, Math.Max(0, history.Count - 3))).Select(x => x.Value).ToList();
+            if (previous.Count == 0)
+            {
+                return "Lectura inicial de producción";
+            }
+
+            var before = previous.Average();
+            var delta = recent - before;
+            return delta switch
+            {
+                > 1 => "Tendencia reciente al alza",
+                < -1 => "Tendencia reciente a la baja",
+                _ => "Tendencia reciente estable"
+            };
+        }
+    }
 
     private IReadOnlyList<DecisionFocusItem> DecisionFocusItems =>
     [
@@ -934,6 +1087,10 @@
             : $"{insight.Label}: {insight.Signal} {insight.Recommendation}";
     }
 
+    private static bool ContainsDecisionText(string? value, string term)
+        => !string.IsNullOrWhiteSpace(value)
+            && value.Contains(term, StringComparison.OrdinalIgnoreCase);
+
     private static string FacultyMonthStyle(IntelligenceFacultyForecastDto faculty, int articles)
     {
         var max = Math.Max(1, faculty.RecentMonths.Select(x => x.Articles).DefaultIfEmpty(0).Max());
@@ -980,10 +1137,14 @@
     private void SelectDecisionFocus(string key)
     {
         _selectedDecisionFocus = key;
+        _decisionMode = ScenarioDecisionMode;
     }
 
     private string GetFocusClass(string key)
         => key == _selectedDecisionFocus ? "ai-focus-card ai-focus-card--active" : "ai-focus-card";
+
+    private string GetFocusPillClass(string key)
+        => key == _selectedDecisionFocus ? "ai-focus-pill ai-focus-pill--active" : "ai-focus-pill";
 
     private string HealthLabel
     {
@@ -999,6 +1160,11 @@
                 : $"{_intelligence.TrainingStatus} · {_intelligence.DataWindowLabel}";
         }
     }
+
+    private string LastAiGeneratedLabel
+        => _intelligence is null
+            ? "Sin lectura generada"
+            : $"Lectura IA {_intelligence.GeneratedAt:dd/MM/yyyy HH:mm}";
 
     private string HealthClass
         => _intelligence is not null

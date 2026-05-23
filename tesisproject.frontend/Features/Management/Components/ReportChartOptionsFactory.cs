@@ -4,6 +4,9 @@ namespace tesisproject.frontend.Features.Management.Components;
 
 public static class ReportChartOptionsFactory
 {
+    private const int HorizontalCategoryZoomThreshold = 10;
+    private const int VerticalCategoryZoomThreshold = 8;
+    private const int TrendZoomThreshold = 12;
     private const string Ink = "#313647";
     private const string Charcoal = "#45474B";
     private const string Blue = "#435663";
@@ -77,7 +80,9 @@ public static class ReportChartOptionsFactory
         {
             color = new[] { color },
             tooltip = new { trigger = "axis" },
-            grid = new { left = "8%", right = "5%", bottom = rotateLabels ? "18%" : "10%", top = "16%" },
+            toolbox = BuildToolbox(),
+            dataZoom = BuildCategoryDataZoom(categories.Length, AxisOrientation.Horizontal, HorizontalCategoryZoomThreshold),
+            grid = new { left = "8%", right = "5%", bottom = categories.Length > HorizontalCategoryZoomThreshold ? "24%" : rotateLabels ? "18%" : "10%", top = "16%" },
             xAxis = new
             {
                 type = "category",
@@ -134,7 +139,9 @@ public static class ReportChartOptionsFactory
         {
             color = usePalette ? BarPalette : new[] { color },
             tooltip = new { trigger = "axis", axisPointer = new { type = "shadow" } },
-            grid = new { left = "34%", right = showEndLabels ? "12%" : "6%", bottom = "5%", top = "9%" },
+            toolbox = BuildToolbox(),
+            dataZoom = BuildCategoryDataZoom(categories.Length, AxisOrientation.Vertical, VerticalCategoryZoomThreshold),
+            grid = new { left = "34%", right = showEndLabels ? "12%" : "6%", bottom = "5%", top = categories.Length > VerticalCategoryZoomThreshold ? "15%" : "9%" },
             xAxis = new
             {
                 type = "value",
@@ -240,9 +247,10 @@ public static class ReportChartOptionsFactory
             color = new[] { Green },
             tooltip = new { trigger = "axis", axisPointer = new { type = "line" } },
             toolbox = BuildToolbox(),
+            dataZoom = BuildCategoryDataZoom(years.Length, AxisOrientation.Horizontal, TrendZoomThreshold),
             grid = compact
-                ? new { left = "7%", right = "4%", bottom = "12%", top = "12%" }
-                : new { left = "8%", right = "5%", bottom = "10%", top = "16%" },
+                ? new { left = "7%", right = "4%", bottom = years.Length > TrendZoomThreshold ? "22%" : "12%", top = "12%" }
+                : new { left = "8%", right = "5%", bottom = years.Length > TrendZoomThreshold ? "22%" : "10%", top = "16%" },
             xAxis = new
             {
                 type = "category",
@@ -300,7 +308,6 @@ public static class ReportChartOptionsFactory
     {
         var data = items?
             .Where(x => x.TotalArticles > 0)
-            .Take(8)
             .Select(x => new Dictionary<string, object>
             {
                 ["value"] = x.TotalArticles,
@@ -323,6 +330,7 @@ public static class ReportChartOptionsFactory
                 orient = compact ? "horizontal" : "vertical",
                 left = compact ? "center" : "left",
                 top = compact ? "bottom" : "middle",
+                type = data.Count > 8 ? "scroll" : "plain",
                 itemWidth = 10,
                 itemHeight = 10,
                 textStyle = new { color = Charcoal, fontSize = compact ? 10 : 12, fontWeight = 700 }
@@ -348,7 +356,7 @@ public static class ReportChartOptionsFactory
         };
     }
 
-    public static object? BuildRoseDonut(IEnumerable<ReportingSummaryItemDto>? items, string title = "Distribución", int take = 8)
+    public static object? BuildRoseDonut(IEnumerable<ReportingSummaryItemDto>? items, string title = "Distribución", int take = int.MaxValue)
     {
         var data = items?
             .Where(x => x.TotalArticles > 0)
@@ -375,6 +383,7 @@ public static class ReportChartOptionsFactory
             {
                 bottom = "0",
                 left = "center",
+                type = data.Count > 8 ? "scroll" : "plain",
                 itemWidth = 10,
                 itemHeight = 10,
                 textStyle = new { color = Charcoal, fontSize = 10, fontWeight = 700 }
@@ -413,6 +422,7 @@ public static class ReportChartOptionsFactory
             color = new[] { Mint, Wine },
             tooltip = new { trigger = "axis", axisPointer = new { type = "shadow" } },
             toolbox = BuildToolbox(),
+            dataZoom = BuildCategoryDataZoom(seriesItems.Count, AxisOrientation.Horizontal, TrendZoomThreshold),
             legend = new
             {
                 top = "2%",
@@ -420,7 +430,7 @@ public static class ReportChartOptionsFactory
                 itemHeight = 10,
                 textStyle = new { color = Charcoal, fontSize = 11, fontWeight = 700 }
             },
-            grid = new { left = "8%", right = "5%", bottom = "11%", top = "20%" },
+            grid = new { left = "8%", right = "5%", bottom = seriesItems.Count > TrendZoomThreshold ? "22%" : "11%", top = "20%" },
             xAxis = new
             {
                 type = "category",
@@ -492,6 +502,7 @@ public static class ReportChartOptionsFactory
                 formatter = "{b}: {@[2]} artículos"
             },
             toolbox = BuildToolbox(),
+            dataZoom = BuildCategoryDataZoom(years.Length, AxisOrientation.Vertical, 6),
             grid = new { left = "9%", right = "5%", bottom = "10%", top = "14%" },
             xAxis = new
             {
@@ -531,7 +542,7 @@ public static class ReportChartOptionsFactory
         };
     }
 
-    public static object? BuildTreemap(IEnumerable<ReportingSummaryItemDto>? items, string title = "Paquetes", int take = 12)
+    public static object? BuildTreemap(IEnumerable<ReportingSummaryItemDto>? items, string title = "Paquetes", int take = int.MaxValue)
     {
         var data = items?
             .Where(x => x.TotalArticles > 0)
@@ -560,7 +571,7 @@ public static class ReportChartOptionsFactory
                 {
                     name = title,
                     type = "treemap",
-                    roam = false,
+                    roam = true,
                     nodeClick = false,
                     breadcrumb = new { show = false },
                     top = "6%",
@@ -662,7 +673,6 @@ public static class ReportChartOptionsFactory
         var data = metrics?
             .Where(x => (x.Sjr.HasValue && x.Sjr.Value > 0) || (x.CiteScore.HasValue && x.CiteScore.Value > 0))
             .OrderByDescending(x => x.Year)
-            .Take(40)
             .Select((x, index) => new Dictionary<string, object>
             {
                 ["name"] = string.IsNullOrWhiteSpace(x.VenueName) ? "Revista sin nombre" : x.VenueName,
@@ -692,6 +702,7 @@ public static class ReportChartOptionsFactory
                 formatter = "{b}<br/>SJR: {@[0]}<br/>CiteScore: {@[1]}<br/>H-index: {@[2]}<br/>Año: {@[3]}<br/>Cuartil: {@[4]}"
             },
             toolbox = BuildToolbox(),
+            dataZoom = BuildScatterDataZoom(),
             grid = new { left = "10%", right = "6%", bottom = "12%", top = "10%" },
             xAxis = new
             {
@@ -797,4 +808,59 @@ public static class ReportChartOptionsFactory
                 }
             }
         };
+
+    private static object[]? BuildCategoryDataZoom(int itemCount, AxisOrientation orientation, int threshold)
+    {
+        if (itemCount <= threshold)
+        {
+            return null;
+        }
+
+        var end = Math.Clamp((threshold / (double)itemCount) * 100, 8, 100);
+        var axisIndexName = orientation == AxisOrientation.Horizontal ? "xAxisIndex" : "yAxisIndex";
+        var slider = new Dictionary<string, object>
+        {
+            ["type"] = "slider",
+            ["show"] = true,
+            [axisIndexName] = 0,
+            ["start"] = 0,
+            ["end"] = Math.Round(end, 2),
+            ["height"] = orientation == AxisOrientation.Horizontal ? 18 : 110,
+            ["right"] = orientation == AxisOrientation.Vertical ? 8 : "auto",
+            ["bottom"] = orientation == AxisOrientation.Horizontal ? 8 : "auto",
+            ["filterMode"] = "filter",
+            ["brushSelect"] = false,
+            ["handleSize"] = "80%",
+            ["textStyle"] = new { color = Charcoal, fontWeight = 700 }
+        };
+
+        var inside = new Dictionary<string, object>
+        {
+            ["type"] = "inside",
+            [axisIndexName] = 0,
+            ["start"] = 0,
+            ["end"] = Math.Round(end, 2),
+            ["zoomOnMouseWheel"] = true,
+            ["moveOnMouseMove"] = true
+        };
+
+        return [slider, inside];
+    }
+
+    private static object[] BuildScatterDataZoom()
+    {
+        return
+        [
+            new { type = "inside", xAxisIndex = 0, filterMode = "none" },
+            new { type = "inside", yAxisIndex = 0, filterMode = "none" },
+            new { type = "slider", xAxisIndex = 0, bottom = 6, height = 18, filterMode = "none", brushSelect = false },
+            new { type = "slider", yAxisIndex = 0, right = 6, width = 16, filterMode = "none", brushSelect = false }
+        ];
+    }
+
+    private enum AxisOrientation
+    {
+        Horizontal,
+        Vertical
+    }
 }

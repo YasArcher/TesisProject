@@ -8,7 +8,7 @@
 <PageTitle>Reportes estadísticos</PageTitle>
 
 <div class="reports-page flex flex-col gap-6 h-full px-3 py-4 md:px-6 md:py-6">
-    @if (IsInstitutionalBlockingBusy)
+    @if (ShouldShowInstitutionalBlockingLoader)
     {
         <div class="reports-dw-blocking-loader" role="status" aria-live="polite">
             <div class="reports-dw-blocking-loader__surface">
@@ -33,12 +33,30 @@
                                         IsBusy="@IsInstitutionalBlockingBusy"
                                         EtlStatusClass="@GetEtlStatusClass(_institutionalDashboard?.Health.LastEtlStatus)"
                                         EtlStatusLabel="@GetInstitutionalStatusLabel(_institutionalDashboard?.Health.LastEtlStatus)"
+                                        OnReloadDashboard="ReloadReportingViewAsync"
                                         OnRunEtl="RunEtlAndReload" />
 
         @if (!string.IsNullOrWhiteSpace(_institutionalReportingError))
         {
             <div class="reports-dw-panel__notice">
                 @_institutionalReportingError
+            </div>
+        }
+
+        @if (ShouldShowEtlRecoveryNotice)
+        {
+            <div class="reports-dw-panel__notice reports-dw-panel__notice--warning">
+                <div>
+                    <strong>La reportería necesita sincronización</strong>
+                    <span>@EtlRecoveryMessage</span>
+                </div>
+                <button class="reports-dw-etl-button"
+                        type="button"
+                        disabled="@IsInstitutionalBlockingBusy"
+                        @onclick="RunEtlAndReload">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    <span>Sincronizar ahora</span>
+                </button>
             </div>
         }
 

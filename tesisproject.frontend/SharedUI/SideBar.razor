@@ -68,7 +68,21 @@
                     </li>
                 </ul>
             }
-            else if (CanSeeArticlesGroup)
+            else if (CanSeeAuthorWorkspace)
+            {
+                <ul class="nav flex-column sidebar-direct-links">
+                    <li class="nav-item">
+                        <NavLink href="/management/author-workspace" Match="NavLinkMatch.Prefix" class="nav-link sidebar-link" ActiveClass="active" title="Espacio del autor">
+                            <span class="icon">⌂</span>
+                            @if (!_collapsed)
+                            {
+                                <span class="label">Espacio autor</span>
+                            }
+                        </NavLink>
+                    </li>
+                </ul>
+            }
+            else if (CanSeePrincipalPanel)
             {
                 <ul class="nav flex-column sidebar-direct-links">
                     <li class="nav-item">
@@ -153,6 +167,10 @@
                             {
                                 <li class="nav-item"><NavLink href="/management/externalapis" class="nav-link sidebar-link" ActiveClass="active" title="APIs externas"><span class="icon">◎</span><span class="label">APIs externas</span></NavLink></li>
                             }
+                            @if (CanUseExternalIngestion)
+                            {
+                                <li class="nav-item"><NavLink href="/management/external-ingestion" class="nav-link sidebar-link" ActiveClass="active" title="Ingesta masiva externa"><span class="icon">⇣</span><span class="label">Ingesta externa</span></NavLink></li>
+                            }
                         </ul>
                     </div>
                     }
@@ -176,7 +194,7 @@
                     @if (IsSectionOpen(AnalysisSection))
                     {
                     <div class="accordion-panel is-rendered">
-                        <usl class="nav flex-column ms-4 my-2 gap-1">
+                        <ul class="nav flex-column ms-4 my-2 gap-1">
 
                                 @if (IsAdmin || IsAnalyst || IsAreaTecnica || CanViewReportingByPermission)
                                 {
@@ -186,7 +204,7 @@
                                 {
                                     <li class="nav-item"><NavLink href="/management/intelligence" class="nav-link sidebar-link" ActiveClass="active" title="Inteligencia Artificial"><span class="icon">◔</span><span class="label">Inteligencia Artificial</span></NavLink></li>
                                 }
-                        </usl>
+                        </ul>
                     </div>
                     }
                 </div>
@@ -279,6 +297,17 @@
     private string RegistrationEntryMode { get; set; } = RegistrationEntryModes.AuthorAndUodide;
     private bool IsUodideOnly => IsUodide && !IsAdmin && !IsAnalyst && !IsAuthor && !IsAreaTecnica && !IsExternalApiUser;
     private bool IsAreaTecnicaOnly => IsAreaTecnica && !IsAdmin && !IsAnalyst && !IsAuthor && !IsUodide && !IsExternalApiUser;
+    private bool CanSeeAuthorWorkspace => !IsAdmin
+        && !IsAnalyst
+        && !IsUodide
+        && !IsAreaTecnica
+        && (IsAuthor || CanRegisterByPermission || CanTrackWorkflowByPermission);
+    private bool CanSeePrincipalPanel => IsAdmin
+        || IsAnalyst
+        || IsUodide
+        || IsAreaTecnica
+        || CanViewReportingByPermission
+        || CanUseIntelligenceByPermission;
 
     private bool AuthorRegistrationEnabled => RegistrationEntryMode != RegistrationEntryModes.UodideOnly;
     private bool UodideRegistrationEnabled => RegistrationEntryMode != RegistrationEntryModes.AuthorOnly;
@@ -286,13 +315,14 @@
     private bool CanAccessWorkflow => IsAdmin || IsAuthor || IsUodide || IsAreaTecnica || CanTrackWorkflowByPermission;
     private bool CanManageConfiguration => IsAdmin || IsAnalyst || CanManageConfigurationByPermission;
     private bool CanSeeArticlesGroup => CanRegisterArticles || CanAccessWorkflow;
-    private bool CanUseRegistrationMatrix => IsAdmin || IsAnalyst || CanUseMatrixByPermission || (IsAuthor && AuthorRegistrationEnabled) || (IsUodide && UodideRegistrationEnabled);
+    private bool CanUseRegistrationMatrix => IsAdmin || IsAnalyst || CanUseMatrixByPermission || (IsUodide && UodideRegistrationEnabled);
     private bool CanUseExternalApis => IsAdmin || IsAnalyst || IsAuthor || IsExternalApiUser;
+    private bool CanUseExternalIngestion => IsAdmin || IsAnalyst || IsExternalApiUser;
     private bool CanUseBulkImport => IsAdmin || IsAnalyst || CanUseBulkImportByPermission;
     private bool CanSeeImportGroup => CanManageConfiguration || CanUseRegistrationMatrix || CanUseExternalApis || CanUseBulkImport;
     private bool CanSeeAnalysisGroup => IsAdmin || IsAnalyst || IsAreaTecnica || CanViewReportingByPermission || CanUseIntelligenceByPermission;
     private bool CanSeeArticleListing => IsAdmin || IsAnalyst || IsAreaTecnica || CanViewReportingByPermission;
-    private bool CanSeeManual => IsAdmin || IsAnalyst || IsUodide || IsAreaTecnica;
+    private bool CanSeeManual => IsAdmin || IsAnalyst || IsAuthor || IsUodide || IsAreaTecnica || CanRegisterByPermission || CanTrackWorkflowByPermission;
 
     protected override async Task OnInitializedAsync()
     {
@@ -385,7 +415,7 @@
         {
             "articulos/registrar" or "articulos/listado" or "configuration" or "management/workflow-review"
                 when CanSeeArticlesGroup && !IsAreaTecnicaOnly => ArticlesSection,
-            "management/registration-matrix" or "management/exportinformation" or "management/externalapis"
+            "management/registration-matrix" or "management/exportinformation" or "management/externalapis" or "management/external-ingestion"
                 when CanSeeImportGroup && !IsAreaTecnicaOnly => ImportSection,
             "management/statisticalreports" or "management/intelligence"
                 when CanSeeAnalysisGroup && !IsAreaTecnicaOnly => AnalysisSection,

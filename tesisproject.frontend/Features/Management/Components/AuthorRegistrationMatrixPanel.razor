@@ -295,6 +295,9 @@
                                             {
                                                 <input class="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm"
                                                        type="@(GetInputType(field))"
+                                                       step="@(GetInputStep(field))"
+                                                       min="@(GetInputMin(field))"
+                                                       max="@(GetInputMax(field))"
                                                        maxlength="@(GetInputMaxLength(field))"
                                                        inputmode="@(IsIdentificationField(field) ? "numeric" : null)"
                                                        placeholder="@GetPlaceholder(field)"
@@ -1297,7 +1300,7 @@
             field.FieldLabel,
             field.DataType,
             field.IsRequired,
-            field.MaxLength,
+            GetEffectiveMaxLength(field),
             field.ValidationRule,
             new DynamicFieldValidationValue { Text = cleaned });
 
@@ -1392,8 +1395,41 @@
     private static string GetInputType(FieldCatalogItemDto field) => field.DataType.Contains("datetime", StringComparison.OrdinalIgnoreCase) ? "datetime-local" : field.DataType.Contains("date", StringComparison.OrdinalIgnoreCase) ? "date" : IsNumericField(field) ? "number" : "text";
     private static string? GetInputStep(FieldCatalogItemDto field) => field.DataType.Contains("decimal", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("double", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("float", StringComparison.OrdinalIgnoreCase) ? "0.01" : IsNumericField(field) ? "1" : null;
     private static string? GetInputMin(FieldCatalogItemDto field) => IsNumericField(field) ? "0" : null;
-    private static string? GetInputMax(FieldCatalogItemDto field) => field.FieldKey.Equals("PageCount", StringComparison.OrdinalIgnoreCase) ? "1000" : null;
-    private static int? GetInputMaxLength(FieldCatalogItemDto field) => IsIdentificationField(field) ? 10 : field.MaxLength;
+    private static string? GetInputMax(FieldCatalogItemDto field) => field.DataType.Contains("datetime", StringComparison.OrdinalIgnoreCase)
+        ? DateTime.Now.ToString("yyyy-MM-ddTHH:mm", System.Globalization.CultureInfo.InvariantCulture)
+        : field.DataType.Contains("date", StringComparison.OrdinalIgnoreCase)
+            ? DateTime.Today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)
+            : field.FieldKey.Equals("PageCount", StringComparison.OrdinalIgnoreCase) ? "1000" : null;
+    private static int? GetInputMaxLength(FieldCatalogItemDto field) => IsNumericField(field) ? null : GetEffectiveMaxLength(field);
+    private static int GetEffectiveMaxLength(FieldCatalogItemDto field)
+    {
+        if (IsIdentificationField(field))
+        {
+            return 10;
+        }
+
+        if (field.MaxLength is > 0 and var configured)
+        {
+            return configured;
+        }
+
+        if (field.FieldKey.Contains("doi", StringComparison.OrdinalIgnoreCase))
+        {
+            return 20;
+        }
+
+        if (field.FieldKey.Contains("email", StringComparison.OrdinalIgnoreCase))
+        {
+            return 30;
+        }
+
+        if (field.FieldKey.Contains("nombre", StringComparison.OrdinalIgnoreCase) || field.FieldKey.Contains("name", StringComparison.OrdinalIgnoreCase))
+        {
+            return 200;
+        }
+
+        return 1000;
+    }
     private static string GetPlaceholder(FieldCatalogItemDto field) => !string.IsNullOrWhiteSpace(field.Placeholder) ? field.Placeholder! : field.IsRequired ? "Campo obligatorio" : "Registrar valor";
     private string GetColumnLegend(RegistrationMatrixColumnDto column) => $"{(column.EntityName == "ArticleParticipant" ? "Participante" : "Artículo")}{(IsColumnRequired(column) ? " · Obligatorio" : "")}{(column.IsDynamic ? " · Dinámico" : "")}";
     private static bool HasFixedOptions(FieldCatalogItemDto field) => IsQuartileField(field) || IsParticipationField(field) || IsParticipantTypeField(field);

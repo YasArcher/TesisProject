@@ -34,6 +34,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient("Backend", c =>
         {
             c.BaseAddress = new Uri(apiBase);
+            c.Timeout = TimeSpan.FromMinutes(5);
             c.DefaultRequestHeaders.Accept.Add(
                 new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
         })

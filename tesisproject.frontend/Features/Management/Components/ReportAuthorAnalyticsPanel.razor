@@ -1167,27 +1167,27 @@
     private const int VisibleHierarchyCoauthors = 3;
 
     private IEnumerable<ReportBarItem> AuthorBarItems =>
-        Dashboard?.Authors.Take(VisibleAuthorChartItems).Select(x => new ReportBarItem(x.AuthorName, x.TotalArticles, x.Affiliation)) ?? [];
+        Dashboard?.Authors.Select(x => new ReportBarItem(x.AuthorName, x.TotalArticles, x.Affiliation)) ?? [];
 
     private IEnumerable<ReportBarItem> AffiliationBarItems =>
-        Dashboard?.ArticlesByAffiliation.Take(VisibleAuthorChartItems).Select(ToBarItem) ?? [];
+        Dashboard?.ArticlesByAffiliation.Select(ToBarItem) ?? [];
 
     private IEnumerable<ReportBarItem> IndexingBarItems =>
-        Dashboard?.ArticlesByIndexingSource.Take(VisibleAuthorChartItems).Select(ToBarItem) ?? [];
+        Dashboard?.ArticlesByIndexingSource.Select(ToBarItem) ?? [];
 
     private IEnumerable<ReportBarItem> QuartileBarItems =>
-        Dashboard?.ArticlesByQuartile.Take(VisibleAuthorChartItems).Select(ToBarItem) ?? [];
+        Dashboard?.ArticlesByQuartile.Select(ToBarItem) ?? [];
 
     private IEnumerable<ReportBarItem> MonthBarItems =>
-        Dashboard?.ArticlesByMonth.TakeLast(12).Select(ToBarItem) ?? [];
+        Dashboard?.ArticlesByMonth.Select(ToBarItem) ?? [];
 
-    private string AuthorChartHeight => ReportChartOptionsFactory.GetChartHeight(Math.Min(Dashboard?.Authors.Count ?? 0, VisibleAuthorChartItems));
+    private string AuthorChartHeight => ReportChartOptionsFactory.GetChartHeight(Dashboard?.Authors.Count ?? 0);
 
     private string MonthChartHeight => ReportChartOptionsFactory.GetChartHeight(Dashboard?.ArticlesByMonth.Count ?? 0);
 
     private object? AuthorProductionChartOption => ReportChartOptionsFactory.BuildHorizontalBar(
-        Dashboard?.Authors.Take(VisibleAuthorChartItems).Select(x => Shorten(x.AuthorName, 34)).ToArray(),
-        Dashboard?.Authors.Take(VisibleAuthorChartItems).Select(x => x.TotalArticles).ToArray(),
+        Dashboard?.Authors.Select(x => Shorten(x.AuthorName, 34)).ToArray(),
+        Dashboard?.Authors.Select(x => x.TotalArticles).ToArray(),
         "#2F5249");
 
     private object? AffiliationDonutOption => ReportChartOptionsFactory.BuildSummaryDonut(
@@ -1199,8 +1199,8 @@
         Dashboard?.Kpis.CoauthorLinks ?? 0);
 
     private object? MonthChartOption => ReportChartOptionsFactory.BuildVerticalBar(
-        Dashboard?.ArticlesByMonth.TakeLast(12).Select(x => x.Name).ToArray(),
-        Dashboard?.ArticlesByMonth.TakeLast(12).Select(x => x.TotalArticles).ToArray(),
+        Dashboard?.ArticlesByMonth.Select(x => x.Name).ToArray(),
+        Dashboard?.ArticlesByMonth.Select(x => x.TotalArticles).ToArray(),
         "Artículos",
         "#435663",
         true);

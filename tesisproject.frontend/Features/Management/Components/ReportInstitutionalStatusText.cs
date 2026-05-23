@@ -10,14 +10,44 @@ public static class ReportInstitutionalStatusText
             : "Sin fecha";
 
     public static string GetEtlStatusClass(string? status)
-        => string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase)
-            ? "reports-dw-status reports-dw-status--success"
-            : "reports-dw-status reports-dw-status--warning";
+    {
+        if (string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase))
+        {
+            return "reports-dw-status reports-dw-status--success";
+        }
+
+        if (IsEtlFailureStatus(status))
+        {
+            return "reports-dw-status reports-dw-status--danger";
+        }
+
+        return "reports-dw-status reports-dw-status--warning";
+    }
 
     public static string GetInstitutionalStatusLabel(string? status)
-        => string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase)
-            ? "actualizada"
-            : "pendiente de actualización";
+    {
+        if (string.Equals(status, "Success", StringComparison.OrdinalIgnoreCase))
+        {
+            return "actualizada";
+        }
+
+        if (IsEtlFailureStatus(status))
+        {
+            return "requiere sincronización";
+        }
+
+        return "pendiente de actualización";
+    }
+
+    public static bool IsEtlFailureStatus(string? status)
+    {
+        var normalized = (status ?? string.Empty).Trim();
+        return normalized.Equals("Failed", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("Error", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("Sin conexión", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("error", StringComparison.OrdinalIgnoreCase)
+            || normalized.Contains("fail", StringComparison.OrdinalIgnoreCase);
+    }
 
     public static bool HasReportingData(InstitutionalReportingDashboardDto? dashboard)
         => (dashboard?.ScientificProduction.TotalArticles ?? 0) > 0

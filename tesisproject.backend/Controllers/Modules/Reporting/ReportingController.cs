@@ -167,11 +167,37 @@ public sealed class ReportingController : ControllerBase
     }
 
     [HttpPost("etl/full")]
-    [Authorize(Roles = AppRoles.Admin)]
     public async Task<ActionResult<ReportingHealthDto>> RunFullLoad(CancellationToken ct)
     {
-        var result = await _reporting.RunFullLoadAsync(ct);
-        return Ok(result);
+        var startedAt = DateTime.UtcNow;
+        try
+        {
+            var result = await _reporting.RunFullLoadAsync(ct);
+            await _performance.RecordAsync(new ReportingPerformanceRecord(
+                "ReportingFullEtl",
+                startedAt,
+                DateTime.UtcNow,
+                true,
+                new InstitutionalReportingFilterDto(),
+                ResultCount: result.ArticleRows),
+                ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            await _performance.RecordAsync(new ReportingPerformanceRecord(
+                "ReportingFullEtl",
+                startedAt,
+                DateTime.UtcNow,
+                false,
+                new InstitutionalReportingFilterDto(),
+                ErrorMessage: ex.Message),
+                ct);
+            return StatusCode(StatusCodes.Status500InternalServerError, new
+            {
+                message = $"No fue posible ejecutar la actualización de reportería: {ex.Message}"
+            });
+        }
     }
 
     private async Task<ActionResult<T>> TrackReportingActionAsync<T>(

@@ -1,4 +1,5 @@
 @page "/management/uodide-review-staging"
+@attribute [Authorize(Roles = "Admin,WorkflowReviewerUodide")]
 
 <tesisproject.frontend.Features.Management.Components.ReviewStagingHost BatchId="@BatchId"
                                                                        ContextKey="uodide" />

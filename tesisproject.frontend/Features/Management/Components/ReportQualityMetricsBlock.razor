@@ -13,7 +13,7 @@
     @if (HasSummaryTrim)
     {
         <div class="reports-dw-inline-note reports-dw-inline-note--soft reports-dw-quality-block__note">
-            Vista resumida: top 6 fuentes, top 8 estados y cuartiles visibles.
+            Vista completa con navegación: las fuentes y estados crecen con zoom o desplazamiento cuando hay muchas categorías.
         </div>
     }
 
@@ -65,31 +65,27 @@
 
     private IEnumerable<ReportBarItem> IndexingBarItems =>
         Dashboard?.ArticlesByIndexingSource
-            .Take(6)
             .Select(x => new ReportBarItem(x.IndexingSourceName, x.TotalArticles, x.IndexingSourceName))
         ?? [];
 
     private IEnumerable<ReportBarItem> PublicationStatusBarItems =>
         Dashboard?.ArticlesByPublicationStatus
-            .Take(8)
             .Select(x => new ReportBarItem(x.Name, x.TotalArticles, x.Name))
         ?? [];
 
     private string[] IndexingCategories =>
         Dashboard?.ArticlesByIndexingSource
-            .Take(6)
             .Select(x => x.IndexingSourceName)
             .ToArray() ?? [];
 
     private int[] IndexingValues =>
         Dashboard?.ArticlesByIndexingSource
-            .Take(6)
             .Select(x => x.TotalArticles)
             .ToArray() ?? [];
 
     private string IndexingScopeDescription =>
         (Dashboard?.ArticlesByIndexingSource.Count ?? 0) > 6
-            ? $"Top 6 de {Dashboard!.ArticlesByIndexingSource.Count} fuentes visibles."
+            ? $"{Dashboard!.ArticlesByIndexingSource.Count} fuentes visibles con navegación."
             : $"Mostrando {IndexingCategories.Length} fuente(s) visible(s).";
 
     private string IndexingChartHeight => ReportChartOptionsFactory.GetCompactChartHeight(IndexingCategories.Length);
@@ -104,13 +100,12 @@
 
     private string[] PublicationStatusCategories =>
         Dashboard?.ArticlesByPublicationStatus
-            .Take(8)
             .Select(x => x.Name)
             .ToArray() ?? [];
 
     private object? PublicationStatusChartOption =>
         ReportChartOptionsFactory.BuildSummaryDonut(
-            Dashboard?.ArticlesByPublicationStatus.Take(8).ToList(),
+            Dashboard?.ArticlesByPublicationStatus,
             "Estado",
             insideCountLabels: true);
 

@@ -72,15 +72,7 @@ namespace tesisproject.backend.Controllers
                     : request.InstitutionName.Trim();
                 var chunkSize = Math.Clamp(request.ChunkSize <= 0 ? 250 : request.ChunkSize, 50, 500);
 
-                var queryResult = await _service.QueryAsync(new ExternalApiQueryRequest
-                {
-                    ProviderKey = "scopus",
-                    QueryMode = "affiliation",
-                    InstitutionName = institutionName,
-                    MaxResults = 0
-                }, ct);
-
-                var articles = queryResult.Articles
+                var articles = (request.Articles ?? new List<ExternalArticlePreviewDto>())
                     .Where(x => x is not null && !string.IsNullOrWhiteSpace(x.Title))
                     .ToList();
 
@@ -93,7 +85,7 @@ namespace tesisproject.backend.Controllers
 
                 if (articles.Count == 0)
                 {
-                    result.Message = "Scopus no devolvió artículos mapeables para la filiación institucional.";
+                    result.Message = "No se recibieron artículos preparados para crear los lotes. Primero prepara el dataset institucional y vuelve a intentar.";
                     return Ok(result);
                 }
 

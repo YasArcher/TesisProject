@@ -110,7 +110,8 @@ namespace tesisproject.shared.DTOs.ExternalApis
     {
         public string InstitutionName { get; set; } = "Universidad Técnica de Ambato";
         public int ChunkSize { get; set; } = 250;
-        public bool ValidateAfterCreate { get; set; } = true;
+        public bool ValidateAfterCreate { get; set; }
+        public List<ExternalArticlePreviewDto> Articles { get; set; } = new();
     }
 
     public class ScopusInstitutionalStagingImportResultDto

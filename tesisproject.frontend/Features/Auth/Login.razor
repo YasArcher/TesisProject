@@ -119,7 +119,8 @@
             }
 
             await Task.Yield();
-            Nav.NavigateTo("/panel/principal", forceLoad: false);
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            Nav.NavigateTo(ResolveHome(authState.User), forceLoad: false);
         }
         catch
         {
@@ -142,4 +143,36 @@
         [Required, EmailAddress] public string Email { get; set; } = "";
         [Required, MinLength(6)] public string Password { get; set; } = "";
     }
+
+    private static string ResolveHome(System.Security.Claims.ClaimsPrincipal user)
+    {
+        if (CanSeePrincipalPanel(user))
+        {
+            return "/panel/principal";
+        }
+
+        if (user.IsInRole("Author") || user.IsInRole("ArticleRegistrationUser") || user.IsInRole("WorkflowTrackingUser"))
+        {
+            return "/management/author-workspace";
+        }
+
+        if (user.IsInRole("ExternalApiUser"))
+        {
+            return "/management/externalapis";
+        }
+
+        return "/perfilview";
+    }
+
+    private static bool CanSeePrincipalPanel(System.Security.Claims.ClaimsPrincipal user)
+        => user.IsInRole("Admin")
+           || user.IsInRole("Analyst")
+           || user.IsInRole("WorkflowReviewerUodide")
+           || user.IsInRole("WorkflowReviewerAreaTecnica")
+           || user.IsInRole("WorkflowProcessorAreaTecnica")
+           || user.IsInRole("ReportingViewer")
+           || user.IsInRole("ReportingExporter")
+           || user.IsInRole("ReportingAdvancedUser")
+           || user.IsInRole("IntelligenceViewer")
+           || user.IsInRole("IntelligenceTrainer");
 }

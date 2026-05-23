@@ -141,6 +141,11 @@ public static class DynamicFieldValidationEngine
             return $"{label} debe contener una fecha válida.";
         }
 
+        if (IsDateDataType(dataType) && ResolveDate(value, text, out var resolvedDate) && resolvedDate.Date > DateTime.UtcNow.Date)
+        {
+            return $"{label} no puede ser una fecha futura.";
+        }
+
         foreach (var rule in Parse(validationRule).Rules)
         {
             var message = ValidateRule(label, rule, value, text);

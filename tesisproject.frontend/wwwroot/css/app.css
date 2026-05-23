@@ -2597,12 +2597,14 @@ code {
 
 .external-api-dataset-modal__metrics {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.9rem;
 }
 
 .external-api-dataset-modal__metrics article,
-.external-api-dataset-modal__result {
+.external-api-dataset-modal__result,
+.external-api-dataset-modal__settings,
+.external-api-dataset-modal__staging {
     border: 1px solid rgba(67, 86, 99, 0.12);
     border-radius: 1.25rem;
     background: rgba(255, 255, 255, 0.92);
@@ -2650,6 +2652,77 @@ code {
     min-width: 0;
 }
 
+.external-api-dataset-modal__settings {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(16rem, 0.75fr);
+    gap: 0.85rem;
+    align-items: stretch;
+    background:
+        linear-gradient(135deg, rgba(238, 246, 255, 0.72), rgba(255, 253, 243, 0.82));
+}
+
+.external-api-dataset-modal__field span {
+    display: block;
+    color: #667078;
+    font-size: 0.68rem;
+    font-weight: 950;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.external-api-dataset-modal__field select {
+    width: min(100%, 18rem);
+    margin-top: 0.45rem;
+    border: 1px solid rgba(67, 86, 99, 0.16);
+    border-radius: 0.95rem;
+    background: rgba(255, 255, 255, 0.96);
+    color: #102642;
+    font-size: 0.86rem;
+    font-weight: 780;
+    padding: 0.72rem 0.85rem;
+    outline: none;
+}
+
+.external-api-dataset-modal__settings p {
+    margin: 0.55rem 0 0;
+    color: #667078;
+    font-size: 0.76rem;
+    line-height: 1.5;
+}
+
+.external-api-dataset-modal__toggle {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    border: 1px solid rgba(67, 86, 99, 0.1);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.82);
+    padding: 0.9rem;
+}
+
+.external-api-dataset-modal__toggle input {
+    margin-top: 0.25rem;
+    accent-color: #2f5249;
+}
+
+.external-api-dataset-modal__toggle strong,
+.external-api-dataset-modal__toggle small {
+    display: block;
+}
+
+.external-api-dataset-modal__toggle strong {
+    color: #102642;
+    font-size: 0.86rem;
+    font-weight: 900;
+}
+
+.external-api-dataset-modal__toggle small {
+    margin-top: 0.25rem;
+    color: #667078;
+    font-size: 0.76rem;
+    line-height: 1.45;
+}
+
 .external-api-dataset-modal__primary,
 .external-api-dataset-modal__secondary {
     border-radius: 1rem;
@@ -2668,6 +2741,85 @@ code {
     border: 1px solid rgba(67, 86, 99, 0.14);
     background: #fff;
     color: #102642;
+}
+
+.external-api-dataset-modal__staging {
+    display: grid;
+    gap: 1rem;
+    background:
+        radial-gradient(circle at 100% 0%, rgba(64, 138, 113, 0.14), transparent 12rem),
+        rgba(255, 255, 255, 0.94);
+}
+
+.external-api-dataset-modal__staging-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.external-api-dataset-modal__staging-grid article {
+    border-radius: 1rem;
+    background: #f8fafc;
+    padding: 0.85rem;
+}
+
+.external-api-dataset-modal__staging-grid small {
+    display: block;
+    color: #667078;
+    font-size: 0.66rem;
+    font-weight: 920;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.external-api-dataset-modal__staging-grid strong {
+    display: block;
+    margin-top: 0.18rem;
+    color: #102642;
+    font-size: 1.1rem;
+    font-weight: 950;
+}
+
+.external-api-dataset-modal__batch-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    max-height: 13rem;
+    overflow: auto;
+    padding-right: 0.25rem;
+}
+
+.external-api-dataset-modal__batch-list button {
+    min-width: 0;
+    border: 1px solid rgba(67, 86, 99, 0.12);
+    border-radius: 1rem;
+    background: #fff;
+    padding: 0.75rem 0.85rem;
+    text-align: left;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.external-api-dataset-modal__batch-list button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(47, 82, 73, 0.28);
+    box-shadow: 0 12px 20px rgba(49, 54, 71, 0.08);
+}
+
+.external-api-dataset-modal__batch-list span,
+.external-api-dataset-modal__batch-list small {
+    display: block;
+}
+
+.external-api-dataset-modal__batch-list span {
+    color: #102642;
+    font-size: 0.84rem;
+    font-weight: 900;
+}
+
+.external-api-dataset-modal__batch-list small {
+    margin-top: 0.2rem;
+    color: #667078;
+    font-size: 0.74rem;
 }
 
 .external-api-overlay__card {
@@ -2788,6 +2940,17 @@ code {
 
     .external-api-page .external-api-hero__badges {
         width: 100%;
+    }
+}
+
+@media (max-width: 960px) {
+    .external-api-dataset-modal__staging-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .external-api-dataset-modal__settings,
+    .external-api-dataset-modal__batch-list {
+        grid-template-columns: 1fr;
     }
 }
 

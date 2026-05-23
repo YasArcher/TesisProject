@@ -1,9 +1,33 @@
-﻿@page "/manage"
+@page "/manage"
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Authorization
 @inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
 
 @code {
-    protected override void OnInitialized()
-        => Nav.NavigateTo("/panel/principal", true);
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthStateProvider.GetAuthenticationStateAsync();
+        Nav.NavigateTo(ResolveHome(state.User), true);
+    }
+
+    private static string ResolveHome(System.Security.Claims.ClaimsPrincipal user)
+    {
+        if (user.IsInRole("Admin") || user.IsInRole("Analyst") || user.IsInRole("WorkflowReviewerUodide")
+            || user.IsInRole("WorkflowReviewerAreaTecnica") || user.IsInRole("WorkflowProcessorAreaTecnica")
+            || user.IsInRole("ReportingViewer") || user.IsInRole("ReportingExporter")
+            || user.IsInRole("ReportingAdvancedUser") || user.IsInRole("IntelligenceViewer")
+            || user.IsInRole("IntelligenceTrainer"))
+        {
+            return "/panel/principal";
+        }
+
+        if (user.IsInRole("Author") || user.IsInRole("ArticleRegistrationUser") || user.IsInRole("WorkflowTrackingUser"))
+        {
+            return "/management/author-workspace";
+        }
+
+        return user.IsInRole("ExternalApiUser") ? "/management/externalapis" : "/perfilview";
+    }
 }

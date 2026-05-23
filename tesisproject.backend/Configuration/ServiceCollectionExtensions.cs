@@ -43,11 +43,15 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddAppPersistence(this IServiceCollection services, IConfiguration config, IWebHostEnvironment environment, string connectionString)
     {
         services.AddDbContext<DwDbContext>(options =>
-            options.UseSqlServer(config.GetConnectionString("DwConnection")));
+            options.UseSqlServer(
+                config.GetConnectionString("DwConnection"),
+                sql => sql.CommandTimeout(300)));
 
         services.AddDbContext<ReportingDbContext>(options =>
-            options.UseSqlServer(config.GetConnectionString("ReportingConnection")
-                                 ?? config.GetConnectionString("DwConnection")));
+            options.UseSqlServer(
+                config.GetConnectionString("ReportingConnection")
+                ?? config.GetConnectionString("DwConnection"),
+                sql => sql.CommandTimeout(300)));
 
         services.AddScoped<IEtlOrchestrator, EtlOrchestrator>();
 
@@ -75,6 +79,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IInstitutionalReportingService, InstitutionalReportingService>();
         services.AddScoped<IReportingPerformanceMetricsService, ReportingPerformanceMetricsService>();
         services.AddScoped<IInstitutionalIntelligenceService, InstitutionalIntelligenceService>();
+        services.AddSingleton<ReportingRefreshQueue>();
+        services.AddSingleton<IReportingRefreshQueue>(sp => sp.GetRequiredService<ReportingRefreshQueue>());
+        services.AddHostedService(sp => sp.GetRequiredService<ReportingRefreshQueue>());
         services.AddMemoryCache();
         services.Configure<ExternalApiExplorerOptions>(config.GetSection("ExternalApis"));
         services.Configure<LegacyReportingOptions>(config.GetSection("LegacyReporting"));

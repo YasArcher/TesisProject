@@ -1,8 +1,12 @@
 using System.Globalization;
+using System.Security.Cryptography;
 using Microsoft.ML;
 using Microsoft.ML.Transforms.TimeSeries;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Text;
+using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using tesisproject.backend.Data;
 using tesisproject.backend.Data.Entities;
 using tesisproject.backend.Reporting.Data;
@@ -16,10 +20,13 @@ namespace tesisproject.backend.Services.Modules.Intelligence;
 public sealed class InstitutionalIntelligenceService : IInstitutionalIntelligenceService
 {
     private const int DefaultForecastHorizon = 6;
+    private static readonly JsonSerializerOptions CacheJsonOptions = new(JsonSerializerDefaults.Web);
+    private static int _dashboardCacheVersion;
     private readonly IInstitutionalReportingService _reporting;
     private readonly AppDbContext _db;
     private readonly ReportingDbContext _reportingDb;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IMemoryCache _cache;
     private readonly ILogger<InstitutionalIntelligenceService> _logger;
 
     public InstitutionalIntelligenceService(
@@ -27,12 +34,14 @@ public sealed class InstitutionalIntelligenceService : IInstitutionalIntelligenc
         AppDbContext db,
         ReportingDbContext reportingDb,
         IHttpContextAccessor httpContextAccessor,
+        IMemoryCache cache,
         ILogger<InstitutionalIntelligenceService> logger)
     {
         _reporting = reporting;
         _db = db;
         _reportingDb = reportingDb;
         _httpContextAccessor = httpContextAccessor;
+        _cache = cache;
         _logger = logger;
     }
 
@@ -41,6 +50,13 @@ public sealed class InstitutionalIntelligenceService : IInstitutionalIntelligenc
         CancellationToken ct = default)
     {
         var dashboard = await _reporting.GetDashboardAsync(filter, ct);
+        var cacheKey = BuildDashboardCacheKey(filter, dashboard);
+        if (_cache.TryGetValue(cacheKey, out InstitutionalIntelligenceDashboardDto? cached)
+            && cached is not null)
+        {
+            return cached;
+        }
+
         var authorDashboard = await _reporting.GetAuthorDashboardAsync(filter, ct);
         var readiness = BuildReadiness(dashboard, authorDashboard);
         var forecast = BuildProductionForecast(dashboard.ArticlesByMonth, DefaultForecastHorizon);
@@ -90,6 +106,7 @@ public sealed class InstitutionalIntelligenceService : IInstitutionalIntelligenc
             result.ProductionForecast.HorizonMonths,
             result.Recommendations.Count);
 
+        _cache.Set(cacheKey, result, TimeSpan.FromMinutes(5));
         return result;
     }
 
@@ -135,6 +152,7 @@ public sealed class InstitutionalIntelligenceService : IInstitutionalIntelligenc
         };
 
         await PersistTrainingRunAsync(run, ct);
+        Interlocked.Increment(ref _dashboardCacheVersion);
 
         _logger.LogInformation(
             "Entrenamiento IA ejecutado. RunId={RunId}, Estado={Status}, Promovido={PromotedAlgorithm}, Version={Version}.",
@@ -159,6 +177,25 @@ public sealed class InstitutionalIntelligenceService : IInstitutionalIntelligenc
             .ToListAsync(ct);
 
         return runs.Select(MapTrainingRun).ToList();
+    }
+
+    private static string BuildDashboardCacheKey(
+        InstitutionalReportingFilterDto? filter,
+        InstitutionalReportingDashboardDto dashboard)
+    {
+        var source = new
+        {
+            Filter = filter ?? new InstitutionalReportingFilterDto(),
+            dashboard.Health.LastEtlFinishedAt,
+            dashboard.Health.LastEtlStatus,
+            dashboard.Health.ArticleRows,
+            dashboard.ScientificProduction.TotalArticles,
+            dashboard.AuthorTraceCoverage.ArticlesWithAuthorTrace,
+            CacheVersion = Volatile.Read(ref _dashboardCacheVersion)
+        };
+        var json = JsonSerializer.Serialize(source, CacheJsonOptions);
+        var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json)));
+        return $"intelligence:dashboard:{hash}";
     }
 
     private static IntelligenceReadinessDto BuildReadiness(

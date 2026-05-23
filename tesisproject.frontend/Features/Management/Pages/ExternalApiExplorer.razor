@@ -1,6 +1,7 @@
 @page "/management/externalapis"
 @attribute [Authorize(Roles = "Admin,Analyst,Author,ExternalApiUser")]
 @using Blazored.LocalStorage
+@using Microsoft.AspNetCore.Components.Authorization
 @using tesisproject.frontend.Features.Management.Components
 @using tesisproject.frontend.SharedUI
 @using tesisproject.frontend.Utils
@@ -12,6 +13,7 @@
 @inject ILocalStorageService LocalStorage
 @inject NavigationManager NavManager
 @inject ExportJsInterop ExportJs
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Explorador de APIs externas</PageTitle>
 
@@ -64,40 +66,39 @@
         </div>
     </div>
 
-    <section class="external-api-institutional-panel mb-5 rounded-[1.8rem] border border-[rgba(67,86,99,0.12)] bg-white/95 p-5 shadow-sm">
+    @if (CanAccessInstitutionalIngestion)
+    {
+    <section class="external-api-institutional-panel mb-5 rounded-[1.8rem] border border-[rgba(67,86,99,0.12)] bg-white/95 p-4 shadow-sm">
         <div class="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
             <div class="space-y-3">
                 <div class="inline-flex items-center gap-2 rounded-full bg-[#eef5fb] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#295173]">
                     <i class="bi bi-building-check"></i>
-                    Exploración institucional
+                    Ingesta masiva
                 </div>
                 <div>
-                    <h2 class="text-lg font-black text-[#102642]">Producción Scopus de la Universidad Técnica de Ambato</h2>
-                    <p class="mt-2 text-sm leading-6 text-slate-600">Dataset institucional por filiación UTA.</p>
+                    <h2 class="text-lg font-black text-[#102642]">Carga institucional Scopus</h2>
+                    <p class="mt-2 text-sm leading-6 text-slate-600">La carga de miles de registros se gestiona en una página independiente para proteger este explorador puntual.</p>
                 </div>
                 <div class="flex flex-wrap gap-2 text-xs">
-                    <span class="rounded-full bg-[#fff8d4] px-3 py-1.5 font-semibold text-[#7a5b00]">Filiación UTA</span>
-                    <span class="rounded-full bg-[#eef6ff] px-3 py-1.5 font-semibold text-[#295173]">CSV / JSON</span>
+                    <span class="rounded-full bg-[#fff8d4] px-3 py-1.5 font-semibold text-[#7a5b00]">Lotes grandes</span>
+                    <span class="rounded-full bg-[#eef6ff] px-3 py-1.5 font-semibold text-[#295173]">Modelo extensible</span>
                 </div>
             </div>
             <div class="external-api-institutional-panel__actions">
                 <div class="rounded-3xl border border-[#dbe6ef] bg-[linear-gradient(135deg,#fbfdff_0%,#fffdf3_100%)] p-4">
-                    <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Dataset institucional UTA</div>
+                    <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Módulo dedicado</div>
                     <button class="mt-4 inline-flex items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#313647_0%,#2f5249_100%)] px-4 py-3 text-sm font-semibold text-[#fff8d4] shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
                             type="button"
-                            disabled="@(!CanUseScopusInstitutionalDataset)"
-                            @onclick="OpenInstitutionalDatasetModal">
+                            @onclick='() => NavManager.NavigateTo("/management/external-ingestion")'>
                         <i class="bi bi-cloud-download"></i>
-                        Abrir dataset institucional
+                        Abrir ingesta masiva
                     </button>
-                    @if (!CanUseScopusInstitutionalDataset)
-                    {
-                        <div class="mt-2 text-xs text-slate-500">Selecciona primero el proveedor Scopus para habilitar esta herramienta.</div>
-                    }
+                    <div class="mt-2 text-xs text-slate-500">Usa esta opción para recuperar, deduplicar y guardar información institucional desde Scopus.</div>
                 </div>
             </div>
         </div>
     </section>
+    }
 
     <AppStatusModal Visible="@HasStatusMessage"
                     Variant="@CurrentStatusVariant"
@@ -147,12 +148,17 @@
                             <strong>@InstitutionalDatasetArticles.Length</strong>
                             <p>Artículos disponibles en la vista previa actual.</p>
                         </article>
+                        <article>
+                            <small>Módulo destino</small>
+                            <strong>Ingesta</strong>
+                            <p>El guardado se realiza en la página dedicada.</p>
+                        </article>
                     </div>
 
                     <div class="external-api-dataset-modal__panel">
                         <div class="external-api-dataset-modal__panel-copy">
                             <div class="text-sm font-bold text-[#102642]">Preparar dataset institucional completo</div>
-                            <div class="text-xs text-slate-500">Busca todo y luego habilita la descarga.</div>
+                            <div class="text-xs text-slate-500">Primero consulta Scopus y revisa el volumen. El guardado institucional se realiza en el módulo dedicado.</div>
                         </div>
                         <button type="button"
                                 class="external-api-dataset-modal__primary"
@@ -160,6 +166,13 @@
                                 @onclick="PrepareInstitutionalDatasetAsync">
                             @(IsLoadingInstitutionalDataset ? "Buscando todos los artículos..." : "Preparar dataset completo")
                         </button>
+                    </div>
+
+                    <div class="external-api-dataset-modal__settings">
+                        <div>
+                            <div class="text-sm font-bold text-[#102642]">Vista preliminar solamente</div>
+                            <p>La creación, deduplicación y guardado institucional se realiza desde la página dedicada de ingesta masiva.</p>
+                        </div>
                     </div>
 
                     @if (InstitutionalDatasetResult is not null)
@@ -177,12 +190,14 @@
                                 <div class="flex flex-wrap gap-2">
                                     <button type="button" class="external-api-dataset-modal__secondary" @onclick="DownloadInstitutionalDatasetCsvAsync">Descargar CSV</button>
                                     <button type="button" class="external-api-dataset-modal__secondary" @onclick="DownloadInstitutionalDatasetJsonAsync">Descargar JSON</button>
-                                    <button type="button"
-                                            class="external-api-dataset-modal__secondary disabled:cursor-not-allowed disabled:opacity-60"
-                                            disabled="@(!InstitutionalDatasetArticles.Any() || IsSendingInstitutionalDatasetToStaging)"
-                                            @onclick="SendInstitutionalDatasetToStagingAsync">
-                                        @(IsSendingInstitutionalDatasetToStaging ? "Enviando dataset..." : "Enviar dataset a staging")
-                                    </button>
+                                    @if (CanAccessInstitutionalIngestion)
+                                    {
+                                        <button type="button"
+                                                class="external-api-dataset-modal__secondary"
+                                                @onclick='() => NavManager.NavigateTo("/management/external-ingestion")'>
+                                            Continuar en ingesta masiva
+                                        </button>
+                                    }
                                 </div>
                             </div>
 
@@ -366,7 +381,7 @@
     private bool IsRunningQuery;
     private bool IsSendingToStaging;
     private bool IsSendingSelectionToStaging;
-    private bool IsSendingInstitutionalDatasetToStaging;
+    private bool CanAccessInstitutionalIngestion;
     private bool IsStagingConfirmVisible;
     private string? ErrorMessage;
     private string? SuccessMessage;
@@ -375,7 +390,6 @@
     private List<ExternalApiQuerySidebar.ExternalApiRecentQueryItem> RecentQueries { get; set; } = new();
     private ExternalArticlePreviewDto? PendingSingleStagingArticle;
     private bool PendingSelectionStagingSend;
-    private bool PendingInstitutionalDatasetStagingSend;
     private string ResultsSearchText = string.Empty;
     private bool FilterOnlyWithDoi;
     private bool FilterOnlyOpenAccess;
@@ -399,8 +413,8 @@
     private ExternalArticlePreviewDto[] InstitutionalDatasetArticles =>
         ExternalApiExplorerPageHelper.BuildPreviewArticles(InstitutionalDatasetResult);
     private bool CanUseScopusInstitutionalDataset =>
-        string.Equals(SelectedProvider?.ProviderKey, "scopus", StringComparison.OrdinalIgnoreCase);
-
+        CanAccessInstitutionalIngestion
+        && string.Equals(SelectedProvider?.ProviderKey, "scopus", StringComparison.OrdinalIgnoreCase);
     private List<ExternalArticlePreviewDto> EffectiveResultArticles =>
         LastResultPreviewArticles.ToList();
 
@@ -433,21 +447,15 @@
         !string.IsNullOrWhiteSpace(SelectedAuthorId)
         || !string.IsNullOrWhiteSpace(SelectedAffiliationId);
 
-    private bool IsBusyOverlayVisible => IsLoading || IsRunningQuery || IsSendingToStaging || IsSendingSelectionToStaging || IsSendingInstitutionalDatasetToStaging || IsLoadingInstitutionalDataset;
+    private bool IsBusyOverlayVisible => IsLoading || IsRunningQuery || IsSendingToStaging || IsSendingSelectionToStaging || IsLoadingInstitutionalDataset;
     private string StagingConfirmTitle => PendingSelectionStagingSend
         ? "Enviar selección de artículos a staging"
-        : PendingInstitutionalDatasetStagingSend
-            ? "Enviar dataset institucional a staging"
         : "Enviar artículo a staging";
     private string StagingConfirmActionLabel => PendingSelectionStagingSend
         ? "Enviar selección"
-        : PendingInstitutionalDatasetStagingSend
-            ? "Enviar dataset"
         : "Enviar artículo";
     private string StagingConfirmMessage => PendingSelectionStagingSend
         ? $"Se generará un lote con {SelectedExternalArticles.Count} artículo(s) seleccionados. Mientras se procesa el envío no podrás seguir interactuando con esta pantalla."
-        : PendingInstitutionalDatasetStagingSend
-            ? $"Se generará un lote en staging con {InstitutionalDatasetArticles.Length} artículo(s) recuperados por filiación Universidad Técnica de Ambato. Luego podrás validar y corregir antes del registro definitivo."
         : "Se enviará este artículo al staging institucional para revisión técnica posterior. ¿Deseas continuar?";
 
     private string CurrentBusyEyebrow => IsLoading
@@ -456,8 +464,6 @@
             ? "Preparando dataset"
         : IsRunningQuery
             ? "Consultando proveedor"
-        : IsSendingInstitutionalDatasetToStaging
-            ? "Enviando dataset"
         : "Procesando envío";
 
     private string CurrentBusyTitle => IsLoading
@@ -466,8 +472,6 @@
             ? "Estamos reuniendo los artículos institucionales"
         : IsRunningQuery
             ? "Estamos consultando la fuente seleccionada"
-        : IsSendingInstitutionalDatasetToStaging
-            ? "Estamos creando el lote institucional en staging"
         : "Estamos enviando artículos al staging";
 
     private string CurrentBusyMessage => IsLoading
@@ -476,8 +480,6 @@
             ? "Estamos recorriendo Scopus y consolidando el dataset de la Universidad Técnica de Ambato. Por ahora bloqueamos la pantalla para evitar acciones duplicadas."
         : IsRunningQuery
             ? "No necesitas hacer nada más por ahora. Estamos resolviendo la consulta, leyendo la respuesta y preparando los artículos mapeables."
-        : IsSendingInstitutionalDatasetToStaging
-            ? "Estamos enviando los artículos institucionales recuperados a staging para que sean validados antes del registro definitivo."
         : "Mantendremos esta pantalla protegida hasta completar el envío para evitar acciones duplicadas o inconsistencias.";
 
     private static string GetLastResultArticleKey(ExternalArticlePreviewDto article)
@@ -540,6 +542,10 @@
     {
         try
         {
+            var state = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = state.User;
+            CanAccessInstitutionalIngestion = user.IsInRole("Admin") || user.IsInRole("Analyst") || user.IsInRole("ExternalApiUser");
+
             Providers = await ExternalApiExplorerClient.GetProvidersAsync();
             RecentQueries = await LocalStorage.GetItemAsync<List<ExternalApiQuerySidebar.ExternalApiRecentQueryItem>>(RecentQueriesStorageKey) ?? new();
             SelectedProvider = null;
@@ -896,7 +902,7 @@
 
             if (InstitutionalDatasetResult is not null)
             {
-                SuccessMessage = $"{InstitutionalDatasetResult.Message} Dataset preliminar: {InstitutionalDatasetArticles.Length} artículo(s) listos para descarga.";
+                SuccessMessage = $"{InstitutionalDatasetResult.Message} Dataset preliminar: {InstitutionalDatasetArticles.Length} artículo(s) listo(s).";
             }
         }
         catch (Exception ex)
@@ -1030,13 +1036,6 @@
             return;
         }
 
-        if (PendingInstitutionalDatasetStagingSend)
-        {
-            PendingInstitutionalDatasetStagingSend = false;
-            await ExecuteSendInstitutionalDatasetToStagingAsync();
-            return;
-        }
-
         if (PendingSingleStagingArticle is not null)
         {
             var article = PendingSingleStagingArticle;
@@ -1050,70 +1049,7 @@
         IsStagingConfirmVisible = false;
         PendingSingleStagingArticle = null;
         PendingSelectionStagingSend = false;
-        PendingInstitutionalDatasetStagingSend = false;
         return Task.CompletedTask;
-    }
-
-    private async Task SendInstitutionalDatasetToStagingAsync()
-    {
-        if (!InstitutionalDatasetArticles.Any())
-        {
-            ErrorMessage = "Primero prepara el dataset institucional antes de enviarlo a staging.";
-            return;
-        }
-
-        PendingSingleStagingArticle = null;
-        PendingSelectionStagingSend = false;
-        PendingInstitutionalDatasetStagingSend = true;
-        IsStagingConfirmVisible = true;
-        await Task.CompletedTask;
-    }
-
-    private async Task ExecuteSendInstitutionalDatasetToStagingAsync()
-    {
-        if (!InstitutionalDatasetArticles.Any())
-        {
-            ErrorMessage = "Primero prepara el dataset institucional antes de enviarlo a staging.";
-            return;
-        }
-
-        try
-        {
-            IsSendingInstitutionalDatasetToStaging = true;
-            ErrorMessage = null;
-            SuccessMessage = null;
-
-            var result = await ExternalApiExplorerClient.SendScopusInstitutionalDatasetToStagingAsync(new ScopusInstitutionalStagingImportRequest
-            {
-                InstitutionName = DefaultInstitutionName,
-                ChunkSize = 250,
-                ValidateAfterCreate = true
-            });
-
-            if (result is not null && result.BatchCount > 0)
-            {
-                SuccessMessage = result.Message;
-                IsInstitutionalDatasetModalVisible = false;
-
-                var firstBatch = result.Batches.FirstOrDefault();
-                if (firstBatch is not null && firstBatch.ImportBatchId > 0)
-                {
-                    NavManager.NavigateTo($"/management/exportinformation?batchId={firstBatch.ImportBatchId}");
-                }
-            }
-            else if (result is not null)
-            {
-                SuccessMessage = result.Message;
-            }
-        }
-        catch (Exception ex)
-        {
-            ErrorMessage = $"No fue posible enviar el dataset institucional a staging: {ex.Message}";
-        }
-        finally
-        {
-            IsSendingInstitutionalDatasetToStaging = false;
-        }
     }
 
     private async Task ExecuteSendSelectedToStagingAsync()
@@ -1460,7 +1396,7 @@
     private string GetInstitutionalDatasetSummary()
         => InstitutionalDatasetResult is null
             ? "Sin vista previa disponible."
-            : $"{InstitutionalDatasetArticles.Length} artículo(s) listos para exportar.";
+            : $"{InstitutionalDatasetArticles.Length} artículo(s) listos para revisar o continuar en ingesta masiva.";
 
     private string GetLastResultSummary()
         => LastResult is null

@@ -85,7 +85,7 @@
         @if ((Dashboard?.ArticlesByVenue.Count ?? 0) > 8)
         {
             <div class="reports-dw-inline-note reports-dw-inline-note--soft">
-                Mostrando 8 revistas principales.
+                Mostrando todas las revistas visibles; usa el desplazamiento de la tabla para revisar el detalle completo.
             </div>
         }
         <div class="reports-dw-table-wrap">
@@ -107,7 +107,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var venue in Dashboard?.ArticlesByVenue.Take(8) ?? [])
+                        @foreach (var venue in Dashboard?.ArticlesByVenue ?? [])
                         {
                             var metric = Dashboard?.VenueMetricsByYear.FirstOrDefault(x => x.VenueName == venue.VenueName);
                             <tr>

@@ -128,6 +128,10 @@ namespace tesisproject.backend.Data
                  .HasDatabaseName("UX_Articles_TitleYearVenue_NoDoi")
                  .IsUnique()
                  .HasFilter("[Doi] IS NULL");
+
+                e.HasIndex(a => new { a.ExternalSource, a.ExternalId })
+                 .HasDatabaseName("IX_Articles_ExternalSource_ExternalId")
+                 .HasFilter("[ExternalSource] IS NOT NULL AND [ExternalId] IS NOT NULL");
             });
 
             // =============== ArticleParticipant =========
@@ -517,6 +521,9 @@ namespace tesisproject.backend.Data
                     .WithOne(x => x.Row)
                     .HasForeignKey(x => x.ImportBatchRowId)
                     .OnDelete(DeleteBehavior.NoAction);
+
+                e.HasIndex(x => new { x.ImportBatchId, x.RowNumber });
+                e.HasIndex(x => new { x.ImportBatchId, x.RowStatus });
             });
 
             // =============== WorkflowDefinition ==========
@@ -656,6 +663,9 @@ namespace tesisproject.backend.Data
                     .WithMany()
                     .HasForeignKey(x => x.FieldId)
                     .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasIndex(x => x.ImportBatchRowId);
+                e.HasIndex(x => new { x.ImportBatchRowId, x.FieldId });
             });
 
             // =============== ImportBatchError ==========
@@ -671,6 +681,10 @@ namespace tesisproject.backend.Data
                     .WithMany()
                     .HasForeignKey(x => x.FieldId)
                     .OnDelete(DeleteBehavior.NoAction);
+
+                e.HasIndex(x => x.ImportBatchId);
+                e.HasIndex(x => x.ImportBatchRowId);
+                e.HasIndex(x => new { x.ImportBatchId, x.Severity });
             });
 
             // =============== RegistrationMatrix ========

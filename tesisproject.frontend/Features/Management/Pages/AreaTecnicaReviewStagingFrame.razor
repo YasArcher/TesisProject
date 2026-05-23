@@ -1,5 +1,6 @@
 @page "/management/area-tecnica-review-staging-frame"
 @layout tesisproject.frontend.Features.Management.Layout.EmptyLayout
+@attribute [Authorize(Roles = "Admin,WorkflowReviewerAreaTecnica,WorkflowProcessorAreaTecnica")]
 
 <tesisproject.frontend.Features.Management.Components.ReviewStagingHost BatchId="@BatchId"
                                                                        ContextKey="area-tecnica" />

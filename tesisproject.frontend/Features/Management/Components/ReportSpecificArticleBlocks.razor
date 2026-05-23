@@ -76,11 +76,10 @@
             Las barras resumen filas reportables; un artículo puede aparecer más de una vez si está en varias bases.
         </div>
         <div class="reports-dw-bars reports-dw-bars--compact">
-            @foreach (var item in Dashboard?.PediIiitArticles
+            @foreach (var item in (Dashboard?.PediIiitArticles ?? [])
                 .GroupBy(x => string.IsNullOrWhiteSpace(x.Quartile) ? "Sin cuartil" : x.Quartile)
                 .Select(g => new { Name = g.Key, Total = g.Count() })
-                .OrderByDescending(x => x.Total)
-                .Take(6) ?? [])
+                .OrderByDescending(x => x.Total))
             {
                 <div class="reports-dw-bar-row">
                     <span>@item.Name</span>
@@ -220,11 +219,10 @@
             Las barras resumen filas reportables; un artículo puede aparecer más de una vez si está en varias bases.
         </div>
         <div class="reports-dw-bars reports-dw-bars--compact">
-            @foreach (var item in Dashboard?.TddTotalArticles
+            @foreach (var item in (Dashboard?.TddTotalArticles ?? [])
                 .GroupBy(x => string.IsNullOrWhiteSpace(x.Faculty) ? "Sin facultad" : x.Faculty)
                 .Select(g => new { Name = g.Key, Total = g.Count() })
-                .OrderByDescending(x => x.Total)
-                .Take(8) ?? [])
+                .OrderByDescending(x => x.Total))
             {
                 <div class="reports-dw-bar-row">
                     <span>@item.Name</span>

@@ -167,7 +167,6 @@ namespace tesisproject.backend.Services.Implementations
                 .Include(x => x.WorkflowDefinition)
                 .Include(x => x.CurrentStageDefinition)
                 .Include(x => x.Batch)
-                    .ThenInclude(x => x!.Rows)
                 .Include(x => x.StageInstances)
                     .ThenInclude(x => x.WorkflowStageDefinition)
                 .Include(x => x.ActionLogs)
@@ -187,8 +186,9 @@ namespace tesisproject.backend.Services.Implementations
                 .ToListAsync(ct);
 
             var displayNames = await BuildWorkflowUserDisplayNamesAsync(workflows, ct);
+            var rowCounts = await BuildWorkflowRowCountsAsync(workflows.Select(x => x.ImportBatchId), ct);
 
-            return workflows.Select(x => MapInboxItem(x, userId, displayNames)).ToList();
+            return workflows.Select(x => MapInboxItem(x, userId, displayNames, rowCounts)).ToList();
         }
 
         public async Task<List<WorkflowInboxItemDto>> GetAuthorInboxAsync(string? userId, int take = 50, CancellationToken ct = default)
@@ -211,7 +211,6 @@ namespace tesisproject.backend.Services.Implementations
                 .Include(x => x.WorkflowDefinition)
                 .Include(x => x.CurrentStageDefinition)
                 .Include(x => x.Batch)
-                    .ThenInclude(x => x!.Rows)
                 .Include(x => x.StageInstances)
                     .ThenInclude(x => x.WorkflowStageDefinition)
                 .Include(x => x.ActionLogs)
@@ -228,8 +227,9 @@ namespace tesisproject.backend.Services.Implementations
                 .ToListAsync(ct);
 
             var displayNames = await BuildWorkflowUserDisplayNamesAsync(workflows, ct);
+            var rowCounts = await BuildWorkflowRowCountsAsync(workflows.Select(x => x.ImportBatchId), ct);
 
-            return workflows.Select(x => MapInboxItem(x, normalizedUserId, displayNames)).ToList();
+            return workflows.Select(x => MapInboxItem(x, normalizedUserId, displayNames, rowCounts)).ToList();
         }
 
         public async Task<bool> CanAuthorAccessBatchAsync(string? userId, int importBatchId, bool requireReturnedStatus = false, CancellationToken ct = default)
@@ -591,9 +591,10 @@ namespace tesisproject.backend.Services.Implementations
                 throw new InvalidOperationException("No se encontró el lote asociado al envío devuelto.");
             }
 
-            if (workflow.Batch.ErrorRows > 0)
+            var errorRows = workflow.Batch.Rows.Count(x => string.Equals(x.RowStatus, "Error", StringComparison.OrdinalIgnoreCase));
+            if (errorRows > 0)
             {
-                throw new InvalidOperationException($"El envío todavía tiene {workflow.Batch.ErrorRows} fila(s) con error. Corrige la matriz y vuelve a validar antes de reenviar.");
+                throw new InvalidOperationException($"El envío todavía tiene {errorRows} fila(s) con error. Corrige la matriz y vuelve a validar antes de reenviar.");
             }
 
             var validRows = workflow.Batch.Rows.Count(x => string.Equals(x.RowStatus, "Valid", StringComparison.OrdinalIgnoreCase));
@@ -972,15 +973,22 @@ namespace tesisproject.backend.Services.Implementations
             };
         }
 
-        private WorkflowInboxItemDto MapInboxItem(WorkflowInstance workflow, string? currentUserId, IReadOnlyDictionary<string, string> displayNames)
+        private WorkflowInboxItemDto MapInboxItem(
+            WorkflowInstance workflow,
+            string? currentUserId,
+            IReadOnlyDictionary<string, string> displayNames,
+            IReadOnlyDictionary<int, WorkflowRowCounts>? rowCountsByBatch = null)
         {
             var currentStage = workflow.CurrentStageDefinition;
             var currentStageInstance = currentStage is null
                 ? null
                 : workflow.StageInstances.FirstOrDefault(x => x.WorkflowStageDefinitionId == currentStage.WorkflowStageDefinitionId);
 
-            var validRows = workflow.Batch?.Rows.Count(x => x.RowStatus == "Valid") ?? 0;
-            var processedRows = workflow.Batch?.Rows.Count(x => x.RowStatus == "Processed") ?? 0;
+            WorkflowRowCounts? rowCounts = null;
+            rowCountsByBatch?.TryGetValue(workflow.ImportBatchId, out rowCounts);
+            var validRows = rowCounts?.ValidRows ?? workflow.Batch?.Rows.Count(x => x.RowStatus == "Valid") ?? 0;
+            var errorRows = rowCounts?.ErrorRows ?? workflow.Batch?.Rows.Count(x => x.RowStatus == "Error") ?? 0;
+            var processedRows = rowCounts?.ProcessedRows ?? workflow.Batch?.Rows.Count(x => x.RowStatus == "Processed") ?? 0;
             var effectiveStatus = ResolveEffectiveWorkflowStatus(workflow.Status, workflow.Batch?.Status, processedRows);
             var latestAction = workflow.ActionLogs
                 .OrderByDescending(x => x.PerformedAt)
@@ -1017,7 +1025,7 @@ namespace tesisproject.backend.Services.Implementations
                 AssignedToUserId = currentStageInstance?.AssignedToUserId,
                 AssignedToUserName = BuildReferenceDisplayName(currentStageInstance?.AssignedToUserId, displayNames),
                 TotalRows = workflow.Batch?.TotalRows ?? 0,
-                ErrorRows = workflow.Batch?.ErrorRows ?? 0,
+                ErrorRows = errorRows,
                 ValidRows = validRows,
                 ProcessedRows = processedRows,
                 SubmittedAt = workflow.SubmittedAt,
@@ -1227,6 +1235,39 @@ namespace tesisproject.backend.Services.Implementations
             return displayNames;
         }
 
+        private async Task<IReadOnlyDictionary<int, WorkflowRowCounts>> BuildWorkflowRowCountsAsync(IEnumerable<int> importBatchIds, CancellationToken ct)
+        {
+            var batchIds = importBatchIds
+                .Distinct()
+                .ToList();
+
+            if (batchIds.Count == 0)
+            {
+                return new Dictionary<int, WorkflowRowCounts>();
+            }
+
+            var rows = await _db.ImportBatchRows
+                .AsNoTracking()
+                .Where(x => batchIds.Contains(x.ImportBatchId))
+                .GroupBy(x => new { x.ImportBatchId, x.RowStatus })
+                .Select(x => new
+                {
+                    x.Key.ImportBatchId,
+                    x.Key.RowStatus,
+                    Count = x.Count()
+                })
+                .ToListAsync(ct);
+
+            return rows
+                .GroupBy(x => x.ImportBatchId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => new WorkflowRowCounts(
+                        ValidRows: group.Where(x => x.RowStatus == "Valid").Sum(x => x.Count),
+                        ErrorRows: group.Where(x => x.RowStatus == "Error").Sum(x => x.Count),
+                        ProcessedRows: group.Where(x => x.RowStatus == "Processed").Sum(x => x.Count)));
+        }
+
         private static void AddDisplayName(IDictionary<string, string> displayNames, string? reference, string displayName)
         {
             if (!string.IsNullOrWhiteSpace(reference) && !displayNames.ContainsKey(reference.Trim()))
@@ -1270,5 +1311,7 @@ namespace tesisproject.backend.Services.Implementations
             public WorkflowStageInstance StageInstance { get; set; } = null!;
             public string UserId { get; set; } = string.Empty;
         }
+
+        private sealed record WorkflowRowCounts(int ValidRows, int ErrorRows, int ProcessedRows);
     }
 }

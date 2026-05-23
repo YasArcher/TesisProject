@@ -98,7 +98,7 @@
             @if ((Dashboard?.ParticipationSummary.IndexingByFaculty.Count ?? 0) > 12)
             {
                 <div class="reports-dw-inline-note">
-                    Mostrando 12 cruces del resultado actual.
+                    Mostrando todos los cruces; usa el desplazamiento de la tabla cuando el resultado crezca.
                 </div>
             }
             <div class="reports-dw-table-wrap">
@@ -111,7 +111,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var item in Dashboard?.ParticipationSummary.IndexingByFaculty.Take(12) ?? [])
+                        @foreach (var item in Dashboard?.ParticipationSummary.IndexingByFaculty ?? [])
                         {
                             <tr>
                                 <td>@item.Faculty</td>

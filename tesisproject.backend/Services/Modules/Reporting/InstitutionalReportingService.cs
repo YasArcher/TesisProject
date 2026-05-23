@@ -1,4 +1,5 @@
 using ClosedXML.Excel;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using QuestPDF.Fluent;
@@ -20,6 +21,7 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
     private readonly ReportingDbContext _db;
     private readonly ILogger<InstitutionalReportingService> _logger;
     private readonly IMemoryCache _cache;
+    private readonly string _oltpDatabaseName;
     private static int _cacheVersion;
 
     private sealed record RawReportingDataset(
@@ -38,11 +40,14 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
     public InstitutionalReportingService(
         ReportingDbContext db,
         ILogger<InstitutionalReportingService> logger,
-        IMemoryCache cache)
+        IMemoryCache cache,
+        IConfiguration config)
     {
         _db = db;
         _logger = logger;
         _cache = cache;
+        _oltpDatabaseName = ResolveDatabaseName(config.GetConnectionString("DefaultConnection"))
+            ?? "TesisDB_Extensible";
     }
 
     public async Task<ReportingHealthDto> GetHealthAsync(CancellationToken ct = default)
@@ -330,7 +335,6 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
                     TotalArticles = g.Sum(x => x.ArticleCount)
                 })
                 .OrderByDescending(x => x.TotalArticles)
-                .Take(12)
                 .ToList(),
             ArticlesByVenue = details
                 .GroupBy(x => new
@@ -345,7 +349,6 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
                     TotalArticles = g.Sum(x => x.ArticleCount)
                 })
                 .OrderByDescending(x => x.TotalArticles)
-                .Take(12)
                 .ToList(),
             QuartileDistribution = filteredQuartileDistribution,
             OpenAccessByYear = details
@@ -363,7 +366,6 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             VenueMetricsByYear = filteredVenueMetrics
                 .OrderByDescending(x => x.YearNumber)
                 .ThenBy(x => x.VenueName)
-                .Take(25)
                 .Select(x => new ReportingVenueMetricDto
                 {
                     Year = x.YearNumber,
@@ -1359,17 +1361,127 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
     {
         try
         {
+            _db.Database.SetCommandTimeout(600);
+            await EnsureDateDimensionCoversOltpDatesAsync(ct);
             await _db.Database.ExecuteSqlRawAsync("EXEC etl.sp_RunFullLoad;", ct);
             Interlocked.Increment(ref _cacheVersion);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "No fue posible ejecutar el ETL completo del DW de reportería.");
-            throw;
+            var diagnostic = await BuildMissingDateDiagnosticAsync(ct);
+            throw new InvalidOperationException(
+                string.IsNullOrWhiteSpace(diagnostic)
+                    ? ex.Message
+                    : $"{ex.Message} {diagnostic}",
+                ex);
         }
 
         return await GetHealthAsync(ct);
     }
+
+    private async Task EnsureDateDimensionCoversOltpDatesAsync(CancellationToken ct)
+    {
+        var oltpDatabase = QuoteSqlIdentifier(_oltpDatabaseName);
+        var sql = $"""
+DECLARE @DefaultStart DATE = '20000101';
+DECLARE @DefaultEnd DATE = '20501231';
+DECLARE @MinDate DATE = @DefaultStart;
+DECLARE @MaxDate DATE = @DefaultEnd;
+
+;WITH SourceDates AS (
+    SELECT CAST(CreatedAt AS DATE) AS SourceDate
+    FROM {oltpDatabase}.dbo.Articles
+    WHERE CreatedAt IS NOT NULL
+    UNION ALL
+    SELECT CAST(PublishedAt AS DATE)
+    FROM {oltpDatabase}.dbo.Articles
+    WHERE PublishedAt IS NOT NULL
+    UNION ALL
+    SELECT CAST(StartedAt AS DATE)
+    FROM {oltpDatabase}.dbo.ImportBatch
+    WHERE StartedAt IS NOT NULL
+    UNION ALL
+    SELECT CAST(FinishedAt AS DATE)
+    FROM {oltpDatabase}.dbo.ImportBatch
+    WHERE FinishedAt IS NOT NULL
+    UNION ALL
+    SELECT CAST(CreatedAt AS DATE)
+    FROM {oltpDatabase}.dbo.ImportBatchRow
+    WHERE CreatedAt IS NOT NULL
+    UNION ALL
+    SELECT CAST(CreatedAt AS DATE)
+    FROM {oltpDatabase}.dbo.ImportBatchError
+    WHERE CreatedAt IS NOT NULL
+)
+SELECT
+    @MinDate = MIN(CASE WHEN SourceDate < @MinDate THEN SourceDate ELSE @MinDate END),
+    @MaxDate = MAX(CASE WHEN SourceDate > @MaxDate THEN SourceDate ELSE @MaxDate END)
+FROM SourceDates
+WHERE SourceDate BETWEEN '19000101' AND '22001231';
+
+SET @MinDate = COALESCE(@MinDate, @DefaultStart);
+SET @MaxDate = COALESCE(@MaxDate, @DefaultEnd);
+
+EXEC etl.sp_PopulateDimDate @StartDate = @MinDate, @EndDate = @MaxDate;
+""";
+
+        await _db.Database.ExecuteSqlRawAsync(sql, ct);
+    }
+
+    private async Task<string> BuildMissingDateDiagnosticAsync(CancellationToken ct)
+    {
+        try
+        {
+            var oltpDatabase = QuoteSqlIdentifier(_oltpDatabaseName);
+            var sql = $"""
+SELECT TOP (5)
+    CAST(CONVERT(CHAR(8), CAST(a.PublishedAt AS DATE), 112) AS INT) AS Value
+FROM {oltpDatabase}.dbo.Articles a
+WHERE a.PublishedAt IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dw.DimDate d
+      WHERE d.DateKey = CAST(CONVERT(CHAR(8), CAST(a.PublishedAt AS DATE), 112) AS INT)
+  )
+GROUP BY CAST(CONVERT(CHAR(8), CAST(a.PublishedAt AS DATE), 112) AS INT)
+ORDER BY Value;
+""";
+
+            var missingKeys = await _db.Database.SqlQueryRaw<int>(sql).ToListAsync(ct);
+
+            return missingKeys.Count == 0
+                ? string.Empty
+                : $"DateKey de publicación sin calendario en dw.DimDate: {string.Join(", ", missingKeys)}.";
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static string? ResolveDatabaseName(string? connectionString)
+    {
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            return null;
+        }
+
+        try
+        {
+            var builder = new SqlConnectionStringBuilder(connectionString);
+            return string.IsNullOrWhiteSpace(builder.InitialCatalog)
+                ? null
+                : builder.InitialCatalog.Trim();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string QuoteSqlIdentifier(string identifier)
+        => $"[{identifier.Replace("]", "]]")}]";
 
     private static readonly string[] RawArticleHeaders =
     [
@@ -2355,7 +2467,6 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             })
             .OrderByDescending(x => x.TotalArticles)
             .ThenBy(x => x.Name)
-            .Take(12)
             .ToList();
     }
 
@@ -2442,7 +2553,6 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
                 TotalArticles = g.Sum(x => x.ArticleCount)
             })
             .OrderByDescending(x => x.TotalArticles)
-            .Take(12)
             .ToList();
     }
 
@@ -2489,7 +2599,30 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         }
 
         var articleKeys = details.Select(x => x.ArticleKey).Distinct().ToHashSet();
-        var rows = await SafeListAsync(
+        var rows = (await GetCachedListAsync(
+                "article-indexing-base-rows",
+                LoadArticleIndexingBaseRowsAsync,
+                ct))
+            .Select(CloneArticleIndexingDetailRow)
+            .ToList();
+
+        EnrichIndexingDetails(rows, authorRows, venueMetrics);
+
+        var filtered = rows
+            .Where(x => articleKeys.Contains(x.ArticleKey));
+
+        if (!string.IsNullOrWhiteSpace(filter?.IndexingSource))
+        {
+            var selected = filter.IndexingSource.Trim();
+            filtered = filtered.Where(x => string.Equals(x.IndexingSourceName, selected, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return filtered.ToList();
+    }
+
+    private Task<List<ReportingArticleIndexingDetailRow>> LoadArticleIndexingBaseRowsAsync(CancellationToken ct)
+    {
+        return SafeListAsync(
             _db.ArticleIndexingDetails
                 .FromSqlRaw("""
                     SELECT
@@ -2528,19 +2661,35 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
                 .AsNoTracking(),
             "detalle de artículos por base de datos",
             ct);
+    }
 
-        EnrichIndexingDetails(rows, authorRows, venueMetrics);
-
-        var filtered = rows
-            .Where(x => articleKeys.Contains(x.ArticleKey));
-
-        if (!string.IsNullOrWhiteSpace(filter?.IndexingSource))
+    private static ReportingArticleIndexingDetailRow CloneArticleIndexingDetailRow(ReportingArticleIndexingDetailRow row)
+    {
+        return new ReportingArticleIndexingDetailRow
         {
-            var selected = filter.IndexingSource.Trim();
-            filtered = filtered.Where(x => string.Equals(x.IndexingSourceName, selected, StringComparison.OrdinalIgnoreCase));
-        }
-
-        return filtered.ToList();
+            ArticleKey = row.ArticleKey,
+            ArticleId = row.ArticleId,
+            Title = row.Title,
+            Doi = row.Doi,
+            IndexingSourceName = row.IndexingSourceName,
+            VenueName = row.VenueName,
+            Issn = row.Issn,
+            JournalUrl = row.JournalUrl,
+            PublicationUrl = row.PublicationUrl,
+            PublishedDate = row.PublishedDate,
+            ArticleYear = row.ArticleYear,
+            IsProjectResult = row.IsProjectResult,
+            HasInterculturalComponent = row.HasInterculturalComponent,
+            FacultyName = row.FacultyName,
+            ResearchLine = row.ResearchLine,
+            BroadFieldName = row.BroadFieldName,
+            SpecificFieldName = row.SpecificFieldName,
+            DetailedFieldName = row.DetailedFieldName,
+            AuthorIdentification = row.AuthorIdentification,
+            AuthorName = row.AuthorName,
+            ParticipantType = row.ParticipantType,
+            Quartile = row.Quartile
+        };
     }
 
     private static void EnrichIndexingDetails(
@@ -3368,7 +3517,6 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
             })
             .OrderByDescending(x => x.TotalArticles)
             .ThenBy(x => x.Name)
-            .Take(20)
             .ToList();
     }
 

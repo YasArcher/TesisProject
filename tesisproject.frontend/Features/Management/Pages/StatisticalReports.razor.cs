@@ -264,6 +264,20 @@ namespace tesisproject.frontend.Features.Management.Pages
             }
         }
 
+        protected async Task ReloadReportingViewAsync()
+        {
+            if (IsInstitutionalBlockingBusy)
+            {
+                return;
+            }
+
+            var filterSnapshot = ReportInstitutionalFilterState.Clone(_institutionalFilter);
+            var shouldRefreshAuthors = ShouldRefreshAuthorDashboardWithFilters;
+            await RefreshReportingForFilterAsync(filterSnapshot, shouldRefreshAuthors);
+            SaveReportingState();
+            StateHasChanged();
+        }
+
         protected string FormatEtlDate(DateTime? value)
             => ReportInstitutionalStatusText.FormatEtlDate(value);
 
@@ -273,6 +287,26 @@ namespace tesisproject.frontend.Features.Management.Pages
         protected static string GetInstitutionalStatusLabel(string? status)
             => ReportInstitutionalStatusText.GetInstitutionalStatusLabel(status);
 
+        protected bool ShouldShowEtlRecoveryNotice =>
+            _institutionalDashboard is not null
+            && !_isRunningInstitutionalEtl
+            && ReportInstitutionalStatusText.IsEtlFailureStatus(_institutionalDashboard.Health.LastEtlStatus);
+
+        protected string EtlRecoveryMessage
+        {
+            get
+            {
+                var status = _institutionalDashboard?.Health.LastEtlStatus;
+                var notes = _institutionalDashboard?.Health.LastEtlNotes;
+                var lastRun = FormatEtlDate(_institutionalDashboard?.Health.LastEtlFinishedAt);
+                var detail = string.IsNullOrWhiteSpace(notes)
+                    ? "El refresco automático no pudo completar la actualización del modelo analítico."
+                    : notes.Trim();
+
+                return $"Estado: {status}. Último intento: {lastRun}. {detail} Puedes volver a sincronizar manualmente cuando el sistema esté disponible.";
+            }
+        }
+
         protected bool HasInstitutionalReportingData =>
             ReportInstitutionalStatusText.HasReportingData(_institutionalDashboard);
 
@@ -280,6 +314,10 @@ namespace tesisproject.frontend.Features.Management.Pages
             _isLoadingInstitutionalReporting
             || _isRefreshingInstitutionalReporting
             || _isRunningInstitutionalEtl;
+
+        protected bool ShouldShowInstitutionalBlockingLoader =>
+            _isRunningInstitutionalEtl
+            || (_isLoadingInstitutionalReporting && _institutionalDashboard is null);
 
         protected string InstitutionalBlockingBusyTitle
             => ReportInstitutionalStatusText.GetBlockingTitle(

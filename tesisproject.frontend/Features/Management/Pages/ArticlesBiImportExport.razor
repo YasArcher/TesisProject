@@ -1,6 +1,6 @@
 @page "/management/exportinformation"
 @page "/management/article-review-staging"
-@attribute [Authorize(Roles = "Admin,Analyst,BulkImportUser,WorkflowReviewerUodide,WorkflowReviewerAreaTecnica,WorkflowProcessorAreaTecnica,Author,WorkflowTrackingUser")]
+@attribute [Authorize(Roles = "Admin,Analyst,BulkImportUser,WorkflowReviewerUodide,WorkflowReviewerAreaTecnica,WorkflowProcessorAreaTecnica")]
 @using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Authorization
@@ -22,33 +22,49 @@
 
 <PageTitle>@PageTitleText</PageTitle>
 
-<div class="app-page-shell app-shell-warm bulk-import-page">
-    <div class="app-module-hero bulk-import-hero mb-5 rounded-[1.8rem] px-5 py-5 text-white shadow-lg">
-        <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-            <div class="flex items-start gap-4">
-                <div class="bulk-import-hero__icon">
-                    <i class="bi bi-grid-3x3-gap"></i>
+<div class="app-page-shell app-shell-warm bulk-import-page @(IsReviewStagingMode ? "bulk-import-page--review" : string.Empty)">
+    @if (!IsReviewStagingMode)
+    {
+        <div class="app-module-hero bulk-import-hero mb-5 rounded-[1.8rem] px-5 py-5 text-white shadow-lg">
+            <div class="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+                <div class="flex items-start gap-4">
+                    <div class="bulk-import-hero__icon">
+                        <i class="bi bi-grid-3x3-gap"></i>
+                    </div>
+                    <div>
+                        <div class="text-xs font-semibold uppercase tracking-[0.24em] text-white/75">@PageEyebrow</div>
+                        <h1 class="mt-1 text-2xl font-black md:text-3xl">@PageHeading</h1>
+                        <div class="mt-2 max-w-3xl text-sm leading-6 text-white/80">@PageSummary</div>
+                    </div>
                 </div>
-                <div>
-                    <div class="text-xs font-semibold uppercase tracking-[0.24em] text-white/75">@PageEyebrow</div>
-                    <h1 class="mt-1 text-2xl font-black md:text-3xl">@PageHeading</h1>
-                    <div class="mt-2 max-w-3xl text-sm leading-6 text-white/80">@PageSummary</div>
+                <div class="bulk-import-hero__meta">
+                    <span><i class="bi bi-table"></i> Matriz controlada</span>
+                    <span><i class="bi bi-check2-square"></i> Validación por lote</span>
+                    @if (CurrentBatch is not null)
+                    {
+                        <span><i class="bi bi-upc-scan"></i> @CurrentBatch.Summary.BatchCode</span>
+                    }
                 </div>
-            </div>
-            <div class="bulk-import-hero__meta">
-                <span><i class="bi bi-table"></i> Matriz controlada</span>
-                <span><i class="bi bi-check2-square"></i> Validación por lote</span>
-                @if (IsReviewStagingMode)
-                {
-                    <span><i class="bi bi-person-check"></i> @ReviewModeAudience</span>
-                }
-                @if (CurrentBatch is not null)
-                {
-                    <span><i class="bi bi-upc-scan"></i> @CurrentBatch.Summary.BatchCode</span>
-                }
             </div>
         </div>
-    </div>
+    }
+    else if (CurrentBatch is not null)
+    {
+        <div class="bulk-review-strip">
+            <div>
+                <span>@ReviewModeAudience</span>
+                <strong>@GetReviewGuidanceTitle()</strong>
+                <small>@GetReviewCompactSummary()</small>
+            </div>
+            <div class="bulk-review-strip__metrics">
+                <span>Total @CurrentBatch.Summary.TotalRows</span>
+                <span class="@(CurrentBatch.Summary.ErrorRows > 0 ? "bulk-review-strip__metric--danger" : "bulk-review-strip__metric--ok")">
+                    Errores @CurrentBatch.Summary.ErrorRows
+                </span>
+                <span>Listas @CurrentBatch.Summary.ValidRows</span>
+            </div>
+        </div>
+    }
 
     <AppConfirmPanel Visible="@HasPendingAction"
                      Eyebrow="Confirmación operativa"
@@ -94,7 +110,15 @@
                                      RecentBatchesCount="@RecentBatches.Count" />
         }
 
-        <div class="grid grid-cols-1 gap-6 @(IsReviewStagingMode ? "2xl:grid-cols-[1.3fr_0.7fr]" : "2xl:grid-cols-[1.15fr_0.85fr]")">
+        @if (IsReviewStagingMode && CurrentBatch is null)
+        {
+            <AppEmptyState Title="@(CurrentReviewContext?.EmptySelectionTitle ?? "Sin envío seleccionado")"
+                           Message="@(CurrentReviewContext?.EmptySelectionMessage ?? "Abre este staging desde la bandeja de revisión para cargar el lote que necesita corrección.")" />
+        }
+
+        @if (!IsReviewStagingMode)
+        {
+        <div class="grid grid-cols-1 gap-6 2xl:grid-cols-[1.15fr_0.85fr]">
             @if (!IsReviewStagingMode)
             {
                 <section class="space-y-6">
@@ -127,43 +151,6 @@
                                              OnOpenBatch="OpenRecentBatchAsync" />
                 </section>
             }
-            else
-            {
-                <section class="space-y-4">
-                    <div class="app-section-card">
-                        <div class="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Staging del módulo</div>
-                        <h2 class="mt-1 text-lg font-black text-[#12343b]">@(CurrentReviewContext?.WorkspaceTitle ?? "Revisión y corrección del envío")</h2>
-                        <p class="mt-2 text-sm text-slate-500">@(CurrentReviewContext?.WorkspaceDescription ?? "Esta vista usa el mismo motor de staging y validación, pero está enfocada en los envíos de autores dentro del flujo de revisión.")</p>
-                    </div>
-
-                    @if (CurrentBatch is not null)
-                    {
-                        <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
-                            <article class="app-stat-card">
-                                <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Estado</div>
-                                <div class="mt-2 text-base font-black text-[#12343b]">@GetReviewStatusLabel()</div>
-                                <div class="mt-1 text-sm text-slate-500">@GetCurrentStageLabel()</div>
-                            </article>
-                            <article class="app-stat-card">
-                                <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Filas</div>
-                                <div class="mt-2 text-base font-black text-[#12343b]">@CurrentBatch.Summary.TotalRows</div>
-                                <div class="mt-1 text-sm text-slate-500">Errores: @CurrentBatch.Summary.ErrorRows · Procesadas: @CurrentBatch.Summary.ProcessedRows</div>
-                            </article>
-                            <article class="app-stat-card">
-                                <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Siguiente paso</div>
-                                <div class="mt-2 text-base font-black text-[#12343b]">@GetReviewGuidanceTitle()</div>
-                                <div class="mt-1 text-sm text-slate-500">@GetOperationalGuidance()</div>
-                            </article>
-                        </div>
-                    }
-
-                    @if (CurrentBatch is null)
-                    {
-                        <AppEmptyState Title="@(CurrentReviewContext?.EmptySelectionTitle ?? "Sin envío seleccionado")"
-                                       Message="@(CurrentReviewContext?.EmptySelectionMessage ?? "Abre este staging desde la bandeja de revisión para cargar el lote que necesita corrección.")" />
-                    }
-                </section>
-            }
 
             <aside class="space-y-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-auto">
                 <BulkImportCurrentBatchSidebar Batch="CurrentBatch"
@@ -187,8 +174,8 @@
                                                CanProcess="@CanProcessInCurrentContext"
                                                CanPrepareNextLoad="@(!IsReviewStagingMode)"
                                                CanShowDownloadTemplate="@(!IsReviewStagingMode)"
-                                               CanShowValidate="@(!IsAuthorCorrectionStage)"
-                                               CanShowProcess="@(!IsAuthorCorrectionStage)"
+                                               CanShowValidate="@(!IsReviewStagingMode)"
+                                               CanShowProcess="@(!IsReviewStagingMode)"
                                                IsAuthorCorrectionMode="@IsAuthorCorrectionStage"
                                                StageCards="CurrentBatchStageCards"
                                                OnPrepareNextLoad="@(IsReviewStagingMode ? NoOpPrepareNextLoad : PrepareNextLoad)"
@@ -199,14 +186,18 @@
                                                OnFinishCorrection="RequestFinishAuthorCorrection" />
             </aside>
         </div>
+        }
         @if (CurrentBatch is not null)
         {
-            <section class="mt-6 space-y-6">
-                <BulkImportBatchTabs ActiveTab="@ActiveBatchTab"
-                                     CorrectionCount="@ErrorRows.Count"
-                                     PreviewCount="@CurrentBatch.Rows.Count"
-                                     ErrorsCount="@FilteredBatchErrors.Count"
-                                     OnTabChange="HandleBatchTabChangedAsync" />
+            <section class="@(IsReviewStagingMode ? "mt-3 space-y-4" : "mt-6 space-y-6")">
+                @if (!IsReviewStagingMode || ShouldShowReviewTabs)
+                {
+                    <BulkImportBatchTabs ActiveTab="@ActiveBatchTab"
+                                         CorrectionCount="@ErrorRows.Count"
+                                         PreviewCount="@CurrentBatch.Rows.Count"
+                                         ErrorsCount="@FilteredBatchErrors.Count"
+                                         OnTabChange="HandleBatchTabChangedAsync" />
+                }
 
                 @if (ActiveBatchTab == "correction")
                 {
@@ -243,7 +234,7 @@
                                         NormalizedPreviewCurrentPage="NormalizedPreviewCurrentPage"
                                         BatchReviewHint="@GetBatchReviewHint()"
                                         OrderedPreviewHeaders="OrderedPreviewHeaders"
-                                        ShowTemplateSummary="@(CurrentBatch.Template is not null)"
+                                        ShowTemplateSummary="@(!IsReviewStagingMode && CurrentBatch.Template is not null)"
                                         TemplateFieldCount="TemplateFieldPreviewItems.Count"
                                         TemplateFieldPreviewItems="TemplateFieldPreviewItems"
                                         HasFilteredRows="FilteredPreviewRows.Any()"
@@ -479,7 +470,6 @@
                                                 <span class="rounded-full bg-[#fff4e4] px-2 py-0.5 text-[11px] font-semibold text-[#8b5a16]">Dinámico</span>
                                             }
                                         </div>
-                                        <div class="mt-1 text-xs text-slate-500">@GetTemplateFieldInterpretation(field)</div>
                                         @if (GetDynamicOptions(field.FieldId).Any())
                                         {
                                             <select class="mt-3 w-full rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm" value="@GetCorrectionValue(field.FieldId)" @onchange="async (args) => await HandleCorrectionValueChangedAsync(field, args.Value?.ToString())">
@@ -789,6 +779,7 @@
         && CurrentBatch.Summary.TotalRows > 0
         && CurrentBatch.Summary.ErrorRows == 0
         && CurrentBatch.Summary.ValidRows > 0;
+    private bool ShouldShowReviewTabs => !IsReviewStagingMode || ErrorRows.Count == 0 || !string.Equals(ActiveBatchTab, "correction", StringComparison.OrdinalIgnoreCase);
     private bool CanAccessBulkImportWorkspace()
         => UserRoles.Contains("Admin")
         || UserRoles.Contains("Analyst")
@@ -814,6 +805,25 @@
         ? (CurrentReviewContext?.PageSummary ?? "Espacio de corrección y validación para envíos de autores dentro del flujo UODIDE y Área Técnica.")
         : "Plantillas, staging y procesamiento de lotes para el módulo de carga masiva.";
     private string ReviewModeAudience => CurrentReviewContext?.AudienceLabel ?? GetFallbackReviewAudience();
+    private string GetReviewCompactSummary()
+    {
+        if (CurrentBatch is null)
+        {
+            return "Selecciona un envío para revisar sus observaciones.";
+        }
+
+        if (CurrentBatch.Summary.ErrorRows > 0)
+        {
+            return $"Corrige {CurrentBatch.Summary.ErrorRows} fila(s) con observaciones. La cola de corrección está lista para trabajar directo sobre los errores.";
+        }
+
+        if (CanProcessCurrentBatch)
+        {
+            return "El envío no tiene observaciones pendientes. Puedes volver al workflow para aprobar o procesar según corresponda.";
+        }
+
+        return "Revisa el envío y ejecuta la validación desde el flujo para confirmar el estado del staging.";
+    }
     private string LoadingMessage => IsReviewStagingMode
         ? (CurrentReviewContext?.LoadingMessage ?? "Cargando staging de revisión y preparación del lote seleccionado...")
         : "Cargando configuración de campos y lotes recientes...";
@@ -844,7 +854,7 @@
 
             var missingErrorFields = SelectedPreviewRow.Errors
                 .Where(error => error.FieldId.HasValue && result.All(field => field.FieldId != error.FieldId.Value))
-                .Select(error => FindEditableFieldById(error.FieldId!.Value))
+                .Select(error => FindEditableFieldById(error.FieldId!.Value) ?? MapErrorToEditableField(error))
                 .Where(field => field is not null)
                 .Cast<BulkImportTemplateFieldDto>();
 
@@ -1552,6 +1562,36 @@
             DataType = cell.ValueType ?? "string",
             HeaderKey = $"{cell.EntityName}.{cell.FieldKey}"
         };
+
+    private static BulkImportTemplateFieldDto? MapErrorToEditableField(BulkImportErrorDto error)
+    {
+        if (!error.FieldId.HasValue)
+        {
+            return null;
+        }
+
+        var fieldKey = string.IsNullOrWhiteSpace(error.FieldKey) ? "JournalName" : error.FieldKey!;
+        var fieldLabel = string.IsNullOrWhiteSpace(error.FieldLabel) ? fieldKey : error.FieldLabel!;
+        var entityName = string.Equals(fieldKey, "JournalName", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(fieldKey, "IssnCode", StringComparison.OrdinalIgnoreCase)
+            || error.ErrorCode.StartsWith("CLIENT_VENUE_", StringComparison.OrdinalIgnoreCase)
+                ? "Article"
+                : "Article";
+
+        return new BulkImportTemplateFieldDto
+        {
+            FieldId = error.FieldId.Value,
+            EntityName = entityName,
+            FieldKey = fieldKey,
+            FieldLabel = fieldLabel,
+            DataType = "string",
+            SourceType = "CompositeData",
+            HeaderKey = $"{entityName}.{fieldKey}|{fieldLabel}",
+            IsRequired = error.ErrorCode.StartsWith("CLIENT_VENUE_", StringComparison.OrdinalIgnoreCase),
+            HelpText = error.ErrorMessage,
+            Placeholder = fieldLabel
+        };
+    }
 
     private static BulkImportTemplateFieldDto MapFieldCatalogToEditableField(FieldCatalogItemDto field)
         => new()

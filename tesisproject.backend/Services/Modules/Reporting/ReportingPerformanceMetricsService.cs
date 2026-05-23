@@ -177,6 +177,7 @@ public sealed class ReportingPerformanceMetricsService : IReportingPerformanceMe
             "DashboardExcel" => 150,
             "RawDatasetExcel" => 240,
             "RawDatasetCsv" => 240,
+            "ReportingFullEtl" => 120,
             _ => hasFilters ? 20 : 15
         };
 

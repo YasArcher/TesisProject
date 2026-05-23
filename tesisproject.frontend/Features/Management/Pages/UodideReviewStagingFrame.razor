@@ -1,5 +1,6 @@
 @page "/management/uodide-review-staging-frame"
 @layout tesisproject.frontend.Features.Management.Layout.EmptyLayout
+@attribute [Authorize(Roles = "Admin,WorkflowReviewerUodide")]
 
 <tesisproject.frontend.Features.Management.Components.ReviewStagingHost BatchId="@BatchId"
                                                                        ContextKey="uodide" />
