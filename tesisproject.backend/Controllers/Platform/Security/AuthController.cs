@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using tesisproject.backend.Identity;
-using tesisproject.shared.Abstractions.Auth;
+using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Auth;
 
 namespace tesisproject.backend.Controllers;

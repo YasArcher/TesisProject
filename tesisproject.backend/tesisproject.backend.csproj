@@ -33,9 +33,4 @@
 		<ProjectReference Include="..\tesisproject.shared\tesisproject.shared.csproj" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <Folder Include="Data\Migrations\" />
-	  <Folder Include="Migrations\DwDb\" />
-	</ItemGroup>
-
 </Project>

@@ -2,7 +2,7 @@
 using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using tesisproject.backend.Identity;
-using tesisproject.shared.Abstractions.Auth;
+using tesisproject.backend.Services.Interfaces;
 using tesisproject.shared.DTOs.Auth;
 
 namespace tesisproject.backend.Services.Implementations;

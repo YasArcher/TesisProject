@@ -38,7 +38,7 @@ public static class WebApplicationExtensions
         var logger = loggerFactory.CreateLogger("StartupDatabaseValidation");
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        logger.LogWarning("EF connecting to: {cs}", connectionString);
+        logger.LogWarning("EF connecting to: {ConnectionString}", MaskConnectionString(connectionString));
 
         try
         {
@@ -71,59 +71,80 @@ public static class WebApplicationExtensions
 
             logger.LogWarning("EF existing tables: {tables}", string.Join(", ", tables));
 
-            try
+            if (app.Environment.IsDevelopment())
             {
-                var roleMgr = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
-                var userMgr = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-                var workflowService = scope.ServiceProvider.GetRequiredService<IWorkflowService>();
-
-                foreach (var role in AppRoles.All.Concat(["Editor", "Viewer", "SuperAdmin"]))
+                try
                 {
-                    if (!await roleMgr.RoleExistsAsync(role))
+                    var roleMgr = scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>();
+                    var userMgr = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                    var workflowService = scope.ServiceProvider.GetRequiredService<IWorkflowService>();
+
+                    foreach (var role in AppRoles.All.Concat(["Editor", "Viewer", "SuperAdmin"]))
                     {
-                        await roleMgr.CreateAsync(new ApplicationRole { Name = role });
+                        if (!await roleMgr.RoleExistsAsync(role))
+                        {
+                            await roleMgr.CreateAsync(new ApplicationRole { Name = role });
+                        }
                     }
+
+                    await EnsureSeedUserAsync(
+                        userMgr,
+                        "admin@local.test",
+                        "Admin#1234",
+                        "Administrador del sistema",
+                        [AppRoles.Admin]);
+
+                    await EnsureSeedUserAsync(
+                        userMgr,
+                        "autor.demo@uta.edu.ec",
+                        "Autor#1234",
+                        "Docente Autor Demo",
+                        [AppRoles.Author]);
+
+                    await EnsureSeedUserAsync(
+                        userMgr,
+                        "uodide.demo@uta.edu.ec",
+                        "Uodide#1234",
+                        "Revisor UODIDE Demo",
+                        [AppRoles.WorkflowReviewerUodide]);
+
+                    await EnsureSeedUserAsync(
+                        userMgr,
+                        "tecnica.demo@uta.edu.ec",
+                        "Tecnica#1234",
+                        "Revisor Área Técnica Demo",
+                        [AppRoles.WorkflowReviewerAreaTecnica, AppRoles.WorkflowProcessorAreaTecnica]);
+
+                    await workflowService.EnsureSeedDataAsync();
                 }
-
-                await EnsureSeedUserAsync(
-                    userMgr,
-                    "admin@local.test",
-                    "Admin#1234",
-                    "Administrador del sistema",
-                    [AppRoles.Admin]);
-
-                await EnsureSeedUserAsync(
-                    userMgr,
-                    "autor.demo@uta.edu.ec",
-                    "Autor#1234",
-                    "Docente Autor Demo",
-                    [AppRoles.Author]);
-
-                await EnsureSeedUserAsync(
-                    userMgr,
-                    "uodide.demo@uta.edu.ec",
-                    "Uodide#1234",
-                    "Revisor UODIDE Demo",
-                    [AppRoles.WorkflowReviewerUodide]);
-
-                await EnsureSeedUserAsync(
-                    userMgr,
-                    "tecnica.demo@uta.edu.ec",
-                    "Tecnica#1234",
-                    "Revisor Área Técnica Demo",
-                    [AppRoles.WorkflowReviewerAreaTecnica, AppRoles.WorkflowProcessorAreaTecnica]);
-
-                await workflowService.EnsureSeedDataAsync();
-            }
-            catch (Exception ex)
-            {
-                logger.LogWarning(ex, "Identity startup seed failed");
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Identity startup seed failed");
+                }
             }
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error validating configured database");
             throw;
+        }
+    }
+
+    private static string MaskConnectionString(string connectionString)
+    {
+        try
+        {
+            var builder = new SqlConnectionStringBuilder(connectionString);
+            if (!string.IsNullOrWhiteSpace(builder.Password))
+            {
+                builder.Password = "***";
+            }
+
+            return builder.ConnectionString;
+        }
+        catch
+        {
+            return "<connection-string-hidden>";
         }
     }
 

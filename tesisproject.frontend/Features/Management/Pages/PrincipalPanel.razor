@@ -12,6 +12,7 @@
 @inject IArticlesClient ArticlesClient
 @inject ICatalogsService CatalogsService
 @inject IRegistrationWorkflowSettingsClient RegistrationWorkflowSettingsClient
+@inject ILogger<PrincipalPanel> Logger
 @implements IDisposable
 
 <div class="principal-shell">
@@ -327,7 +328,7 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading user data: {ex.Message}");
+            Logger.LogWarning(ex, "No fue posible cargar los datos del usuario para el panel principal.");
         }
     }
 
@@ -354,7 +355,7 @@
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error cargando KPIs: {ex.Message}");
+            Logger.LogWarning(ex, "No fue posible cargar los KPIs del panel principal.");
         }
         finally
         {

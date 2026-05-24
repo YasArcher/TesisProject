@@ -6,38 +6,4 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="Common\**" />
-    <Compile Remove="DTOs\External\**" />
-    <Compile Remove="Enums\**" />
-    <Compile Remove="Validations\**" />
-    <Compile Remove="Wrapper\**" />
-    <EmbeddedResource Remove="Common\**" />
-    <EmbeddedResource Remove="DTOs\External\**" />
-    <EmbeddedResource Remove="Enums\**" />
-    <EmbeddedResource Remove="Validations\**" />
-    <EmbeddedResource Remove="Wrapper\**" />
-    <None Remove="Common\**" />
-    <None Remove="DTOs\External\**" />
-    <None Remove="Enums\**" />
-    <None Remove="Validations\**" />
-    <None Remove="Wrapper\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Abstractions\Audit\" />
-    <Folder Include="Abstractions\Results\" />
-    <Folder Include="Entities\Base\" />
-    <Folder Include="Entities\Catalogs\" />
-    <Folder Include="Entities\Core\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.8" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.8">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
-  </ItemGroup>
-
 </Project>

@@ -8,10 +8,7 @@ using Microsoft.OpenApi.Models;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using tesisproject.backend.BI.ETL;
 using tesisproject.backend.Data;
-using tesisproject.backend.DataWarehouse;
-using tesisproject.backend.Filters;
 using tesisproject.backend.Identity;
 using tesisproject.backend.Options;
 using tesisproject.backend.Reporting.Data;
@@ -21,7 +18,6 @@ using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.Services.Modules.Intelligence;
 using tesisproject.backend.Services.Modules.Reporting;
 using tesisproject.backend.Services.Modules.Workflow;
-using tesisproject.shared.Abstractions.Auth;
 
 namespace tesisproject.backend.Configuration;
 
@@ -42,18 +38,11 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddAppPersistence(this IServiceCollection services, IConfiguration config, IWebHostEnvironment environment, string connectionString)
     {
-        services.AddDbContext<DwDbContext>(options =>
-            options.UseSqlServer(
-                config.GetConnectionString("DwConnection"),
-                sql => sql.CommandTimeout(300)));
-
         services.AddDbContext<ReportingDbContext>(options =>
             options.UseSqlServer(
                 config.GetConnectionString("ReportingConnection")
                 ?? config.GetConnectionString("DwConnection"),
                 sql => sql.CommandTimeout(300)));
-
-        services.AddScoped<IEtlOrchestrator, EtlOrchestrator>();
 
         services.AddDbContext<AppDbContext>(opt =>
         {
@@ -84,8 +73,6 @@ public static class ServiceCollectionExtensions
         services.AddHostedService(sp => sp.GetRequiredService<ReportingRefreshQueue>());
         services.AddMemoryCache();
         services.Configure<ExternalApiExplorerOptions>(config.GetSection("ExternalApis"));
-        services.Configure<LegacyReportingOptions>(config.GetSection("LegacyReporting"));
-        services.AddScoped<LegacyReportingEnabledFilter>();
         services.AddHttpClient("external-api-explorer", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(25);

@@ -493,6 +493,9 @@ $RECYCLE.BIN/
 
 # --- Frontend Node/Tailwind ---
 node_modules/
+.codex-build/
+**/.codex-build/
+**/.codex-obj/
 dist/
 build/
 

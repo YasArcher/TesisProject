@@ -21,10 +21,9 @@ namespace tesisproject.backend.Data
             var config = builder.Build();
             var cs = config.GetConnectionString("DefaultConnection");
 
-            // Fallback seguro — DEBE ser EXACTAMENTE la misma que usas en Program.cs
             if (string.IsNullOrWhiteSpace(cs))
             {
-                cs = "Server=PERSONAL\\DINNOVA;Database=TesisDB_Extensible;User Id=sa;Password=admin123;Encrypt=False;TrustServerCertificate=True";
+                cs = "Server=(localdb)\\MSSQLLocalDB;Database=TesisDB_Extensible;Trusted_Connection=True;Encrypt=False;TrustServerCertificate=True";
             }
 
             var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();

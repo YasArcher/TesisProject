@@ -21,7 +21,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAuthClient, AuthClient>();
         services.AddScoped<IIdentityAdministrationClient, IdentityAdministrationClient>();
         services.AddTransient<AuthMessageHandler>();
-        services.AddScoped<IInsightsService, InsightsService>();
         services.AddScoped<JwtAuthStateProvider>();
         services.AddScoped<AuthenticationStateProvider>(sp =>
             sp.GetRequiredService<JwtAuthStateProvider>());
