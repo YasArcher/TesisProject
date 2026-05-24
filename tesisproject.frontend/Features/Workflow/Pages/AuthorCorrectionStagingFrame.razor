@@ -1,0 +1,11 @@
+@page "/management/author-correction-staging-frame"
+@layout tesisproject.frontend.Layout.EmptyLayout
+@attribute [Authorize(Roles = "Admin,Author,WorkflowTrackingUser")]
+
+<tesisproject.frontend.Features.BulkImport.Components.ReviewStagingHost BatchId="@BatchId"
+                                                                       ContextKey="author-correction" />
+
+@code {
+    [SupplyParameterFromQuery(Name = "batchId")]
+    public int? BatchId { get; set; }
+}

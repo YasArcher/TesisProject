@@ -1,0 +1,716 @@
+@page "/management/external-ingestion"
+@attribute [Authorize(Roles = "Admin,Analyst,ExternalApiUser")]
+@using System.Text.Json
+@using tesisproject.frontend.Features.ExternalSources.Pages
+@using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.ExternalApis
+@using tesisproject.shared.DTOs.Imports
+@inject IExternalApiExplorerClient ExternalApiExplorerClient
+@inject IBulkImportClient BulkImportClient
+@inject ExportJsInterop ExportJs
+
+<PageTitle>Ingesta masiva externa</PageTitle>
+
+<div class="app-page-shell external-api-page space-y-5">
+    <section class="external-api-hero rounded-[1.8rem] p-5 text-white shadow-sm">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex items-start gap-4">
+                <div class="external-api-hero__icon">
+                    <i class="bi bi-database-down"></i>
+                </div>
+                <div>
+                    <div class="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Ingesta institucional</div>
+                    <h1 class="mt-1 text-2xl font-black md:text-3xl">Carga masiva Scopus</h1>
+                    <p class="mt-2 max-w-3xl text-sm leading-6 text-white/78">
+                        Recupera producción científica por filiación, deduplica registros y conserva datos externos sin alterar el formulario de registro.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <AppStatusModal Visible="@HasStatusMessage"
+                    Variant="@CurrentStatusVariant"
+                    Eyebrow="Ingesta externa"
+                    Title="@CurrentStatusTitle"
+                    Message="@CurrentStatusMessage"
+                    OnClose="CloseStatusModal" />
+
+    <AppConfirmPanel Visible="@IsConfirmVisible"
+                     Eyebrow="Confirmar ingesta"
+                     Title="Preparar ingesta institucional"
+                     Message="@ConfirmMessage"
+                     ConfirmText="Preparar ingesta"
+                     CancelText="Cancelar"
+                     OnConfirm="ConfirmCreateStagingAsync"
+                     OnCancel="CloseConfirmAsync" />
+
+    @if (IsBusyOverlayVisible)
+    {
+        <div class="external-api-overlay" role="status" aria-live="polite" aria-busy="true">
+            <div class="external-api-overlay__card">
+                <div class="external-api-overlay__spinner"></div>
+                <div class="external-api-overlay__eyebrow">@BusyEyebrow</div>
+                <h3>@BusyTitle</h3>
+                <p>@BusyMessage</p>
+                @if (IsProcessingBatches)
+                {
+                    <div class="mt-4 w-full rounded-2xl border border-white/10 bg-white/10 p-3 text-left">
+                        <div class="flex items-center justify-between gap-3 text-xs font-semibold text-white/75">
+                            <span>@ProcessingProgressLabel</span>
+                            <span>@ProcessingProgressPercent%</span>
+                        </div>
+                        <div class="mt-2 h-2 overflow-hidden rounded-full bg-white/15">
+                            <div class="h-full rounded-full bg-[#fff8d4] transition-all duration-300" style="width:@ProcessingProgressPercent%"></div>
+                        </div>
+                        <div class="mt-2 text-xs text-white/65">@CurrentProcessingStatus</div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <section class="grid grid-cols-1 gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+        <aside class="space-y-4">
+            <div class="rounded-[1.6rem] border border-[#dbe6ef] bg-white/95 p-4 shadow-sm">
+                <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Paso @CurrentFlowStep de 4</div>
+                <h2 class="mt-1 text-lg font-black text-[#102642]">Scopus por filiación</h2>
+                <p class="mt-2 text-sm leading-6 text-slate-600">
+                    @CurrentFlowMessage
+                </p>
+
+                <label class="mt-4 block">
+                    <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Filiación institucional</span>
+                    <input class="w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2.5 text-sm text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-[#408A71] focus:ring-2 focus:ring-[#d8eee5]"
+                           value="@InstitutionName"
+                           disabled="@IsSourceConfigurationLocked"
+                           @oninput="HandleInstitutionChangedAsync" />
+                </label>
+
+                <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-1">
+                    <label class="block">
+                        <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Tamaño de bloque</span>
+                        <select class="w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2.5 text-sm font-semibold text-[#102642] outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-[#408A71] focus:ring-2 focus:ring-[#d8eee5]"
+                                value="@ChunkSize"
+                                disabled="@IsSourceConfigurationLocked"
+                                @onchange="HandleChunkSizeChangedAsync">
+                            <option value="100">100 registros</option>
+                            <option value="250">250 registros</option>
+                            <option value="500">500 registros</option>
+                        </select>
+                    </label>
+
+                    <label class="flex items-start gap-3 rounded-2xl border border-[#dbe6ef] bg-[#fbfdff] p-3">
+                        <input class="mt-1 accent-[#2f5249]"
+                               type="checkbox"
+                               checked="@ValidateAfterCreate"
+                               disabled="@IsSourceConfigurationLocked"
+                               @onchange="HandleValidateChangedAsync" />
+                        <span>
+                            <strong class="block text-sm font-black text-[#102642]">Validar al crear</strong>
+                            <small class="mt-1 block text-xs leading-5 text-slate-500">Opcional para revisión previa. El guardado automático vuelve a validar antes de registrar.</small>
+                        </span>
+                    </label>
+                </div>
+
+                <div class="mt-4 flex flex-wrap gap-2">
+                    <button type="button"
+                            class="rounded-2xl bg-[linear-gradient(135deg,#003638_0%,#408A71_100%)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm disabled:cursor-not-allowed disabled:opacity-60"
+                            disabled="@(!CanPrepareDataset)"
+                            @onclick="PrepareDatasetAsync">
+                        @PrepareDatasetButtonText
+                    </button>
+                    <button type="button"
+                            class="rounded-2xl border border-[#c9d7e3] bg-white px-4 py-2.5 text-sm font-semibold text-[#102642] disabled:opacity-50"
+                            disabled="@(!CanPrepareIngestion)"
+                            @onclick="RequestCreateStagingAsync">
+                        Preparar ingesta
+                    </button>
+                    <button type="button"
+                            class="rounded-2xl border border-[#c9d7e3] bg-[#fbfdff] px-4 py-2.5 text-sm font-semibold text-[#102642] disabled:opacity-40"
+                            disabled="@(!CanResetFlow)"
+                            @onclick="ResetIngestionFlow">
+                        Nueva ingesta
+                    </button>
+                </div>
+            </div>
+
+            <div class="rounded-[1.6rem] border border-[#dbe6ef] bg-white/95 p-4 shadow-sm">
+                <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Flujo de ingesta</div>
+                <h3 class="mt-1 text-base font-black text-[#102642]">Proceso guiado</h3>
+                <div class="mt-4 grid gap-2">
+                    @foreach (var step in FlowSteps)
+                    {
+                        <article class="@GetFlowStepClass(step.Number)">
+                            <span>@step.Number</span>
+                            <div>
+                                <strong>@step.Title</strong>
+                                <small>@step.Description</small>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </div>
+        </aside>
+
+        <main class="space-y-4">
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-4">
+                <article class="rounded-[1.25rem] border border-[#dbe6ef] bg-white/95 p-4 shadow-sm">
+                    <small class="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Recuperados</small>
+                    <strong class="mt-1 block text-2xl font-black text-[#003638]">@DatasetArticles.Length</strong>
+                    <p class="mt-1 text-xs text-slate-500">Artículos en vista previa.</p>
+                </article>
+                <article class="rounded-[1.25rem] border border-[#dbe6ef] bg-white/95 p-4 shadow-sm">
+                    <small class="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Lotes estimados</small>
+                    <strong class="mt-1 block text-2xl font-black text-[#055052]">@EstimatedBatchCount</strong>
+                    <p class="mt-1 text-xs text-slate-500">Según bloque actual.</p>
+                </article>
+                <article class="rounded-[1.25rem] border border-[#dbe6ef] bg-white/95 p-4 shadow-sm">
+                    <small class="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Con DOI</small>
+                    <strong class="mt-1 block text-2xl font-black text-[#408A71]">@ArticlesWithDoi</strong>
+                    <p class="mt-1 text-xs text-slate-500">Mejor trazabilidad.</p>
+                </article>
+                <article class="rounded-[1.25rem] border border-[#dbe6ef] bg-white/95 p-4 shadow-sm">
+                    <small class="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Sin DOI</small>
+                    <strong class="mt-1 block text-2xl font-black text-[#8C1007]">@ArticlesWithoutDoi</strong>
+                    <p class="mt-1 text-xs text-slate-500">Requieren deduplicación flexible.</p>
+                </article>
+            </div>
+
+            @if (StagingResult is not null)
+            {
+                <section class="rounded-[1.6rem] border border-[#dbe6ef] bg-white/95 p-4 shadow-sm">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Resultado de preparación</div>
+                            <h2 class="mt-1 text-lg font-black text-[#102642]">Ingesta preparada</h2>
+                            <p class="mt-1 text-sm text-slate-600">@StagingResult.Message</p>
+                        </div>
+                        <button type="button"
+                                class="rounded-2xl bg-[linear-gradient(135deg,#660B05_0%,#408A71_100%)] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                disabled="@(!CanProcessCreatedBatches)"
+                                @onclick="ProcessCreatedBatchesAsync">
+                            @ProcessBatchesButtonText
+                        </button>
+                    </div>
+
+                    <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+                        <article class="rounded-2xl bg-[#f8fafc] p-3">
+                            <small class="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Preparados</small>
+                            <strong class="mt-1 block text-xl font-black text-[#003638]">@StagingResult.TotalSentToStaging</strong>
+                        </article>
+                        <article class="rounded-2xl bg-[#f8fafc] p-3">
+                            <small class="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Bloques</small>
+                            <strong class="mt-1 block text-xl font-black text-[#055052]">@StagingResult.BatchCount</strong>
+                        </article>
+                        <article class="rounded-2xl bg-[#f8fafc] p-3">
+                            <small class="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Observaciones</small>
+                            <strong class="mt-1 block text-xl font-black text-[#8C1007]">@StagingResult.Batches.Sum(x => x.ErrorRows)</strong>
+                        </article>
+                        <article class="rounded-2xl bg-[#f8fafc] p-3">
+                            <small class="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Bloque usado</small>
+                            <strong class="mt-1 block text-xl font-black text-[#408A71]">@StagingResult.ChunkSize</strong>
+                        </article>
+                    </div>
+
+                    <div class="mt-4 rounded-2xl border border-[#dbe6ef] bg-[#fbfdff] p-4">
+                        <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Operación interna</div>
+                        <p class="mt-1 text-sm leading-6 text-slate-600">
+                            El sistema ya dividió el dataset en bloques seguros. El siguiente paso es guardar automáticamente los registros válidos y omitir duplicados.
+                        </p>
+                    </div>
+                </section>
+            }
+
+            @if (IsProcessingBatches || AutoProcessResults.Any())
+            {
+                <section class="rounded-[1.6rem] border border-[#dbe6ef] bg-white/95 p-4 shadow-sm">
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                            <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Guardado automático</div>
+                            <h2 class="mt-1 text-lg font-black text-[#102642]">Resultado de guardado en OLTP</h2>
+                            <p class="mt-1 text-sm text-slate-600">@(IsProcessingBatches ? CurrentProcessingStatus : AutoProcessSummary)</p>
+                        </div>
+                    </div>
+                    <div class="mt-4 rounded-2xl border border-[#dbe6ef] bg-[#fbfdff] p-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <div class="text-sm font-black text-[#102642]">@ProcessingProgressLabel</div>
+                                <div class="mt-1 text-xs text-slate-500">@ProcessingDetailLabel</div>
+                            </div>
+                            <span class="rounded-full bg-[#eaf7ee] px-3 py-1 text-xs font-black text-[#285A48]">@ProcessingProgressPercent%</span>
+                        </div>
+                        <div class="mt-3 h-3 overflow-hidden rounded-full bg-[#e5edf4]">
+                            <div class="h-full rounded-full bg-[linear-gradient(90deg,#003638_0%,#408A71_100%)] transition-all duration-300" style="width:@ProcessingProgressPercent%"></div>
+                        </div>
+                    </div>
+                    <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+                        <article class="rounded-2xl bg-[#f8fafc] p-3">
+                            <small class="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Procesados</small>
+                            <strong class="mt-1 block text-xl font-black text-[#003638]">@AutoProcessedRows</strong>
+                        </article>
+                        <article class="rounded-2xl bg-[#f8fafc] p-3">
+                            <small class="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Nuevos</small>
+                            <strong class="mt-1 block text-xl font-black text-[#408A71]">@AutoInsertedRows</strong>
+                        </article>
+                        <article class="rounded-2xl bg-[#f8fafc] p-3">
+                            <small class="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">Duplicados omitidos</small>
+                            <strong class="mt-1 block text-xl font-black text-[#660B05]">@AutoDuplicateRows</strong>
+                        </article>
+                        <article class="rounded-2xl bg-[#f8fafc] p-3">
+                            <small class="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500">No ingresados</small>
+                            <strong class="mt-1 block text-xl font-black text-[#8C1007]">@AutoFailedRows</strong>
+                        </article>
+                    </div>
+                    <div class="mt-4 grid grid-cols-1 gap-2 md:grid-cols-2">
+                        @foreach (var item in AutoProcessResults)
+                        {
+                            <article class="rounded-2xl border @(item.Success ? "border-emerald-100 bg-emerald-50/70" : "border-rose-100 bg-rose-50/70") px-4 py-3">
+                                <div class="flex items-center justify-between gap-3">
+                                    <strong class="text-sm text-[#102642]">Lote #@item.BatchId</strong>
+                                    <span class="rounded-full px-2 py-1 text-[11px] font-bold @(item.Success ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700")">
+                                        @(item.Success ? "Procesado" : "Con error")
+                                    </span>
+                                </div>
+                                <p class="mt-2 text-xs leading-5 text-slate-600">
+                                    @item.InsertedRows nuevo(s) · @item.DuplicateRows duplicado(s) omitido(s) · @item.FailedRows no ingresado(s)
+                                </p>
+                            </article>
+                        }
+                    </div>
+                </section>
+            }
+
+            <section class="rounded-[1.6rem] border border-[#dbe6ef] bg-white/95 p-4 shadow-sm">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                        <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Vista previa</div>
+                        <h2 class="mt-1 text-lg font-black text-[#102642]">Dataset Scopus recuperado</h2>
+                        <p class="mt-1 text-sm text-slate-600">@DatasetSummary</p>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] disabled:opacity-50" disabled="@(!CanExportDataset)" @onclick="DownloadCsvAsync">CSV</button>
+                        <button type="button" class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] disabled:opacity-50" disabled="@(!CanExportDataset)" @onclick="DownloadJsonAsync">JSON</button>
+                    </div>
+                </div>
+
+                @if (!DatasetArticles.Any())
+                {
+                    <AppEmptyState Title="Dataset pendiente" Message="Prepara la carga institucional para ver la muestra de datos recuperados desde Scopus." />
+                }
+                else
+                {
+                    <details class="mt-4 rounded-2xl border border-[#e5edf4] bg-[#fbfdff] p-4">
+                        <summary class="cursor-pointer text-sm font-black text-[#102642]">
+                            Ver muestra de datos recuperados
+                            <span class="ml-2 text-xs font-semibold text-slate-500">10 de @DatasetArticles.Length</span>
+                        </summary>
+                        <div class="mt-4 grid max-h-[28rem] grid-cols-1 gap-3 overflow-auto pr-1 xl:grid-cols-2">
+                            @foreach (var article in DatasetArticles.Take(10))
+                            {
+                                <article class="rounded-2xl border border-[#e5edf4] bg-white px-4 py-3">
+                                    <div class="text-sm font-bold text-[#102642]">@article.Title</div>
+                                    <div class="mt-2 flex flex-wrap gap-2 text-[11px]">
+                                        @if (!string.IsNullOrWhiteSpace(article.Doi))
+                                        {
+                                            <span class="rounded-full bg-[#eaf7ee] px-2 py-1 font-semibold text-emerald-700">@article.Doi</span>
+                                        }
+                                        @if (article.PublicationYear.HasValue)
+                                        {
+                                            <span class="rounded-full bg-slate-100 px-2 py-1 font-semibold text-slate-600">@article.PublicationYear</span>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(article.JournalName))
+                                        {
+                                            <span class="rounded-full bg-[#fff4e4] px-2 py-1 font-semibold text-[#8b5a16]">@article.JournalName</span>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(article.Authors))
+                                        {
+                                            <span class="rounded-full bg-[#eef6ff] px-2 py-1 font-semibold text-[#295173]">@article.Authors</span>
+                                        }
+                                    </div>
+                                </article>
+                            }
+                        </div>
+                    </details>
+                }
+            </section>
+        </main>
+    </section>
+</div>
+
+@code {
+    private const string DefaultInstitutionName = "Universidad Técnica de Ambato";
+    private string InstitutionName = DefaultInstitutionName;
+    private int ChunkSize = 250;
+    private bool ValidateAfterCreate;
+    private bool IsPreparingDataset;
+    private bool IsCreatingStaging;
+    private bool IsProcessingBatches;
+    private bool IsConfirmVisible;
+    private string? ErrorMessage;
+    private string? SuccessMessage;
+    private ExternalApiQueryResultDto? DatasetResult;
+    private ScopusInstitutionalStagingImportResultDto? StagingResult;
+    private List<AutoProcessBatchResult> AutoProcessResults { get; set; } = new();
+    private int ProcessingTotalBatches;
+    private int ProcessingCompletedBatches;
+    private int? CurrentProcessingBatchId;
+    private string CurrentProcessingStatus = "Sin operación en curso.";
+    private bool HasDatasetPrepared => DatasetArticles.Length > 0;
+    private bool HasIngestionPrepared => StagingResult?.Batches.Any() == true;
+    private bool HasProcessingStarted => IsProcessingBatches || AutoProcessResults.Any();
+    private bool IsAnyOperationRunning => IsPreparingDataset || IsCreatingStaging || IsProcessingBatches;
+    private bool IsSourceConfigurationLocked => HasDatasetPrepared || IsAnyOperationRunning;
+    private bool CanPrepareDataset =>
+        !IsAnyOperationRunning
+        && !HasDatasetPrepared
+        && !HasIngestionPrepared
+        && !HasProcessingStarted;
+    private bool CanPrepareIngestion =>
+        HasDatasetPrepared
+        && !HasIngestionPrepared
+        && !HasProcessingStarted
+        && !IsAnyOperationRunning;
+    private bool CanExportDataset => HasDatasetPrepared && !IsAnyOperationRunning;
+    private bool CanResetFlow => HasDatasetPrepared || HasIngestionPrepared || HasProcessingStarted;
+    private int CurrentFlowStep =>
+        HasProcessingStarted ? 4 :
+        HasIngestionPrepared ? 3 :
+        HasDatasetPrepared ? 2 :
+        1;
+    private string CurrentFlowMessage => CurrentFlowStep switch
+    {
+        1 => "Configura la filiación y prepara el dataset recuperado desde Scopus.",
+        2 => "Revisa el resumen y prepara la ingesta en bloques internos seguros.",
+        3 => "La ingesta ya está preparada. Continúa con el guardado automático en el modelo.",
+        _ => "El proceso terminó. Revisa los resultados o inicia una nueva ingesta."
+    };
+    private string PrepareDatasetButtonText =>
+        IsPreparingDataset ? "Preparando..." :
+        HasDatasetPrepared ? "Dataset preparado" :
+        "Preparar dataset";
+    private string ProcessBatchesButtonText =>
+        IsProcessingBatches ? "Procesando..." :
+        AutoProcessResults.Any() ? "Procesamiento terminado" :
+        "Procesar automáticamente";
+    private IReadOnlyList<FlowStep> FlowSteps =>
+    [
+        new(1, "Preparar dataset", "Consulta Scopus por filiación institucional."),
+        new(2, "Preparar ingesta", "Divide la información en bloques internos y valida la carga."),
+        new(3, "Guardar registros", "Registra nuevos artículos y omite duplicados."),
+        new(4, "Revisar resultado", "Muestra nuevos, duplicados y no ingresados.")
+    ];
+
+    private ExternalArticlePreviewDto[] DatasetArticles =>
+        ExternalApiExplorerPageHelper.BuildPreviewArticles(DatasetResult);
+
+    private int EstimatedBatchCount =>
+        DatasetArticles.Length == 0
+            ? 0
+            : (int)Math.Ceiling(DatasetArticles.Length / (double)Math.Max(1, ChunkSize));
+
+    private int ArticlesWithDoi => DatasetArticles.Count(x => !string.IsNullOrWhiteSpace(x.Doi));
+    private int ArticlesWithoutDoi => Math.Max(0, DatasetArticles.Length - ArticlesWithDoi);
+    private bool IsBusyOverlayVisible => IsPreparingDataset || IsCreatingStaging || IsProcessingBatches;
+    private bool CanProcessCreatedBatches =>
+        StagingResult?.Batches.Any() == true
+        && !AutoProcessResults.Any()
+        && !IsProcessingBatches
+        && !IsCreatingStaging
+        && !IsPreparingDataset;
+    private string BusyEyebrow => IsPreparingDataset ? "Consultando Scopus" : IsCreatingStaging ? "Preparando ingesta" : "Guardando registros";
+    private string BusyTitle => IsPreparingDataset ? "Estamos preparando el dataset institucional" : IsCreatingStaging ? "Estamos preparando bloques seguros" : "Estamos guardando registros en el modelo";
+    private string BusyMessage => IsPreparingDataset
+        ? "La consulta puede tardar porque recorre resultados paginados por filiación institucional."
+        : IsCreatingStaging
+            ? "El sistema divide la carga en bloques internos, conserva payload externo y aplica validación inicial si está activada."
+            : "Los registros externos listos se convierten automáticamente en artículos, revistas, autores, coautores y campos dinámicos.";
+    private bool HasStatusMessage => !string.IsNullOrWhiteSpace(ErrorMessage) || !string.IsNullOrWhiteSpace(SuccessMessage);
+    private string CurrentStatusVariant => !string.IsNullOrWhiteSpace(ErrorMessage) ? "error" : "success";
+    private string CurrentStatusTitle => !string.IsNullOrWhiteSpace(ErrorMessage) ? "No pude completar la operación" : "Operación completada";
+    private string CurrentStatusMessage => !string.IsNullOrWhiteSpace(ErrorMessage) ? ErrorMessage! : SuccessMessage ?? string.Empty;
+    private string DatasetSummary => DatasetResult is null
+        ? "Sin consulta ejecutada."
+        : $"{DatasetArticles.Length} artículo(s) recuperado(s) · {EstimatedBatchCount} bloque(s) interno(s) estimado(s).";
+    private string ConfirmMessage =>
+        $"Se prepararán {DatasetArticles.Length} artículo(s) de Scopus en {EstimatedBatchCount} bloque(s) interno(s). La ingesta no modificará el formulario de registro.";
+    private int AutoInsertedRows => AutoProcessResults.Sum(x => x.InsertedRows);
+    private int AutoDuplicateRows => AutoProcessResults.Sum(x => x.DuplicateRows);
+    private int AutoFailedRows => AutoProcessResults.Sum(x => x.FailedRows);
+    private int AutoProcessedRows => AutoInsertedRows + AutoDuplicateRows;
+    private int ProcessingProgressPercent => ProcessingTotalBatches <= 0
+        ? 0
+        : Math.Clamp((int)Math.Round(ProcessingCompletedBatches * 100d / ProcessingTotalBatches), 0, 100);
+    private string ProcessingProgressLabel => ProcessingTotalBatches <= 0
+        ? "Guardado pendiente"
+        : $"{ProcessingCompletedBatches} de {ProcessingTotalBatches} bloque(s) completado(s)";
+    private string ProcessingDetailLabel => CurrentProcessingBatchId.HasValue
+        ? $"Procesando bloque interno #{CurrentProcessingBatchId.Value}"
+        : AutoProcessResults.Any()
+            ? "Proceso finalizado."
+            : "Aún no inicia el guardado.";
+    private string AutoProcessSummary =>
+        $"{AutoInsertedRows} registro(s) nuevo(s), {AutoDuplicateRows} duplicado(s) omitido(s), {AutoFailedRows} no ingresado(s).";
+
+    private Task HandleInstitutionChangedAsync(ChangeEventArgs args)
+    {
+        InstitutionName = args.Value?.ToString() ?? string.Empty;
+        ClearPreparedData();
+        return Task.CompletedTask;
+    }
+
+    private Task HandleChunkSizeChangedAsync(ChangeEventArgs args)
+    {
+        if (int.TryParse(args.Value?.ToString(), out var value))
+        {
+            ChunkSize = Math.Clamp(value, 100, 500);
+            ClearPreparedData();
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task HandleValidateChangedAsync(ChangeEventArgs args)
+    {
+        ValidateAfterCreate = args.Value is bool value && value;
+        ClearPreparedData();
+        return Task.CompletedTask;
+    }
+
+    private async Task PrepareDatasetAsync()
+    {
+        try
+        {
+            IsPreparingDataset = true;
+            ErrorMessage = null;
+            SuccessMessage = null;
+            StagingResult = null;
+            AutoProcessResults.Clear();
+            ResetProcessingProgress();
+
+            DatasetResult = await ExternalApiExplorerClient.QueryAsync(new ExternalApiQueryRequest
+            {
+                ProviderKey = "scopus",
+                QueryMode = "affiliation",
+                InstitutionName = string.IsNullOrWhiteSpace(InstitutionName) ? DefaultInstitutionName : InstitutionName.Trim(),
+                MaxResults = 0
+            });
+
+            SuccessMessage = $"Dataset preparado: {DatasetArticles.Length} artículo(s) recuperado(s) desde Scopus.";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"No pude preparar el dataset institucional: {ex.Message}";
+        }
+        finally
+        {
+            IsPreparingDataset = false;
+        }
+    }
+
+    private Task RequestCreateStagingAsync()
+    {
+        if (!DatasetArticles.Any())
+        {
+            ErrorMessage = "Primero prepara el dataset institucional antes de preparar la ingesta.";
+            return Task.CompletedTask;
+        }
+
+        IsConfirmVisible = true;
+        return Task.CompletedTask;
+    }
+
+    private async Task ConfirmCreateStagingAsync()
+    {
+        IsConfirmVisible = false;
+        await CreateStagingAsync();
+    }
+
+    private Task CloseConfirmAsync()
+    {
+        IsConfirmVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task CreateStagingAsync()
+    {
+        try
+        {
+            IsCreatingStaging = true;
+            ErrorMessage = null;
+            SuccessMessage = null;
+            AutoProcessResults.Clear();
+            ResetProcessingProgress();
+
+            StagingResult = await ExternalApiExplorerClient.SendScopusInstitutionalDatasetToStagingAsync(new ScopusInstitutionalStagingImportRequest
+            {
+                InstitutionName = string.IsNullOrWhiteSpace(InstitutionName) ? DefaultInstitutionName : InstitutionName.Trim(),
+                ChunkSize = ChunkSize,
+                ValidateAfterCreate = ValidateAfterCreate,
+                Articles = DatasetArticles.ToList()
+            });
+
+            SuccessMessage = StagingResult?.Message ?? "La operación terminó sin detalle adicional.";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"No fue posible preparar la ingesta institucional: {ex.Message}";
+        }
+        finally
+        {
+            IsCreatingStaging = false;
+        }
+    }
+
+    private async Task ProcessCreatedBatchesAsync()
+    {
+        if (StagingResult?.Batches.Any() != true)
+        {
+            ErrorMessage = "Primero prepara la ingesta antes de guardar automáticamente.";
+            return;
+        }
+
+        try
+        {
+            IsProcessingBatches = true;
+            ErrorMessage = null;
+            SuccessMessage = null;
+            AutoProcessResults.Clear();
+            ProcessingTotalBatches = StagingResult.Batches.Count;
+            ProcessingCompletedBatches = 0;
+            CurrentProcessingBatchId = null;
+            CurrentProcessingStatus = "Iniciando guardado automático en el modelo.";
+            await InvokeAsync(StateHasChanged);
+
+            foreach (var batch in StagingResult.Batches)
+            {
+                CurrentProcessingBatchId = batch.ImportBatchId;
+                CurrentProcessingStatus = $"Guardando bloque {ProcessingCompletedBatches + 1} de {ProcessingTotalBatches}.";
+                await InvokeAsync(StateHasChanged);
+
+                try
+                {
+                    var result = await BulkImportClient.ProcessBatchAsync(batch.ImportBatchId);
+                    AutoProcessResults.Add(new AutoProcessBatchResult(
+                        batch.ImportBatchId,
+                        true,
+                        result?.Message ?? "Lote procesado correctamente.",
+                        result?.InsertedRows ?? 0,
+                        result?.DuplicateRows ?? 0,
+                        result?.FailedRows ?? 0));
+                }
+                catch (Exception ex)
+                {
+                    AutoProcessResults.Add(new AutoProcessBatchResult(
+                        batch.ImportBatchId,
+                        false,
+                        ex.Message,
+                        0,
+                        0,
+                        0));
+                }
+
+                ProcessingCompletedBatches++;
+                CurrentProcessingStatus = $"Bloque {ProcessingCompletedBatches} de {ProcessingTotalBatches} completado. {AutoProcessSummary}";
+                await InvokeAsync(StateHasChanged);
+            }
+
+            CurrentProcessingBatchId = null;
+            CurrentProcessingStatus = $"Guardado finalizado. {AutoProcessSummary}";
+            SuccessMessage = AutoProcessSummary;
+        }
+        finally
+        {
+            IsProcessingBatches = false;
+        }
+    }
+
+    private async Task DownloadCsvAsync()
+    {
+        if (!DatasetArticles.Any())
+        {
+            return;
+        }
+
+        var rows = new List<string>
+        {
+            "Titulo,DOI,Revista,Anio,Autores,Fuente,FechaPublicacion"
+        };
+
+        rows.AddRange(DatasetArticles.Select(article => string.Join(",",
+            ExternalApiExplorerPageHelper.EscapeCsv(article.Title),
+            ExternalApiExplorerPageHelper.EscapeCsv(article.Doi),
+            ExternalApiExplorerPageHelper.EscapeCsv(article.JournalName),
+            ExternalApiExplorerPageHelper.EscapeCsv(article.PublicationYear?.ToString()),
+            ExternalApiExplorerPageHelper.EscapeCsv(article.Authors),
+            ExternalApiExplorerPageHelper.EscapeCsv(article.ExternalSource),
+            ExternalApiExplorerPageHelper.EscapeCsv(article.PublicationDate))));
+
+        await ExportJs.ExportCsv($"dataset-uta-scopus-{DateTime.Now:yyyyMMdd-HHmm}.csv", string.Join(Environment.NewLine, rows));
+    }
+
+    private async Task DownloadJsonAsync()
+    {
+        if (!DatasetArticles.Any())
+        {
+            return;
+        }
+
+        var payload = JsonSerializer.Serialize(DatasetArticles, new JsonSerializerOptions { WriteIndented = true });
+        await ExportJs.DownloadFile(
+            $"dataset-uta-scopus-{DateTime.Now:yyyyMMdd-HHmm}.json",
+            "application/json",
+            System.Text.Encoding.UTF8.GetBytes(payload));
+    }
+
+    private void CloseStatusModal()
+    {
+        ErrorMessage = null;
+        SuccessMessage = null;
+    }
+
+    private void ResetProcessingProgress()
+    {
+        ProcessingTotalBatches = 0;
+        ProcessingCompletedBatches = 0;
+        CurrentProcessingBatchId = null;
+        CurrentProcessingStatus = "Sin operación en curso.";
+    }
+
+    private void ResetIngestionFlow()
+    {
+        ClearPreparedData();
+        ErrorMessage = null;
+        SuccessMessage = null;
+    }
+
+    private void ClearPreparedData()
+    {
+        DatasetResult = null;
+        StagingResult = null;
+        AutoProcessResults.Clear();
+        ResetProcessingProgress();
+    }
+
+    private string GetFlowStepClass(int stepNumber)
+    {
+        var state = stepNumber < CurrentFlowStep
+            ? "border-[#d7eadf] bg-[#f0faf4] text-[#285A48]"
+            : stepNumber == CurrentFlowStep
+                ? "border-[#c9d7e3] bg-[#fff8d4] text-[#102642]"
+                : "border-[#e5edf4] bg-[#fbfdff] text-slate-500";
+
+        return $"flex items-start gap-3 rounded-2xl border px-3 py-3 {state}";
+    }
+
+    private sealed record AutoProcessBatchResult(
+        int BatchId,
+        bool Success,
+        string Message,
+        int InsertedRows,
+        int DuplicateRows,
+        int FailedRows);
+
+    private sealed record FlowStep(int Number, string Title, string Description);
+}

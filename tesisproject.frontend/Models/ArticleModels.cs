@@ -1,4 +1,4 @@
-﻿namespace tesisproject.frontend.Models
+namespace tesisproject.frontend.Models
 {
 
     public record ArticleDto

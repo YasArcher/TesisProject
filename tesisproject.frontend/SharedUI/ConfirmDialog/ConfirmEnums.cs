@@ -1,4 +1,4 @@
-﻿namespace tesisproject.frontend.SharedUI.ConfirmDialog
+namespace tesisproject.frontend.SharedUI.ConfirmDialog
 {
     public enum ConfirmVariant
     {

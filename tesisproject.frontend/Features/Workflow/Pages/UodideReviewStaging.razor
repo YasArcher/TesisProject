@@ -1,0 +1,10 @@
+@page "/management/uodide-review-staging"
+@attribute [Authorize(Roles = "Admin,WorkflowReviewerUodide")]
+
+<tesisproject.frontend.Features.BulkImport.Components.ReviewStagingHost BatchId="@BatchId"
+                                                                       ContextKey="uodide" />
+
+@code {
+    [SupplyParameterFromQuery(Name = "batchId")]
+    public int? BatchId { get; set; }
+}

@@ -1,13 +1,13 @@
 @using Microsoft.AspNetCore.Components.Authorization
-@using tesisproject.frontend.Features.Auth
+@using tesisproject.frontend.Features.Auth.Components
 
 <CascadingAuthenticationState>
     <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="@routeData"
-                                DefaultLayout="@(typeof(tesisproject.frontend.Features.Management.Layout.MainLayout))">
+                                DefaultLayout="@(typeof(tesisproject.frontend.Layout.MainLayout))">
                 <NotAuthorized>
-                    <LayoutView Layout="@(typeof(tesisproject.frontend.Features.Management.Layout.AuthLayout))">
+                    <LayoutView Layout="@(typeof(tesisproject.frontend.Layout.AuthLayout))">
                         <AuthAccessGate />
                     </LayoutView>
                 </NotAuthorized>
@@ -15,7 +15,7 @@
         </Found>
 
         <NotFound>
-            <LayoutView Layout="@(typeof(tesisproject.frontend.Features.Management.Layout.MainLayout))">
+            <LayoutView Layout="@(typeof(tesisproject.frontend.Layout.MainLayout))">
                 <p>Página no encontrada</p>
                 <a href="/">Ir al sistema</a>
             </LayoutView>

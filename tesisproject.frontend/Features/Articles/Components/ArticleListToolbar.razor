@@ -1,0 +1,115 @@
+@namespace tesisproject.frontend.Features.Articles.Components
+
+<div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <!-- Header opcional (solo si viene Title/Subtitle) -->
+    @if (!string.IsNullOrWhiteSpace(Title) || !string.IsNullOrWhiteSpace(Subtitle))
+    {
+        <div class="min-w-[220px]">
+            @if (!string.IsNullOrWhiteSpace(Title))
+            {
+                <h2 class="text-base md:text-lg font-semibold text-[#1a2b2b]">
+                    @Title
+                </h2>
+            }
+            @if (!string.IsNullOrWhiteSpace(Subtitle))
+            {
+                <p class="mt-0.5 text-xs text-slate-500">
+                    @Subtitle
+                </p>
+            }
+        </div>
+    }
+
+    <!-- Acciones -->
+    <div class="flex flex-1 flex-wrap items-center justify-end gap-2">
+        <!-- Buscador -->
+        <div class="relative w-full sm:w-72 md:w-80">
+            <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                🔎
+            </span>
+            <input class="w-full rounded-xl border border-slate-300 bg-white/95 py-2.5 pl-8 pr-3 text-xs md:text-sm outline-none transition placeholder:text-slate-400 focus:border-[#800909] focus:ring-2 focus:ring-[#800909]/20 shadow-sm"
+                   placeholder="@SearchPlaceholder"
+                   value="@SearchText"
+                   @oninput="OnSearchChanged" />
+        </div>
+
+        <!-- Toggle Cards / Tabla -->
+        <div class="inline-flex overflow-hidden rounded-xl border border-slate-300 bg-white shadow-sm">
+            <button type="button"
+                    class="@ViewToggleClass(true)"
+                    @onclick="@(() => ChangeView(true))">
+                Cards
+            </button>
+            <button type="button"
+                    class="@ViewToggleClass(false)"
+                    @onclick="@(() => ChangeView(false))">
+                Tabla
+            </button>
+        </div>
+
+        <!-- Botón Refrescar -->
+        <button type="button"
+                class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs md:text-sm font-medium text-slate-700 transition hover:bg-slate-50 shadow-sm disabled:opacity-60"
+                disabled="@IsBusy"
+                @onclick="OnReload">
+            Refrescar
+        </button>
+
+        <!-- Botón Nuevo -->
+        <button type="button"
+                class="rounded-xl bg-[#800909] px-4 py-2 text-xs md:text-sm font-semibold text-white shadow-sm hover:bg-[#661111] disabled:opacity-60"
+                disabled="@IsBusy"
+                @onclick="OnNew">
+            Nuevo Registro
+        </button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public string? Subtitle { get; set; }
+
+    [Parameter] public string? SearchText { get; set; }
+    [Parameter] public EventCallback<string?> SearchTextChanged { get; set; }
+
+    [Parameter] public bool IsCardsView { get; set; }
+    [Parameter] public EventCallback<bool> IsCardsViewChanged { get; set; }
+
+    [Parameter] public EventCallback OnReload { get; set; }
+    [Parameter] public EventCallback OnNew { get; set; }
+
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public string SearchPlaceholder { get; set; } = "Buscar…";
+
+    private async Task OnSearchChanged(ChangeEventArgs e)
+    {
+        var value = e.Value?.ToString();
+        SearchText = value;
+        if (SearchTextChanged.HasDelegate)
+        {
+            await SearchTextChanged.InvokeAsync(value);
+        }
+    }
+
+    private async Task ChangeView(bool cards)
+    {
+        if (IsCardsView != cards)
+        {
+            IsCardsView = cards;
+            if (IsCardsViewChanged.HasDelegate)
+            {
+                await IsCardsViewChanged.InvokeAsync(cards);
+            }
+        }
+    }
+
+    private string ViewToggleClass(bool isCardsButton)
+    {
+        var isActive = (isCardsButton && IsCardsView) || (!isCardsButton && !IsCardsView);
+
+        return "px-3 py-1.5 text-xs md:text-sm font-medium transition " +
+               (isActive
+                    ? "bg-[#800909] text-white"
+                    : "bg-transparent text-slate-700 hover:bg-slate-50");
+    }
+}

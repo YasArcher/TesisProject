@@ -1,10 +1,8 @@
 using Blazored.LocalStorage;
 using Blazored.Toast;
 using Microsoft.AspNetCore.Components.Authorization;
-using tesisproject.frontend.Services.Auth;
 using tesisproject.frontend.Services.Implementations;
 using tesisproject.frontend.Services.Interfaces;
-using tesisproject.frontend.Services.Platform.Auth;
 using tesisproject.frontend.Utils;
 
 namespace tesisproject.frontend.Configuration;

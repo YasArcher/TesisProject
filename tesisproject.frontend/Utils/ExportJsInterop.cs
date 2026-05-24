@@ -1,4 +1,4 @@
-﻿using Microsoft.JSInterop;
+using Microsoft.JSInterop;
 
 namespace tesisproject.frontend.Utils
 {
