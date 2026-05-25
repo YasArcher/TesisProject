@@ -9,6 +9,7 @@ namespace tesisproject.backend.Controllers.Modules.Intelligence;
 
 [ApiController]
 [Route("api/intelligence")]
+[Route("api/scientific-production/intelligence")]
 [Authorize(Policy = AppPolicies.ReportingAccess)]
 public sealed class IntelligenceController : ControllerBase
 {

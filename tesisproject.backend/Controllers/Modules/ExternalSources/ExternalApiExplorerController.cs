@@ -11,6 +11,7 @@ namespace tesisproject.backend.Controllers
     [ApiController]
     [Authorize(Policy = AppPolicies.ExternalApiAccess)]
     [Route("api/external-api-explorer")]
+    [Route("api/scientific-production/external-api-explorer")]
     public class ExternalApiExplorerController : ControllerBase
     {
         private readonly IExternalApiExplorerService _service;

@@ -13,6 +13,7 @@ namespace tesisproject.backend.Controllers
     [ApiController]
     [Authorize(Policy = AppPolicies.AuthenticatedUser)]
     [Route("api/[controller]")]
+    [Route("api/scientific-production/venues")]
     public class VenuesController : ControllerBase
     {
         private readonly IVenuesService _svc;

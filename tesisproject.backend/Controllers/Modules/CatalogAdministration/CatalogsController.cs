@@ -17,6 +17,7 @@ namespace tesisproject.backend.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Route("api/scientific-production/catalogs")]
     [Authorize(Policy = AppPolicies.AuthenticatedUser)]
     public class CatalogsController : ControllerBase
     {

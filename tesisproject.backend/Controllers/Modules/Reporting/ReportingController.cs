@@ -8,6 +8,7 @@ namespace tesisproject.backend.Controllers.Modules.Reporting;
 
 [ApiController]
 [Route("api/reporting")]
+[Route("api/scientific-production/reporting")]
 [Authorize(Policy = AppPolicies.ReportingAccess)]
 public sealed class ReportingController : ControllerBase
 {

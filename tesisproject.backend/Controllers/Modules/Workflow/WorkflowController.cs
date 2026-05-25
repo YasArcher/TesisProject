@@ -10,6 +10,7 @@ namespace tesisproject.backend.Controllers
 {
     [ApiController]
     [Route("api/workflows/import-batches")]
+    [Route("api/scientific-production/workflows/import-batches")]
     [Authorize(Policy = AppPolicies.WorkflowAccess)]
     public class WorkflowController : ControllerBase
     {

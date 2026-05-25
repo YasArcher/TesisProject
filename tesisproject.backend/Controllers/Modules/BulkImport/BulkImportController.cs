@@ -11,6 +11,7 @@ namespace tesisproject.backend.Controllers
     [ApiController]
     [Authorize(Policy = AppPolicies.BulkImportAccess)]
     [Route("api/import-batches")]
+    [Route("api/scientific-production/import-batches")]
     public class BulkImportController : ControllerBase
     {
         private readonly IBulkImportService _service;

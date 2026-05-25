@@ -8,6 +8,7 @@ namespace tesisproject.backend.Controllers.Modules.Workflow;
 
 [ApiController]
 [Route("api/registration-workflow-settings")]
+[Route("api/scientific-production/registration-workflow-settings")]
 [Authorize(Policy = AppPolicies.AuthenticatedUser)]
 public sealed class RegistrationWorkflowSettingsController : ControllerBase
 {

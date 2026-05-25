@@ -19,6 +19,7 @@ namespace tesisproject.backend.Controllers
     [ApiController]
     [Authorize(Policy = AppPolicies.AuthenticatedUser)]
     [Route("api/[controller]")]
+    [Route("api/scientific-production/articles")]
     public class ArticlesController : ControllerBase
     {
         private readonly IArticlesService _svc;

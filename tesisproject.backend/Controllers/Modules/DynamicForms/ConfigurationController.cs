@@ -9,6 +9,7 @@ namespace tesisproject.backend.Controllers
 {
     [ApiController]
     [Route("api/config")]
+    [Route("api/scientific-production/config")]
     [Authorize(Policy = AppPolicies.AuthenticatedUser)]
     public class ConfigurationController : ControllerBase
     {

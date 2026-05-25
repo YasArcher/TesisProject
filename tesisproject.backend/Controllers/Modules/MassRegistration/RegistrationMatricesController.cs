@@ -11,6 +11,7 @@ namespace tesisproject.backend.Controllers
 {
     [ApiController]
     [Route("api/registration-matrices")]
+    [Route("api/scientific-production/registration-matrices")]
     [Authorize(Policy = AppPolicies.AuthenticatedUser)]
     public class RegistrationMatricesController : ControllerBase
     {

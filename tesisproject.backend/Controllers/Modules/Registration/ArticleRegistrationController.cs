@@ -13,6 +13,7 @@ namespace tesisproject.backend.Controllers
 {
     [ApiController]
     [Route("api/articles/aggregate")]
+    [Route("api/scientific-production/articles/aggregate")]
     [Authorize(Policy = AppPolicies.AuthorSubmission)]
     public class ArticleRegistrationController : ControllerBase
     {
