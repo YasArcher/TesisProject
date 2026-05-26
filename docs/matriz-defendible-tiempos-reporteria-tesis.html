@@ -1,0 +1,473 @@
+﻿<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Matriz defendible de tiempos de reportería</title>
+<style>
+@page { size: A4; margin: 18mm 14mm; }
+body { font-family: "Segoe UI", Arial, sans-serif; color: #1f2933; line-height: 1.42; font-size: 11.2px; }
+h1 { color: #003638; font-size: 24px; margin: 0 0 16px; border-bottom: 3px solid #408A71; padding-bottom: 8px; }
+h2 { color: #055052; font-size: 17px; margin: 22px 0 8px; page-break-after: avoid; }
+h3 { color: #285A48; font-size: 14px; margin: 16px 0 6px; page-break-after: avoid; }
+p { margin: 6px 0; }
+table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; page-break-inside: auto; }
+tr { page-break-inside: avoid; page-break-after: auto; }
+th { background: #003638; color: white; font-weight: 600; }
+th, td { border: 1px solid #cbd5d1; padding: 5px 6px; vertical-align: top; }
+td { background: #fbfdfc; }
+tr:nth-child(even) td { background: #f1f7f4; }
+pre { background: #f3f6f5; border-left: 4px solid #408A71; padding: 8px 10px; white-space: pre-wrap; font-size: 10.5px; }
+code { font-family: Consolas, monospace; color: #660B05; }
+ul { margin: 6px 0 10px 20px; padding: 0; }
+li { margin: 3px 0; }
+</style>
+</head>
+<body>
+<h1>Matriz defendible de tiempos de reporter&#237;a</h1>
+
+<h2>1. Proposito</h2>
+
+<p>Este documento presenta una matriz de tiempos de reporter&#237;a basada en datos reales registrados por el sistema. El objetivo es usar evidencia cuantitativa para la tesis sin asumir conclusiones excesivas o riesgosas en defensa.</p>
+
+<p>La lectura recomendada es:</p>
+
+<pre><code>
+El sistema reduce significativamente el esfuerzo manual de reporter&#237;a y presenta tiempos promedio adecuados; sin embargo, existen picos de carga que deben considerarse como oportunidades de optimizacion en una fase de produccion.
+</code></pre>
+
+<h2>2. Fuente de datos</h2>
+
+<p>Tabla consultada:</p>
+
+<pre><code>
+dbo.ReportingPerformanceMetrics
+</code></pre>
+
+<p>Base de datos:</p>
+
+<pre><code>
+TesisDB_Extensible
+</code></pre>
+
+<p>Periodo medido:</p>
+
+<pre><code>
+2026-05-22 05:28:11 UTC a 2026-05-24 23:36:59 UTC
+</code></pre>
+
+<p>Cantidad de mediciones:</p>
+
+<pre><code>
+80 operaciones de reporter&#237;a
+</code></pre>
+
+<p>Tasa de exito:</p>
+
+<pre><code>
+80 exitosas / 80 totales = 100%
+</code></pre>
+
+<h2>3. Matriz general de resultados</h2>
+
+<table><thead><tr>
+<th>Indicador</th>
+<th>Valor observado</th>
+<th>Lectura para tesis</th>
+</tr></thead><tbody>
+<tr>
+<td>Operaciones medidas</td>
+<td>80</td>
+<td>Muestra inicial suficiente para describir comportamiento operativo preliminar.</td>
+</tr>
+<tr>
+<td>Operaciones exitosas</td>
+<td>80</td>
+<td>No se observaron fallos en las operaciones registradas.</td>
+</tr>
+<tr>
+<td>Operaciones fallidas</td>
+<td>0</td>
+<td>La reporter&#237;a se mantuvo estable durante la muestra.</td>
+</tr>
+<tr>
+<td>Tasa de exito</td>
+<td>100%</td>
+<td>Indicador favorable de estabilidad funcional.</td>
+</tr>
+<tr>
+<td>Tiempo promedio real</td>
+<td>10.53 segundos</td>
+<td>Tiempo promedio adecuado para consultas institucionales.</td>
+</tr>
+<tr>
+<td>Tiempo real acumulado</td>
+<td>14.04 minutos</td>
+<td>Las 80 operaciones se resolvieron en menos de 15 minutos acumulados.</td>
+</tr>
+<tr>
+<td>Tiempo manual estimado acumulado</td>
+<td>68.17 horas</td>
+<td>Linea base estimada para tareas manuales equivalentes.</td>
+</tr>
+<tr>
+<td>Ahorro estimado acumulado</td>
+<td>67.93 horas</td>
+<td>Evidencia del potencial de reduccion de tiempos.</td>
+</tr>
+<tr>
+<td>Reduccion estimada</td>
+<td>99.66%</td>
+<td>Resultado favorable, debe presentarse como estimacion basada en baseline configurado.</td>
+</tr>
+<tr>
+<td>Elementos consultados acumulados</td>
+<td>95629</td>
+<td>La muestra incluye operaciones con volumen relevante de datos.</td>
+</tr>
+</tbody></table>
+
+<h2>4. Matriz por tipo de reporte</h2>
+
+<table><thead><tr>
+<th>Operacion</th>
+<th>Ejecuciones</th>
+<th>Promedio</th>
+<th>Mediana</th>
+<th>P90</th>
+<th>Maximo</th>
+<th>Lectura defendible</th>
+</tr></thead><tbody>
+<tr>
+<td>Dashboard institucional</td>
+<td>32</td>
+<td>16.37 s</td>
+<td>0.44 s</td>
+<td>96.01 s</td>
+<td>96.40 s</td>
+<td>La mayoria de consultas fueron rapidas, pero existen picos altos cercanos a 1.6 minutos.</td>
+</tr>
+<tr>
+<td>Panel autores/coautoria</td>
+<td>29</td>
+<td>8.94 s</td>
+<td>0.38 s</td>
+<td>15.17 s</td>
+<td>99.16 s</td>
+<td>Comportamiento promedio favorable; un valor maximo aislado evidencia necesidad de monitoreo.</td>
+</tr>
+<tr>
+<td>ETL reporter&#237;a</td>
+<td>12</td>
+<td>2.63 s</td>
+<td>2.71 s</td>
+<td>3.41 s</td>
+<td>3.43 s</td>
+<td>Tiempo estable y bajo en la muestra medida.</td>
+</tr>
+<tr>
+<td>Exportacion Excel</td>
+<td>3</td>
+<td>6.71 s</td>
+<td>7.07 s</td>
+<td>7.12 s</td>
+<td>7.14 s</td>
+<td>Generacion de Excel consistente y menor a 10 segundos.</td>
+</tr>
+<tr>
+<td>Exportacion PDF</td>
+<td>3</td>
+<td>2.12 s</td>
+<td>0.55 s</td>
+<td>4.41 s</td>
+<td>5.38 s</td>
+<td>Generacion de PDF rapida en la muestra.</td>
+</tr>
+<tr>
+<td>PDF compuesto</td>
+<td>1</td>
+<td>0.83 s</td>
+<td>0.82 s</td>
+<td>0.82 s</td>
+<td>0.83 s</td>
+<td>Evidencia puntual; requiere mas muestras para generalizar.</td>
+</tr>
+</tbody></table>
+
+<h2>5. Clasificacion de tiempos</h2>
+
+<p>Para interpretar los tiempos sin exagerar, se propone la siguiente escala:</p>
+
+<table><thead><tr>
+<th>Rango</th>
+<th>Clasificacion</th>
+<th>Interpretacion</th>
+</tr></thead><tbody>
+<tr>
+<td>0 a 5 segundos</td>
+<td>Rapido</td>
+<td>Respuesta muy favorable para uso operativo.</td>
+</tr>
+<tr>
+<td>5 a 15 segundos</td>
+<td>Adecuado</td>
+<td>Aceptable para reporter&#237;a con datos consolidados.</td>
+</tr>
+<tr>
+<td>15 a 60 segundos</td>
+<td>Moderado</td>
+<td>Puede ser aceptable si el reporte es pesado o tiene filtros amplios.</td>
+</tr>
+<tr>
+<td>60 a 120 segundos</td>
+<td>Alto</td>
+<td>Debe monitorearse y optimizarse antes de produccion intensiva.</td>
+</tr>
+<tr>
+<td>Mayor a 120 segundos</td>
+<td>Critico</td>
+<td>Requiere optimizacion prioritaria.</td>
+</tr>
+</tbody></table>
+
+<p>Aplicacion a la muestra:</p>
+
+<table><thead><tr>
+<th>Operacion</th>
+<th>Clasificacion promedio</th>
+<th>Clasificacion peor caso</th>
+</tr></thead><tbody>
+<tr>
+<td>Dashboard institucional</td>
+<td>Moderado bajo</td>
+<td>Alto</td>
+</tr>
+<tr>
+<td>Panel autores/coautoria</td>
+<td>Adecuado</td>
+<td>Alto</td>
+</tr>
+<tr>
+<td>ETL reporter&#237;a</td>
+<td>Rapido</td>
+<td>Rapido</td>
+</tr>
+<tr>
+<td>Exportacion Excel</td>
+<td>Adecuado</td>
+<td>Adecuado</td>
+</tr>
+<tr>
+<td>Exportacion PDF</td>
+<td>Rapido</td>
+<td>Adecuado</td>
+</tr>
+<tr>
+<td>PDF compuesto</td>
+<td>Rapido</td>
+<td>Rapido</td>
+</tr>
+</tbody></table>
+
+<h2>6. Matriz de valor para tesis</h2>
+
+<table><thead><tr>
+<th>Pregunta de defensa</th>
+<th>Respuesta sustentada</th>
+</tr></thead><tbody>
+<tr>
+<td>El sistema tarda demasiado en generar reportes?</td>
+<td>No en promedio. El promedio general fue de 10.53 segundos.</td>
+</tr>
+<tr>
+<td>Existen casos lentos?</td>
+<td>Si. Se observaron picos cercanos a 96-99 segundos en dashboard y autores.</td>
+</tr>
+<tr>
+<td>Eso invalida el sistema?</td>
+<td>No. Los picos siguen siendo menores al tiempo manual estimado, pero son oportunidades de optimizacion.</td>
+</tr>
+<tr>
+<td>La reduccion de tiempo es real o estimada?</td>
+<td>Es estimada frente a una linea base manual configurada por operacion.</td>
+</tr>
+<tr>
+<td>Como se evita exagerar el resultado?</td>
+<td>Presentando promedio, mediana, P90 y maximo, no solo el porcentaje de reduccion.</td>
+</tr>
+<tr>
+<td>Que modulo se comporta mejor?</td>
+<td>ETL, PDF y Excel muestran tiempos bajos y consistentes.</td>
+</tr>
+<tr>
+<td>Que modulo requiere monitoreo?</td>
+<td>Dashboard institucional y panel de autores, por picos altos.</td>
+</tr>
+<tr>
+<td>Que evidencia cuantitativa existe?</td>
+<td>80 mediciones registradas, 100% exitosas, 95629 elementos consultados acumulados.</td>
+</tr>
+</tbody></table>
+
+<h2>7. Interpretacion para tesis</h2>
+
+<p>Los datos muestran que el sistema automatiza actividades que manualmente requeririan consolidar informacion, aplicar filtros, calcular indicadores, revisar autores/coautorias y generar archivos PDF o Excel. En la muestra obtenida, el promedio general de respuesta fue de 10.53 segundos, con una tasa de exito del 100%.</p>
+
+<p>No obstante, la defensa debe reconocer que existen picos de carga en el dashboard institucional y el panel de autores. Estos picos alcanzan aproximadamente 96 a 99 segundos. Por ello, no conviene afirmar que todos los reportes son instantaneos. La afirmacion defendible es que:</p>
+
+<pre><code>
+El sistema reduce significativamente el tiempo de elaboracion de reportes frente a un proceso manual estimado, aunque existen escenarios de carga pesada que deben monitorearse y optimizarse en una fase de produccion.
+</code></pre>
+
+<h2>8. Indicadores recomendados para presentar</h2>
+
+<p>Los indicadores mas seguros para tesis son:</p>
+
+<table><thead><tr>
+<th>Indicador</th>
+<th>Valor</th>
+</tr></thead><tbody>
+<tr>
+<td>Operaciones medidas</td>
+<td>80</td>
+</tr>
+<tr>
+<td>Tasa de exito</td>
+<td>100%</td>
+</tr>
+<tr>
+<td>Tiempo promedio general</td>
+<td>10.53 s</td>
+</tr>
+<tr>
+<td>Tiempo acumulado del sistema</td>
+<td>14.04 min</td>
+</tr>
+<tr>
+<td>Tiempo manual estimado</td>
+<td>68.17 h</td>
+</tr>
+<tr>
+<td>Ahorro estimado</td>
+<td>67.93 h</td>
+</tr>
+<tr>
+<td>Reduccion estimada</td>
+<td>99.66%</td>
+</tr>
+<tr>
+<td>Elementos consultados</td>
+<td>95629</td>
+</tr>
+<tr>
+<td>Picos maximos observados</td>
+<td>96-99 s</td>
+</tr>
+</tbody></table>
+
+<h2>9. Indicadores que conviene matizar</h2>
+
+<table><thead><tr>
+<th>Indicador</th>
+<th>Riesgo si se presenta mal</th>
+<th>Forma segura de presentarlo</th>
+</tr></thead><tbody>
+<tr>
+<td>Reduccion de 99.66%</td>
+<td>Puede parecer demasiado alta si no se explica la linea base.</td>
+<td>Decir que es una reduccion estimada frente a tiempos manuales configurados.</td>
+</tr>
+<tr>
+<td>Mediana menor a 1 segundo en dashboards</td>
+<td>Puede sugerir que todo carga instantaneamente.</td>
+<td>Presentarla junto al P90 y maximo.</td>
+</tr>
+<tr>
+<td>100% de exito</td>
+<td>La muestra no garantiza ausencia futura de errores.</td>
+<td>Decir: no se observaron fallos en las 80 mediciones registradas.</td>
+</tr>
+<tr>
+<td>ETL de 2.63 segundos</td>
+<td>Puede variar con volumen real de produccion.</td>
+<td>Decir: en la muestra medida, el ETL tuvo bajo tiempo promedio.</td>
+</tr>
+</tbody></table>
+
+<h2>10. Redaccion recomendada</h2>
+
+<p>Para la tesis se recomienda usar una redaccion equilibrada:</p>
+
+<pre><code>
+Durante la evaluacion del modulo de reporter&#237;a se registraron 80 operaciones en la tabla ReportingPerformanceMetrics, correspondientes a carga del dashboard institucional, analitica de autores, ejecucion del ETL y generacion de reportes PDF/Excel. Todas las operaciones registradas finalizaron exitosamente, obteniendo una tasa de exito del 100% en la muestra observada.
+
+El tiempo promedio general de respuesta fue de 10.53 segundos, mientras que el tiempo acumulado para las 80 operaciones fue de 14.04 minutos. Al compararlo con la linea base manual estimada configurada en el sistema, equivalente a 68.17 horas, se obtuvo un ahorro estimado de 67.93 horas, lo que representa una reduccion aproximada del 99.66%.
+
+Sin embargo, tambien se identificaron picos de carga en el dashboard institucional y el panel de autores, con valores maximos cercanos a 96-99 segundos. Estos resultados no invalidan el sistema, pero evidencian oportunidades de optimizacion para escenarios de mayor carga en produccion. Por tanto, se concluye que el sistema presenta una reduccion significativa del tiempo de reporter&#237;a frente al proceso manual estimado, manteniendo como mejora futura la optimizacion de consultas pesadas.
+</code></pre>
+
+<h2>11. Matriz de conclusion</h2>
+
+<table><thead><tr>
+<th>Dimension evaluada</th>
+<th>Resultado</th>
+<th>Conclusion</th>
+</tr></thead><tbody>
+<tr>
+<td>Estabilidad</td>
+<td>80/80 operaciones exitosas</td>
+<td>Favorable</td>
+</tr>
+<tr>
+<td>Velocidad promedio</td>
+<td>10.53 s</td>
+<td>Favorable</td>
+</tr>
+<tr>
+<td>Exportes</td>
+<td>PDF y Excel menores a 10 s promedio</td>
+<td>Favorable</td>
+</tr>
+<tr>
+<td>ETL</td>
+<td>2.63 s promedio</td>
+<td>Favorable en muestra</td>
+</tr>
+<tr>
+<td>Dashboard general</td>
+<td>Promedio aceptable, picos altos</td>
+<td>Requiere monitoreo</td>
+</tr>
+<tr>
+<td>Autores/coautoria</td>
+<td>Promedio aceptable, un pico alto</td>
+<td>Requiere monitoreo</td>
+</tr>
+<tr>
+<td>Reduccion de tiempo</td>
+<td>99.66% estimado</td>
+<td>Muy favorable, con aclaracion metodologica</td>
+</tr>
+</tbody></table>
+
+<h2>12. Recomendacion para defensa</h2>
+
+<p>Si preguntan si los tiempos son altos, la respuesta recomendada es:</p>
+
+<pre><code>
+No en promedio. El sistema presento un tiempo promedio general de 10.53 segundos y una tasa de exito del 100% en las 80 operaciones registradas. Sin embargo, si se observaron picos cercanos a 96-99 segundos en consultas pesadas del dashboard y autores. Por eso, el resultado se presenta como favorable, pero con una mejora futura orientada a optimizar cargas maximas.
+</code></pre>
+
+<p>Si preguntan si el 99.66% es absoluto:</p>
+
+<pre><code>
+No. Es una reduccion estimada frente a una linea base manual configurada por operacion. Para fortalecer la validacion, se recomienda complementar con pruebas cronometradas de usuarios reales.
+</code></pre>
+
+<p>Si preguntan por el valor academico:</p>
+
+<pre><code>
+La medicion demuestra que el sistema incorpora mecanismos cuantitativos para evaluar desempeno, permitiendo comparar tiempo real del sistema contra una linea base manual y detectar oportunidades de optimizacion.
+</code></pre>
+
+</body>
+</html>
