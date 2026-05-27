@@ -29,6 +29,10 @@ catch
 }
 
 var apiBase = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5040";
+if (Uri.TryCreate(apiBase, UriKind.Relative, out _))
+{
+    apiBase = new Uri(new Uri(builder.HostEnvironment.BaseAddress), apiBase).ToString();
+}
 builder.Services.AddAppApiClients(apiBase);
 
 await builder.Build().RunAsync();

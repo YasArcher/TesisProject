@@ -1,0 +1,67 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: ./tesisproject.backend/Dockerfile
+    container_name: tesis_articles_api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      BackendUrl: http://+:8080
+
+      ConnectionStrings__DefaultConnection: >
+        Server=${DB_HOST:-host.docker.internal},${DB_PORT:-1433};
+        Database=${DB_OLTP_NAME:-TesisDB_Extensible};
+        User Id=${DB_USER:-sa};
+        Password=${DB_PASS:?DB_PASS is required};
+        Encrypt=False;
+        TrustServerCertificate=True;
+
+      ConnectionStrings__DwConnection: >
+        Server=${DB_HOST:-host.docker.internal},${DB_PORT:-1433};
+        Database=${DB_DW_NAME:-TesisDW_Extensible};
+        User Id=${DB_USER:-sa};
+        Password=${DB_PASS:?DB_PASS is required};
+        Encrypt=False;
+        TrustServerCertificate=True;
+
+      ConnectionStrings__ReportingConnection: >
+        Server=${DB_HOST:-host.docker.internal},${DB_PORT:-1433};
+        Database=${DB_REPORTING_NAME:-TesisDW_Extensible};
+        User Id=${DB_USER:-sa};
+        Password=${DB_PASS:?DB_PASS is required};
+        Encrypt=False;
+        TrustServerCertificate=True;
+
+      Jwt__Issuer: ${JWT_ISSUER:-TesisProject}
+      Jwt__Audience: ${JWT_AUDIENCE:-TesisProjectClient}
+      Jwt__Key: ${JWT_KEY:?JWT_KEY is required}
+      Jwt__ExpirationMinutes: ${JWT_EXPIRATION_MINUTES:-120}
+
+      InstitutionIdentity__Enabled: ${INSTITUTION_IDENTITY_ENABLED:-false}
+      InstitutionIdentity__SourceType: ${INSTITUTION_IDENTITY_SOURCE_TYPE:-None}
+      InstitutionIdentity__BaseUrl: ${INSTITUTION_IDENTITY_BASE_URL:-}
+      InstitutionIdentity__ApiKey: ${INSTITUTION_IDENTITY_API_KEY:-}
+      InstitutionIdentity__AuthorsEndpoint: ${INSTITUTION_IDENTITY_AUTHORS_ENDPOINT:-}
+
+      ExternalApis__Scopus__ApiKey: ${SCOPUS_API_KEY:-}
+      ExternalApis__Scopus__InstToken: ${SCOPUS_INST_TOKEN:-}
+      ExternalApis__Crossref__ApiKey: ${CROSSREF_API_KEY:-}
+      ExternalApis__OpenAlex__ApiKey: ${OPENALEX_API_KEY:-}
+      ExternalApis__SemanticScholar__ApiKey: ${SEMANTIC_SCHOLAR_API_KEY:-}
+    volumes:
+      - articles-data-protection:/app/App_Data/DataProtectionKeys
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: ./tesisproject.frontend/Dockerfile
+    container_name: tesis_articles_web
+    depends_on:
+      - api
+    ports:
+      - "${WEB_HOST_PORT:-8088}:80"
+    restart: unless-stopped
+
+volumes:
+  articles-data-protection:
