@@ -47,10 +47,45 @@ docker compose up -d
 
 El frontend queda disponible en el puerto configurado por `WEB_HOST_PORT`.
 
+## Despliegue en servidor institucional
+
+Servidor objetivo previsto:
+
+```bash
+ssh dinnova@10.102.12.194
+```
+
+Como el servidor ya contiene otros sistemas, levantar este proyecto con un nombre de stack independiente:
+
+```bash
+docker compose -p tesis-articulos build
+docker compose -p tesis-articulos up -d
+```
+
+Revisar logs:
+
+```bash
+docker compose -p tesis-articulos logs -f api
+docker compose -p tesis-articulos logs -f web
+```
+
+Detener solo este sistema:
+
+```bash
+docker compose -p tesis-articulos down
+```
+
+Si `WEB_HOST_PORT=8088`, la URL esperada sera:
+
+```text
+http://10.102.12.194:8088
+```
+
 ## Notas de despliegue
 
 - Si SQL Server esta en el host de Docker Desktop para Windows, `host.docker.internal` suele funcionar.
-- En Linux puede requerirse agregar `extra_hosts` con `host-gateway`.
+- En Linux, el servicio `api` ya incluye `extra_hosts: host.docker.internal:host-gateway` para que el contenedor pueda conectarse al SQL Server instalado en el host.
+- Antes de desplegar en el servidor, verificar que `WEB_HOST_PORT` no este ocupado por otro sistema.
 - La proteccion de datos de ASP.NET se persiste en el volumen `articles-data-protection`.
 - Nginx esta configurado con `client_max_body_size 100m` y timeouts de 900 segundos para soportar ingesta masiva, reportes PDF y ETL.
 - No subir el archivo `.env` al repositorio.
