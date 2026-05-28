@@ -88,4 +88,5 @@ http://10.102.12.194:8088
 - Antes de desplegar en el servidor, verificar que `WEB_HOST_PORT` no este ocupado por otro sistema.
 - La proteccion de datos de ASP.NET se persiste en el volumen `articles-data-protection`.
 - Nginx esta configurado con `client_max_body_size 100m` y timeouts de 900 segundos para soportar ingesta masiva, reportes PDF y ETL.
+- En Docker, `HttpsRedirection` del backend queda deshabilitado porque Nginx se comunica con la API por HTTP interno. Si un proxy institucional termina HTTPS, debe hacerlo antes de llegar al contenedor web.
 - No subir el archivo `.env` al repositorio.
