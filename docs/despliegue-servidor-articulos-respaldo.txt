@@ -1,0 +1,452 @@
+RESPALDO DE DESPLIEGUE - SISTEMA DE ARTICULOS CIENTIFICOS
+Fecha de referencia: 2026-05-28
+Servidor: 10.102.12.194
+Sistema desplegado: Articulos cientificos
+Rama usada: feature/articles-reporting-docker
+Carpeta servidor: /root/Tesis_Christopher/app
+Puerto publico usado: 8088
+URL de prueba: http://10.102.12.194:8088
+
+IMPORTANTE SOBRE CREDENCIALES
+No guardar claves reales dentro del repositorio Git.
+Reemplazar los marcadores indicados por las credenciales reales cuando se ejecuten los comandos.
+
+Marcadores usados:
+<SSH_DINNOVA_PASSWORD>        = password del usuario dinnova
+<ROOT_PASSWORD>               = password para su -
+<SQL_SA_PASSWORD>             = password del usuario SA de SQL Server
+<GITHUB_TOKEN>                = token de GitHub si el repositorio privado lo solicita
+<JWT_KEY_PRODUCCION>          = clave JWT segura de produccion
+
+============================================================
+1. VERIFICACION LOCAL ANTES DE SUBIR
+============================================================
+
+Ruta local:
+C:\Users\Personal\Source\Repos\TesisProject
+
+Comandos locales:
+
+git branch --show-current
+git status --short
+
+Rama esperada:
+feature/articles-reporting-docker
+
+Validar Docker local:
+
+docker compose config
+dotnet build TesisProject.sln --no-restore
+docker compose build
+docker compose up -d
+docker compose ps
+
+Probar local:
+http://localhost:8088
+
+Apagar local:
+
+docker compose down
+
+============================================================
+2. BACKUP LOCAL DE BASES DE DATOS
+============================================================
+
+Ejecutar en SQL Server Management Studio contra la instancia local.
+
+Backup OLTP:
+
+BACKUP DATABASE [TesisDB_Extensible]
+TO DISK = N'C:\Users\Personal\Desktop\TesisDB_Extensible.bak'
+WITH
+    FORMAT,
+    INIT,
+    NAME = N'TesisDB_Extensible - Backup completo',
+    SKIP,
+    NOREWIND,
+    NOUNLOAD,
+    STATS = 10;
+GO
+
+Backup DW:
+
+BACKUP DATABASE [TesisDW_Extensible]
+TO DISK = N'C:\Users\Personal\Desktop\TesisDW_Extensible.bak'
+WITH
+    FORMAT,
+    INIT,
+    NAME = N'TesisDW_Extensible - Backup completo',
+    SKIP,
+    NOREWIND,
+    NOUNLOAD,
+    STATS = 10;
+GO
+
+============================================================
+3. ACCESO AL SERVIDOR
+============================================================
+
+Entrar por SSH:
+
+ssh dinnova@10.102.12.194
+
+Password:
+<SSH_DINNOVA_PASSWORD>
+
+Cambiar a root:
+
+su -
+
+Password:
+<ROOT_PASSWORD>
+
+============================================================
+4. DIAGNOSTICO INICIAL DEL SERVIDOR
+============================================================
+
+Ver contenedores existentes:
+
+docker ps
+
+Ver imagenes:
+
+docker images
+
+Ver stacks Docker Compose:
+
+docker compose ls
+
+Ver puertos ocupados:
+
+ss -tulpen | grep -E ':80|:443|:8080|:8081|:8088|:8090|:8091|:1433|:1466|:5000|:5040|:7040'
+
+Resultado encontrado:
+- Puerto 80 ocupado por procesmanager_web.
+- Puerto 8080 ocupado por procesmanager_api.
+- Puerto 8088 libre y usado para este sistema.
+- SQL Server local activo en puerto 1466.
+
+Ver SQL Server:
+
+systemctl status mssql-server --no-pager
+sudo ss -tulpen | grep sqlservr
+
+Puerto SQL detectado:
+1466
+
+============================================================
+5. CREACION DE CARPETA DEL SISTEMA
+============================================================
+
+Como root:
+
+mkdir -p /root/Tesis_Christopher
+cd /root/Tesis_Christopher
+pwd
+
+Ruta esperada:
+/root/Tesis_Christopher
+
+============================================================
+6. SUBIDA DE BACKUPS AL SERVIDOR
+============================================================
+
+Desde PowerShell local:
+
+scp C:\Users\Personal\Desktop\TesisDB_Extensible.bak dinnova@10.102.12.194:/home/dinnova/
+scp C:\Users\Personal\Desktop\TesisDW_Extensible.bak dinnova@10.102.12.194:/home/dinnova/
+
+En el servidor, como root:
+
+ls -lh /home/dinnova/*.bak
+mv /home/dinnova/TesisDB_Extensible.bak /root/Tesis_Christopher/
+mv /home/dinnova/TesisDW_Extensible.bak /root/Tesis_Christopher/
+ls -lh /root/Tesis_Christopher
+
+Copiar backups a ruta accesible por SQL Server:
+
+mkdir -p /var/opt/mssql/backup
+cp /root/Tesis_Christopher/TesisDB_Extensible.bak /var/opt/mssql/backup/
+cp /root/Tesis_Christopher/TesisDW_Extensible.bak /var/opt/mssql/backup/
+chown mssql:mssql /var/opt/mssql/backup/TesisDB_Extensible.bak
+chown mssql:mssql /var/opt/mssql/backup/TesisDW_Extensible.bak
+ls -lh /var/opt/mssql/backup/*.bak
+
+============================================================
+7. RESTAURACION DE BASES DE DATOS
+============================================================
+
+Validar nombres logicos:
+
+/opt/mssql-tools/bin/sqlcmd -S 127.0.0.1,1466 -U SA -P '<SQL_SA_PASSWORD>' -Q "RESTORE FILELISTONLY FROM DISK = N'/var/opt/mssql/backup/TesisDB_Extensible.bak';"
+
+/opt/mssql-tools/bin/sqlcmd -S 127.0.0.1,1466 -U SA -P '<SQL_SA_PASSWORD>' -Q "RESTORE FILELISTONLY FROM DISK = N'/var/opt/mssql/backup/TesisDW_Extensible.bak';"
+
+Nombres logicos encontrados:
+
+OLTP:
+- TesisDB_Extensible
+- TesisDB_Extensible_log
+
+DW:
+- TesisDW_Extensible
+- TesisDW_Extensible_log
+
+Restaurar OLTP:
+
+/opt/mssql-tools/bin/sqlcmd -S 127.0.0.1,1466 -U SA -P '<SQL_SA_PASSWORD>' -Q "RESTORE DATABASE [TesisDB_Extensible] FROM DISK = N'/var/opt/mssql/backup/TesisDB_Extensible.bak' WITH MOVE N'TesisDB_Extensible' TO N'/var/opt/mssql/data/TesisDB_Extensible.mdf', MOVE N'TesisDB_Extensible_log' TO N'/var/opt/mssql/data/TesisDB_Extensible_log.ldf', REPLACE, RECOVERY, STATS = 10;"
+
+Restaurar DW:
+
+/opt/mssql-tools/bin/sqlcmd -S 127.0.0.1,1466 -U SA -P '<SQL_SA_PASSWORD>' -Q "RESTORE DATABASE [TesisDW_Extensible] FROM DISK = N'/var/opt/mssql/backup/TesisDW_Extensible.bak' WITH MOVE N'TesisDW_Extensible' TO N'/var/opt/mssql/data/TesisDW_Extensible.mdf', MOVE N'TesisDW_Extensible_log' TO N'/var/opt/mssql/data/TesisDW_Extensible_log.ldf', REPLACE, RECOVERY, STATS = 10;"
+
+Verificar bases:
+
+/opt/mssql-tools/bin/sqlcmd -S 127.0.0.1,1466 -U SA -P '<SQL_SA_PASSWORD>' -Q "SELECT name FROM sys.databases ORDER BY name;"
+
+Verificar tablas:
+
+/opt/mssql-tools/bin/sqlcmd -S 127.0.0.1,1466 -U SA -P '<SQL_SA_PASSWORD>' -d TesisDB_Extensible -Q "SELECT COUNT(*) AS TablesCount FROM sys.tables;"
+
+/opt/mssql-tools/bin/sqlcmd -S 127.0.0.1,1466 -U SA -P '<SQL_SA_PASSWORD>' -d TesisDW_Extensible -Q "SELECT COUNT(*) AS TablesCount FROM sys.tables;"
+
+Resultado obtenido:
+- TesisDB_Extensible: 48 tablas.
+- TesisDW_Extensible: 34 tablas.
+
+Verificar ETL:
+
+/opt/mssql-tools/bin/sqlcmd -S 127.0.0.1,1466 -U SA -P '<SQL_SA_PASSWORD>' -d TesisDW_Extensible -Q "SELECT SCHEMA_NAME(schema_id) AS SchemaName, name FROM sys.procedures WHERE name = 'sp_RunFullLoad';"
+
+Resultado esperado:
+etl | sp_RunFullLoad
+
+Verificar esquemas DW:
+
+/opt/mssql-tools/bin/sqlcmd -S 127.0.0.1,1466 -U SA -P '<SQL_SA_PASSWORD>' -d TesisDW_Extensible -Q "SELECT name FROM sys.schemas WHERE name IN ('dw','etl') ORDER BY name;"
+
+Resultado esperado:
+dw
+etl
+
+============================================================
+8. CLONAR REPOSITORIO EN SERVIDOR
+============================================================
+
+Crear carpeta para el codigo:
+
+mkdir -p /root/Tesis_Christopher/app
+cd /root/Tesis_Christopher/app
+
+Clonar rama Docker:
+
+git clone -b feature/articles-reporting-docker https://github.com/YasArcher/TesisProject.git .
+
+Si GitHub pide usuario:
+YasArcher
+
+Si GitHub pide password:
+usar <GITHUB_TOKEN>
+
+Verificar rama:
+
+git branch --show-current
+git log --oneline -3
+
+Resultado esperado:
+feature/articles-reporting-docker
+
+Ultimo commit usado:
+e412917 cambios realizados docker para servidor
+
+============================================================
+9. CREAR .env DEL SERVIDOR
+============================================================
+
+En /root/Tesis_Christopher/app:
+
+cat > .env <<'EOF'
+WEB_HOST_PORT=8088
+
+DB_HOST=host.docker.internal
+DB_PORT=1466
+DB_USER=sa
+DB_PASS=<SQL_SA_PASSWORD>
+
+DB_OLTP_NAME=TesisDB_Extensible
+DB_DW_NAME=TesisDW_Extensible
+DB_REPORTING_NAME=TesisDW_Extensible
+
+JWT_ISSUER=TesisProject
+JWT_AUDIENCE=TesisProjectClient
+JWT_KEY=<JWT_KEY_PRODUCCION>
+JWT_EXPIRATION_MINUTES=120
+
+INSTITUTION_IDENTITY_ENABLED=false
+INSTITUTION_IDENTITY_SOURCE_TYPE=None
+INSTITUTION_IDENTITY_BASE_URL=
+INSTITUTION_IDENTITY_API_KEY=
+INSTITUTION_IDENTITY_AUTHORS_ENDPOINT=
+
+SCOPUS_API_KEY=
+SCOPUS_INST_TOKEN=
+CROSSREF_API_KEY=
+OPENALEX_API_KEY=
+SEMANTIC_SCHOLAR_API_KEY=
+EOF
+
+Validar:
+
+ls -la .env
+docker compose -p tesis-articulos config
+
+============================================================
+10. LEVANTAR SISTEMA EN DOCKER
+============================================================
+
+Verificar puerto 8088:
+
+ss -tulpen | grep 8088
+
+Si no devuelve nada, el puerto esta libre.
+
+Construir:
+
+docker compose -p tesis-articulos build
+
+Levantar:
+
+docker compose -p tesis-articulos up -d
+
+Ver estado:
+
+docker compose -p tesis-articulos ps
+
+Resultado esperado:
+- tesis_articles_api Up
+- tesis_articles_web Up
+- 0.0.0.0:8088->80/tcp
+
+Ver logs API:
+
+docker compose -p tesis-articulos logs --tail=120 api
+
+Ver logs frontend:
+
+docker compose -p tesis-articulos logs --tail=80 web
+
+============================================================
+11. PRUEBAS DE SERVIDOR
+============================================================
+
+Probar frontend desde servidor:
+
+curl -I http://localhost:8088
+
+Resultado esperado:
+HTTP/1.1 200 OK
+
+Probar proxy API desde servidor:
+
+curl -I http://localhost:8088/api/auth/me
+
+Resultado esperado:
+HTTP/1.1 401 Unauthorized
+
+Esto es correcto porque el endpoint requiere token.
+
+Probar desde navegador:
+
+http://10.102.12.194:8088
+
+============================================================
+12. COMANDOS IMPORTANTES DE OPERACION
+============================================================
+
+Ir a carpeta del sistema:
+
+cd /root/Tesis_Christopher/app
+
+Ver estado:
+
+docker compose -p tesis-articulos ps
+
+Logs backend:
+
+docker compose -p tesis-articulos logs --tail=200 api
+
+Logs frontend:
+
+docker compose -p tesis-articulos logs --tail=100 web
+
+Logs backend en vivo:
+
+docker compose -p tesis-articulos logs -f api
+
+Logs frontend en vivo:
+
+docker compose -p tesis-articulos logs -f web
+
+Levantar si esta apagado:
+
+docker compose -p tesis-articulos up -d
+
+Reconstruir despues de cambios:
+
+git pull
+docker compose -p tesis-articulos up -d --build
+
+Apagar solo este sistema:
+
+docker compose -p tesis-articulos down
+
+No ejecutar down si se quiere dejar el sistema disponible para revision.
+
+============================================================
+13. SISTEMAS EXISTENTES EN EL SERVIDOR
+============================================================
+
+Sistema existente detectado:
+
+docker compose ls
+
+Resultado:
+procesmanager running(2) /root/Tesis_edison/ProcesManager/docker-compose.yml
+
+Contenedores:
+- procesmanager_web usa puerto 80
+- procesmanager_api usa puerto 8080
+
+No tocar:
+- /root/Tesis_edison
+- /root/bonita_project
+- contenedores procesmanager_*
+
+Este sistema de articulos queda separado en:
+/root/Tesis_Christopher/app
+
+Stack Docker Compose:
+tesis-articulos
+
+Contenedores:
+- tesis_articles_api
+- tesis_articles_web
+
+Puerto:
+8088
+
+============================================================
+14. ESTADO FINAL DEL DESPLIEGUE
+============================================================
+
+Estado final alcanzado:
+- Bases restauradas correctamente.
+- Backend conectado a TesisDB_Extensible.
+- DW restaurado con esquema dw y etl.
+- Procedimiento etl.sp_RunFullLoad disponible.
+- Contenedores Docker levantados.
+- Frontend responde 200 OK.
+- API responde 401 Unauthorized en endpoint protegido, comportamiento esperado.
+- URL disponible para revision de usuarios:
+
+http://10.102.12.194:8088
