@@ -18,10 +18,29 @@ namespace tesisproject.backend.Mapping
                 VenueName = a.Venue?.Name ?? string.Empty,
                 PublicationStatusId = a.PublicationStatusId,
                 PublicationStatusName = a.PublicationStatus != null
-            ? a.PublicationStatus.Name
-            : null,
+                    ? a.PublicationStatus.Name
+                    : null,
+                ResearchLineId = a.ResearchLineId,
+                ResearchLineName = a.ResearchLine?.Name,
                 FacultyId = a.FacultyId,
-                FacultyName = a.Faculty?.Name
+                FacultyName = a.Faculty?.Name,
+                AcademicTermId = a.AcademicTermId,
+                AcademicTermName = a.AcademicTerm?.Name,
+                IsProjectResult = a.IsProjectResult,
+                HasInterculturalComponent = a.HasInterculturalComponent,
+                IsOpenAccess = a.IsOpenAccess,
+                CreatedAt = a.CreatedAt,
+                IndexingSourceId = a.Indexings?.FirstOrDefault()?.IndexingSourceId,
+                IndexingSourceName = a.Indexings?
+                    .Where(ix => ix.IndexingSource != null)
+                    .Select(ix => ix.IndexingSource!.Name)
+                    .FirstOrDefault(),
+                AuthorsSummary = a.Participants != null
+                    ? string.Join(" | ", a.Participants
+                        .OrderBy(p => p.Index)
+                        .Select(p => p.Nombre)
+                        .Where(n => !string.IsNullOrWhiteSpace(n)))
+                    : null
             };
         }
 

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
 using tesisproject.frontend.Features.Reporting.Components;
+using tesisproject.frontend.Services.Errors;
 using tesisproject.frontend.Services.Implementations;
 using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.DTOs.Reports;
@@ -151,7 +152,7 @@ namespace tesisproject.frontend.Features.Reporting.Pages
                     _institutionalDashboard = null;
                 }
 
-                _institutionalReportingError = $"No se pudo cargar la reportería institucional: {ex.Message}";
+                _institutionalReportingError = $"No se pudo cargar la reportería institucional: {UserFacingErrorMapper.FromException(ex, "Actualiza la vista e inténtalo nuevamente.")}";
                 SaveReportingState();
                 Console.Error.WriteLine(ex);
             }
@@ -220,7 +221,7 @@ namespace tesisproject.frontend.Features.Reporting.Pages
 
                 _authorReportingDashboard = null;
                 _authorDashboardUsingFallback = false;
-                _authorReportingError = $"No se pudo cargar la analítica de autores: {ex.Message}";
+                _authorReportingError = $"No se pudo cargar la analítica de autores: {UserFacingErrorMapper.FromException(ex, "Actualiza la vista e inténtalo nuevamente.")}";
                 SaveReportingState();
                 Console.Error.WriteLine(ex);
             }
@@ -254,7 +255,7 @@ namespace tesisproject.frontend.Features.Reporting.Pages
             }
             catch (Exception ex)
             {
-                _institutionalReportingError = $"No fue posible actualizar la información: {ex.Message}";
+                _institutionalReportingError = $"No fue posible actualizar la información: {UserFacingErrorMapper.FromException(ex, "La actualización tardó más de lo esperado. Inténtalo nuevamente en unos minutos.")}";
                 Console.Error.WriteLine(ex);
             }
             finally
@@ -487,7 +488,7 @@ namespace tesisproject.frontend.Features.Reporting.Pages
             }
             catch (Exception ex)
             {
-                _pdfComposerState.StoreGenerationError($"No fue posible generar la vista previa del PDF: {ex.Message}");
+                _pdfComposerState.StoreGenerationError($"No fue posible generar la vista previa del PDF: {UserFacingErrorMapper.FromException(ex, "Revisa la selección del reporte e inténtalo nuevamente.")}");
                 Console.Error.WriteLine(ex);
             }
             finally
@@ -531,7 +532,7 @@ namespace tesisproject.frontend.Features.Reporting.Pages
                 var filter = ReportInstitutionalFilterState.Clone(_institutionalFilter);
                 var url = InstitutionalReportingClient.BuildDashboardUrl(filter, "api/reporting/dashboard/excel");
                 using var response = await Http.GetAsync(url);
-                response.EnsureSuccessStatusCode();
+                await EnsureReportingDownloadSuccessAsync(response, "No pude exportar el archivo Excel.");
 
                 var bytes = await response.Content.ReadAsByteArrayAsync();
                 var base64 = Convert.ToBase64String(bytes);
@@ -543,7 +544,7 @@ namespace tesisproject.frontend.Features.Reporting.Pages
             }
             catch (Exception ex)
             {
-                _institutionalReportingError = $"No fue posible exportar Excel: {ex.Message}";
+                _institutionalReportingError = $"No fue posible exportar Excel: {UserFacingErrorMapper.FromException(ex, "Inténtalo nuevamente con menos filtros o actualiza la reportería.")}";
                 Console.Error.WriteLine(ex);
             }
             finally
@@ -561,6 +562,17 @@ namespace tesisproject.frontend.Features.Reporting.Pages
             }
 
             _showExportMenu = !_showExportMenu;
+        }
+
+        private static async Task EnsureReportingDownloadSuccessAsync(HttpResponseMessage response, string fallback)
+        {
+            if (response.IsSuccessStatusCode)
+            {
+                return;
+            }
+
+            var message = await UserFacingErrorMapper.FromHttpResponseAsync(response, fallback);
+            throw new InvalidOperationException(message);
         }
 
         protected async Task DownloadRawDatasetExcelAsync()
@@ -596,7 +608,7 @@ namespace tesisproject.frontend.Features.Reporting.Pages
             try
             {
                 using var response = await Http.GetAsync(endpoint);
-                response.EnsureSuccessStatusCode();
+                await EnsureReportingDownloadSuccessAsync(response, $"No pude exportar el dataset en {formatLabel}.");
 
                 var bytes = await response.Content.ReadAsByteArrayAsync();
                 var base64 = Convert.ToBase64String(bytes);
@@ -608,7 +620,7 @@ namespace tesisproject.frontend.Features.Reporting.Pages
             }
             catch (Exception ex)
             {
-                _institutionalReportingError = $"No fue posible exportar el dataset en {formatLabel}: {ex.Message}";
+                _institutionalReportingError = $"No fue posible exportar el dataset en {formatLabel}: {UserFacingErrorMapper.FromException(ex, "Inténtalo nuevamente en unos minutos.")}";
                 Console.Error.WriteLine(ex);
             }
             finally
@@ -636,7 +648,7 @@ namespace tesisproject.frontend.Features.Reporting.Pages
                 ApplyAuthorPdfScope(filter, _authorPdfScopeFilter);
                 var url = InstitutionalReportingClient.BuildDashboardUrl(filter, "api/reporting/authors/pdf");
                 using var response = await Http.GetAsync(url);
-                response.EnsureSuccessStatusCode();
+                await EnsureReportingDownloadSuccessAsync(response, "No pude generar el PDF de autores.");
 
                 var bytes = await response.Content.ReadAsByteArrayAsync();
                 var base64 = Convert.ToBase64String(bytes);
@@ -648,7 +660,7 @@ namespace tesisproject.frontend.Features.Reporting.Pages
             }
             catch (Exception ex)
             {
-                _authorReportingError = $"No fue posible generar el PDF de autores: {ex.Message}";
+                _authorReportingError = $"No fue posible generar el PDF de autores: {UserFacingErrorMapper.FromException(ex, "Revisa los filtros de autores e inténtalo nuevamente.")}";
                 Console.Error.WriteLine(ex);
             }
             finally

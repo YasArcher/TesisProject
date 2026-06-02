@@ -115,17 +115,14 @@
                                     Ver
                                 </button>
 
-                                <button type="button"
-                                        class="rounded-lg bg-[#1a2b2b] px-2.5 py-1 text-[11px] font-medium text-white shadow-sm hover:bg-[#122020]"
-                                        @onclick="@(() => OnEdit.InvokeAsync(item.Id))">
-                                    Editar
-                                </button>
-
-                                <button type="button"
-                                        class="rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-medium text-rose-700 shadow-sm hover:bg-rose-100"
-                                        @onclick="@(() => OnDelete.InvokeAsync(item.Id))">
-                                    Eliminar
-                                </button>
+                                @if (CanEdit)
+                                {
+                                    <button type="button"
+                                            class="rounded-lg bg-[#1a2b2b] px-2.5 py-1 text-[11px] font-medium text-white shadow-sm hover:bg-[#122020]"
+                                            @onclick="@(() => OnEdit.InvokeAsync(item.Id))">
+                                        Editar
+                                    </button>
+                                }
                             </div>
                         </td>
                     </tr>
@@ -139,5 +136,5 @@
     [Parameter] public IEnumerable<ArticleListItemDto> Items { get; set; } = Enumerable.Empty<ArticleListItemDto>();
     [Parameter] public EventCallback<ArticleListItemDto> OnViewMore { get; set; }
     [Parameter] public EventCallback<int> OnEdit { get; set; }
-    [Parameter] public EventCallback<int> OnDelete { get; set; }
+    [Parameter] public bool CanEdit { get; set; }
 }

@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http.Json;
+using tesisproject.frontend.Services.Errors;
 using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.DTOs.Auth;
 
@@ -63,7 +64,11 @@ public class AuthClient : IAuthClient
             return null;
         }
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(await UserFacingErrorMapper.FromHttpResponseAsync(response, "No pude validar tu sesión. Inicia sesión nuevamente.", ct));
+        }
+
         return await response.Content.ReadFromJsonAsync<AuthMeResponse>(cancellationToken: ct);
     }
 }

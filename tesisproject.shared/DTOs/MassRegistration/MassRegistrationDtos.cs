@@ -110,4 +110,10 @@ namespace tesisproject.shared.DTOs.MassRegistration
         public RegistrationMatrixDetailDto Matrix { get; set; } = new();
         public BulkImportActionResultDto? BatchResult { get; set; }
     }
+
+    public class RegistrationMatrixDeleteResultDto
+    {
+        public bool Deleted { get; set; }
+        public string Message { get; set; } = string.Empty;
+    }
 }

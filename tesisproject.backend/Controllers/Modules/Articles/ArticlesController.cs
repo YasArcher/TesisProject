@@ -17,7 +17,7 @@ using tesisproject.shared.DTOs.Articles;
 namespace tesisproject.backend.Controllers
 {
     [ApiController]
-    [Authorize(Policy = AppPolicies.AuthenticatedUser)]
+    [Authorize(Policy = AppPolicies.ArticleListingAccess)]
     [Route("api/[controller]")]
     [Route("api/scientific-production/articles")]
     public class ArticlesController : ControllerBase

@@ -6,7 +6,10 @@
         public short? Year { get; set; }
         public int? VenueId { get; set; }
         public string? SearchTerm { get; set; }
+        public string? PublicationStatusKey { get; set; }
         public byte? PublicationStatusId { get; set; }
+        public int? FacultyId { get; set; }
+        public int? IndexingSourceId { get; set; }
         public int? ResearchLineId { get; set; }
         public int? BroadFieldId { get; set; }
         public int? SpecificFieldId { get; set; }

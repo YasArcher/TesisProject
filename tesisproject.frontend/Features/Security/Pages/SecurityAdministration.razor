@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = "Admin,SecurityAdministrator,RoleManager")]
 @using System.ComponentModel.DataAnnotations
 @using Microsoft.AspNetCore.Authorization
+@using tesisproject.frontend.Services.Errors
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Auth
 @using tesisproject.shared.DTOs.Workflow
@@ -370,6 +371,13 @@
                 <EditForm Model="CreateUserModel" OnValidSubmit="CreateUserAsync">
                     <DataAnnotationsValidator />
                     <ValidationSummary class="text-danger small mb-3" />
+                    @if (!string.IsNullOrWhiteSpace(CreateUserModalError))
+                    {
+                        <div class="security-modal-alert security-modal-alert--error">
+                            <strong>No pude crear la cuenta</strong>
+                            <span>@CreateUserModalError</span>
+                        </div>
+                    }
 
                     <div class="row g-3">
                         <div class="col-12 col-md-6">
@@ -443,6 +451,13 @@
                 <EditForm Model="CreateRoleModel" OnValidSubmit="CreateRoleAsync">
                     <DataAnnotationsValidator />
                     <ValidationSummary class="text-danger small mb-3" />
+                    @if (!string.IsNullOrWhiteSpace(CreateRoleModalError))
+                    {
+                        <div class="security-modal-alert security-modal-alert--error">
+                            <strong>No pude crear el perfil</strong>
+                            <span>@CreateRoleModalError</span>
+                        </div>
+                    }
 
                     <div class="mb-3">
                         <label class="form-label">Nombre interno del perfil</label>
@@ -481,6 +496,8 @@
     private bool IsBusy { get; set; }
     private string? ErrorMessage { get; set; }
     private string? SuccessMessage { get; set; }
+    private string? CreateUserModalError { get; set; }
+    private string? CreateRoleModalError { get; set; }
     private string ActiveSecurityTab { get; set; } = "users";
     private string ActiveRoleGroup { get; set; } = "Perfiles institucionales";
     private string ActivePermissionGroup { get; set; } = "Perfiles institucionales";
@@ -602,7 +619,7 @@
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"No pude cargar la administración de accesos: {ex.Message}";
+            ErrorMessage = $"No pude cargar la administración de accesos: {UserFacingErrorMapper.FromException(ex, "Actualiza la pantalla e inténtalo nuevamente.")}";
         }
         finally
         {
@@ -635,6 +652,7 @@
     {
         ErrorMessage = null;
         SuccessMessage = null;
+        CreateUserModalError = null;
         ShowCreateUserModal = true;
         return Task.CompletedTask;
     }
@@ -643,6 +661,7 @@
     {
         ErrorMessage = null;
         SuccessMessage = null;
+        CreateUserModalError = null;
         IsBusy = true;
         try
         {
@@ -654,13 +673,13 @@
 
             CreateUserModel = new();
             CreateUserRoles.Clear();
-            SuccessMessage = $"La cuenta {user.Email} fue creada correctamente.";
             ShowCreateUserModal = false;
             await ReloadAsync();
+            SuccessMessage = $"La cuenta {user.Email} fue creada correctamente.";
         }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            CreateUserModalError = UserFacingErrorMapper.FromException(ex, "Revisa el correo, la contraseña y los roles seleccionados.");
         }
         finally
         {
@@ -672,6 +691,7 @@
     {
         ErrorMessage = null;
         SuccessMessage = null;
+        CreateRoleModalError = null;
         ShowCreateRoleModal = true;
         return Task.CompletedTask;
     }
@@ -680,18 +700,19 @@
     {
         ErrorMessage = null;
         SuccessMessage = null;
+        CreateRoleModalError = null;
         IsBusy = true;
         try
         {
             var role = await IdentityAdministrationClient.CreateRoleAsync(new CreateIdentityRoleRequest(CreateRoleModel.Name));
             CreateRoleModel = new();
-            SuccessMessage = $"El rol {GetRoleDisplayName(role.Name)} ya quedó disponible para asignación.";
             ShowCreateRoleModal = false;
             await ReloadAsync();
+            SuccessMessage = $"El rol {GetRoleDisplayName(role.Name)} ya quedó disponible para asignación.";
         }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            CreateRoleModalError = UserFacingErrorMapper.FromException(ex, "Revisa el nombre del perfil e inténtalo nuevamente.");
         }
         finally
         {
@@ -714,7 +735,7 @@
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"No pude guardar el modo de registro: {ex.Message}";
+            ErrorMessage = $"No pude guardar el modo de registro: {UserFacingErrorMapper.FromException(ex, "Actualiza la pantalla e inténtalo nuevamente.")}";
         }
         finally
         {
@@ -725,12 +746,14 @@
     private Task CloseCreateUserModalAsync()
     {
         ShowCreateUserModal = false;
+        CreateUserModalError = null;
         return Task.CompletedTask;
     }
 
     private Task CloseCreateRoleModalAsync()
     {
         ShowCreateRoleModal = false;
+        CreateRoleModalError = null;
         return Task.CompletedTask;
     }
 
@@ -806,12 +829,12 @@
                 new UpdateIdentityUserRolesRequest(SelectedUserRoles.ToArray()));
 
             SelectedUser = updated;
-            SuccessMessage = $"Los permisos de {updated.Email} fueron actualizados correctamente.";
             await ReloadAsync();
+            SuccessMessage = $"Los permisos de {updated.Email} fueron actualizados correctamente.";
         }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = UserFacingErrorMapper.FromException(ex, "No pude actualizar los permisos. Revisa la selección e inténtalo nuevamente.");
         }
         finally
         {

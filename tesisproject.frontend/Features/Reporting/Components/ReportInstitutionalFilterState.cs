@@ -5,9 +5,9 @@ namespace tesisproject.frontend.Features.Reporting.Components;
 public static class ReportInstitutionalFilterState
 {
     public static string GetPeriodLabel(InstitutionalReportingFilterDto filter)
-        => string.Equals(filter.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase)
-            ? "Fecha de publicación"
-            : "Fecha de registro";
+        => string.Equals(filter.PeriodDateType, "created", StringComparison.OrdinalIgnoreCase)
+            ? "Fecha de registro"
+            : "Fecha de publicación";
 
     public static IReadOnlyList<(string Label, string Value)> BuildActiveChips(InstitutionalReportingFilterDto filter)
     {
@@ -41,7 +41,7 @@ public static class ReportInstitutionalFilterState
             chips.Add(("ORCID", filter.HasOrcid.Value ? "Con ORCID" : "Sin ORCID"));
         }
 
-        if (string.Equals(filter.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(filter.PeriodDateType))
         {
             AddChip(chips, "Periodo temporal", GetPeriodLabel(filter));
         }

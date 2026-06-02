@@ -15,6 +15,26 @@
 <PageTitle>Perfil</PageTitle>
 
 <div class="app-page-shell profile-page py-4">
+    <AppStatusModal Visible="@IsPasswordSupportModalVisible"
+                    Variant="info"
+                    Eyebrow="Soporte DITIC"
+                    Title="Restablecimiento de contraseña"
+                    Message="Por seguridad institucional, este sistema no restablece contraseñas directamente. Para recuperar o cambiar tu contraseña debes comunicarte con DITIC."
+                    CloseText="Entendido"
+                    OnClose="ClosePasswordSupportModal">
+        <div class="profile-support-modal">
+            <div class="profile-support-modal__row">
+                <span class="profile-support-modal__label">Teléfono de soporte</span>
+                <span class="profile-support-modal__value">032-000-000 ext. 0000</span>
+            </div>
+            <div class="profile-support-modal__row">
+                <span class="profile-support-modal__label">Correo de soporte</span>
+                <span class="profile-support-modal__value">soporte.ditic@uta.edu.ec</span>
+            </div>
+            <div class="profile-support-modal__hint">Estos datos son referenciales y pueden reemplazarse por el canal oficial de la institución.</div>
+        </div>
+    </AppStatusModal>
+
     <section class="profile-hero">
         <div class="profile-hero__inner">
             <div>
@@ -25,11 +45,18 @@
                 </div>
                 <div class="profile-hero__copy">Información básica de tu cuenta institucional y accesos habilitados dentro del sistema.</div>
             </div>
-            <button class="profile-hero__logout"
-                    @onclick="LogoutAsync">
-                <i class="bi bi-box-arrow-right"></i>
-                Cerrar sesión
-            </button>
+            <div class="profile-hero__actions">
+                <button class="profile-hero__support"
+                        @onclick="OpenPasswordSupportModal">
+                    <i class="bi bi-key"></i>
+                    Restablecer contraseña
+                </button>
+                <button class="profile-hero__logout"
+                        @onclick="LogoutAsync">
+                    <i class="bi bi-box-arrow-right"></i>
+                    Cerrar sesión
+                </button>
+            </div>
         </div>
     </section>
 
@@ -136,6 +163,7 @@
     private string AgreementStatus => !IsAuthor ? "No requerido" : HasAcceptedTerms ? "Aceptado" : "Pendiente";
     private string AgreementDate => TermsAcceptedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Sin registro";
     private string AgreementVersion => string.IsNullOrWhiteSpace(TermsVersion) ? "Sin versión" : TermsVersion;
+    private bool IsPasswordSupportModalVisible { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -206,6 +234,17 @@
         }
 
         NavManager.NavigateTo("/login", forceLoad: false);
+    }
+
+    private void OpenPasswordSupportModal()
+    {
+        IsPasswordSupportModalVisible = true;
+    }
+
+    private Task ClosePasswordSupportModal()
+    {
+        IsPasswordSupportModalVisible = false;
+        return Task.CompletedTask;
     }
 
     private static string BuildInitials(string value)

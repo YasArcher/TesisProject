@@ -133,6 +133,50 @@ namespace tesisproject.backend.Services.Implementations
             return await GetMatrixAsync(matrixId, ct);
         }
 
+        public async Task<RegistrationMatrixDeleteResultDto> DeleteMatrixAsync(int matrixId, string? ownerUserId, bool includeAll, CancellationToken ct = default)
+        {
+            var query = _db.RegistrationMatrices
+                .Include(x => x.Columns)
+                .Include(x => x.Rows)
+                    .ThenInclude(x => x.Cells)
+                .AsQueryable();
+
+            if (!includeAll)
+            {
+                var normalizedOwner = NormalizeReference(ownerUserId);
+                if (string.IsNullOrWhiteSpace(normalizedOwner))
+                {
+                    return new RegistrationMatrixDeleteResultDto { Deleted = false, Message = "No se encontró la matriz solicitada." };
+                }
+
+                query = query.Where(x => x.CreatedByUserId == normalizedOwner);
+            }
+
+            var matrix = await query.FirstOrDefaultAsync(x => x.RegistrationMatrixId == matrixId, ct);
+            if (matrix is null)
+            {
+                return new RegistrationMatrixDeleteResultDto { Deleted = false, Message = "No se encontró la matriz solicitada." };
+            }
+
+            if (matrix.LastImportBatchId.HasValue || !matrix.Status.Equals("Draft", StringComparison.OrdinalIgnoreCase))
+            {
+                return new RegistrationMatrixDeleteResultDto
+                {
+                    Deleted = false,
+                    Message = "Solo se pueden eliminar matrices en borrador que todavía no fueron enviadas a revisión."
+                };
+            }
+
+            _db.RegistrationMatrices.Remove(matrix);
+            await _db.SaveChangesAsync(ct);
+
+            return new RegistrationMatrixDeleteResultDto
+            {
+                Deleted = true,
+                Message = "La matriz en borrador fue eliminada correctamente."
+            };
+        }
+
         public async Task<RegistrationMatrixDetailDto?> AddColumnsAsync(int matrixId, AddRegistrationMatrixColumnsRequest request, CancellationToken ct = default)
         {
             var exists = await _db.RegistrationMatrices.AnyAsync(x => x.RegistrationMatrixId == matrixId, ct);
@@ -360,6 +404,7 @@ namespace tesisproject.backend.Services.Implementations
                 .AsNoTracking()
                 .Where(x => normalizedIds.Contains(x.FieldId))
                 .Where(x => x.EntityName == "Article" || x.EntityName == "ArticleParticipant")
+                .Where(x => x.IsActive && x.IsVisible)
                 .ToListAsync(ct);
 
             var nextOrder = existingColumns.Count == 0 ? 1 : existingColumns.Max(x => x.DisplayOrder) + 1;

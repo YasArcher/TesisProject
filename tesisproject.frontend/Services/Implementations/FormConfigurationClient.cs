@@ -82,6 +82,9 @@ namespace tesisproject.frontend.Services.Implementations
         public Task<FieldCatalogItemDto?> UpdateFieldAsync(int fieldId, UpdateFieldCatalogRequest request, CancellationToken ct = default)
             => _api.PutAsync<UpdateFieldCatalogRequest, FieldCatalogItemDto>($"api/config/fields/{fieldId}", request, ct);
 
+        public Task DeleteFieldAsync(int fieldId, CancellationToken ct = default)
+            => _api.DeleteAsync($"api/config/fields/{fieldId}", ct);
+
         public Task<FormFieldAdminDto?> AddFieldToFormAsync(int formId, AddFieldToFormRequest request, CancellationToken ct = default)
             => _api.PostAsync<AddFieldToFormRequest, FormFieldAdminDto>($"api/config/forms/{formId}/fields", request, ct);
 
@@ -99,6 +102,9 @@ namespace tesisproject.frontend.Services.Implementations
 
         public Task<CatalogAdminItemDto?> UpdateAdminCatalogItemAsync(string catalogKey, int id, UpsertCatalogItemRequest request, CancellationToken ct = default)
             => _api.PutAsync<UpsertCatalogItemRequest, CatalogAdminItemDto>($"api/catalogs/admin/{Uri.EscapeDataString(catalogKey)}/{id}", request, ct);
+
+        public Task DeleteAdminCatalogItemAsync(string catalogKey, int id, CancellationToken ct = default)
+            => _api.DeleteAsync($"api/catalogs/admin/{Uri.EscapeDataString(catalogKey)}/{id}", ct);
 
         public async Task<List<DynamicFieldOptionDto>> GetFieldOptionsAsync(int fieldId, CancellationToken ct = default)
         {

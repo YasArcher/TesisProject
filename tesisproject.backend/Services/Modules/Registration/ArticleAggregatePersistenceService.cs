@@ -116,16 +116,13 @@ namespace tesisproject.backend.Services.Implementations
             if (form is not null)
             {
                 return form.Fields
-                    .Where(x => x.Field is not null && x.Field.IsActive && x.IsVisible && x.IsEditable)
+                    .Where(x => x.Field is not null && x.Field.IsActive && x.Field.IsVisible && x.Field.IsEditable)
                     .Where(x => !string.Equals(x.Field!.FieldKey, "VenueId", StringComparison.OrdinalIgnoreCase))
                     .OrderBy(x => x.DisplayOrder)
                     .ThenBy(x => x.FieldId)
                     .Select(x =>
                     {
                         var field = x.Field!;
-                        field.IsRequired = x.IsRequired;
-                        field.IsVisible = x.IsVisible;
-                        field.IsEditable = x.IsEditable;
                         return field;
                     })
                     .ToList();

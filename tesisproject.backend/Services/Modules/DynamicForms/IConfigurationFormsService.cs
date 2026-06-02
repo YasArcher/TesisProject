@@ -20,6 +20,7 @@ namespace tesisproject.backend.Services.Interfaces
         Task<bool> DeleteFormAsync(int formId, CancellationToken ct = default);
         Task<FieldCatalogItemDto> CreateDynamicFieldAsync(CreateDynamicFieldRequest request, CancellationToken ct = default);
         Task<FieldCatalogItemDto?> UpdateFieldAsync(int fieldId, UpdateFieldCatalogRequest request, CancellationToken ct = default);
+        Task<bool> DeleteFieldAsync(int fieldId, CancellationToken ct = default);
         Task<FormFieldAdminDto> AddFieldToFormAsync(int formId, AddFieldToFormRequest request, CancellationToken ct = default);
         Task<FormFieldAdminDto?> UpdateFormFieldAsync(int formId, int formFieldId, UpdateFormFieldRequest request, CancellationToken ct = default);
         Task<bool> RemoveFormFieldAsync(int formId, int formFieldId, CancellationToken ct = default);

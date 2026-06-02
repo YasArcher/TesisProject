@@ -196,7 +196,7 @@ public sealed class ReportingController : ControllerBase
                 ct);
             return StatusCode(StatusCodes.Status500InternalServerError, new
             {
-                message = $"No fue posible ejecutar la actualización de reportería: {ex.Message}"
+                message = "No fue posible ejecutar la actualización de reportería. Intenta nuevamente y, si el problema continúa, solicita revisión técnica."
             });
         }
     }

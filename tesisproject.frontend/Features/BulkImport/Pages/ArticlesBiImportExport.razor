@@ -112,13 +112,21 @@
                                      RecentBatchesCount="@RecentBatches.Count" />
         }
 
+        @if (!IsReviewStagingMode && !HasActiveBulkImportForms)
+        {
+            <AppAlertBanner Class="mb-5"
+                            Variant="warning"
+                            Title="Carga masiva en mantenimiento"
+                            Message="@BulkImportFormMaintenanceMessage" />
+        }
+
         @if (IsReviewStagingMode && CurrentBatch is null)
         {
             <AppEmptyState Title="@(CurrentReviewContext?.EmptySelectionTitle ?? "Sin envío seleccionado")"
                            Message="@(CurrentReviewContext?.EmptySelectionMessage ?? "Abre este staging desde la bandeja de revisión para cargar el lote que necesita corrección.")" />
         }
 
-        @if (!IsReviewStagingMode)
+        @if (!IsReviewStagingMode && HasActiveBulkImportForms)
         {
         <div class="grid grid-cols-1 gap-6 2xl:grid-cols-[1.15fr_0.85fr]">
             @if (!IsReviewStagingMode)
@@ -659,6 +667,25 @@
     private bool HasPendingAction => PendingAction != PendingBulkAction.None;
     private bool IsBatchBusy => IsUploading || IsOpeningBatch || IsValidatingBatch || IsProcessingBatch;
     private bool CanSaveAndMoveNext => SelectedPreviewRow is not null && GetNextErrorRow() is not null;
+    private bool HasActiveBulkImportForms => ArticleForm is not null && ParticipantForm is not null;
+    private string BulkImportFormMaintenanceMessage
+    {
+        get
+        {
+            var missing = new List<string>();
+            if (ArticleForm is null)
+            {
+                missing.Add("formulario de artículos");
+            }
+
+            if (ParticipantForm is null)
+            {
+                missing.Add("formulario de participantes");
+            }
+
+            return $"No existe {string.Join(" ni ", missing)} activo. Activa los formularios desde Configuración para generar plantillas y cargar archivos sin inconsistencias.";
+        }
+    }
 
     private IEnumerable<FieldCatalogItemDto> FilteredArticleFields => ArticleFields.Where(field => Matches(field, ArticleFieldSearchTerm));
     private IEnumerable<FieldCatalogItemDto> FilteredParticipantFields => ParticipantFields.Where(field => Matches(field, ParticipantFieldSearchTerm));
@@ -902,8 +929,8 @@
 
             ArticleFields = await FormConfigurationClient.GetFieldsAsync("Article");
             ParticipantFields = await FormConfigurationClient.GetFieldsAsync("ArticleParticipant");
-            ArticleForm = await FormConfigurationClient.GetResolvedFormAsync("ArticleManualForm");
-            ParticipantForm = await FormConfigurationClient.GetResolvedFormAsync("ArticleParticipantForm");
+            ArticleForm = await TryGetActiveFormAsync("Article", "ArticleManualForm");
+            ParticipantForm = await TryGetActiveFormAsync("ArticleParticipant", "ArticleParticipantForm");
             await UseActiveFormsAsync();
             if (!IsReviewStagingMode)
             {
@@ -919,6 +946,18 @@
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    private async Task<ResolvedFormDto?> TryGetActiveFormAsync(string entityName, string preferredFormKey)
+    {
+        try
+        {
+            return await FormConfigurationClient.GetActiveResolvedFormAsync(entityName, preferredFormKey);
+        }
+        catch
+        {
+            return null;
         }
     }
 
@@ -2604,10 +2643,15 @@
                 await ProcessCurrentBatchAsync();
                 break;
             case PendingBulkAction.FinishCorrection:
-                NavManager.NavigateTo("/management/workflow-review");
+                NavManager.NavigateTo(GetWorkflowReturnUrl());
                 break;
         }
     }
+
+    private string GetWorkflowReturnUrl()
+        => IsAuthorCorrectionStage || NavManager.Uri.Contains("/scientific-production/", StringComparison.OrdinalIgnoreCase)
+            ? "/scientific-production/workflow-review"
+            : "/management/workflow-review";
 
     private string GetCurrentStageLabel()
     {

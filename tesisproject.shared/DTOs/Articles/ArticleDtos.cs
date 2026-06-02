@@ -79,6 +79,18 @@ namespace tesisproject.shared.DTOs.Articles
 
         public List<ArticleIndexingDto>? Indexings { get; set; }
         public List<ArticleParticipantDto>? Participants { get; set; }
+        public List<ArticleDynamicFieldValueDto> DynamicFields { get; set; } = new();
+    }
+
+    public class ArticleDynamicFieldValueDto
+    {
+        public int FieldId { get; set; }
+        public string FieldKey { get; set; } = string.Empty;
+        public string FieldLabel { get; set; } = string.Empty;
+        public string DataType { get; set; } = string.Empty;
+        public string? HelpText { get; set; }
+        public bool IsFilterable { get; set; }
+        public string? DisplayValue { get; set; }
     }
 
 

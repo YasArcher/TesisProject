@@ -17,11 +17,13 @@ namespace tesisproject.frontend.Services.Interfaces
         Task DeleteFormAsync(int formId, CancellationToken ct = default);
         Task<FieldCatalogItemDto?> CreateDynamicFieldAsync(CreateDynamicFieldRequest request, CancellationToken ct = default);
         Task<FieldCatalogItemDto?> UpdateFieldAsync(int fieldId, UpdateFieldCatalogRequest request, CancellationToken ct = default);
+        Task DeleteFieldAsync(int fieldId, CancellationToken ct = default);
         Task<FormFieldAdminDto?> AddFieldToFormAsync(int formId, AddFieldToFormRequest request, CancellationToken ct = default);
         Task<FormFieldAdminDto?> UpdateFormFieldAsync(int formId, int formFieldId, UpdateFormFieldRequest request, CancellationToken ct = default);
         Task<List<CatalogAdminItemDto>> GetAdminCatalogAsync(string catalogKey, CancellationToken ct = default);
         Task<CatalogAdminItemDto?> CreateAdminCatalogItemAsync(string catalogKey, UpsertCatalogItemRequest request, CancellationToken ct = default);
         Task<CatalogAdminItemDto?> UpdateAdminCatalogItemAsync(string catalogKey, int id, UpsertCatalogItemRequest request, CancellationToken ct = default);
+        Task DeleteAdminCatalogItemAsync(string catalogKey, int id, CancellationToken ct = default);
         Task<List<DynamicFieldOptionDto>> GetFieldOptionsAsync(int fieldId, CancellationToken ct = default);
         Task<DynamicFieldOptionDto?> CreateFieldOptionAsync(int fieldId, CreateDynamicFieldOptionRequest request, CancellationToken ct = default);
         Task<DynamicFieldOptionDto?> UpdateFieldOptionAsync(int fieldId, int optionId, UpdateDynamicFieldOptionRequest request, CancellationToken ct = default);

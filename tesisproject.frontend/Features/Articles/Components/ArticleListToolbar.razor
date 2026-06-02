@@ -38,7 +38,7 @@
             <button type="button"
                     class="@ViewToggleClass(true)"
                     @onclick="@(() => ChangeView(true))">
-                Cards
+                Resumen
             </button>
             <button type="button"
                     class="@ViewToggleClass(false)"
@@ -55,13 +55,15 @@
             Refrescar
         </button>
 
-        <!-- Botón Nuevo -->
-        <button type="button"
-                class="rounded-xl bg-[#800909] px-4 py-2 text-xs md:text-sm font-semibold text-white shadow-sm hover:bg-[#661111] disabled:opacity-60"
-                disabled="@IsBusy"
-                @onclick="OnNew">
-            Nuevo Registro
-        </button>
+        @if (CanCreate)
+        {
+            <button type="button"
+                    class="rounded-xl bg-[#800909] px-4 py-2 text-xs md:text-sm font-semibold text-white shadow-sm hover:bg-[#661111] disabled:opacity-60"
+                    disabled="@IsBusy"
+                    @onclick="OnNew">
+                Nuevo registro
+            </button>
+        }
     </div>
 </div>
 
@@ -79,6 +81,7 @@
     [Parameter] public EventCallback OnNew { get; set; }
 
     [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public bool CanCreate { get; set; } = true;
     [Parameter] public string SearchPlaceholder { get; set; } = "Buscar…";
 
     private async Task OnSearchChanged(ChangeEventArgs e)

@@ -81,9 +81,9 @@ namespace tesisproject.backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Problem(title: "No pude enviar el artículo a revisión.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+                return Problem(title: "No pude enviar el artículo a revisión.", detail: "La operación no pudo completarse. Revisa los datos e intenta nuevamente.", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 

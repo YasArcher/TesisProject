@@ -1,37 +1,50 @@
 @using tesisproject.shared.DTOs.Configuration
 
-<div class="mb-6 rounded-[1.8rem] border border-[#cfe0e4] bg-[radial-gradient(circle_at_top_left,_rgba(18,52,59,0.08),_transparent_35%),linear-gradient(135deg,#eef6f7_0%,#ffffff_55%,#fff6ea_100%)] p-4 shadow-sm">
-    <div class="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <div class="rounded-2xl border border-[#d9e5e8] bg-white/90 px-4 py-3 shadow-sm">
-            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Formularios</div>
-            <div class="mt-1 text-lg font-black text-[#12343b]">@FormsCount</div>
-            <div class="text-xs text-slate-500">@ActiveFormsCount activos</div>
+<div class="configuration-overview mb-5">
+    <div class="configuration-overview__metrics">
+        <div class="configuration-overview__metric">
+            <i class="bi bi-ui-checks-grid"></i>
+            <div>
+                <div class="configuration-overview__label">Formularios</div>
+                <div class="configuration-overview__value">@FormsCount</div>
+                <div class="configuration-overview__helper">@ActiveFormsCount activos</div>
+            </div>
         </div>
-        <div class="rounded-2xl border border-[#d9e5e8] bg-white/90 px-4 py-3 shadow-sm">
-            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Campos</div>
-            <div class="mt-1 text-lg font-black text-[#12343b]">@FieldsCount</div>
-            <div class="text-xs text-slate-500">@DynamicFieldsCount dinámicos</div>
+        <div class="configuration-overview__metric">
+            <i class="bi bi-input-cursor-text"></i>
+            <div>
+                <div class="configuration-overview__label">Campos</div>
+                <div class="configuration-overview__value">@FieldsCount</div>
+                <div class="configuration-overview__helper">@DynamicFieldsCount dinámicos</div>
+            </div>
         </div>
-        <div class="rounded-2xl border border-[#e8d2ac] bg-[#fffaf2] px-4 py-3 shadow-sm">
-            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Asignaciones</div>
-            <div class="mt-1 text-lg font-black text-[#8b5a16]">@SelectedFormFieldsCount</div>
-            <div class="text-xs text-slate-500">del formulario actual</div>
+        <div class="configuration-overview__metric configuration-overview__metric--warm">
+            <i class="bi bi-diagram-3"></i>
+            <div>
+                <div class="configuration-overview__label">Asignaciones</div>
+                <div class="configuration-overview__value">@SelectedFormFieldsCount</div>
+                <div class="configuration-overview__helper">formulario actual</div>
+            </div>
         </div>
-        <div class="rounded-2xl border border-[#ead8bd] bg-[#fffdf8] px-4 py-3 shadow-sm">
-            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500">Catálogo activo</div>
-            <div class="mt-1 truncate text-sm font-black text-[#c17c2f]">@SelectedCatalogLabel</div>
-            <div class="text-xs text-slate-500">@CatalogItemsCount elementos</div>
+        <div class="configuration-overview__metric configuration-overview__metric--catalog">
+            <i class="bi bi-tags"></i>
+            <div class="min-w-0">
+                <div class="configuration-overview__label">Catálogo activo</div>
+                <div class="configuration-overview__value configuration-overview__value--text">@SelectedCatalogLabel</div>
+                <div class="configuration-overview__helper">@CatalogItemsCount elementos</div>
+            </div>
         </div>
     </div>
 
-    <div class="mt-4 rounded-2xl border border-[#d7e1e4] bg-white/80 px-3 py-3 shadow-sm">
-        <div class="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Navegación del módulo</div>
-        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:flex-wrap">
+    <div class="configuration-tabs">
+        <div class="configuration-tabs__label">Vista de configuración</div>
+        <div class="configuration-tabs__track">
             @foreach (var tab in Tabs)
             {
                 <button type="button"
-                        class="@($"{GetTabButtonClass(tab.Key)} w-full xl:w-auto")"
+                        class="@GetTabButtonClass(tab.Key)"
                         @onclick="() => OnTabChange.InvokeAsync(tab.Key)">
+                    <i class="@tab.Icon"></i>
                     @tab.Label
                 </button>
             }
@@ -50,16 +63,16 @@
     [Parameter] public string ActiveTab { get; set; } = "forms";
     [Parameter] public EventCallback<string> OnTabChange { get; set; }
 
-    private static readonly IReadOnlyList<(string Key, string Label)> Tabs =
+    private static readonly IReadOnlyList<(string Key, string Label, string Icon)> Tabs =
     [
-        ("forms", "Formularios"),
-        ("fields", "Campos"),
-        ("catalogs", "Catálogos"),
-        ("options", "Opciones dinámicas")
+        ("forms", "Formularios", "bi bi-ui-checks-grid"),
+        ("fields", "Campos", "bi bi-input-cursor-text"),
+        ("catalogs", "Catálogos", "bi bi-tags"),
+        ("options", "Opciones", "bi bi-list-check")
     ];
 
     private string GetTabButtonClass(string tabName)
         => ActiveTab == tabName
-            ? "rounded-full bg-[#12343b] px-4 py-2 text-sm font-semibold text-white shadow-sm"
-            : "rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50";
+            ? "configuration-tabs__button configuration-tabs__button--active"
+            : "configuration-tabs__button";
 }

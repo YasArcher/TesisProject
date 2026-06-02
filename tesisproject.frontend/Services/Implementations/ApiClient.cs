@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using tesisproject.frontend.Services.Errors;
 using tesisproject.frontend.Services.Interfaces;
 
 namespace tesisproject.frontend.Services.Implementations
@@ -108,7 +109,7 @@ namespace tesisproject.frontend.Services.Implementations
         public string? RawBody { get; }
 
         public ApiException(HttpStatusCode status, string? body, ApiProblem? problem)
-            : base(BuildMessage(status, problem, body))
+            : base(UserFacingErrorMapper.FromRawHttpError(status, BuildMessage(status, problem, body), "No pude completar la operación. Revisa los datos e inténtalo nuevamente."))
         {
             StatusCode = status;
             Title = problem?.Title;

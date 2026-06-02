@@ -50,6 +50,7 @@ internal static class ExternalApiExplorerPageHelper
                         Doi = entry.TryGetProperty("prism:doi", out var doi) ? doi.GetString() : null,
                         JournalName = entry.TryGetProperty("prism:publicationName", out var journal) ? journal.GetString() : null,
                         PublicationYear = TryExtractYear(entry.TryGetProperty("prism:coverDate", out var coverDate) ? coverDate.GetString() : null),
+                        PublicationDate = entry.TryGetProperty("prism:coverDate", out var coverDateValue) ? coverDateValue.GetString() : null,
                         Authors = entry.TryGetProperty("dc:creator", out var creator) ? creator.GetString() : null
                     })
                     .Where(HasMeaningfulArticleContent)

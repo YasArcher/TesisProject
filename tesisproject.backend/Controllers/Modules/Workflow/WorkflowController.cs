@@ -36,9 +36,9 @@ namespace tesisproject.backend.Controllers
                 var workflow = await _service.GetBatchWorkflowAsync(batchId, ct);
                 return workflow is null ? NotFound() : Ok(workflow);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Problem(title: "No pude cargar el workflow del lote.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+                return Problem(title: "No pude cargar el workflow del lote.", detail: "La operación no pudo completarse. Actualiza la bandeja e intenta nuevamente.", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -55,9 +55,9 @@ namespace tesisproject.backend.Controllers
                 var detail = await _bulkImportService.GetBatchAsync(batchId, previewRows, ct);
                 return detail is null ? NotFound() : Ok(detail);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Problem(title: "No pude abrir la previsualización del lote.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+                return Problem(title: "No pude abrir la previsualización del lote.", detail: "La operación no pudo completarse. Actualiza la bandeja e intenta nuevamente.", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -95,9 +95,9 @@ namespace tesisproject.backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Problem(title: "No pude corregir la fila del envío.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+                return Problem(title: "No pude corregir la fila del envío.", detail: "La corrección no pudo guardarse. Revisa la fila e intenta nuevamente.", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -116,9 +116,9 @@ namespace tesisproject.backend.Controllers
 
                 return Ok(await _service.GetReviewInboxAsync(GetCurrentUserId(), roleNames, take, ct));
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Problem(title: "No pude cargar la bandeja de revisión.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+                return Problem(title: "No pude cargar la bandeja de revisión.", detail: "La operación no pudo completarse. Actualiza la pantalla e intenta nuevamente.", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -129,9 +129,9 @@ namespace tesisproject.backend.Controllers
             {
                 return Ok(await _service.GetAuthorInboxAsync(GetCurrentUserId(), take, ct));
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Problem(title: "No pude cargar la bandeja del autor.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+                return Problem(title: "No pude cargar la bandeja del autor.", detail: "La operación no pudo completarse. Actualiza la pantalla e intenta nuevamente.", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 

@@ -1,4 +1,5 @@
 @using Blazored.LocalStorage
+@using tesisproject.frontend.Services.Errors
 @using tesisproject.frontend.SharedUI
 @using tesisproject.shared.DTOs.Catalogs
 @using tesisproject.shared.DTOs.Configuration
@@ -420,7 +421,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude preparar la matriz del autor", ex.Message);
+            ShowStatus("error", "No pude preparar la matriz del autor", UserFacingErrorMapper.FromException(ex, "Actualiza la pantalla e inténtalo nuevamente."));
         }
         finally
         {
@@ -464,7 +465,7 @@
     private async Task<List<FieldCatalogItemDto>> LoadMatrixFieldsAsync(string entityName, string preferredFormKey, IReadOnlyList<int> allowedIds)
     {
         var allowed = allowedIds.Distinct().ToHashSet();
-        var resolvedForm = await FormConfigurationClient.GetActiveResolvedFormAsync(entityName, preferredFormKey);
+        var resolvedForm = await TryGetActiveFormAsync(entityName, preferredFormKey);
         if (resolvedForm is not null)
         {
             return resolvedForm.Sections
@@ -477,6 +478,18 @@
 
         var fields = await FormConfigurationClient.GetFieldsAsync(entityName);
         return fields.Where(field => allowed.Contains(field.FieldId)).ToList();
+    }
+
+    private async Task<ResolvedFormDto?> TryGetActiveFormAsync(string entityName, string preferredFormKey)
+    {
+        try
+        {
+            return await FormConfigurationClient.GetActiveResolvedFormAsync(entityName, preferredFormKey);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static FieldCatalogItemDto MapResolvedField(ResolvedFormFieldDto field)
@@ -534,7 +547,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude recargar la matriz", ex.Message);
+            ShowStatus("error", "No pude recargar la matriz", UserFacingErrorMapper.FromException(ex, "Actualiza la pantalla e inténtalo nuevamente."));
         }
         finally
         {
@@ -558,7 +571,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude agregar la fila", ex.Message);
+            ShowStatus("error", "No pude agregar la fila", UserFacingErrorMapper.FromException(ex, "Actualiza la matriz e inténtalo nuevamente."));
         }
         finally
         {
@@ -589,7 +602,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude quitar la fila", ex.Message);
+            ShowStatus("error", "No pude quitar la fila", UserFacingErrorMapper.FromException(ex, "Actualiza la matriz e inténtalo nuevamente."));
         }
         finally
         {
@@ -819,7 +832,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude actualizar la celda", ex.Message);
+            ShowStatus("error", "No pude actualizar la celda", UserFacingErrorMapper.FromException(ex, "Revisa el valor ingresado."));
         }
         finally
         {
@@ -935,7 +948,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude enviar la matriz a revisión", ex.Message);
+            ShowStatus("error", "No pude enviar la matriz a revisión", UserFacingErrorMapper.FromException(ex, "Revisa las filas marcadas y vuelve a enviar."));
         }
         finally
         {

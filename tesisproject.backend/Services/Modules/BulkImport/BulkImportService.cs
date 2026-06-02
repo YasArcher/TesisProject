@@ -279,7 +279,7 @@ namespace tesisproject.backend.Services.Implementations
             }
 
             var previewLimit = Math.Max(1, previewRows);
-            var rows = await _db.ImportBatchRows
+            var selectedRows = await _db.ImportBatchRows
                 .AsNoTracking()
                 .Where(x => x.ImportBatchId == batchId)
                 .Where(x => x.RowNumber <= previewLimit
@@ -294,41 +294,90 @@ namespace tesisproject.backend.Services.Implementations
                     TargetArticleId = x.TargetArticleId,
                     TargetParticipantId = x.TargetParticipantId,
                     RawJson = x.RawJson,
-                    Cells = x.Values
-                        .OrderBy(v => v.Field != null ? v.Field.EntityName : string.Empty)
-                        .ThenBy(v => v.Field != null ? v.Field.DisplayOrder : int.MaxValue)
-                        .ThenBy(v => v.FieldId)
-                        .Select(v => new BulkImportRowCellDto
-                        {
-                            ImportBatchRowValueId = v.ImportBatchRowValueId,
-                            FieldId = v.FieldId,
-                            EntityName = v.Field != null ? v.Field.EntityName : string.Empty,
-                            FieldKey = v.Field != null ? v.Field.FieldKey : string.Empty,
-                            FieldLabel = v.Field != null ? v.Field.FieldLabel : string.Empty,
-                            RawValue = v.RawValue,
-                            NormalizedValue = v.NormalizedValue,
-                            ValueType = v.ValueType,
-                            IsValid = v.IsValid,
-                            ValidationMessage = v.ValidationMessage
-                        })
-                        .ToList(),
-                    Errors = x.Errors
-                        .OrderBy(e => e.ImportBatchErrorId)
-                        .Select(e => new BulkImportErrorDto
-                        {
-                            ImportBatchErrorId = e.ImportBatchErrorId,
-                            ImportBatchRowId = e.ImportBatchRowId,
-                            FieldId = e.FieldId,
-                            FieldKey = e.Field != null ? e.Field.FieldKey : null,
-                            FieldLabel = e.Field != null ? e.Field.FieldLabel : null,
-                            ErrorCode = e.ErrorCode,
-                            ErrorMessage = e.ErrorMessage,
-                            Severity = e.Severity,
-                            CreatedAt = e.CreatedAt
-                        })
-                        .ToList()
+                    Cells = new List<BulkImportRowCellDto>(),
+                    Errors = new List<BulkImportErrorDto>()
                 })
                 .ToListAsync(ct);
+
+            if (selectedRows.Count > 0)
+            {
+                var rowCells = await _db.ImportBatchRowValues
+                    .AsNoTracking()
+                    .Where(x => x.Row != null
+                        && x.Row.ImportBatchId == batchId
+                        && (x.Row.RowNumber <= previewLimit
+                            || x.Row.RowStatus == "Error"
+                            || x.Row.Errors.Any(e => e.Severity == "Error")))
+                    .OrderBy(x => x.Row!.RowNumber)
+                    .ThenBy(x => x.Field != null ? x.Field.EntityName : string.Empty)
+                    .ThenBy(x => x.Field != null ? x.Field.DisplayOrder : int.MaxValue)
+                    .ThenBy(x => x.FieldId)
+                    .Select(x => new
+                    {
+                        x.ImportBatchRowId,
+                        Cell = new BulkImportRowCellDto
+                        {
+                            ImportBatchRowValueId = x.ImportBatchRowValueId,
+                            FieldId = x.FieldId,
+                            EntityName = x.Field != null ? x.Field.EntityName : string.Empty,
+                            FieldKey = x.Field != null ? x.Field.FieldKey : string.Empty,
+                            FieldLabel = x.Field != null ? x.Field.FieldLabel : string.Empty,
+                            RawValue = x.RawValue,
+                            NormalizedValue = x.NormalizedValue,
+                            ValueType = x.ValueType,
+                            IsValid = x.IsValid,
+                            ValidationMessage = x.ValidationMessage
+                        }
+                    })
+                    .ToListAsync(ct);
+
+                var rowErrors = await _db.ImportBatchErrors
+                    .AsNoTracking()
+                    .Where(x => x.ImportBatchId == batchId
+                        && x.ImportBatchRowId.HasValue
+                        && x.Row != null
+                        && (x.Row.RowNumber <= previewLimit
+                            || x.Row.RowStatus == "Error"
+                            || x.Row.Errors.Any(e => e.Severity == "Error")))
+                    .OrderBy(x => x.ImportBatchErrorId)
+                    .Select(x => new
+                    {
+                        ImportBatchRowId = x.ImportBatchRowId.GetValueOrDefault(),
+                        Error = new BulkImportErrorDto
+                        {
+                            ImportBatchErrorId = x.ImportBatchErrorId,
+                            ImportBatchRowId = x.ImportBatchRowId.GetValueOrDefault(),
+                            FieldId = x.FieldId,
+                            FieldKey = x.Field != null ? x.Field.FieldKey : null,
+                            FieldLabel = x.Field != null ? x.Field.FieldLabel : null,
+                            ErrorCode = x.ErrorCode,
+                            ErrorMessage = x.ErrorMessage,
+                            Severity = x.Severity,
+                            CreatedAt = x.CreatedAt
+                        }
+                    })
+                    .ToListAsync(ct);
+
+                var cellsByRow = rowCells
+                    .GroupBy(x => x.ImportBatchRowId)
+                    .ToDictionary(x => x.Key, x => x.Select(item => item.Cell).ToList());
+                var errorsByRow = rowErrors
+                    .GroupBy(x => x.ImportBatchRowId)
+                    .ToDictionary(x => x.Key, x => x.Select(item => item.Error).ToList());
+
+                foreach (var row in selectedRows)
+                {
+                    if (cellsByRow.TryGetValue(row.ImportBatchRowId, out var cells))
+                    {
+                        row.Cells = cells;
+                    }
+
+                    if (errorsByRow.TryGetValue(row.ImportBatchRowId, out var rowErrorItems))
+                    {
+                        row.Errors = rowErrorItems;
+                    }
+                }
+            }
 
             var errors = await _db.ImportBatchErrors
                 .AsNoTracking()
@@ -352,7 +401,7 @@ namespace tesisproject.backend.Services.Implementations
             {
                 Summary = MapSummary(batch),
                 Template = await ParseTemplateAsync(batch.Batch.SourceReference, ct),
-                Rows = rows,
+                Rows = selectedRows,
                 Errors = errors
             };
         }
@@ -2115,7 +2164,7 @@ namespace tesisproject.backend.Services.Implementations
                 var formFields = await _db.FormFieldDefinitions
                     .AsNoTracking()
                     .Include(x => x.Field)
-                    .Where(x => x.FormId == activeFormId.Value && x.IsVisible && x.Field != null && x.Field.IsActive)
+                    .Where(x => x.FormId == activeFormId.Value && x.Field != null && x.Field.IsActive && x.Field.IsVisible)
                     .Where(x => entityName != "Article" || x.Field!.FieldKey != "VenueId")
                     .OrderBy(x => x.DisplayOrder)
                     .ThenBy(x => x.FieldId)
@@ -2984,7 +3033,7 @@ namespace tesisproject.backend.Services.Implementations
                     .AsNoTracking()
                     .Include(x => x.Field)
                         .ThenInclude(x => x!.Options)
-                    .Where(x => x.FormId == activeFormId.Value && x.IsVisible && x.IsRequired && x.Field != null && x.Field.IsActive)
+                    .Where(x => x.FormId == activeFormId.Value && x.Field != null && x.Field.IsActive && x.Field.IsVisible && x.Field.IsRequired)
                     .Select(x => x.Field!)
                     .ToListAsync(ct);
 

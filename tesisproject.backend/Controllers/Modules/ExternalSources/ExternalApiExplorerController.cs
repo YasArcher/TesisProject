@@ -38,9 +38,9 @@ namespace tesisproject.backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (HttpRequestException ex)
+            catch (HttpRequestException)
             {
-                return BadRequest(new { message = $"No pude consultar la API externa: {ex.Message}" });
+                return BadRequest(new { message = "No pude consultar la API externa. Verifica la conexión, credenciales o intenta nuevamente en unos minutos." });
             }
         }
 
@@ -55,9 +55,9 @@ namespace tesisproject.backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (HttpRequestException ex)
+            catch (HttpRequestException)
             {
-                return BadRequest(new { message = $"No pude enriquecer el artículo desde la API externa: {ex.Message}" });
+                return BadRequest(new { message = "No pude enriquecer el artículo desde la API externa. Intenta nuevamente en unos minutos." });
             }
         }
 
@@ -126,9 +126,9 @@ namespace tesisproject.backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (HttpRequestException ex)
+            catch (HttpRequestException)
             {
-                return BadRequest(new { message = $"No pude consultar Scopus para crear el staging institucional: {ex.Message}" });
+                return BadRequest(new { message = "No pude consultar Scopus para crear el staging institucional. Verifica la conexión o intenta nuevamente en unos minutos." });
             }
         }
 

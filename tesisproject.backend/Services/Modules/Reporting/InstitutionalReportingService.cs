@@ -103,7 +103,10 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         var cacheKey = ReportingCacheKeyBuilder.BuildDashboardKey(filter, Volatile.Read(ref _cacheVersion));
         if (_cache.TryGetValue(cacheKey, out InstitutionalReportingDashboardDto? cached) && cached is not null)
         {
-            return cached;
+            if (cached.ScientificProduction.TotalArticles > 0)
+            {
+                return cached;
+            }
         }
 
         var dashboard = await BuildDashboardAsync(filter, ct);
@@ -118,7 +121,10 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         var cacheKey = ReportingCacheKeyBuilder.BuildAuthorKey(filter, Volatile.Read(ref _cacheVersion));
         if (_cache.TryGetValue(cacheKey, out AuthorReportingDashboardDto? cached) && cached is not null)
         {
-            return cached;
+            if (cached.Kpis.TotalAuthors > 0 || cached.Kpis.TotalArticles > 0)
+            {
+                return cached;
+            }
         }
 
         var dashboard = await BuildAuthorDashboardAsync(filter, ct);
@@ -132,6 +138,8 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
     {
         var dashboardWatch = Stopwatch.StartNew();
         var stepWatch = Stopwatch.StartNew();
+        await EnsurePublicationDateReportingModelAsync(ct);
+        LogDashboardStep("modelo DW", stepWatch);
         var health = await GetHealthAsync(ct);
         LogDashboardStep("salud DW", stepWatch);
         var detailsQuery = ReportingFilterApplicator.ApplyArticleDetailFilters(
@@ -1363,6 +1371,7 @@ public sealed class InstitutionalReportingService : IInstitutionalReportingServi
         {
             _db.Database.SetCommandTimeout(600);
             await EnsureDateDimensionCoversOltpDatesAsync(ct);
+            await EnsurePublicationDateReportingModelAsync(ct);
             await _db.Database.ExecuteSqlRawAsync("EXEC etl.sp_RunFullLoad;", ct);
             Interlocked.Increment(ref _cacheVersion);
         }
@@ -1427,6 +1436,167 @@ EXEC etl.sp_PopulateDimDate @StartDate = @MinDate, @EndDate = @MaxDate;
 """;
 
         await _db.Database.ExecuteSqlRawAsync(sql, ct);
+    }
+
+    private async Task EnsurePublicationDateReportingModelAsync(CancellationToken ct)
+    {
+        var oltpDatabase = QuoteSqlIdentifier(_oltpDatabaseName);
+        var statements = new[]
+        {
+            """
+CREATE OR ALTER VIEW dw.vw_Articles_Detail
+AS
+SELECT
+    f.FactArticlePublicationId,
+    da.ArticleKey,
+    da.ArticleId_OLTP,
+    da.Title,
+    da.Doi,
+    da.ArticleYear,
+    da.PublicationUrl,
+    da.IsOpenAccess,
+    da.IsProjectResult,
+    da.HasInterculturalComponent,
+    dv.Name AS VenueName,
+    dv.VenueType,
+    dps.Name AS PublicationStatus,
+    dat.Name AS AcademicTerm,
+    drl.Name AS ResearchLine,
+    CAST(NULL AS nvarchar(250)) AS FacultyName,
+    df.BroadFieldName,
+    df.SpecificFieldName,
+    df.DetailedFieldName,
+    dc.FullDate AS CreatedDate,
+    dp.FullDate AS PublishedDate,
+    f.PageCount,
+    f.ArticleCount
+FROM dw.FactArticlePublication f
+INNER JOIN dw.DimArticle da
+    ON da.ArticleKey = f.ArticleKey
+LEFT JOIN dw.DimVenue dv
+    ON dv.VenueKey = f.VenueKey
+LEFT JOIN dw.DimPublicationStatus dps
+    ON dps.PublicationStatusKey = f.PublicationStatusKey
+LEFT JOIN dw.DimAcademicTerm dat
+    ON dat.AcademicTermKey = f.AcademicTermKey
+LEFT JOIN dw.DimResearchLine drl
+    ON drl.ResearchLineKey = f.ResearchLineKey
+LEFT JOIN dw.DimField df
+    ON df.FieldHierarchyKey = f.FieldHierarchyKey
+LEFT JOIN dw.DimDate dc
+    ON dc.DateKey = f.CreatedDateKey
+LEFT JOIN dw.DimDate dp
+    ON dp.DateKey = f.PublishedDateKey;
+""",
+            """
+CREATE OR ALTER VIEW dw.vw_Articles_ByYear
+AS
+SELECT
+    d.YearNumber,
+    COUNT(*) AS TotalArticles,
+    SUM(CASE WHEN f.IsOpenAccessFlag = 1 THEN 1 ELSE 0 END) AS OpenAccessArticles,
+    SUM(CASE WHEN f.IsProjectResultFlag = 1 THEN 1 ELSE 0 END) AS ProjectResultArticles,
+    SUM(CASE WHEN f.HasInterculturalFlag = 1 THEN 1 ELSE 0 END) AS InterculturalArticles
+FROM dw.FactArticlePublication f
+INNER JOIN dw.DimDate d
+    ON d.DateKey = COALESCE(f.PublishedDateKey, f.CreatedDateKey)
+GROUP BY d.YearNumber;
+""",
+            """
+CREATE OR ALTER VIEW dw.vw_OpenAccess_ByYear
+AS
+SELECT
+    d.YearNumber,
+    SUM(CASE WHEN f.IsOpenAccessFlag = 1 THEN 1 ELSE 0 END) AS OpenAccessArticles,
+    SUM(CASE WHEN f.IsOpenAccessFlag = 0 THEN 1 ELSE 0 END) AS NonOpenAccessArticles
+FROM dw.FactArticlePublication f
+INNER JOIN dw.DimDate d
+    ON d.DateKey = COALESCE(f.PublishedDateKey, f.CreatedDateKey)
+GROUP BY d.YearNumber;
+""",
+            $"""
+CREATE OR ALTER PROCEDURE etl.sp_Load_FactArticleAuthor
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    TRUNCATE TABLE dw.FactArticleAuthor;
+
+    INSERT INTO dw.FactArticleAuthor (
+        ArticleKey, AuthorKey, DateKey, ResearchLineKey, FieldHierarchyKey,
+        RegistrationSourceKey, AuthorCount, IsPrimaryAuthorFlag, AuthorOrder
+    )
+    SELECT
+        da.ArticleKey,
+        dau.AuthorKey,
+        etl.fn_DateKey(COALESCE(CAST(a.PublishedAt AS datetime2), ap.CreatedAt)),
+        drl.ResearchLineKey,
+        df.FieldHierarchyKey,
+        drs.RegistrationSourceKey,
+        1,
+        ap.IsPrimaryAuthor,
+        ap.[Index]
+    FROM {oltpDatabase}.dbo.ArticleParticipants ap
+    INNER JOIN {oltpDatabase}.dbo.Articles a ON a.Id = ap.ArticleId
+    INNER JOIN dw.DimArticle da ON da.ArticleId_OLTP = a.Id AND da.IsCurrent = 1
+    INNER JOIN dw.DimAuthor dau ON dau.ArticleParticipantId_OLTP = ap.Id AND dau.IsCurrent = 1
+    LEFT JOIN dw.DimResearchLine drl ON drl.ResearchLineId_OLTP = a.ResearchLineId
+    LEFT JOIN dw.DimField df
+        ON ISNULL(df.BroadFieldId_OLTP,-1)=ISNULL(a.BroadFieldId,-1)
+       AND ISNULL(df.SpecificFieldId_OLTP,-1)=ISNULL(a.SpecificFieldId,-1)
+       AND ISNULL(df.DetailedFieldId_OLTP,-1)=ISNULL(a.DetailedFieldId,-1)
+    OUTER APPLY (
+        SELECT TOP 1 ib.SourceType
+        FROM {oltpDatabase}.dbo.ImportBatchRow ibr
+        INNER JOIN {oltpDatabase}.dbo.ImportBatch ib
+            ON ib.ImportBatchId = ibr.ImportBatchId
+        WHERE ibr.TargetArticleId = a.Id
+        ORDER BY COALESCE(ibr.UpdatedAt, ibr.CreatedAt) DESC
+    ) articleSource
+    LEFT JOIN dw.DimRegistrationSource drs
+        ON drs.SourceCode =
+            CASE
+                WHEN articleSource.SourceType IN (N'API', N'EXTERNAL_API') THEN N'EXTERNAL_API'
+                WHEN articleSource.SourceType IN (N'AUTHOR_SINGLE', N'AUTHOR_INDIVIDUAL') THEN N'AUTHOR_SINGLE'
+                WHEN articleSource.SourceType IN (N'AUTHOR_MATRIX', N'AUTHOR_BULK') THEN N'AUTHOR_MATRIX'
+                WHEN articleSource.SourceType IN (N'ADMIN_BULK') THEN N'ADMIN_BULK'
+                WHEN articleSource.SourceType IN (N'Excel', N'CSV', N'Bulk', N'BULK', N'MASS_IMPORT', N'BULK_IMPORT') THEN N'MASS_IMPORT'
+                WHEN a.ExternalSource IS NOT NULL THEN N'EXTERNAL_API'
+                ELSE N'MANUAL'
+            END;
+END;
+""",
+            $"""
+CREATE OR ALTER PROCEDURE etl.sp_Load_FactArticleIndexing
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    TRUNCATE TABLE dw.FactArticleIndexing;
+
+    INSERT INTO dw.FactArticleIndexing (
+        ArticleKey, IndexingSourceKey, DateKey, IndexingCount
+    )
+    SELECT
+        da.ArticleKey,
+        dis.IndexingSourceKey,
+        etl.fn_DateKey(COALESCE(CAST(a.PublishedAt AS datetime2), a.CreatedAt)),
+        1
+    FROM {oltpDatabase}.dbo.ArticleIndexings ai
+    INNER JOIN {oltpDatabase}.dbo.Articles a
+        ON a.Id = ai.ArticleId
+    INNER JOIN dw.DimArticle da
+        ON da.ArticleId_OLTP = ai.ArticleId AND da.IsCurrent = 1
+    INNER JOIN dw.DimIndexingSource dis
+        ON dis.IndexingSourceId_OLTP = ai.IndexingSourceId;
+END;
+"""
+        };
+
+        foreach (var statement in statements)
+        {
+            await _db.Database.ExecuteSqlRawAsync(statement, ct);
+        }
     }
 
     private async Task<string> BuildMissingDateDiagnosticAsync(CancellationToken ct)
@@ -2403,9 +2573,9 @@ ORDER BY Value;
             chips.Add(("Autoría", "Solo autor principal"));
         }
 
-        chips.Add(("Agrupación temporal", string.Equals(filter.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase)
-            ? "Fecha de publicación"
-            : "Fecha de registro"));
+        chips.Add(("Agrupación temporal", string.Equals(filter.PeriodDateType, "created", StringComparison.OrdinalIgnoreCase)
+            ? "Fecha de registro"
+            : "Fecha de publicación"));
 
         return chips;
     }
@@ -2495,9 +2665,9 @@ ORDER BY Value;
 
     private static Func<ReportingArticleDetailRow, DateTime?> BuildPeriodDateSelector(InstitutionalReportingFilterDto? filter)
     {
-        return string.Equals(filter?.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase)
-            ? x => x.PublishedDate
-            : x => x.CreatedDate;
+        return string.Equals(filter?.PeriodDateType, "created", StringComparison.OrdinalIgnoreCase)
+            ? x => x.CreatedDate
+            : x => x.PublishedDate ?? x.CreatedDate;
     }
 
     private static InstitutionalReportingFilterOptionsDto BuildFilterOptions(
@@ -2810,6 +2980,8 @@ ORDER BY Value;
     {
         var totalWatch = Stopwatch.StartNew();
         var stepWatch = Stopwatch.StartNew();
+        await EnsurePublicationDateReportingModelAsync(ct);
+        LogDashboardStep("autores modelo DW", stepWatch);
         var venueMetrics = await GetCachedListAsync(
             "venue-metrics-by-year",
             LoadVenueMetricsAsync,
@@ -3221,9 +3393,9 @@ ORDER BY Value;
             && DateTime.TryParse($"{filter.ArticleMonth.Trim()}-01", out var monthStart))
         {
             var monthEnd = monthStart.AddMonths(1);
-            query = string.Equals(filter.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase)
-                ? query.Where(x => x.PublishedDate >= monthStart && x.PublishedDate < monthEnd)
-                : query.Where(x => x.CreatedDate >= monthStart && x.CreatedDate < monthEnd);
+            query = string.Equals(filter.PeriodDateType, "created", StringComparison.OrdinalIgnoreCase)
+                ? query.Where(x => x.CreatedDate >= monthStart && x.CreatedDate < monthEnd)
+                : query.Where(x => (x.PublishedDate ?? x.CreatedDate) >= monthStart && (x.PublishedDate ?? x.CreatedDate) < monthEnd);
         }
 
         query = FilterByText(query, filter.AcademicTerm, x => x.AcademicTerm);

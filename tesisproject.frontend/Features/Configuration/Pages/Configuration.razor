@@ -3,6 +3,7 @@
 @attribute [Authorize(Roles = "Admin,Analyst,ConfigurationManager,CatalogManager")]
 @using Blazored.LocalStorage
 @using tesisproject.frontend.Features.Configuration.Components
+@using tesisproject.frontend.Services.Errors
 @using tesisproject.frontend.SharedUI
 @using tesisproject.shared.DTOs.Configuration
 @using tesisproject.shared.Validation
@@ -63,6 +64,17 @@
                                     ActiveTab="@ActiveTab"
                                     OnTabChange="SetActiveTabAsync" />
 
+        @if (ActiveTab == "forms" && HasInactiveRegistrationSurface)
+        {
+            <div class="configuration-maintenance-alert mb-5">
+                <i class="bi bi-exclamation-triangle"></i>
+                <div>
+                    <strong>Registro temporalmente no disponible</strong>
+                    <p>@GetInactiveRegistrationMessage()</p>
+                </div>
+            </div>
+        }
+
         @if (ActiveTab == "forms")
         {
             <div class="grid grid-cols-1 gap-6 xl:grid-cols-[0.8fr_1.5fr]">
@@ -86,6 +98,16 @@
                             }
                             else
                             {
+                                @if (!SelectedForm.IsActive)
+                                {
+                                    <div class="configuration-maintenance-alert configuration-maintenance-alert--compact">
+                                        <i class="bi bi-tools"></i>
+                                        <div>
+                                            <strong>Formulario en mantenimiento</strong>
+                                            <p>Este formulario está desactivado. Mientras no exista un formulario activo para este tipo de registro, los usuarios verán un aviso para esperar soporte o mantenimiento.</p>
+                                        </div>
+                                    </div>
+                                }
                                 <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                                     <input class="rounded-xl border px-3 py-2" @bind="SelectedForm.FormName" />
                                     <label class="inline-flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" @bind="SelectedForm.IsActive" /> Activo</label>
@@ -131,25 +153,32 @@
                                         <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                                             <div class="space-y-2 md:col-span-2">
                                                 <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Campos disponibles</div>
-                                                <select class="min-h-[12rem] w-full rounded-xl border px-3 py-2" size="@FormAssignmentFieldPickerSize" @bind="AddFieldRequest.FieldId">
+                                                <select class="min-h-[12rem] w-full rounded-xl border px-3 py-2"
+                                                        size="@FormAssignmentFieldPickerSize"
+                                                        value="@AddFieldRequest.FieldId"
+                                                        @onchange="OnFieldAssignmentSelectionChanged">
                                                     <option value="0">Selecciona un campo</option>
                                                     @foreach (var field in GetFilteredAvailableFieldsForAssignment())
                                                     {
                                                         <option value="@field.FieldId">@field.FieldLabel</option>
                                                     }
                                                 </select>
-                                                <div class="text-xs text-slate-500">@GetFilteredAvailableFieldsForAssignment().Count() campo(s) visibles para asignar.</div>
+                                                <div class="text-xs text-slate-500">@GetFilteredAvailableFieldsForAssignment().Count() campo(s) disponibles para asignar.</div>
+                                                @if (SelectedAssignmentField is not null)
+                                                {
+                                                    <div class="rounded-xl border border-[#d8e4df] bg-[#f8fbfa] px-3 py-2 text-xs leading-5 text-[#12343b]">
+                                                        El comportamiento operativo se controla desde la sección Campos:
+                                                        <strong>Visible:</strong> @(SelectedAssignmentField.IsVisible ? "Sí" : "No"),
+                                                        <strong>Requerido:</strong> @(SelectedAssignmentField.IsRequired ? "Sí" : "No"),
+                                                        <strong>Editable:</strong> @(SelectedAssignmentField.IsEditable ? "Sí" : "No").
+                                                    </div>
+                                                }
                                             </div>
                                             <input class="rounded-xl border px-3 py-2" placeholder="Grupo" @bind="AddFieldRequest.GroupName" />
-                                            <input class="rounded-xl border px-3 py-2" type="number" placeholder="Orden" @bind="AddFieldRequest.DisplayOrder" />
-                                            <input class="rounded-xl border px-3 py-2" type="number" placeholder="ColumnSpan" @bind="AddFieldRequest.ColumnSpan" />
+                                            <input class="rounded-xl border px-3 py-2" type="number" min="1" placeholder="Orden" @bind="AddFieldRequest.DisplayOrder" />
+                                            <input class="rounded-xl border px-3 py-2" type="number" min="1" max="2" placeholder="Ancho 1 o 2" @bind="AddFieldRequest.ColumnSpan" />
                                         </div>
-                                        <div class="flex flex-wrap gap-4 text-sm">
-                                            <label class="inline-flex items-center gap-2"><input type="checkbox" @bind="AddFieldRequest.IsVisible" /> Visible</label>
-                                            <label class="inline-flex items-center gap-2"><input type="checkbox" @bind="AddFieldRequest.IsRequired" /> Requerido</label>
-                                            <label class="inline-flex items-center gap-2"><input type="checkbox" @bind="AddFieldRequest.IsEditable" /> Editable</label>
-                                        </div>
-                                        <button class="rounded-xl bg-[#2f4858] px-4 py-2 text-sm font-semibold text-white" @onclick="AddFieldToSelectedFormAsync">Agregar al formulario</button>
+                                        <button class="rounded-xl bg-[#2f4858] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-55" disabled="@(!CanAddFieldToForm)" @onclick="AddFieldToSelectedFormAsync">Agregar al formulario</button>
                                     </div>
                                 </details>
 
@@ -173,13 +202,15 @@
                                             <div class="mt-4 text-sm">
                                                 <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
                                                     <input class="rounded-xl border px-3 py-2" value="@field.GroupName" placeholder="Grupo" @onchange="e => field.GroupName = e.Value?.ToString()" />
-                                                    <input class="rounded-xl border px-3 py-2" type="number" value="@field.DisplayOrder" @onchange="e => field.DisplayOrder = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : field.DisplayOrder" />
-                                                    <input class="rounded-xl border px-3 py-2" type="number" value="@field.ColumnSpan" placeholder="ColumnSpan" @onchange="e => field.ColumnSpan = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null" />
+                                                    <input class="rounded-xl border px-3 py-2" type="number" min="1" value="@field.DisplayOrder" @onchange="e => field.DisplayOrder = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : field.DisplayOrder" />
+                                                    <input class="rounded-xl border px-3 py-2" type="number" min="1" max="2" value="@field.ColumnSpan" placeholder="Ancho 1 o 2" @onchange="e => field.ColumnSpan = int.TryParse(e.Value?.ToString(), out var parsed) ? parsed : null" />
                                                 </div>
-                                                <div class="mt-3 flex flex-wrap gap-4">
-                                                    <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsVisible" @onchange="e => field.IsVisible = e.Value is bool b && b" /> Visible</label>
-                                                    <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsRequired" @onchange="e => field.IsRequired = e.Value is bool b && b" /> Requerido</label>
-                                                    <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsEditable" @onchange="e => field.IsEditable = e.Value is bool b && b" /> Editable</label>
+                                                <div class="mt-3 rounded-xl border border-[#d8e4df] bg-[#f8fbfa] px-3 py-2 text-xs leading-5 text-[#12343b]">
+                                                    Comportamiento definido en Campos:
+                                                    <strong>Visible:</strong> @(field.IsVisible ? "Sí" : "No"),
+                                                    <strong>Requerido:</strong> @(field.IsRequired ? "Sí" : "No"),
+                                                    <strong>Editable:</strong> @(field.IsEditable ? "Sí" : "No").
+                                                    Aquí solo se organiza grupo, orden y ancho dentro del formulario.
                                                 </div>
                                                 <div class="app-mobile-stack mt-4">
                                                     <button class="rounded-xl bg-[#586f7c] px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateFormFieldAsync(field)">Guardar asignación</button>
@@ -278,7 +309,7 @@
                                 <label class="inline-flex items-center gap-2 rounded-xl border px-3 py-2"><input type="checkbox" @bind="NewField.IsActive" /> Activo</label>
                             </div>
                         </div>
-                        <button class="rounded-xl bg-[#2f4858] px-4 py-2 text-sm font-semibold text-white" @onclick="CreateDynamicFieldAsync">Crear campo</button>
+                        <button class="rounded-xl bg-[#2f4858] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-55" disabled="@(!CanCreateDynamicField)" @onclick="CreateDynamicFieldAsync">Crear campo</button>
                     </div>
                 </section>
 
@@ -369,7 +400,10 @@
                                                                 <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsVisible" @onchange="e => field.IsVisible = e.Value is bool b && b" /> Visible</label>
                                                                 <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsEditable" @onchange="e => field.IsEditable = e.Value is bool b && b" /> Editable</label>
                                                             </div>
-                                                            <button class="mt-4 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateFieldAsync(field)">Guardar campo</button>
+                                                            <div class="mt-4 flex flex-col gap-2 sm:flex-row">
+                                                                <button class="flex-1 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateFieldAsync(field)">Guardar campo</button>
+                                                                <button class="flex-1 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white" @onclick="() => RequestDeleteField(field)">Eliminar campo</button>
+                                                            </div>
                                                         </div>
                                                     </details>
                                                 }
@@ -451,7 +485,10 @@
                                                                 <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsVisible" @onchange="e => field.IsVisible = e.Value is bool b && b" /> Visible</label>
                                                                 <label class="inline-flex items-center gap-2"><input type="checkbox" checked="@field.IsEditable" @onchange="e => field.IsEditable = e.Value is bool b && b" /> Editable</label>
                                                             </div>
-                                                            <button class="mt-4 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateFieldAsync(field)">Guardar campo</button>
+                                                            <div class="mt-4 flex flex-col gap-2 sm:flex-row">
+                                                                <button class="flex-1 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateFieldAsync(field)">Guardar campo</button>
+                                                                <button class="flex-1 rounded-xl border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500" disabled title="Los campos físicos se desactivan o desasignan, no se eliminan.">Campo físico protegido</button>
+                                                            </div>
                                                         </div>
                                                     </details>
                                                 }
@@ -566,7 +603,7 @@
                                     @GetCatalogOrderHint()
                                 </div>
 
-                                <button class="w-full rounded-xl bg-[#12343b] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0f2b31]" @onclick="CreateCatalogItemAsync">Crear elemento</button>
+                                <button class="w-full rounded-xl bg-[#12343b] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#0f2b31] disabled:cursor-not-allowed disabled:opacity-55" disabled="@(!CanCreateCatalogItem)" @onclick="CreateCatalogItemAsync">Crear elemento</button>
                             </div>
                         </section>
 
@@ -677,7 +714,10 @@
                                                         </div>
                                                     }
 
-                                                    <button class="w-full rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateCatalogItemAsync(item)">Guardar cambios</button>
+                                                    <div class="flex flex-col gap-2 sm:flex-row">
+                                                        <button class="flex-1 rounded-xl bg-slate-800 px-4 py-2 text-sm font-semibold text-white" @onclick="() => UpdateCatalogItemAsync(item)">Guardar cambios</button>
+                                                        <button class="flex-1 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white" @onclick="() => RequestDeleteCatalogItem(item)">Eliminar elemento</button>
+                                                    </div>
                                                 </div>
                                             </details>
                                         }
@@ -745,7 +785,7 @@
                                         </div>
                                     </div>
 
-                                    <button class="w-full rounded-xl bg-[#2f4858] px-4 py-2.5 text-sm font-semibold text-white" @onclick="CreateFieldOptionAsync">Crear opción</button>
+                                    <button class="w-full rounded-xl bg-[#2f4858] px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-55" disabled="@(!CanCreateFieldOption)" @onclick="CreateFieldOptionAsync">Crear opción</button>
                                 }
                                 else
                                 {
@@ -856,12 +896,14 @@
     private string PendingConfirmationTitle { get; set; } = string.Empty;
     private string PendingConfirmationMessage { get; set; } = string.Empty;
     private PendingConfigAction PendingAction { get; set; } = PendingConfigAction.None;
+    private int PendingConfirmationStep { get; set; }
     private int? SelectedFormId { get; set; }
     private string? SelectedFormKey { get; set; }
     private List<FormSummaryDto> Forms { get; set; } = new();
     private FormDefinitionAdminDto? SelectedForm { get; set; }
     private List<FieldCatalogItemDto> AvailableFields { get; set; } = new();
     private List<FormFieldAdminDto> SelectedFormFields { get; set; } = new();
+    private FieldCatalogItemDto? SelectedAssignmentField { get; set; }
     private string SelectedCatalogKey { get; set; } = "academic-terms";
     private List<CatalogAdminItemDto> CatalogItems { get; set; } = new();
     private List<CatalogAdminItemDto> BroadFieldCatalogItems { get; set; } = new();
@@ -881,7 +923,11 @@
     private int PendingFormFieldId { get; set; }
     private int PendingFieldId { get; set; }
     private int PendingOptionId { get; set; }
+    private int PendingCatalogItemId { get; set; }
     private bool HasPendingConfirmation => PendingAction != PendingConfigAction.None;
+    private bool HasActiveArticleForm => Forms.Any(x => x.EntityName == "Article" && x.IsActive);
+    private bool HasActiveParticipantForm => Forms.Any(x => x.EntityName == "ArticleParticipant" && x.IsActive);
+    private bool HasInactiveRegistrationSurface => !HasActiveArticleForm || !HasActiveParticipantForm;
 
     protected override async Task OnInitializedAsync()
     {
@@ -914,7 +960,7 @@
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"No fue posible cargar la configuración: {ex.Message}";
+            ErrorMessage = $"No fue posible cargar la configuración: {UserFacingErrorMapper.FromException(ex, "Actualiza la pantalla e inténtalo nuevamente.")}";
         }
         finally
         {
@@ -942,6 +988,7 @@
 
             AvailableFields = await FormConfigurationClient.GetFieldsAsync(form.EntityName);
             SelectedFormFields = await FormConfigurationClient.GetFormFieldsAsync(form.FormId);
+            ResetFieldAssignmentRequest();
             if (SelectedDynamicFieldId.HasValue)
             {
                 DynamicFieldOptions = await FormConfigurationClient.GetFieldOptionsAsync(SelectedDynamicFieldId.Value);
@@ -1110,10 +1157,38 @@
             {
                 Message = $"Campo '{added.FieldLabel}' agregado al formulario.";
                 SelectedFormFields = await FormConfigurationClient.GetFormFieldsAsync(SelectedFormId.Value);
-                AddFieldRequest = new AddFieldToFormRequest { IsVisible = true, IsEditable = true, DisplayOrder = 100 };
+                ResetFieldAssignmentRequest();
                 await NotifyFormConfigurationChangedAsync();
             }
         });
+    }
+
+    private void OnFieldAssignmentSelectionChanged(ChangeEventArgs args)
+    {
+        var fieldId = int.TryParse(args.Value?.ToString(), out var parsed) ? parsed : 0;
+        AddFieldRequest.FieldId = fieldId;
+        SelectedAssignmentField = AvailableFields.FirstOrDefault(x => x.FieldId == fieldId);
+
+        if (SelectedAssignmentField is null)
+        {
+            AddFieldRequest.IsVisible = false;
+            AddFieldRequest.IsRequired = false;
+            AddFieldRequest.IsEditable = false;
+            return;
+        }
+
+        AddFieldRequest.IsVisible = SelectedAssignmentField.IsVisible;
+        AddFieldRequest.IsRequired = SelectedAssignmentField.IsRequired;
+        AddFieldRequest.IsEditable = SelectedAssignmentField.IsEditable;
+        AddFieldRequest.DisplayOrder = SelectedAssignmentField.DisplayOrder > 0
+            ? SelectedAssignmentField.DisplayOrder
+            : AddFieldRequest.DisplayOrder;
+    }
+
+    private void ResetFieldAssignmentRequest()
+    {
+        AddFieldRequest = new AddFieldToFormRequest { DisplayOrder = 100 };
+        SelectedAssignmentField = null;
     }
 
     private async Task OnDynamicFieldChangedAsync()
@@ -1527,7 +1602,7 @@
         }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = UserFacingErrorMapper.FromException(ex, "No pude completar la acción. Revisa la información ingresada e inténtalo nuevamente.");
         }
     }
 
@@ -1563,8 +1638,38 @@
         PendingConfirmationMessage = "La opción dejará de estar disponible para selección en el campo dinámico actual.";
     }
 
+    private void RequestDeleteField(FieldCatalogItemDto field)
+    {
+        PendingAction = PendingConfigAction.DeleteField;
+        PendingConfirmationStep = 1;
+        PendingFieldId = field.FieldId;
+        PendingConfirmationTitle = $"Advertencia 1/2: eliminar campo '{field.FieldLabel}'";
+        PendingConfirmationMessage = field.IsDynamic
+            ? "Estás por eliminar un campo dinámico del catálogo de campos. Si el campo ya fue usado en registros, staging o matrices, el sistema bloqueará el borrado para conservar trazabilidad."
+            : "Este campo pertenece al modelo físico del sistema y no se eliminará. Puedes desactivarlo o quitarlo del formulario si no debe aparecer.";
+    }
+
+    private void RequestDeleteCatalogItem(CatalogAdminItemDto item)
+    {
+        PendingAction = PendingConfigAction.DeleteCatalogItem;
+        PendingConfirmationStep = 1;
+        PendingCatalogItemId = item.Id;
+        PendingConfirmationTitle = $"Advertencia 1/2: eliminar '{item.Name}'";
+        PendingConfirmationMessage = $"Estás por eliminar un elemento de {GetCatalogLabel(SelectedCatalogKey)}. Si está usado por registros o por catálogos hijos, el sistema bloqueará el borrado.";
+    }
+
     private async Task ConfirmPendingActionAsync()
     {
+        if ((PendingAction == PendingConfigAction.DeleteField || PendingAction == PendingConfigAction.DeleteCatalogItem) && PendingConfirmationStep == 1)
+        {
+            PendingConfirmationStep = 2;
+            PendingConfirmationTitle = PendingAction == PendingConfigAction.DeleteField
+                ? "Confirmación 2/2: borrar campo definitivamente"
+                : "Confirmación 2/2: borrar elemento definitivamente";
+            PendingConfirmationMessage = "Esta es la segunda confirmación. Si continúas, se intentará eliminar definitivamente la configuración seleccionada. Esta acción no debe usarse para datos históricos ya utilizados.";
+            return;
+        }
+
         await RunActionAsync(async () =>
         {
             switch (PendingAction)
@@ -1593,6 +1698,27 @@
                     DynamicFieldOptions = await FormConfigurationClient.GetFieldOptionsAsync(PendingFieldId);
                     optionDisplayState = DynamicFieldOptions.ToDictionary(x => x.DynamicFieldOptionId, x => x.IsActive);
                     break;
+
+                case PendingConfigAction.DeleteField:
+                    await FormConfigurationClient.DeleteFieldAsync(PendingFieldId);
+                    Message = "Campo eliminado correctamente.";
+                    AvailableFields = await FormConfigurationClient.GetFieldsAsync(SelectedForm?.EntityName ?? "Article");
+                    if (SelectedFormId.HasValue)
+                    {
+                        SelectedFormFields = await FormConfigurationClient.GetFormFieldsAsync(SelectedFormId.Value);
+                    }
+
+                    await NotifyFormConfigurationChangedAsync();
+                    break;
+
+                case PendingConfigAction.DeleteCatalogItem:
+                    await FormConfigurationClient.DeleteAdminCatalogItemAsync(SelectedCatalogKey, PendingCatalogItemId);
+                    Message = "Elemento de catálogo eliminado correctamente.";
+                    CatalogItems = await FormConfigurationClient.GetAdminCatalogAsync(SelectedCatalogKey);
+                    BroadFieldCatalogItems = await FormConfigurationClient.GetAdminCatalogAsync("broad-fields");
+                    SpecificFieldCatalogItems = await FormConfigurationClient.GetAdminCatalogAsync("specific-fields");
+                    await NotifyFormConfigurationChangedAsync();
+                    break;
             }
 
             CancelPendingConfirmation();
@@ -1604,10 +1730,12 @@
         PendingAction = PendingConfigAction.None;
         PendingConfirmationTitle = string.Empty;
         PendingConfirmationMessage = string.Empty;
+        PendingConfirmationStep = 0;
         PendingFormId = 0;
         PendingFormFieldId = 0;
         PendingFieldId = 0;
         PendingOptionId = 0;
+        PendingCatalogItemId = 0;
     }
 
     private string GetActiveTabHint()
@@ -1827,6 +1955,40 @@
 
     private bool HasStatusMessage => !string.IsNullOrWhiteSpace(ErrorMessage) || !string.IsNullOrWhiteSpace(Message);
 
+    private bool CanCreateDynamicField
+        => !string.IsNullOrWhiteSpace(NewField.EntityName)
+           && !string.IsNullOrWhiteSpace(NewField.FieldKey)
+           && !string.IsNullOrWhiteSpace(NewField.FieldLabel)
+           && !string.IsNullOrWhiteSpace(NewField.DataType);
+
+    private bool CanAddFieldToForm
+        => SelectedFormId.HasValue && AddFieldRequest.FieldId > 0;
+
+    private bool CanCreateCatalogItem
+        => !string.IsNullOrWhiteSpace(NewCatalogItem.Name)
+           && (!CatalogRequiresParent() || NewCatalogItem.ParentId.HasValue);
+
+    private bool CanCreateFieldOption
+        => SelectedDynamicFieldId.HasValue
+           && !string.IsNullOrWhiteSpace(NewOption.OptionValue)
+           && !string.IsNullOrWhiteSpace(NewOption.OptionLabel);
+
+    private string GetInactiveRegistrationMessage()
+    {
+        var missing = new List<string>();
+        if (!HasActiveArticleForm)
+        {
+            missing.Add("formulario de artículo");
+        }
+
+        if (!HasActiveParticipantForm)
+        {
+            missing.Add("formulario de participantes");
+        }
+
+        return $"No hay {string.Join(" ni ", missing)} activo. El registro individual y la matriz mostrarán una pantalla de mantenimiento hasta que actives un formulario vigente.";
+    }
+
     private string CurrentStatusVariant => !string.IsNullOrWhiteSpace(ErrorMessage) ? "error" : "success";
 
     private string CurrentStatusTitle => !string.IsNullOrWhiteSpace(ErrorMessage) ? "No pude completar la acción" : "Cambio aplicado";
@@ -1845,7 +2007,9 @@
         None,
         DeleteForm,
         DeleteFormField,
-        DeleteFieldOption
+        DeleteFieldOption,
+        DeleteField,
+        DeleteCatalogItem
     }
 
     private sealed class ConfigurationUiState

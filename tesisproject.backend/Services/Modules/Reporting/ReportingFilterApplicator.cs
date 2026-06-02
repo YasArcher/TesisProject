@@ -167,9 +167,9 @@ internal static class ReportingFilterApplicator
         }
 
         var monthEnd = monthStart.AddMonths(1);
-        return string.Equals(filter.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase)
-            ? query.Where(x => x.PublishedDate >= monthStart && x.PublishedDate < monthEnd)
-            : query.Where(x => x.CreatedDate >= monthStart && x.CreatedDate < monthEnd);
+        return string.Equals(filter.PeriodDateType, "created", StringComparison.OrdinalIgnoreCase)
+            ? query.Where(x => x.CreatedDate >= monthStart && x.CreatedDate < monthEnd)
+            : query.Where(x => (x.PublishedDate ?? x.CreatedDate) >= monthStart && (x.PublishedDate ?? x.CreatedDate) < monthEnd);
     }
 
     private static IQueryable<ReportingArticleDetailRow> ApplyStringFilter(

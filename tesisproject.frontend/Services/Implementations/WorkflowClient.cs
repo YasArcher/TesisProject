@@ -1,5 +1,5 @@
 using System.Net.Http.Json;
-using System.Text.Json;
+using tesisproject.frontend.Services.Errors;
 using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.DTOs.Imports;
 using tesisproject.shared.DTOs.Workflow;
@@ -130,38 +130,6 @@ namespace tesisproject.frontend.Services.Implementations
         }
 
         private static async Task<string> ReadErrorMessageAsync(HttpResponseMessage response, string fallback, CancellationToken ct)
-        {
-            var raw = await response.Content.ReadAsStringAsync(ct);
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return fallback;
-            }
-
-            try
-            {
-                using var document = JsonDocument.Parse(raw);
-                var root = document.RootElement;
-
-                if (root.TryGetProperty("message", out var messageElement) && messageElement.ValueKind == JsonValueKind.String)
-                {
-                    return messageElement.GetString() ?? fallback;
-                }
-
-                if (root.TryGetProperty("detail", out var detailElement) && detailElement.ValueKind == JsonValueKind.String)
-                {
-                    return detailElement.GetString() ?? fallback;
-                }
-
-                if (root.TryGetProperty("title", out var titleElement) && titleElement.ValueKind == JsonValueKind.String)
-                {
-                    return titleElement.GetString() ?? fallback;
-                }
-            }
-            catch
-            {
-            }
-
-            return raw;
-        }
+            => await UserFacingErrorMapper.FromHttpResponseAsync(response, fallback, ct);
     }
 }

@@ -1033,6 +1033,29 @@
     gap: 0.75rem;
 }
 
+.security-modal-alert {
+    display: grid;
+    gap: 0.2rem;
+    margin-bottom: 1rem;
+    border-radius: 1rem;
+    padding: 0.85rem 1rem;
+    line-height: 1.45;
+}
+
+.security-modal-alert strong {
+    font-size: 0.88rem;
+}
+
+.security-modal-alert span {
+    font-size: 0.86rem;
+}
+
+.security-modal-alert--error {
+    border: 1px solid rgba(140, 16, 7, 0.18);
+    background: linear-gradient(135deg, rgba(140, 16, 7, 0.08), rgba(255, 255, 255, 0.94));
+    color: #660b05;
+}
+
 .security-modal-role-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

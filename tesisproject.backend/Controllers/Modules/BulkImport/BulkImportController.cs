@@ -54,9 +54,9 @@ namespace tesisproject.backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Problem(title: "No pude crear el lote en staging.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+                return Problem(title: "No pude crear el lote en staging.", detail: "La operación no pudo completarse. Intenta nuevamente y, si el problema continúa, solicita revisión técnica.", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -68,9 +68,9 @@ namespace tesisproject.backend.Controllers
                 var detail = await _service.GetBatchAsync(batchId, previewRows, ct);
                 return detail is null ? NotFound() : Ok(detail);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Problem(title: "No pude abrir el lote.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+                return Problem(title: "No pude abrir el lote.", detail: "La operación no pudo completarse. Actualiza la pantalla e intenta nuevamente.", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -86,9 +86,9 @@ namespace tesisproject.backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Problem(title: "No pude crear el lote externo en staging.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+                return Problem(title: "No pude crear el lote externo en staging.", detail: "La operación no pudo completarse. Intenta nuevamente y, si el problema continúa, solicita revisión técnica.", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -104,9 +104,9 @@ namespace tesisproject.backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Problem(title: "No pude crear el lote externo múltiple en staging.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+                return Problem(title: "No pude crear el lote externo múltiple en staging.", detail: "La operación no pudo completarse. Intenta nuevamente y, si el problema continúa, solicita revisión técnica.", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -121,9 +121,9 @@ namespace tesisproject.backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Problem(title: "No pude corregir la fila del staging.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+                return Problem(title: "No pude corregir la fila del staging.", detail: "La corrección no pudo guardarse. Revisa la fila e intenta nuevamente.", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 

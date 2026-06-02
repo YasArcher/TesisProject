@@ -1,4 +1,5 @@
 using tesisproject.backend.Services.Interfaces;
+using tesisproject.backend.Services.Modules.Reporting;
 using tesisproject.shared.DTOs.Articles;
 using tesisproject.shared.DTOs.Imports;
 
@@ -8,13 +9,16 @@ namespace tesisproject.backend.Services.Implementations
     {
         private readonly IArticleAggregatePersistenceService _articleAggregatePersistenceService;
         private readonly IBulkImportService _bulkImportService;
+        private readonly IReportingRefreshQueue _reportingRefreshQueue;
 
         public ArticleRegistrationService(
             IArticleAggregatePersistenceService articleAggregatePersistenceService,
-            IBulkImportService bulkImportService)
+            IBulkImportService bulkImportService,
+            IReportingRefreshQueue reportingRefreshQueue)
         {
             _articleAggregatePersistenceService = articleAggregatePersistenceService;
             _bulkImportService = bulkImportService;
+            _reportingRefreshQueue = reportingRefreshQueue;
         }
 
         public async Task<RegisterArticleAggregateResponse> RegisterArticleAggregateAsync(
@@ -26,7 +30,9 @@ namespace tesisproject.backend.Services.Implementations
                 throw new ArgumentNullException(nameof(request));
             }
 
-            return await _articleAggregatePersistenceService.PersistAsync(request, ct);
+            var result = await _articleAggregatePersistenceService.PersistAsync(request, ct);
+            _reportingRefreshQueue.Enqueue($"Registro directo de artículo ({result.ArticleId}).");
+            return result;
         }
 
         public async Task<BulkImportActionResultDto> SubmitArticleAggregateForReviewAsync(

@@ -85,6 +85,9 @@ namespace tesisproject.frontend.Services.Implementations
             if (!string.IsNullOrWhiteSpace(query.SearchTerm))
                 qs.Add($"SearchTerm={Uri.EscapeDataString(query.SearchTerm)}");
 
+            if (!string.IsNullOrWhiteSpace(query.PublicationStatusKey))
+                qs.Add($"PublicationStatusKey={Uri.EscapeDataString(query.PublicationStatusKey)}");
+
             if (query.Year.HasValue)
                 qs.Add($"Year={query.Year.Value}");
 
@@ -93,6 +96,12 @@ namespace tesisproject.frontend.Services.Implementations
 
             if (query.PublicationStatusId.HasValue)
                 qs.Add($"PublicationStatusId={query.PublicationStatusId.Value}");
+
+            if (query.FacultyId.HasValue)
+                qs.Add($"FacultyId={query.FacultyId.Value}");
+
+            if (query.IndexingSourceId.HasValue)
+                qs.Add($"IndexingSourceId={query.IndexingSourceId.Value}");
 
             if (query.ResearchLineId.HasValue)
                 qs.Add($"ResearchLineId={query.ResearchLineId.Value}");
@@ -127,17 +136,32 @@ namespace tesisproject.frontend.Services.Implementations
         // =========================================================
         public async Task<List<ArticleListItemDto>> GetAllAsync(CancellationToken cancellationToken = default)
         {
-            var query = new ArticleListQuery
+            const int pageSize = 250;
+            var page = 1;
+            var items = new List<ArticleListItemDto>();
+
+            while (true)
             {
-                Page = 1,
-                PageSize = 1000,   // ajusta el máximo según lo que consideres razonable
-                Search = null,
-                SearchTerm = null
-            };
+                var result = await GetListAsync(new ArticleListQuery
+                {
+                    Page = page,
+                    PageSize = pageSize,
+                    Search = null,
+                    SearchTerm = null
+                }, cancellationToken);
 
-            var result = await GetListAsync(query, cancellationToken);
+                if (result.Items is null || result.Items.Count == 0)
+                    break;
 
-            return result.Items?.ToList() ?? new List<ArticleListItemDto>();
+                items.AddRange(result.Items);
+
+                if (items.Count >= result.TotalCount || result.Items.Count < pageSize)
+                    break;
+
+                page++;
+            }
+
+            return items;
         }
     }
 }

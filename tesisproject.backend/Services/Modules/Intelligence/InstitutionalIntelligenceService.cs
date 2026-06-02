@@ -1077,7 +1077,7 @@ public sealed class InstitutionalIntelligenceService : IInstitutionalIntelligenc
             return [];
         }
 
-        var usePublishedDate = string.Equals(filter?.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase);
+        var usePublishedDate = !string.Equals(filter?.PeriodDateType, "created", StringComparison.OrdinalIgnoreCase);
         var facultyGroups = BuildSegmentGroups(
             details,
             usePublishedDate,
@@ -1136,7 +1136,7 @@ public sealed class InstitutionalIntelligenceService : IInstitutionalIntelligenc
             return [];
         }
 
-        var usePublishedDate = string.Equals(filter?.PeriodDateType, "published", StringComparison.OrdinalIgnoreCase);
+        var usePublishedDate = !string.Equals(filter?.PeriodDateType, "created", StringComparison.OrdinalIgnoreCase);
         var groups = BuildSegmentGroups(details, usePublishedDate, segmentSelector, fallback, take);
         var forecasts = new List<IntelligenceSegmentForecastDto>();
 
@@ -1185,7 +1185,7 @@ public sealed class InstitutionalIntelligenceService : IInstitutionalIntelligenc
             .Select(x => new
             {
                 Segment = NormalizeInsightValue(segmentSelector(x), fallback),
-                Date = usePublishedDate ? x.PublishedDate : x.CreatedDate,
+                Date = usePublishedDate ? x.PublishedDate ?? x.CreatedDate : x.CreatedDate,
                 x.ArticleCount
             })
             .Where(x => x.Date.HasValue)

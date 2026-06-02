@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Components.Forms;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
+using tesisproject.frontend.Services.Errors;
 using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.DTOs.Imports;
 
@@ -25,7 +25,10 @@ namespace tesisproject.frontend.Services.Implementations
         public async Task<(byte[] Content, string FileName, string ContentType)> GenerateTemplateAsync(BulkImportTemplateRequest request, CancellationToken ct = default)
         {
             using var response = await _http.PostAsJsonAsync("api/import-batches/template", request, ct);
-            response.EnsureSuccessStatusCode();
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException(await ReadErrorMessageAsync(response, "No pude generar la plantilla de carga.", ct));
+            }
 
             var content = await response.Content.ReadAsByteArrayAsync(ct);
             var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
@@ -125,39 +128,6 @@ namespace tesisproject.frontend.Services.Implementations
         }
 
         private static async Task<string> ReadErrorMessageAsync(HttpResponseMessage response, string fallback, CancellationToken ct)
-        {
-            var raw = await response.Content.ReadAsStringAsync(ct);
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return fallback;
-            }
-
-            try
-            {
-                using var document = JsonDocument.Parse(raw);
-                var root = document.RootElement;
-
-                if (root.TryGetProperty("message", out var messageElement) && messageElement.ValueKind == JsonValueKind.String)
-                {
-                    return messageElement.GetString() ?? fallback;
-                }
-
-                if (root.TryGetProperty("detail", out var detailElement) && detailElement.ValueKind == JsonValueKind.String)
-                {
-                    return detailElement.GetString() ?? fallback;
-                }
-
-                if (root.TryGetProperty("title", out var titleElement) && titleElement.ValueKind == JsonValueKind.String)
-                {
-                    return titleElement.GetString() ?? fallback;
-                }
-            }
-            catch
-            {
-                // Si no viene JSON válido, devolvemos el cuerpo tal cual.
-            }
-
-            return raw;
-        }
+            => await UserFacingErrorMapper.FromHttpResponseAsync(response, fallback, ct);
     }
 }

@@ -2,10 +2,12 @@
 @page "/scientific-production/registration-matrix"
 @attribute [Authorize(Roles = "Admin,Analyst,WorkflowReviewerUodide,RegistrationMatrixUser")]
 @using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.Services.Errors
 @using tesisproject.shared.DTOs.Catalogs
 @using tesisproject.shared.DTOs.Configuration
 @using tesisproject.shared.DTOs.MassRegistration
 @using tesisproject.shared.Validation
+@using Microsoft.AspNetCore.Components.Authorization
 @inject IRegistrationMatrixClient RegistrationMatrixClient
 @inject IFormConfigurationClient FormConfigurationClient
 @inject NavigationManager NavManager
@@ -13,22 +15,23 @@
 <PageTitle>Matriz maestra</PageTitle>
 
 <div class="app-page-shell registration-matrix-page space-y-4">
-    <div class="rounded-[1.6rem] bg-gradient-to-r from-[#12343b] via-[#1d4d57] to-[#2f4858] p-5 text-white shadow-lg">
+    <div class="rounded-[1.6rem] p-5 text-white shadow-lg"
+         style="background: linear-gradient(135deg, #12343b 0%, #1d4d57 52%, #2f4858 100%); box-shadow: 0 18px 38px rgba(18, 52, 59, 0.18);">
         <div class="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
             <div>
                 <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">Captura tabular</div>
                 <h1 class="text-2xl font-black md:text-3xl">Matriz maestra de registro</h1>
             </div>
             <div class="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                <div class="rounded-2xl bg-white/10 px-4 py-3 text-sm">
+                <div class="rounded-2xl border border-white/15 px-4 py-3 text-sm" style="background: rgba(255, 255, 255, 0.10);">
                     <div class="text-[11px] uppercase tracking-wide text-white/60">Matrices</div>
                     <div class="mt-1 font-bold text-white">@Matrices.Count</div>
                 </div>
-                <div class="rounded-2xl bg-white/10 px-4 py-3 text-sm">
+                <div class="rounded-2xl border border-white/15 px-4 py-3 text-sm" style="background: rgba(255, 255, 255, 0.10);">
                     <div class="text-[11px] uppercase tracking-wide text-white/60">Fila(s)</div>
                     <div class="mt-1 font-bold text-white">@(SelectedMatrix?.Summary.RowCount ?? 0)</div>
                 </div>
-                <div class="rounded-2xl bg-white/10 px-4 py-3 text-sm">
+                <div class="rounded-2xl border border-white/15 px-4 py-3 text-sm" style="background: rgba(255, 255, 255, 0.10);">
                     <div class="text-[11px] uppercase tracking-wide text-white/60">Columna(s)</div>
                     <div class="mt-1 font-bold text-white">@(SelectedMatrix?.Summary.ColumnCount ?? 0)</div>
                 </div>
@@ -47,7 +50,7 @@
                     <div class="flex items-start justify-between gap-4">
                         <div>
                             <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Nueva matriz</div>
-                            <h2 class="text-xl font-black text-[#12343b]">Crear una matriz de trabajo</h2>
+                            <h2 class="text-xl font-black text-[#12343b]">Crear matriz personalizada</h2>
                         </div>
                         <button type="button" class="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-600" @onclick="CloseCreateMatrixModal">Cerrar</button>
                     </div>
@@ -66,6 +69,9 @@
                                 </div>
                                 <div class="rounded-2xl bg-white px-3 py-3 text-sm text-slate-600">
                                     <span class="font-semibold text-[#12343b]">@SelectedNewFieldIds.Count campo(s)</span> seleccionado(s).
+                                </div>
+                                <div class="rounded-2xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs leading-5 text-amber-900">
+                                    Esta opción permite elegir columnas manualmente. Para usar exactamente el formulario activo del sistema, cierra este modal y usa el botón "Desde formulario activo".
                                 </div>
                             </div>
                         </div>
@@ -184,6 +190,31 @@
         </div>
     }
 
+    @if (PendingDeleteMatrix is not null)
+    {
+        <div class="fixed inset-0 z-40 bg-slate-950/55 backdrop-blur-sm"></div>
+        <div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div class="w-full max-w-xl rounded-[1.8rem] border border-slate-200 bg-white shadow-2xl">
+                <div class="border-b border-[#ead9e0] bg-gradient-to-r from-[#fff7fa] to-[#f9edf2] px-6 py-5">
+                    <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9b3d5a]">Confirmación de eliminación</div>
+                    <h2 class="mt-1 text-xl font-black text-[#5f1831]">Eliminar matriz en borrador</h2>
+                </div>
+                <div class="space-y-4 px-6 py-5">
+                    <div class="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+                        Vas a eliminar la matriz <span class="font-bold">@PendingDeleteMatrix.Name</span>.
+                    </div>
+                    <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                        Solo se eliminarán borradores que todavía no hayan sido enviados a revisión. Las matrices con lote generado se conservan para trazabilidad.
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2 border-t border-slate-200 px-6 py-4 sm:flex-row sm:justify-end">
+                    <button type="button" class="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700" @onclick="CancelDeleteMatrix">Cancelar</button>
+                    <button type="button" class="rounded-xl bg-gradient-to-r from-[#931D21] to-[#b62d33] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110" @onclick="ConfirmDeleteMatrixAsync">Sí, eliminar borrador</button>
+                </div>
+            </div>
+        </div>
+    }
+
     @if (IsColumnsModalOpen && SelectedMatrix is not null)
     {
         <div class="fixed inset-0 z-40 bg-slate-950/55 backdrop-blur-sm"></div>
@@ -245,12 +276,25 @@
         <section class="rounded-[1.8rem] border border-slate-200 bg-white p-3 shadow-sm">
             <div class="grid grid-cols-1 gap-3 xl:grid-cols-[0.62fr_1.05fr_1.15fr]">
                 <div class="rounded-3xl border border-slate-200 bg-slate-50/70 p-3">
-                    <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-start justify-between gap-3">
                         <div>
                             <div class="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Creación</div>
                             <h2 class="text-sm font-black text-[#12343b]">Nueva matriz</h2>
                         </div>
-                        <button type="button" class="rounded-xl bg-[#12343b] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0f2a30]" @onclick="OpenCreateMatrixModal">Crear</button>
+                        <div class="flex flex-wrap justify-end gap-2">
+                            <button type="button" class="rounded-xl bg-[#12343b] px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#0f2a30] disabled:cursor-not-allowed disabled:opacity-60" disabled="@(!HasActiveRegistrationForms)" @onclick="CreateMatrixFromActiveFormAsync">Desde formulario activo</button>
+                            <button type="button" class="rounded-xl border border-[#c7d6da] bg-white px-3 py-2 text-sm font-semibold text-[#12343b] shadow-sm transition hover:bg-slate-50" @onclick="OpenCreateMatrixModal">Personalizada</button>
+                        </div>
+                    </div>
+                    <div class="mt-3 rounded-2xl border @(HasActiveRegistrationForms ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-amber-200 bg-amber-50 text-amber-900") px-3 py-2 text-xs leading-5">
+                        @if (HasActiveRegistrationForms)
+                        {
+                            <span>Formulario activo: <strong>@ActiveArticleForm?.FormName</strong> · Participantes: <strong>@ActiveParticipantForm?.FormName</strong>.</span>
+                        }
+                        else
+                        {
+                            <span>No existe un formulario activo completo. Activa el formulario de artículo y participantes desde configuración antes de crear una matriz predeterminada.</span>
+                        }
                     </div>
                 </div>
 
@@ -302,6 +346,10 @@
                                 </div>
                                 <div class="flex flex-wrap gap-2">
                                     <button class="rounded-xl border border-[#c7d6da] bg-white px-3 py-2 text-sm font-semibold text-[#12343b] shadow-sm" @onclick="OpenColumnsModal">Columnas</button>
+                                    @if (CanDeleteSelectedMatrix)
+                                    {
+                                        <button class="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 shadow-sm" @onclick="RequestDeleteSelectedMatrix">Eliminar borrador</button>
+                                    }
                                     <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-3 py-2 text-sm font-semibold text-white shadow-sm" @onclick="OpenSubmitConfirmModal">Enviar a staging</button>
                                 </div>
                             </div>
@@ -415,6 +463,8 @@
     private RegistrationMatrixDetailDto? SelectedMatrix { get; set; }
     private List<FieldCatalogItemDto> ArticleFields { get; set; } = new();
     private List<FieldCatalogItemDto> ParticipantFields { get; set; } = new();
+    private ResolvedFormDto? ActiveArticleForm { get; set; }
+    private ResolvedFormDto? ActiveParticipantForm { get; set; }
     private CreateRegistrationMatrixRequest NewMatrix { get; set; } = new();
     private HashSet<int> SelectedNewFieldIds { get; set; } = new();
     private HashSet<int> SelectedExistingFieldIds { get; set; } = new();
@@ -428,11 +478,13 @@
     private string NewFieldSearch { get; set; } = string.Empty;
     private string ExistingFieldSearch { get; set; } = string.Empty;
     private RegistrationMatrixColumnDto? PendingRemoveColumn { get; set; }
+    private RegistrationMatrixSummaryDto? PendingDeleteMatrix { get; set; }
     private int? PinnedRowId { get; set; }
     private int CurrentPage { get; set; } = 1;
     private int RowPageSize { get; set; } = 20;
     private bool HasStatusMessage => !string.IsNullOrWhiteSpace(StatusTitle);
     private bool CanConfirmSubmit => SubmitConfirmReviewed && SubmitConfirmUnderstood;
+    private bool IsMatrixAdministrator { get; set; }
     private string StatusVariant { get; set; } = "info";
     private string StatusTitle { get; set; } = string.Empty;
     private string StatusMessage { get; set; } = string.Empty;
@@ -444,8 +496,31 @@
     private int TotalPages => Math.Max(1, (int)Math.Ceiling(UnpinnedRows.Count / (double)RowPageSize));
     private bool ShouldPaginate => UnpinnedRows.Count > RowPageSize;
     private IReadOnlyList<RegistrationMatrixRowDto> VisibleRows => UnpinnedRows.Skip((CurrentPage - 1) * RowPageSize).Take(RowPageSize).ToList();
+    private bool HasActiveRegistrationForms => ActiveArticleForm is not null && ActiveParticipantForm is not null;
+    private bool CanDeleteSelectedMatrix => SelectedMatrix is not null
+        && IsMatrixAdministrator
+        && SelectedMatrix.Summary.Status.Equals("Draft", StringComparison.OrdinalIgnoreCase)
+        && !SelectedMatrix.Summary.LastImportBatchId.HasValue;
 
-    protected override async Task OnInitializedAsync() => await LoadAsync();
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPermissionsAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadPermissionsAsync()
+    {
+        if (AuthenticationStateTask is null)
+        {
+            IsMatrixAdministrator = false;
+            return;
+        }
+
+        var state = await AuthenticationStateTask;
+        IsMatrixAdministrator = state.User.IsInRole("Admin") || state.User.IsInRole("Analyst");
+    }
 
     private async Task LoadAsync()
     {
@@ -454,6 +529,7 @@
             IsLoading = true;
             ArticleFields = await FormConfigurationClient.GetFieldsAsync("Article");
             ParticipantFields = await FormConfigurationClient.GetFieldsAsync("ArticleParticipant");
+            await LoadActiveFormsAsync();
             Matrices = await RegistrationMatrixClient.GetMatricesAsync();
             if (Matrices.Any())
             {
@@ -465,7 +541,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude cargar la matriz maestra", ex.Message);
+            ShowStatus("error", "No pude cargar la matriz maestra", UserFacingErrorMapper.FromException(ex, "Actualiza la pantalla e inténtalo nuevamente."));
         }
         finally
         {
@@ -485,7 +561,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude abrir la matriz", ex.Message);
+            ShowStatus("error", "No pude abrir la matriz", UserFacingErrorMapper.FromException(ex, "Selecciona la matriz nuevamente."));
         }
     }
 
@@ -503,6 +579,78 @@
     {
         IsColumnsModalOpen = false;
         ExistingFieldSearch = string.Empty;
+    }
+
+    private async Task LoadActiveFormsAsync()
+    {
+        ActiveArticleForm = await TryGetActiveFormAsync("Article", "ArticleManualForm");
+        ActiveParticipantForm = await TryGetActiveFormAsync("ArticleParticipant", "ArticleParticipantForm");
+    }
+
+    private async Task<ResolvedFormDto?> TryGetActiveFormAsync(string entityName, string preferredFormKey)
+    {
+        try
+        {
+            return await FormConfigurationClient.GetActiveResolvedFormAsync(entityName, preferredFormKey);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private async Task CreateMatrixFromActiveFormAsync()
+    {
+        if (!HasActiveRegistrationForms)
+        {
+            ShowStatus("warning", "Formulario activo requerido", "Activa primero el formulario de artículo y el formulario de participantes desde configuración.");
+            return;
+        }
+
+        var fieldIds = ActiveArticleForm!.Sections
+            .SelectMany(x => x.Fields)
+            .Concat(ActiveParticipantForm!.Sections.SelectMany(x => x.Fields))
+            .Where(x => x.IsVisible && x.IsActive)
+            .OrderBy(x => x.EntityName == "Article" ? 0 : 1)
+            .ThenBy(x => x.DisplayOrder)
+            .Select(x => x.FieldId)
+            .Distinct()
+            .ToList();
+
+        if (fieldIds.Count == 0)
+        {
+            ShowStatus("warning", "Formulario sin campos", "El formulario activo no tiene campos visibles para armar una matriz.");
+            return;
+        }
+
+        try
+        {
+            var now = DateTime.Now;
+            var created = await RegistrationMatrixClient.CreateMatrixAsync(new CreateRegistrationMatrixRequest
+            {
+                Name = $"Matriz formulario activo {now:yyyy-MM-dd HH:mm}",
+                EntityName = "Article",
+                Notes = $"Creada automáticamente desde el formulario activo: {ActiveArticleForm.FormName}.",
+                FieldIds = fieldIds
+            });
+
+            if (created is null)
+            {
+                return;
+            }
+
+            Matrices = await RegistrationMatrixClient.GetMatricesAsync();
+            SelectedMatrix = created;
+            FieldOptions.Clear();
+            PinnedRowId = null;
+            CurrentPage = 1;
+            await EnsureSupportAsync();
+            ShowStatus("success", "Matriz creada", "La matriz fue creada con los campos del formulario activo.");
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude crear la matriz", UserFacingErrorMapper.FromException(ex, "Revisa el formulario activo e inténtalo nuevamente."));
+        }
     }
 
     private async Task CreateMatrixAsync()
@@ -530,7 +678,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude crear la matriz", ex.Message);
+            ShowStatus("error", "No pude crear la matriz", UserFacingErrorMapper.FromException(ex, "Revisa el nombre y los campos seleccionados."));
         }
     }
 
@@ -554,7 +702,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude agregar columnas", ex.Message);
+            ShowStatus("error", "No pude agregar columnas", UserFacingErrorMapper.FromException(ex, "Revisa los campos seleccionados e inténtalo nuevamente."));
         }
     }
 
@@ -576,7 +724,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude quitar la columna", ex.Message);
+            ShowStatus("error", "No pude quitar la columna", UserFacingErrorMapper.FromException(ex, "Actualiza la matriz e inténtalo nuevamente."));
         }
     }
 
@@ -594,6 +742,48 @@
         }
 
         await RemoveColumnAsync(column.RegistrationMatrixColumnId);
+    }
+
+    private void RequestDeleteSelectedMatrix()
+    {
+        if (SelectedMatrix is null)
+        {
+            return;
+        }
+
+        PendingDeleteMatrix = SelectedMatrix.Summary;
+    }
+
+    private void CancelDeleteMatrix() => PendingDeleteMatrix = null;
+
+    private async Task ConfirmDeleteMatrixAsync()
+    {
+        var matrix = PendingDeleteMatrix;
+        PendingDeleteMatrix = null;
+        if (matrix is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var result = await RegistrationMatrixClient.DeleteMatrixAsync(matrix.RegistrationMatrixId);
+            Matrices = await RegistrationMatrixClient.GetMatricesAsync();
+            SelectedMatrix = Matrices.Any() ? await RegistrationMatrixClient.GetMatrixAsync(Matrices.First().RegistrationMatrixId) : null;
+            PinnedRowId = null;
+            CurrentPage = 1;
+            FieldOptions.Clear();
+            if (SelectedMatrix is not null)
+            {
+                await EnsureSupportAsync();
+            }
+
+            ShowStatus("success", "Matriz eliminada", result?.Message ?? "La matriz fue eliminada correctamente.");
+        }
+        catch (Exception ex)
+        {
+            ShowStatus("error", "No pude eliminar la matriz", UserFacingErrorMapper.FromException(ex, "Solo se pueden eliminar borradores sin lote enviado."));
+        }
     }
 
     private async Task MoveColumnAsync(RegistrationMatrixColumnDto column, int offset)
@@ -617,7 +807,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude reordenar la columna", ex.Message);
+            ShowStatus("error", "No pude reordenar la columna", UserFacingErrorMapper.FromException(ex, "Actualiza la matriz e inténtalo nuevamente."));
         }
     }
 
@@ -638,7 +828,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude agregar la fila", ex.Message);
+            ShowStatus("error", "No pude agregar la fila", UserFacingErrorMapper.FromException(ex, "Actualiza la matriz e inténtalo nuevamente."));
         }
     }
 
@@ -658,7 +848,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude guardar la celda", ex.Message);
+            ShowStatus("error", "No pude guardar la celda", UserFacingErrorMapper.FromException(ex, "Revisa el valor ingresado."));
         }
     }
 
@@ -734,7 +924,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude quitar la fila", ex.Message);
+            ShowStatus("error", "No pude quitar la fila", UserFacingErrorMapper.FromException(ex, "Actualiza la matriz e inténtalo nuevamente."));
         }
     }
 
@@ -782,7 +972,7 @@
         }
         catch (Exception ex)
         {
-            ShowStatus("error", "No pude enviar la matriz a staging", ex.Message);
+            ShowStatus("error", "No pude enviar la matriz a staging", UserFacingErrorMapper.FromException(ex, "Revisa las filas marcadas antes de enviarla."));
         }
     }
 
@@ -951,6 +1141,16 @@
                         <option value="false">No</option>
                     </select>
                 }
+                else if (field is not null && HasFixedOptions(field))
+                {
+                    <select class="@GetMatrixInputClass(field, row)" value="@value" @onchange="e => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, e.Value?.ToString())">
+                        <option value="">Seleccionar...</option>
+                        @foreach (var option in GetFixedOptions(field))
+                        {
+                            <option value="@option.Value">@option.Label</option>
+                        }
+                    </select>
+                }
                 else
                 {
                     <input class="@(field is null ? "min-w-[13rem] rounded-xl border border-[#d8c7cf] bg-white px-3 py-2 text-sm shadow-sm" : GetMatrixInputClass(field, row))" type="@(field is null ? "text" : GetInputType(field))" step="@(field is null ? null : GetInputStep(field))" max="@(field is null ? null : GetInputMax(field))" maxlength="@(field is null ? null : GetInputMaxLength(field))" inputmode="@(field is not null && IsIdentificationField(field) ? "numeric" : null)" placeholder="@(field is null ? "Registrar valor" : GetPlaceholder(field))" value="@value" @onchange="e => UpdateCellAsync(row.RegistrationMatrixRowId, column.FieldId, TrimToInputMaxLength(field, e.Value?.ToString()))" />
@@ -981,6 +1181,18 @@
     private static bool IsBooleanField(FieldCatalogItemDto field) => field.DataType.Contains("bool", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("bit", StringComparison.OrdinalIgnoreCase);
     private static bool IsNumericField(FieldCatalogItemDto field) => field.DataType.Contains("int", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("decimal", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("number", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("double", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("float", StringComparison.OrdinalIgnoreCase);
     private static bool IsIdentificationField(FieldCatalogItemDto field) => field.FieldKey.Equals("Identificacion", StringComparison.OrdinalIgnoreCase);
+    private static bool IsQuartileField(FieldCatalogItemDto field) => field.FieldKey.Equals("Quartile", StringComparison.OrdinalIgnoreCase);
+    private static bool IsParticipationField(FieldCatalogItemDto field) => field.FieldKey.Equals("Participacion", StringComparison.OrdinalIgnoreCase);
+    private static bool IsParticipantTypeField(FieldCatalogItemDto field) => field.FieldKey.Equals("ParticipantType", StringComparison.OrdinalIgnoreCase);
+    private static bool HasFixedOptions(FieldCatalogItemDto field) => IsQuartileField(field) || IsParticipationField(field) || IsParticipantTypeField(field);
+    private static IReadOnlyList<OptionItem> GetFixedOptions(FieldCatalogItemDto field)
+        => IsQuartileField(field)
+            ? [new("Q1", "Q1"), new("Q2", "Q2"), new("Q3", "Q3"), new("Q4", "Q4")]
+            : IsParticipationField(field)
+                ? [new("Autor", "Autor"), new("Coautor", "Coautor")]
+                : IsParticipantTypeField(field)
+                    ? [new("Docente", "Docente"), new("Estudiante", "Estudiante"), new("Externo", "Externo"), new("Otro", "Otro")]
+                    : [];
     private static string GetInputType(FieldCatalogItemDto field) => field.DataType.Contains("datetime", StringComparison.OrdinalIgnoreCase) ? "datetime-local" : field.DataType.Contains("date", StringComparison.OrdinalIgnoreCase) ? "date" : IsNumericField(field) ? "number" : "text";
     private static string? GetInputStep(FieldCatalogItemDto field) => field.DataType.Contains("decimal", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("double", StringComparison.OrdinalIgnoreCase) || field.DataType.Contains("float", StringComparison.OrdinalIgnoreCase) ? "0.01" : IsNumericField(field) ? "1" : null;
     private static string? GetInputMax(FieldCatalogItemDto field) => field.DataType.Contains("datetime", StringComparison.OrdinalIgnoreCase)
@@ -1123,6 +1335,21 @@
         if (IsIdentificationField(field) && !System.Text.RegularExpressions.Regex.IsMatch(cleaned, @"^\d{10}$"))
         {
             return "Identificacion debe contener exactamente 10 numeros.";
+        }
+
+        if (HasFixedOptions(field) && !GetFixedOptions(field).Any(x => x.Value.Equals(cleaned, StringComparison.OrdinalIgnoreCase)))
+        {
+            if (IsQuartileField(field))
+            {
+                return "Cuartil debe ser Q1, Q2, Q3 o Q4.";
+            }
+
+            if (IsParticipationField(field))
+            {
+                return "Participacion debe ser Autor o Coautor.";
+            }
+
+            return "Tipo de participante debe ser Docente, Estudiante, Externo u Otro.";
         }
 
         return null;

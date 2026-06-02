@@ -76,8 +76,8 @@
                     <label>
                         <span>Referencia temporal de series</span>
                         <select @bind="_draft.PeriodDateType">
-                            <option value="created">Fecha de registro</option>
                             <option value="published">Fecha de publicación</option>
+                            <option value="created">Fecha de registro</option>
                         </select>
                     </label>
                     <label>
@@ -448,7 +448,7 @@
         Filter.IsOpenAccess = _draft.IsOpenAccess;
         Filter.IsProjectResult = _draft.IsProjectResult;
         Filter.HasInterculturalComponent = _draft.HasInterculturalComponent;
-        Filter.PeriodDateType = Normalize(_draft.PeriodDateType);
+        Filter.PeriodDateType = NormalizePeriodDateType(_draft.PeriodDateType);
         Filter.AuthorName = Normalize(_draft.AuthorName);
         Filter.AuthorAffiliation = Normalize(_draft.AuthorAffiliation);
         Filter.ParticipantType = Normalize(_draft.ParticipantType);
@@ -485,7 +485,7 @@
             IsOpenAccess = source.IsOpenAccess,
             IsProjectResult = source.IsProjectResult,
             HasInterculturalComponent = source.HasInterculturalComponent,
-            PeriodDateType = source.PeriodDateType,
+            PeriodDateType = NormalizePeriodDateType(source.PeriodDateType),
             AuthorName = source.AuthorName,
             AuthorAffiliation = source.AuthorAffiliation,
             ParticipantType = source.ParticipantType,
@@ -497,6 +497,9 @@
 
     private static string? Normalize(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string NormalizePeriodDateType(string? value)
+        => string.Equals(value, "created", StringComparison.OrdinalIgnoreCase) ? "created" : "published";
 
     private static bool? NormalizePrimaryAuthorFilter(bool? value)
         => value == true ? true : null;

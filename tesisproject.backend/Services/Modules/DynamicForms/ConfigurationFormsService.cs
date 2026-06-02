@@ -101,9 +101,9 @@ namespace tesisproject.backend.Services.Implementations
                     EntityName = x.Field != null ? x.Field.EntityName : string.Empty,
                     DataType = x.Field != null ? x.Field.DataType : string.Empty,
                     IsDynamic = x.Field != null && x.Field.IsDynamic,
-                    IsVisible = x.IsVisible,
-                    IsRequired = x.IsRequired,
-                    IsEditable = x.IsEditable,
+                    IsVisible = x.Field != null && x.Field.IsVisible,
+                    IsRequired = x.Field != null && x.Field.IsRequired,
+                    IsEditable = x.Field != null && x.Field.IsEditable,
                     DisplayOrder = x.DisplayOrder,
                     GroupName = x.GroupName,
                     ColumnSpan = x.ColumnSpan,
@@ -182,7 +182,7 @@ namespace tesisproject.backend.Services.Implementations
 
             if (string.IsNullOrWhiteSpace(optionValue) || string.IsNullOrWhiteSpace(optionLabel))
             {
-                throw new InvalidOperationException("OptionValue y OptionLabel son obligatorios.");
+                throw new InvalidOperationException("Completa el valor interno y el texto visible de la opción.");
             }
 
             var option = new Data.Entities.DynamicFieldOption
@@ -270,6 +270,12 @@ namespace tesisproject.backend.Services.Implementations
                     .Select(x => new CatalogItemDto { Id = x.ResearchLineId, Name = x.Name })
                     .ToListAsync(ct),
 
+                "Faculties" => await _db.Faculties
+                    .AsNoTracking()
+                    .OrderBy(x => x.Name)
+                    .Select(x => new CatalogItemDto { Id = x.FacultyId, Name = x.Name })
+                    .ToListAsync(ct),
+
                 "BroadFields" => await _db.BroadFields
                     .AsNoTracking()
                     .OrderBy(x => x.Name)
@@ -323,6 +329,12 @@ namespace tesisproject.backend.Services.Implementations
                     .Select(x => new CatalogItemDto { Id = x.DetailedFieldId, Name = x.Name })
                     .ToListAsync(ct),
 
+                _ when string.Equals(fieldKey, "FacultyId", StringComparison.OrdinalIgnoreCase) => await _db.Faculties
+                    .AsNoTracking()
+                    .OrderBy(x => x.Name)
+                    .Select(x => new CatalogItemDto { Id = x.FacultyId, Name = x.Name })
+                    .ToListAsync(ct),
+
                 _ => new List<CatalogItemDto>()
             };
         }
@@ -335,13 +347,13 @@ namespace tesisproject.backend.Services.Implementations
 
             if (string.IsNullOrWhiteSpace(entityName) || string.IsNullOrWhiteSpace(formKey) || string.IsNullOrWhiteSpace(formName))
             {
-                throw new InvalidOperationException("EntityName, FormKey y FormName son obligatorios.");
+                throw new InvalidOperationException("Completa el tipo de formulario, el identificador y el nombre visible.");
             }
 
             var exists = await _db.FormDefinitions.AnyAsync(x => x.FormKey == formKey, ct);
             if (exists)
             {
-                throw new InvalidOperationException("Ya existe un formulario con el mismo FormKey.");
+                throw new InvalidOperationException("Ya existe un formulario con ese identificador.");
             }
 
             var form = new Data.Entities.FormDefinition
@@ -353,6 +365,11 @@ namespace tesisproject.backend.Services.Implementations
                 IsActive = request.IsActive,
                 CreatedAt = DateTime.UtcNow
             };
+
+            if (form.IsActive)
+            {
+                await DeactivateOtherFormsAsync(entityName, exceptFormId: null, ct);
+            }
 
             _db.FormDefinitions.Add(form);
             await _db.SaveChangesAsync(ct);
@@ -380,6 +397,11 @@ namespace tesisproject.backend.Services.Implementations
             form.Description = NormalizeNullable(request.Description);
             form.IsActive = request.IsActive;
             form.UpdatedAt = DateTime.UtcNow;
+
+            if (form.IsActive)
+            {
+                await DeactivateOtherFormsAsync(form.EntityName, form.FormId, ct);
+            }
 
             await _db.SaveChangesAsync(ct);
 
@@ -423,21 +445,23 @@ namespace tesisproject.backend.Services.Implementations
 
             if (string.IsNullOrWhiteSpace(entityName) || string.IsNullOrWhiteSpace(fieldKey) || string.IsNullOrWhiteSpace(fieldLabel))
             {
-                throw new InvalidOperationException("EntityName, FieldKey y FieldLabel son obligatorios.");
+                throw new InvalidOperationException("Completa la sección, el identificador y el nombre visible del campo.");
             }
 
             var exists = await _db.FieldCatalogEntries.AnyAsync(x => x.EntityName == entityName && x.FieldKey == fieldKey, ct);
             if (exists)
             {
-                throw new InvalidOperationException("Ya existe un campo con el mismo FieldKey para esa entidad.");
+                throw new InvalidOperationException("Ya existe un campo con ese identificador en la sección seleccionada.");
             }
+
+            var dataType = NormalizeDataType(request.DataType);
 
             var field = new Data.Entities.FieldCatalogEntry
             {
                 EntityName = entityName,
                 FieldKey = fieldKey,
                 FieldLabel = fieldLabel,
-                DataType = string.IsNullOrWhiteSpace(request.DataType) ? "string" : request.DataType.Trim(),
+                DataType = dataType,
                 SourceType = string.IsNullOrWhiteSpace(request.SourceType) ? "Dynamic" : request.SourceType.Trim(),
                 IsSystemField = false,
                 IsDynamic = true,
@@ -487,6 +511,45 @@ namespace tesisproject.backend.Services.Implementations
             return MapField(field);
         }
 
+        public async Task<bool> DeleteFieldAsync(int fieldId, CancellationToken ct = default)
+        {
+            var field = await _db.FieldCatalogEntries
+                .Include(x => x.Options)
+                .Include(x => x.FormFields)
+                .FirstOrDefaultAsync(x => x.FieldId == fieldId, ct);
+
+            if (field is null)
+            {
+                return false;
+            }
+
+            if (!field.IsDynamic)
+            {
+                throw new InvalidOperationException("Los campos físicos del modelo no se eliminan. Si no deben aparecer en el registro, desactívalos o quítalos del formulario.");
+            }
+
+            var hasArticleValues = await _db.DynamicFieldValues.AnyAsync(x => x.FieldId == fieldId, ct);
+            var hasParticipantValues = await _db.ArticleParticipantDynamicFieldValues.AnyAsync(x => x.FieldId == fieldId, ct);
+            var hasStagingValues = await _db.ImportBatchRowValues.AnyAsync(x => x.FieldId == fieldId, ct);
+            var hasStagingErrors = await _db.ImportBatchErrors.AnyAsync(x => x.FieldId == fieldId, ct);
+            var hasMatrixColumns = await _db.RegistrationMatrixColumns.AnyAsync(x => x.FieldId == fieldId, ct);
+            var hasMatrixCells = await _db.RegistrationMatrixCells.AnyAsync(x => x.FieldId == fieldId, ct);
+
+            if (hasArticleValues || hasParticipantValues || hasStagingValues || hasStagingErrors || hasMatrixColumns || hasMatrixCells)
+            {
+                throw new InvalidOperationException("No se puede eliminar este campo porque ya tiene registros, staging, errores o matrices asociados. Desactívalo para ocultarlo sin perder trazabilidad.");
+            }
+
+            if (field.FormFields.Count > 0)
+            {
+                _db.FormFieldDefinitions.RemoveRange(field.FormFields);
+            }
+
+            _db.FieldCatalogEntries.Remove(field);
+            await _db.SaveChangesAsync(ct);
+            return true;
+        }
+
         public async Task<FormFieldAdminDto> AddFieldToFormAsync(int formId, AddFieldToFormRequest request, CancellationToken ct = default)
         {
             var formExists = await _db.FormDefinitions.AnyAsync(x => x.FormId == formId, ct);
@@ -504,19 +567,19 @@ namespace tesisproject.backend.Services.Implementations
             var exists = await _db.FormFieldDefinitions.AnyAsync(x => x.FormId == formId && x.FieldId == request.FieldId, ct);
             if (exists)
             {
-                throw new InvalidOperationException("El campo ya está asignado al formulario.");
+                throw new InvalidOperationException("Este campo ya forma parte del formulario seleccionado.");
             }
 
             var formField = new Data.Entities.FormFieldDefinition
             {
                 FormId = formId,
                 FieldId = request.FieldId,
-                IsVisible = request.IsVisible,
-                IsRequired = request.IsRequired,
-                IsEditable = request.IsEditable,
+                IsVisible = field.IsVisible,
+                IsRequired = field.IsRequired,
+                IsEditable = field.IsEditable,
                 DisplayOrder = request.DisplayOrder,
                 GroupName = NormalizeNullable(request.GroupName),
-                ColumnSpan = request.ColumnSpan,
+                ColumnSpan = NormalizeColumnSpan(request.ColumnSpan),
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -533,9 +596,9 @@ namespace tesisproject.backend.Services.Implementations
                 EntityName = field.EntityName,
                 DataType = field.DataType,
                 IsDynamic = field.IsDynamic,
-                IsVisible = formField.IsVisible,
-                IsRequired = formField.IsRequired,
-                IsEditable = formField.IsEditable,
+                IsVisible = field.IsVisible,
+                IsRequired = field.IsRequired,
+                IsEditable = field.IsEditable,
                 DisplayOrder = formField.DisplayOrder,
                 GroupName = formField.GroupName,
                 ColumnSpan = formField.ColumnSpan,
@@ -554,12 +617,12 @@ namespace tesisproject.backend.Services.Implementations
                 return null;
             }
 
-            formField.IsVisible = request.IsVisible;
-            formField.IsRequired = request.IsRequired;
-            formField.IsEditable = request.IsEditable;
+            formField.IsVisible = formField.Field.IsVisible;
+            formField.IsRequired = formField.Field.IsRequired;
+            formField.IsEditable = formField.Field.IsEditable;
             formField.DisplayOrder = request.DisplayOrder;
             formField.GroupName = NormalizeNullable(request.GroupName);
-            formField.ColumnSpan = request.ColumnSpan;
+            formField.ColumnSpan = NormalizeColumnSpan(request.ColumnSpan);
             formField.UpdatedAt = DateTime.UtcNow;
 
             await _db.SaveChangesAsync(ct);
@@ -574,9 +637,9 @@ namespace tesisproject.backend.Services.Implementations
                 EntityName = formField.Field.EntityName,
                 DataType = formField.Field.DataType,
                 IsDynamic = formField.Field.IsDynamic,
-                IsVisible = formField.IsVisible,
-                IsRequired = formField.IsRequired,
-                IsEditable = formField.IsEditable,
+                IsVisible = formField.Field.IsVisible,
+                IsRequired = formField.Field.IsRequired,
+                IsEditable = formField.Field.IsEditable,
                 DisplayOrder = formField.DisplayOrder,
                 GroupName = formField.GroupName,
                 ColumnSpan = formField.ColumnSpan,
@@ -665,7 +728,7 @@ namespace tesisproject.backend.Services.Implementations
         private static ResolvedFormDto MapResolvedForm(Data.Entities.FormDefinition form)
         {
             var sections = form.Fields
-                .Where(x => x.IsVisible && x.Field != null && x.Field.IsActive && x.Field.FieldKey != "VenueId")
+                .Where(x => x.Field != null && x.Field.IsActive && x.Field.IsVisible && x.Field.FieldKey != "VenueId")
                 .OrderBy(x => x.DisplayOrder)
                 .ThenBy(x => x.FieldId)
                 .GroupBy(x => string.IsNullOrWhiteSpace(x.GroupName) ? "General" : x.GroupName!)
@@ -693,9 +756,9 @@ namespace tesisproject.backend.Services.Implementations
                                 ReferenceTableName = field.ReferenceTableName,
                                 IsSystemField = field.IsSystemField,
                                 IsDynamic = field.IsDynamic,
-                                IsRequired = x.IsRequired,
-                                IsVisible = x.IsVisible,
-                                IsEditable = x.IsEditable,
+                                IsRequired = field.IsRequired,
+                                IsVisible = field.IsVisible,
+                                IsEditable = field.IsEditable,
                                 IsFilterable = field.IsFilterable,
                                 IsActive = field.IsActive,
                                 DisplayOrder = x.DisplayOrder,
@@ -758,6 +821,40 @@ namespace tesisproject.backend.Services.Implementations
         private static string? NormalizeNullable(string? value)
         {
             return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        }
+
+        private async Task DeactivateOtherFormsAsync(string entityName, int? exceptFormId, CancellationToken ct)
+        {
+            var forms = await _db.FormDefinitions
+                .Where(x => x.EntityName == entityName && x.IsActive)
+                .Where(x => !exceptFormId.HasValue || x.FormId != exceptFormId.Value)
+                .ToListAsync(ct);
+
+            foreach (var item in forms)
+            {
+                item.IsActive = false;
+                item.UpdatedAt = DateTime.UtcNow;
+            }
+        }
+
+        private static int? NormalizeColumnSpan(int? columnSpan)
+        {
+            if (!columnSpan.HasValue)
+            {
+                return null;
+            }
+
+            return Math.Clamp(columnSpan.Value, 1, 2);
+        }
+
+        private static string NormalizeDataType(string? dataType)
+        {
+            var normalized = string.IsNullOrWhiteSpace(dataType) ? "string" : dataType.Trim().ToLowerInvariant();
+            return normalized switch
+            {
+                "string" or "int" or "decimal" or "datetime" or "date" or "bool" => normalized,
+                _ => throw new InvalidOperationException("Selecciona un tipo de dato válido para el campo.")
+            };
         }
 
         private async Task EnsureVenueMetadataIfNeededAsync(string entityName, CancellationToken ct)

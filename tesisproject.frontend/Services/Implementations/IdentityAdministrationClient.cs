@@ -1,5 +1,5 @@
 using System.Net.Http.Json;
-using System.Text.Json;
+using tesisproject.frontend.Services.Errors;
 using tesisproject.frontend.Services.Interfaces;
 using tesisproject.shared.DTOs.Auth;
 
@@ -58,29 +58,5 @@ public class IdentityAdministrationClient : IIdentityAdministrationClient
     }
 
     private static async Task<string> BuildErrorMessageAsync(HttpResponseMessage response, CancellationToken ct)
-    {
-        var body = await response.Content.ReadAsStringAsync(ct);
-        if (!string.IsNullOrWhiteSpace(body))
-        {
-            try
-            {
-                using var json = JsonDocument.Parse(body);
-                var root = json.RootElement;
-                if (root.TryGetProperty("message", out var message) && message.ValueKind == JsonValueKind.String)
-                {
-                    return message.GetString() ?? "La operación falló.";
-                }
-
-                if (root.TryGetProperty("detail", out var detail) && detail.ValueKind == JsonValueKind.String)
-                {
-                    return detail.GetString() ?? "La operación falló.";
-                }
-            }
-            catch
-            {
-            }
-        }
-
-        return $"La operación falló con estado {(int)response.StatusCode} ({response.ReasonPhrase}).";
-    }
+        => await UserFacingErrorMapper.FromHttpResponseAsync(response, "La operación no se pudo completar. Revisa los datos e inténtalo nuevamente.", ct);
 }

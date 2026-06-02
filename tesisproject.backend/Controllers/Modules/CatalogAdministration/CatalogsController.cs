@@ -280,6 +280,25 @@ namespace tesisproject.backend.Controllers
             }
         }
 
+        [HttpDelete("admin/{catalogKey}/{id:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
+        public async Task<IActionResult> DeleteAdminCatalogItem(string catalogKey, int id, CancellationToken ct)
+        {
+            try
+            {
+                var deleted = await DeleteAdminCatalogItemAsync(catalogKey, id, ct);
+                return deleted ? NoContent() : NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (DbUpdateException)
+            {
+                return BadRequest(new { message = "No se puede eliminar este elemento porque ya está relacionado con registros del sistema. Puedes editarlo o dejarlo sin usar, pero no borrarlo." });
+            }
+        }
+
         private async Task<List<CatalogAdminItemDto>?> GetAdminCatalogItemsAsync(string catalogKey, CancellationToken ct)
         {
             return NormalizeCatalogKey(catalogKey) switch
@@ -414,14 +433,14 @@ namespace tesisproject.backend.Controllers
                     return new CatalogAdminItemDto { Id = broadField.BroadFieldId, Name = broadField.Name };
 
                 case "specific-fields":
-                    if (!request.ParentId.HasValue) throw new InvalidOperationException("SpecificField requiere ParentId (BroadFieldId).");
+                    if (!request.ParentId.HasValue) throw new InvalidOperationException("Selecciona el campo amplio relacionado antes de crear el campo específico.");
                     var specificField = new SpecificField { Name = request.Name.Trim(), BroadFieldId = request.ParentId.Value, Code = NormalizeNullable(request.Code) };
                     _db.SpecificFields.Add(specificField);
                     await _db.SaveChangesAsync(ct);
                     return new CatalogAdminItemDto { Id = specificField.SpecificFieldId, Name = specificField.Name, ParentId = specificField.BroadFieldId, Code = specificField.Code };
 
                 case "detailed-fields":
-                    if (!request.ParentId.HasValue) throw new InvalidOperationException("DetailedField requiere ParentId (SpecificFieldId).");
+                    if (!request.ParentId.HasValue) throw new InvalidOperationException("Selecciona el campo específico relacionado antes de crear el campo detallado.");
                     var detailedField = new DetailedField { Name = request.Name.Trim(), SpecificFieldId = request.ParentId.Value, Code = NormalizeNullable(request.Code) };
                     _db.DetailedFields.Add(detailedField);
                     await _db.SaveChangesAsync(ct);
@@ -545,8 +564,99 @@ namespace tesisproject.backend.Controllers
             }
         }
 
+        private async Task<bool> DeleteAdminCatalogItemAsync(string catalogKey, int id, CancellationToken ct)
+        {
+            var normalizedKey = NormalizeCatalogKey(catalogKey);
+
+            switch (normalizedKey)
+            {
+                case "academic-terms":
+                    if (await _db.Articles.AnyAsync(x => x.AcademicTermId == id, ct)) throw InUseCatalogException();
+                    var academicTerm = await _db.AcademicTerms.FirstOrDefaultAsync(x => x.AcademicTermId == id, ct);
+                    if (academicTerm is null) return false;
+                    _db.AcademicTerms.Remove(academicTerm);
+                    break;
+
+                case "research-lines":
+                    if (await _db.Articles.AnyAsync(x => x.ResearchLineId == id, ct)) throw InUseCatalogException();
+                    var researchLine = await _db.ResearchLines.FirstOrDefaultAsync(x => x.ResearchLineId == id, ct);
+                    if (researchLine is null) return false;
+                    _db.ResearchLines.Remove(researchLine);
+                    break;
+
+                case "publication-statuses":
+                    if (id is < byte.MinValue or > byte.MaxValue) return false;
+                    var publicationStatusId = (byte)id;
+                    if (await _db.Articles.AnyAsync(x => x.PublicationStatusId == publicationStatusId, ct)) throw InUseCatalogException();
+                    var publicationStatus = await _db.PublicationStatuses.FirstOrDefaultAsync(x => x.PublicationStatusId == publicationStatusId, ct);
+                    if (publicationStatus is null) return false;
+                    _db.PublicationStatuses.Remove(publicationStatus);
+                    break;
+
+                case "indexing-sources":
+                    if (await _db.ArticleIndexings.AnyAsync(x => x.IndexingSourceId == id, ct)) throw InUseCatalogException();
+                    var indexingSource = await _db.IndexingSources.FirstOrDefaultAsync(x => x.IndexingSourceId == id, ct);
+                    if (indexingSource is null) return false;
+                    _db.IndexingSources.Remove(indexingSource);
+                    break;
+
+                case "faculties":
+                    if (await _db.Articles.AnyAsync(x => x.FacultyId == id, ct)) throw InUseCatalogException();
+                    var faculty = await _db.Faculties.FirstOrDefaultAsync(x => x.FacultyId == id, ct);
+                    if (faculty is null) return false;
+                    _db.Faculties.Remove(faculty);
+                    break;
+
+                case "broad-fields":
+                    if (await _db.Articles.AnyAsync(x => x.BroadFieldId == id, ct)) throw InUseCatalogException();
+                    if (await _db.SpecificFields.AnyAsync(x => x.BroadFieldId == id, ct)) throw new InvalidOperationException("No se puede eliminar este campo amplio porque tiene campos específicos asociados. Elimina primero sus elementos hijos si realmente ya no se usarán.");
+                    var broadField = await _db.BroadFields.FirstOrDefaultAsync(x => x.BroadFieldId == id, ct);
+                    if (broadField is null) return false;
+                    _db.BroadFields.Remove(broadField);
+                    break;
+
+                case "specific-fields":
+                    if (await _db.Articles.AnyAsync(x => x.SpecificFieldId == id, ct)) throw InUseCatalogException();
+                    if (await _db.DetailedFields.AnyAsync(x => x.SpecificFieldId == id, ct)) throw new InvalidOperationException("No se puede eliminar este campo específico porque tiene campos detallados asociados. Elimina primero sus elementos hijos si realmente ya no se usarán.");
+                    var specificField = await _db.SpecificFields.FirstOrDefaultAsync(x => x.SpecificFieldId == id, ct);
+                    if (specificField is null) return false;
+                    _db.SpecificFields.Remove(specificField);
+                    break;
+
+                case "detailed-fields":
+                    if (await _db.Articles.AnyAsync(x => x.DetailedFieldId == id, ct)) throw InUseCatalogException();
+                    var detailedField = await _db.DetailedFields.FirstOrDefaultAsync(x => x.DetailedFieldId == id, ct);
+                    if (detailedField is null) return false;
+                    _db.DetailedFields.Remove(detailedField);
+                    break;
+
+                case "projects":
+                    var project = await _db.Projects.FirstOrDefaultAsync(x => x.Id == id, ct);
+                    if (project is null) return false;
+                    _db.Projects.Remove(project);
+                    break;
+
+                case "venues":
+                    if (await _db.Articles.AnyAsync(x => x.VenueId == id, ct)) throw InUseCatalogException();
+                    if (await _db.VenueMetrics.AnyAsync(x => x.VenueId == id, ct)) throw InUseCatalogException();
+                    var venue = await _db.Venues.FirstOrDefaultAsync(x => x.VenueId == id, ct);
+                    if (venue is null) return false;
+                    _db.Venues.Remove(venue);
+                    break;
+
+                default:
+                    throw new InvalidOperationException("Catálogo no soportado.");
+            }
+
+            await _db.SaveChangesAsync(ct);
+            return true;
+        }
+
         private static string NormalizeCatalogKey(string catalogKey)
             => string.IsNullOrWhiteSpace(catalogKey) ? string.Empty : catalogKey.Trim().ToLowerInvariant();
+
+        private static InvalidOperationException InUseCatalogException()
+            => new("No se puede eliminar este elemento porque ya está usado por registros del sistema. Para conservar trazabilidad, edítalo o evita seleccionarlo en nuevos registros.");
 
         private static string? NormalizeNullable(string? value)
             => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
@@ -578,22 +688,34 @@ namespace tesisproject.backend.Controllers
 
         private async Task<bool> TableExistsAsync(string tableName, CancellationToken ct)
         {
-            await using var connection = _db.Database.GetDbConnection();
-            if (connection.State != ConnectionState.Open)
+            var connection = _db.Database.GetDbConnection();
+            var shouldClose = connection.State != ConnectionState.Open;
+
+            if (shouldClose)
             {
                 await connection.OpenAsync(ct);
             }
 
-            await using var command = connection.CreateCommand();
-            command.CommandText = "SELECT 1 WHERE OBJECT_ID(@tableName, 'U') IS NOT NULL";
+            try
+            {
+                await using var command = connection.CreateCommand();
+                command.CommandText = "SELECT 1 WHERE OBJECT_ID(@tableName, 'U') IS NOT NULL";
 
-            var parameter = command.CreateParameter();
-            parameter.ParameterName = "@tableName";
-            parameter.Value = $"[dbo].[{tableName}]";
-            command.Parameters.Add(parameter);
+                var parameter = command.CreateParameter();
+                parameter.ParameterName = "@tableName";
+                parameter.Value = $"[dbo].[{tableName}]";
+                command.Parameters.Add(parameter);
 
-            var result = await command.ExecuteScalarAsync(ct);
-            return result is not null && result != DBNull.Value;
+                var result = await command.ExecuteScalarAsync(ct);
+                return result is not null && result != DBNull.Value;
+            }
+            finally
+            {
+                if (shouldClose)
+                {
+                    await connection.CloseAsync();
+                }
+            }
         }
 
     }

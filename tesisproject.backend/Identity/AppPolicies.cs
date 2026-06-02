@@ -5,6 +5,7 @@ public static class AppPolicies
     public const string AuthenticatedUser = "AuthenticatedUser";
     public const string SecurityAdministration = "SecurityAdministration";
     public const string AuthorSubmission = "AuthorSubmission";
+    public const string ArticleListingAccess = "ArticleListingAccess";
     public const string ArticlesWrite = "ArticlesWrite";
     public const string WorkflowAccess = "WorkflowAccess";
     public const string WorkflowReview = "WorkflowReview";

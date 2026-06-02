@@ -199,6 +199,17 @@ public static class ServiceCollectionExtensions
                     AppRoles.ArticleRegistrationUser,
                     AppRoles.RegistrationMatrixUser));
 
+            options.AddPolicy(AppPolicies.ArticleListingAccess, policy =>
+                policy.RequireRole(
+                    AppRoles.Admin,
+                    AppRoles.Analyst,
+                    AppRoles.DirectArticleSaveUser,
+                    AppRoles.ReportingViewer,
+                    AppRoles.ReportingExporter,
+                    AppRoles.ReportingAdvancedUser,
+                    AppRoles.WorkflowReviewerAreaTecnica,
+                    AppRoles.WorkflowProcessorAreaTecnica));
+
             options.AddPolicy(AppPolicies.ArticlesWrite, policy =>
                 policy.RequireRole(AppRoles.Admin, AppRoles.Analyst, AppRoles.DirectArticleSaveUser));
 

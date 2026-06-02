@@ -237,6 +237,21 @@ namespace tesisproject.backend.Controllers
             return Ok(field);
         }
 
+        [HttpDelete("fields/{fieldId:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
+        public async Task<IActionResult> DeleteField(int fieldId, CancellationToken ct)
+        {
+            try
+            {
+                var deleted = await _configurationFormsService.DeleteFieldAsync(fieldId, ct);
+                return deleted ? NoContent() : NotFound();
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpPost("forms/{formId:int}/fields")]
         [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<FormFieldAdminDto>> AddFieldToForm(

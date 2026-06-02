@@ -13,7 +13,7 @@
             <span class="module-kicker">Inteligencia institucional</span>
             <h1>Predicción y recomendación académica</h1>
             <p>
-                Estima producción científica, valida si la data permite entrenar modelos y registra cada reentrenamiento para auditoría.
+                Predice producción científica y sugiere acciones para la toma de decisiones institucional.
             </p>
         </div>
         <div class="ai-hero__status">
@@ -42,7 +42,7 @@
             <div>
                 <span>@_trainingRun.Status</span>
                 <strong>@_trainingRun.PromotedAlgorithm</strong>
-                <small>@_trainingRun.SelectionReason</small>
+                <small>@_trainingRun.Experiment.BestMetric: @_trainingRun.Experiment.BestMetricValue.ToString("N2")</small>
             </div>
             <span>@_trainingRun.ActiveModelVersion</span>
         </section>
@@ -61,19 +61,19 @@
                 class="@GetViewTabClass(DecisionsView)"
                 @onclick="() => SetActiveView(DecisionsView)">
             <i class="bi bi-compass"></i>
-            <span>Decisiones</span>
+            <span>Panel de decisión</span>
         </button>
         <button type="button"
                 class="@GetViewTabClass(ModelView)"
                 @onclick="() => SetActiveView(ModelView)">
             <i class="bi bi-cpu"></i>
-            <span>Modelo y datos</span>
+            <span>Laboratorio IA</span>
         </button>
     </section>
 
     @if (_activeView == DecisionsView)
     {
-    <section class="ai-grid ai-grid--metrics" aria-label="Indicadores de preparación IA">
+    <section class="ai-grid ai-grid--metrics ai-grid--decision-metrics" aria-label="Indicadores de lectura IA">
         <article class="ai-metric">
             <span class="ai-metric__label">Base analítica</span>
             <strong>@((_intelligence?.TotalArticles ?? 0).ToString("N0"))</strong>
@@ -82,127 +82,30 @@
         <article class="ai-metric">
             <span class="ai-metric__label">Preparación IA</span>
             <strong>@DataQuality.StatusLabel</strong>
-            <small>@DataQuality.Summary</small>
+            <small>@DataQuality.MonthsAvailable meses analizados</small>
         </article>
         <article class="ai-metric">
             <span class="ai-metric__label">Autores</span>
             <strong>@((_intelligence?.TotalAuthors ?? 0).ToString("N0"))</strong>
             <small>@((_intelligence?.Readiness.AuthorTraceScore ?? 0).ToString("N0"))% trazabilidad</small>
         </article>
-        <article class="ai-metric">
-            <span class="ai-metric__label">Modelo promovido</span>
-            <strong>@PromotedModelLabel</strong>
-            <small>@PromotedModelVersion</small>
-        </article>
     </section>
 
-    <section class="ai-focus-strip-panel app-section-card" aria-label="Foco de decisión IA">
-        <div class="ai-focus-strip-panel__head">
-            <div>
-                <span>Foco de decisión</span>
-                <strong>@SelectedDecisionFocus.Title</strong>
-            </div>
-            <small>@SelectedDecisionFocus.Description</small>
-        </div>
-
-        <div class="ai-focus-strip">
-            @foreach (var item in DecisionFocusItems)
-            {
-                <button type="button"
-                        class="@GetFocusPillClass(item.Key)"
-                        @onclick="() => SelectDecisionFocus(item.Key)">
-                    <span>@item.Icon</span>
-                    <strong>@item.Title</strong>
-                    <em>@item.Status</em>
-                </button>
-            }
-        </div>
-    </section>
-
-    <section class="ai-decision-tabs" aria-label="Niveles de lectura IA">
-        <button type="button"
-                class="@GetDecisionModeClass(SummaryDecisionMode)"
-                @onclick="() => SetDecisionMode(SummaryDecisionMode)">
-            <i class="bi bi-lightning-charge"></i>
-            <span>Resultado IA</span>
-        </button>
-        <button type="button"
-                class="@GetDecisionModeClass(ScenarioDecisionMode)"
-                @onclick="() => SetDecisionMode(ScenarioDecisionMode)">
-            <i class="bi bi-diagram-3"></i>
-            <span>Escenarios</span>
-        </button>
-        <button type="button"
-                class="@GetDecisionModeClass(DiagnosticDecisionMode)"
-                @onclick="() => SetDecisionMode(DiagnosticDecisionMode)">
-            <i class="bi bi-database-check"></i>
-            <span>Datos usados</span>
-        </button>
-    </section>
-
-    @if (_decisionMode == SummaryDecisionMode)
-    {
-    <section class="ai-executive-grid" aria-label="Resultado ejecutivo de inteligencia artificial">
-        <article class="ai-executive-card ai-executive-card--primary">
-            <span>Predicción principal</span>
-            <strong>@ForecastTotalLabel</strong>
-            <small>Producción científica esperada en los próximos @(_intelligence?.ProductionForecast.HorizonMonths ?? 0) meses.</small>
-            <div class="ai-executive-meta">
-                <em>@(_intelligence?.ProductionForecast.Algorithm ?? "Sin algoritmo")</em>
-                <em>@((_intelligence?.ProductionForecast.ConfidenceScore ?? 0).ToString("N0"))% confianza</em>
-            </div>
-        </article>
-
-        <article class="ai-executive-card">
-            <span>Próximo mes</span>
-            <strong>@NextForecastLabel</strong>
-            <small>@NextForecastRangeLabel</small>
-        </article>
-
-        <article class="ai-executive-card">
-            <span>Acción recomendada</span>
-            <strong>@ProductionRecommendationTitle</strong>
-            <small>@ProductionRecommendationAction</small>
-        </article>
-    </section>
-
-    <section class="ai-production-brief app-section-card">
-        <div>
-            <span>@ExecutiveDecisionTitle</span>
-            <strong>@ProductionTrendLabel</strong>
-            <small>@ExecutiveDecisionDetail</small>
-        </div>
-        <div class="ai-production-brief__stats">
-            <article>
-                <small>Histórico usado</small>
-                <strong>@HistoricalMonthsLabel</strong>
-            </article>
-            <article>
-                <small>Confianza</small>
-                <strong>@((_intelligence?.ProductionForecast.ConfidenceScore ?? 0).ToString("N0"))%</strong>
-            </article>
-            <article>
-                <small>Modelo</small>
-                <strong>@(_intelligence?.ProductionForecast.Algorithm ?? "Sin algoritmo")</strong>
-            </article>
-        </div>
-    </section>
-
-    <section class="ai-workbench ai-workbench--executive">
-        <div class="ai-workbench__main app-section-card">
+    <section class="ai-decision-main" aria-label="Resultado principal IA">
+        <div class="ai-decision-main__prediction app-section-card">
             <div class="ai-section-heading">
                 <span class="app-inline-chip app-inline-chip--gold">
                     <i class="bi bi-graph-up-arrow"></i>
                     Predicción
                 </span>
-                <h2>Próximos meses</h2>
+                <h2>Producción esperada</h2>
             </div>
 
-            <div class="ai-forecast-summary ai-forecast-summary--compact">
+            <div class="ai-prediction-hero">
                 <div>
-                    <span class="ai-readiness-label">@(_intelligence?.ProductionForecast.Algorithm ?? "Sin algoritmo")</span>
+                    <span class="ai-readiness-label">Próximos @(_intelligence?.ProductionForecast.HorizonMonths ?? 0) meses</span>
                     <strong>@ForecastTotalLabel</strong>
-                    <small>@(_intelligence?.ProductionForecast.Interpretation ?? "Actualiza la lectura IA para generar una predicción.")</small>
+                    <small>@ProductionTrendLabel · @NextForecastLabel</small>
                     @if (IsLowForecastConfidence)
                     {
                         <div class="ai-forecast-warning">
@@ -211,12 +114,15 @@
                         </div>
                     }
                 </div>
-                <div class="ai-readiness-ring" style="--ai-score:@(_intelligence?.ProductionForecast.ConfidenceScore ?? 0)">
-                    <span>@((_intelligence?.ProductionForecast.ConfidenceScore ?? 0).ToString("N0"))%</span>
+                <div class="ai-confidence-block">
+                    <div class="ai-readiness-ring" style="--ai-score:@(_intelligence?.ProductionForecast.ConfidenceScore ?? 0)">
+                        <span>@((_intelligence?.ProductionForecast.ConfidenceScore ?? 0).ToString("N0"))%</span>
+                    </div>
+                    <small>Confianza del pronóstico</small>
                 </div>
             </div>
 
-            <div class="ai-forecast-strip ai-forecast-strip--summary">
+            <div class="ai-forecast-strip ai-forecast-strip--summary ai-forecast-strip--decision">
                 @foreach (var point in ForecastPoints)
                 {
                     <article class="@(point.IsForecast ? "ai-forecast-point ai-forecast-point--future" : "ai-forecast-point")">
@@ -228,13 +134,19 @@
             </div>
         </div>
 
-        <aside class="ai-workbench__aside app-section-card">
+        <aside class="ai-decision-main__recommendations app-section-card">
             <div class="ai-section-heading">
                 <span class="app-inline-chip app-inline-chip--success">
                     <i class="bi bi-stars"></i>
                     Recomendaciones
                 </span>
-                <h2>Acciones clave</h2>
+                <h2>Qué hacer ahora</h2>
+            </div>
+
+            <div class="ai-priority-action">
+                <span>Acción prioritaria</span>
+                <strong>@ProductionRecommendationTitle</strong>
+                <small>@ProductionRecommendationAction</small>
             </div>
 
             <div class="ai-recommendation-list">
@@ -244,31 +156,43 @@
                         <span>@item.Priority</span>
                         <div>
                             <strong>@item.Title</strong>
-                            <small>@item.Detail</small>
-                            <em>@item.SuggestedAction</em>
+                            <small>@item.SuggestedAction</small>
                         </div>
                     </article>
                 }
             </div>
         </aside>
     </section>
-    }
 
-    @if (_decisionMode == ScenarioDecisionMode)
-    {
-    <section class="ai-decision-focus app-section-card">
+    <section class="ai-focus-strip-panel app-section-card" aria-label="Señales de decisión IA">
+        <div class="ai-focus-strip-panel__head">
+            <div>
+                <span>Señales de decisión</span>
+                <strong>@SelectedDecisionFocus.Title</strong>
+            </div>
+            <small>@SelectedDecisionFocus.Result</small>
+        </div>
+
+        <div class="ai-focus-strip">
+            @foreach (var item in DecisionFocusItems)
+            {
+                <button type="button"
+                        class="@GetFocusPillClass(item.Key)"
+                        @onclick="() => SelectDecisionFocus(item.Key)">
+                    <span>@item.Icon</span>
+                    <strong>@item.Title</strong>
+                </button>
+            }
+        </div>
+    </section>
+
+    <section class="ai-decision-focus app-section-card ai-decision-focus--compact">
         <div class="ai-section-heading">
             <span class="app-inline-chip app-inline-chip--success">
                 <i class="bi bi-bullseye"></i>
-                Análisis seleccionado
+                Análisis
             </span>
             <h2>@SelectedDecisionFocus.Title</h2>
-        </div>
-
-        <div class="ai-focus-result ai-compact-result">
-            <span>@SelectedDecisionFocus.Status</span>
-            <strong>@SelectedDecisionFocus.Title</strong>
-            <small>@SelectedDecisionFocus.Result</small>
         </div>
 
         @if (FocusedDecisionInsights.Count > 0)
@@ -302,7 +226,7 @@
                         <span>Escenario avanzado</span>
                         <strong>Predicción por facultad</strong>
                     </div>
-                    <small>Top @FacultyForecasts.Count facultades · próximos 6 meses</small>
+                    <small>Próximos 6 meses</small>
                 </div>
 
                 @if (FacultyForecasts.Count == 0)
@@ -318,7 +242,7 @@
                         <article>
                             <span>Mayor producción esperada</span>
                             <strong>@TopFacultyForecast.Faculty</strong>
-                            <small>@TopFacultyForecast.NextSixMonthsTotal.ToString("N1") artículos estimados · @TopFacultyForecast.ConfidenceScore.ToString("N0")% confianza</small>
+                            <small>@TopFacultyForecast.NextSixMonthsTotal.ToString("N1") artículos · @TopFacultyForecast.ConfidenceScore.ToString("N0")% confianza</small>
                         </article>
                         <article>
                             <span>Atención prioritaria</span>
@@ -371,7 +295,7 @@
                     @if (FacultyForecasts.Count > VisibleFacultyForecasts.Count)
                     {
                         <div class="ai-faculty-more-note">
-                            Se priorizan @VisibleFacultyForecasts.Count facultades para lectura rápida. Hay @(FacultyForecasts.Count - VisibleFacultyForecasts.Count) adicionales disponibles para una vista detallada posterior.
+                            Se muestran las facultades con mayor señal para decisión rápida.
                         </div>
                     }
                 }
@@ -386,7 +310,7 @@
                         <span>Escenario avanzado</span>
                         <strong>Predicción por línea de investigación</strong>
                     </div>
-                    <small>Top @ResearchLineForecasts.Count líneas · próximos 6 meses</small>
+                    <small>Próximos 6 meses</small>
                 </div>
 
                 @if (ResearchLineForecasts.Count == 0)
@@ -450,7 +374,7 @@
                         <span>Escenario avanzado</span>
                         <strong>Ruta editorial recomendada</strong>
                     </div>
-                    <small>@EditorialRecommendations.Count señales editoriales</small>
+                    <small>Señales editoriales</small>
                 </div>
 
                 @if (EditorialRecommendations.Count == 0)
@@ -489,7 +413,7 @@
                         <span>Escenario avanzado</span>
                         <strong>Autores y colaboración</strong>
                     </div>
-                    <small>@AuthorCollaborations.Count señales autorales</small>
+                    <small>Colaboración y autoría</small>
                 </div>
 
                 @if (AuthorCollaborations.Count == 0)
@@ -537,38 +461,60 @@
         }
     </section>
     }
-
-    @if (_decisionMode == DiagnosticDecisionMode)
+    else
     {
+
+    <section class="ai-lab-hero app-section-card">
+        <div>
+            <span>Laboratorio IA</span>
+            <strong>Modelo, datos y reentrenamientos</strong>
+            <small>Área técnica para revisar preparación, métricas y auditoría del modelo.</small>
+        </div>
+        <div class="ai-lab-hero__stats">
+            <article>
+                <small>Modelo activo</small>
+                <strong>@PromotedModelLabel</strong>
+            </article>
+            <article>
+                <small>Serie usada</small>
+                <strong>@HistoricalMonthsLabel</strong>
+            </article>
+            <article>
+                <small>Confianza</small>
+                <strong>@((_intelligence?.ProductionForecast.ConfidenceScore ?? 0).ToString("N0"))%</strong>
+            </article>
+        </div>
+    </section>
+
     <section class="ai-data-readiness app-section-card">
         <div class="ai-section-heading">
             <span class="@DataQualityChipClass">
                 <i class="bi bi-database-check"></i>
-                Preparación de datos
+                Datos usados
             </span>
-            <h2>Diagnóstico para entrenamiento</h2>
+            <h2>Preparación del dataset</h2>
         </div>
 
         <div class="ai-data-layout ai-compact-data-layout">
             <div class="ai-data-status">
                 <span>@DataQuality.StatusLabel</span>
-                <strong>@DataQuality.MonthsAvailable/@DataQuality.MinimumMonthsRequired meses</strong>
+                <strong>@DataQuality.MonthsAvailable meses</strong>
                 <small>@DataQuality.FirstMonth a @DataQuality.LastMonth</small>
             </div>
 
             <div class="ai-data-checks">
                 <article>
-                    <small>Meses con artículos</small>
+                    <small>Con producción</small>
                     <strong>@DataQuality.NonEmptyMonths</strong>
                 </article>
                 <article>
-                    <small>Meses vacíos</small>
+                    <small>Sin producción</small>
                     <strong>@DataQuality.EmptyMonths</strong>
                 </article>
                 <article>
                     <small>Mes pico</small>
                     <strong>@DataQuality.PeakMonthArticles</strong>
-                    <span>@DataQuality.PeakMonth · @DataQuality.ConcentrationPercent.ToString("N1")%</span>
+                    <span>@DataQuality.PeakMonth</span>
                 </article>
             </div>
         </div>
@@ -584,10 +530,6 @@
             }
         </div>
     </section>
-    }
-    }
-    else
-    {
 
     <section class="ai-training-lab app-section-card">
         <div class="ai-section-heading">
@@ -602,23 +544,18 @@
             <article>
                 <small>Dataset</small>
                 <strong>@TrainingExperiment.DatasetName</strong>
-                <span>@TrainingExperiment.FeatureWindow · @TrainingExperiment.TrainingRows entrenamiento / @TrainingExperiment.ValidationRows validación</span>
+                <span>@TrainingExperiment.FeatureWindow</span>
             </article>
             <article>
                 <small>Objetivo</small>
                 <strong>@TrainingExperiment.Target</strong>
-                <span>@TrainingExperiment.ValidationStrategy</span>
+                <span>Producción mensual</span>
             </article>
             <article>
                 <small>Modelo ganador</small>
                 <strong>@TrainingExperiment.BestAlgorithm</strong>
-                <span>Seleccionado por menor @TrainingExperiment.BestMetric: @TrainingExperiment.BestMetricValue.ToString("N2")</span>
+                <span>@TrainingExperiment.BestMetric: @TrainingExperiment.BestMetricValue.ToString("N2")</span>
             </article>
-        </div>
-
-        <div class="ai-metric-note">
-            <i class="bi bi-info-circle"></i>
-            <span>El modelo se promueve por menor MAE. MAPE puede subir cuando hay meses con producción muy baja, por eso se usa como señal complementaria.</span>
         </div>
 
         <div class="ai-algorithm-table" role="table" aria-label="Comparación de algoritmos IA">
@@ -635,10 +572,9 @@
                     <div class="@(algorithm.IsBest ? "ai-algorithm-row ai-algorithm-row--best" : "ai-algorithm-row")" role="row">
                         <span>
                             <strong>@algorithm.Algorithm</strong>
-                            <small>@algorithm.Purpose</small>
                             @if (algorithm.IsBest)
                             {
-                                <em>Modelo promovido · menor @algorithm.MetricName</em>
+                                <em>Modelo promovido</em>
                             }
                         </span>
                         <span>@algorithm.Family</span>
@@ -650,7 +586,7 @@
                 }
         </div>
 
-        <p class="ai-training-note">@TrainingExperiment.RetrainingPolicy</p>
+        <p class="ai-training-note">Reentrenar después de cada ETL completo o al ingresar nuevos meses confirmados.</p>
     </section>
 
     <section class="ai-history app-section-card">
@@ -678,12 +614,12 @@
                         <div>
                             <span>@run.StartedAt.ToString("dd/MM/yyyy HH:mm")</span>
                             <strong>@run.PromotedAlgorithm</strong>
-                            <small>@run.SelectionReason</small>
+                            <small>@run.Status</small>
                         </div>
                         <div>
-                            <span>@run.Status</span>
+                            <span>Métrica</span>
                             <strong>@run.Experiment.BestMetricValue.ToString("N2")</strong>
-                            <small>@run.ActiveModelVersion</small>
+                            <small>@run.Experiment.BestMetric</small>
                         </div>
                         <button type="button" class="ai-history-detail-button" @onclick="() => SelectTrainingRun(run)">
                             <i class="bi bi-list-check"></i>
@@ -732,7 +668,6 @@
                         <article class="@(algorithm.IsBest ? "ai-history-algorithm ai-history-algorithm--best" : "ai-history-algorithm")">
                             <div>
                                 <strong>@algorithm.Algorithm</strong>
-                                <small>@algorithm.ThesisUse</small>
                             </div>
                             <span>MAE @algorithm.Mae.ToString("N2")</span>
                             <span>RMSE @algorithm.Rmse.ToString("N2")</span>
@@ -750,9 +685,6 @@
 @code {
     private const string DecisionsView = "decisions";
     private const string ModelView = "model";
-    private const string SummaryDecisionMode = "summary";
-    private const string ScenarioDecisionMode = "scenarios";
-    private const string DiagnosticDecisionMode = "diagnostic";
 
     private InstitutionalIntelligenceDashboardDto? _intelligence;
     private IntelligenceTrainingRunDto? _trainingRun;
@@ -762,7 +694,6 @@
     private bool _isTraining;
     private string? _error;
     private string _activeView = DecisionsView;
-    private string _decisionMode = SummaryDecisionMode;
     private string _selectedDecisionFocus = "institutional-production";
 
     private IReadOnlyList<IntelligenceRecommendationDto> Recommendations => _intelligence?.Recommendations ?? [];
@@ -1127,22 +1058,10 @@
     private string GetViewTabClass(string view)
         => _activeView == view ? "ai-view-tab ai-view-tab--active" : "ai-view-tab";
 
-    private void SetDecisionMode(string mode)
-    {
-        _decisionMode = mode;
-    }
-
-    private string GetDecisionModeClass(string mode)
-        => _decisionMode == mode ? "ai-decision-tab ai-decision-tab--active" : "ai-decision-tab";
-
     private void SelectDecisionFocus(string key)
     {
         _selectedDecisionFocus = key;
-        _decisionMode = ScenarioDecisionMode;
     }
-
-    private string GetFocusClass(string key)
-        => key == _selectedDecisionFocus ? "ai-focus-card ai-focus-card--active" : "ai-focus-card";
 
     private string GetFocusPillClass(string key)
         => key == _selectedDecisionFocus ? "ai-focus-pill ai-focus-pill--active" : "ai-focus-pill";

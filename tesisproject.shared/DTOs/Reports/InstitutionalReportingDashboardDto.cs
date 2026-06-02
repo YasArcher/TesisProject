@@ -62,7 +62,7 @@ public sealed class InstitutionalReportingFilterDto
     public bool? IsOpenAccess { get; set; }
     public bool? IsProjectResult { get; set; }
     public bool? HasInterculturalComponent { get; set; }
-    public string? PeriodDateType { get; set; }
+    public string? PeriodDateType { get; set; } = "published";
     public string? AuthorName { get; set; }
     public string? AuthorAffiliation { get; set; }
     public string? ParticipantType { get; set; }

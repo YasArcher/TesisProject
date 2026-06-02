@@ -12,6 +12,7 @@ using tesisproject.backend.Data;
 using tesisproject.backend.Data.Entities;
 using tesisproject.backend.Mapping;
 using tesisproject.backend.Services.Interfaces;
+using tesisproject.backend.Services.Modules.Reporting;
 using tesisproject.shared.DTOs;
 using tesisproject.shared.DTOs.Articles;
 using ClosedXML.Excel;
@@ -23,11 +24,16 @@ namespace tesisproject.backend.Services.Implementations
     {
         private readonly AppDbContext _db;
         private readonly ILogger<ArticlesService> _logger;
+        private readonly IReportingRefreshQueue _reportingRefreshQueue;
 
-        public ArticlesService(AppDbContext db, ILogger<ArticlesService> logger)
+        public ArticlesService(
+            AppDbContext db,
+            ILogger<ArticlesService> logger,
+            IReportingRefreshQueue reportingRefreshQueue)
         {
             _db = db ?? throw new ArgumentNullException(nameof(db));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _reportingRefreshQueue = reportingRefreshQueue ?? throw new ArgumentNullException(nameof(reportingRefreshQueue));
         }
 
         // =========================================================
@@ -37,29 +43,186 @@ namespace tesisproject.backend.Services.Implementations
             ArticleListQuery query,
             CancellationToken ct = default)
         {
+            query ??= new ArticleListQuery();
+            query.Page = Math.Max(1, query.Page);
+            query.PageSize = Math.Clamp(query.PageSize, 1, 500);
+
             var q = _db.Articles
                 .AsNoTracking()
-                .Include(a => a.Venue)
-                .Include(a => a.PublicationStatus)
-                .Include(a => a.Faculty)
-                .OrderByDescending(a => a.Year)
-                .ThenBy(a => a.Title)
                 .AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(query.Search))
+            var search = !string.IsNullOrWhiteSpace(query.Search)
+                ? query.Search
+                : query.SearchTerm;
+
+            if (!string.IsNullOrWhiteSpace(search))
             {
-                var s = query.Search.Trim();
-                q = q.Where(a => a.Title!.Contains(s) || a.Doi == s);
+                var s = search.Trim();
+                q = q.Where(a =>
+                    (a.Title != null && a.Title.Contains(s)) ||
+                    (a.Doi != null && a.Doi.Contains(s)) ||
+                    (a.Venue != null && a.Venue.Name != null && a.Venue.Name.Contains(s)));
             }
 
             if (query.Year.HasValue)
                 q = q.Where(a => a.Year == query.Year);
 
+            if (query.VenueId.HasValue)
+                q = q.Where(a => a.VenueId == query.VenueId);
+
+            if (query.PublicationStatusId.HasValue)
+                q = q.Where(a => a.PublicationStatusId == query.PublicationStatusId);
+
+            if (!string.IsNullOrWhiteSpace(query.PublicationStatusKey))
+            {
+                var statusKey = query.PublicationStatusKey.Trim().ToUpperInvariant();
+                q = statusKey switch
+                {
+                    "PUBLICADO" => q.Where(a =>
+                        a.PublicationStatus != null &&
+                        (a.PublicationStatus.Name.Contains("PUBLICAD") ||
+                         a.PublicationStatus.Name.Contains("PUBLISHED"))),
+                    "ACEPTADO" => q.Where(a =>
+                        a.PublicationStatus != null &&
+                        (a.PublicationStatus.Name.Contains("ACEPT") ||
+                         a.PublicationStatus.Name.Contains("ACCEPT"))),
+                    "SIN ESTADO" => q.Where(a =>
+                        a.PublicationStatus == null ||
+                        !(a.PublicationStatus.Name.Contains("PUBLICAD") ||
+                          a.PublicationStatus.Name.Contains("PUBLISHED") ||
+                          a.PublicationStatus.Name.Contains("ACEPT") ||
+                          a.PublicationStatus.Name.Contains("ACCEPT"))),
+                    _ => q
+                };
+            }
+
+            if (query.ResearchLineId.HasValue)
+                q = q.Where(a => a.ResearchLineId == query.ResearchLineId);
+
+            if (query.FacultyId.HasValue)
+                q = q.Where(a => a.FacultyId == query.FacultyId);
+
+            if (query.IndexingSourceId.HasValue)
+                q = q.Where(a => a.Indexings.Any(ix => ix.IndexingSourceId == query.IndexingSourceId));
+
+            if (query.BroadFieldId.HasValue)
+                q = q.Where(a => a.BroadFieldId == query.BroadFieldId);
+
+            if (query.SpecificFieldId.HasValue)
+                q = q.Where(a => a.SpecificFieldId == query.SpecificFieldId);
+
+            if (query.DetailedFieldId.HasValue)
+                q = q.Where(a => a.DetailedFieldId == query.DetailedFieldId);
+
             var total = await q.CountAsync(ct);
-            var items = await q.Skip((query.Page - 1) * query.PageSize)
-                               .Take(query.PageSize)
-                               .Select(a => a.ToListItemDto())
-                               .ToListAsync(ct);
+            var rows = await q
+                .OrderByDescending(a => a.Id)
+                .Skip((query.Page - 1) * query.PageSize)
+                .Take(query.PageSize)
+                .Select(a => new
+                {
+                    a.Id,
+                    a.Title,
+                    a.Doi,
+                    a.Year,
+                    a.VenueId,
+                    a.PublicationStatusId,
+                    a.ResearchLineId,
+                    a.FacultyId,
+                    a.AcademicTermId,
+                    a.IsProjectResult,
+                    a.HasInterculturalComponent,
+                    a.IsOpenAccess,
+                    a.CreatedAt
+                })
+                .ToListAsync(ct);
+
+            if (rows.Count == 0)
+                return new PagedResult<ArticleListItemDto>(new List<ArticleListItemDto>(), total, query.Page, query.PageSize);
+
+            var articleIds = rows.Select(a => a.Id).ToList();
+            var venueIds = rows.Where(a => a.VenueId.HasValue).Select(a => a.VenueId!.Value).Distinct().ToList();
+            var statusIds = rows.Where(a => a.PublicationStatusId.HasValue).Select(a => a.PublicationStatusId!.Value).Distinct().ToList();
+            var researchLineIds = rows.Where(a => a.ResearchLineId.HasValue).Select(a => a.ResearchLineId!.Value).Distinct().ToList();
+            var facultyIds = rows.Where(a => a.FacultyId.HasValue).Select(a => a.FacultyId!.Value).Distinct().ToList();
+            var academicTermIds = rows.Where(a => a.AcademicTermId.HasValue).Select(a => a.AcademicTermId!.Value).Distinct().ToList();
+
+            var venues = await _db.Venues
+                .AsNoTracking()
+                .Where(v => venueIds.Contains(v.VenueId))
+                .Select(v => new { v.VenueId, v.Name, v.IssnCode })
+                .ToDictionaryAsync(v => v.VenueId, ct);
+
+            var statuses = await _db.PublicationStatuses
+                .AsNoTracking()
+                .Where(s => statusIds.Contains(s.PublicationStatusId))
+                .Select(s => new { s.PublicationStatusId, s.Name })
+                .ToDictionaryAsync(s => s.PublicationStatusId, s => s.Name, ct);
+
+            var researchLines = await _db.ResearchLines
+                .AsNoTracking()
+                .Where(r => researchLineIds.Contains(r.ResearchLineId))
+                .Select(r => new { r.ResearchLineId, r.Name })
+                .ToDictionaryAsync(r => r.ResearchLineId, r => r.Name, ct);
+
+            var faculties = await _db.Faculties
+                .AsNoTracking()
+                .Where(f => facultyIds.Contains(f.FacultyId))
+                .Select(f => new { f.FacultyId, f.Name })
+                .ToDictionaryAsync(f => f.FacultyId, f => f.Name, ct);
+
+            var academicTerms = await _db.AcademicTerms
+                .AsNoTracking()
+                .Where(t => academicTermIds.Contains(t.AcademicTermId))
+                .Select(t => new { t.AcademicTermId, t.Name })
+                .ToDictionaryAsync(t => t.AcademicTermId, t => t.Name, ct);
+
+            var firstIndexings = await _db.ArticleIndexings
+                .AsNoTracking()
+                .Where(ix => articleIds.Contains(ix.ArticleId))
+                .OrderBy(ix => ix.ArticleId)
+                .ThenBy(ix => ix.IndexingSourceId)
+                .Select(ix => new
+                {
+                    ix.ArticleId,
+                    ix.IndexingSourceId,
+                    IndexingSourceName = ix.IndexingSource != null ? ix.IndexingSource.Name : null
+                })
+                .ToListAsync(ct);
+
+            var firstIndexingByArticle = firstIndexings
+                .GroupBy(ix => ix.ArticleId)
+                .ToDictionary(g => g.Key, g => g.First());
+
+            var items = rows.Select(a =>
+            {
+                var venue = a.VenueId.HasValue && venues.TryGetValue(a.VenueId.Value, out var v) ? v : null;
+                var indexing = firstIndexingByArticle.TryGetValue(a.Id, out var ix) ? ix : null;
+
+                return new ArticleListItemDto
+                {
+                    Id = a.Id,
+                    Title = a.Title,
+                    Doi = a.Doi,
+                    Year = a.Year,
+                    Issn = venue?.IssnCode,
+                    VenueName = venue?.Name ?? string.Empty,
+                    PublicationStatusId = a.PublicationStatusId,
+                    PublicationStatusName = a.PublicationStatusId.HasValue && statuses.TryGetValue(a.PublicationStatusId.Value, out var statusName) ? statusName : null,
+                    ResearchLineId = a.ResearchLineId,
+                    ResearchLineName = a.ResearchLineId.HasValue && researchLines.TryGetValue(a.ResearchLineId.Value, out var researchLineName) ? researchLineName : null,
+                    FacultyId = a.FacultyId,
+                    FacultyName = a.FacultyId.HasValue && faculties.TryGetValue(a.FacultyId.Value, out var facultyName) ? facultyName : null,
+                    AcademicTermId = a.AcademicTermId,
+                    AcademicTermName = a.AcademicTermId.HasValue && academicTerms.TryGetValue(a.AcademicTermId.Value, out var academicTermName) ? academicTermName : null,
+                    IsProjectResult = a.IsProjectResult,
+                    HasInterculturalComponent = a.HasInterculturalComponent,
+                    IsOpenAccess = a.IsOpenAccess,
+                    CreatedAt = a.CreatedAt,
+                    IndexingSourceId = indexing?.IndexingSourceId,
+                    IndexingSourceName = indexing?.IndexingSourceName
+                };
+            }).ToList();
 
             return new PagedResult<ArticleListItemDto>(items, total, query.Page, query.PageSize);
         }
@@ -751,11 +914,28 @@ namespace tesisproject.backend.Services.Implementations
                 .Include(a => a.Faculty)
                 .Include(a => a.Participants)
                 .Include(a => a.Files)
+                .Include(a => a.DynamicFieldValues)!.ThenInclude(v => v.Field)
                 .FirstOrDefaultAsync(a => a.Id == id, ct);
 
             if (entity is null) return null;
 
             var dto = entity.ToDetailDto();
+            dto.DynamicFields = entity.DynamicFieldValues?
+                .Where(v => v.Field is { IsActive: true, IsVisible: true })
+                .OrderBy(v => v.Field!.DisplayOrder)
+                .ThenBy(v => v.Field!.FieldLabel)
+                .Select(v => new ArticleDynamicFieldValueDto
+                {
+                    FieldId = v.FieldId,
+                    FieldKey = v.Field!.FieldKey,
+                    FieldLabel = v.Field.FieldLabel,
+                    DataType = v.Field.DataType,
+                    HelpText = v.Field.HelpText,
+                    IsFilterable = v.Field.IsFilterable,
+                    DisplayValue = FormatDynamicFieldValue(v)
+                })
+                .Where(v => !string.IsNullOrWhiteSpace(v.DisplayValue))
+                .ToList() ?? new List<ArticleDynamicFieldValueDto>();
 
             // Proyecta SJR/Quartile desde VenueMetrics:
             // 1) preferimos año del artículo; 2) si no hay, la más reciente
@@ -774,6 +954,29 @@ namespace tesisproject.backend.Services.Implementations
             }
 
             return dto;
+        }
+
+        private static string? FormatDynamicFieldValue(DynamicFieldValue value)
+        {
+            if (!string.IsNullOrWhiteSpace(value.ValueString))
+                return value.ValueString.Trim();
+
+            if (value.ValueInt.HasValue)
+                return value.ValueInt.Value.ToString(CultureInfo.InvariantCulture);
+
+            if (value.ValueDecimal.HasValue)
+                return value.ValueDecimal.Value.ToString("0.####", CultureInfo.InvariantCulture);
+
+            if (value.ValueDate.HasValue)
+                return value.ValueDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+            if (value.ValueBit.HasValue)
+                return value.ValueBit.Value ? "Sí" : "No";
+
+            if (!string.IsNullOrWhiteSpace(value.ValueJson))
+                return value.ValueJson.Trim();
+
+            return null;
         }
 
         // =========================================================
@@ -834,6 +1037,7 @@ namespace tesisproject.backend.Services.Implementations
             // 5) Evidence (ArticleFile simple por URL)
             await UpsertEvidenceAsync(article.Id, request.EvidenceUrl, /*userId*/ null, ct);
 
+            _reportingRefreshQueue.Enqueue($"Creación directa de artículo ({article.Id}).");
             return article.Id;
         }
 
@@ -898,6 +1102,7 @@ namespace tesisproject.backend.Services.Implementations
             // 5) Evidence
             await UpsertEvidenceAsync(article.Id, request.EvidenceUrl, /*userId*/ null, ct);
 
+            _reportingRefreshQueue.Enqueue($"Actualización de artículo ({article.Id}).");
             return true;
         }
 
@@ -928,6 +1133,7 @@ namespace tesisproject.backend.Services.Implementations
             _db.Articles.Remove(entity);
             await _db.SaveChangesAsync(ct);
 
+            _reportingRefreshQueue.Enqueue($"Eliminación de artículo ({id}).");
             return true;
         }
 

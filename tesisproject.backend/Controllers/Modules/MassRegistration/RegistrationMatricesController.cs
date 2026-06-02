@@ -101,6 +101,19 @@ namespace tesisproject.backend.Controllers
             return matrix is null ? NotFound() : Ok(matrix);
         }
 
+        [HttpDelete("{matrixId:int}")]
+        [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
+        public async Task<ActionResult<RegistrationMatrixDeleteResultDto>> DeleteMatrix(int matrixId, CancellationToken ct = default)
+        {
+            var result = await _service.DeleteMatrixAsync(matrixId, GetCurrentUserId(), CanManageMatrices(), ct);
+            if (!result.Deleted)
+            {
+                return BadRequest(new { message = result.Message });
+            }
+
+            return Ok(result);
+        }
+
         [HttpPost("{matrixId:int}/columns")]
         [Authorize(Policy = AppPolicies.ConfigurationAdministration)]
         public async Task<ActionResult<RegistrationMatrixDetailDto>> AddColumns(int matrixId, [FromBody] AddRegistrationMatrixColumnsRequest request, CancellationToken ct = default)
@@ -227,9 +240,9 @@ namespace tesisproject.backend.Controllers
             {
                 return BadRequest(new { message = ex.Message });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return Problem(title: "No pude enviar la matriz a staging.", detail: ex.Message, statusCode: StatusCodes.Status500InternalServerError);
+                return Problem(title: "No pude enviar la matriz a staging.", detail: "La operación no pudo completarse. Revisa las filas de la matriz e intenta nuevamente.", statusCode: StatusCodes.Status500InternalServerError);
             }
         }
 

@@ -4,6 +4,7 @@
 @implements IAsyncDisposable
 
 @using Microsoft.AspNetCore.Authorization
+@using tesisproject.frontend.Services.Errors
 @using tesisproject.frontend.Services.Interfaces
 @using tesisproject.shared.DTOs.Auth
 @using tesisproject.shared.DTOs.Imports
@@ -825,13 +826,19 @@
                                             </button>
                                         </div>
                                     }
-                                    else if (CanReviewSelectedStaging || CanReturnSelectedWorkflow || CanApproveSelectedWorkflow || CanProcessSelectedWorkflow)
+                                    else if (CanReviewSelectedStaging || CanReturnSelectedWorkflow || CanApproveSelectedWorkflow || CanApproveSelectedWorkflowBlockedByStagingReview || CanProcessSelectedWorkflow)
                                     {
-                                        @if (CanReturnSelectedWorkflow || CanApproveSelectedWorkflow || CanProcessSelectedWorkflow)
+                                        @if (CanReturnSelectedWorkflow || CanApproveSelectedWorkflow || CanApproveSelectedWorkflowBlockedByStagingReview || CanProcessSelectedWorkflow)
                                         {
                                             <textarea class="mt-3 min-h-[96px] w-full rounded-2xl border border-[#d9e5e8] bg-white px-3 py-3 text-sm text-slate-700"
                                                       placeholder="@GetActionPanelPlaceholder()"
                                                       @bind="WorkflowComment"></textarea>
+                                        }
+                                        @if (IsSelectedStagingReviewPending)
+                                        {
+                                            <div class="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+                                                Primero abre y revisa el staging del envío. Luego podrás validar o aprobar la etapa.
+                                            </div>
                                         }
                                         <div class="mt-3 flex flex-wrap gap-2">
                                             @if (CanReviewSelectedStaging)
@@ -843,7 +850,8 @@
                                                     <span>@GetStagingActionLabel()</span>
                                                 </button>
                                                 <button class="rounded-xl border border-[#d9e5e8] bg-white px-3 py-2 text-sm font-semibold text-[#12343b] disabled:opacity-60"
-                                                        disabled="@IsSubmittingAction || IsValidatingSelectedBatch"
+                                                        disabled="@IsSubmittingAction || IsValidatingSelectedBatch || IsSelectedStagingReviewPending"
+                                                        title="@GetValidateActionTooltip()"
                                                         @onclick="ValidateSelectedBatchAsync">
                                                     @(IsValidatingSelectedBatch ? "Validando..." : GetValidateActionLabel())
                                                 </button>
@@ -871,6 +879,14 @@
                                                 <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
                                                         disabled="@IsSubmittingAction"
                                                         @onclick="RequestApproveAsync">
+                                                    @GetApproveActionLabel()
+                                                </button>
+                                            }
+                                            else if (CanApproveSelectedWorkflowBlockedByStagingReview)
+                                            {
+                                                <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                                                        disabled="true"
+                                                        title="@GetApproveActionTooltip()">
                                                     @GetApproveActionLabel()
                                                 </button>
                                             }
@@ -938,6 +954,7 @@
     private CancellationTokenSource? _stagingRefreshCts;
     private Task? _stagingRefreshTask;
     private int _stagingFrameVersion;
+    private HashSet<int> ReviewedStagingBatchIds { get; } = new();
     private AuthMeResponse? CurrentUser { get; set; }
     private List<WorkflowInboxItemDto> AuthorInbox { get; set; } = new();
     private List<WorkflowInboxItemDto> ReviewInbox { get; set; } = new();
@@ -1074,11 +1091,18 @@
     private bool CanReviewSelectedStaging =>
         CanOpenSelectedBatch
         && SelectedWorkflow is not null
-        && !CanClaimSelectedWorkflow;
-    private bool CanApproveSelectedWorkflow =>
+        && !CanClaimSelectedWorkflow
+        && !IsSelectedWorkflowReturnedOrCancelled;
+    private bool CanApproveSelectedWorkflowBeforeStagingReview =>
         SelectedInboxItem?.CanApprove == true
         && SelectedWorkflow is not null
         && IsSelectedBatchReadyForApproval;
+    private bool CanApproveSelectedWorkflow =>
+        CanApproveSelectedWorkflowBeforeStagingReview
+        && !IsSelectedStagingReviewPending;
+    private bool CanApproveSelectedWorkflowBlockedByStagingReview =>
+        CanApproveSelectedWorkflowBeforeStagingReview
+        && IsSelectedStagingReviewPending;
     private bool CanProcessSelectedWorkflow =>
         SelectedInboxItem?.CanProcessBatch == true
         && SelectedInboxItem.ProcessedRows < SelectedInboxItem.TotalRows
@@ -1088,6 +1112,21 @@
             string.Equals(x, "Admin", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(x, "WorkflowReviewerAreaTecnica", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(x, "WorkflowProcessorAreaTecnica", StringComparison.OrdinalIgnoreCase)) == true;
+    private bool RequiresSelectedStagingReviewBeforeAction =>
+        SelectedInboxItem is not null
+        && SelectedWorkflow is not null
+        && !IsSelectedWorkflowReturnedOrCancelled
+        && (IsUodideCurrentStage || IsAreaTecnicaCurrentStage)
+        && (SelectedInboxItem.CanApprove || SelectedInboxItem.CanReturn || SelectedInboxItem.CanProcessBatch);
+    private bool HasOpenedSelectedStaging =>
+        SelectedInboxItem is not null
+        && ReviewedStagingBatchIds.Contains(SelectedInboxItem.ImportBatchId);
+    private bool IsSelectedStagingReviewPending =>
+        RequiresSelectedStagingReviewBeforeAction
+        && !HasOpenedSelectedStaging;
+    private bool IsSelectedWorkflowReturnedOrCancelled =>
+        string.Equals(SelectedWorkflow?.Status, "Returned", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(SelectedWorkflow?.Status, "Cancelled", StringComparison.OrdinalIgnoreCase);
     private bool IsSelectedBatchReadyForApproval =>
         SelectedInboxItem is not null
         && SelectedInboxItem.TotalRows > 0
@@ -1193,7 +1232,7 @@
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"No fue posible cargar la bandeja de revisión: {ex.Message}";
+            ErrorMessage = $"No fue posible cargar la bandeja de revisión: {UserFacingErrorMapper.FromException(ex, "Actualiza la pantalla e inténtalo nuevamente.")}";
         }
         finally
         {
@@ -1307,7 +1346,7 @@
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"No pude tomar el caso: {ex.Message}";
+            ErrorMessage = $"No pude tomar el caso: {UserFacingErrorMapper.FromException(ex, "Actualiza la bandeja e inténtalo nuevamente.")}";
         }
         finally
         {
@@ -1348,7 +1387,7 @@
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"No pude devolver el caso al autor: {ex.Message}";
+            ErrorMessage = $"No pude devolver el caso al autor: {UserFacingErrorMapper.FromException(ex, "Registra una observación clara e inténtalo nuevamente.")}";
         }
         finally
         {
@@ -1369,7 +1408,7 @@
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"No pude abrir la previsualización del artículo: {ex.Message}";
+            ErrorMessage = $"No pude abrir la previsualización del artículo: {UserFacingErrorMapper.FromException(ex, "Actualiza la bandeja e inténtalo nuevamente.")}";
         }
         finally
         {
@@ -1379,9 +1418,14 @@
 
     private Task OpenAuthorCorrectionAsync(WorkflowInboxItemDto item)
     {
-        NavManager.NavigateTo($"/management/author-correction-staging?batchId={item.ImportBatchId}");
+        NavManager.NavigateTo($"{GetWorkflowRoutePrefix()}/author-correction-staging?batchId={item.ImportBatchId}");
         return Task.CompletedTask;
     }
+
+    private string GetWorkflowRoutePrefix()
+        => NavManager.Uri.Contains("/scientific-production/", StringComparison.OrdinalIgnoreCase)
+            ? "/scientific-production"
+            : "/management";
 
     private Task CloseArticlePreviewAsync()
     {
@@ -1394,6 +1438,11 @@
 
     private Task OpenIntegratedStagingPanelAsync()
     {
+        if (SelectedInboxItem is not null)
+        {
+            ReviewedStagingBatchIds.Add(SelectedInboxItem.ImportBatchId);
+        }
+
         IsIntegratedStagingPanelOpen = true;
         StartStagingRefreshLoop();
         return Task.CompletedTask;
@@ -1408,7 +1457,17 @@
     private void RequestClaimAsync() => _pendingAction = new PendingWorkflowAction("claim");
     private void RequestReturnAsync() => _pendingAction = new PendingWorkflowAction("return");
     private void RequestReturnToUodideAsync() => _pendingAction = new PendingWorkflowAction("return-uodide");
-    private void RequestApproveAsync() => _pendingAction = new PendingWorkflowAction("approve");
+    private void RequestApproveAsync()
+    {
+        if (IsSelectedStagingReviewPending)
+        {
+            ErrorMessage = "Primero abre y revisa el staging del envío. Luego podrás aprobar la etapa.";
+            SuccessMessage = string.Empty;
+            return;
+        }
+
+        _pendingAction = new PendingWorkflowAction("approve");
+    }
     private void RequestProcessAsync() => _pendingAction = new PendingWorkflowAction("process");
 
     private string GetCaseDecisionCaption()
@@ -1473,6 +1532,8 @@
         try
         {
             IsSubmittingAction = true;
+            ErrorMessage = string.Empty;
+            SuccessMessage = string.Empty;
             if (_pendingAction.Kind == "resubmit")
             {
                 var updatedResubmit = await WorkflowClient.ResubmitAsync(SelectedInboxItem.ImportBatchId, new WorkflowActionRequest
@@ -1513,7 +1574,34 @@
             {
                 var batchId = SelectedInboxItem.ImportBatchId;
                 var processed = await BulkImportClient.ProcessBatchAsync(batchId);
-                if ((processed?.Batch?.Summary?.ErrorRows ?? 0) > 0)
+                WorkflowComment = string.Empty;
+                _pendingAction = null;
+                await RefreshInboxesAsync();
+                SelectedInboxItem = FindInboxItemByBatchId(batchId);
+                SelectedWorkflow = SelectedInboxItem is null ? null : await WorkflowClient.GetBatchWorkflowAsync(batchId);
+
+                var processedRows = SelectedInboxItem?.ProcessedRows
+                    ?? processed?.Batch?.Summary?.ProcessedRows
+                    ?? 0;
+                var errorRows = SelectedInboxItem?.ErrorRows
+                    ?? processed?.Batch?.Summary?.ErrorRows
+                    ?? 0;
+                var workflowStatus = SelectedWorkflow?.Status
+                    ?? SelectedInboxItem?.WorkflowStatus
+                    ?? processed?.Batch?.Summary?.Status
+                    ?? string.Empty;
+                var wasProcessed = processedRows > 0
+                    || string.Equals(workflowStatus, "Processed", StringComparison.OrdinalIgnoreCase)
+                    || (SelectedInboxItem is null && processed?.Batch?.Summary?.ProcessedRows > 0);
+
+                if (wasProcessed)
+                {
+                    SuccessMessage = processed?.Message ?? "El envío se procesó correctamente hacia la base principal.";
+                    ErrorMessage = string.Empty;
+                    return;
+                }
+
+                if (errorRows > 0)
                 {
                     ErrorMessage = "El procesamiento encontró correcciones pendientes. Revisa el staging técnico actualizado y valida nuevamente antes de procesar.";
                     IsIntegratedStagingPanelOpen = true;
@@ -1523,13 +1611,8 @@
                 else
                 {
                     SuccessMessage = processed?.Message ?? "El envío se procesó correctamente hacia la base principal.";
+                    ErrorMessage = string.Empty;
                 }
-
-                WorkflowComment = string.Empty;
-                _pendingAction = null;
-                await RefreshInboxesAsync();
-                SelectedInboxItem = FindInboxItemByBatchId(batchId);
-                SelectedWorkflow = SelectedInboxItem is null ? null : await WorkflowClient.GetBatchWorkflowAsync(batchId);
 
                 return;
             }
@@ -1563,7 +1646,7 @@
         }
         catch (Exception ex)
         {
-            ErrorMessage = ex.Message;
+            ErrorMessage = UserFacingErrorMapper.FromException(ex, "No pude completar la acción. Revisa el estado del caso e inténtalo nuevamente.");
         }
         finally
         {
@@ -2038,6 +2121,16 @@
             ? "Validar revisión final"
             : "Validar lote";
 
+    private string GetValidateActionTooltip()
+        => IsSelectedStagingReviewPending
+            ? "Primero abre el panel de revisión del staging para verificar el envío."
+            : "Validar el lote revisado.";
+
+    private string GetApproveActionTooltip()
+        => IsSelectedStagingReviewPending
+            ? "Primero abre el panel de revisión del staging para verificar el envío."
+            : "Aprobar la etapa actual.";
+
     private bool MatchesAreaTecnicaFilter(WorkflowInboxItemDto item)
     {
         var matchesSearch = string.IsNullOrWhiteSpace(AreaTecnicaSearchTerm)
@@ -2263,6 +2356,13 @@
             return;
         }
 
+        if (IsSelectedStagingReviewPending)
+        {
+            ErrorMessage = "Primero abre y revisa el staging del envío. Luego podrás validar el lote.";
+            SuccessMessage = string.Empty;
+            return;
+        }
+
         try
         {
             IsValidatingSelectedBatch = true;
@@ -2276,7 +2376,7 @@
         }
         catch (Exception ex)
         {
-            ErrorMessage = $"No pude validar el lote: {ex.Message}";
+            ErrorMessage = $"No pude validar el lote: {UserFacingErrorMapper.FromException(ex, "Corrige las observaciones del staging y vuelve a validar.")}";
         }
         finally
         {
