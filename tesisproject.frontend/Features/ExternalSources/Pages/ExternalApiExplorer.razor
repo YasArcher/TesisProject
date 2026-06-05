@@ -736,6 +736,12 @@
             return;
         }
 
+        if (SelectedProvider.RequiresApiKey && !SelectedProvider.IsConfigured)
+        {
+            ErrorMessage = $"{SelectedProvider.DisplayName} requiere una llave institucional configurada en el servidor. Solicita a DITIC o al administrador completar la variable de entorno y reiniciar el servicio.";
+            return;
+        }
+
         try
         {
             IsRunningQuery = true;
