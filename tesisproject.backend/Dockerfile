@@ -6,6 +6,16 @@ WORKDIR /app
 ENV BackendUrl=http://+:8080
 EXPOSE 8080
 
+# QuestPDF/Skia requiere fuentes y librerías nativas disponibles en Linux
+# para generar documentos dentro del contenedor de producción.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        fontconfig \
+        fonts-dejavu-core \
+        libfreetype6 \
+        libfontconfig1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # ==========================================
 # BUILD
 # ==========================================
