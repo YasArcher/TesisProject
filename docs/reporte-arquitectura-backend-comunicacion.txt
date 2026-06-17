@@ -1,0 +1,511 @@
+REPORTE DE ARQUITECTURA, BACKEND Y COMUNICACION DEL SISTEMA
+
+Sistema: Gestion de articulos cientificos
+Tecnologias principales: ASP.NET Core / .NET 9, Blazor WebAssembly, SQL Server, Entity Framework Core, JWT, Docker
+
+1. ARQUITECTURA GENERAL
+
+El sistema esta construido bajo una arquitectura modular cliente-servidor. La solucion se divide en tres proyectos principales:
+
+- tesisproject.frontend: interfaz de usuario desarrollada en Blazor WebAssembly.
+- tesisproject.backend: API REST desarrollada en ASP.NET Core / .NET 9.
+- tesisproject.shared: proyecto compartido que contiene DTOs y contratos usados por frontend y backend.
+
+La arquitectura general funciona de la siguiente forma:
+
+Usuario
+  -> Frontend Blazor WebAssembly
+  -> API Backend ASP.NET Core
+  -> Servicios de negocio
+  -> Entity Framework Core
+  -> SQL Server / Data Warehouse
+
+Esta separacion permite que la interfaz de usuario, la logica de negocio y la persistencia de datos se mantengan organizadas, independientes y escalables.
+
+2. COMUNICACION ENTRE FRONTEND Y BACKEND
+
+El frontend se comunica con el backend mediante peticiones HTTP hacia endpoints REST.
+
+Los principales metodos utilizados son:
+
+- GET: consultar informacion.
+- POST: crear, enviar o procesar informacion.
+- PUT/PATCH: actualizar informacion cuando corresponde.
+- DELETE: eliminar registros cuando el modulo lo permite.
+- Descarga de binarios: para PDF, Excel, CSV o ZIP.
+
+El flujo general de comunicacion es:
+
+Pagina Blazor
+  -> Cliente HTTP del frontend
+  -> ApiClient
+  -> Endpoint del backend
+  -> Controller
+  -> Service
+  -> DbContext / API externa / Data Warehouse
+  -> DTO de respuesta
+  -> Interfaz de usuario
+
+El frontend no accede directamente a la base de datos. Toda accion operativa pasa por el backend, lo cual permite mantener control de seguridad, validacion, permisos y trazabilidad.
+
+3. USO DEL PROYECTO SHARED
+
+El proyecto tesisproject.shared contiene los DTOs que comparten frontend y backend. Esto permite que ambos lados usen las mismas estructuras de datos para solicitudes y respuestas.
+
+Ejemplos:
+
+- RegisterArticleAggregateRequest
+- InstitutionalReportingDashboardDto
+- ExternalApiQueryRequest
+- BulkImportActionResultDto
+- WorkflowReviewDto
+
+Ventajas:
+
+- Evita duplicar modelos entre frontend y backend.
+- Reduce errores de compatibilidad.
+- Mantiene contratos tipados.
+- Facilita cambios controlados en los datos enviados por API.
+
+4. ESTRUCTURA MODULAR DEL BACKEND
+
+El backend esta organizado por carpetas y modulos funcionales:
+
+- Configuration: configuracion de servicios, pipeline, CORS, autenticacion y validaciones iniciales.
+- Controllers: puntos de entrada HTTP organizados por modulos.
+- Data: modelo transaccional OLTP y entidades del sistema.
+- DataWarehouse: modelo dimensional y entidades del Data Warehouse.
+- Reporting: contexto y modelos de lectura para reportería BI.
+- Services: logica de negocio organizada por modulos.
+- Identity: usuarios, roles, politicas y JWT.
+- Options: opciones de configuracion, como APIs externas e identidad institucional.
+- Mapping: conversiones entre entidades y DTOs.
+- Errors: excepciones controladas.
+
+5. CONTROLADORES
+
+Los controladores reciben las solicitudes HTTP desde el frontend. Su responsabilidad principal es validar la entrada basica, aplicar autorizacion y delegar la logica al servicio correspondiente.
+
+Controladores principales:
+
+- AuthController: inicio de sesion y autenticacion.
+- IdentityAdministrationController: gestion de usuarios y roles.
+- ArticlesController: listado y gestion de articulos.
+- ArticleRegistrationController: registro individual y envio a revision.
+- BulkImportController: carga masiva y staging.
+- RegistrationMatricesController: matriz maestra de registro.
+- WorkflowController: flujo de revision institucional.
+- ConfigurationController: formularios, campos y catalogos.
+- ExternalApiExplorerController: integracion con APIs externas.
+- ReportingController: dashboards, PDF, Excel, ETL y metricas.
+- IntelligenceController: predicciones, recomendaciones y entrenamiento IA.
+
+Ejemplo de flujo:
+
+POST api/articles/aggregate/submit-for-review
+  -> ArticleRegistrationController
+  -> ArticleRegistrationService
+  -> BulkImportService / WorkflowService
+  -> AppDbContext
+
+6. SERVICIOS DE NEGOCIO
+
+La logica principal del sistema se encuentra en Services. Cada modulo tiene interfaces e implementaciones especializadas.
+
+Servicios principales:
+
+- ArticleRegistrationService: registro individual de articulos y envio a revision.
+- ArticleAggregatePersistenceService: persistencia del agregado articulo, participantes, revista e indexaciones.
+- ArticlesService: consulta, listado y detalle de articulos.
+- BulkImportService: staging, validacion, carga masiva y procesamiento.
+- RegistrationMatrixService: matriz maestra, filas, columnas y celdas.
+- WorkflowService: toma de caso, validacion, devoluciones y procesamiento final.
+- ConfigurationFormsService: formularios dinamicos, campos, catalogos y validaciones.
+- ExternalApiExplorerService: consulta de APIs externas como Scopus, Crossref, OpenAlex y Semantic Scholar.
+- InstitutionalReportingService: reportería, KPIs, PDF, Excel, dataset y ETL.
+- InstitutionalIntelligenceService: predicciones, recomendaciones y entrenamiento IA.
+- IdentityAuthService: autenticacion de usuarios.
+- IdentityAdministrationService: gestion de usuarios, roles y permisos.
+- ReportingRefreshQueue: refresco automatico de reportería en segundo plano.
+
+7. FLUJO CONTROLLER - SERVICE - DBCONTEXT
+
+El backend sigue una estructura clara:
+
+Controller
+  -> Service
+  -> DbContext
+  -> SQL Server
+
+El controller no contiene logica pesada. El service concentra reglas de negocio. El DbContext se encarga del acceso a datos.
+
+Ejemplo:
+
+ArticleRegistrationController
+  -> ArticleRegistrationService
+  -> ArticleAggregatePersistenceService
+  -> AppDbContext
+  -> TesisDB_Extensible
+
+8. PERSISTENCIA OLTP
+
+El modelo transaccional se maneja mediante AppDbContext. Este contexto hereda de IdentityDbContext, por lo que administra tanto las tablas del dominio como las tablas de seguridad de ASP.NET Identity.
+
+AppDbContext administra:
+
+- Articulos.
+- Participantes/autores.
+- Archivos de articulo.
+- Indexaciones.
+- Revistas y metricas de revistas.
+- Facultades.
+- Lineas de investigacion.
+- Catalogos.
+- Campos OCDE.
+- Formularios dinamicos.
+- Campos dinamicos.
+- Opciones de campos.
+- Staging de carga masiva.
+- Workflow.
+- Matriz de registro.
+- Usuarios y roles.
+- Entrenamientos IA.
+- Metricas de reportería.
+
+Este modelo esta orientado a la operacion diaria del sistema: registrar, validar, corregir, procesar y auditar informacion.
+
+9. PERSISTENCIA ANALITICA Y DATA WAREHOUSE
+
+El sistema separa los datos transaccionales de los datos analiticos.
+
+Modelo OLTP:
+
+- Base principal: TesisDB_Extensible.
+- Uso: operacion diaria, registro, workflow, staging y configuracion.
+
+Modelo OLAP / Data Warehouse:
+
+- Base analitica: TesisDW_Extensible.
+- Uso: reportería BI, KPIs, historicos, dashboards e IA.
+
+El Data Warehouse maneja dimensiones y hechos. Entre las tablas principales se encuentran:
+
+Hechos:
+
+- FactArticlePublication.
+- FactArticleIndexing.
+- FactVenueMetricYear.
+- FactArticleAuthor.
+
+Dimensiones:
+
+- DimDate.
+- DimArticle.
+- DimAuthor.
+- DimVenue.
+- DimField.
+- DimResearchLine.
+- DimPublicationStatus.
+- DimIndexingSource.
+- DimProject.
+- DimAcademicTerm.
+
+10. REPORTINGDBCONTEXT
+
+La reportería no consulta directamente las tablas transaccionales principales. Usa ReportingDbContext, que consume vistas del esquema dw y etl.
+
+Vistas principales:
+
+- dw.vw_KPI_ProduccionCientifica.
+- dw.vw_KPI_CalidadCarga.
+- dw.vw_KPI_Workflow.
+- dw.vw_Articles_ByYear.
+- dw.vw_Articles_Detail.
+- dw.vw_QuartileDistribution.
+- dw.vw_VenueMetrics_ByYear.
+
+Esto permite separar la operacion diaria de la explotacion analitica.
+
+11. ETL
+
+El proceso ETL transforma los datos del OLTP hacia el Data Warehouse. El procedimiento principal es:
+
+etl.sp_RunFullLoad
+
+El flujo es:
+
+TesisDB_Extensible
+  -> ETL
+  -> TesisDW_Extensible
+  -> Vistas BI
+  -> Dashboards
+  -> IA
+
+El backend puede ejecutar el refresco de reportería mediante endpoints y servicios internos.
+
+12. SEGURIDAD
+
+El backend utiliza ASP.NET Core Identity y autenticacion JWT.
+
+Flujo:
+
+Usuario inicia sesion
+  -> Backend valida credenciales
+  -> Backend genera token JWT
+  -> Frontend guarda token
+  -> Frontend envia token en cada peticion
+  -> Backend valida token, rol y politica
+
+El control de acceso se basa en politicas:
+
+- AuthenticatedUser.
+- SecurityAdministration.
+- AuthorSubmission.
+- ArticleListingAccess.
+- ArticlesWrite.
+- WorkflowAccess.
+- WorkflowReview.
+- WorkflowProcess.
+- BulkImportAccess.
+- ConfigurationAdministration.
+- ExternalApiAccess.
+- ReportingAccess.
+
+Esto permite controlar por rol quien puede registrar, revisar, procesar, configurar, reportar o usar APIs externas.
+
+13. ROLES
+
+El sistema contempla roles como:
+
+- Admin.
+- Analyst.
+- Author.
+- WorkflowReviewerUodide.
+- WorkflowReviewerAreaTecnica.
+- WorkflowProcessorAreaTecnica.
+- ArticleRegistrationUser.
+- RegistrationMatrixUser.
+- BulkImportUser.
+- ExternalApiUser.
+- ReportingViewer.
+- ReportingExporter.
+- ReportingAdvancedUser.
+- IntelligenceViewer.
+- IntelligenceTrainer.
+- ConfigurationManager.
+- CatalogManager.
+- SecurityAdministrator.
+- RoleManager.
+
+14. POR QUE NO SE USA UNIT OF WORK PROPIO
+
+El sistema no implementa un patron Unit of Work propio porque Entity Framework Core ya proporciona esta funcionalidad mediante DbContext.
+
+En EF Core:
+
+DbContext = Unit of Work + Repository
+
+DbContext permite:
+
+- Rastrear cambios en entidades.
+- Agrupar operaciones antes de guardar.
+- Ejecutar SaveChanges como unidad transaccional.
+- Manejar transacciones implicitas.
+- Crear transacciones explicitas cuando son necesarias.
+- Consultar entidades mediante DbSet.
+
+Agregar un UnitOfWork adicional podria duplicar responsabilidades, aumentar la complejidad y reducir la expresividad de EF Core sin aportar un beneficio significativo para este caso.
+
+15. POR QUE NO SE USAN REPOSITORIOS GENERICOS
+
+El sistema no utiliza repositorios genericos porque los servicios necesitan consultas especificas y reglas propias por modulo.
+
+Ejemplos:
+
+- Workflow requiere validar estados, etapas, responsables y devoluciones.
+- BulkImport necesita validar filas, campos dinamicos, errores y procesamiento.
+- Reporting necesita consultas analiticas y vistas del DW.
+- DynamicForms maneja formularios activos, campos visibles, requeridos y editables.
+- Intelligence consume series temporales y datos agregados.
+
+Un repositorio generico podria limitar la capacidad de expresar consultas LINQ complejas y obligaria a crear capas adicionales innecesarias.
+
+En lugar de repositorios genericos, el sistema usa servicios de dominio especializados.
+
+16. FORMULARIOS DINAMICOS
+
+El modulo de configuracion permite que el administrador maneje campos y formularios sin modificar codigo.
+
+Permite definir:
+
+- Campo activo.
+- Campo visible.
+- Campo requerido.
+- Campo editable.
+- Tipo de dato.
+- Longitud maxima.
+- Reglas de validacion.
+- Mensajes de ayuda.
+- Opciones de catalogo.
+
+Esto permite escalabilidad, porque nuevos campos pueden incorporarse al registro sin modificar manualmente todas las pantallas.
+
+17. STAGING Y CARGA MASIVA
+
+La carga masiva utiliza tablas intermedias:
+
+- ImportBatch.
+- ImportBatchRow.
+- ImportBatchRowValue.
+- ImportBatchError.
+
+Este enfoque evita registrar informacion directamente sin validacion.
+
+Flujo:
+
+Archivo, matriz o API externa
+  -> Staging
+  -> Validacion por fila
+  -> Correccion de errores
+  -> Workflow
+  -> Procesamiento final
+  -> Articulos definitivos
+
+18. WORKFLOW
+
+El flujo institucional principal es:
+
+Autor
+  -> Revisor UODIDE
+  -> Revisor Area Tecnica
+  -> Procesamiento final
+  -> Registro definitivo
+
+El workflow permite:
+
+- Toma de caso.
+- Revision.
+- Observaciones.
+- Devolucion al autor.
+- Reenvio.
+- Validacion final.
+- Procesamiento.
+- Trazabilidad historica.
+
+19. APIS EXTERNAS
+
+El modulo de APIs externas permite consultar fuentes como:
+
+- Scopus.
+- Crossref.
+- OpenAlex.
+- Semantic Scholar.
+
+Las claves se manejan por configuracion, no directamente en el codigo.
+
+En Docker, Scopus usa:
+
+- SCOPUS_API_KEY.
+- SCOPUS_INST_TOKEN.
+
+El backend registra un HttpClient llamado external-api-explorer con timeout controlado y User-Agent definido.
+
+20. REPORTERIA
+
+El modulo de reportería genera:
+
+- Dashboard institucional.
+- Dashboard de autores.
+- KPIs.
+- Graficos.
+- PDF.
+- Excel.
+- Dataset bruto.
+- Metricas de desempeno de reportería.
+- Refresco ETL.
+
+La reportería se apoya en Data Warehouse y vistas analiticas para evitar sobrecargar el modelo transaccional.
+
+21. INTELIGENCIA ARTIFICIAL
+
+El modulo de IA consume datos consolidados de reportería y DW.
+
+Funciones:
+
+- Prediccion de produccion cientifica.
+- Prediccion por facultad.
+- Prediccion por linea de investigacion.
+- Recomendaciones editoriales.
+- Recomendaciones de trazabilidad autoral.
+- Recomendaciones de calidad de datos.
+- Historial de entrenamiento.
+
+Algoritmos contemplados:
+
+- Persistencia ultimo valor.
+- Promedio movil de tres meses.
+- Regresion lineal temporal.
+- ML.NET ForecastBySsa.
+
+22. MANEJO DE ERRORES
+
+El backend devuelve errores controlados cuando es posible. El frontend cuenta con un mapeador de errores para convertir mensajes tecnicos en mensajes entendibles para el usuario.
+
+Esto evita mostrar errores como:
+
+- SqlException.
+- Foreign key constraint.
+- StackTrace.
+- InternalServerError.
+
+Y permite mostrar mensajes como:
+
+- Revisa los campos obligatorios.
+- No tienes permisos para realizar esta accion.
+- La operacion tardo mas de lo esperado.
+- Actualiza la informacion e intenta nuevamente.
+
+23. DESPLIEGUE
+
+El sistema se despliega mediante Docker.
+
+Contenedores:
+
+- tesis_articles_api: backend ASP.NET Core.
+- tesis_articles_web: frontend Blazor servido por Nginx.
+
+Variables importantes:
+
+- DB_HOST.
+- DB_PORT.
+- DB_OLTP_NAME.
+- DB_DW_NAME.
+- DB_REPORTING_NAME.
+- DB_USER.
+- DB_PASS.
+- JWT_KEY.
+- SCOPUS_API_KEY.
+
+24. JUSTIFICACION TECNICA
+
+La arquitectura aplicada es adecuada porque:
+
+- Separa frontend y backend.
+- Centraliza reglas de negocio en servicios.
+- Usa DTOs compartidos.
+- Usa EF Core como persistencia y unidad de trabajo.
+- Separa operaciones OLTP de analisis OLAP.
+- Permite seguridad por roles.
+- Soporta formularios dinamicos.
+- Permite carga masiva controlada mediante staging.
+- Integra reportería BI e inteligencia artificial.
+- Es desplegable en contenedores Docker.
+- Permite escalabilidad y mantenimiento por modulos.
+
+25. TEXTO SUGERIDO PARA TESIS
+
+El sistema fue desarrollado bajo una arquitectura modular cliente-servidor, compuesta por un frontend en Blazor WebAssembly, un backend en ASP.NET Core y un proyecto compartido de contratos DTO. La comunicacion entre frontend y backend se realiza mediante servicios HTTP que consumen endpoints REST protegidos con autenticacion JWT y politicas de autorizacion por roles. En el backend se aplico una separacion por capas, donde los controladores reciben las solicitudes, los servicios concentran la logica de negocio y Entity Framework Core gestiona la persistencia hacia SQL Server.
+
+No se implemento un patron Unit of Work adicional debido a que el DbContext de Entity Framework Core ya cumple esa responsabilidad, administrando el seguimiento de entidades, transacciones y confirmacion de cambios mediante SaveChanges. Asimismo, se prescindio de repositorios genericos para mantener consultas especificas y expresivas por modulo, necesarias en procesos como workflow, staging, reportería, formularios dinamicos e inteligencia artificial.
+
+La arquitectura diferencia el modelo transaccional OLTP, usado para registrar y validar informacion operativa, del modelo analitico OLAP, utilizado para reportería BI, KPIs e inteligencia artificial. Esta separacion permite que las consultas analiticas se ejecuten sobre un Data Warehouse sin afectar directamente las operaciones diarias del sistema. En conjunto, la arquitectura propuesta favorece mantenibilidad, escalabilidad, seguridad, trazabilidad y soporte para analisis institucional.
