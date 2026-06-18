@@ -1,8 +1,11 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.Options;
 using tesisproject.backend.Controllers.Extensions;
+using tesisproject.backend.Options;
 using tesisproject.backend.Services.Interfaces;
+using tesisproject.shared.Auth.Articles;
 using tesisproject.shared.DTOs.Auth;
 using tesisproject.shared.Responses;
 
@@ -14,8 +17,22 @@ namespace tesisproject.backend.Controllers
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _auth;
+        // [ARTICLES-MIGRATION] Contexto y bandera del modulo; no reemplazan el login de proyectos.
+        private readonly IArticleUserContext _articleUser;
+        private readonly IAuthorizationService _authorization;
+        private readonly ArticlesModuleOptions _articlesModule;
 
-        public AuthController(IAuthService auth) => _auth = auth;
+        public AuthController(
+            IAuthService auth,
+            IArticleUserContext articleUser,
+            IAuthorizationService authorization,
+            IOptions<ArticlesModuleOptions> articlesModule)
+        {
+            _auth = auth;
+            _articleUser = articleUser;
+            _authorization = authorization;
+            _articlesModule = articlesModule.Value;
+        }
 
         // ===== Cookies helpers =====
         private static void SetRefreshCookie(HttpResponse resp, string refreshToken, DateTime expiresUtc)
@@ -130,6 +147,64 @@ namespace tesisproject.backend.Controllers
                 SetRefreshCookie(Response, cookie.Value.token, cookie.Value.exp);
 
             return result.ToActionResult();
+        }
+
+        // =============== CURRENT SESSION ===============
+
+        // [ARTICLES-MIGRATION] Expone capacidades de articulos usando la sesion Identity/JWT de proyectos.
+        [HttpGet("me")]
+        [Authorize]
+        [ProducesResponseType(typeof(ServiceResult<CurrentSessionResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ServiceResult<CurrentSessionResponse>), StatusCodes.Status401Unauthorized)]
+        public async Task<ActionResult<ServiceResult<CurrentSessionResponse>>> Me(
+            CancellationToken ct)
+        {
+            var identityUserId = _articleUser.IdentityUserId;
+            if (!identityUserId.HasValue)
+            {
+                return ServiceResult<CurrentSessionResponse>
+                    .Fail(
+                        "La sesion no contiene un identificador de usuario valido.",
+                        ErrorType.Unauthorized,
+                        "AUTH_USER_ID_MISSING")
+                    .ToActionResult();
+            }
+
+            var enabled = _articlesModule.Enabled;
+
+            async Task<bool> CanAsync(string policy)
+                => enabled && (await _authorization.AuthorizeAsync(User, policy)).Succeeded;
+
+            var response = new CurrentSessionResponse
+            {
+                IdentityUserId = identityUserId.Value,
+                AppUserId = await _articleUser.GetAppUserIdAsync(ct),
+                Email = _articleUser.Email,
+                DisplayName = _articleUser.DisplayName,
+                Roles = _articleUser.Roles,
+                Permissions = _articleUser.Permissions,
+                Articles = new ArticleModuleAccessResponse
+                {
+                    Enabled = enabled,
+                    CanAccess = await CanAsync(ArticlePolicyNames.Access),
+                    CanRegister = await CanAsync(ArticlePolicyNames.AuthorSubmission),
+                    CanList = await CanAsync(ArticlePolicyNames.Listing),
+                    CanUseWorkflow = await CanAsync(ArticlePolicyNames.WorkflowAccess),
+                    CanReviewUodide = await CanAsync(ArticlePolicyNames.WorkflowReviewUodide),
+                    CanReviewTechnical = await CanAsync(ArticlePolicyNames.WorkflowReviewTechnical),
+                    CanProcess = await CanAsync(ArticlePolicyNames.WorkflowProcess),
+                    CanUseBulkImport = await CanAsync(ArticlePolicyNames.BulkImport),
+                    CanUseExternalApis = await CanAsync(ArticlePolicyNames.ExternalApis),
+                    CanViewReporting = await CanAsync(ArticlePolicyNames.Reporting),
+                    CanViewIntelligence = await CanAsync(ArticlePolicyNames.Intelligence),
+                    CanManageConfiguration = await CanAsync(ArticlePolicyNames.Configuration),
+                    CanManageSecurity = await CanAsync(ArticlePolicyNames.SecurityAdministration)
+                }
+            };
+
+            return ServiceResult<CurrentSessionResponse>
+                .Ok(response, "Sesion activa.")
+                .ToActionResult();
         }
 
         // =============== LOGOUT ===============
