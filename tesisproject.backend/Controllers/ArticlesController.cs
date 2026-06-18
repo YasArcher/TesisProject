@@ -1,17 +1,17 @@
-﻿// [ARTICLES-MIGRATION] Origen: sistema de articulos. Controlador de solo lectura protegido por bandera de activacion.
+// [ARTICLES-MIGRATION] Origen: sistema de articulos. Controlador de solo lectura protegido por bandera de activacion.
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using tesisproject.backend.Controllers.Extensions;
 using tesisproject.backend.Options;
 using tesisproject.backend.Services.Interfaces;
-using tesisproject.shared.Auth;
+using tesisproject.shared.Auth.Articles;
 using tesisproject.shared.DTOs.Articles;
 using tesisproject.shared.Responses;
 
 namespace tesisproject.backend.Controllers
 {
-    [Authorize(Roles = AppRoles.ReadTechArea)]
+    [Authorize(Policy = ArticlePolicyNames.Listing)]
     [ApiController]
     [Route("api/articles")]
     public sealed class ArticlesController : ControllerBase

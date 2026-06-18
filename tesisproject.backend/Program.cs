@@ -10,6 +10,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using tesisproject.backend.Data;
+// [ARTICLES-MIGRATION] Politicas y roles aislados del modulo de articulos.
+using tesisproject.backend.Authorization.Articles;
 // [ARTICLES-MIGRATION] Contexto independiente del dominio de articulos.
 using tesisproject.backend.Data.Articles;
 using tesisproject.backend.Options;
@@ -21,6 +23,8 @@ using tesisproject.backend.Services.Implementations;
 using tesisproject.backend.Services.Interfaces;
 using tesisproject.backend.UnitOfWork.Implementations;
 using tesisproject.backend.UnitOfWork.Interfaces;
+// [ARTICLES-MIGRATION] Contratos compartidos de seguridad de articulos.
+using tesisproject.shared.Auth.Articles;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Routing;
 
@@ -45,7 +49,11 @@ var app = builder.Build();
 await ApplyMigrationsAsync(app);
 
 // 2) Seed de roles después de migrar
-await EnsureIdentityRolesAsync(app, "admin", "financial", "technical", "superadmin", "coordinador", "user");
+var identityRoles = new List<string> { "admin", "financial", "technical", "superadmin", "coordinador", "user" };
+// [ARTICLES-MIGRATION] Los roles historicos se crean solo cuando el modulo de articulos esta habilitado.
+if (app.Configuration.GetValue<bool>($"{ArticlesModuleOptions.SectionName}:Enabled"))
+    identityRoles.AddRange(ArticleRoles.All);
+await EnsureIdentityRolesAsync(app, identityRoles.ToArray());
 
 // ===== Configure pipeline =====
 app.ConfigurePipeline();
@@ -212,7 +220,8 @@ static class StartupExtensions
                 options.MapInboundClaims = false;
             });
 
-        builder.Services.AddAuthorization();
+        // [ARTICLES-MIGRATION] Agrega politicas de articulos sin reemplazar la autorizacion de proyectos.
+        builder.Services.AddAuthorization(options => ArticlePolicies.Configure(options));
     }
 
     public static void ConfigureCors(this WebApplicationBuilder builder)
@@ -347,6 +356,8 @@ static class StartupExtensions
         builder.Services.AddScoped<IProjectsFiltersService, ProjectsFiltersService>();
         builder.Services.AddScoped<IAuthService, AuthService>();
         builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+        // [ARTICLES-MIGRATION] Adapta IdentityUser<int> y AppUser.IdUser para los modulos de articulos.
+        builder.Services.AddScoped<IArticleUserContext, ArticleUserContext>();
         builder.Services.AddScoped<ITokenService, JwtTokenService>();
         builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
         builder.Services.AddScoped<IProjectService, ProjectService>();
