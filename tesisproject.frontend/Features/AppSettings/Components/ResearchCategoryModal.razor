@@ -1,0 +1,167 @@
+﻿@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.SelectInput
+@using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
+
+<Modal Id="research-category-modal"
+       IsOpen="IsOpen"
+       IsOpenChanged="IsOpenChanged"
+       Title="@(IsEdit ? "Editar Categoría de Investigación" : $"Nueva {SelectedTypeName}")"
+       Size="ModalSize.Md">
+    <ChildContent>
+        <div class="space-y-4">
+            <TextInput @bind-Value="Model.Name"
+                       Label="Nombre de la Categoría"
+                       Placeholder="Ej: Ciencias de la Salud, Ingeniería Informática"
+                       Required="true" />
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-foreground">
+                        Tipo de Categoría <span class="text-error">*</span>
+                    </label>
+
+                    @if (IsEdit || CategoryParentLocked)
+                    {
+                        <SelectInput TItem="ResearchCategoryTypeListItemDTO"
+                                     Items="Types"
+                                     Value="SelectedType"
+                                     ValueChanged="HandleSelectedTypeChanged"
+                                     GetText="@(t => t.Name)"
+                                     GetKey="@(t => t.Id.ToString())"
+                                     Placeholder="-- Seleccionar tipo --"
+                                     Size="SelectSize.Md" />
+                    }
+                    else
+                    {
+                        <input type="text"
+                               class="w-full rounded-lg border border-border bg-muted/5 px-3 py-2 text-sm text-foreground cursor-not-allowed"
+                               value="@SelectedTypeName"
+                               disabled />
+                        <p class="text-xs text-muted mt-1">
+                            Tipo preseleccionado. Para cambiarlo, usa los botones de tipo en la tabla.
+                        </p>
+                    }
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-foreground">
+                        Categoría Padre @(IsParentRequired ? "*" : "(Opcional)")
+                    </label>
+
+                    @if (AvailableParents.Any())
+                    {
+                        <SelectInput TItem="ResearchCategoryListItemDTO"
+                                     Items="AvailableParents"
+                                     Value="SelectedParent"
+                                     ValueChanged="HandleSelectedParentChanged"
+                                     GetText="@(c => $"{c.Name} ({c.ResearchCategoryTypeName})")"
+                                     GetKey="@(c => c.Id.ToString())"
+                                     Placeholder="@(IsParentRequired ? "-- Seleccionar padre --" : "(Raíz - Sin padre)")"
+                                     Disabled="CategoryParentLockedFromTree"
+                                     AllowClear="@(!IsParentRequired)"
+                                     Size="SelectSize.Md" />
+
+                        @if (CategoryParentLockedFromTree && Model.ParentCategoryId.HasValue)
+                        {
+                            <p class="text-xs text-muted mt-1">
+                                Padre preseleccionado desde el árbol. Edita la categoría para cambiarlo.
+                            </p>
+                        }
+                    }
+                    else if (IsParentRequired)
+                    {
+                        <div class="w-full rounded-lg border border-error/30 bg-error/5 px-3 py-2 text-sm text-error">
+                            Sin categorías padre disponibles. Crea primero una categoría de tipo "@RequiredParentTypeName".
+                        </div>
+                    }
+                    else
+                    {
+                        <input type="text"
+                               class="w-full rounded-lg border border-border bg-muted/5 px-3 py-2 text-sm text-muted cursor-not-allowed"
+                               value="(Categoría raíz - sin padre requerido)"
+                               disabled />
+                    }
+
+                    @if (IsParentRequired && AvailableParents.Any())
+                    {
+                        <p class="text-xs text-muted mt-1">
+                            Debes seleccionar un padre de tipo "@RequiredParentTypeName"
+                        </p>
+                    }
+                </div>
+            </div>
+
+            <label class="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox"
+                       class="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                       @bind="Model.IsActive" />
+                <span class="text-sm text-foreground">Activo</span>
+            </label>
+
+            <div class="flex justify-end gap-2 pt-4 border-t border-border">
+                <ActionButton Execute="HandleCancel"
+                              Text="Cancelar"
+                              Intent="ButtonIntent.Neutral"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Sm" />
+
+                <ActionButton Execute="HandleSave"
+                              Text="Guardar"
+                              Intent="ButtonIntent.Accept"
+                              Size="ButtonSize.Sm"
+                              Disabled="@(!CanSave)" />
+            </div>
+        </div>
+    </ChildContent>
+</Modal>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public bool IsEdit { get; set; }
+
+    [Parameter, EditorRequired]
+    public ResearchCategoryDetailDTO Model { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public List<ResearchCategoryTypeListItemDTO> Types { get; set; } = new();
+
+    [Parameter, EditorRequired]
+    public List<ResearchCategoryListItemDTO> AvailableParents { get; set; } = new();
+
+    [Parameter] public ResearchCategoryTypeListItemDTO? SelectedType { get; set; }
+    [Parameter] public EventCallback<ResearchCategoryTypeListItemDTO?> SelectedTypeChanged { get; set; }
+
+    [Parameter] public ResearchCategoryListItemDTO? SelectedParent { get; set; }
+    [Parameter] public EventCallback<ResearchCategoryListItemDTO?> SelectedParentChanged { get; set; }
+
+    [Parameter] public string SelectedTypeName { get; set; } = string.Empty;
+    [Parameter] public bool IsParentRequired { get; set; }
+    [Parameter] public string RequiredParentTypeName { get; set; } = string.Empty;
+    [Parameter] public bool CategoryParentLocked { get; set; }
+    [Parameter] public bool CategoryParentLockedFromTree { get; set; }
+    [Parameter] public bool CanSave { get; set; }
+
+    [Parameter] public EventCallback OnTypeChanged { get; set; }
+    [Parameter] public EventCallback OnSave { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private async Task HandleSelectedTypeChanged(ResearchCategoryTypeListItemDTO? value)
+    {
+        SelectedType = value;
+        await SelectedTypeChanged.InvokeAsync(value);
+        await OnTypeChanged.InvokeAsync();
+    }
+
+    private async Task HandleSelectedParentChanged(ResearchCategoryListItemDTO? value)
+    {
+        SelectedParent = value;
+        await SelectedParentChanged.InvokeAsync(value);
+    }
+
+    private Task HandleSave() => OnSave.InvokeAsync();
+    private Task HandleCancel() => OnCancel.InvokeAsync();
+}

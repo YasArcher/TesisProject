@@ -1,0 +1,32 @@
+﻿<div class="w-full">
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <label class="block mb-1 text-sm font-medium text-foreground">
+            @Label
+            @if (Required)
+            {
+                <span class="text-error">*</span>
+            }
+        </label>
+    }
+
+    <input type="date"
+           class="w-full rounded-md border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
+               @(HasError ? "border-error focus:ring-error focus:border-error" : "border-border")"
+           value="@_stringValue"
+           @onchange="OnChanged"
+           min="@_minString"
+           max="@_maxString"
+           disabled="@Disabled"
+           required="@Required" />
+
+    @if (HasError && string.IsNullOrWhiteSpace(ValidationMessageFromEditContext))
+    {
+        <p class="mt-1 text-sm text-error">@ErrorText</p>
+    }
+
+    @if (!string.IsNullOrEmpty(ValidationMessageFromEditContext))
+    {
+        <p class="mt-1 text-sm text-error">@ValidationMessageFromEditContext</p>
+    }
+</div>

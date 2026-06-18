@@ -1,0 +1,1 @@
+﻿global using tesisproject.shared.DTOs.Project;

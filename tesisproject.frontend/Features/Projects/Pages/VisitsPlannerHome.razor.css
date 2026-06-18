@@ -1,0 +1,14 @@
+﻿.planner-table .cell {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.planner-table .cell-num {
+    text-align: center;
+}
+
+.planner-table .cell-sel {
+    cursor: default;
+}

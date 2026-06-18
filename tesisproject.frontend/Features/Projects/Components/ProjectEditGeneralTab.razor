@@ -1,0 +1,327 @@
+﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.SelectInput
+@using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.shared.DTOs.Project.Request
+@using tesisproject.shared.DTOs.Project.Response
+@using tesisproject.shared.DTOs.Convocation.Response
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+
+<section class="h-full min-h-0 flex flex-col bg-background border-2 border-border rounded-3xl shadow-sm overflow-hidden">
+    <div class="shrink-0 flex items-center justify-between gap-4 px-6 py-5 border-b-2 border-border">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-1 h-6 bg-primary rounded-full shrink-0"></div>
+            <h3 class="text-base font-bold text-foreground tracking-tight truncate">
+                Información básica
+            </h3>
+        </div>
+
+        <ActionButton Execute="OnSaveClicked"
+                      Text="Guardar"
+                      Variant="ButtonVariant.Filled"
+                      Intent="ButtonIntent.Success"
+                      Disabled="@(IsLoading || IsSaving || Dto is null)"
+                      ConfirmBeforeExecute="true"
+                      ConfirmTitle="Guardar cambios"
+                      ConfirmMessage="¿Confirmas guardar los cambios del proyecto?"
+                      ConfirmButtonText="Guardar"
+                      CancelButtonText="Cancelar" />
+    </div>
+
+    <div class="flex-1 min-h-0 overflow-y-auto p-6">
+        @if (IsLoading)
+        {
+            <div class="h-full min-h-0 flex items-center justify-center">
+                <div class="flex items-center justify-center gap-4 p-8 bg-primary-subtle rounded-xl border border-primary/20">
+                    <div class="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full"></div>
+                    <div class="text-primary font-medium">Cargando datos...</div>
+                </div>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="p-4 rounded-2xl border border-error/20 bg-error/10 text-error">
+                @ErrorMessage
+            </div>
+        }
+        else if (Project is null || Dto is null)
+        {
+            <div class="p-4 rounded-2xl border border-border bg-background text-muted">
+                No se encontró el proyecto.
+            </div>
+        }
+        else
+        {
+            <EditForm Model="@Dto" OnValidSubmit="OnSaveClicked" class="min-w-0">
+                <DataAnnotationsValidator />
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+                    <!-- ProjectName -->
+                    <TextInput TValue="string"
+                               Label="Nombre del proyecto"
+                               @bind-Value="Dto.ProjectName"
+                               For="() => Dto.ProjectName"
+                               Placeholder="Ingrese el nombre del proyecto"
+                               Disabled="@(IsSaving)"
+                               Required="true" />
+
+                    <ActionButton Text="Editar documento inicial"
+                                  Intent="ButtonIntent.Warning"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Md"
+                                  Execute="EditMainDocumentAsync"
+                                  Disabled="@(!CanEditMainDocument)" />
+
+                    <!-- ProjectDuration -->
+                    <TextInput TValue="int"
+                               Label="Numero de meses del proyecto"
+                               @bind-Value="Dto.DurationInMonths"
+                               For="() => Dto.DurationInMonths"
+                               Placeholder="Ingrese el numero de meses del proyecto"
+                               Disabled="@(IsSaving)"
+                               Required="true" />
+
+                    <!-- Convocation -->
+                    <div class="space-y-2 min-w-0">
+                        <label class="text-sm font-semibold text-foreground">Convocatoria</label>
+
+                        <SelectInput TItem="ConvocationListItemResponseDTO"
+                                     Items="Convocations"
+                                     Value="_selectedConvocation"
+                                     ValueChanged="OnConvocationChanged"
+                                     GetText="@(x => string.IsNullOrWhiteSpace(x.Code) ? x.Name : $"{x.Code} - {x.Name}")"
+                                     GetKey="@(x => x.Id.ToString())"
+                                     Placeholder="Seleccione una convocatoria"
+                                     Disabled="@(IsSaving)"
+                                     AllowClear="false"
+                                     Size="SelectSize.Md" />
+
+                        <ValidationMessage For="() => Dto.ConvocationId" />
+                    </div>
+
+                    <!-- Project Origin Type -->
+                    <div class="space-y-2 min-w-0">
+                        <label class="text-sm font-semibold text-foreground">Tipo de origen</label>
+
+                        <SelectInput TItem="CatalogListItemDTO"
+                                     Items="ProjectOriginTypes"
+                                     Value="_selectedProjectOriginType"
+                                     ValueChanged="OnProjectOriginTypeChanged"
+                                     GetText="@(x => x.Name)"
+                                     GetKey="@(x => x.Id.ToString())"
+                                     Placeholder="Seleccione un tipo de origen"
+                                     Disabled="@(IsSaving)"
+                                     AllowClear="false"
+                                     Size="SelectSize.Md" />
+
+                        <ValidationMessage For="() => Dto.ProjectOriginTypeId" />
+                    </div>
+
+                    <!-- ProjectType -->
+                    <div class="space-y-2 min-w-0">
+                        <label class="text-sm font-semibold text-foreground">Tipo</label>
+
+                        <SelectInput TItem="CatalogListItemDTO"
+                                     Items="ProjectTypes"
+                                     Value="_selectedProjectType"
+                                     ValueChanged="OnProjectTypeChanged"
+                                     GetText="@(x => x.Name)"
+                                     GetKey="@(x => x.Id.ToString())"
+                                     Placeholder="Seleccione un tipo"
+                                     Disabled="@(IsSaving)"
+                                     AllowClear="false"
+                                     Size="SelectSize.Md" />
+
+                        <ValidationMessage For="() => Dto.ProjectTypeId" />
+                    </div>
+
+                    <!-- ProjectState -->
+                    <div class="space-y-2 min-w-0">
+                        <label class="text-sm font-semibold text-foreground">Estado</label>
+
+                        <SelectInput TItem="CatalogListItemDTO"
+                                     Items="ProjectStates"
+                                     Value="_selectedProjectState"
+                                     ValueChanged="OnProjectStateChanged"
+                                     GetText="@(x => x.Name)"
+                                     GetKey="@(x => x.Id.ToString())"
+                                     Placeholder="Seleccione un estado"
+                                     Disabled="@(IsSaving)"
+                                     AllowClear="false"
+                                     Size="SelectSize.Md" />
+
+                        <ValidationMessage For="() => Dto.ProjectStateId" />
+                    </div>
+
+                    <!-- Dates -->
+                    <div class="space-y-2 min-w-0">
+                        <label class="text-sm font-semibold text-foreground">Fecha de inicio</label>
+                        <InputDate class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                   @bind-Value="Dto.StartDate" />
+                        <ValidationMessage For="() => Dto.StartDate" />
+                    </div>
+
+                    <div class="space-y-2 min-w-0">
+                        <label class="text-sm font-semibold text-foreground">Fecha tentativa fin</label>
+                        <InputDate class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                   @bind-Value="Dto.TentativeEndDate" />
+                        <ValidationMessage For="() => Dto.TentativeEndDate" />
+                    </div>
+
+                    <div class="space-y-2 min-w-0">
+                        <label class="text-sm font-semibold text-foreground">Fecha real fin</label>
+                        <InputDate class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                   @bind-Value="Dto.RealEndDate" />
+                        <ValidationMessage For="() => Dto.RealEndDate" />
+                    </div>
+                </div>
+            </EditForm>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public ProjectDetailResponseDTO? Project { get; set; }
+    [Parameter] public UpdateProjectRequestDTO? Dto { get; set; }
+
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> ProjectTypes { get; set; } = Array.Empty<CatalogListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> ProjectStates { get; set; } = Array.Empty<CatalogListItemDTO>();
+    [Parameter] public IReadOnlyList<ConvocationListItemResponseDTO> Convocations { get; set; } = Array.Empty<ConvocationListItemResponseDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> ProjectOriginTypes { get; set; } = Array.Empty<CatalogListItemDTO>();
+
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+
+    [Parameter] public EventCallback<int> OnEditDocument { get; set; }
+    [Parameter] public EventCallback OnSaveRequested { get; set; }
+
+    private CatalogListItemDTO? _selectedProjectOriginType;
+    private CatalogListItemDTO? _selectedProjectType;
+    private CatalogListItemDTO? _selectedProjectState;
+    private ConvocationListItemResponseDTO? _selectedConvocation;
+
+    // Para que "Edit" se comporte como "Create" (no resetear selección en cada render)
+    private int _lastTypeId;
+    private int _lastStateId;
+    private int _lastConvocationId;
+    private int _lastOriginTypeId;
+
+    private const int DOC_MEMORANDO_INICIAL = 1;
+    private const int DOC_CONTRATO_AUSPICIO = 5;
+    private const int DOC_RESOLUCION_PRORROGA = 3;
+    private const int DOC_RESOLUCION_FINAL = 4;
+
+    protected override void OnInitialized()
+    {
+        _lastTypeId = int.MinValue;
+        _lastStateId = int.MinValue;
+        _lastConvocationId = int.MinValue;
+        _lastOriginTypeId = int.MinValue;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Dto is null) return;
+
+        // Solo resincroniza si cambió el id (o si aún no hay selección)
+        if (_selectedProjectType is null || _lastTypeId != Dto.ProjectTypeId)
+        {
+            _selectedProjectType = ProjectTypes.FirstOrDefault(x => x.Id == Dto.ProjectTypeId);
+            _lastTypeId = Dto.ProjectTypeId;
+        }
+
+        if (_selectedProjectState is null || _lastStateId != Dto.ProjectStateId)
+        {
+            _selectedProjectState = ProjectStates.FirstOrDefault(x => x.Id == Dto.ProjectStateId);
+            _lastStateId = Dto.ProjectStateId;
+        }
+
+        if (_selectedConvocation is null || _lastConvocationId != Dto.ConvocationId)
+        {
+            _selectedConvocation = Convocations.FirstOrDefault(x => x.Id == Dto.ConvocationId);
+            _lastConvocationId = Dto.ConvocationId;
+        }
+
+        if (_selectedProjectOriginType is null || _lastOriginTypeId != Dto.ProjectOriginTypeId)
+        {
+            _selectedProjectOriginType = ProjectOriginTypes.FirstOrDefault(x => x.Id == Dto.ProjectOriginTypeId);
+            _lastOriginTypeId = Dto.ProjectOriginTypeId;
+        }
+    }
+
+    private Task OnSaveClicked() => OnSaveRequested.InvokeAsync();
+
+    private async Task EditMainDocumentAsync()
+    {
+        // ✅ era Item, pero tu parámetro es Project
+        if (Project?.Documents is null || Project.Documents.Count == 0)
+            return;
+
+        var doc = Project.Documents
+            .OrderBy(d => d.DocumentTypeId switch
+            {
+                DOC_MEMORANDO_INICIAL => 0,
+                DOC_CONTRATO_AUSPICIO => 1,
+                DOC_RESOLUCION_PRORROGA => 2,
+                DOC_RESOLUCION_FINAL => 3,
+                _ => 99
+            })
+            .FirstOrDefault();
+
+        if (doc is null || doc.DocumentId <= 0)
+            return;
+
+        await OnEditDocument.InvokeAsync(doc.DocumentId);
+    }
+
+    private bool CanEditMainDocument =>
+        Project?.Documents?.Any(d => d.DocumentTypeId == DOC_MEMORANDO_INICIAL && d.DocumentId > 0) == true;
+
+    private Task OnProjectTypeChanged(CatalogListItemDTO? item)
+    {
+        _selectedProjectType = item;
+        if (Dto is not null && item is not null)
+        {
+            Dto.ProjectTypeId = item.Id;
+            _lastTypeId = item.Id; // clave para evitar "rebote"
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task OnProjectStateChanged(CatalogListItemDTO? item)
+    {
+        _selectedProjectState = item;
+        if (Dto is not null && item is not null)
+        {
+            Dto.ProjectStateId = item.Id;
+            _lastStateId = item.Id;
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task OnProjectOriginTypeChanged(CatalogListItemDTO? item)
+    {
+        _selectedProjectOriginType = item;
+        if (Dto is not null && item is not null)
+        {
+            Dto.ProjectOriginTypeId = item.Id;
+            _lastOriginTypeId = item.Id;
+        }
+        return Task.CompletedTask;
+    }
+
+    private Task OnConvocationChanged(ConvocationListItemResponseDTO? item)
+    {
+        _selectedConvocation = item;
+        if (Dto is not null && item is not null)
+        {
+            Dto.ConvocationId = item.Id;
+            _lastConvocationId = item.Id;
+        }
+        return Task.CompletedTask;
+    }
+}

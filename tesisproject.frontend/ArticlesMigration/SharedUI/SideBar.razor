@@ -1,0 +1,438 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Routing
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Workflow
+@namespace tesisproject.frontend.SharedUI
+@implements IDisposable
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
+@inject IRegistrationWorkflowSettingsClient RegistrationWorkflowSettingsClient
+
+<div class="sidebar menu-bg @(_collapsed ? "is-collapsed" : null)">
+    <div class="sidebar-brand">
+        <div class="brand-identity">
+            <div class="brand-mark">
+                <span class="fw-bold">SI</span>
+            </div>
+            @if (!_collapsed)
+            {
+                <div class="brand-text">
+                    <div class="brand-kicker">Plataforma</div>
+                    <div class="fw-semibold lh-1">Sistema Integrado</div>
+                    <small class="opacity-75 lh-1">de Documentación</small>
+                </div>
+            }
+        </div>
+        <button type="button"
+                class="btn btn-sm text-white bg-transparent opacity-75 btn-collapse"
+                title="@(_collapsed ? "Expandir menú" : "Colapsar menú")"
+                @onclick="Toggle">
+            @if (_collapsed)
+            {
+                <span>»</span>
+            }
+            else
+            {
+                <span>«</span>
+            }
+        </button>
+    </div>
+
+    <nav class="sidebar-nav">
+        @if (IsAdmin)
+        {
+            <div class="sidebar-admin-shortcut-wrap mb-3">
+                <NavLink href="/management/security-administration" class="sidebar-admin-shortcut" ActiveClass="active">
+                    <span class="icon">🔐</span>
+                    @if (!_collapsed)
+                    {
+                        <span class="label">Usuarios y roles</span>
+                        <span class="badge">Admin</span>
+                    }
+                </NavLink>
+            </div>
+        }
+
+        <div class="sidebar-nav-stack">
+            @if (IsAreaTecnicaOnly)
+            {
+                <ul class="nav flex-column sidebar-direct-links">
+                    <li class="nav-item">
+                        <NavLink href="/management/workflow-review" Match="NavLinkMatch.Prefix" class="nav-link sidebar-link" ActiveClass="active" title="Revisión de envíos">
+                            <span class="icon">✓</span>
+                            @if (!_collapsed)
+                            {
+                                <span class="label">Revisión de envíos</span>
+                            }
+                        </NavLink>
+                    </li>
+                </ul>
+            }
+            else if (CanSeeAuthorWorkspace)
+            {
+                <ul class="nav flex-column sidebar-direct-links">
+                    <li class="nav-item">
+                        <NavLink href="/management/author-workspace" Match="NavLinkMatch.Prefix" class="nav-link sidebar-link" ActiveClass="active" title="Espacio del autor">
+                            <span class="icon">⌂</span>
+                            @if (!_collapsed)
+                            {
+                                <span class="label">Espacio autor</span>
+                            }
+                        </NavLink>
+                    </li>
+                </ul>
+            }
+            else if (CanSeePrincipalPanel)
+            {
+                <ul class="nav flex-column sidebar-direct-links">
+                    <li class="nav-item">
+                        <NavLink href="/panel/principal" Match="NavLinkMatch.Prefix" class="nav-link sidebar-link" ActiveClass="active" title="Panel principal">
+                            <span class="icon">⌂</span>
+                            @if (!_collapsed)
+                            {
+                                <span class="label">Panel principal</span>
+                            }
+                        </NavLink>
+                    </li>
+                </ul>
+            }
+
+            @if (CanSeeArticlesGroup && !IsAreaTecnicaOnly)
+            {
+                <div class="accordion-group @(GroupClass(ArticlesSection))">
+                    <button type="button" class="accordion-btn"
+                            title="Artículos"
+                            aria-expanded="@IsSectionOpen(ArticlesSection)"
+                            @onclick="() => ToggleSection(ArticlesSection)">
+                        <span class="icon">📝</span>
+                        @if (!_collapsed)
+                        {
+                            <span class="label">Artículos</span>
+                            <span class="caret">▾</span>
+                        }
+                    </button>
+                    @if (IsSectionOpen(ArticlesSection))
+                    {
+                    <div class="accordion-panel is-rendered">
+                        <ul class="nav flex-column ms-4 my-2 gap-1">
+                            @if (CanRegisterArticles)
+                            {
+                                <li class="nav-item"><NavLink href="/articulos/registrar" Match="NavLinkMatch.Prefix" class="nav-link sidebar-link" ActiveClass="active" title="Registrar artículo"><span class="icon">✎</span><span class="label">Registrar artículo</span></NavLink></li>
+                            }
+                            @if (CanAccessWorkflow)
+                            {
+                                <li class="nav-item"><NavLink href="/management/workflow-review" Match="NavLinkMatch.Prefix" class="nav-link sidebar-link" ActiveClass="active" title="Revisión de envíos"><span class="icon">✓</span><span class="label">Revisión de envíos</span></NavLink></li>
+                            }
+                            @if (CanManageConfiguration)
+                            {
+                                <li class="nav-item"><NavLink href="/configuration" class="nav-link sidebar-link" ActiveClass="active" title="Configuración"><span class="icon">⚙</span><span class="label">Configuración</span></NavLink></li>
+                            }
+                            @if (CanSeeArticleListing)
+                            {
+                                <li class="nav-item"><NavLink href="/articulos/listado" class="nav-link sidebar-link" ActiveClass="active" title="Listado de artículos"><span class="icon">≣</span><span class="label">Listado de artículos</span></NavLink></li>
+                            }
+                        </ul>
+                    </div>
+                    }
+                </div>
+            }
+
+            @if (CanSeeImportGroup && !IsAreaTecnicaOnly)
+            {
+                <div class="accordion-group @(GroupClass(ImportSection))">
+                    <button type="button" class="accordion-btn"
+                            title="Captura e importación"
+                            aria-expanded="@IsSectionOpen(ImportSection)"
+                            @onclick="() => ToggleSection(ImportSection)">
+                        <span class="icon">📥</span>
+                        @if (!_collapsed)
+                        {
+                            <span class="label">Captura e importación</span>
+                            <span class="caret">▾</span>
+                        }
+                    </button>
+                    @if (IsSectionOpen(ImportSection))
+                    {
+                    <div class="accordion-panel is-rendered">
+                        <ul class="nav flex-column ms-4 my-2 gap-1">
+                            @if (CanUseRegistrationMatrix)
+                            {
+                                <li class="nav-item"><NavLink href="/management/registration-matrix" class="nav-link sidebar-link" ActiveClass="active" title="Matriz de registro"><span class="icon">▦</span><span class="label">Matriz de registro</span></NavLink></li>
+                            }
+                            @if (CanUseBulkImport)
+                            {
+                                <li class="nav-item"><NavLink href="/management/exportinformation" class="nav-link sidebar-link" ActiveClass="active" title="Carga masiva"><span class="icon">⇪</span><span class="label">Carga masiva</span></NavLink></li>
+                            }
+                            @if (CanUseExternalApis)
+                            {
+                                <li class="nav-item"><NavLink href="/management/externalapis" class="nav-link sidebar-link" ActiveClass="active" title="APIs externas"><span class="icon">◎</span><span class="label">APIs externas</span></NavLink></li>
+                            }
+                            @if (CanUseExternalIngestion)
+                            {
+                                <li class="nav-item"><NavLink href="/management/external-ingestion" class="nav-link sidebar-link" ActiveClass="active" title="Ingesta masiva externa"><span class="icon">⇣</span><span class="label">Ingesta externa</span></NavLink></li>
+                            }
+                        </ul>
+                    </div>
+                    }
+                </div>
+            }
+
+            @if (CanSeeAnalysisGroup && !IsAreaTecnicaOnly)
+            {
+                <div class="accordion-group @(GroupClass(AnalysisSection))">
+                    <button type="button" class="accordion-btn"
+                            title="Reportes y análisis"
+                            aria-expanded="@IsSectionOpen(AnalysisSection)"
+                            @onclick="() => ToggleSection(AnalysisSection)">
+                        <span class="icon">📊</span>
+                        @if (!_collapsed)
+                        {
+                            <span class="label">Reportes y análisis</span>
+                            <span class="caret">▾</span>
+                        }
+                    </button>
+                    @if (IsSectionOpen(AnalysisSection))
+                    {
+                    <div class="accordion-panel is-rendered">
+                        <ul class="nav flex-column ms-4 my-2 gap-1">
+
+                                @if (IsAdmin || IsAnalyst || IsAreaTecnica || CanViewReportingByPermission)
+                                {
+                                    <li class="nav-item"><NavLink href="/management/statisticalreports" class="nav-link sidebar-link" ActiveClass="active" title="Reportería"><span class="icon">◔</span><span class="label">Reportería</span></NavLink></li>
+                                }
+                                @if (IsAdmin || IsAnalyst || CanUseIntelligenceByPermission)
+                                {
+                                    <li class="nav-item"><NavLink href="/management/intelligence" class="nav-link sidebar-link" ActiveClass="active" title="Inteligencia Artificial"><span class="icon">◔</span><span class="label">Inteligencia Artificial</span></NavLink></li>
+                                }
+                        </ul>
+                    </div>
+                    }
+                </div>
+            }
+
+            @if (IsAdmin)
+            {
+                <div class="accordion-group @(GroupClass(AdministrationSection))">
+                    <button type="button" class="accordion-btn"
+                            title="Control institucional"
+                            aria-expanded="@IsSectionOpen(AdministrationSection)"
+                            @onclick="() => ToggleSection(AdministrationSection)">
+                        <span class="icon">🔐</span>
+                        @if (!_collapsed)
+                        {
+                            <span class="label">Control institucional</span>
+                            <span class="caret">▾</span>
+                        }
+                    </button>
+                    @if (IsSectionOpen(AdministrationSection))
+                    {
+                    <div class="accordion-panel is-rendered">
+                        <ul class="nav flex-column ms-4 my-2 gap-1">
+                            <li class="nav-item"><NavLink href="/management/security-administration" class="nav-link sidebar-link" ActiveClass="active" title="Usuarios y roles"><span class="icon">⌘</span><span class="label">Usuarios y roles</span></NavLink></li>
+                        </ul>
+                    </div>
+                    }
+                </div>
+            }
+
+            <div class="accordion-group @(GroupClass(SupportSection))">
+                <button type="button" class="accordion-btn"
+                        title="Soporte y cuenta"
+                        aria-expanded="@IsSectionOpen(SupportSection)"
+                        @onclick="() => ToggleSection(SupportSection)">
+                    <span class="icon">🛟</span>
+                    @if (!_collapsed)
+                    {
+                        <span class="label">Soporte y cuenta</span>
+                        <span class="caret">▾</span>
+                    }
+                </button>
+                @if (IsSectionOpen(SupportSection))
+                {
+                <div class="accordion-panel is-rendered">
+                    <ul class="nav flex-column ms-4 my-2 gap-1">
+                        <li class="nav-item"><NavLink href="/management/support" class="nav-link sidebar-link" ActiveClass="active" title="Centro de ayuda"><span class="icon">?</span><span class="label">Centro de ayuda</span></NavLink></li>
+                        @if (CanSeeManual)
+                        {
+                            <li class="nav-item"><NavLink href="/help/manual" class="nav-link sidebar-link" ActiveClass="active" title="Manual de usuario"><span class="icon">☰</span><span class="label">Manual de usuario</span></NavLink></li>
+                        }
+                        <li class="nav-item"><NavLink href="/perfilview" class="nav-link sidebar-link" ActiveClass="active" title="Perfil"><span class="icon">◉</span><span class="label">Perfil</span></NavLink></li>
+                    </ul>
+                </div>
+                }
+            </div>
+        </div>
+    </nav>
+
+    <div class="sidebar-footer">
+        <small class="opacity-75">&copy; @DateTime.Now.Year</small>
+    </div>
+</div>
+
+@code {
+    [Parameter] public EventCallback<bool> CollapseChanged { get; set; }
+
+    private const string ArticlesSection = "articles";
+    private const string ImportSection = "import";
+    private const string AnalysisSection = "analysis";
+    private const string AdministrationSection = "administration";
+    private const string SupportSection = "support";
+
+    private bool _collapsed;
+    private string? _openSection;
+
+    private bool IsAdmin { get; set; }
+    private bool IsAnalyst { get; set; }
+    private bool IsAuthor { get; set; }
+    private bool IsUodide { get; set; }
+    private bool IsAreaTecnica { get; set; }
+    private bool IsExternalApiUser { get; set; }
+    private bool CanRegisterByPermission { get; set; }
+    private bool CanUseMatrixByPermission { get; set; }
+    private bool CanUseBulkImportByPermission { get; set; }
+    private bool CanViewReportingByPermission { get; set; }
+    private bool CanUseIntelligenceByPermission { get; set; }
+    private bool CanManageConfigurationByPermission { get; set; }
+    private bool CanTrackWorkflowByPermission { get; set; }
+    private string RegistrationEntryMode { get; set; } = RegistrationEntryModes.AuthorAndUodide;
+    private bool IsUodideOnly => IsUodide && !IsAdmin && !IsAnalyst && !IsAuthor && !IsAreaTecnica && !IsExternalApiUser;
+    private bool IsAreaTecnicaOnly => IsAreaTecnica && !IsAdmin && !IsAnalyst && !IsAuthor && !IsUodide && !IsExternalApiUser;
+    private bool CanSeeAuthorWorkspace => !IsAdmin
+        && !IsAnalyst
+        && !IsUodide
+        && !IsAreaTecnica
+        && (IsAuthor || CanRegisterByPermission || CanTrackWorkflowByPermission);
+    private bool CanSeePrincipalPanel => IsAdmin
+        || IsAnalyst
+        || IsUodide
+        || IsAreaTecnica
+        || CanViewReportingByPermission
+        || CanUseIntelligenceByPermission;
+
+    private bool AuthorRegistrationEnabled => RegistrationEntryMode != RegistrationEntryModes.UodideOnly;
+    private bool UodideRegistrationEnabled => RegistrationEntryMode != RegistrationEntryModes.AuthorOnly;
+    private bool CanRegisterArticles => IsAdmin || IsAnalyst || CanRegisterByPermission || (IsAuthor && AuthorRegistrationEnabled) || (IsUodide && UodideRegistrationEnabled);
+    private bool CanAccessWorkflow => IsAdmin || IsAuthor || IsUodide || IsAreaTecnica || CanTrackWorkflowByPermission;
+    private bool CanManageConfiguration => IsAdmin || IsAnalyst || CanManageConfigurationByPermission;
+    private bool CanSeeArticlesGroup => CanRegisterArticles || CanAccessWorkflow;
+    private bool CanUseRegistrationMatrix => IsAdmin || IsAnalyst || CanUseMatrixByPermission || (IsUodide && UodideRegistrationEnabled);
+    private bool CanUseExternalApis => IsAdmin || IsAnalyst || IsAuthor || IsExternalApiUser;
+    private bool CanUseExternalIngestion => IsAdmin || IsAnalyst || IsExternalApiUser;
+    private bool CanUseBulkImport => IsAdmin || IsAnalyst || CanUseBulkImportByPermission;
+    private bool CanSeeImportGroup => CanManageConfiguration || CanUseRegistrationMatrix || CanUseExternalApis || CanUseBulkImport;
+    private bool CanSeeAnalysisGroup => IsAdmin || IsAnalyst || IsAreaTecnica || CanViewReportingByPermission || CanUseIntelligenceByPermission;
+    private bool CanSeeArticleListing => IsAdmin || IsAnalyst || IsAreaTecnica || CanViewReportingByPermission;
+    private bool CanSeeManual => IsAdmin || IsAnalyst || IsAuthor || IsUodide || IsAreaTecnica || CanRegisterByPermission || CanTrackWorkflowByPermission;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadRoleStateAsync();
+        OpenSectionForCurrentRoute();
+        AuthStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        NavManager.LocationChanged += OnLocationChanged;
+    }
+
+    private async void OnAuthenticationStateChanged(Task<AuthenticationState> task)
+    {
+        await LoadRoleStateAsync(task);
+        OpenSectionForCurrentRoute();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadRoleStateAsync(Task<AuthenticationState>? authStateTask = null)
+    {
+        var state = authStateTask is null
+            ? await AuthStateProvider.GetAuthenticationStateAsync()
+            : await authStateTask;
+
+        var user = state.User;
+        IsAdmin = user.IsInRole("Admin");
+        IsAnalyst = user.IsInRole("Analyst");
+        IsAuthor = user.IsInRole("Author");
+        IsUodide = user.IsInRole("WorkflowReviewerUodide");
+        IsAreaTecnica = user.IsInRole("WorkflowReviewerAreaTecnica") || user.IsInRole("WorkflowProcessorAreaTecnica");
+        IsExternalApiUser = user.IsInRole("ExternalApiUser");
+        CanRegisterByPermission = user.IsInRole("ArticleRegistrationUser");
+        CanUseMatrixByPermission = user.IsInRole("RegistrationMatrixUser");
+        CanUseBulkImportByPermission = user.IsInRole("BulkImportUser");
+        CanViewReportingByPermission = user.IsInRole("ReportingViewer") || user.IsInRole("ReportingExporter") || user.IsInRole("ReportingAdvancedUser");
+        CanUseIntelligenceByPermission = user.IsInRole("IntelligenceViewer") || user.IsInRole("IntelligenceTrainer");
+        CanManageConfigurationByPermission = user.IsInRole("ConfigurationManager") || user.IsInRole("CatalogManager");
+        CanTrackWorkflowByPermission = user.IsInRole("WorkflowTrackingUser");
+
+        try
+        {
+            var settings = await RegistrationWorkflowSettingsClient.GetAsync();
+            RegistrationEntryMode = settings?.EntryMode ?? RegistrationEntryModes.AuthorAndUodide;
+        }
+        catch
+        {
+            RegistrationEntryMode = RegistrationEntryModes.AuthorAndUodide;
+        }
+    }
+
+    private async Task Toggle()
+    {
+        _collapsed = !_collapsed;
+        if (_collapsed)
+        {
+            _openSection = null;
+        }
+        else
+        {
+            OpenSectionForCurrentRoute();
+        }
+
+        await CollapseChanged.InvokeAsync(_collapsed);
+    }
+
+    private async Task ToggleSection(string key)
+    {
+        if (_collapsed)
+        {
+            _collapsed = false;
+            await CollapseChanged.InvokeAsync(false);
+        }
+
+        _openSection = _openSection == key ? null : key;
+        StateHasChanged();
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        if (!_collapsed)
+        {
+            OpenSectionForCurrentRoute();
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OpenSectionForCurrentRoute()
+    {
+        var path = NavManager.ToBaseRelativePath(NavManager.Uri).Split('?', '#')[0].Trim('/').ToLowerInvariant();
+
+        _openSection = path switch
+        {
+            "articulos/registrar" or "articulos/listado" or "configuration" or "management/workflow-review"
+                when CanSeeArticlesGroup && !IsAreaTecnicaOnly => ArticlesSection,
+            "management/registration-matrix" or "management/exportinformation" or "management/externalapis" or "management/external-ingestion"
+                when CanSeeImportGroup && !IsAreaTecnicaOnly => ImportSection,
+            "management/statisticalreports" or "management/intelligence"
+                when CanSeeAnalysisGroup && !IsAreaTecnicaOnly => AnalysisSection,
+            "management/security-administration"
+                when IsAdmin => AdministrationSection,
+            "management/support" or "help/manual" or "perfilview" => SupportSection,
+            _ => null
+        };
+    }
+
+    private bool IsSectionOpen(string key) => !_collapsed && _openSection == key;
+
+    private string GroupClass(string key) => IsSectionOpen(key) ? "open" : "";
+
+    public void Dispose()
+    {
+        AuthStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        NavManager.LocationChanged -= OnLocationChanged;
+    }
+}

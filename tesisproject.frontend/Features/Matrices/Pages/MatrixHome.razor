@@ -1,0 +1,242 @@
+﻿@page "/matrix"
+
+@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.frontend.Features.Matrices.Components
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.SharedUI.Tabs
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.Matrices.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+
+@inject IResearchCategoryClientService ResearchCategoryClient
+@inject IProjectMatrixClientService MatrixClient
+@inject IToastService Toast
+
+<div class="flex flex-col h-full min-h-0 gap-4 overflow-hidden">
+    <!-- Header -->
+    <div class="rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm shrink-0">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div class="space-y-2">
+                <h1 class="text-2xl font-bold text-foreground">
+                    Matriz de proyectos
+                </h1>
+                @* <p class="text-sm text-muted">
+                    Importación, exportación y visualización de la matriz.
+                </p> *@
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs container -->
+    <div class="flex-1 min-h-0 overflow-hidden">
+        <Tabs ActiveKey="@ActiveTabKey"
+              OnChange="OnTabChanged"
+              Variant="TabVariant.Underline">
+
+            <Tab Key="import" Title="Importar">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         viewBox="0 0 24 24"
+                         fill="currentColor"
+                         class="size-5"
+                         aria-hidden="true">
+                        <path d="M12 3a.75.75 0 0 1 .75.75v8.69l2.22-2.22a.75.75 0 1 1 1.06 1.06l-3.5 3.5a.75.75 0 0 1-1.06 0l-3.5-3.5a.75.75 0 0 1 1.06-1.06l2.22 2.22V3.75A.75.75 0 0 1 12 3Z" />
+                        <path d="M4.75 15A1.75 1.75 0 0 0 3 16.75v1.5C3 19.77 4.23 21 5.75 21h12.5C19.77 21 21 19.77 21 18.25v-1.5A1.75 1.75 0 0 0 19.25 15h-3.5a.75.75 0 0 0 0 1.5h3.5a.25.25 0 0 1 .25.25v1.5a1.25 1.25 0 0 1-1.25 1.25H5.75A1.25 1.25 0 0 1 4.5 18.25v-1.5a.25.25 0 0 1 .25-.25h3.5a.75.75 0 0 0 0-1.5h-3.5Z" />
+                    </svg>
+                </Icon>
+
+                <ChildContent>
+                    <div class="h-full min-h-0 overflow-hidden">
+                        <MatrixImportTab SelectedFileName="@SelectedFileName"
+                                         IsUploading="@IsUploading"
+                                         Summary="@Summary"
+                                         OnFileSelected="HandleFileSelected"
+                                         OnUploadClick="UploadAsync" />
+                    </div>
+                </ChildContent>
+            </Tab>
+
+            <Tab Key="export" Title="Exportar">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         viewBox="0 0 24 24"
+                         fill="currentColor"
+                         class="size-5"
+                         aria-hidden="true">
+                        <path d="M12 21a.75.75 0 0 1-.75-.75v-8.69l-2.22 2.22a.75.75 0 1 1-1.06-1.06l3.5-3.5a.75.75 0 0 1 1.06 0l3.5 3.5a.75.75 0 1 1-1.06 1.06l-2.22-2.22v8.69A.75.75 0 0 1 12 21Z" />
+                        <path d="M5.75 3h12.5C19.77 3 21 4.23 21 5.75v1.5A1.75 1.75 0 0 1 19.25 9h-3.5a.75.75 0 0 1 0-1.5h3.5a.25.25 0 0 0 .25-.25v-1.5a1.25 1.25 0 0 0-1.25-1.25H5.75A1.25 1.25 0 0 0 4.5 5.75v1.5a.25.25 0 0 0 .25.25h3.5a.75.75 0 0 1 0 1.5h-3.5A1.75 1.75 0 0 1 3 7.25v-1.5C3 4.23 4.23 3 5.75 3Z" />
+                    </svg>
+                </Icon>
+
+                <ChildContent>
+                    <div class="h-full min-h-0 overflow-hidden">
+                        <MatrixExportTab />
+                    </div>
+                </ChildContent>
+            </Tab>
+
+            <Tab Key="config" Title="Visualización">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                         viewBox="0 0 24 24"
+                         fill="currentColor"
+                         class="size-5"
+                         aria-hidden="true">
+                        <path d="M12 5c-5.08 0-8.82 4.4-9.8 5.7a1.93 1.93 0 0 0 0 2.6C3.18 14.6 6.92 19 12 19s8.82-4.4 9.8-5.7a1.93 1.93 0 0 0 0-2.6C20.82 9.4 17.08 5 12 5Zm0 12.5c-4.3 0-7.54-3.76-8.6-5.16a.43.43 0 0 1 0-.68C4.46 10.26 7.7 6.5 12 6.5s7.54 3.76 8.6 5.16a.43.43 0 0 1 0 .68C19.54 13.74 16.3 17.5 12 17.5Z" />
+                        <path d="M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm0 4.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Z" />
+                    </svg>
+                </Icon>
+
+                <ChildContent>
+                    <div class="h-full min-h-0 overflow-hidden">
+                        <MatrixConfigTab IsLoading="@IsConfigLoading"
+                                         ErrorMessage="@ConfigErrorMessage"
+                                         Projects="@FlatProjects"
+                                         CategoryTree="@CategoryTree"
+                                         OnReloadRequested="LoadConfigDataAsync" />
+                    </div>
+                </ChildContent>
+            </Tab>
+
+        </Tabs>
+    </div>
+</div>
+
+@code {
+    private string ActiveTabKey { get; set; } = "import";
+
+    private bool IsFlatLoading;
+    private string? FlatErrorMessage;
+    private IReadOnlyList<ProjectFlatReportDTO>? FlatProjects;
+
+    private IReadOnlyList<ResearchCategoryTreeItemDTO>? CategoryTree;
+    private bool IsCategoryLoading;
+
+    private bool IsConfigLoading => IsFlatLoading || IsCategoryLoading;
+
+    private string? ConfigErrorMessage
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(FlatErrorMessage))
+                return FlatErrorMessage;
+
+            if (FlatProjects is null && CategoryTree is null && !IsConfigLoading)
+                return "No se pudo cargar la configuración.";
+
+            return null;
+        }
+    }
+
+    private IBrowserFile? SelectedFile;
+    private string? SelectedFileName;
+    private bool IsUploading;
+    private ProjectMatrixUploadSummaryDTO? Summary;
+
+    private async Task OnTabChanged(string key)
+    {
+        ActiveTabKey = key;
+
+        if (key == "config"
+            && FlatProjects is null
+            && CategoryTree is null
+            && !IsFlatLoading
+            && !IsCategoryLoading)
+        {
+            await LoadConfigDataAsync();
+        }
+    }
+
+    private async Task LoadConfigDataAsync()
+    {
+        FlatErrorMessage = null;
+        IsFlatLoading = true;
+        IsCategoryLoading = true;
+
+        try
+        {
+            var flatResponse = await MatrixClient.GetFlatReportAsync();
+
+            if (!flatResponse.Success)
+            {
+                FlatErrorMessage = flatResponse.ToErrorMessage("No se pudo cargar el informe plano.");
+                FlatProjects = null;
+                Toast.ShowError(FlatErrorMessage);
+            }
+            else
+            {
+                FlatProjects = flatResponse.Data ?? Array.Empty<ProjectFlatReportDTO>();
+            }
+
+            var treeResponse = await ResearchCategoryClient.GetTreeAsync(onlyActives: true);
+
+            if (!treeResponse.Success)
+            {
+                CategoryTree = null;
+                Toast.ShowWarning(treeResponse.ToErrorMessage("No se pudo cargar el árbol de categorías de investigación."));
+            }
+            else
+            {
+                CategoryTree = treeResponse.Data ?? new List<ResearchCategoryTreeItemDTO>();
+            }
+        }
+        catch (Exception ex)
+        {
+            FlatErrorMessage = ex.Message;
+            FlatProjects = null;
+            CategoryTree = null;
+            Toast.ShowError("Error inesperado: " + ex.Message);
+        }
+        finally
+        {
+            IsFlatLoading = false;
+            IsCategoryLoading = false;
+        }
+    }
+
+    private Task HandleFileSelected(IBrowserFile file)
+    {
+        SelectedFile = file;
+        SelectedFileName = file.Name;
+        return Task.CompletedTask;
+    }
+
+    private async Task UploadAsync()
+    {
+        if (SelectedFile is null)
+        {
+            Toast.ShowError("Por favor selecciona un archivo primero.");
+            return;
+        }
+
+        try
+        {
+            IsUploading = true;
+
+            using var stream = SelectedFile.OpenReadStream(maxAllowedSize: 50_000_000);
+
+            var result = await MatrixClient.UploadAsync(
+                stream,
+                SelectedFile.Name,
+                SelectedFile.ContentType
+            );
+
+            if (!result.Success)
+            {
+                Toast.ShowError(result.ToErrorMessage("Falló la carga del archivo."));
+                return;
+            }
+
+            Summary = result.Data;
+            Toast.ShowSuccess(result.ToSuccessMessage("Matriz procesada exitosamente."));
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error inesperado: " + ex.Message);
+        }
+        finally
+        {
+            IsUploading = false;
+        }
+    }
+}

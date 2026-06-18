@@ -1,0 +1,92 @@
+@using Microsoft.JSInterop
+
+@implements IAsyncDisposable
+
+@if (_hasInteropIssue)
+{
+    <div class="echart-fallback" style="height:@Height;">
+        <span class="echart-fallback__icon">
+            <i class="bi bi-bar-chart-line"></i>
+        </span>
+        <div>
+            <strong>No se pudo cargar la visualización</strong>
+            <p>Los datos están disponibles, pero el componente gráfico no respondió en el navegador.</p>
+        </div>
+    </div>
+}
+else
+{
+    <div id="@Id" class="echart-visual w-full h-full" style="height:@Height;"></div>
+}
+
+@code {
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    [Parameter] public string Id { get; set; } = $"echart-{Guid.NewGuid()}";
+
+    /// <summary>
+    /// Altura del contenedor.
+    /// En la mayoría de casos usaremos "100%" y la tarjeta padre define la altura.
+    /// </summary>
+    [Parameter] public string Height { get; set; } = "100%";
+
+    // Nueva API (objeto)
+    [Parameter] public object? Option { get; set; }
+
+    // API antigua (JSON string) por compatibilidad
+    [Parameter] public string? OptionsJson { get; set; }
+
+    private bool _firstRenderDone = false;
+    private bool _hasInteropIssue = false;
+
+    private object? EffectiveOption => (object?)Option ?? OptionsJson;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _firstRenderDone = true;
+
+            if (EffectiveOption != null)
+            {
+                _hasInteropIssue = !await TryRenderChartAsync();
+                if (_hasInteropIssue)
+                {
+                    StateHasChanged();
+                }
+            }
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_firstRenderDone && EffectiveOption != null)
+        {
+            _hasInteropIssue = !await TryRenderChartAsync();
+        }
+    }
+
+    private async Task<bool> TryRenderChartAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("echartsInterop.init", Id, EffectiveOption);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("echartsInterop.dispose", Id);
+        }
+        catch
+        {
+            // Ignorar errores al destruir
+        }
+    }
+}

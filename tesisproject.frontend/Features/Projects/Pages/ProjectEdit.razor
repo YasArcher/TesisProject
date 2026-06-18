@@ -1,0 +1,1243 @@
+﻿@page "/projects/{ProjectId:int}/edit"
+
+@using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Tabs
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.Utils
+@using tesisproject.frontend.ViewModels
+@using tesisproject.shared.DTOs.Convocation.Response
+@using tesisproject.shared.DTOs.Document.Response
+@using tesisproject.shared.DTOs.ObjectiveActivity.Request
+@using tesisproject.shared.DTOs.Project.Response
+@using tesisproject.shared.DTOs.Project.Request
+@using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+@using tesisproject.frontend.Features.Projects.Components
+@using tesisproject.shared.DTOs.ProjectObjective.Request
+@using tesisproject.shared.DTOs.Visit.Response
+@using tesisproject.shared.Entities.External
+@using tesisproject.shared.DTOs.Budgets.Request
+
+@inject NavigationManager Nav
+@inject IToastService Toast
+
+@inject IProductClientService ProductService
+@inject IExternalResearcherClientService ExternalResearcherClient
+@inject IInstitutionClientService InstitutionClient
+@inject IVisitClientService VisitService
+@inject IProjectClientService ProjectService
+@inject IBudgetClientService BudgetService
+@inject IProjectExtensionClientService ProjectExtensionService
+@inject IExternalAcademicsClientService ExternalAcademicsService
+@inject IGroupService GroupService
+@inject IObjectiveActivityClientService ObjectiveActivityService
+@inject IExternalUserService ExternalUserService
+@inject IVisitIssueClientService VisitIssueService
+@inject IMemberRoleTypeClientService MemberRoleTypeService
+@inject IResearchCategoryClientService ResearchCategoryService
+@inject IResearchCategoryTypeClientService ResearchCategoryTypeService
+@inject IResearchCategoryGroupClientService ResearchCategoryGroupService
+@inject ITransactionTypeClientService TransactionTypeService
+@inject IProjectObjectiveClientService ProjectObjectiveService
+@inject IExternalResearcherProjectClientService ExternalResearcherProjectService
+@inject IConvocationClientService ConvocationService
+@inject IVisitStateClientService VisitStateService
+@inject IFundingTypeClientService FundingTypeService
+@inject IProjectOriginTypeClientService ProjectOriginTypeService
+@inject IProjectTypeClientService ProjectTypeService
+@inject IProjectStateClientService ProjectStateService
+@inject IExternalPeriodsClientService ExternalPeriodsService
+
+<div class="h-full min-h-0 flex flex-col">
+    <!-- Header -->
+    <div class="shrink-0 rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <!-- Izquierda -->
+            <div class="space-y-3 min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="inline-flex items-center px-3 py-1 text-sm font-bold rounded-full bg-primary text-white shrink-0">
+                        #@ProjectId
+                    </span>
+
+                    @if (!string.IsNullOrEmpty(_project?.ProjectCode))
+                    {
+                        <span class="text-sm text-muted font-mono bg-muted/20 px-2 py-1 rounded max-w-full truncate">
+                            @_project?.ProjectCode
+                        </span>
+                    }
+                </div>
+
+                <h1 class="text-2xl lg:text-3xl font-bold text-foreground leading-tight break-words text-balance">
+                    Editar proyecto
+                </h1>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-primary-subtle text-primary border border-primary/20">
+                        @(_project?.ProjectTypeName ?? "Sin tipo")
+                    </span>
+
+                    <span class="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-secondary-subtle text-secondary border border-secondary/20">
+                        @(_project?.ProjectStateName ?? "Sin estado")
+                    </span>
+                </div>
+            </div>
+
+            <!-- Derecha: acciones -->
+            <div class="flex flex-col items-start lg:items-end gap-3 shrink-0">
+                <div class="flex items-center gap-3">
+                    <ActionButton Execute="GoToProject"
+                                  Text="Volver al proyecto"
+                                  Variant="ButtonVariant.Ghost"
+                                  Intent="ButtonIntent.Neutral" />
+                </div>
+
+                <div class="text-sm text-muted">
+                    @if (_loadingPage)
+                    {
+                        <span>Cargando datos...</span>
+                    }
+                    else if (!string.IsNullOrEmpty(_error))
+                    {
+                        <span class="text-error">@_error</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Body -->
+    <div class="flex-1 min-h-0 overflow-hidden">
+        @if (_loadingPage)
+        {
+            <div class="h-full min-h-0 p-6 flex flex-col">
+                <div class="flex-1 min-h-0 flex items-center justify-center">
+                    <div class="flex items-center justify-center gap-4 p-8 bg-primary-subtle rounded-xl border border-primary/20">
+                        <div class="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full"></div>
+                        <div class="text-primary font-medium">Cargando editor...</div>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(_error))
+        {
+            <div class="h-full min-h-0 p-6 flex flex-col">
+                <div class="p-6 rounded-2xl border border-error/20 bg-error/10 text-error">
+                    @_error
+                </div>
+            </div>
+        }
+        else if (_project is null)
+        {
+            <div class="h-full min-h-0 p-6 flex flex-col">
+                <div class="p-6 rounded-2xl border border-border bg-background">
+                    No se encontró el proyecto.
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="h-full min-h-0 p-6 flex flex-col">
+                <div class="flex-1 min-h-0 overflow-hidden">
+                    <Tabs ActiveKey="@_activeTab" OnChange="OnTabChanged">
+
+                        <Tab Key="general" Title="General">
+                            <ChildContent>
+                                <ProjectEditGeneralTab ProjectId="@ProjectId"
+                                                       Project="@_project"
+                                                       Dto="@_generalDto"
+                                                       ProjectTypes="@_projectTypes"
+                                                       ProjectStates="@_projectStates"
+                                                       Convocations="@_convocations"
+                                                       IsLoading="@_loadingGeneral"
+                                                       IsSaving="@_savingGeneral"
+                                                       ErrorMessage="@_generalError"
+                                                       ProjectOriginTypes="@_projectOriginTypes"
+                                                       OnSaveRequested="HandleSaveGeneralAsync"
+                                                       OnEditDocument="HandleEditDocument" />
+                            </ChildContent>
+                        </Tab>
+
+                        <Tab Key="categories" Title="Categorías">
+                            <ChildContent>
+                                <ProjectEditCategoriesTab ProjectId="@ProjectId"
+                                                          Project="@_project"
+                                                          IsLoading="@_loadingCategories"
+                                                          IsSaving="@_savingCategories"
+                                                          ErrorMessage="@_categoriesError"
+                                                          ResearchCategoryTree="@_researchCategoryTree"
+                                                          ResearchCategoryTypes="@_researchCategoryTypes"
+                                                          ResearchCategoryGroups="@_researchCategoryGroups"
+                                                          OnSaveRequested="HandleSaveCategoriesAsync" />
+                            </ChildContent>
+                        </Tab>
+
+                        <Tab Key="budget" Title="Presupuesto">
+                            <ChildContent>
+                                <ProjectEditBudgetTab ProjectId="@ProjectId"
+                                                      Project="@_project"
+                                                      IsLoading="@_loadingBudget"
+                                                      ErrorMessage="@_budgetError"
+                                                      Budgets="@_budgets"
+                                                      BudgetTransactionsByBudgetId="@_budgetTransactions"
+                                                      TransactionTypes="@_transactionTypes"
+                                                      FundingTypes="@_fundingTypes"
+                                                      SavingBudgetIds="@_savingBudgetIds"
+                                                      CreatingBudgetProjectIds="@_creatingBudgetProjectIds"
+                                                      UpdatingTransactionIds="@_updatingTransactionIds"
+                                                      DeletingBudgetIds="@_deletingBudgetIds"
+                                                      OnCreateBudgetRequested="HandleCreateBudgetAsync"
+                                                      OnSaveBudgetRequested="HandleSaveBudgetAsync"
+                                                      OnUpdateTransactionRequested="HandleUpdateTransactionAsync"
+                                                      OnDeleteBudgetRequested="HandleDeleteBudgetAsync" />
+                            </ChildContent>
+                        </Tab>
+
+                        <Tab Key="objectives" Title="Objetivos">
+                            <ChildContent>
+                                <ProjectEditObjectivesTab ProjectId="@ProjectId"
+                                                          IsLoading="@_loadingObjectives"
+                                                          IsSaving="@_savingObjectives"
+                                                          ErrorMessage="@_objectivesError"
+                                                          OnSaveRequested="HandleSaveObjectivesAsync" />
+                            </ChildContent>
+                        </Tab>
+
+                        <Tab Key="visits" Title="Visitas">
+                            <ChildContent>
+                                <ProjectEditVisitsTab IsLoading="@_loadingVisits"
+                                                      ErrorMessage="@_visitsError"
+                                                      Items="@_visits"
+                                                      VisitStates="@_visitStates"
+                                                      SavingVisitIds="@_savingVisitIds"
+                                                      DeletingVisitIds="@_deletingVisitIds"
+                                                      IsCreating="@_creatingVisit"
+                                                      OnSaveRequested="HandleSaveVisitStateAsync"
+                                                      OnCreateRequested="HandleCreateVisitAsync"
+                                                      OnDeleteRequested="HandleDeleteVisitAsync" />
+                            </ChildContent>
+                        </Tab>
+                    </Tabs>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<DocumentEditModal Id="document-edit-modal"
+                   Title="Editar documento inicial del Proyecto"
+                   DocumentId="@_editingDocumentId"
+                   IsOpen="@_docEditOpen"
+                   IsOpenChanged="v => _docEditOpen = v"
+                   ErrorMessage="@_docEditError"
+                   ErrorMessageChanged="v => _docEditError = v"
+                   OnSaved="HandleDocumentSaved" />
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+
+    // ===== Estado general =====
+    private bool _loadingPage = true;
+    private string? _error;
+    private string _activeTab = "general";
+
+    private ProjectDetailResponseDTO? _project;
+
+    // ===== Tab: General =====
+    private bool _loadingGeneral;
+    private bool _savingGeneral;
+    private string? _generalError;
+
+    // ===== Tab: Categories =====
+    private bool _loadingCategories;
+    private bool _savingCategories;
+    private string? _categoriesError;
+
+    // ===== Tab: Visits =====
+    private bool _loadingVisits;
+    private string? _visitsError;
+
+    private bool _docEditOpen;
+    private int _editingDocumentId;
+    private string? _docEditError;
+
+    private List<VisitListResponseDTO> _visits = new();
+    private IReadOnlyList<CatalogListItemDTO> _visitStates = Array.Empty<CatalogListItemDTO>();
+
+    // saving por fila
+    private HashSet<int> _savingVisitIds = new();
+    // deleting por fila
+    private HashSet<int> _deletingVisitIds = new();
+    // lock crear
+    private bool _creatingVisit;
+
+    private IReadOnlyList<CatalogListItemDTO> _projectOriginTypes = Array.Empty<CatalogListItemDTO>();
+
+    private UpdateProjectRequestDTO _generalDto = new();
+
+    private IReadOnlyList<CatalogListItemDTO> _projectTypes = Array.Empty<CatalogListItemDTO>();
+    private IReadOnlyList<CatalogListItemDTO> _projectStates = Array.Empty<CatalogListItemDTO>();
+    private IReadOnlyList<ConvocationListItemResponseDTO> _convocations = Array.Empty<ConvocationListItemResponseDTO>();
+
+    private IReadOnlyList<ResearchCategoryTreeItemDTO> _researchCategoryTree = Array.Empty<ResearchCategoryTreeItemDTO>();
+    private IReadOnlyList<ResearchCategoryTypeListItemDTO> _researchCategoryTypes = Array.Empty<ResearchCategoryTypeListItemDTO>();
+    private IReadOnlyList<CatalogListItemDTO> _researchCategoryGroups = Array.Empty<CatalogListItemDTO>();
+
+    // ===== Tab: Budget (SOLO GET EN EL PADRE) =====
+    private bool _loadingBudget;
+    private string? _budgetError;
+
+    // ===== Budget: busy flags =====
+    private HashSet<int> _savingBudgetIds = new();
+    private HashSet<int> _deletingBudgetIds = new();
+    private IReadOnlyList<CatalogListItemDTO> _fundingTypes = Array.Empty<CatalogListItemDTO>();
+    private HashSet<int> _creatingBudgetProjectIds = new(); // lock crear (por proyecto)
+    private HashSet<int> _executingTransactionIds = new();
+    private HashSet<int> _cancelingTransactionIds = new();
+    private HashSet<int> _updatingTransactionIds = new();
+
+    private Task HandleEditDocument(int documentId)
+    {
+        _editingDocumentId = documentId;
+        _docEditError = null;
+        _docEditOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleDocumentSaved(DocumentResponseDTO updated)
+    {
+        await EnsureTabDataAsync("general");
+        StateHasChanged();
+    }
+
+    private List<BudgetDTO> _budgets = new();
+    private Dictionary<int, List<BudgetTransactionDTO>> _budgetTransactions = new();
+    private IReadOnlyList<CatalogListItemDTO> _transactionTypes = Array.Empty<CatalogListItemDTO>();
+
+    // ===== Tab: Objectives =====
+    private bool _loadingObjectives;
+    private string? _objectivesError;
+    private bool _savingObjectives;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _loadingPage = true;
+        _error = null;
+
+        try
+        {
+            await EnsureTabDataAsync(_activeTab);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Error de conexión: {ex.Message}";
+        }
+        finally
+        {
+            _loadingPage = false;
+        }
+    }
+
+    private async Task HandleDeleteBudgetAsync(int budgetId)
+    {
+        if (budgetId <= 0) return;
+        if (_deletingBudgetIds.Contains(budgetId)) return;
+
+        if (_budgetTransactions.TryGetValue(budgetId, out var txs) && txs is not null && txs.Count > 0)
+        {
+            Toast.ShowError("No se puede eliminar el presupuesto porque tiene transacciones registradas.");
+            return;
+        }
+
+        _deletingBudgetIds.Add(budgetId);
+        StateHasChanged();
+
+        try
+        {
+            var res = await BudgetService.DeleteAsync(budgetId, CancellationToken.None);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo eliminar el presupuesto."));
+                return;
+            }
+
+            _budgets.RemoveAll(b => b.BudgetId == budgetId);
+            _budgetTransactions.Remove(budgetId);
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Presupuesto eliminado."));
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al eliminar presupuesto: {ex.Message}");
+        }
+        finally
+        {
+            _deletingBudgetIds.Remove(budgetId);
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnTabChanged(string newKey)
+    {
+        _activeTab = newKey;
+        await EnsureTabDataAsync(newKey);
+        StateHasChanged();
+    }
+
+    private async Task ReloadBudgetsAsync()
+    {
+        var budgetsRes = await BudgetService.GetProjectBudgetsAsync(ProjectId, CancellationToken.None);
+        if (budgetsRes.Success && budgetsRes.Data is not null)
+            _budgets = budgetsRes.Data;
+    }
+
+    private async Task ReloadTransactionsAsync(int budgetId)
+    {
+        try
+        {
+            var tr = await BudgetService.GetListBudgetTransactionAsync(budgetId, CancellationToken.None);
+            _budgetTransactions[budgetId] = (tr.Success && tr.Data is not null)
+                ? tr.Data.ToList()
+                : new List<BudgetTransactionDTO>();
+        }
+        catch
+        {
+            _budgetTransactions[budgetId] = new List<BudgetTransactionDTO>();
+        }
+    }
+
+    private async Task HandleCreateVisitAsync(DateTime? scheduledDate)
+    {
+        if (_creatingVisit) return;
+
+        _creatingVisit = true;
+        StateHasChanged();
+
+        try
+        {
+            var req = new tesisproject.shared.DTOs.Visit.Request.AddVisitRequestDTO
+            {
+                ProjectId = ProjectId,
+                ScheduledDate = scheduledDate
+            };
+
+            var res = await VisitService.CreateAsync(req, CancellationToken.None);
+
+            if (!res.Success || res.Data is null)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo crear la visita."));
+                return;
+            }
+
+            _visits.Insert(0, res.Data);
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Visita creada."));
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al crear visita: {ex.Message}");
+        }
+        finally
+        {
+            _creatingVisit = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleDeleteVisitAsync(int visitId)
+    {
+        if (visitId <= 0) return;
+        if (_deletingVisitIds.Contains(visitId)) return;
+
+        _deletingVisitIds.Add(visitId);
+        StateHasChanged();
+
+        try
+        {
+            var res = await VisitService.DeleteAsync(visitId, CancellationToken.None);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo eliminar la visita."));
+                return;
+            }
+
+            _visits.RemoveAll(v => v.VisitId == visitId);
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Visita eliminada."));
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al eliminar visita: {ex.Message}");
+        }
+        finally
+        {
+            _deletingVisitIds.Remove(visitId);
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleSaveObjectivesAsync(ProjectObjectivesSavePayloadVM payload)
+    {
+        if (_savingObjectives) return;
+
+        _savingObjectives = true;
+        _objectivesError = null;
+
+        try
+        {
+            var current = payload?.Current ?? new List<ProjectObjectiveEditVM>();
+            var original = payload?.Original ?? new List<ProjectObjectiveEditVM>();
+
+            if (current.Count == 0)
+            {
+                Toast.ShowError("No hay objetivos para guardar.");
+                return;
+            }
+
+            var currentObjIds = current.Where(o => o.ObjectiveId > 0).Select(o => o.ObjectiveId).ToHashSet();
+            var originalObjIds = original.Where(o => o.ObjectiveId > 0).Select(o => o.ObjectiveId).ToHashSet();
+
+            var deletedObjectiveIds = originalObjIds.Except(currentObjIds).ToList();
+
+            var originalActivitiesByObj = original
+                .Where(o => o.ObjectiveId > 0)
+                .ToDictionary(
+                    o => o.ObjectiveId,
+                    o => (o.Activities ?? new())
+                        .Where(a => a.ActivityId > 0)
+                        .Select(a => a.ActivityId)
+                        .ToHashSet()
+                );
+
+            var currentActivitiesByObj = current
+                .Where(o => o.ObjectiveId > 0)
+                .ToDictionary(
+                    o => o.ObjectiveId,
+                    o => (o.Activities ?? new())
+                        .Where(a => a.ActivityId > 0)
+                        .Select(a => a.ActivityId)
+                        .ToHashSet()
+                );
+
+            foreach (var (objId, origActIds) in originalActivitiesByObj)
+            {
+                currentActivitiesByObj.TryGetValue(objId, out var curActIds);
+                curActIds ??= new HashSet<int>();
+
+                var deletedActIds = origActIds.Except(curActIds).ToList();
+
+                foreach (var actId in deletedActIds)
+                {
+                    var del = await ObjectiveActivityService.DeleteAsync(actId);
+
+                    if (!del.Success)
+                    {
+                        _objectivesError = del.ToErrorMessage($"No se pudo eliminar la actividad #{actId}.");
+                        Toast.ShowError(_objectivesError);
+                        return;
+                    }
+                }
+            }
+
+            foreach (var objId in deletedObjectiveIds)
+            {
+                var del = await ProjectObjectiveService.DeleteAsync(objId);
+
+                if (!del.Success)
+                {
+                    _objectivesError = del.ToErrorMessage($"No se pudo eliminar el objetivo #{objId}.");
+                    Toast.ShowError(_objectivesError);
+                    return;
+                }
+            }
+
+            foreach (var obj in current.Where(o => o.ObjectiveId <= 0))
+            {
+                var createReq = new tesisproject.shared.DTOs.ProjectObjective.Request.AddProjectObjectiveRequestDTO
+                {
+                    ProjectId = ProjectId,
+                    ObjectiveTypeId = obj.ObjectiveTypeId,
+                    Objective = obj.ObjectiveText ?? string.Empty,
+                    Result = obj.Result ?? string.Empty
+                };
+
+                var created = await ProjectObjectiveService.CreateAsync(createReq);
+
+                if (!created.Success || created.Data is null)
+                {
+                    _objectivesError = created.ToErrorMessage("No se pudo crear un objetivo nuevo.");
+                    Toast.ShowError(_objectivesError);
+                    return;
+                }
+
+                obj.ObjectiveId = created.Data.Id;
+                obj.ProjectId = created.Data.ProjectId;
+
+                if (obj.Activities is not null)
+                {
+                    foreach (var act in obj.Activities.Where(a => a.ActivityId <= 0))
+                    {
+                        var actReq = new tesisproject.shared.DTOs.ObjectiveActivity.Request.AddObjectiveActivityRequestDTO
+                        {
+                            ObjectiveId = obj.ObjectiveId,
+                            ActionText = act.ActionText,
+                            ActivityResult = act.ActivityResult
+                        };
+
+                        var actCreated = await ObjectiveActivityService.CreateAsync(actReq);
+
+                        if (!actCreated.Success || actCreated.Data is null)
+                        {
+                            _objectivesError = actCreated.ToErrorMessage("No se pudo crear una actividad nueva.");
+                            Toast.ShowError(_objectivesError);
+                            return;
+                        }
+
+                        act.ActivityId = actCreated.Data.ObjectiveActivityId;
+                        act.ObjectiveId = actCreated.Data.ObjectiveId;
+                        act.ActionText = actCreated.Data.ImprovementAction;
+                        act.ActivityResult = actCreated.Data.ActivityResult;
+                    }
+                }
+            }
+
+            foreach (var obj in current.Where(o => o.ObjectiveId > 0))
+            {
+                Console.WriteLine($"Updating objective #{obj.ObjectiveId}...#{obj.Percentage}");
+                var updReq = new UpdateProjectObjectiveRequestDTO
+                {
+                    Id = obj.ObjectiveId,
+                    ProjectId = ProjectId,
+                    ObjectiveTypeId = obj.ObjectiveTypeId,
+                    Objective = obj.ObjectiveText ?? string.Empty,
+                    WeightedPercentage = obj.Percentage,
+                    Result = obj.Result ?? string.Empty
+                };
+
+                var upd = await ProjectObjectiveService.UpdateAsync(updReq);
+
+                if (!upd.Success)
+                {
+                    _objectivesError = upd.ToErrorMessage($"No se pudo actualizar el objetivo #{obj.ObjectiveId}.");
+                    Toast.ShowError(_objectivesError);
+                    return;
+                }
+            }
+
+            foreach (var obj in current.Where(o => o.ObjectiveId > 0))
+            {
+                if (obj.Activities is null) continue;
+
+                foreach (var act in obj.Activities.Where(a => a.ActivityId <= 0))
+                {
+                    var actReq = new tesisproject.shared.DTOs.ObjectiveActivity.Request.AddObjectiveActivityRequestDTO
+                    {
+                        ObjectiveId = obj.ObjectiveId,
+                        ActionText = act.ActionText,
+                        ActivityResult = act.ActivityResult
+                    };
+
+                    var created = await ObjectiveActivityService.CreateAsync(actReq);
+
+                    if (!created.Success || created.Data is null)
+                    {
+                        _objectivesError = created.ToErrorMessage("No se pudo crear una actividad nueva.");
+                        Toast.ShowError(_objectivesError);
+                        return;
+                    }
+
+                    act.ActivityId = created.Data.ObjectiveActivityId;
+                    act.ObjectiveId = created.Data.ObjectiveId;
+                    act.ActionText = created.Data.ImprovementAction;
+                    act.ActivityResult = created.Data.ActivityResult;
+                }
+            }
+
+            foreach (var obj in current.Where(o => o.ObjectiveId > 0))
+            {
+                if (obj.Activities is null) continue;
+
+                foreach (var act in obj.Activities.Where(a => a.ActivityId > 0))
+                {
+                    var req = new tesisproject.shared.DTOs.ObjectiveActivity.Request.UpdateObjectiveActivityRequestDTO
+                    {
+                        ObjectiveActivityId = act.ActivityId,
+                        ObjectiveId = obj.ObjectiveId,
+                        ActionText = act.ActionText,
+                        ActivityResult = act.ActivityResult
+                    };
+
+                    var upd = await ObjectiveActivityService.UpdateAsync(act.ActivityId, req);
+
+                    if (!upd.Success)
+                    {
+                        _objectivesError = upd.ToErrorMessage($"No se pudo actualizar la actividad #{act.ActivityId}.");
+                        Toast.ShowError(_objectivesError);
+                        return;
+                    }
+                }
+            }
+
+            Toast.ShowSuccess("Objetivos y actividades guardados correctamente.");
+        }
+        catch (Exception ex)
+        {
+            _objectivesError = $"Error de conexión: {ex.Message}";
+            Toast.ShowError(_objectivesError);
+        }
+        finally
+        {
+            _savingObjectives = false;
+        }
+    }
+
+    private async Task EnsureTabDataAsync(string tabKey)
+    {
+        switch (tabKey)
+        {
+            case "general":
+                await EnsureGeneralTabAsync();
+                break;
+
+            case "categories":
+                await EnsureCategoriesTabAsync();
+                break;
+
+            case "visits":
+                await EnsureVisitsTabAsync();
+                break;
+
+            case "budget":
+                await EnsureBudgetTabAsync();
+                break;
+
+            case "objectives":
+                await EnsureObjectivesTabAsync();
+                break;
+        }
+    }
+
+    private async Task EnsureVisitsTabAsync()
+    {
+        _loadingVisits = true;
+        _visitsError = null;
+
+        try
+        {
+            var visitsTask = VisitService.GetByProjectAsync(ProjectId, CancellationToken.None);
+            var statesTask = VisitStateService.GetListAsync(onlyActives: true, CancellationToken.None);
+
+            await Task.WhenAll(visitsTask, statesTask);
+
+            var visitsRes = await visitsTask;
+            var statesRes = await statesTask;
+
+            if (visitsRes.Success && visitsRes.Data is not null)
+                _visits = visitsRes.Data.ToList();
+            else
+            {
+                _visits = new();
+                _visitsError ??= visitsRes.ToErrorMessage("No se pudieron cargar las visitas.");
+            }
+
+            if (statesRes.Success && statesRes.Data is not null)
+                _visitStates = statesRes.Data;
+            else
+            {
+                _visitStates = Array.Empty<CatalogListItemDTO>();
+                _visitsError ??= statesRes.ToErrorMessage("No se pudieron cargar los estados de visita.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _visits = new();
+            _visitStates = Array.Empty<CatalogListItemDTO>();
+            _visitsError = $"Error de conexión: {ex.Message}";
+        }
+        finally
+        {
+            _loadingVisits = false;
+        }
+    }
+
+    private async Task HandleSaveVisitStateAsync((int visitId, int newStateId) data)
+    {
+        var (visitId, newStateId) = data;
+
+        if (visitId <= 0 || newStateId <= 0)
+            return;
+
+        if (_savingVisitIds.Contains(visitId))
+            return;
+
+        _savingVisitIds.Add(visitId);
+        StateHasChanged();
+
+        try
+        {
+            var req = new tesisproject.shared.DTOs.Visit.Request.UpdateVisitRequestDTO
+            {
+                VisitId = visitId,
+                ProjectId = ProjectId,
+                VisitStateId = newStateId
+            };
+
+            var res = await VisitService.UpdateAsync(req, CancellationToken.None);
+
+            if (!res.Success || res.Data is null)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo actualizar el estado de la visita."));
+                return;
+            }
+
+            var updated = res.Data;
+            var local = _visits.FirstOrDefault(x => x.VisitId == updated.VisitId);
+
+            if (local is not null)
+            {
+                local.VisitStateId = updated.VisitStateId;
+                local.VisitStateName = updated.VisitStateName;
+            }
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Estado de visita actualizado."));
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al actualizar visita: {ex.Message}");
+        }
+        finally
+        {
+            _savingVisitIds.Remove(visitId);
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleSaveCategoriesAsync(UpdateProjectResearchCategoriesRequestDTO dto)
+    {
+        if (_savingCategories) return;
+
+        _savingCategories = true;
+        _categoriesError = null;
+
+        try
+        {
+            var res = await ProjectService.UpdateResearchCategoriesAsync(ProjectId, dto);
+
+            if (!res.Success)
+            {
+                _categoriesError = res.ToErrorMessage("No se pudieron guardar las categorías.");
+                Toast.ShowError(_categoriesError);
+                return;
+            }
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Categorías actualizadas."));
+
+            var detail = await ProjectService.GetDetailAsync(ProjectId);
+            if (detail.Success && detail.Data is not null)
+                _project = detail.Data;
+        }
+        catch (Exception ex)
+        {
+            _categoriesError = $"Error de conexión: {ex.Message}";
+            Toast.ShowError(_categoriesError);
+        }
+        finally
+        {
+            _savingCategories = false;
+        }
+    }
+
+    private async Task EnsureGeneralTabAsync()
+    {
+        _loadingGeneral = true;
+        _generalError = null;
+
+        try
+        {
+            var detailTask = ProjectService.GetDetailAsync(ProjectId);
+            var typesTask = ProjectTypeService.GetListAsync(onlyActives: true);
+            var statesTask = ProjectStateService.GetListAsync(onlyActives: true);
+            var convocationsTask = ConvocationService.GetListAsync();
+            var originTypesTask = ProjectOriginTypeService.GetListAsync(onlyActives: true, CancellationToken.None);
+
+            await Task.WhenAll(detailTask, typesTask, statesTask, convocationsTask, originTypesTask);
+
+            var detail = await detailTask;
+            var types = await typesTask;
+            var states = await statesTask;
+            var convocations = await convocationsTask;
+            var originTypes = await originTypesTask;
+
+            if (!detail.Success || detail.Data is null)
+            {
+                _project = null;
+                _generalError = detail.ToErrorMessage("No se pudo cargar el proyecto.");
+                return;
+            }
+
+            _project = detail.Data;
+
+            if (types.Success && types.Data is not null)
+                _projectTypes = types.Data;
+            else
+                _generalError ??= types.ToErrorMessage("No se pudieron cargar los tipos de proyecto.");
+
+            if (states.Success && states.Data is not null)
+                _projectStates = states.Data;
+            else
+                _generalError ??= states.ToErrorMessage("No se pudieron cargar los estados de proyecto.");
+
+            if (convocations.Success && convocations.Data is not null)
+                _convocations = convocations.Data;
+            else
+                _generalError ??= convocations.ToErrorMessage("No se pudieron cargar las convocatorias.");
+
+            if (originTypes.Success && originTypes.Data is not null)
+                _projectOriginTypes = originTypes.Data;
+            else
+                _generalError ??= originTypes.ToErrorMessage("No se pudieron cargar los tipos de origen del proyecto.");
+
+            _generalDto = new UpdateProjectRequestDTO
+            {
+                ProjectName = _project.ProjectName ?? string.Empty,
+                ProjectTypeId = _project.ProjectTypeId,
+                ProjectStateId = _project.ProjectStateId,
+                StartDate = _project.StartDate,
+                TentativeEndDate = _project.TentativeEndDate,
+                RealEndDate = _project.RealEndDate,
+                ConvocationId = _project.ConvocationId,
+                DurationInMonths = _project.DurationInMonths,
+                ProjectOriginTypeId = _project?.ProjectOriginTypeId ?? 0,
+            };
+        }
+        catch (Exception ex)
+        {
+            _generalError = $"Error de conexión: {ex.Message}";
+        }
+        finally
+        {
+            _loadingGeneral = false;
+        }
+    }
+
+    private async Task EnsureCategoriesTabAsync()
+    {
+        _loadingCategories = true;
+        _categoriesError = null;
+
+        try
+        {
+            if (_project is null)
+            {
+                var detail = await ProjectService.GetDetailAsync(ProjectId);
+                if (detail.Success && detail.Data is not null)
+                    _project = detail.Data;
+                else
+                    _categoriesError = detail.ToErrorMessage("No se pudo cargar el proyecto.");
+            }
+
+            var treeTask = ResearchCategoryService.GetTreeAsync();
+            var typesTask = ResearchCategoryTypeService.ListAsync(onlyActives: true);
+            var groupsTask = ResearchCategoryGroupService.GetListAsync(onlyActives: true);
+
+            await Task.WhenAll(treeTask, typesTask, groupsTask);
+
+            var treeRes = await treeTask;
+            var typesRes = await typesTask;
+            var groupsRes = await groupsTask;
+
+            if (treeRes.Success && treeRes.Data is not null)
+                _researchCategoryTree = treeRes.Data;
+            else
+                _categoriesError ??= treeRes.ToErrorMessage("No se pudo cargar el árbol de categorías.");
+
+            if (typesRes.Success && typesRes.Data is not null)
+                _researchCategoryTypes = typesRes.Data;
+            else
+                _categoriesError ??= typesRes.ToErrorMessage("No se pudieron cargar los tipos de categoría.");
+
+            if (groupsRes.Success && groupsRes.Data is not null)
+                _researchCategoryGroups = groupsRes.Data;
+            else
+                _categoriesError ??= groupsRes.ToErrorMessage("No se pudieron cargar los grupos de categoría.");
+        }
+        catch (Exception ex)
+        {
+            _categoriesError = $"Error de conexión: {ex.Message}";
+        }
+        finally
+        {
+            _loadingCategories = false;
+        }
+    }
+
+    private async Task EnsureBudgetTabAsync()
+    {
+        _loadingBudget = true;
+        _budgetError = null;
+
+        try
+        {
+            if (_project is null)
+            {
+                var detail = await ProjectService.GetDetailAsync(ProjectId);
+                if (detail.Success && detail.Data is not null)
+                    _project = detail.Data;
+                else
+                    _budgetError ??= detail.ToErrorMessage("No se pudo cargar el proyecto.");
+            }
+
+            var txTypesTask = TransactionTypeService.GetListAsync(onlyActives: true, CancellationToken.None);
+            var fundingTypesTask = FundingTypeService.GetListAsync(onlyActives: true, CancellationToken.None);
+
+            await Task.WhenAll(txTypesTask, fundingTypesTask);
+
+            var txTypesRes = await txTypesTask;
+            var fundingRes = await fundingTypesTask;
+
+            _transactionTypes = (txTypesRes.Success && txTypesRes.Data is not null)
+                ? txTypesRes.Data
+                : Array.Empty<CatalogListItemDTO>();
+
+            if (!_transactionTypes.Any())
+                _budgetError ??= txTypesRes.ToErrorMessage("No se pudieron cargar los tipos de transacción.");
+
+            _fundingTypes = (fundingRes.Success && fundingRes.Data is not null)
+                ? fundingRes.Data
+                : Array.Empty<CatalogListItemDTO>();
+
+            if (!_fundingTypes.Any())
+                _budgetError ??= fundingRes.ToErrorMessage("No se pudieron cargar los tipos de financiamiento.");
+
+            var budgetsRes = await BudgetService.GetProjectBudgetsAsync(ProjectId);
+
+            if (!budgetsRes.Success)
+            {
+                _budgets = new();
+                _budgetTransactions = new();
+                _budgetError ??= budgetsRes.ToErrorMessage("No se pudo cargar el presupuesto.");
+                return;
+            }
+
+            _budgets = budgetsRes.Data ?? new();
+            _budgetTransactions = new();
+
+            if (_budgets.Count == 0)
+            {
+                _budgetError ??= "El proyecto no tiene presupuestos registrados.";
+                return;
+            }
+
+            foreach (var budget in _budgets)
+            {
+                var tr = await BudgetService.GetListBudgetTransactionAsync(budget.BudgetId);
+
+                if (tr.Success && tr.Data is not null)
+                    _budgetTransactions[budget.BudgetId] = tr.Data.ToList();
+                else
+                {
+                    _budgetTransactions[budget.BudgetId] = new List<BudgetTransactionDTO>();
+                    _budgetError ??= tr.ToErrorMessage("No se pudieron cargar las transacciones.");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _budgets = new();
+            _budgetTransactions = new();
+            _transactionTypes = Array.Empty<CatalogListItemDTO>();
+            _fundingTypes = Array.Empty<CatalogListItemDTO>();
+            _budgetError = $"Error de conexión: {ex.Message}";
+        }
+        finally
+        {
+            _loadingBudget = false;
+        }
+    }
+
+    private async Task HandleSaveBudgetAsync((int budgetId, UpdateBudgetRequestDTO dto) payload)
+    {
+        var (budgetId, dto) = payload;
+        if (budgetId <= 0) return;
+        if (_savingBudgetIds.Contains(budgetId)) return;
+
+        _savingBudgetIds.Add(budgetId);
+        StateHasChanged();
+
+        try
+        {
+            var res = await BudgetService.UpdateAsync(budgetId, dto, CancellationToken.None);
+
+            if (!res.Success || res.Data is null)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo actualizar el presupuesto."));
+                return;
+            }
+
+            var updated = res.Data;
+
+            var local = _budgets.FirstOrDefault(x => x.BudgetId == budgetId);
+            if (local is not null)
+            {
+                local.InitialAmount = updated.InitialAmount;
+                local.FundingTypeId = updated.FundingTypeId;
+                local.FundingTypeName = updated.FundingTypeName;
+                local.CertifiedAmount = updated.CertifiedAmount;
+                local.ExecutedAmount = updated.ExecutedAmount;
+                local.ApprovedAt = updated.ApprovedAt;
+            }
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Presupuesto actualizado."));
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al actualizar presupuesto: {ex.Message}");
+        }
+        finally
+        {
+            _savingBudgetIds.Remove(budgetId);
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleUpdateTransactionAsync((int transactionId, UpdateBudgetTransactionRequestDTO dto) payload)
+    {
+        var (txId, dto) = payload;
+        if (txId <= 0) return;
+        if (_updatingTransactionIds.Contains(txId)) return;
+
+        _updatingTransactionIds.Add(txId);
+        StateHasChanged();
+
+        try
+        {
+            var res = await BudgetService.UpdateTransactionAsync(txId, dto, CancellationToken.None);
+
+            if (!res.Success || res.Data is null)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo actualizar la transacción."));
+                return;
+            }
+
+            await EnsureBudgetTabAsync();
+            Toast.ShowSuccess(res.ToSuccessMessage("Transacción actualizada."));
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al actualizar transacción: {ex.Message}");
+        }
+        finally
+        {
+            _updatingTransactionIds.Remove(txId);
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleCreateBudgetAsync(CreateBudgetRequestDTO dto)
+    {
+        if (_creatingBudgetProjectIds.Contains(ProjectId)) return;
+
+        _creatingBudgetProjectIds.Add(ProjectId);
+        StateHasChanged();
+
+        try
+        {
+            dto.ProjectId = ProjectId;
+
+            var res = await BudgetService.CreateAsync(dto, CancellationToken.None);
+
+            if (!res.Success || res.Data is null)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo crear el presupuesto."));
+                return;
+            }
+
+            var created = res.Data;
+
+            _budgets.Insert(0, created);
+
+            if (!_budgetTransactions.ContainsKey(created.BudgetId))
+                _budgetTransactions[created.BudgetId] = new List<BudgetTransactionDTO>();
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Presupuesto creado."));
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al crear presupuesto: {ex.Message}");
+        }
+        finally
+        {
+            _creatingBudgetProjectIds.Remove(ProjectId);
+            StateHasChanged();
+        }
+    }
+
+    private async Task EnsureObjectivesTabAsync()
+    {
+        _loadingObjectives = true;
+        _objectivesError = null;
+
+        try
+        {
+            var detail = await ProjectService.GetDetailAsync(ProjectId);
+            if (detail.Success && detail.Data is not null)
+                _project = detail.Data;
+            else
+                _objectivesError = detail.ToErrorMessage("No se pudo cargar el proyecto.");
+        }
+        catch (Exception ex)
+        {
+            _objectivesError = $"Error de conexión: {ex.Message}";
+        }
+        finally
+        {
+            _loadingObjectives = false;
+        }
+    }
+
+    private Task GoToProject()
+    {
+        Nav.NavigateTo($"/projects/{ProjectId}");
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleSaveGeneralAsync()
+    {
+        if (_savingGeneral) return;
+
+        _savingGeneral = true;
+        _generalError = null;
+
+        try
+        {
+            var res = await ProjectService.UpdateAsync(ProjectId, _generalDto);
+
+            if (!res.Success)
+            {
+                _generalError = res.ToErrorMessage("No se pudo guardar el proyecto.");
+                Toast.ShowError(_generalError);
+                return;
+            }
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Proyecto actualizado."));
+
+            var detail = await ProjectService.GetDetailAsync(ProjectId);
+            if (detail.Success && detail.Data is not null)
+                _project = detail.Data;
+        }
+        catch (Exception ex)
+        {
+            _generalError = $"Error de conexión: {ex.Message}";
+            Toast.ShowError(_generalError);
+        }
+        finally
+        {
+            _savingGeneral = false;
+        }
+    }
+}

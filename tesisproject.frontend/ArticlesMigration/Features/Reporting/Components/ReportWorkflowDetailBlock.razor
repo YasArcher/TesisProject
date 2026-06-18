@@ -1,0 +1,193 @@
+@using tesisproject.shared.DTOs.Reports
+
+<div id="reports-block-workflow" class="reports-dw-section-heading reports-dw-section-heading--workflow">
+    <span><i class="bi bi-signpost-split"></i></span>
+    <div>
+        <small>Flujo y detalle</small>
+        <h2>Seguimiento operativo</h2>
+        <p>Revisión y detalle filtrado.</p>
+    </div>
+</div>
+
+<div class="reports-dw-inline-note reports-dw-inline-note--soft">
+    @(HasScopedFilters
+        ? "Las tablas respetan filtros; la revisión operativa se muestra solo en vista general institucional."
+        : "Revisión institucional; tablas según filtro.")
+</div>
+
+<article class="reports-dw-chart-card reports-dw-chart-card--wide reports-dw-chart-card--ink">
+    <ReportCardHeader IconClass="bi bi-layout-text-window-reverse"
+                      Title="Seguimiento y detalle"
+                      Description="Revisión, revistas y artículos." />
+
+    <div class="reports-dw-subtabs">
+        <button type="button"
+                class="@(WorkflowDetailView == "workflow" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
+                @onclick="@(() => WorkflowDetailView = "workflow")">
+            Revisión
+        </button>
+        <button type="button"
+                class="@(WorkflowDetailView == "venues" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
+                @onclick="@(() => WorkflowDetailView = "venues")">
+            Revistas
+        </button>
+        <button type="button"
+                class="@(WorkflowDetailView == "articles" ? "reports-dw-subtab reports-dw-subtab--active" : "reports-dw-subtab")"
+                @onclick="@(() => WorkflowDetailView = "articles")">
+            Artículos
+        </button>
+    </div>
+
+    @if (WorkflowDetailView == "workflow")
+    {
+        @if ((Dashboard?.WorkflowCurrentStages.Count ?? 0) == 0)
+        {
+            <ReportEmptyState Title="Sin procesos de revisión"
+                              Message="@WorkflowEmptyMessage"
+                              IconClass="bi bi-signpost-split" />
+        }
+        else
+        {
+            <div class="reports-dw-micro-grid">
+                <article class="reports-dw-micro-card">
+                    <small>Lotes visibles</small>
+                    <strong>@((Dashboard?.WorkflowCurrentStages.Count ?? 0).ToString("N0"))</strong>
+                    <span>Resumen institucional del flujo</span>
+                    
+                </article>
+                <article class="reports-dw-micro-card">
+                    <small>Aprobados</small>
+                    <strong>@((Dashboard?.Workflow?.ApprovedStages ?? 0).ToString("N0"))</strong>
+                    <span>Pulso general</span>
+                </article>
+                <article class="reports-dw-micro-card">
+                    <small>Devueltos</small>
+                    <strong>@((Dashboard?.Workflow?.ReturnedStages ?? 0).ToString("N0"))</strong>
+                    <span>Pulso general</span>
+                </article>
+            </div>
+            <div class="reports-dw-inline-note reports-dw-inline-note--soft">
+                Últimos 6 lotes del flujo.
+            </div>
+            <div class="reports-dw-workflow-list">
+                @foreach (var item in Dashboard!.WorkflowCurrentStages.Take(6))
+                {
+                    <div class="reports-dw-workflow-item">
+                        <strong>Lote @item.BatchId</strong>
+                        <span>@item.StageName · @(item.StageStatus ?? "Sin estado")</span>
+                    </div>
+                }
+            </div>
+        }
+    }
+    else if (WorkflowDetailView == "venues")
+    {
+        @if ((Dashboard?.ArticlesByVenue.Count ?? 0) > 8)
+        {
+            <div class="reports-dw-inline-note reports-dw-inline-note--soft">
+                Mostrando todas las revistas visibles; usa el desplazamiento de la tabla para revisar el detalle completo.
+            </div>
+        }
+        <div class="reports-dw-table-wrap">
+            @if ((Dashboard?.ArticlesByVenue.Count ?? 0) == 0)
+            {
+                <ReportEmptyState Title="Sin revistas para mostrar"
+                                  Message="No hay revistas académicas vinculadas a los artículos filtrados."
+                                  IconClass="bi bi-building-x" />
+            }
+            else
+            {
+                <table class="reports-dw-table">
+                    <thead>
+                        <tr>
+                            <th>Revista</th>
+                            <th class="reports-dw-col--tablet-hide">Tipo</th>
+                            <th>Artículos</th>
+                            <th>Métricas recientes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var venue in Dashboard?.ArticlesByVenue ?? [])
+                        {
+                            var metric = Dashboard?.VenueMetricsByYear.FirstOrDefault(x => x.VenueName == venue.VenueName);
+                            <tr>
+                                <td>@venue.VenueName</td>
+                                <td class="reports-dw-col--tablet-hide">@venue.VenueType</td>
+                                <td>@venue.TotalArticles</td>
+                                <td>
+                                    @if (metric is null)
+                                    {
+                                        <span>Sin métricas</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@metric.Year · @(metric.Quartile ?? "S/C") · SJR @metric.Sjr · CiteScore @metric.CiteScore · H @metric.HIndex</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
+    else
+    {
+        @if ((Dashboard?.RecentArticles.Count ?? 0) > 12)
+        {
+            <div class="reports-dw-inline-note reports-dw-inline-note--soft">
+                Mostrando 12 artículos recientes.
+            </div>
+        }
+        <div class="reports-dw-table-wrap">
+            @if ((Dashboard?.RecentArticles.Count ?? 0) == 0)
+            {
+                <ReportEmptyState Title="Sin artículos recientes"
+                                  Message="No hay artículos recientes para el filtro actual."
+                                  IconClass="bi bi-journal-x" />
+            }
+            else
+            {
+                <table class="reports-dw-table">
+                    <thead>
+                        <tr>
+                            <th>Título</th>
+                            <th>Año</th>
+                            <th>Estado</th>
+                            <th class="reports-dw-col--tablet-hide">Línea</th>
+                            <th class="reports-dw-col--mobile-hide">Revista</th>
+                            <th class="reports-dw-col--mobile-hide">OA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var article in Dashboard?.RecentArticles.Take(12) ?? [])
+                        {
+                            <tr>
+                                <td>@article.Title</td>
+                                <td>@article.Year</td>
+                                <td>@(article.PublicationStatus ?? "Sin estado")</td>
+                                <td class="reports-dw-col--tablet-hide">@(article.ResearchLine ?? "Sin línea")</td>
+                                <td class="reports-dw-col--mobile-hide">@(article.VenueName ?? "Sin revista")</td>
+                                <td class="reports-dw-col--mobile-hide">@(article.IsOpenAccess ? "Sí" : "No")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
+</article>
+
+@code {
+    [Parameter] public InstitutionalReportingDashboardDto? Dashboard { get; set; }
+    [Parameter] public string ScopeLabel { get; set; } = "Vista general institucional";
+    private string WorkflowDetailView { get; set; } = "workflow";
+
+    private bool HasScopedFilters =>
+        !string.Equals(ScopeLabel, "Vista general institucional", StringComparison.OrdinalIgnoreCase);
+
+    private string WorkflowEmptyMessage =>
+        HasScopedFilters
+            ? "Limpia los filtros analíticos para revisar lotes, aprobaciones y devoluciones globales."
+            : "No existen procesos recientes visibles en este momento.";
+}

@@ -1,0 +1,59 @@
+@namespace tesisproject.frontend.SharedUI.ConfirmDialog
+@using Microsoft.AspNetCore.Components
+
+@if (IsOpen)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-md w-full mx-4">
+            <div class="px-5 py-4 border-b border-slate-100">
+                <h2 class="text-sm font-semibold text-slate-900">@Title</h2>
+            </div>
+            <div class="px-5 py-4 text-sm text-slate-700">
+                @ChildContent
+            </div>
+            <div class="px-5 py-3 border-t border-slate-100 flex justify-end gap-2">
+                <button class="px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white text-slate-700"
+                        @onclick="HandleCancel">
+                    @CancelText
+                </button>
+                <button class="px-3 py-1.5 text-xs rounded-lg border border-red-600 bg-red-600 text-white"
+                        @onclick="HandleConfirm">
+                    @ConfirmText
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string ConfirmText { get; set; } = "OK";
+    [Parameter] public string CancelText { get; set; } = "Cancelar";
+    [Parameter] public ConfirmVariant Variant { get; set; } = ConfirmVariant.Neutral;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    public bool IsOpen { get; set; }
+
+    public void Show() => IsOpen = true;
+    public void Hide() => IsOpen = false;
+
+    private async Task HandleConfirm()
+    {
+        if (OnConfirm.HasDelegate)
+            await OnConfirm.InvokeAsync(null);
+
+        Hide();
+        StateHasChanged();
+    }
+
+    private async Task HandleCancel()
+    {
+        if (OnCancel.HasDelegate)
+            await OnCancel.InvokeAsync(null);
+
+        Hide();
+        StateHasChanged();
+    }
+}

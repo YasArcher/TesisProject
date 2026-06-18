@@ -1,0 +1,24 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace tesisproject.shared.DTOs.ProjectExtensions.Request
+{
+    public class AddProjectExtensionRequestDTO
+    {
+        [Required]
+        public int ProjectId { get; set; }
+
+        [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "Se debe seleccionar un tipo de extension")]
+        public int ProjectExtensionTypeId { get; set; }
+
+        public int? DocumentId { get; set; }
+
+        public DateTime? RequestedAt { get; set; }
+        public DateTime? ApprovedAt { get; set; }
+    }
+}

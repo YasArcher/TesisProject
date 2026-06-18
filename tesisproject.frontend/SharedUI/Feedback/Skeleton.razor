@@ -1,0 +1,14 @@
+﻿@if (Shape is SkeletonShape.Circle)
+{
+    <div class="bg-muted animate-pulse"
+         style="width:@WidthPx;height:@HeightPx;border-radius:9999px"
+         role="status"
+         aria-label="loading" />
+}
+else
+{
+    <div class="bg-muted animate-pulse @RoundedClass"
+         style="width:@WidthPx;height:@HeightPx"
+         role="status"
+         aria-label="loading" />
+}

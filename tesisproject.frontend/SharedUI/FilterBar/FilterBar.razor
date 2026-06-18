@@ -1,0 +1,870 @@
+﻿@using Microsoft.AspNetCore.Components
+@using System.Linq
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.SearchInput
+@using tesisproject.frontend.SharedUI.SelectInput
+@using tesisproject.frontend.SharedUI.DateInput
+@using tesisproject.frontend.SharedUI.TextInput
+
+@* ============================================================
+   FilterBar (Presentational Only)
+   ============================================================ *@
+
+<div class="relative w-full">
+    <!-- Header: Search + Actions (siempre visible) -->
+    <div class="w-full bg-background border border-border rounded-xl p-3 md:p-4">
+        <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
+            <div class="flex-1 min-w-0">
+                <SearchInput Value="@_search"
+                             ValueChanged="OnSearchChanged"
+                             Placeholder="@GetSearchPlaceholder()"
+                             DebounceMs="@GetDebounceMs()"
+                             Class="w-full" />
+            </div>
+
+            <div class="flex items-center gap-2">
+                <ActionButton Text="Filtros"
+                              Execute="ToggleExpanded"
+                              Intent="ButtonIntent.Info"
+                              Variant="@(_expanded ? ButtonVariant.Soft : ButtonVariant.Outline)"
+                              Size="ButtonSize.Sm"
+                              Class="px-3 py-2 rounded-lg flex items-center gap-2">
+                    <Icon>
+                        <svg class="w-4 h-4 transition-transform @(_expanded ? "rotate-180" : "")"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </Icon>
+                </ActionButton>
+            </div>
+        </div>
+    </div>
+
+    @if (_expanded)
+    {
+        <div class="absolute top-full left-0 right-0 z-50 mt-2 bg-background border border-border rounded-xl shadow-xl backdrop-blur-sm"
+             style="max-height: 28rem; overflow-y: auto;"
+             @onmousedown:preventDefault="true"
+             @onclick:stopPropagation="true">
+
+            <div class="p-4">
+                @if (Config?.Items is not null && Config.Items.Count > 0)
+                {
+                    var groupedItems = Config.Items
+                    .GroupBy(i => i.GroupKey ?? "default")
+                    .ToList();
+
+                    @foreach (var group in groupedItems)
+                    {
+                        var first = group.First();
+                        var hasGroupLabel = !string.IsNullOrWhiteSpace(first.GroupLabel);
+
+                        <div class="mb-4 border border-border rounded-xl p-3 bg-page-bg/40">
+                            @if (hasGroupLabel)
+                            {
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="text-xs font-semibold text-muted uppercase tracking-wide">
+                                        @first.GroupLabel
+                                    </h4>
+                                </div>
+                            }
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                                @foreach (var item in group)
+                                {
+                                    var isWide = IsWideFilter(item.Type);
+                                    // ✅ 2/3 en lg (col-span-2), full en md (col-span-2)
+                                    var colSpan = isWide ? "md:col-span-2 lg:col-span-2" : "";
+
+                                    <div class="space-y-1 @colSpan">
+                                        <label class="text-xs font-medium text-muted">@item.Label</label>
+                                        @RenderFilterControl(item)
+                                        @if (!string.IsNullOrWhiteSpace(item.HelpText))
+                                        {
+                                            <div class="text-xs text-muted">@item.HelpText</div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+
+                <div class="border-t border-border pt-4 mt-3">
+                    @if (Config?.ShowChips == true && _activeChips.Count > 0)
+                    {
+                        <div class="text-xs font-medium text-muted mb-2">Filtros activos:</div>
+                    }
+
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <div class="flex flex-wrap gap-2">
+                            @if (Config?.ShowChips == true && _activeChips.Count > 0)
+                            {
+                                @foreach (var chip in _activeChips)
+                                {
+                                    <span class="inline-flex items-center gap-2 px-2 py-1 text-xs rounded-full border border-border bg-primary-subtle">
+                                        <span class="font-medium">@chip.Label:</span>
+                                        <span>@chip.Value</span>
+                                        <button class="text-muted hover:text-foreground"
+                                                @onclick="() => RemoveChip(chip.Key)"
+                                                @onclick:stopPropagation="true">
+                                            ×
+                                        </button>
+                                    </span>
+                                }
+                            }
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <ActionButton Text="Limpiar"
+                                          Execute="ClearAll"
+                                          Intent="ButtonIntent.Neutral"
+                                          Variant="ButtonVariant.Outline"
+                                          Size="ButtonSize.Sm"
+                                          Class="px-3 py-2 rounded-lg" />
+                            <ActionButton Text="Aplicar"
+                                          Execute="Apply"
+                                          Intent="ButtonIntent.Accept"
+                                          Variant="ButtonVariant.Filled"
+                                          Size="ButtonSize.Sm"
+                                          Class="px-3 py-2 rounded-lg" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (_expanded)
+    {
+        <div class="fixed inset-0 z-40" @onclick="CloseFilters" @onclick:preventDefault="false"></div>
+    }
+</div>
+
+@code {
+    // ===================== Public API =====================
+    [Parameter] public FilterBarConfig? Config { get; set; }
+    [Parameter] public EventCallback<FilterQuery> OnApply { get; set; }
+    [Parameter] public EventCallback OnClear { get; set; }
+    [Parameter] public EventCallback<string?> OnSearchInstant { get; set; }
+
+    private static string FieldKey(string key) => $"{key}.field";
+    private static string RangeKey(string key) => $"{key}.range";
+
+    private string?[] GetOrCreateRange(string key)
+    {
+        if (_values.TryGetValue(key, out var obj) && obj is string?[] arr && arr.Length == 2)
+            return arr;
+
+        var created = new string?[2];
+        _values[key] = created;
+        return created;
+    }
+
+    private static bool RangeHasAny(string?[] range)
+        => range.Length == 2 && (!string.IsNullOrWhiteSpace(range[0]) || !string.IsNullOrWhiteSpace(range[1]));
+
+    // ✅ evita que se “apile” por ancho: 2 columnas iguales
+    private RenderFragment WrapRow(RenderFragment content) => b =>
+    {
+        b.OpenElement(0, "div");
+        b.AddAttribute(1, "class", "grid grid-cols-2 gap-2 min-w-0");
+        b.AddContent(2, content);
+        b.CloseElement();
+    };
+
+    // ===================== Internal State =====================
+    private bool _expanded = false;
+    private string _search = string.Empty;
+    private readonly Dictionary<string, object?> _values = new();
+    private readonly List<ChipItem> _activeChips = new();
+
+    private bool IsResearchFilter(FilterItemDescriptor item)
+        => item.Key.StartsWith("researchType_", StringComparison.OrdinalIgnoreCase);
+
+    // ✅ estos ocuparán 2/3 del row en lg
+    private bool IsWideFilter(string? type)
+    {
+        var t = (type ?? "").ToLowerInvariant();
+        return t == "daterange" || t == "numberrange" || t == "datefieldrange";
+    }
+
+    private bool IsSameResearchGroup(FilterItemDescriptor a, FilterItemDescriptor b)
+        => IsResearchFilter(a)
+           && IsResearchFilter(b)
+           && string.Equals(a.GroupKey, b.GroupKey, StringComparison.Ordinal);
+
+    protected override void OnInitialized()
+    {
+        if (Config is null) return;
+
+        foreach (var it in Config.Items)
+        {
+            if (!_values.ContainsKey(it.Key))
+                _values[it.Key] = it.DefaultValue;
+
+            if (string.Equals(it.Type, "datefieldrange", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!_values.ContainsKey(FieldKey(it.Key)))
+                    _values[FieldKey(it.Key)] = null;
+
+                if (!_values.ContainsKey(RangeKey(it.Key)))
+                    _values[RangeKey(it.Key)] = new string?[2];
+            }
+        }
+
+        BuildChips();
+    }
+
+    private async Task OnSearchChanged(string s)
+    {
+        _search = s ?? string.Empty;
+
+        if (OnSearchInstant.HasDelegate)
+            await OnSearchInstant.InvokeAsync(_search);
+    }
+
+    private void ToggleExpanded() => _expanded = !_expanded;
+    private void CloseFilters() => _expanded = false;
+
+    private async Task Apply()
+    {
+        try
+        {
+            var query = BuildQuery();
+            await OnApply.InvokeAsync(query);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error applying filters: {ex.Message}");
+        }
+        finally
+        {
+            _expanded = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ClearAll()
+    {
+        _search = string.Empty;
+        _values.Clear();
+        _activeChips.Clear();
+
+        if (Config is not null)
+        {
+            foreach (var it in Config.Items)
+            {
+                _values[it.Key] = it.DefaultValue;
+
+                if (string.Equals(it.Type, "datefieldrange", StringComparison.OrdinalIgnoreCase))
+                {
+                    _values[FieldKey(it.Key)] = null;
+                    _values[RangeKey(it.Key)] = new string?[2];
+                }
+            }
+        }
+
+        if (OnSearchInstant.HasDelegate)
+            await OnSearchInstant.InvokeAsync(_search);
+
+        await OnClear.InvokeAsync();
+        StateHasChanged();
+    }
+
+    private void RemoveChip(string key)
+    {
+        if (Config?.Items is not null)
+        {
+            var df = Config.Items.FirstOrDefault(x => x.Key == key);
+            if (df is not null && string.Equals(df.Type, "datefieldrange", StringComparison.OrdinalIgnoreCase))
+            {
+                _values[FieldKey(df.Key)] = null;
+                _values[RangeKey(df.Key)] = new string?[2];
+                BuildChips();
+                StateHasChanged();
+                return;
+            }
+        }
+
+        const string researchPrefix = "researchCategories_";
+
+        if (key.StartsWith(researchPrefix, StringComparison.Ordinal))
+        {
+            var groupKey = key[researchPrefix.Length..];
+
+            if (Config?.Items is not null)
+            {
+                foreach (var it in Config.Items
+                         .Where(i => i.EntityField == "ResearchCategoryId" &&
+                                     string.Equals(i.GroupKey, groupKey, StringComparison.Ordinal)))
+                {
+                    if (_values.ContainsKey(it.Key))
+                        _values[it.Key] = null;
+                }
+            }
+        }
+        else if (_values.ContainsKey(key))
+        {
+            _values[key] = null;
+        }
+
+        BuildChips();
+        StateHasChanged();
+    }
+
+    private string GetSearchPlaceholder() => Config?.SearchPlaceholder ?? "Search…";
+    private int GetDebounceMs() => Config?.DebounceMs ?? 100;
+
+    private RenderFragment RenderFilterControl(FilterItemDescriptor item) => builder =>
+    {
+        var seq = 0;
+        var type = (item.Type ?? "").ToLowerInvariant();
+        _values.TryGetValue(item.Key, out var current);
+
+        switch (type)
+        {
+            case "select":
+                {
+                    var options = item.Options ?? new List<OptionItem>();
+
+                    if (IsResearchFilter(item))
+                        options = GetHierarchicalOptions(item, options);
+
+                    var currentValue = current as string ?? string.Empty;
+                    var selectedOption = options.FirstOrDefault(o => o.Value == currentValue);
+
+                    builder.OpenComponent(seq++, typeof(SelectInput<OptionItem>));
+                    builder.AddAttribute(seq++, "Items", options);
+                    builder.AddAttribute(seq++, "Value", selectedOption);
+                    builder.AddAttribute(seq++, "ValueChanged",
+                        EventCallback.Factory.Create<OptionItem?>(this, (OptionItem? opt) =>
+                        {
+                            _values[item.Key] = opt?.Value;
+
+                            if (IsResearchFilter(item))
+                                HandleResearchSelectionChange(item, opt);
+
+                            BuildChips();
+                        }));
+                    builder.AddAttribute(seq++, "GetText", (Func<OptionItem, string>)(o => o.Label ?? o.Value ?? string.Empty));
+                    builder.AddAttribute(seq++, "GetKey", (Func<OptionItem, string>)(o => o.Value ?? string.Empty));
+                    builder.AddAttribute(seq++, "Placeholder", item.Placeholder ?? "Select…");
+                    builder.AddAttribute(seq++, "AllowClear", true);
+                    builder.AddAttribute(seq++, "Size", SelectSize.Sm);
+                    builder.CloseComponent();
+                    break;
+                }
+
+            case "multiselect":
+                {
+                    builder.OpenElement(seq++, "select");
+                    builder.AddAttribute(seq++, "multiple", true);
+                    builder.AddAttribute(seq++, "class", "w-full px-3 py-2 rounded-lg border border-border bg-background");
+                    var selected = current as List<string> ?? new();
+                    builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
+                    {
+                        var v = e.Value?.ToString();
+                        if (!string.IsNullOrWhiteSpace(v))
+                        {
+                            if (!selected.Contains(v)) selected.Add(v);
+                            _values[item.Key] = selected;
+                            BuildChips();
+                        }
+                    }));
+                    if (item.Options is not null)
+                    {
+                        foreach (var opt in item.Options)
+                        {
+                            builder.OpenElement(seq++, "option");
+                            builder.AddAttribute(seq++, "value", opt.Value);
+                            if (selected.Contains(opt.Value)) builder.AddAttribute(seq++, "selected", true);
+                            builder.AddContent(seq++, opt.Label);
+                            builder.CloseElement();
+                        }
+                    }
+                    builder.CloseElement();
+                    break;
+                }
+
+            case "daterange":
+                {
+                    var range = GetOrCreateRange(item.Key);
+                    DateOnly? fromDate = ParseDate(range[0]);
+                    DateOnly? toDate = ParseDate(range[1]);
+
+                    builder.AddContent(seq++, WrapRow(row =>
+                    {
+                        row.OpenComponent(0, typeof(DateInput));
+                        row.AddAttribute(1, "Label", (string?)null);
+                        row.AddAttribute(2, "Value", fromDate);
+                        row.AddAttribute(3, "ValueChanged",
+                            EventCallback.Factory.Create<DateOnly?>(this, async (DateOnly? newVal) =>
+                            {
+                                range[0] = newVal?.ToString("yyyy-MM-dd");
+                                _values[item.Key] = range;
+                                BuildChips();
+                                await InvokeAsync(StateHasChanged);
+                            }));
+                        row.AddAttribute(4, "Disabled", false);
+                        row.AddAttribute(5, "Required", false);
+                        row.CloseComponent();
+
+                        row.OpenComponent(10, typeof(DateInput));
+                        row.AddAttribute(11, "Label", (string?)null);
+                        row.AddAttribute(12, "Value", toDate);
+                        row.AddAttribute(13, "ValueChanged",
+                            EventCallback.Factory.Create<DateOnly?>(this, async (DateOnly? newVal) =>
+                            {
+                                range[1] = newVal?.ToString("yyyy-MM-dd");
+                                _values[item.Key] = range;
+                                BuildChips();
+                                await InvokeAsync(StateHasChanged);
+                            }));
+                        row.AddAttribute(14, "Disabled", false);
+                        row.AddAttribute(15, "Required", false);
+                        row.CloseComponent();
+                    }));
+                    break;
+                }
+
+            case "numberrange":
+                {
+                    var range = GetOrCreateRange(item.Key);
+                    var minStr = range[0] ?? string.Empty;
+                    var maxStr = range[1] ?? string.Empty;
+
+                    builder.AddContent(seq++, WrapRow(row =>
+                    {
+                        row.OpenComponent(0, typeof(TextInput<string>));
+                        row.AddAttribute(1, "Label", (string?)null);
+                        row.AddAttribute(2, "Value", minStr);
+                        row.AddAttribute(3, "ValueChanged",
+                            EventCallback.Factory.Create<string?>(this, async (string? newVal) =>
+                            {
+                                range[0] = newVal;
+                                _values[item.Key] = range;
+                                BuildChips();
+                                await InvokeAsync(StateHasChanged);
+                            }));
+                        row.AddAttribute(4, "InputType", "number");
+                        row.AddAttribute(5, "Placeholder", "Mín");
+                        row.AddAttribute(6, "Disabled", false);
+                        row.AddAttribute(7, "Required", false);
+                        row.CloseComponent();
+
+                        row.OpenComponent(10, typeof(TextInput<string>));
+                        row.AddAttribute(11, "Label", (string?)null);
+                        row.AddAttribute(12, "Value", maxStr);
+                        row.AddAttribute(13, "ValueChanged",
+                            EventCallback.Factory.Create<string?>(this, async (string? newVal) =>
+                            {
+                                range[1] = newVal;
+                                _values[item.Key] = range;
+                                BuildChips();
+                                await InvokeAsync(StateHasChanged);
+                            }));
+                        row.AddAttribute(14, "InputType", "number");
+                        row.AddAttribute(15, "Placeholder", "Máx");
+                        row.AddAttribute(16, "Disabled", false);
+                        row.AddAttribute(17, "Required", false);
+                        row.CloseComponent();
+                    }));
+                    break;
+                }
+
+            case "boolean":
+                {
+                    var isChecked = current is bool b && b;
+
+                    builder.OpenElement(seq++, "label");
+                    builder.AddAttribute(seq++, "class", "inline-flex items-center gap-2 select-none");
+
+                    builder.OpenElement(seq++, "input");
+                    builder.AddAttribute(seq++, "type", "checkbox");
+                    builder.AddAttribute(seq++, "class", "w-4 h-4 rounded border border-border");
+                    builder.AddAttribute(seq++, "checked", isChecked);
+                    builder.AddAttribute(seq++, "onchange", EventCallback.Factory.Create<ChangeEventArgs>(this, e =>
+                    {
+                        _values[item.Key] = e.Value?.ToString()?.ToLowerInvariant() == "true";
+                        BuildChips();
+                    }));
+                    builder.CloseElement();
+
+                    builder.AddContent(seq++, item.Placeholder ?? "Enabled");
+                    builder.CloseElement();
+                    break;
+                }
+
+            case "datefieldrange":
+                {
+                    var fieldK = FieldKey(item.Key);
+                    var rangeK = RangeKey(item.Key);
+
+                    var options = item.Options ?? new List<OptionItem>();
+
+                    _values.TryGetValue(fieldK, out var fieldObj);
+                    var selectedField = fieldObj as string;
+
+                    var range = GetOrCreateRange(rangeK);
+                    DateOnly? fromDate = ParseDate(range[0]);
+                    DateOnly? toDate = ParseDate(range[1]);
+
+                    var selectedOption = options.FirstOrDefault(o => o.Value == (selectedField ?? string.Empty));
+
+                    builder.OpenElement(seq++, "div");
+                    builder.AddAttribute(seq++, "class", "grid grid-cols-1 lg:grid-cols-3 gap-2");
+
+                    // =========================
+                    // 1) SELECT (1/3)
+                    // =========================
+                    builder.OpenElement(seq++, "div");
+                    builder.AddAttribute(seq++, "class", "lg:col-span-1");
+
+                    builder.OpenComponent(seq++, typeof(SelectInput<OptionItem>));
+                    builder.AddAttribute(seq++, "Items", options);
+                    builder.AddAttribute(seq++, "Value", selectedOption);
+                    builder.AddAttribute(seq++, "ValueChanged",
+                        EventCallback.Factory.Create<OptionItem?>(this, (OptionItem? opt) =>
+                        {
+                            _values[fieldK] = opt?.Value;
+                            BuildChips();
+                        }));
+                    builder.AddAttribute(seq++, "GetText", (Func<OptionItem, string>)(o => o.Label ?? o.Value ?? string.Empty));
+                    builder.AddAttribute(seq++, "GetKey", (Func<OptionItem, string>)(o => o.Value ?? string.Empty));
+                    builder.AddAttribute(seq++, "Placeholder", item.Placeholder ?? "Filtrar por…");
+                    builder.AddAttribute(seq++, "AllowClear", true);
+                    builder.AddAttribute(seq++, "Size", SelectSize.Sm);
+                    builder.CloseComponent();
+
+                    builder.CloseElement(); // cierre SELECT wrapper
+
+                    var disabled = string.IsNullOrWhiteSpace(selectedField);
+
+                    // =========================
+                    // 2) RANGE (2/3)
+                    // =========================
+                    builder.OpenElement(seq++, "div");
+                    builder.AddAttribute(seq++, "class", "lg:col-span-2");
+
+                    builder.AddContent(seq++, WrapRow(row =>
+                    {
+                        row.OpenComponent(0, typeof(DateInput));
+                        row.AddAttribute(1, "Label", (string?)null);
+                        row.AddAttribute(2, "Value", fromDate);
+                        row.AddAttribute(3, "ValueChanged",
+                            EventCallback.Factory.Create<DateOnly?>(this, async (DateOnly? newVal) =>
+                            {
+                                range[0] = newVal?.ToString("yyyy-MM-dd");
+                                _values[rangeK] = range;
+                                BuildChips();
+                                await InvokeAsync(StateHasChanged);
+                            }));
+                        row.AddAttribute(4, "Disabled", disabled);
+                        row.AddAttribute(5, "Required", false);
+                        row.CloseComponent();
+
+                        row.OpenComponent(10, typeof(DateInput));
+                        row.AddAttribute(11, "Label", (string?)null);
+                        row.AddAttribute(12, "Value", toDate);
+                        row.AddAttribute(13, "ValueChanged",
+                            EventCallback.Factory.Create<DateOnly?>(this, async (DateOnly? newVal) =>
+                            {
+                                range[1] = newVal?.ToString("yyyy-MM-dd");
+                                _values[rangeK] = range;
+                                BuildChips();
+                                await InvokeAsync(StateHasChanged);
+                            }));
+                        row.AddAttribute(14, "Disabled", disabled);
+                        row.AddAttribute(15, "Required", false);
+                        row.CloseComponent();
+                    }));
+
+                    builder.CloseElement(); // cierre RANGE wrapper
+                    builder.CloseElement(); // cierre GRID container
+                    break;
+                }
+
+            default:
+                builder.OpenElement(seq++, "div");
+                builder.AddAttribute(seq++, "class", "text-xs text-muted");
+                builder.AddContent(seq++, "Unsupported filter type: " + item.Type);
+                builder.CloseElement();
+                break;
+        }
+    };
+
+    private static DateOnly? ParseDate(string? s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return null;
+        return DateOnly.TryParse(s, out var d) ? d : null;
+    }
+
+    private FilterQuery BuildQuery()
+    {
+        var q = new FilterQuery
+        {
+            Search = string.IsNullOrWhiteSpace(_search) ? null : _search,
+            Sort = Config?.DefaultSort is not null ? new List<SortRule> { Config.DefaultSort } : null,
+            Filters = new()
+        };
+
+        if (Config?.Items is null) return q;
+
+        foreach (var it in Config.Items)
+        {
+            var type = (it.Type ?? "").ToLowerInvariant();
+
+            if (type == "datefieldrange")
+            {
+                var selectedField = _values.TryGetValue(FieldKey(it.Key), out var fObj) ? fObj as string : null;
+                if (string.IsNullOrWhiteSpace(selectedField)) continue;
+
+                var range = GetOrCreateRange(RangeKey(it.Key));
+                if (!RangeHasAny(range)) continue;
+
+                q.Filters.Add(new FilterRule
+                {
+                    Field = selectedField,
+                    Operator = it.Operators?.FirstOrDefault() ?? "between",
+                    Value = range
+                });
+
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(it.EntityField)) continue;
+            if (!_values.TryGetValue(it.Key, out var val) || val is null) continue;
+
+            var op = it.Operators?.FirstOrDefault() ?? InferDefaultOperator(it.Type);
+            var rule = new FilterRule { Field = it.EntityField!, Operator = op };
+
+            switch (type)
+            {
+                case "select":
+                    rule.Value = val?.ToString();
+                    break;
+                case "multiselect":
+                    rule.Value = val as List<string> ?? new List<string>();
+                    break;
+                case "daterange":
+                case "numberrange":
+                    if (val is string?[] arr && RangeHasAny(arr)) rule.Value = arr;
+                    else if (val is List<string?> list && list.Count == 2 && RangeHasAny(list.ToArray())) rule.Value = list.ToArray();
+                    else continue;
+                    break;
+                case "boolean":
+                    rule.Value = val;
+                    break;
+                default:
+                    rule.Value = val;
+                    break;
+            }
+
+            q.Filters.Add(rule);
+        }
+
+        return q;
+    }
+
+    private static string InferDefaultOperator(string? type) => type switch
+    {
+        "select" => "eq",
+        "multiselect" => "in",
+        "daterange" => "between",
+        "numberrange" => "between",
+        "boolean" => "eq",
+        _ => "eq"
+    };
+
+    private void BuildChips()
+    {
+        _activeChips.Clear();
+        if (Config?.Items is null) return;
+
+        foreach (var it in Config.Items)
+        {
+            if (string.Equals(it.Type, "datefieldrange", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            if (it.EntityField == "ResearchCategoryId")
+                continue;
+
+            if (!_values.TryGetValue(it.Key, out var val) || val is null)
+                continue;
+
+            var display = GetDisplayValue(val, it);
+            if (!string.IsNullOrWhiteSpace(display))
+            {
+                _activeChips.Add(new ChipItem
+                {
+                    Key = it.Key,
+                    Label = it.Label,
+                    Value = display!
+                });
+            }
+        }
+
+        foreach (var it in Config.Items)
+        {
+            if (!string.Equals(it.Type, "datefieldrange", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var selectedField = _values.TryGetValue(FieldKey(it.Key), out var fObj) ? fObj as string : null;
+            if (string.IsNullOrWhiteSpace(selectedField))
+                continue;
+
+            var range = GetOrCreateRange(RangeKey(it.Key));
+            if (!RangeHasAny(range))
+                continue;
+
+            var displayRange = string.Join(" – ", range.Where(x => !string.IsNullOrWhiteSpace(x)));
+            var fieldLabel = it.Options?.FirstOrDefault(o => o.Value == selectedField)?.Label ?? selectedField;
+
+            _activeChips.Add(new ChipItem
+            {
+                Key = it.Key,
+                Label = it.Label,
+                Value = $"{fieldLabel}: {displayRange}"
+            });
+        }
+
+        var researchItems = Config.Items
+            .Where(i => i.EntityField == "ResearchCategoryId")
+            .ToList();
+
+        if (researchItems.Count == 0)
+            return;
+
+        var grouped = researchItems.GroupBy(i => i.GroupKey ?? "default");
+
+        foreach (var group in grouped)
+        {
+            var groupKey = group.Key;
+            var first = group.First();
+            var groupLabel = first.GroupLabel ?? "Áreas de investigación";
+
+            var parts = new List<string>();
+
+            foreach (var it in group)
+            {
+                if (!_values.TryGetValue(it.Key, out var val) || val is null)
+                    continue;
+
+                var valueText = GetDisplayValue(val, it);
+                if (string.IsNullOrWhiteSpace(valueText))
+                    continue;
+
+                parts.Add($"{it.Label}: {valueText}");
+            }
+
+            if (parts.Count == 0)
+                continue;
+
+            _activeChips.Add(new ChipItem
+            {
+                Key = $"researchCategories_{groupKey}",
+                Label = groupLabel,
+                Value = string.Join(" · ", parts)
+            });
+        }
+    }
+
+    private string? GetDisplayValue(object val, FilterItemDescriptor item)
+    {
+        if ((item.Type ?? "").ToLowerInvariant() == "select" && val is string sVal)
+        {
+            var label = item.Options?.FirstOrDefault(o => o.Value == sVal)?.Label;
+            return !string.IsNullOrWhiteSpace(label) ? label : sVal;
+        }
+
+        return val switch
+        {
+            bool b => b ? (item.TrueLabel ?? "Yes") : (item.FalseLabel ?? "No"),
+            List<string> list => string.Join(", ", ResolveLabels(item, list)),
+            string?[] arr => string.Join(" – ", arr.Where(s => !string.IsNullOrWhiteSpace(s))),
+            IList<string> ilist => string.Join(" – ", ilist.Where(s => !string.IsNullOrWhiteSpace(s))),
+            _ => val?.ToString()
+        };
+    }
+
+    private IEnumerable<string> ResolveLabels(FilterItemDescriptor it, List<string> values)
+    {
+        var opts = it.Options ?? new();
+        foreach (var v in values)
+            yield return opts.FirstOrDefault(o => o.Value == v)?.Label ?? v;
+    }
+
+    // === Tus helpers jerárquicos (igual) ===
+    private void HandleResearchSelectionChange(FilterItemDescriptor item, OptionItem? selected)
+    {
+        if (Config?.Items == null) return;
+
+        var index = Config.Items.FindIndex(i => i.Key == item.Key);
+        if (index < 0) return;
+
+        string? currentParentVal = selected?.ParentValue;
+
+        for (int i = index - 1; i >= 0 && !string.IsNullOrWhiteSpace(currentParentVal); i--)
+        {
+            var parentDescriptor = Config.Items[i];
+
+            if (!IsSameResearchGroup(parentDescriptor, item))
+            {
+                if (IsResearchFilter(parentDescriptor)) break;
+                continue;
+            }
+
+            _values[parentDescriptor.Key] = currentParentVal;
+
+            var parentOptions = parentDescriptor.Options ?? new List<OptionItem>();
+            var parentOption = parentOptions.FirstOrDefault(o => o.Value == currentParentVal);
+
+            currentParentVal = parentOption?.ParentValue;
+        }
+
+        for (int i = index + 1; i < Config.Items.Count; i++)
+        {
+            var childDescriptor = Config.Items[i];
+
+            if (!IsSameResearchGroup(childDescriptor, item))
+            {
+                if (IsResearchFilter(childDescriptor)) break;
+                continue;
+            }
+
+            _values[childDescriptor.Key] = null;
+        }
+    }
+
+    private List<OptionItem> GetHierarchicalOptions(FilterItemDescriptor item, List<OptionItem> baseOptions)
+    {
+        if (Config?.Items == null) return baseOptions;
+
+        var index = Config.Items.FindIndex(i => i.Key == item.Key);
+        if (index <= 0) return baseOptions;
+
+        for (int i = index - 1; i >= 0; i--)
+        {
+            var parentDescriptor = Config.Items[i];
+
+            if (!IsResearchFilter(parentDescriptor))
+                continue;
+
+            if (!IsSameResearchGroup(parentDescriptor, item))
+                break;
+
+            if (_values.TryGetValue(parentDescriptor.Key, out var parentValObj) &&
+                parentValObj is string parentVal &&
+                !string.IsNullOrWhiteSpace(parentVal))
+            {
+                return baseOptions.Where(o => o.ParentValue == parentVal).ToList();
+            }
+
+            break;
+        }
+
+        return baseOptions;
+    }
+}

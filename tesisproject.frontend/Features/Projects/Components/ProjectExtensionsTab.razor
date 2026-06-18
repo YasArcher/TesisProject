@@ -1,0 +1,100 @@
+﻿@using tesisproject.shared.DTOs.ProjectExtensions.Response
+@using tesisproject.frontend.SharedUI.ActionButton
+
+<div class="h-full min-h-0 flex flex-col overflow-hidden">
+    <div class="shrink-0 border-b border-border px-4 py-4 md:px-6">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <h3 class="text-base font-semibold text-foreground">Prórrogas</h3>
+
+            <div class="sm:shrink-0">
+                <ActionButton Text="Generar prórroga"
+                              Intent="ButtonIntent.Warning"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Sm"
+                              Execute="OnRequestNew">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-5">
+                            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clip-rule="evenodd" />
+                        </svg>
+                    </Icon>
+                </ActionButton>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex-1 min-h-0 overflow-y-auto">
+        <div class="space-y-3 px-4 py-4 md:px-6">
+            @if (IsLoading)
+            {
+                <div class="rounded-xl border border-border bg-background px-4 py-6 text-sm text-muted">
+                    Cargando prórrogas…
+                </div>
+            }
+            else if (!HasItems)
+            {
+                <div class="rounded-xl border border-dashed border-border bg-muted/5 px-4 py-8 text-sm text-muted">
+                    No hay prórrogas registradas.
+                </div>
+            }
+            else
+            {
+                @foreach (var extension in Items!)
+                {
+                    <article @key="extension.ProjectExtensionId"
+                             class="rounded-lg border border-border bg-background p-4 transition-all duration-200 card-hover-primary">
+                        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <div class="truncate font-medium text-foreground">
+                                        Prórroga #@extension.ProjectExtensionId
+                                    </div>
+
+                                    <span class="inline-flex items-center rounded-full border border-primary/20 bg-primary-subtle px-2 py-0.5 text-xs text-primary">
+                                        @extension.ProjectExtensionTypeName
+                                    </span>
+                                </div>
+
+                                <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+                                    <span>
+                                        Proyecto: <span class="font-medium text-foreground">@extension.ProjectName</span>
+                                    </span>
+
+                                    <span>Solicitado: @(extension.RequestedAt?.ToString("yyyy-MM-dd") ?? "-")</span>
+
+                                    @if (extension.ApprovedAt is not null)
+                                    {
+                                        <span>Aprobado: @extension.ApprovedAt?.ToString("yyyy-MM-dd")</span>
+                                    }
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(extension.DocumentName))
+                                {
+                                    <div class="mt-1 text-xs text-muted">
+                                        Documento: @extension.DocumentName
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="sm:shrink-0">
+                                <ActionButton Text="Abrir"
+                                              Intent="ButtonIntent.Neutral"
+                                              Variant="ButtonVariant.Outline"
+                                              Size="ButtonSize.Sm"
+                                              Execute="@(() => OnOpen.InvokeAsync(extension.ProjectExtensionId))" />
+                            </div>
+                        </div>
+                    </article>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<ProjectExtensionListResponseDTO>? Items { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public EventCallback OnRequestNew { get; set; }
+    [Parameter] public EventCallback<int> OnOpen { get; set; }
+
+    private bool HasItems => Items is { Count: > 0 };
+}

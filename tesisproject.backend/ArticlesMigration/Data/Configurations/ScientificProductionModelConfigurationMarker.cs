@@ -1,0 +1,3 @@
+namespace tesisproject.backend.Data.Configurations;
+
+public sealed class ScientificProductionModelConfigurationMarker;

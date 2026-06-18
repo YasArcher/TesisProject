@@ -1,0 +1,89 @@
+<div class="reports-dw-panel__header">
+    <div class="reports-dw-panel__title">
+        <span class="reports-dw-panel__icon">
+            <i class="bi bi-diagram-3"></i>
+        </span>
+        <div>
+            <h2>Producción académica</h2>
+        </div>
+    </div>
+
+    @if (IsInitialLoading)
+    {
+        <div class="reports-dw-panel__actions">
+            <span class="reports-dw-status reports-dw-status--loading">
+                <i class="bi bi-arrow-repeat"></i>
+                Preparando indicadores
+            </span>
+        </div>
+    }
+    else if (ShowUnavailableState)
+    {
+        <div class="reports-dw-panel__actions">
+            <span class="reports-dw-status reports-dw-status--warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                Sin datos disponibles
+            </span>
+            <button class="reports-dw-etl-button reports-dw-etl-button--secondary" @onclick="OnReloadDashboard" disabled="@IsBusy">
+                <i class="bi bi-arrow-repeat"></i>
+                Recargar vista
+            </button>
+            <button class="reports-dw-etl-button" @onclick="OnRunEtl" disabled="@IsBusy">
+                <i class="bi bi-arrow-clockwise"></i>
+                Sincronizar DW
+            </button>
+        </div>
+    }
+    else
+    {
+        <div class="reports-dw-panel__actions">
+            @if (IsRefreshing)
+            {
+                <span class="reports-dw-status reports-dw-status--loading">
+                    <i class="bi bi-arrow-repeat"></i>
+                    Actualizando vista
+                </span>
+            }
+            <span class="@EtlStatusClass">
+                <i class="bi bi-database-check"></i>
+                Información @EtlStatusLabel
+            </span>
+            <button class="reports-dw-etl-button reports-dw-etl-button--secondary" @onclick="OnReloadDashboard" disabled="@IsBusy">
+                @if (IsRefreshing)
+                {
+                    <i class="bi bi-arrow-repeat reports-dw-spin"></i>
+                    <span>Recargando...</span>
+                }
+                else
+                {
+                    <i class="bi bi-arrow-repeat"></i>
+                    <span>Recargar vista</span>
+                }
+            </button>
+            <button class="reports-dw-etl-button" @onclick="OnRunEtl" disabled="@IsBusy">
+                @if (IsRunningEtl)
+                {
+                    <i class="bi bi-arrow-repeat reports-dw-spin"></i>
+                    <span>Actualizando...</span>
+                }
+                else
+                {
+                    <i class="bi bi-arrow-clockwise"></i>
+                    <span>Sincronizar DW</span>
+                }
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public bool IsInitialLoading { get; set; }
+    [Parameter] public bool ShowUnavailableState { get; set; }
+    [Parameter] public bool IsRefreshing { get; set; }
+    [Parameter] public bool IsRunningEtl { get; set; }
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public string EtlStatusClass { get; set; } = "reports-dw-status";
+    [Parameter] public string EtlStatusLabel { get; set; } = "no disponible";
+    [Parameter] public EventCallback OnReloadDashboard { get; set; }
+    [Parameter] public EventCallback OnRunEtl { get; set; }
+}

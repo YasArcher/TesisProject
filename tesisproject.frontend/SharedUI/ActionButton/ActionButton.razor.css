@@ -1,0 +1,174 @@
+﻿.bg-success {
+    background-color: var(--color-secondary);
+}
+
+.text-success {
+    color: var(--color-secondary);
+}
+
+.bg-success-hover:hover {
+    background-color: color-mix(in srgb, var(--color-secondary) 85%, black);
+}
+
+.bg-success-subtle {
+    background-color: color-mix(in srgb, var(--color-secondary) 10%, transparent);
+}
+
+.bg-warning {
+    background-color: var(--color-accent);
+}
+
+.text-warning {
+    color: var(--color-accent);
+}
+
+.bg-warning-hover:hover {
+    background-color: color-mix(in srgb, var(--color-accent) 85%, black);
+}
+
+.bg-danger {
+    background-color: var(--color-error);
+}
+
+.text-danger {
+    color: var(--color-error);
+}
+
+.bg-danger-hover:hover {
+    background-color: color-mix(in srgb, var(--color-error) 85%, black);
+}
+
+.text-on-success {
+    color: white;
+}
+
+.text-on-warning {
+    color: white;
+}
+
+.text-on-danger {
+    color: white;
+}
+
+/* ===== ESTADOS HOVER MEJORADOS ===== */
+.bg-error:hover {
+    background-color: color-mix(in srgb, var(--color-error) 85%, black);
+}
+
+.bg-accent:hover {
+    background-color: color-mix(in srgb, var(--color-accent) 85%, black);
+}
+
+.bg-muted:hover {
+    background-color: color-mix(in srgb, var(--color-muted) 85%, black);
+}
+
+/* ===== VARIANTES DE BOTÓN CON OPACIDAD ===== */
+.bg-accent\/10 {
+    background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+}
+
+.bg-error\/10 {
+    background-color: color-mix(in srgb, var(--color-error) 10%, transparent);
+}
+
+.bg-muted\/10 {
+    background-color: color-mix(in srgb, var(--color-muted) 10%, transparent);
+}
+
+.hover\:bg-accent\/20:hover {
+    background-color: color-mix(in srgb, var(--color-accent) 20%, transparent);
+}
+
+.hover\:bg-error\/20:hover {
+    background-color: color-mix(in srgb, var(--color-error) 20%, transparent);
+}
+
+.hover\:bg-muted\/20:hover {
+    background-color: color-mix(in srgb, var(--color-muted) 20%, transparent);
+}
+
+/* ===== MEJORAS DE FOCUS RING ===== */
+.focus\:ring-2:focus {
+    --tw-ring-width: 2px;
+    box-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+}
+
+.focus\:ring-offset-2:focus {
+    --tw-ring-offset-width: 2px;
+}
+
+/* ===== BORDES PARA OUTLINE VARIANT ===== */
+.border-secondary {
+    border-color: var(--color-secondary);
+}
+
+.border-accent {
+    border-color: var(--color-accent);
+}
+
+.border-error {
+    border-color: var(--color-error);
+}
+
+.border-muted {
+    border-color: var(--color-muted);
+}
+
+/* ===== TRANSICIONES MEJORADAS ===== */
+.transition-all {
+    transition-property: all;
+}
+
+.duration-200 {
+    transition-duration: 200ms;
+}
+
+/* ===== ESTADOS DISABLED ESPECÍFICOS ===== */
+.disabled\:opacity-60:disabled {
+    opacity: 0.6;
+}
+
+.disabled\:cursor-not-allowed:disabled {
+    cursor: not-allowed;
+}
+
+/* ===== SPINNER ANIMATION (para _isBusy) ===== */
+@keyframes spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.animate-spin {
+    animation: spin 1s linear infinite;
+}
+
+/* ===== UTILIDADES DE LAYOUT ===== */
+.rounded-lg {
+    border-radius: 0.5rem;
+}
+
+.gap-2 {
+    gap: 0.5rem;
+}
+
+.h-4 {
+    height: 1rem;
+}
+
+.w-4 {
+    width: 1rem;
+}
+
+.border-t-transparent {
+    border-top-color: transparent;
+}
+
+.rounded-full {
+    border-radius: 9999px;
+}

@@ -1,0 +1,59 @@
+﻿@using tesisproject.frontend.SharedUI.Card
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Utils
+@inherits ComponentBase
+
+<Card Tone="CardTone.Default"
+      Class="h-full min-h-0 flex flex-col overflow-hidden bg-background border border-border rounded-2xl card-hover-primary transition-shadow">
+    <CardHeader Class="shrink-0 min-w-0">
+        <h3 class="text-lg font-semibold text-foreground line-clamp-2 break-words">
+            @Item.ProjectName
+        </h3>
+
+        <p class="text-sm text-muted break-words">
+            <span class="font-medium">Estado:</span> @Item.ProjectStateName •
+            <span class="font-medium">Tipo:</span> @Item.ProjectTypeName
+        </p>
+
+        <p class="text-sm text-muted break-words">
+            <span class="font-medium">Grupo:</span> @Item.ProjectGroupName
+        </p>
+    </CardHeader>
+
+    <CardBody Class="flex-1 min-h-0">
+        <div class="text-sm text-foreground grid grid-cols-2 gap-x-4 gap-y-1">
+            <div class="min-w-0">
+                <span class="font-medium">Inicio:</span>
+                @Item.StartDate.ToSpanishShortDate()
+            </div>
+
+            <div class="min-w-0">
+                <span class="font-medium">Fin:</span>
+                @Item.TentativeEndDate.ToSpanishShortDate()
+            </div>
+
+            <div class="col-span-2 min-w-0">
+                <span class="font-medium">Progreso:</span>
+                @(Item.ExecutionPercentage?.ToString("0.##") ?? "0")%
+            </div>
+        </div>
+    </CardBody>
+
+    <CardFooter>
+        <div class="flex gap-2">
+            <ActionButton Text="Abrir"
+                          Intent="ButtonIntent.Accept"
+                          Variant="ButtonVariant.Filled"
+                          Size="ButtonSize.Sm"
+                          Class="rounded-md"
+                          Execute="@(() => OnOpen.InvokeAsync(Item))">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                </Icon>
+            </ActionButton>
+        </div>
+    </CardFooter>
+</Card>

@@ -1,0 +1,162 @@
+﻿@typeparam TColumn
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.Export
+
+@if (IsOpen)
+{
+    <div class="absolute right-0 top-full mt-1 z-50 w-[560px] max-w-[95vw] shadow-lg border border-border rounded-lg bg-background flex flex-col gap-3 overflow-hidden p-3">
+        <div class="flex flex-col md:flex-row md:items-start gap-3">
+            <div class="flex-1 min-w-0">
+                <label class="block text-xs font-semibold text-muted mb-1">
+                    @Title
+                </label>
+
+                @if (IsTemplatesLoading)
+                {
+                    <div class="text-xs text-muted">@LoadingTemplatesText</div>
+                }
+                else if (Templates is null || Templates.Count == 0)
+                {
+                    <div class="text-xs text-muted">
+                        @EmptyTemplatesText
+                    </div>
+                }
+                else
+                {
+                    <select class="w-full input-text text-sm"
+                            value="@(SelectedTemplateId?.ToString() ?? string.Empty)"
+                            @onchange="TemplateChanged">
+                        <option value="">@TemplatePlaceholder</option>
+
+                        @foreach (var t in Templates)
+                        {
+                            <option value="@t.Id">
+                                @($"{t.Name} ({t.Key})")
+                            </option>
+                        }
+                    </select>
+                }
+            </div>
+
+            <div class="shrink-0 flex items-center gap-2">
+                <ActionButton Text="@CancelText"
+                              Execute="@CloseRequested"
+                              Intent="ButtonIntent.Accept"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Xs"
+                              Disabled="@IsExporting" />
+
+                <ActionButton Text="@ExportText"
+                              Execute="@ExportRequested"
+                              Intent="ButtonIntent.Add"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Xs"
+                              Disabled="@(!CanExport)" />
+            </div>
+        </div>
+
+        @if (HasColumns)
+        {
+            <div>
+                <label class="block text-xs font-semibold text-muted mb-1">
+                    @ColumnsTitle
+                </label>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 max-h-64 overflow-y-auto border border-border rounded-md p-2">
+                    @foreach (var col in OrderedColumns)
+                    {
+                        var columnId = GetColumnId(col);
+                        var isRequired = GetColumnRequired(col);
+
+                        <label class="inline-flex items-start gap-2 text-xs">
+                            <input type="checkbox"
+                                   value="@columnId"
+                                   checked="@IsChecked(col)"
+                                   disabled="@isRequired"
+                                   @onchange="@(e => HandleColumnToggleAsync(col, e))" />
+
+                            <span class="leading-tight">
+                                @GetColumnLabel(col)
+                            </span>
+                        </label>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public bool IsTemplatesLoading { get; set; }
+    [Parameter] public bool IsExporting { get; set; }
+
+    [Parameter] public string Title { get; set; } = "Seleccione una plantilla de exportación";
+    [Parameter] public string TemplatePlaceholder { get; set; } = "-- Seleccione una plantilla --";
+    [Parameter] public string LoadingTemplatesText { get; set; } = "Cargando plantillas...";
+    [Parameter]
+    public string EmptyTemplatesText { get; set; } =
+        "No hay plantillas de exportación configuradas.";
+    [Parameter]
+    public string ColumnsTitle { get; set; } =
+        "Seleccione las características a incluir en la exportación";
+    [Parameter] public string CancelText { get; set; } = "Cancelar";
+    [Parameter] public string ExportText { get; set; } = "Exportar";
+
+    [Parameter] public IReadOnlyList<ExportTemplateListItemDTO>? Templates { get; set; }
+    [Parameter] public int? SelectedTemplateId { get; set; }
+
+    [Parameter] public IEnumerable<TColumn>? Columns { get; set; }
+    [Parameter] public ISet<int>? SelectedColumnIds { get; set; }
+
+    [Parameter, EditorRequired] public Func<TColumn, int> GetColumnId { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TColumn, string> GetColumnLabel { get; set; } = default!;
+    [Parameter, EditorRequired] public Func<TColumn, int> GetColumnOrder { get; set; } = default!;
+    [Parameter] public Func<TColumn, bool> GetColumnRequired { get; set; } = _ => false;
+
+    [Parameter] public EventCallback<ChangeEventArgs> TemplateChanged { get; set; }
+    [Parameter] public EventCallback<int> ColumnSelected { get; set; }
+    [Parameter] public EventCallback<int> ColumnUnselected { get; set; }
+    [Parameter] public EventCallback CloseRequested { get; set; }
+    [Parameter] public EventCallback ExportRequested { get; set; }
+
+    private IReadOnlyList<TColumn> OrderedColumns =>
+        (Columns ?? Enumerable.Empty<TColumn>())
+        .OrderBy(GetColumnOrder)
+        .ToList();
+
+    private bool HasColumns => OrderedColumns.Count > 0;
+
+    private bool CanExport =>
+        !IsExporting &&
+        Templates is not null &&
+        Templates.Count > 0 &&
+        SelectedTemplateId is not null &&
+        (SelectedColumnIds?.Count ?? 0) > 0;
+
+    private bool IsSelected(int columnId) =>
+        SelectedColumnIds?.Contains(columnId) == true;
+
+    private bool IsChecked(TColumn col)
+    {
+        var columnId = GetColumnId(col);
+        return GetColumnRequired(col) || IsSelected(columnId);
+    }
+
+    private async Task HandleColumnToggleAsync(TColumn col, ChangeEventArgs e)
+    {
+        if (GetColumnRequired(col))
+            return;
+
+        var columnId = GetColumnId(col);
+
+        var isChecked =
+            e.Value is bool b && b ||
+            string.Equals(e.Value?.ToString(), "true", StringComparison.OrdinalIgnoreCase);
+
+        if (isChecked)
+            await ColumnSelected.InvokeAsync(columnId);
+        else
+            await ColumnUnselected.InvokeAsync(columnId);
+    }
+}

@@ -1,0 +1,66 @@
+﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+
+<CascadingValue Value="this">
+    <!-- Register <Tab> children before rendering headers -->
+    <div hidden>@ChildContent</div>
+
+    <div class="w-full h-full min-h-0 flex flex-col gap-3">
+        <!-- Tab list -->
+        <div class="flex gap-1 md:gap-2 shrink-0" role="tablist" @onkeydown="HandleKeyDown">
+            @for (int i = 0; i < _items.Count; i++)
+            {
+                var idx = i;
+                var item = _items[idx];
+                var isActive = item.Key == ActiveKey;
+
+                var common = "inline-flex items-center gap-2 px-3 md:px-4 py-2 text-sm font-medium rounded-md transition " +
+                             "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus:ring-primary";
+
+                var classes = Variant switch
+                {
+                    TabVariant.Underline => $"{common} rounded-b-none border-b-2 " +
+                    (isActive
+                        ? "border-primary text-foreground"
+                        : "border-transparent text-muted hover:text-foreground hover:border-border"),
+
+                    TabVariant.Pills => $"{common} " +
+                    (isActive
+                        ? "btn-primary-solid"
+                        : "bg-primary-subtle text-foreground hover:bg-primary-subtle-hover"),
+
+                    _ => common
+                };
+
+                <button @key="item.Key"
+                        @ref="_tabRefs[item.Key]"
+                        class="@classes"
+                        id="tab-@item.Key"
+                        role="tab"
+                        aria-selected="@isActive"
+                        aria-controls="panel-@item.Key"
+                        tabindex="@(isActive ? 0 : -1)"
+                        @onclick="(() => Activate(item.Key))">
+                    @if (item.Icon is not null)
+                    {
+                        <span class="shrink-0">@item.Icon</span>
+                    }
+                    <span class="truncate">@item.Title</span>
+                </button>
+            }
+        </div>
+
+        <!-- Active panel -->
+        <div class="flex-1 min-h-0 min-w-0 overflow-hidden">
+            @if (_activeItem is not null)
+            {
+                <div id="panel-@_activeItem.Key"
+                     role="tabpanel"
+                     aria-labelledby="tab-@_activeItem.Key"
+                     class="h-full min-h-0 min-w-0 overflow-hidden outline-none">
+                    @_activeItem.Content
+                </div>
+            }
+        </div>
+    </div>
+</CascadingValue>

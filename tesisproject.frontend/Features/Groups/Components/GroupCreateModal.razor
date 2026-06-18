@@ -1,0 +1,122 @@
+﻿@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.shared.DTOs.Group.Request
+@using tesisproject.shared.DTOs.Group.Response
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.ActionButton
+
+<Modal Id="@ModalId"
+       Title="@ModalTitle"
+       IsOpen="@IsOpen"
+       IsOpenChanged="IsOpenChanged"
+       ShowCloseButton="true"
+       CloseOnBackdrop="true"
+       CloseOnEscape="true"
+       Size="ModalSize.Md"
+       OnClose="HandleClose">
+
+    <ChildContent>
+        <EditForm Model="@Model" OnValidSubmit="@Submit">
+            <DataAnnotationsValidator />
+            <div class="space-y-4">
+
+                <!-- NAME -->
+                <div>
+                    <label class="block text-sm font-medium mb-1 text-foreground">
+                        Nombre <span class="text-red-600">*</span>
+                    </label>
+                    <InputText @bind-Value="Model.Name"
+                               class="w-full rounded-xl border border-border bg-background px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-uta-header)]" />
+                    <ValidationMessage For="@(() => Model.Name)" />
+                </div>
+
+                <!-- GROUP TYPE (opcional: solo como espejo HTML, sin binding) -->
+                <input type="hidden" value="@Model.GroupTypeId" />
+            </div>
+        </EditForm>
+    </ChildContent>
+
+    <Footer>
+        <div class="flex items-center justify-end gap-2">
+            <ActionButton Text="Cancelar"
+                          Execute="OnCancelClicked"
+                          Variant="ButtonVariant.Ghost"
+                          Size="ButtonSize.Sm"
+                          Class="inline-flex items-center justify-center rounded-xl px-4 py-2" />
+
+            <ActionButton Text="@PrimaryButtonText"
+                          Execute="Submit"
+                          Variant="ButtonVariant.Soft"
+                          Size="ButtonSize.Sm"
+                          Class="btn-primary inline-flex items-center justify-center rounded-xl px-4 py-2">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                        <path fill-rule="evenodd" d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z" clip-rule="evenodd" />
+                        <path d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z" />
+                    </svg>
+                </Icon>
+            </ActionButton>
+        </div>
+    </Footer>
+</Modal>
+
+@code {
+    // Parámetros
+    [Parameter] public bool IsEdit { get; set; } = false;
+    [Parameter] public GroupResponseDTO? GroupToEdit { get; set; }
+    [Parameter] public string ModalId { get; set; } = "group-modal";
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    // Viene del padre
+    [Parameter] public int GroupTypeId { get; set; } = 1;
+
+    [Parameter] public EventCallback<AddGroupRequestDTO> OnCreate { get; set; }
+    [Parameter] public EventCallback<UpdateGroupRequestDTO> OnUpdate { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private string ModalTitle => IsEdit ? "Editar Grupo" : "Crear groupo";
+    private string PrimaryButtonText => IsEdit ? "Actualziar" : "Crear";
+
+    private AddGroupRequestDTO Model = new();
+
+    protected override void OnParametersSet()
+    {
+        if (IsEdit && GroupToEdit is not null)
+        {
+            // Edit
+            Model.Name = GroupToEdit.Name;
+            Model.GroupTypeId = GroupTypeId; // fuerza el tipo único
+        }
+        else
+        {
+            // Create
+            Model = new AddGroupRequestDTO
+            {
+                Name = string.Empty,
+                GroupTypeId = GroupTypeId // fuerza el tipo único
+            };
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (IsEdit && GroupToEdit is not null)
+        {
+            var dto = new UpdateGroupRequestDTO
+            {
+                GroupId = GroupToEdit.GroupId,
+                Name = Model.Name,
+                GroupTypeId = GroupTypeId
+            };
+            await OnUpdate.InvokeAsync(dto);
+        }
+        else
+        {
+            Model.GroupTypeId = GroupTypeId;
+            await OnCreate.InvokeAsync(Model);
+        }
+    }
+
+    private async Task OnCancelClicked() => await OnCancel.InvokeAsync();
+    private async Task HandleClose() => await OnCancel.InvokeAsync();
+}

@@ -1,0 +1,429 @@
+@page "/panel/principal"
+@page "/scientific-production/dashboard"
+@attribute [Authorize(Roles = "Admin,Analyst,WorkflowReviewerUodide,WorkflowReviewerAreaTecnica,WorkflowProcessorAreaTecnica,ReportingViewer,ReportingExporter,ReportingAdvancedUser,IntelligenceViewer,IntelligenceTrainer")]
+
+@using System.Security.Claims
+@using System.Threading
+@using Microsoft.AspNetCore.Authorization
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Articles
+@using tesisproject.shared.DTOs.Catalogs
+@using tesisproject.shared.DTOs.Workflow
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IArticlesClient ArticlesClient
+@inject ICatalogsService CatalogsService
+@inject IRegistrationWorkflowSettingsClient RegistrationWorkflowSettingsClient
+@inject ILogger<PrincipalPanel> Logger
+@implements IDisposable
+
+<div class="principal-shell">
+    <div class="app-page-shell principal-shell__inner principal-shell__inner--wide">
+        <section class="principal-hero">
+            <article class="principal-hero__surface">
+                <article class="principal-media-card">
+                    <div class="principal-media-card__overlay"></div>
+                    <div class="principal-media-card__header">
+                        <div>
+                            <span class="principal-media-card__eyebrow">Vitrina institucional</span>
+                            <div class="principal-media-card__moment">
+                                <span class="principal-media-card__time">@CurrentTime</span>
+                                <span class="principal-media-card__date">@CurrentDate</span>
+                            </div>
+                        </div>
+                        <span class="principal-media-card__badge">@MediaSlides[_mediaIndex].Badge</span>
+                    </div>
+
+                    <div class="principal-media-card__body">
+                        <div class="principal-media-card__main">
+                            <div class="principal-media-card__visual">
+                                <img src="/images/logo-uta.png" alt="Universidad Técnica de Ambato" class="principal-media-card__logo" />
+                            </div>
+                            <div class="principal-media-card__copy">
+                                <h2 class="principal-media-card__title">@MediaSlides[_mediaIndex].Title</h2>
+                                <p class="principal-media-card__description">@MediaSlides[_mediaIndex].Description</p>
+                            </div>
+                        </div>
+
+                        <div class="principal-media-card__sidepanel">
+                            <div class="principal-media-card__sidepanel-label">Sesión operativa</div>
+                            <div class="principal-media-card__sidepanel-user">@UserName</div>
+
+                            <div class="principal-media-card__institution">
+                                <img src="/images/logo-uta.png" alt="UTA" class="principal-media-card__institution-logo" />
+                                <div>
+                                    <div class="principal-media-card__institution-name">Universidad Técnica de Ambato</div>
+                                    <div class="principal-media-card__institution-copy">Entorno institucional activo</div>
+                                </div>
+                            </div>
+
+                            <div class="principal-media-card__sidepanel-note">
+                                Plataforma preparada para proyectar producción científica, mensajes institucionales y contenido audiovisual oficial.
+                            </div>
+                        </div>
+                    </div>
+
+                        <div class="principal-media-card__footer">
+                            <div class="principal-media-card__meta">
+                                <span class="principal-media-card__meta-label">Próximo espacio</span>
+                                <strong>@MediaSlides[_mediaIndex].Meta</strong>
+                            </div>
+                            <div class="principal-media-card__seals">
+                                <span>UTA</span>
+                                <span>DIDE</span>
+                                <span>CIENCIA</span>
+                            </div>
+                            <div class="principal-media-card__dots">
+                                @for (var i = 0; i < MediaSlides.Count; i++)
+                                {
+                                    <span class="principal-media-card__dot @(i == _mediaIndex ? "principal-media-card__dot--active" : string.Empty)"></span>
+                                }
+                        </div>
+                    </div>
+                </article>
+            </article>
+        </section>
+
+        <section class="principal-stagebar">
+            <article class="principal-actions-spotlight">
+                <div class="principal-actions-spotlight__label">Accesos principales</div>
+                <div class="principal-actions-grid">
+                    @foreach (var action in SpotlightActions)
+                    {
+                        <a class="@action.CssClass" href="@action.Href">
+                            <span class="principal-action__icon"><i class="@action.Icon"></i></span>
+                            <span>@action.Title</span>
+                        </a>
+                    }
+                </div>
+            </article>
+        </section>
+
+        <section class="principal-kpis">
+            @foreach (var metric in DashboardMetrics)
+            {
+                <article class="principal-kpi-card @(metric.Highlight ? "principal-kpi-card--highlight" : string.Empty)">
+                    <div class="principal-kpi-card__top">
+                        <span class="principal-kpi-card__label">@metric.Title</span>
+                        <span class="principal-kpi-card__icon"><i class="@metric.Icon"></i></span>
+                    </div>
+                    <div class="principal-kpi-card__value">@metric.Value</div>
+                    <p class="principal-kpi-card__description">@metric.Description</p>
+                    <div class="principal-kpi-card__foot">
+                        <span class="principal-kpi-card__trend">@metric.Trend</span>
+                    </div>
+                </article>
+            }
+        </section>
+
+        <section class="principal-grid">
+            <article class="principal-panel">
+                <div class="principal-panel__head">
+                    <div>
+                        <span class="principal-panel__eyebrow">Atajos</span>
+                        <h2 class="principal-panel__title">Flujos principales</h2>
+                    </div>
+                </div>
+
+                <div class="principal-shortcuts">
+                    @foreach (var shortcut in QuickActions)
+                    {
+                        <a class="principal-shortcut" href="@shortcut.Href">
+                            <div class="principal-shortcut__icon"><i class="@shortcut.Icon"></i></div>
+                            <div>
+                                <div class="principal-shortcut__title">@shortcut.Title</div>
+                                <div class="principal-shortcut__description">@shortcut.Description</div>
+                            </div>
+                        </a>
+                    }
+                </div>
+            </article>
+            <article class="principal-panel principal-panel--institutional">
+                <div class="principal-panel__head">
+                    <div>
+                        <span class="principal-panel__eyebrow">Mensaje institucional</span>
+                        <h2 class="principal-panel__title">@MediaSlides[_mediaIndex].Title</h2>
+                    </div>
+                </div>
+
+                <p class="principal-panel__copy">@MediaSlides[_mediaIndex].Description</p>
+
+                <div class="principal-institutional-points">
+                    <div class="principal-institutional-point">
+                        <span class="principal-institutional-point__dot"></span>
+                        <span>Espacio preparado para campañas, logros y producción científica destacada.</span>
+                    </div>
+                    <div class="principal-institutional-point">
+                        <span class="principal-institutional-point__dot"></span>
+                        <span>Diseño pensado para visualización continua en sala de espera o recepción institucional.</span>
+                    </div>
+                    <div class="principal-institutional-point">
+                        <span class="principal-institutional-point__dot"></span>
+                        <span>Lista para integrar fotografías o video institucional real cuando estén disponibles.</span>
+                    </div>
+                </div>
+            </article>
+        </section>
+    </div>
+</div>
+
+@code {
+    private string UserName = "Usuario";
+    private string Initials = "U";
+    private string UserRole = "Usuario";
+    private string Greeting = "Bienvenido";
+    private string CurrentTime = "00:00:00";
+    private string CurrentDate = "01 de enero de 2024";
+    private Timer? timer;
+    private bool IsAdmin { get; set; }
+    private bool IsAnalyst { get; set; }
+    private bool IsAuthor { get; set; }
+    private bool IsUodide { get; set; }
+    private bool IsAreaTecnica { get; set; }
+    private bool IsExternalApiUser { get; set; }
+    private bool CanRegisterByPermission { get; set; }
+    private bool CanViewReportingByPermission { get; set; }
+    private bool CanUseIntelligenceByPermission { get; set; }
+    private string RegistrationEntryMode { get; set; } = RegistrationEntryModes.AuthorAndUodide;
+    private bool CanInitiateRegistration
+        => IsAdmin
+           || IsAnalyst
+           || CanRegisterByPermission
+           || (IsAuthor && RegistrationEntryMode != RegistrationEntryModes.UodideOnly)
+           || (IsUodide && RegistrationEntryMode != RegistrationEntryModes.AuthorOnly);
+
+    private bool _kpisLoading = true;
+    private int KpiProjectsActive;
+    private int KpiPublications;
+    private int KpiInExecution;
+    private int KpiNewThisMonth;
+    private int _mediaIndex;
+
+    private IReadOnlyList<DashboardMetric> DashboardMetrics => new[]
+    {
+        new DashboardMetric("Proyectos activos", _kpisLoading ? "..." : KpiProjectsActive.ToString(), "Panorama de iniciativas registradas", "bi bi-kanban", $"{Math.Max(KpiProjectsActive, 1)} frentes abiertos"),
+        new DashboardMetric("Publicaciones", _kpisLoading ? "..." : KpiPublications.ToString(), "Volumen de artículos en el sistema", "bi bi-journal-text", $"{Math.Max(KpiPublications, 1)} artículos totales", true),
+        new DashboardMetric("Aceptados", _kpisLoading ? "..." : KpiInExecution.ToString(), "Seguimiento de artículos en estado aceptado", "bi bi-check2-circle", $"{Math.Max(KpiInExecution, 1)} en seguimiento"),
+        new DashboardMetric("Altas del mes", _kpisLoading ? "..." : KpiNewThisMonth.ToString(), "Movimientos recientes en el mes actual", "bi bi-graph-up-arrow", $"{Math.Max(KpiNewThisMonth, 1)} registros recientes")
+    };
+
+    private IReadOnlyList<QuickAction> QuickActions
+    {
+        get
+        {
+            var actions = new List<QuickAction>();
+
+            if (IsAdmin || IsAuthor || IsUodide || IsAreaTecnica)
+            {
+                actions.Add(new QuickAction("Revisión de envíos", "Monitorea el flujo del artículo según tu rol actual.", "/management/workflow-review", "bi bi-arrow-repeat"));
+            }
+
+            if (CanInitiateRegistration)
+            {
+                actions.Add(new QuickAction("Registro manual", "Trabaja sobre el formulario activo y mutable.", "/articulos/registrar", "bi bi-pencil-square"));
+            }
+
+            if (IsAdmin || IsAnalyst)
+            {
+                actions.Add(new QuickAction("Formulario dinámico", "Configura campos, formularios y reglas activas.", "/configuration", "bi bi-sliders2-vertical"));
+                actions.Add(new QuickAction("Carga masiva", "Valida staging, corrige filas y procesa lotes.", "/management/exportinformation", "bi bi-cloud-arrow-up"));
+            }
+
+            if (IsAdmin || IsAnalyst || IsAuthor || IsExternalApiUser)
+            {
+                actions.Add(new QuickAction("Explorador externo", "Consulta DOI, autores y fuentes académicas.", "/management/externalapis", "bi bi-search"));
+            }
+
+            if (IsAdmin || IsAnalyst || IsAreaTecnica || CanViewReportingByPermission)
+            {
+                actions.Add(new QuickAction("Reportería", "Consulta indicadores, gráficos y exportables institucionales.", "/management/statisticalreports", "bi bi-bar-chart"));
+            }
+
+            if (IsAdmin || IsAnalyst || CanUseIntelligenceByPermission)
+            {
+                actions.Add(new QuickAction("Inteligencia IA", "Consulta predicciones, recomendaciones y entrenamiento.", "/management/intelligence", "bi bi-cpu"));
+            }
+
+            if (IsAdmin)
+            {
+                actions.Add(new QuickAction("Seguridad y roles", "Administra usuarios, permisos y asignaciones.", "/management/security-administration", "bi bi-shield-lock"));
+            }
+
+            return actions;
+        }
+    }
+
+    private IReadOnlyList<HeroAction> HeroActions
+    {
+        get
+        {
+            var actions = new List<HeroAction>();
+
+            if (CanInitiateRegistration)
+            {
+                actions.Add(new HeroAction("Registrar artículo", "/articulos/registrar", "bi bi-plus-lg", "principal-action principal-action--solid"));
+            }
+
+            if (IsAdmin || IsUodide || IsAreaTecnica || IsAuthor)
+            {
+                actions.Add(new HeroAction("Ir a revisión", "/management/workflow-review", "bi bi-check2-circle", "principal-action principal-action--ghost"));
+            }
+
+            if (IsAdmin || IsAnalyst)
+            {
+                actions.Add(new HeroAction("Ir a carga masiva", "/management/exportinformation", "bi bi-cloud-arrow-up", "principal-action principal-action--ghost"));
+            }
+
+            if (IsAdmin || IsAnalyst || IsAuthor || IsExternalApiUser)
+            {
+                actions.Add(new HeroAction("Consultar APIs externas", "/management/externalapis", "bi bi-box-arrow-up-right", "principal-action principal-action--ghost"));
+            }
+
+            return actions;
+        }
+    }
+
+    private IReadOnlyList<HeroAction> SpotlightActions
+        => HeroActions.Take(3).ToArray();
+
+    private IReadOnlyList<MediaSlide> MediaSlides => new[]
+    {
+        new MediaSlide("Escenario institucional", "Espacio preparado para destacar campus, facultades o piezas audiovisuales oficiales de la universidad.", "Fotos / videos", "Galería institucional"),
+        new MediaSlide("Dirección de investigación", "Aquí puede vivir un bloque rotativo con campañas, eventos, producción científica o mensajes estratégicos.", "Difusión", "Contenido transicional"),
+        new MediaSlide("Comunidad académica", "La portada ya queda lista para integrar testimonios, logros y material visual de docentes e investigadores.", "Docencia e investigación", "Historias destacadas")
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadUserData();
+        StartClock();
+        await LoadKpisAsync();
+    }
+
+    private async Task LoadUserData()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity?.IsAuthenticated == true)
+            {
+                UserName = user.FindFirst(ClaimTypes.Name)?.Value
+                    ?? user.FindFirst(ClaimTypes.Email)?.Value
+                    ?? user.Identity.Name
+                    ?? "Usuario";
+                Initials = GetInitials(UserName);
+                IsAdmin = user.IsInRole("Admin");
+                IsAnalyst = user.IsInRole("Analyst");
+                IsAuthor = user.IsInRole("Author");
+                IsUodide = user.IsInRole("WorkflowReviewerUodide");
+                IsAreaTecnica = user.IsInRole("WorkflowReviewerAreaTecnica") || user.IsInRole("WorkflowProcessorAreaTecnica");
+                IsExternalApiUser = user.IsInRole("ExternalApiUser");
+                CanRegisterByPermission = user.IsInRole("ArticleRegistrationUser");
+                CanViewReportingByPermission = user.IsInRole("ReportingViewer") || user.IsInRole("ReportingExporter") || user.IsInRole("ReportingAdvancedUser");
+                CanUseIntelligenceByPermission = user.IsInRole("IntelligenceViewer") || user.IsInRole("IntelligenceTrainer");
+                RegistrationEntryMode = (await RegistrationWorkflowSettingsClient.GetAsync())?.EntryMode
+                    ?? RegistrationEntryModes.AuthorAndUodide;
+                UserRole = ResolvePrimaryRole(user);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "No fue posible cargar los datos del usuario para el panel principal.");
+        }
+    }
+
+    private async Task LoadKpisAsync()
+    {
+        try
+        {
+            _kpisLoading = true;
+
+            var articlesTask = ArticlesClient.GetAllAsync();
+            var projectsTask = CatalogsService.GetProjectsAsync();
+
+            await Task.WhenAll(articlesTask, projectsTask);
+
+            var articles = articlesTask.Result ?? new List<ArticleListItemDto>();
+            var projects = projectsTask.Result ?? new List<CatalogItemDto>();
+
+            KpiProjectsActive = projects.Count;
+            KpiPublications = articles.Count;
+            KpiInExecution = articles.Count(a => (a.PublicationStatusName ?? string.Empty).Trim().ToUpperInvariant() == "ACEPTADO");
+
+            var now = DateTime.Now;
+            KpiNewThisMonth = articles.Count(a => a.CreatedAt.Year == now.Year && a.CreatedAt.Month == now.Month);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "No fue posible cargar los KPIs del panel principal.");
+        }
+        finally
+        {
+            _kpisLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private static string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "U";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant()
+            : parts[0][0].ToString().ToUpperInvariant();
+    }
+
+    private void StartClock()
+    {
+        UpdateClock();
+        timer = new Timer(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                UpdateClock();
+                StateHasChanged();
+            });
+        }, null, 1000, 1000);
+    }
+
+    private void UpdateClock()
+    {
+        var now = DateTime.Now;
+        CurrentTime = now.ToString("HH:mm:ss");
+        CurrentDate = now.ToString("dd 'de' MMMM 'de' yyyy", new System.Globalization.CultureInfo("es-ES"));
+        Greeting = now.Hour switch
+        {
+            var hour when hour < 12 => "Buenos días",
+            var hour when hour < 18 => "Buenas tardes",
+            _ => "Buenas noches"
+        };
+
+        if (now.Second % 6 == 0)
+        {
+            _mediaIndex = (_mediaIndex + 1) % MediaSlides.Count;
+        }
+    }
+
+    public void Dispose()
+    {
+        timer?.Dispose();
+    }
+
+    private static string ResolvePrimaryRole(ClaimsPrincipal user)
+    {
+        if (user.IsInRole("Admin")) return "Administrador";
+        if (user.IsInRole("WorkflowReviewerAreaTecnica")) return "Área Técnica";
+        if (user.IsInRole("WorkflowProcessorAreaTecnica")) return "Área Técnica";
+        if (user.IsInRole("WorkflowReviewerUodide")) return "UODIDE";
+        if (user.IsInRole("Author")) return "Autor";
+        if (user.IsInRole("Analyst")) return "Analista";
+        return "Usuario";
+    }
+
+    private sealed record DashboardMetric(string Title, string Value, string Description, string Icon, string Trend, bool Highlight = false);
+    private sealed record QuickAction(string Title, string Description, string Href, string Icon);
+    private sealed record HeroAction(string Title, string Href, string Icon, string CssClass);
+    private sealed record MediaSlide(string Title, string Description, string Badge, string Meta);
+}

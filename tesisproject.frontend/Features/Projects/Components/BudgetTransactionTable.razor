@@ -1,0 +1,210 @@
+﻿@using System.Globalization
+@using Microsoft.AspNetCore.Components
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Table
+@using tesisproject.shared.DTOs.Budgets
+@using tesisproject.shared.DTOs.Budgets.Request
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+@using tesisproject.shared.Enums
+@using tesisproject.frontend.Utils
+
+<DataTable TItem="BudgetTransactionDTO"
+           Items="@Transactions"
+           Columns="@_columns"
+           EmptyText="@EmptyText"
+           RowTemplate="@TransactionRowTemplate"
+           PageSize="@PageSize"
+           Total="@TotalTransactions" />
+
+@code {
+    // ===== Parámetros =====
+    [Parameter] public List<BudgetTransactionDTO>? Transactions { get; set; }
+    [Parameter] public string EmptyText { get; set; } = "Aún no hay transacciones.";
+    [Parameter] public EventCallback<int> OnExecuteDevengado { get; set; }
+    [Parameter] public int PageSize { get; set; } = 3;
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> TransactionTypes { get; set; } = Array.Empty<CatalogListItemDTO>();
+    [Parameter] public EventCallback<int> OnCancelTransaction { get; set; }
+
+    // ===== IDs de estado (control SOLO por ID) =====
+    private const int TYPE_CERTIFIED = 1;
+    private const int TYPE_EXECUTED = 2;
+    private const int TYPE_CANCELED = 3;
+
+    private int TotalTransactions => Transactions?.Count ?? 0;
+
+    // ===== Helpers: qué mostrar depende SOLO del estado =====
+    private static DateTime? GetDisplayDate(BudgetTransactionDTO t)
+        => t.TransactionTypeId switch
+        {
+            TYPE_CERTIFIED => t.CertifiedAt,
+            TYPE_EXECUTED => t.ExecutedAt,   // si en tu negocio quieres mostrar SIEMPRE CertifiedAt incluso en ejecutado, cambia esto por t.CertifiedAt
+            TYPE_CANCELED => t.CertifiedAt,  // no tenemos CanceledAt en el DTO mostrado
+            _ => t.CertifiedAt
+        };
+
+    private static string GetDisplayDescription(BudgetTransactionDTO t)
+        => t.TransactionTypeId switch
+        {
+            TYPE_CERTIFIED => t.CertificationDescription ?? "",
+            TYPE_EXECUTED => t.ExecutionDescription ?? "",
+            TYPE_CANCELED => t.CertificationDescription ?? "",
+            _ => t.CertificationDescription ?? ""
+        };
+
+    private static decimal GetDisplayAmount(BudgetTransactionDTO t)
+        => t.TransactionTypeId switch
+        {
+            TYPE_CERTIFIED => t.CertifiedAmount,
+            TYPE_EXECUTED => t.ExecutedAmount,
+            TYPE_CANCELED => t.CertifiedAmount,
+            _ => t.CertifiedAmount
+        };
+
+    private static string GetDisplayCUR(BudgetTransactionDTO t)
+        => t.TransactionTypeId switch
+        {
+            TYPE_CERTIFIED => "", // regla: certificación no tiene CUR
+            TYPE_EXECUTED => string.IsNullOrWhiteSpace(t.CURNumber) ? "" : t.CURNumber!,
+            TYPE_CANCELED => "",
+            _ => string.IsNullOrWhiteSpace(t.CURNumber) ? "" : t.CURNumber!
+        };
+
+    private static string GetDisplayBudgetItem(BudgetTransactionDTO t)
+        => string.IsNullOrWhiteSpace(t.BudgetItem) ? "" : t.BudgetItem!;
+
+    // ===== Columnas (ordenan por el mismo valor que se muestra) =====
+    private IReadOnlyList<ColumnDef<BudgetTransactionDTO>> _columns = new[]
+    {
+        new ColumnDef<BudgetTransactionDTO>("N°", t => t.BudgetTransactionId, Width: "60px", Sortable: true),
+
+        new ColumnDef<BudgetTransactionDTO>("Fecha",
+            t => (object?)GetDisplayDate(t),
+            Width: "150px",
+            Sortable: true),
+
+        new ColumnDef<BudgetTransactionDTO>("CUR",
+            t => GetDisplayCUR(t),
+            Width: "120px",
+            Sortable: true),
+
+        new ColumnDef<BudgetTransactionDTO>("Descripción",
+            t => GetDisplayDescription(t),
+            Width: "240px",
+            Sortable: true),
+
+        new ColumnDef<BudgetTransactionDTO>("Valor",
+            t => GetDisplayAmount(t),
+            Width: "120px",
+            Sortable: true),
+
+        new ColumnDef<BudgetTransactionDTO>("Partida presupuestaria",
+            t => GetDisplayBudgetItem(t),
+            Width: "200px",
+            Sortable: true),
+
+        new ColumnDef<BudgetTransactionDTO>("Nombre",
+            t => t.Name ?? "",
+            Width: "200px",
+            Sortable: true),
+
+        new ColumnDef<BudgetTransactionDTO>("Estado",
+            t => t.TransactionTypeId,
+            Width: "120px",
+            Sortable: true),
+
+        new ColumnDef<BudgetTransactionDTO>("Acción",
+            t => "",
+            Width: "140px",
+            Sortable: false),
+    };
+
+    // ===== Row Template =====
+    private RenderFragment<BudgetTransactionDTO> TransactionRowTemplate => transaction => @<text>
+    <td class="px-4 py-3 text-sm text-foreground align-middle">
+        @(Transactions is null ? "" : (Transactions.IndexOf(transaction) + 1).ToString())
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle">
+        @DateCell(GetDisplayDate(transaction))
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle">
+        @GetDisplayCUR(transaction)
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle">
+        @GetDisplayDescription(transaction)
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle text-right">
+        @FormatMoney(GetDisplayAmount(transaction))
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle">
+        @GetDisplayBudgetItem(transaction)
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle">
+        @transaction.Name
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle">
+        @{
+                var(bgClass, textClass) = GetTransactionTypeClasses(transaction.TransactionTypeId);
+            var label = GetTransactionTypeName(transaction.TransactionTypeId);
+        }
+        <span class="@($"px-2 py-1 rounded text-xs {bgClass} {textClass}")">
+            @label
+        </span>
+    </td>
+
+    <td class="px-4 py-3 text-sm text-foreground align-middle text-right">
+        @if (transaction.TransactionTypeId == TYPE_CERTIFIED)
+        {
+            <div class="flex justify-end gap-2">
+                <ActionButton Text="Devengar"
+                              Intent="ButtonIntent.Accept"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Xs"
+                              Execute="@(() => OnExecuteDevengado.InvokeAsync(transaction.BudgetTransactionId))" />
+
+                <ActionButton Text="Cancelar"
+                              Intent="ButtonIntent.Danger"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Xs"
+                              Execute="@(() => OnCancelTransaction.InvokeAsync(transaction.BudgetTransactionId))" />
+            </div>
+        }
+    </td>
+</text>;
+
+// ===== Celdas y utilidades =====
+private static RenderFragment DateCell(DateTime? dt) => builder =>
+{
+    var text = dt.ToSpanishShortDate();
+    var title = $"{dt.ToSpanishDate()} • {dt.ToRelativeTime()}";
+
+    builder.OpenElement(0, "span");
+    builder.AddAttribute(1, "title", title);
+    builder.AddContent(2, text);
+    builder.CloseElement();
+};
+
+private static string FormatMoney(decimal amount)
+    => amount.ToString("N2", CultureInfo.InvariantCulture);
+
+private string GetTransactionTypeName(int transactionTypeId)
+    => TransactionTypes.FirstOrDefault(t => t.Id == transactionTypeId)?.Name
+       ?? $"Tipo #{transactionTypeId}";
+
+private static (string bgClass, string textClass) GetTransactionTypeClasses(int transactionTypeId)
+    => transactionTypeId switch
+    {
+        // OJO: aquí mantengo tus colores originales por ahora; si estás usando un set restringido de clases,
+        // ajústalo con tus clases institucionales.
+        TYPE_CERTIFIED => ("bg-yellow-100", "text-yellow-800"),
+        TYPE_EXECUTED => ("bg-green-100", "text-green-700"),
+        TYPE_CANCELED => ("bg-red-100", "text-red-700"),
+        _ => ("bg-gray-200", "text-gray-700")
+    };
+}

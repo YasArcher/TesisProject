@@ -1,0 +1,86 @@
+﻿@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.SharedUI.Card
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.AppUser
+
+@inject IGroupService GroupService
+
+<Card Tone="CardTone.Default"
+      Class="bg-background border border-border rounded-2xl card-hover-primary transition-shadow">
+    <CardHeader>
+        <h3 class="text-lg font-semibold text-foreground">@Item.FullName</h3>
+        <p class="text-sm text-muted">
+            <span class="font-medium">Role:</span> @Item.Role
+        </p>
+    </CardHeader>
+
+    <CardBody>
+        <div class="text-sm text-foreground grid grid-cols-1 gap-y-2">
+            <div>
+                <span class="font-medium">Email:</span>
+                <span class="text-muted">@Item.Email</span>
+            </div>
+            <div>
+                <span class="font-medium">Phone:</span>
+                <span class="text-muted">@Item.Phone</span>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+        {
+            <p class="mt-2 text-sm text-red-500">@ErrorMessage</p>
+        }
+    </CardBody>
+
+    <CardFooter>
+        <div class="flex gap-2">
+            <ActionButton Text="Borrar"
+                          Intent="ButtonIntent.Neutral"
+                          Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Sm"
+                          Class="rounded-md"
+                          Disabled="@IsBusy"
+                          Execute="DeleteMemberAsync" />
+        </div>
+    </CardFooter>
+</Card>
+
+@code {
+    [Parameter] public ResolvedUserProfileDTO Item { get; set; } = default!;
+
+    [Parameter] public EventCallback<int> OnRemoved { get; set; }
+
+    private bool IsBusy { get; set; }
+    private string? ErrorMessage { get; set; }
+
+    private async Task DeleteMemberAsync()
+    {
+        ErrorMessage = null;
+        IsBusy = true;
+
+        try
+        {
+            var resp = await GroupService.RemoveMemberAsync(Item.GroupId, Item.UserGroupId);
+
+            if (resp.Success)
+            {
+                if (OnRemoved.HasDelegate)
+                    await OnRemoved.InvokeAsync(Item.UserGroupId);
+            }
+            else
+            {
+                ErrorMessage = resp.ToErrorMessage("No se pudo quitar el miembro.");
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = ex.Message;
+        }
+        finally
+        {
+            IsBusy = false;
+            StateHasChanged();
+        }
+    }
+}

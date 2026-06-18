@@ -1,0 +1,363 @@
+﻿@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.frontend.SharedUI.FileUpload
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.Document.Request
+@using tesisproject.shared.DTOs.Document.Response
+
+@inject IDocumentClientService DocumentService
+
+<Modal Id="@Id"
+       Title="@Title"
+       Size="ModalSize.Lg"
+       IsOpen="@IsOpen"
+       IsOpenChanged="@IsOpenChanged"
+       CloseOnBackdrop="true"
+       CloseOnEscape="true">
+
+    <ChildContent>
+
+        @if (!IsOpen)
+        {
+            @* no render innecesario *@
+        }
+        else if (_loading)
+        {
+            <div class="text-sm text-muted">Cargando documento...</div>
+        }
+        else if (!string.IsNullOrWhiteSpace(_loadError))
+        {
+            <div class="p-4 bg-error/10 border border-error/20 rounded-xl text-error text-sm">
+                @_loadError
+            </div>
+        }
+        else if (_document is null)
+        {
+            <div class="text-sm text-muted">No hay documento seleccionado.</div>
+        }
+        else
+        {
+            <EditForm EditContext="@_editContext" OnValidSubmit="HandleSaveAsync">
+                <DataAnnotationsValidator />
+
+                <div class="space-y-5">
+
+                    <TextInput TValue="string"
+                               Label="Código de resolución"
+                               @bind-Value="_model.ResolutionCode"
+                               For="() => _model.ResolutionCode"
+                               Placeholder="Ej: RES-2026-001"
+                               Disabled="@_saving"
+                               Required="false"
+                               MaxLength="100" />
+
+                    <div class="w-full">
+                        <label class="block text-sm font-medium text-foreground mb-1">
+                            Fecha de resolución
+                        </label>
+
+                        <InputDate class="w-full rounded-md border border-border px-3 py-2 shadow-sm
+                        focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary
+                        disabled:bg-muted disabled:cursor-not-allowed"
+                                   @bind-Value="_model.ResolutionDate"
+                                   disabled="@_saving" />
+
+                        @if (!string.IsNullOrWhiteSpace(_dateError))
+                        {
+                            <p class="mt-1 text-sm text-error">@_dateError</p>
+                        }
+                    </div>
+
+                    <div class="bg-background border border-border rounded-xl p-4">
+                        <div class="flex items-center justify-between gap-3 mb-3">
+                            <div>
+                                <div class="text-sm font-semibold text-foreground">Reemplazar archivo (opcional)</div>
+                                <div class="text-xs text-muted">Si seleccionas uno, se reemplaza el contenido del documento.</div>
+                            </div>
+                        </div>
+
+                        <FileUpload Id="doc-edit-upload"
+                                    UploadText="Haz clic para seleccionar el nuevo archivo"
+                                    AcceptedTypes=".pdf,.doc,.docx,.xlsx,.xls"
+                                    MaxFileSizeMB="20"
+                                    AllowRemove="true"
+                                    IsDisabled="@_saving"
+                                    IsUploading="@_savingFile"
+                                    UploadedFile="@_newFile"
+                                    OnFileSelected="HandleFileSelected"
+                                    OnFileRemoved="HandleFileRemoved"
+                                    OnError="HandleUploadError" />
+
+                        @if (!string.IsNullOrWhiteSpace(_uploadError))
+                        {
+                            <div class="mt-3 p-3 bg-error-subtle border border-error rounded-lg">
+                                <p class="text-sm text-error font-medium">@_uploadError</p>
+                            </div>
+                        }
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                    {
+                        <div class="p-4 bg-error/10 border border-error/20 rounded-xl text-error text-sm">
+                            @ErrorMessage
+                        </div>
+                    }
+
+                    <div class="flex justify-end gap-2 pt-2">
+                        <ActionButton Text="Cancelar"
+                                      Intent="ButtonIntent.Neutral"
+                                      Variant="ButtonVariant.Outline"
+                                      Disabled="@_saving"
+                                      Execute="HandleCancelAsync" />
+
+                        <ActionButton Text="Guardar"
+                                      Intent="ButtonIntent.Success"
+                                      Variant="ButtonVariant.Filled"
+                                      Disabled="@_saving"
+                                      Execute="HandleSubmitProxyAsync" />
+                    </div>
+                </div>
+            </EditForm>
+        }
+
+    </ChildContent>
+</Modal>
+
+@code {
+    [Parameter] public string Id { get; set; } = "document-edit-modal";
+    [Parameter] public string Title { get; set; } = "Editar documento";
+
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter] public int DocumentId { get; set; }
+
+    [Parameter] public EventCallback<DocumentResponseDTO> OnSaved { get; set; }
+
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public EventCallback<string?> ErrorMessageChanged { get; set; }
+
+    private DocumentResponseDTO? _document;
+
+    private bool _loading;
+    private string? _loadError;
+    private int _lastLoadedId;
+    private bool _saving;
+    private bool _savingFile;
+
+    private string? _uploadError;
+    private string? _dateError;
+
+    private IBrowserFile? _newFile;
+
+    private DocumentEditModel _model = new();
+    private EditContext? _editContext;
+
+    private bool _isLoadingInProgress;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!IsOpen)
+        {
+            ResetState();
+            return;
+        }
+
+        if (DocumentId <= 0)
+            return;
+
+        if (DocumentId != _lastLoadedId && !_isLoadingInProgress)
+        {
+            _lastLoadedId = DocumentId;
+            await LoadAsync(DocumentId);
+        }
+    }
+
+    private void ResetState()
+    {
+        _document = null;
+        _loading = false;
+        _loadError = null;
+        _lastLoadedId = 0;
+        _saving = false;
+        _savingFile = false;
+        _uploadError = null;
+        _dateError = null;
+        _newFile = null;
+        _editContext = null;
+        _isLoadingInProgress = false;
+    }
+
+    private async Task LoadAsync(int id)
+    {
+        if (_isLoadingInProgress)
+            return;
+
+        _isLoadingInProgress = true;
+        _loading = true;
+        _loadError = null;
+        _uploadError = null;
+        _dateError = null;
+        await SetErrorAsync(null);
+
+        try
+        {
+            var res = await DocumentService.GetByIdAsync(id, CancellationToken.None);
+
+            if (!res.Success || res.Data is null)
+            {
+                _document = null;
+                _loadError = res.ToErrorMessage("No se pudo cargar el documento.");
+                return;
+            }
+
+            _document = res.Data;
+
+            _model = new DocumentEditModel
+            {
+                ResolutionCode = _document.ResolutionCode,
+                ResolutionDate = _document.ResolutionDate
+            };
+
+            _editContext = new EditContext(_model);
+            _newFile = null;
+        }
+        catch (Exception ex)
+        {
+            _document = null;
+            _loadError = $"Error al cargar el documento: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+            _isLoadingInProgress = false;
+        }
+    }
+
+    private Task HandleFileSelected(IBrowserFile file)
+    {
+        _newFile = file;
+        _uploadError = null;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleFileRemoved()
+    {
+        _newFile = null;
+        _uploadError = null;
+        return Task.CompletedTask;
+    }
+
+    private Task HandleUploadError(string msg)
+    {
+        _uploadError = msg;
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleSubmitProxyAsync()
+    {
+        if (_editContext is null) return;
+
+        var ok = _editContext.Validate();
+        if (!ok)
+            return;
+
+        await HandleSaveAsync();
+    }
+
+    private async Task HandleSaveAsync()
+    {
+        if (_document is null || _document.DocumentId <= 0)
+            return;
+
+        _saving = true;
+        _savingFile = false;
+        _uploadError = null;
+        _dateError = null;
+        await SetErrorAsync(null);
+
+        try
+        {
+            if (_newFile is not null)
+            {
+                _savingFile = true;
+
+                var fileContent = new StreamContent(_newFile.OpenReadStream(maxAllowedSize: 20L * 1024 * 1024));
+                fileContent.Headers.ContentType =
+                    new System.Net.Http.Headers.MediaTypeHeaderValue(_newFile.ContentType);
+
+                var content = new MultipartFormDataContent();
+                content.Add(fileContent, "file", _newFile.Name);
+
+                var replace = await DocumentService.ReplaceFileAsync(_document.DocumentId, content, CancellationToken.None);
+
+                if (!replace.Success || replace.Data is null)
+                {
+                    _uploadError = replace.ToErrorMessage("No se pudo reemplazar el archivo del documento.");
+                    return;
+                }
+
+                _document = replace.Data;
+                _savingFile = false;
+            }
+
+            var updateDto = new UpdateDocumentRequestDTO
+            {
+                DocumentTypeId = _document.DocumentTypeId,
+                ResolutionCode = _model.ResolutionCode,
+                ResolutionDate = _model.ResolutionDate
+            };
+
+            var update = await DocumentService.UpdateAsync(_document.DocumentId, updateDto, CancellationToken.None);
+
+            if (!update.Success || update.Data is null)
+            {
+                await SetErrorAsync(update.ToErrorMessage("No se pudo actualizar el documento."));
+                return;
+            }
+
+            _document = update.Data;
+
+            if (OnSaved.HasDelegate)
+                await OnSaved.InvokeAsync(_document);
+
+            await CloseAsync();
+        }
+        catch (Exception ex)
+        {
+            await SetErrorAsync($"Error al guardar: {ex.Message}");
+        }
+        finally
+        {
+            _saving = false;
+            _savingFile = false;
+        }
+    }
+
+    private async Task HandleCancelAsync() => await CloseAsync();
+
+    private async Task CloseAsync()
+    {
+        ResetState();
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    private async Task SetErrorAsync(string? msg)
+    {
+        ErrorMessage = msg;
+        if (ErrorMessageChanged.HasDelegate)
+            await ErrorMessageChanged.InvokeAsync(msg);
+    }
+
+    private sealed class DocumentEditModel
+    {
+        [StringLength(100)]
+        public string? ResolutionCode { get; set; }
+
+        public DateTime? ResolutionDate { get; set; }
+    }
+}

@@ -1,0 +1,811 @@
+﻿@page "/projects/home"
+@using tesisproject.frontend.Features.Projects.Components
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.FilterBar
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.Export
+@using tesisproject.shared.DTOs.Filters
+@using tesisproject.shared.DTOs.Project.Response
+
+@inject IProjectClientService ProjectService
+@inject IProjectFiltersClientService ProjectFiltersService
+@inject NavigationManager Nav
+@inject IExportTemplateClientService ExportTemplates
+@inject IJSRuntime JS
+@inject IToastService Toast
+
+<div class="h-full min-h-0 flex flex-col gap-6 p-4 w-full">
+    <section class="shrink-0 flex flex-col gap-3 md:flex-row md:items-center md:justify-between min-w-0">
+        <div class="flex-1 min-w-0">
+            <FilterBar Config="@_filterConfig"
+                       OnApply="@HandleApplyFilters"
+                       OnClear="@HandleClearFilters"
+                       OnSearchInstant="@HandleSearchInstant" />
+        </div>
+
+        <div class="shrink-0 flex flex-wrap items-center gap-2">
+            <div class="relative">
+                <ActionButton Text="Exportar matriz"
+                              Execute="@OpenExportPanelAsync"
+                              Intent="ButtonIntent.Accept"
+                              Variant="ButtonVariant.Outline"
+                              Size="ButtonSize.Sm"
+                              Disabled="@isLoading" />
+
+                <ExportTemplateExpandablePanel TColumn="ColumnOption"
+                                               IsOpen="showExportPanel"
+                                               IsTemplatesLoading="isExportTemplatesLoading"
+                                               IsExporting="isExporting"
+                                               Templates="exportTemplates"
+                                               SelectedTemplateId="selectedTemplateId"
+                                               Columns="availableColumns"
+                                               SelectedColumnIds="selectedTemplateColumnIds"
+                                               TemplateChanged="OnTemplateChanged"
+                                               ColumnSelected="AddSelectedColumn"
+                                               ColumnUnselected="RemoveSelectedColumn"
+                                               CloseRequested="CloseExportPanel"
+                                               ExportRequested="ExportWithSelectedTemplateAsync"
+                                               GetColumnId="c => c.TemplateColumnId"
+                                               GetColumnLabel="c => c.DisplayLabel"
+                                               GetColumnOrder="c => c.OrderIndex"
+                                               GetColumnRequired="c => c.IsRequired"
+                                               EmptyTemplatesText="No hay plantillas de exportación configuradas. Cree una en la sección de Matriz > Exportar." />
+            </div>
+
+            <ActionButton Text="Crear Nuevo Proyecto"
+                          Execute="CreateNewProject"
+                          Intent="ButtonIntent.Accept"
+                          Variant="ButtonVariant.Filled"
+                          Size="ButtonSize.Sm"
+                          Disabled="@isLoading"
+                          Class="px-4 py-2 rounded-md" />
+        </div>
+    </section>
+
+    @if (isLoading)
+    {
+        <div class="flex-1 min-h-0 flex items-center justify-center">
+            <div class="text-center space-y-3">
+                <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+                <p class="text-sm text-muted">Cargando proyectos...</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <div class="flex-1 min-h-0 overflow-hidden">
+                <Container TItem="ProjectListResponseDTO"
+                           Items="pagedProjects"
+                           TotalCount="_totalItems"
+                           Title="Mis Proyectos"
+                           ShowItemCount="true"
+                           IsLoading="@isLoading"
+                           GridClasses="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6"
+                           EmptyStateTitle="No se encontraron proyectos"
+                           EmptyStateDescription="@GetEmptyStateDescription()"
+                           EnableScroll="true"
+                           ScrollbarType="ScrollbarType.Thin">
+
+                    <EmptyStateAction>
+                        <ActionButton Text="Crear Nuevo Proyecto"
+                                      Execute="CreateNewProject"
+                                      Intent="ButtonIntent.Accept"
+                                      Variant="ButtonVariant.Filled"
+                                      Size="ButtonSize.Sm"
+                                      Disabled="@isLoading"
+                                      Class="px-4 py-2 rounded-md" />
+                    </EmptyStateAction>
+
+                    <ChildContent Context="project">
+                        <div @key="project.ProjectId">
+                            <ProjectCard Item="project"
+                                         OnOpen="HandleOpen" />
+                        </div>
+                    </ChildContent>
+                </Container>
+            </div>
+
+            @if ((filteredProjects?.Count ?? 0) > 0)
+            {
+                <div class="shrink-0 pt-3 flex items-center justify-between gap-3">
+                    <div class="text-xs text-muted">
+                        Mostrando @pagedProjects.Count de @_totalItems
+                        (Página @_page de @_totalPages)
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <ActionButton Text="Anterior"
+                                      Execute="@PrevPage"
+                                      Intent="ButtonIntent.Accept"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Xs"
+                                      Disabled="@(_page <= 1 || isLoading)" />
+
+                        <ActionButton Text="Siguiente"
+                                      Execute="@NextPage"
+                                      Intent="ButtonIntent.Accept"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Xs"
+                                      Disabled="@(_page >= _totalPages || isLoading)" />
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private int _page = 1;
+    private readonly int _pageSize = 12;
+    private int _totalItems = 0;
+    private int _totalPages = 1;
+
+    private bool isLoading = true;
+    private bool showExportPanel = false;
+    private bool isExportTemplatesLoading = false;
+    private bool isExporting = false;
+
+    private string? errorMessage;
+    private string? currentSearch;
+    private int? selectedTemplateId;
+
+    private FilterQuery? currentFilters;
+
+    private List<ProjectListResponseDTO>? allProjects;
+    private List<ProjectListResponseDTO>? filteredProjects;
+    private List<ProjectListResponseDTO> pagedProjects = new();
+
+    private List<ExportTemplateListItemDTO>? exportTemplates;
+    private List<ColumnOption> availableColumns = new();
+    private HashSet<int> selectedTemplateColumnIds = new();
+
+    private FilterBarConfig _filterConfig = new()
+    {
+        SearchPlaceholder = "Buscar proyectos por nombre o código...",
+        DebounceMs = 400,
+        ShowChips = true,
+        Items = new List<FilterItemDescriptor>()
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFilterBootstrap();
+        await LoadProjects();
+    }
+
+    private async Task OpenExportPanelAsync()
+    {
+        showExportPanel = true;
+
+        if (exportTemplates is { Count: > 0 })
+            return;
+
+        try
+        {
+            isExportTemplatesLoading = true;
+
+            var resp = await ExportTemplates.ListTemplatesAsync();
+
+            if (!resp.Success)
+            {
+                Toast.ShowError(resp.ToErrorMessage("No se pudieron cargar las plantillas de exportación."));
+                exportTemplates = new List<ExportTemplateListItemDTO>();
+                return;
+            }
+
+            exportTemplates = resp.Data ?? new List<ExportTemplateListItemDTO>();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error al cargar plantillas: " + ex.Message);
+            exportTemplates = new List<ExportTemplateListItemDTO>();
+        }
+        finally
+        {
+            isExportTemplatesLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseExportPanel()
+    {
+        showExportPanel = false;
+        selectedTemplateId = null;
+        availableColumns.Clear();
+        selectedTemplateColumnIds.Clear();
+    }
+
+    private async Task OnTemplateChanged(ChangeEventArgs e)
+    {
+        availableColumns.Clear();
+        selectedTemplateColumnIds.Clear();
+
+        if (e?.Value is null || string.IsNullOrWhiteSpace(e.Value.ToString()))
+        {
+            selectedTemplateId = null;
+            return;
+        }
+
+        if (!int.TryParse(e.Value.ToString(), out var id))
+        {
+            selectedTemplateId = null;
+            return;
+        }
+
+        selectedTemplateId = id;
+
+        try
+        {
+            var tmplResp = await ExportTemplates.GetTemplateAsync(selectedTemplateId.Value);
+
+            if (!tmplResp.Success || tmplResp.Data is null)
+            {
+                Toast.ShowError(tmplResp.ToErrorMessage("No se pudo cargar el detalle de la plantilla."));
+                return;
+            }
+
+            var detail = tmplResp.Data;
+
+            if (detail.Columns is null || detail.Columns.Count == 0)
+            {
+                Toast.ShowWarning("La plantilla seleccionada no tiene columnas configuradas.");
+                return;
+            }
+
+            availableColumns = detail.Columns
+                .OrderBy(c => c.OrderIndex)
+                .Select(c =>
+                {
+                    var displayLabel =
+                        !string.IsNullOrWhiteSpace(c.FieldDisplayName)
+                            ? c.FieldDisplayName
+                            : !string.IsNullOrWhiteSpace(c.TargetHeader)
+                                ? c.TargetHeader
+                                : c.FieldKey ?? string.Empty;
+
+                    return new ColumnOption
+                    {
+                        TemplateColumnId = c.Id,
+                        FieldKey = c.FieldKey ?? string.Empty,
+                        DisplayLabel = displayLabel,
+                        OrderIndex = c.OrderIndex,
+                        IsRequired = c.IsRequired
+                    };
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error al cargar columnas de la plantilla: " + ex.Message);
+        }
+    }
+
+    private Task AddSelectedColumn(int templateColumnId)
+    {
+        selectedTemplateColumnIds.Add(templateColumnId);
+        return Task.CompletedTask;
+    }
+
+    private Task RemoveSelectedColumn(int templateColumnId)
+    {
+        selectedTemplateColumnIds.Remove(templateColumnId);
+        return Task.CompletedTask;
+    }
+
+    private async Task ExportWithSelectedTemplateAsync()
+    {
+        if (selectedTemplateId is null || selectedTemplateId.Value <= 0)
+        {
+            Toast.ShowWarning("Por favor seleccione una plantilla de exportación.");
+            return;
+        }
+
+        if (availableColumns.Count == 0)
+        {
+            Toast.ShowWarning("La plantilla seleccionada no tiene características disponibles.");
+            return;
+        }
+
+        if (selectedTemplateColumnIds.Count == 0)
+        {
+            Toast.ShowWarning("Seleccione al menos una característica para exportar.");
+            return;
+        }
+
+        try
+        {
+            isExporting = true;
+
+            var tmpl = exportTemplates?.FirstOrDefault(t => t.Id == selectedTemplateId.Value);
+            var exportName = string.IsNullOrWhiteSpace(tmpl?.Name) ? "Proyectos" : tmpl!.Name;
+
+            var selectedColumns = availableColumns
+                .Where(c => selectedTemplateColumnIds.Contains(c.TemplateColumnId))
+                .OrderBy(c => c.OrderIndex)
+                .ToList();
+
+            if (!selectedColumns.Any())
+            {
+                Toast.ShowWarning("No hay columnas seleccionadas para exportar.");
+                return;
+            }
+
+            var projectsSource = filteredProjects ?? allProjects ?? new List<ProjectListResponseDTO>();
+
+            var ids = projectsSource
+                .Select(p => p.ProjectId)
+                .Distinct()
+                .ToList();
+
+            var exportRequest = new ExportByTemplateRequestDTO
+            {
+                TemplateId = selectedTemplateId.Value,
+                ProjectIds = ids.Any() ? ids : null,
+                IncludedTemplateColumnIds = selectedColumns
+                    .Select(c => c.TemplateColumnId)
+                    .Distinct()
+                    .ToList(),
+                NameOverride = exportName
+            };
+
+            var r = await ExportTemplates.ExportMatrixExcelAsync(exportRequest);
+
+            if (!r.Success || r.Data is null)
+            {
+                Toast.ShowError(r.ToErrorMessage("Error al generar el archivo de exportación."));
+                return;
+            }
+
+            var file = r.Data;
+
+            var url = await JS.InvokeAsync<string>(
+                "docViewer.bytesToBlobUrl",
+                file.Bytes,
+                file.ContentType);
+
+            var fallbackName = string.IsNullOrWhiteSpace(exportRequest.NameOverride)
+                ? "proyectos.xlsx"
+                : $"{exportRequest.NameOverride}.xlsx";
+
+            var fileName = string.IsNullOrWhiteSpace(file.FileName)
+                ? fallbackName
+                : file.FileName;
+
+            await JS.InvokeVoidAsync("docViewer.downloadUrl", url, fileName);
+            await JS.InvokeVoidAsync("docViewer.revoke", url);
+
+            Toast.ShowSuccess(r.ToSuccessMessage("Exportación generada correctamente."));
+            CloseExportPanel();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error al exportar proyectos: " + ex.Message);
+        }
+        finally
+        {
+            isExporting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadProjects()
+    {
+        isLoading = true;
+        errorMessage = null;
+
+        try
+        {
+            var resp = await ProjectService.GetListAsync(onlyActive: true);
+            allProjects = resp.Success ? resp.Data ?? new() : new();
+
+            if (!resp.Success)
+                errorMessage = resp.ToErrorMessage("Error desconocido al cargar proyectos");
+
+            _page = 1;
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error de conexión: {ex.Message}";
+            allProjects = new();
+            filteredProjects = new();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadFilterBootstrap()
+    {
+        try
+        {
+            var bootstrapResp = await ProjectFiltersService.GetBootstrapAsync();
+
+            if (bootstrapResp.Success && bootstrapResp.Data != null)
+            {
+                var bootstrap = bootstrapResp.Data;
+
+                _filterConfig.Items = new List<FilterItemDescriptor>();
+
+                if (bootstrap.ProjectStates?.Any() == true)
+                {
+                    _filterConfig.Items.Add(new()
+                    {
+                        Key = "state",
+                        Label = "Estados de proyecto",
+                        Type = "select",
+                        EntityField = "ProjectStateName",
+                        Placeholder = "Todos los estados",
+                        Options = bootstrap.ProjectStates.Select(state => new OptionItem
+                        {
+                            Value = state.Name ?? string.Empty,
+                            Label = state.Name ?? string.Empty
+                        }).ToList()
+                    });
+                }
+
+                _filterConfig.Items.Add(new()
+                {
+                    Key = "projectDate",
+                    Label = "Fecha",
+                    Type = "datefieldrange",
+                    Operators = new() { "between" },
+                    Placeholder = "Filtrar por…",
+                    HelpText = "Seleccione cual tipo de fecha desea filtrar",
+                    Options = new List<OptionItem>
+                    {
+                        new() { Value = "ApprovalDate", Label = "Fecha de aprobación" },
+                        new() { Value = "StartDate", Label = "Fecha de inicio" },
+                        new() { Value = "TentativeEndDate", Label = "Fecha tentativa de fin" },
+                        new() { Value = "RealEndtDate", Label = "Fecha de finalización" }
+                    }
+                });
+
+                if (bootstrap.ProjectTypes?.Any() == true)
+                {
+                    _filterConfig.Items.Add(new()
+                    {
+                        Key = "type",
+                        Label = "Tipos de proyecto",
+                        Type = "select",
+                        EntityField = "ProjectTypeName",
+                        Placeholder = "Todos los tipos de proyecto",
+                        Options = bootstrap.ProjectTypes.Select(type => new OptionItem
+                        {
+                            Value = type.Name ?? string.Empty,
+                            Label = type.Name ?? string.Empty
+                        }).ToList()
+                    });
+                }
+
+                if (bootstrap.Funding?.Any() == true)
+                {
+                    _filterConfig.Items.Add(new()
+                    {
+                        Key = "funding",
+                        Label = "Tipo de financiamiento",
+                        Type = "select",
+                        EntityField = "FundingTypeId",
+                        Placeholder = "Todos los financiamientos",
+                        Options = bootstrap.Funding.Select(f => new OptionItem
+                        {
+                            Value = f.Id.ToString(),
+                            Label = f.Name ?? string.Empty
+                        }).ToList()
+                    });
+                }
+
+                if (bootstrap.Faculties?.Any() == true)
+                {
+                    _filterConfig.Items.Add(new()
+                    {
+                        Key = "faculty",
+                        Label = "Facultad",
+                        Type = "select",
+                        EntityField = "PrincipalCoordinatorFacultyId",
+                        Placeholder = "Todas las facultades",
+                        Options = bootstrap.Faculties.Select(f => new OptionItem
+                        {
+                            Value = f.Id.ToString(),
+                            Label = f.Name
+                        }).ToList()
+                    });
+                }
+
+                if (bootstrap.ResearchCategoryTypes?.Any() == true)
+                {
+                    var grouped = bootstrap.ResearchCategoryTypes
+                        .GroupBy(t => new { t.ResearchCategoryGroupId, t.ResearchCategoryGroupName });
+
+                    foreach (var group in grouped)
+                    {
+                        var groupLabel = group.Key.ResearchCategoryGroupName;
+
+                        foreach (var type in group.OrderBy(t => t.Id))
+                        {
+                            _filterConfig.Items.Add(new()
+                            {
+                                Key = $"researchType_{type.Id}",
+                                GroupKey = group.Key.ResearchCategoryGroupId.ToString(),
+                                GroupLabel = groupLabel,
+                                Label = type.Name,
+                                Type = "select",
+                                EntityField = "ResearchCategoryId",
+                                Placeholder = $"Todas las {type.Name}",
+                                Options = type.Categories.Select(c => new OptionItem
+                                {
+                                    Value = c.Id.ToString(),
+                                    Label = c.Name,
+                                    ParentValue = c.ParentCategoryId?.ToString()
+                                }).ToList()
+                            });
+                        }
+                    }
+                }
+
+                _filterConfig.Items.Add(new()
+                {
+                    Key = "executionPercentage",
+                    Label = "% de Ejecución",
+                    Type = "numberrange",
+                    EntityField = "ExecutionPercentage",
+                    HelpText = "Rango de porcentaje de ejecución (0-100)"
+                });
+
+                _filterConfig.Items.Add(new()
+                {
+                    Key = "externalParticipation",
+                    Label = "Participación externa",
+                    Type = "boolean",
+                    EntityField = "HasExternalParticipation",
+                    Placeholder = "Tiene participación externa",
+                    TrueLabel = "Sí",
+                    FalseLabel = "No"
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading filter bootstrap: {ex.Message}");
+
+            _filterConfig.Items = new List<FilterItemDescriptor>
+            {
+                new()
+                {
+                    Key = "projectDate",
+                    Label = "Fecha",
+                    Type = "datefieldrange",
+                    Operators = new() { "between" },
+                    Placeholder = "Filtrar por…",
+                    HelpText = "Seleccione si desea filtrar por fecha de inicio o fecha tentativa de fin",
+                    Options = new List<OptionItem>
+                    {
+                        new() { Value = "StartDate", Label = "Fecha de inicio" },
+                        new() { Value = "TentativeEndDate", Label = "Fecha tentativa de fin" }
+                    }
+                },
+                new()
+                {
+                    Key = "executionPercentage",
+                    Label = "% de Ejecución",
+                    Type = "numberrange",
+                    EntityField = "ExecutionPercentage",
+                    HelpText = "Rango de porcentaje de ejecución (0-100)"
+                }
+            };
+        }
+    }
+
+    private Task HandleApplyFilters(FilterQuery query)
+    {
+        currentFilters = query;
+        currentFilters.Search = null;
+        _page = 1;
+        ApplyFilters();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task HandleClearFilters()
+    {
+        currentFilters = null;
+        _page = 1;
+        ApplyFilters();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task HandleSearchInstant(string? text)
+    {
+        currentSearch = string.IsNullOrWhiteSpace(text) ? null : text;
+        _page = 1;
+        ApplyFilters();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void ApplyFilters()
+    {
+        if (allProjects == null)
+        {
+            filteredProjects = new();
+            return;
+        }
+
+        var query = allProjects.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(currentSearch))
+        {
+            var searchTerm = currentSearch.Trim().ToLowerInvariant();
+
+            query = query.Where(p =>
+                (p.ProjectName ?? string.Empty).ToLowerInvariant().Contains(searchTerm) ||
+                (p.ProjectCode ?? string.Empty).ToLowerInvariant().Contains(searchTerm));
+        }
+
+        foreach (var filter in currentFilters?.Filters ?? new())
+        {
+            if (filter.Field == "ResearchCategoryId" &&
+                filter.Value is string catStr &&
+                int.TryParse(catStr, out var catId))
+            {
+                query = query.Where(p =>
+                    p.ResearchCategoryIds != null &&
+                    p.ResearchCategoryIds.Contains(catId));
+
+                continue;
+            }
+
+            query = filter.Field switch
+            {
+                "ProjectStateName" when filter.Value is string state =>
+                    query.Where(p => p.ProjectStateName == state),
+
+                "ProjectTypeName" when filter.Value is string type =>
+                    query.Where(p => p.ProjectTypeName == type),
+
+                "FundingTypeId" when filter.Value is string fundingIdStr &&
+                                   int.TryParse(fundingIdStr, out var fundingId) =>
+                    query.Where(p => p.FundingTypeId != null &&
+                                     p.FundingTypeId.Contains(fundingId)),
+
+                "PrincipalCoordinatorFacultyId" when filter.Value is string facultyStr &&
+                                                   int.TryParse(facultyStr, out var facultyId) =>
+                    query.Where(p => p.PrincipalCoordinatorFacultyId == facultyId),
+
+                "StartDate" when filter.Value is string?[] dateRange && dateRange.Length == 2 =>
+                    ApplyDateRangeFilter(query, p => p.StartDate, dateRange),
+
+                "TentativeEndDate" when filter.Value is string?[] endDateRange && endDateRange.Length == 2 =>
+                    ApplyDateRangeFilter(query, p => p.TentativeEndDate, endDateRange),
+
+                "ExecutionPercentage" when filter.Value is string?[] percentageRange && percentageRange.Length == 2 =>
+                    ApplyNumberRangeFilter(query, p => p.ExecutionPercentage, percentageRange),
+
+                "HasExternalParticipation" when filter.Value is bool hasExt =>
+                    query.Where(p => p.HasExternalParticipation == hasExt),
+
+                _ => query
+            };
+        }
+
+        filteredProjects = query.ToList();
+        ApplyPaging();
+    }
+
+    private void ApplyPaging()
+    {
+        var source = filteredProjects ?? new List<ProjectListResponseDTO>();
+
+        _totalItems = source.Count;
+        _totalPages = Math.Max(1, (int)Math.Ceiling(_totalItems / (double)_pageSize));
+
+        if (_page > _totalPages) _page = _totalPages;
+        if (_page < 1) _page = 1;
+
+        pagedProjects = source
+            .Skip((_page - 1) * _pageSize)
+            .Take(_pageSize)
+            .ToList();
+    }
+
+    private Task PrevPage()
+    {
+        if (_page > 1)
+            _page--;
+
+        ApplyPaging();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task NextPage()
+    {
+        if (_page < _totalPages)
+            _page++;
+
+        ApplyPaging();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private IQueryable<ProjectListResponseDTO> ApplyDateRangeFilter(
+        IQueryable<ProjectListResponseDTO> query,
+        Func<ProjectListResponseDTO, DateTime?> dateSelector,
+        string?[] dateRange)
+    {
+        var fromDate = !string.IsNullOrWhiteSpace(dateRange[0]) ? DateTime.Parse(dateRange[0]) : (DateTime?)null;
+        var toDate = !string.IsNullOrWhiteSpace(dateRange[1]) ? DateTime.Parse(dateRange[1]) : (DateTime?)null;
+
+        if (fromDate.HasValue && toDate.HasValue)
+            return query.Where(p => dateSelector(p).HasValue &&
+                                    dateSelector(p) >= fromDate &&
+                                    dateSelector(p) <= toDate);
+
+        if (fromDate.HasValue)
+            return query.Where(p => dateSelector(p).HasValue && dateSelector(p) >= fromDate);
+
+        if (toDate.HasValue)
+            return query.Where(p => dateSelector(p).HasValue && dateSelector(p) <= toDate);
+
+        return query;
+    }
+
+    private IQueryable<ProjectListResponseDTO> ApplyNumberRangeFilter(
+        IQueryable<ProjectListResponseDTO> query,
+        Func<ProjectListResponseDTO, decimal?> numberSelector,
+        string?[] numberRange)
+    {
+        var minValue = !string.IsNullOrWhiteSpace(numberRange[0]) ? decimal.Parse(numberRange[0]) : (decimal?)null;
+        var maxValue = !string.IsNullOrWhiteSpace(numberRange[1]) ? decimal.Parse(numberRange[1]) : (decimal?)null;
+
+        if (minValue.HasValue && maxValue.HasValue)
+            return query.Where(p => numberSelector(p).HasValue &&
+                                    numberSelector(p) >= minValue &&
+                                    numberSelector(p) <= maxValue);
+
+        if (minValue.HasValue)
+            return query.Where(p => numberSelector(p).HasValue && numberSelector(p) >= minValue);
+
+        if (maxValue.HasValue)
+            return query.Where(p => numberSelector(p).HasValue && numberSelector(p) <= maxValue);
+
+        return query;
+    }
+
+    private string GetEmptyStateDescription()
+    {
+        var hasFilters = currentFilters?.Filters?.Any() == true;
+        var hasSearch = !string.IsNullOrWhiteSpace(currentSearch);
+
+        if (hasFilters || hasSearch)
+            return "No se encontraron proyectos que coincidan con la búsqueda o los filtros aplicados. Ajusta los criterios.";
+
+        return "Comienza creando tu primer proyecto para organizar tu trabajo.";
+    }
+
+    private Task HandleOpen(ProjectListResponseDTO item)
+    {
+        Nav.NavigateTo($"/projects/{item.ProjectId}");
+        return Task.CompletedTask;
+    }
+
+    private void CreateNewProject()
+    {
+        Nav.NavigateTo("/projects/create");
+    }
+
+    private sealed class ColumnOption
+    {
+        public int TemplateColumnId { get; set; }
+        public string FieldKey { get; set; } = string.Empty;
+        public string DisplayLabel { get; set; } = string.Empty;
+        public int OrderIndex { get; set; }
+        public bool IsRequired { get; set; }
+    }
+}

@@ -1,0 +1,1379 @@
+﻿@page "/projects/create"
+
+@using System.Text.Json;
+@using tesisproject.frontend.Features.Components
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.Algorithms.Response
+@using tesisproject.shared.DTOs.Budgets.Request
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
+@using tesisproject.shared.DTOs.Document.Request
+@using tesisproject.shared.DTOs.Document.Response
+@using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.AppUser
+@using tesisproject.shared.DTOs.Filters
+@using tesisproject.shared.DTOs.Group.Request
+@using tesisproject.shared.DTOs.ObjectiveActivity.Request
+@using tesisproject.shared.DTOs.Project.Request
+@using tesisproject.shared.DTOs.ProjectObjective.Request
+@using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
+@using tesisproject.shared.DTOs.Convocation.Response
+@using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.ExternalResearcher.Request
+@using tesisproject.shared.DTOs.ExternalResearcher.Response
+@using tesisproject.shared.DTOs.Institution.Response
+
+@using Microsoft.AspNetCore.Components.Forms
+@using System.Net.Http
+@using System.Net.Http.Headers
+
+@implements IDisposable
+
+@inject IDocumentRecognitionClientService DocumentRecognitionClient
+@inject NavigationManager Nav
+@inject IDocumentTypeClientService DocumentTypeClient
+@inject IProjectTypeClientService ProjectTypeClient
+@inject IMemberRoleTypeClientService MemberRoleTypeClient
+@inject IExternalAcademicsClientService ExternalAcademicsClient
+@inject IObjectiveTypeClientService ObjectiveTypeClient
+@inject IDocumentClientService DocumentClient
+@inject IProjectClientService ProjectClient
+@inject IResearchCategoryClientService ResearchCategoryClient
+@inject IResearchCategoryTypeClientService ResearchCategoryTypeClient
+@inject IFundingTypeClientService FundingTypeClient
+@inject IExternalUserService ExternalUserService
+@inject IResearchCategoryGroupClientService ResearchCategoryGroupClient
+@inject IToastService Toast
+@inject IConvocationClientService ConvocationClient
+@inject IExternalResearcherClientService ExternalResearcherClient
+@inject IInstitutionClientService InstitutionClient
+@inject IProjectOriginTypeClientService ProjectOriginTypeClient
+
+<div class="w-full h-full min-h-0 flex flex-col overflow-hidden bg-page-bg">
+    <!-- Header -->
+    <header class="shrink-0 px-4 md:px-6 py-3 border-b bg-background border-border">
+        <div class="max-w-7xl mx-auto w-full">
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center bg-primary shrink-0">
+                    <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+
+                <div class="min-w-0">
+                    <h1 class="text-xl md:text-2xl font-bold text-foreground truncate">
+                        Crear Nuevo Proyecto
+                    </h1>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Contenedor principal -->
+    <div class="flex-1 min-h-0 overflow-hidden">
+        <div class="max-w-7xl mx-auto w-full h-full min-h-0 flex flex-col px-4 md:px-6 py-3 gap-3">
+
+            <!-- Progreso -->
+            <section class="shrink-0 rounded-xl p-3 shadow-sm bg-background border border-border">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-semibold text-foreground">
+                        Paso @CurrentStep de 6
+                    </span>
+                </div>
+
+                <div class="rounded-full h-2 mb-3 overflow-hidden bg-border">
+                    <div class="h-2 rounded-full transition-all duration-500 ease-out bg-primary"
+                         style="width:@($"{Progress}%")"></div>
+                </div>
+
+                <div class="flex justify-between items-start gap-1 md:gap-2">
+                    @foreach (var step in GetSteps())
+                    {
+                        <div class="flex flex-col items-center flex-1 min-w-0">
+                            <div class="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[11px] md:text-xs font-bold mb-1.5 transition-all duration-300 @GetStepCircleClass(step.Number)">
+                                @if (CurrentStep > step.Number)
+                                {
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                }
+                                else
+                                {
+                                    @step.Number
+                                }
+                            </div>
+
+                            <span class="hidden md:block text-[11px] text-center leading-tight transition-all duration-300 @GetStepTextClass(step.Number)">
+                                @step.Label
+                            </span>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <!-- Contenido -->
+            <section class="flex-1 min-h-0 rounded-xl shadow-sm overflow-hidden bg-background border border-border">
+                <div class="h-full min-h-0 overflow-y-auto p-4 md:p-5">
+                    <div class="@(CurrentStep == 1 ? "block" : "hidden")">
+                        <ProjectCreateStep1Documents IsBusy="@IsStep1Busy"
+                                                     OnResolutionFileSelected="@HandleInitialFileSelected"
+                                                     OnDideFileSelected="@HandleDideFileSelected" />
+                    </div>
+
+                    <div class="@(CurrentStep == 2 ? "block" : "hidden")">
+                        <ProjectCreateStep2ResolutionBudget ResolutionModel="@ResolutionData"
+                                                            DideModel="@DideData"
+                                                            IsBusy="@IsStep2Busy"
+                                                            ResearchTypeOptions="@_researchTypeOptions"
+                                                            FundingTypeOptions="@_fundingTypeOptions"
+                                                            Budgets="@_budgets"
+                                                            BudgetsChanged="@OnBudgetsChanged"
+                                                            Convocations="@_convocations"
+                                                            ConvocationId="@_selectedConvocationId"
+                                                            ConvocationIdChanged="id => _selectedConvocationId = id"
+                                                            ProjectOriginTypes="@_projectOriginTypes"
+                                                            ProjectOriginTypeId="@_selectedProjectOriginTypeId"
+                                                            ProjectOriginTypeIdChanged="id => _selectedProjectOriginTypeId = id" />
+                    </div>
+
+                    <div class="@(CurrentStep == 3 ? "block" : "hidden")">
+                        <ProjectCreateStep3ProjectTeam DideModel="@DideData"
+                                                       IsBusy="false"
+                                                       MemberRoleTypeOptions="@_memberRoleTypeOptions"
+                                                       Faculties="@_faculties"
+                                                       SingleInstanceRoleIds="@_singleInstanceRoleIds"
+                                                       OnAddResearcherRequested="HandleOpenResearcherPicker"
+                                                       OnAddExternalResearcherRequested="HandleOpenExternalResearcherPicker"
+                                                       OnResearchersChanged="@HandleResearchersChanged"
+                                                       ExternalResearchers="@_selectedExternalResearchers"
+                                                       OnRemoveExternalResearcherRequested="HandleRemoveExternalResearcher" />
+                    </div>
+
+                    <UserPickerModal ModalId="wizard-user-picker"
+                                     IsOpen="@_showUserPicker"
+                                     IsOpenChanged="v => _showUserPicker = v"
+                                     Users="@_researcherCandidates"
+                                     InitialSelectedUserId="@_preselectedUserId"
+                                     OnSubmit="HandleResearcherPickedAsync"
+                                     OnCancel="() => _showUserPicker = false"
+                                     Roles="@_memberRolesForWizard"
+                                     @bind-SelectedRoleId="_selectedRoleIdForWizard" />
+
+                    <ExternalResearcherPickerModal ModalId="wizard-external-researcher-picker"
+                                                   IsOpen="@_showExternalResearcherPicker"
+                                                   IsOpenChanged="v => _showExternalResearcherPicker = v"
+                                                   Researchers="@_externalResearcherCandidates"
+                                                   OnSubmit="HandleExternalResearcherPickedAsync"
+                                                   OnCancel="() => _showExternalResearcherPicker = false"
+                                                   OnCreateNewRequested="HandleOpenExternalResearcherCreateModal" />
+
+                    <ExternalResearcherCreateModal ModalId="wizard-external-researcher-create"
+                                                   IsOpen="@_showExternalResearcherCreateModal"
+                                                   IsOpenChanged="v => _showExternalResearcherCreateModal = v"
+                                                   OnSave="HandleExternalResearcherCreatedAsync"
+                                                   OnCancel="HandleExternalResearcherCreateCanceled"
+                                                   InstitutionSuggestions="@_institutionSuggestions"
+                                                   OnInstitutionSearchRequested="HandleInstitutionSearchAsync" />
+
+                    <div class="@(CurrentStep == 4 ? "block" : "hidden")">
+                        <ProjectCreateStep4ResearchCategories DideModel="@DideData"
+                                                              ResearchCategoryTree="@_researchCategoryTree"
+                                                              ResearchCategoryTypes="@_researchCategoryTypes"
+                                                              ResearchCategoryGroups="@_researchCategoryGroups"
+                                                              OnResearchCategoriesChanged="@HandleResearchCategoriesChanged" />
+                    </div>
+
+                    <div class="@(CurrentStep == 5 ? "block" : "hidden")">
+                        <ProjectCreateStep5Objectives DideModel="@DideData"
+                                                      OnObjectivesChanged="@HandleObjectivesChanged" />
+                    </div>
+
+                    <div class="@(CurrentStep == 6 ? "block" : "hidden")">
+                        <ProjectCreateStep6Summary ResolutionModel="@ResolutionData"
+                                                   DideModel="@DideData"
+                                                   DocumentTypeOptions="@_documentTypeOptions"
+                                                   ResearchTypeOptions="@_researchTypeOptions"
+                                                   MemberRoleTypeOptions="@_memberRoleTypeOptions"
+                                                   ObjectiveTypeOptions="@_objectiveTypeOptions"
+                                                   Faculties="@_faculties"
+                                                   FundingTypeOptions="@_fundingTypeOptions"
+                                                   Budgets="@_budgets"
+                                                   SelectedResearchCategories="@_selectedResearchCategories"
+                                                   CoordinatorRoleId="@_coordinatorRoleId"
+                                                   ConvocationName="@_activeConvocation?.Name" />
+                    </div>
+                </div>
+            </section>
+
+            <!-- Footer -->
+            <footer class="shrink-0 rounded-xl p-3 shadow-sm flex justify-between items-center gap-3 bg-background border border-border">
+                <div class="flex gap-2 md:gap-3">
+                    <ActionButton Text="Cancelar"
+                                  Execute="HandleCancel"
+                                  Intent="ButtonIntent.Neutral"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm"
+                                  Disabled="@IsSaving" />
+
+                    <ActionButton Text="Atrás"
+                                  Execute="GoPrevious"
+                                  Intent="ButtonIntent.Neutral"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm"
+                                  Disabled="@(CurrentStep == 1 || IsSaving)" />
+                </div>
+
+                @if (CurrentStep < 6)
+                {
+                    <ActionButton Text="Siguiente"
+                                  Execute="GoNext"
+                                  Intent="ButtonIntent.Accept"
+                                  Variant="ButtonVariant.Filled"
+                                  Size="ButtonSize.Sm"
+                                  Disabled="@(!CanGoNext)" />
+                }
+                else
+                {
+                    <ActionButton Text="Crear Proyecto"
+                                  Execute="HandleSaveAsync"
+                                  Intent="ButtonIntent.Accept"
+                                  Variant="ButtonVariant.Filled"
+                                  Size="ButtonSize.Md"
+                                  Disabled="@IsSaving"
+                                  ConfirmBeforeExecute="true"
+                                  ConfirmTitle="Confirmar creación"
+                                  ConfirmMessage="¿Seguro que deseas crear el proyecto con la información mostrada en el resumen?"
+                                  ConfirmButtonText="Crear"
+                                  CancelButtonText="Revisar" />
+                }
+            </footer>
+        </div>
+    </div>
+</div>
+
+@code {
+    // ==========================
+    // Wizard state
+    // ==========================
+
+    private int CurrentStep { get; set; } = 1;
+    private CancellationTokenSource? _dideCts;
+    private CancellationTokenSource? _resolutionCts;
+
+    private int _defaultStateId = 1;
+    private int _selectedProjectTypeId = 1;
+    private int _fundingTypeId = 0;
+    private List<ConvocationListItemResponseDTO> _convocations = new();
+    private ConvocationListItemResponseDTO? _activeConvocation;
+    private List<ExternalResearcherListItemDTO> _selectedExternalResearchers = new();
+
+    private int? _selectedRoleIdForWizard;
+    private IEnumerable<MemberRoleTypeDetailDTO> _memberRolesForWizard = Array.Empty<MemberRoleTypeDetailDTO>();
+
+    // Investigadores externos
+    private bool _showExternalResearcherPicker;
+    private bool _showExternalResearcherCreateModal;
+
+    private List<CatalogListItemDTO> _projectOriginTypes = new();
+    private int _selectedProjectOriginTypeId = 0;
+
+    private List<ExternalResearcherListItemDTO> _externalResearcherCandidates = new();
+    private List<InstitutionListItemDTO> _institutionSuggestions = new();
+    private List<InstitutionListItemDTO> _allInstitutions = new();
+
+    // Catálogos para selects
+    private List<CatalogListItemDTO> _documentTypeOptions = new();
+    private List<CatalogListItemDTO> _researchTypeOptions = new();
+    private List<MemberRoleTypeListItemDTO> _memberRoleTypeOptions = new();
+    private List<CatalogListItemDTO> _objectiveTypeOptions = new();
+
+    private List<int> _singleInstanceRoleIds = new();
+
+    private List<ExternalFacultyDTO> _faculties = new();
+    private List<CatalogListItemDTO> _fundingTypeOptions = new();
+    private List<CreateBudgetRequestDTO> _budgets = new();
+    private int? _coordinatorRoleId;
+
+    private bool _showUserPicker;
+    private List<ResolvedUserProfileDTO> _researcherCandidates = new();
+    private int? _preselectedUserId;
+    private byte[]? _resolutionFileBytes;
+    private int? _selectedConvocationId;
+
+    private DocumentResponseDTO? _projectDocument;
+    private bool IsStep5Valid => AreObjectivesAndActivitiesValid();
+
+    private const long MaxDideFileSizeBytes = 10L * 1024 * 1024;
+    private const long MaxResolutionFileSizeBytes = 10L * 1024 * 1024;
+
+    private IReadOnlyList<ResearchCategoryTreeItemDTO> _researchCategoryTree
+        = Array.Empty<ResearchCategoryTreeItemDTO>();
+
+    private IReadOnlyList<ResearchCategoryTypeListItemDTO> _researchCategoryTypes
+        = Array.Empty<ResearchCategoryTypeListItemDTO>();
+
+    private List<ResearchCategoryTreeItemDTO> _selectedResearchCategories = new();
+    private List<CatalogListItemDTO> _researchCategoryGroups = new();
+
+    private int Progress => (int)Math.Round(CurrentStep * 100.0 / 6.0);
+
+    private ResolutionInfo ResolutionData { get; set; } = new();
+    private DideProjectFormInfo DideData { get; set; } = new();
+
+    private bool IsStep1Busy { get; set; }
+    private bool IsStep2Busy { get; set; }
+    private bool IsSaving { get; set; }
+
+    private IBrowserFile? _selectedResolutionFile;
+    private IBrowserFile? _selectedDideFile;
+
+    // ==========================
+    // UI Helper Methods
+    // ==========================
+
+    private record StepInfo(int Number, string Label);
+
+    private List<StepInfo> GetSteps() => new()
+    {
+        new(1, "Carga de documentos"),
+        new(2, "Resolución y presupuesto"),
+        new(3, "Proyecto y equipo"),
+        new(4, "Categorías de investigación"),
+        new(5, "Objetivos y actividades"),
+        new(6, "Resumen y confirmación")
+    };
+
+    private void HandleObjectivesChanged()
+    {
+        StateHasChanged();
+    }
+
+    private string GetStepCircleClass(int stepNumber)
+    {
+        if (CurrentStep > stepNumber)
+            return "bg-secondary text-white";
+
+        if (CurrentStep == stepNumber)
+            return "bg-primary text-white ring-4 ring-primary-subtle";
+
+        return "bg-border text-muted";
+    }
+
+    private string GetStepTextClass(int stepNumber)
+    {
+        if (CurrentStep >= stepNumber)
+            return "text-foreground font-semibold";
+
+        return "text-muted font-normal";
+    }
+
+    private string GetCurrentStepLabel()
+    {
+        var steps = GetSteps();
+        return steps.FirstOrDefault(s => s.Number == CurrentStep)?.Label ?? "";
+    }
+
+    // ==========================
+    // Validaciones para Next
+    // ==========================
+
+    private bool IsStep1Valid =>
+        _selectedResolutionFile is not null;
+
+    private bool IsStep2Valid =>
+        !string.IsNullOrWhiteSpace(DideData.ProjectName)
+        && DideData.ResearchTypeId.HasValue
+        && DideData.ResearchTypeId.Value > 0
+        && _budgets.Any(b => b.FundingTypeId > 0 && b.InitialAmount > 0);
+
+    private bool HasSingleInstanceRoleConflicts()
+    {
+        if (DideData.Researchers is null || DideData.Researchers.Count == 0)
+            return false;
+
+        var conflicts = DideData.Researchers
+            .Where(r => r.Role > 0 && _singleInstanceRoleIds.Contains(r.Role))
+            .GroupBy(r => r.Role)
+            .Any(g => g.Count() > 1);
+
+        return conflicts;
+    }
+
+    private bool IsStep3Valid =>
+        !HasSingleInstanceRoleConflicts();
+
+    private bool CanGoNext => CurrentStep switch
+    {
+        1 => IsStep1Valid && !IsStep1Busy,
+        2 => IsStep2Valid && !IsStep2Busy,
+        3 => IsStep3Valid,
+        4 => true,
+        5 => IsStep5Valid,
+        _ => false
+    };
+
+    // ==========================
+    // Ciclo de vida
+    // ==========================
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCatalogsAsync();
+    }
+
+    private async Task LoadCatalogsAsync()
+    {
+        try
+        {
+            var docTypeResult = await DocumentTypeClient.GetListAsync(
+                onlyActives: true,
+                ct: CancellationToken.None
+            );
+
+            if (docTypeResult.Success && docTypeResult.Data is not null)
+                _documentTypeOptions = docTypeResult.Data;
+            else if (!docTypeResult.Success)
+                Toast.ShowWarning(docTypeResult.ToErrorMessage("No se pudieron cargar los tipos de documento."));
+
+            var researchTypeResult = await ProjectTypeClient.GetListAsync(
+                onlyActives: true,
+                ct: CancellationToken.None);
+
+            if (researchTypeResult.Success && researchTypeResult.Data is not null)
+                _researchTypeOptions = researchTypeResult.Data;
+            else if (!researchTypeResult.Success)
+                Toast.ShowWarning(researchTypeResult.ToErrorMessage("No se pudieron cargar los tipos de proyecto."));
+
+            var memberRoleTypeResult = await MemberRoleTypeClient.GetListAsync(
+                onlyActives: true,
+                ct: CancellationToken.None
+            );
+
+            var originTypesResult = await ProjectOriginTypeClient.GetListAsync(
+                onlyActives: true,
+                ct: CancellationToken.None);
+
+            if (originTypesResult.Success && originTypesResult.Data is not null)
+            {
+                _projectOriginTypes = originTypesResult.Data;
+
+                if (_selectedProjectOriginTypeId <= 0)
+                    _selectedProjectOriginTypeId = _projectOriginTypes.FirstOrDefault()?.Id ?? 0;
+            }
+            else if (!originTypesResult.Success)
+            {
+                Toast.ShowWarning(originTypesResult.ToErrorMessage("No se pudieron cargar los tipos de origen del proyecto."));
+            }
+
+            if (memberRoleTypeResult.Success && memberRoleTypeResult.Data is not null)
+            {
+                _memberRoleTypeOptions = memberRoleTypeResult.Data
+                    .Where(x => x.Flag == 1)
+                    .ToList();
+
+                _singleInstanceRoleIds = _memberRoleTypeOptions
+                    .Where(x =>
+                        x.Name.Contains("coordinador", StringComparison.OrdinalIgnoreCase) ||
+                        x.Name.Contains("subrogante", StringComparison.OrdinalIgnoreCase))
+                    .Select(x => x.Id)
+                    .ToList();
+
+                var coordinator = _memberRoleTypeOptions
+                    .FirstOrDefault(x =>
+                        x.Name.Contains("coordinador", StringComparison.OrdinalIgnoreCase) &&
+                        x.Name.Contains("principal", StringComparison.OrdinalIgnoreCase));
+
+                _coordinatorRoleId = coordinator?.Id;
+
+                _memberRolesForWizard = _memberRoleTypeOptions
+                    .Select(r => new MemberRoleTypeDetailDTO
+                    {
+                        Id = r.Id,
+                        Name = r.Name,
+                        IsActive = r.IsActive,
+                        Flag = r.Flag
+                    })
+                    .ToList();
+
+                var convocationResult = await ConvocationClient.GetListAsync(CancellationToken.None);
+
+                if (convocationResult.Success && convocationResult.Data is not null)
+                {
+                    _convocations = convocationResult.Data;
+
+                    _activeConvocation = _convocations
+                        .Where(c => c.IsActive)
+                        .OrderBy(c => c.Id)
+                        .LastOrDefault();
+
+                    _selectedConvocationId = _activeConvocation?.Id;
+
+                    if (_activeConvocation is null)
+                        Toast.ShowWarning("No se encontró ninguna convocatoria activa.");
+                }
+                else if (!convocationResult.Success)
+                {
+                    Toast.ShowWarning(convocationResult.ToErrorMessage("No se pudieron cargar las convocatorias."));
+                }
+            }
+            else if (!memberRoleTypeResult.Success)
+            {
+                Toast.ShowWarning(memberRoleTypeResult.ToErrorMessage("No se pudieron cargar los roles de miembro."));
+            }
+
+            var facultiesResult = await ExternalAcademicsClient.GetFacultiesWithProgramsAsync(CancellationToken.None);
+
+            if (facultiesResult.Success && facultiesResult.Data is not null)
+                _faculties = facultiesResult.Data;
+            else if (!facultiesResult.Success)
+                Toast.ShowWarning(facultiesResult.ToErrorMessage("No se pudieron cargar las facultades y programas."));
+
+            var objectiveTypeResult = await ObjectiveTypeClient.GetListAsync(
+                onlyActives: true,
+                ct: CancellationToken.None);
+
+            if (objectiveTypeResult.Success && objectiveTypeResult.Data is not null)
+                _objectiveTypeOptions = objectiveTypeResult.Data;
+            else if (!objectiveTypeResult.Success)
+                Toast.ShowWarning(objectiveTypeResult.ToErrorMessage("No se pudieron cargar los tipos de objetivo."));
+
+            var categoryTreeResult = await ResearchCategoryClient.GetTreeAsync(
+                onlyActives: true,
+                ct: CancellationToken.None);
+
+            if (categoryTreeResult.Success && categoryTreeResult.Data is not null)
+                _researchCategoryTree = categoryTreeResult.Data;
+            else if (!categoryTreeResult.Success)
+                Toast.ShowWarning(categoryTreeResult.ToErrorMessage("No se pudo cargar el árbol de categorías."));
+
+            var categoryTypeResult = await ResearchCategoryTypeClient.ListAsync(
+                onlyActives: true,
+                ct: CancellationToken.None);
+
+            if (categoryTypeResult.Success && categoryTypeResult.Data is not null)
+                _researchCategoryTypes = categoryTypeResult.Data;
+            else if (!categoryTypeResult.Success)
+                Toast.ShowWarning(categoryTypeResult.ToErrorMessage("No se pudieron cargar los tipos de categoría."));
+
+            var categoryGroupResult = await ResearchCategoryGroupClient.GetListAsync(
+                onlyActives: true,
+                ct: CancellationToken.None);
+
+            if (categoryGroupResult.Success && categoryGroupResult.Data is not null)
+                _researchCategoryGroups = categoryGroupResult.Data;
+            else if (!categoryGroupResult.Success)
+                Toast.ShowWarning(categoryGroupResult.ToErrorMessage("No se pudieron cargar los grupos de categorías."));
+
+            var fundingResult = await FundingTypeClient.GetListAsync(
+                onlyActives: true,
+                ct: CancellationToken.None);
+
+            if (fundingResult.Success && fundingResult.Data is not null)
+                _fundingTypeOptions = fundingResult.Data;
+            else if (!fundingResult.Success)
+                Toast.ShowWarning(fundingResult.ToErrorMessage("No se pudieron cargar los tipos de financiamiento."));
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al cargar los catálogos del proyecto: {ex.Message}");
+        }
+    }
+
+    // ==========================
+    // Navegación
+    // ==========================
+
+    private async Task GoNext()
+    {
+        if (!CanGoNext)
+            return;
+
+        if (CurrentStep == 1)
+            await LoadResolutionAndDideAsync();
+
+        if (CurrentStep < 6)
+            CurrentStep++;
+    }
+
+    private void GoPrevious()
+    {
+        if (CurrentStep > 1)
+            CurrentStep--;
+    }
+
+    private void HandleCancel()
+    {
+        Nav.NavigateTo("/projects/home");
+    }
+
+    // ==========================
+    // User Picker / Investigadores
+    // ==========================
+
+    private async Task HandleOpenResearcherPicker()
+    {
+        try
+        {
+            var result = await ExternalUserService.GetListAsync();
+
+            if (!result.Success || result.Data is null)
+            {
+                Toast.ShowError(result.ToErrorMessage("No se pudieron cargar los usuarios externos."));
+                return;
+            }
+
+            var existingEmails = (DideData.Researchers ?? new List<ResearcherInfo>())
+                .Select(r => r.email?.Trim().ToLowerInvariant())
+                .Where(e => !string.IsNullOrWhiteSpace(e))
+                .ToHashSet();
+
+            _researcherCandidates = result.Data
+                .Where(u =>
+                    !string.IsNullOrWhiteSpace(u.Email) &&
+                    !existingEmails.Contains(u.Email.Trim().ToLowerInvariant()))
+                .OrderBy(u => u.FullName)
+                .ToList();
+
+            if (_researcherCandidates.Count == 0)
+            {
+                Toast.ShowInfo("No hay usuarios disponibles para agregar al equipo.");
+                return;
+            }
+
+            _preselectedUserId = null;
+            _showUserPicker = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al cargar usuarios externos: {ex.Message}");
+        }
+    }
+
+    private Task HandleResearcherPickedAsync(int userId)
+    {
+        var user = _researcherCandidates.FirstOrDefault(x => x.UserId == userId);
+
+        if (user is null)
+        {
+            Toast.ShowError("No se encontró el usuario seleccionado.");
+            _showUserPicker = false;
+            return Task.CompletedTask;
+        }
+
+        if (!_selectedRoleIdForWizard.HasValue || _selectedRoleIdForWizard.Value <= 0)
+        {
+            Toast.ShowWarning("Seleccione un rol para el investigador.");
+            return Task.CompletedTask;
+        }
+
+        var selectedRole = _memberRolesForWizard
+            .FirstOrDefault(r => r.Id == _selectedRoleIdForWizard.Value);
+
+        if (selectedRole is null)
+        {
+            Toast.ShowError("No se pudo identificar el rol seleccionado.");
+            return Task.CompletedTask;
+        }
+
+        if (_singleInstanceRoleIds.Contains(selectedRole.Id)
+            && DideData.Researchers is not null
+            && DideData.Researchers.Any(r => r.Role == selectedRole.Id))
+        {
+            Toast.ShowWarning($"Ya existe un miembro con el rol '{selectedRole.Name}' en el proyecto.");
+            return Task.CompletedTask;
+        }
+
+        var researcher = new ResearcherInfo
+        {
+            FullName = user.FullName,
+            email = user.Email,
+            Document = user.Document,
+            AspNetUserId = user.AspNetUserId,
+            FacultyCareerId = user.FacultyCareerId ?? 0,
+            Role = selectedRole.Id,
+            RoleName = selectedRole.Name
+        };
+
+        DideData.Researchers ??= new List<ResearcherInfo>();
+        DideData.Researchers.Add(researcher);
+
+        Toast.ShowSuccess("Investigador agregado al equipo del proyecto.");
+        _showUserPicker = false;
+        return Task.CompletedTask;
+    }
+
+    // ==========================
+    // Step 1: selección de archivos
+    // ==========================
+
+    private async Task HandleInitialFileSelected(IBrowserFile file)
+    {
+        using var ms = new MemoryStream();
+        await file.OpenReadStream().CopyToAsync(ms);
+        _resolutionFileBytes = ms.ToArray();
+        _selectedResolutionFile = file;
+    }
+
+    private Task HandleDideFileSelected(IBrowserFile file)
+    {
+        _selectedDideFile = file;
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadResolutionAndDideAsync()
+    {
+        if (_selectedResolutionFile is not null)
+            await LoadResolutionAsync();
+
+        if (_selectedDideFile is not null)
+            await LoadDideAsync();
+    }
+
+    private async Task LoadResolutionAsync()
+    {
+        if (_selectedResolutionFile is null || IsStep1Busy)
+            return;
+
+        if (_resolutionFileBytes is null)
+            return;
+
+        _resolutionCts?.Cancel();
+        _resolutionCts?.Dispose();
+        _resolutionCts = new CancellationTokenSource();
+        var ct = _resolutionCts.Token;
+
+        IsStep1Busy = true;
+        StateHasChanged();
+
+        try
+        {
+            using var content = new MultipartFormDataContent();
+
+            var fileContent = new ByteArrayContent(_resolutionFileBytes);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(_selectedResolutionFile.ContentType);
+
+            content.Add(fileContent, "file", _selectedResolutionFile.Name);
+
+            var response = await DocumentRecognitionClient.AnalyzeResolutionAsync(content, ct);
+
+            if (ct.IsCancellationRequested)
+                return;
+
+            if (response.Success && response.Data is not null)
+            {
+                ResolutionData = response.Data;
+                Toast.ShowSuccess(response.ToSuccessMessage("Resolución analizada correctamente."));
+            }
+            else
+            {
+                Toast.ShowError(response.ToErrorMessage("No se pudo analizar el documento de resolución."));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al procesar la resolución: {ex.Message}");
+        }
+        finally
+        {
+            if (!ct.IsCancellationRequested)
+            {
+                IsStep1Busy = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    private async Task LoadDideAsync()
+    {
+        if (_selectedDideFile is null || IsStep2Busy)
+            return;
+
+        _dideCts?.Cancel();
+        _dideCts?.Dispose();
+        _dideCts = new CancellationTokenSource();
+        var ct = _dideCts.Token;
+
+        IsStep2Busy = true;
+        StateHasChanged();
+
+        try
+        {
+            using var stream = _selectedDideFile.OpenReadStream(MaxDideFileSizeBytes, ct);
+            using var content = new MultipartFormDataContent();
+
+            var fileContent = new StreamContent(stream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(_selectedDideFile.ContentType);
+
+            content.Add(fileContent, "file", _selectedDideFile.Name);
+
+            var response = await DocumentRecognitionClient.AnalyzeDideProjectAsync(content, ct);
+
+            if (ct.IsCancellationRequested)
+                return;
+
+            if (response.Success && response.Data is not null)
+            {
+                DideData = response.Data;
+                Toast.ShowSuccess(response.ToSuccessMessage("Formulario DIDE analizado correctamente."));
+            }
+            else
+            {
+                Toast.ShowError(response.ToErrorMessage("No se pudo analizar el formulario DIDE."));
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al procesar el formulario DIDE: {ex.Message}");
+        }
+        finally
+        {
+            if (!ct.IsCancellationRequested)
+            {
+                IsStep2Busy = false;
+                StateHasChanged();
+            }
+        }
+    }
+
+    // ==========================
+    // Categorías de investigación (Step 4)
+    // ==========================
+
+    private Task HandleResearchCategoriesChanged(List<ResearchCategoryTreeItemDTO> selection)
+    {
+        _selectedResearchCategories = selection ?? new();
+        return Task.CompletedTask;
+    }
+
+    private List<int> ExtractSelectedResearchCategoryIds()
+    {
+        var result = new List<int>();
+
+        if (_selectedResearchCategories is null || _selectedResearchCategories.Count == 0)
+            return result;
+
+        void CollectLeafIds(ResearchCategoryTreeItemDTO node)
+        {
+            if (node.Children == null || node.Children.Count == 0)
+            {
+                result.Add(node.Id);
+                return;
+            }
+
+            foreach (var child in node.Children)
+                CollectLeafIds(child);
+        }
+
+        foreach (var root in _selectedResearchCategories)
+            CollectLeafIds(root);
+
+        return result.Distinct().ToList();
+    }
+
+    private async Task HandleOpenExternalResearcherPicker()
+    {
+        try
+        {
+            var result = await ExternalResearcherClient.ListAsync(
+                term: null,
+                institutionId: null,
+                ct: CancellationToken.None);
+
+            if (!result.Success || result.Data is null)
+            {
+                Toast.ShowError(result.ToErrorMessage("No se pudieron cargar los investigadores externos."));
+                return;
+            }
+
+            _externalResearcherCandidates = result.Data
+                .Where(r => !_selectedExternalResearchers.Any(s => s.Id == r.Id))
+                .OrderBy(r => r.FullName)
+                .ToList();
+
+            if (_externalResearcherCandidates.Count == 0)
+                Toast.ShowInfo("No hay investigadores externos registrados. Puede crearlos con 'Nuevo investigador externo'.");
+
+            _showExternalResearcherPicker = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al cargar investigadores externos: {ex.Message}");
+        }
+    }
+
+    private void HandleOpenExternalResearcherCreateModal()
+    {
+        _showExternalResearcherPicker = false;
+        _showExternalResearcherCreateModal = true;
+    }
+
+    private void HandleExternalResearcherCreateCanceled()
+    {
+        _showExternalResearcherCreateModal = false;
+    }
+
+    private async Task HandleExternalResearcherCreatedAsync(ExternalResearcherCreateRequestDTO dto)
+    {
+        try
+        {
+            var result = await ExternalResearcherClient.CreateAsync(dto, CancellationToken.None);
+
+            if (!result.Success)
+            {
+                Toast.ShowError(result.ToErrorMessage("No se pudo crear el investigador externo."));
+                return;
+            }
+
+            Toast.ShowSuccess(result.ToSuccessMessage("Investigador externo creado correctamente."));
+
+            _showExternalResearcherCreateModal = false;
+
+            await HandleOpenExternalResearcherPicker();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al crear investigador externo: {ex.Message}");
+        }
+    }
+
+    private async Task EnsureInstitutionsLoadedAsync()
+    {
+        if (_allInstitutions.Count > 0)
+            return;
+
+        var result = await InstitutionClient.ListAsync(
+            onlyActives: true,
+            ct: CancellationToken.None);
+
+        if (result.Success && result.Data is not null)
+        {
+            _allInstitutions = result.Data;
+        }
+        else if (!result.Success)
+        {
+            Toast.ShowWarning(result.ToErrorMessage("No se pudieron cargar las instituciones."));
+        }
+    }
+
+    private async Task HandleInstitutionSearchAsync(string searchTerm)
+    {
+        await EnsureInstitutionsLoadedAsync();
+
+        if (_allInstitutions.Count == 0)
+        {
+            _institutionSuggestions = new List<InstitutionListItemDTO>();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            _institutionSuggestions = _allInstitutions
+                .OrderBy(i => i.Name)
+                .Take(20)
+                .ToList();
+        }
+        else
+        {
+            var term = searchTerm.Trim();
+
+            _institutionSuggestions = _allInstitutions
+                .Where(i =>
+                    (!string.IsNullOrWhiteSpace(i.Name) &&
+                     i.Name.Contains(term, StringComparison.OrdinalIgnoreCase))
+                    || (!string.IsNullOrWhiteSpace(i.CountryName) &&
+                        i.CountryName.Contains(term, StringComparison.OrdinalIgnoreCase)))
+                .OrderBy(i => i.Name)
+                .Take(20)
+                .ToList();
+        }
+    }
+
+    private Task HandleExternalResearcherPickedAsync(int externalResearcherId)
+    {
+        var researcher = _externalResearcherCandidates
+            .FirstOrDefault(r => r.Id == externalResearcherId);
+
+        if (researcher is null)
+        {
+            Toast.ShowError("No se encontró el investigador externo seleccionado.");
+            _showExternalResearcherPicker = false;
+            return Task.CompletedTask;
+        }
+
+        if (_selectedExternalResearchers.Any(r => r.Id == researcher.Id))
+        {
+            Toast.ShowInfo("Este investigador externo ya fue agregado.");
+            _showExternalResearcherPicker = false;
+            return Task.CompletedTask;
+        }
+
+        _selectedExternalResearchers.Add(researcher);
+
+        Toast.ShowSuccess($"Investigador externo '{researcher.FullName}' agregado al proyecto.");
+        _showExternalResearcherPicker = false;
+        StateHasChanged();
+
+        return Task.CompletedTask;
+    }
+
+    private Task HandleRemoveExternalResearcher(int id)
+    {
+        var existing = _selectedExternalResearchers.FirstOrDefault(r => r.Id == id);
+        if (existing is not null)
+        {
+            _selectedExternalResearchers.Remove(existing);
+            StateHasChanged();
+            Toast.ShowInfo($"Investigador externo '{existing.FullName}' fue removido.");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    // ==========================
+    // Guardado final (Step 6)
+    // ==========================
+
+    private async Task HandleSaveAsync()
+    {
+        if (IsSaving)
+            return;
+
+        IsSaving = true;
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(DideData.ProjectName))
+            {
+                Toast.ShowWarning("Ingrese el nombre del proyecto antes de crear el registro.");
+                return;
+            }
+
+            if (DideData.ResearchTypeId is null || DideData.ResearchTypeId.Value <= 0)
+            {
+                Toast.ShowWarning("Seleccione el tipo de investigación del proyecto.");
+                return;
+            }
+
+            if (_selectedProjectOriginTypeId <= 0)
+            {
+                Toast.ShowWarning("Seleccione el tipo de origen del proyecto.");
+                return;
+            }
+
+            if (_budgets is null || !_budgets.Any(b => b.FundingTypeId > 0 && b.InitialAmount > 0))
+            {
+                Toast.ShowWarning("Debe registrar al menos un presupuesto con monto inicial mayor a 0.");
+                return;
+            }
+
+            var facultyId = ResolveCoordinatorFacultyId();
+
+            if (facultyId <= 0)
+            {
+                Toast.ShowError("No se pudo determinar la facultad del proyecto. Verifique los investigadores y sus facultades.");
+                return;
+            }
+
+            if (!_selectedConvocationId.HasValue || _selectedConvocationId.Value <= 0)
+            {
+                Toast.ShowWarning("Seleccione una convocatoria para el proyecto.");
+                return;
+            }
+
+            if (_projectDocument is null)
+            {
+                if (_selectedResolutionFile is null)
+                {
+                    Toast.ShowWarning("Debe seleccionar el PDF de la resolución inicial antes de crear el proyecto.");
+                    return;
+                }
+
+                if (_resolutionFileBytes is null)
+                {
+                    Toast.ShowError("No se encontraron los bytes del archivo de resolución. Vuelva a seleccionar el archivo.");
+                    return;
+                }
+
+                var dto = new UploadDocumentClientDTO
+                {
+                    DocumentTypeId = 1,
+                    RelatedDocumentId = null,
+                    ResolutionCode = ResolutionData.ResolutionCode,
+                    ResolutionDate = ResolutionData.ResolutionHeaderDate
+                };
+
+                var content = MultipartBuilder.Build(
+                    dto,
+                    _resolutionFileBytes,
+                    _selectedResolutionFile.Name,
+                    _selectedResolutionFile.ContentType
+                );
+
+                var uploadResponse = await DocumentClient.CreateAsync(content);
+
+                if (!uploadResponse.Success || uploadResponse.Data is null)
+                {
+                    Toast.ShowError(uploadResponse.ToErrorMessage("No se pudo subir el documento de resolución."));
+                    return;
+                }
+
+                _projectDocument = uploadResponse.Data;
+            }
+
+            var documentDto = _projectDocument;
+
+            var faculty = _faculties.FirstOrDefault(f => f.FacultyId == facultyId);
+            var facultyAcronym = faculty?.Acronym ?? string.Empty;
+
+            var projectDto = new AddProjectRequestDTO
+            {
+                ProjectName = DideData.ProjectName,
+                ProjectTypeId = _selectedProjectTypeId,
+                ProjectGroupId = 0,
+                ResearchCategoryIds = ExtractSelectedResearchCategoryIds(),
+                ApprovalDate = ResolutionData.ResolutionHeaderDate
+                               ?? documentDto.ResolutionDate
+                               ?? DateTime.Today,
+                StartDate = ResolutionData.ExecutionStartDate,
+                ProjectCode = facultyAcronym,
+                ProjectStateId = 3,
+                DurationInMonths = ResolutionData.Duration > 0 ? ResolutionData.Duration : 12,
+                FacultyId = facultyId,
+                ConvocationId = _selectedConvocationId.Value,
+                ProjectOriginTypeId = _selectedProjectOriginTypeId,
+            };
+
+            var budgetsDto = new List<CreateBudgetRequestDTO>();
+            if (_budgets != null)
+            {
+                foreach (var b in _budgets.Where(x => x.FundingTypeId > 0 && x.InitialAmount > 0))
+                {
+                    budgetsDto.Add(new CreateBudgetRequestDTO
+                    {
+                        ProjectId = 0,
+                        InitialAmount = b.InitialAmount,
+                        FundingTypeId = b.FundingTypeId
+                    });
+                }
+            }
+
+            var objectivesDto = new List<ProjectObjectiveWithActivitiesRequestDTO>();
+
+            if (DideData.Objectives != null)
+            {
+                foreach (var obj in DideData.Objectives)
+                {
+                    var objectiveDto = new ProjectObjectiveWithActivitiesRequestDTO
+                    {
+                        ObjectiveTypeId = obj.ObjectiveType,
+                        Objective = obj.ObjectiveText,
+                        Result = string.IsNullOrWhiteSpace(obj.ObjetiveResult)
+                            ? "Result not provided in DIDE form"
+                            : obj.ObjetiveResult,
+                        WeightedPercentage = obj.ObjetivePercentage,
+                        Activities = MapActivities(obj)
+                    };
+                    objectivesDto.Add(objectiveDto);
+                }
+            }
+
+            var groupMembersDto = new List<AddGroupMemberRequestDTO>();
+
+            if (DideData.Researchers != null)
+            {
+                foreach (var r in DideData.Researchers)
+                {
+                    if (!string.IsNullOrWhiteSpace(r.email) && r.Role > 0)
+                    {
+                        groupMembersDto.Add(new AddGroupMemberRequestDTO
+                        {
+                            AspUserId = r.AspNetUserId > 0 ? r.AspNetUserId : null,
+                            MemberRole = r.Role,
+                            Document = r.Document,
+                            GroupId = 0,
+                            Email = r.email,
+                        });
+                    }
+                }
+            }
+
+            var request = new AddProjectFullRequestDTO
+            {
+                Project = projectDto,
+                ProjectDocumentData = documentDto,
+                GroupMembers = groupMembersDto,
+                Budgets = budgetsDto,
+                Objectives = objectivesDto,
+                ExternalResearcherIds = _selectedExternalResearchers
+                    .Select(r => r.Id)
+                    .Distinct()
+                    .ToList()
+            };
+
+            var response = await ProjectClient.CreateFullAsync(request, CancellationToken.None);
+
+            if (!response.Success || response.Data is null)
+            {
+                Toast.ShowError(response.ToErrorMessage("No se pudo crear el proyecto."));
+                return;
+            }
+
+            Toast.ShowSuccess(response.ToSuccessMessage("Proyecto creado correctamente."));
+            Nav.NavigateTo($"/projects/{response.Data.ProjectId}");
+        }
+        finally
+        {
+            IsSaving = false;
+        }
+    }
+
+    private Task OnBudgetsChanged(List<CreateBudgetRequestDTO> newBudgets)
+    {
+        _budgets = newBudgets ?? new();
+        _fundingTypeId = _budgets
+            .FirstOrDefault(b => b.FundingTypeId > 0)?.FundingTypeId ?? 0;
+
+        return Task.CompletedTask;
+    }
+
+    private int ResolveCoordinatorFacultyId()
+    {
+        if (DideData.Researchers is null || DideData.Researchers.Count == 0)
+            return 0;
+
+        if (_faculties is null || _faculties.Count == 0)
+            return 0;
+
+        if (_coordinatorRoleId.HasValue)
+        {
+            var coord = DideData.Researchers
+                .FirstOrDefault(r => r.Role == _coordinatorRoleId.Value && r.FacultyCareerId > 0);
+
+            if (coord is not null)
+                return MapProgramToFaculty(coord.FacultyCareerId);
+        }
+
+        var withFaculty = DideData.Researchers.FirstOrDefault(r => r.FacultyCareerId > 0);
+        if (withFaculty is not null)
+            return MapProgramToFaculty(withFaculty.FacultyCareerId);
+
+        return 0;
+    }
+
+    private bool AreObjectivesAndActivitiesValid()
+    {
+        if (DideData.Objectives is null || DideData.Objectives.Count == 0)
+            return false;
+
+        foreach (var obj in DideData.Objectives)
+        {
+            if (string.IsNullOrWhiteSpace(obj.ObjectiveText))
+                return false;
+
+            if (string.IsNullOrWhiteSpace(obj.ObjetiveResult))
+                return false;
+
+            if (obj.ObjectiveType == 1)
+            {
+                if (obj.ObjetivePercentage < 0)
+                    return false;
+            }
+            else
+            {
+                if (obj.ObjetivePercentage <= 0)
+                    return false;
+            }
+
+            if (obj.ObjectiveType != 1)
+            {
+                if (obj.Activities is null || obj.Activities.Count == 0)
+                    return false;
+
+                foreach (var act in obj.Activities)
+                {
+                    if (string.IsNullOrWhiteSpace(act.ActivityText))
+                        return false;
+
+                    if (string.IsNullOrWhiteSpace(act.ActivityResult))
+                        return false;
+                }
+            }
+        }
+
+        var totalSpecific = DideData.Objectives
+            .Where(o => o.ObjectiveType != 1)
+            .Sum(o => o.ObjetivePercentage);
+
+        if (totalSpecific != 100)
+            return false;
+
+        return true;
+    }
+
+    private int MapProgramToFaculty(int facultyCareerId)
+    {
+        if (facultyCareerId <= 0 || _faculties is null || _faculties.Count == 0)
+            return 0;
+
+        foreach (var fac in _faculties)
+        {
+            if (fac.Programs is null)
+                continue;
+
+            if (fac.Programs.Any(p => p.ProgramId == facultyCareerId))
+                return fac.FacultyId;
+        }
+
+        var facById = _faculties.FirstOrDefault(f => f.FacultyId == facultyCareerId);
+        return facById?.FacultyId ?? 0;
+    }
+
+    private List<AddObjectiveActivityRequestDTO> MapActivities(DideObjectiveInfo obj)
+    {
+        var result = new List<AddObjectiveActivityRequestDTO>();
+
+        if (obj.Activities is null)
+            return result;
+
+        foreach (var act in obj.Activities)
+        {
+            result.Add(new AddObjectiveActivityRequestDTO
+            {
+                ActivityResult = act.ActivityResult,
+                ActionText = act.ActivityText,
+            });
+        }
+
+        return result;
+    }
+
+    private void HandleResearchersChanged()
+    {
+        StateHasChanged();
+    }
+
+    // ==========================
+    // Dispose
+    // ==========================
+
+    public void Dispose()
+    {
+        _resolutionCts?.Cancel();
+        _resolutionCts?.Dispose();
+
+        _dideCts?.Cancel();
+        _dideCts?.Dispose();
+    }
+}

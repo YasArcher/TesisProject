@@ -1,0 +1,10 @@
+<tesisproject.frontend.Features.BulkImport.Pages.ArticlesBiImportExport BatchId="@BatchId"
+                                                                       ReviewStagingContextKey="@ContextKey" />
+
+@code {
+    [Parameter]
+    public int? BatchId { get; set; }
+
+    [Parameter, EditorRequired]
+    public string ContextKey { get; set; } = string.Empty;
+}

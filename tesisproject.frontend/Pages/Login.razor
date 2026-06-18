@@ -1,0 +1,46 @@
+﻿@page "/login"
+@using Microsoft.AspNetCore.Authorization
+@layout MinimalLayout
+
+<EditForm Model="@LoginModel" OnValidSubmit="HandleLogin">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="min-h-screen flex items-center justify-center" style="background-color: var(--color-page-bg);">
+        <div class="w-full max-w-md bg-white shadow-lg rounded-lg p-8 border" style="border-color: var(--color-border);">
+
+            <h2 class="text-2xl font-bold text-center mb-6" style="color: var(--color-primary);">
+                Iniciar Sesión
+            </h2>
+
+            <!-- Email -->
+            <div class="mb-4">
+                <label class="block mb-1 text-sm font-medium" style="color: var(--color-foreground);">
+                    Email
+                </label>
+                <InputText @bind-Value="LoginModel.Email"
+                           type="email"
+                           class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary-subtle"
+                           style="border-color: var(--color-border);" />
+                <ValidationMessage For="@(() => LoginModel.Email)" />
+            </div>
+
+            <!-- Password -->
+            <div class="mb-6">
+                <label class="block mb-1 text-sm font-medium" style="color: var(--color-foreground);">
+                    Password
+                </label>
+                <InputText @bind-Value="LoginModel.Password"
+                           type="password"
+                           class="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-primary-subtle"
+                           style="border-color: var(--color-border);" />
+                <ValidationMessage For="@(() => LoginModel.Password)" />
+            </div>
+
+            <!-- Botón -->
+            <button type="submit" class="btn-primary-solid w-full py-2 rounded font-semibold">
+                Entrar
+            </button>
+        </div>
+    </div>
+</EditForm>

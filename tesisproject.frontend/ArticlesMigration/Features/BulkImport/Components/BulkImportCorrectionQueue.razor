@@ -1,0 +1,135 @@
+@using Microsoft.AspNetCore.Components
+@using tesisproject.frontend.SharedUI
+@using tesisproject.shared.DTOs.Imports
+
+<div class="bulk-stage-corrections rounded-[2rem] border border-[#ead8bd] bg-white p-5 shadow-sm">
+    <div class="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+            <h2 class="text-base font-black text-[#8b5a16] md:text-lg">Bandeja de corrección</h2>
+            <p class="text-sm text-slate-500">Trabaja fila por fila sobre los pendientes reales del lote y salta directo al editor asistido.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            <button class="rounded-xl border border-[#e7c690] bg-[#fff4e4] px-4 py-2 text-sm font-semibold text-[#8b5a16] disabled:opacity-60"
+                    disabled="@(!ErrorRows.Any())"
+                    @onclick="OnOpenNextError">
+                Abrir siguiente error
+            </button>
+            <span class="rounded-full bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700">@ErrorRows.Count fila(s) con error</span>
+        </div>
+    </div>
+
+    @if (!ErrorRows.Any())
+    {
+        <AppEmptyState Title="No hay filas pendientes de corrección" Message="Cuando un lote tenga errores, aquí verás una cola directa para revisarlos uno por uno." />
+    }
+    else
+    {
+        <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <div class="rounded-2xl bg-[#fff4e4] px-4 py-3 text-sm text-slate-600">
+                Pendientes: <span class="font-bold text-[#8b5a16]">@ErrorRows.Count</span>
+            </div>
+            <div class="rounded-2xl bg-white px-4 py-3 text-sm text-slate-600">
+                Visibles en cola: <span class="font-bold text-[#12343b]">@FilteredErrorRows.Count</span>
+            </div>
+            <div class="rounded-2xl bg-[#eef5f6] px-4 py-3 text-sm text-slate-600">
+                Filas resueltas: <span class="font-bold text-[#2f4858]">@CorrectionResolvedRows</span>
+            </div>
+        </div>
+
+        <div class="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+            <input class="rounded-xl border border-[#e1d1b0] bg-[#fffaf2] px-3 py-2 text-sm"
+                   placeholder="Buscar por fila, valor o mensaje de error"
+                   value="@SearchTerm"
+                   @oninput="HandleSearchChanged" />
+            <select class="rounded-xl border border-[#e1d1b0] bg-white px-3 py-2 text-sm"
+                    value="@SortMode"
+                    @onchange="HandleSortChanged">
+                <option value="row">Ordenar por fila</option>
+                <option value="errors">Más errores primero</option>
+            </select>
+        </div>
+
+        @if (ErrorGroups.Any())
+        {
+            <div class="mb-4 rounded-3xl border border-[#f0debf] bg-[#fff9f0] p-4">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                        <div class="font-bold text-[#8b5a16]">Patrones de error</div>
+                        <div class="text-xs text-slate-500">Esto ayuda a corregir primero lo que más se repite en el lote cargado.</div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        @if (!string.Equals(Focus, "all", StringComparison.OrdinalIgnoreCase))
+                        {
+                            <button class="rounded-full border border-[#ead8bd] bg-white px-3 py-1 text-xs font-semibold text-[#8b5a16]"
+                                    @onclick="OnClearFocus">
+                                Limpiar foco
+                            </button>
+                        }
+                        <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#8b5a16]">@ErrorGroups.Count grupo(s)</span>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    @foreach (var errorGroup in ErrorGroups)
+                    {
+                        <button class="rounded-full border px-3 py-2 text-xs font-semibold @(Focus == errorGroup.Label ? "border-[#c17c2f] bg-[#fff4e4] text-[#8b5a16]" : "border-[#ead8bd] bg-white text-[#8b5a16]")"
+                                @onclick="() => OnFocusChanged.InvokeAsync(errorGroup.Label)">
+                            @errorGroup.Label: @errorGroup.Count
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+
+        <div class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+            @foreach (var row in FilteredErrorRows)
+            {
+                <button class="rounded-3xl border border-[#ead8bd] bg-[#fffdf8] p-4 text-left transition hover:border-[#d9ba86] hover:shadow-sm"
+                        @onclick="() => OnOpenRow.InvokeAsync(row)">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div class="font-semibold text-[#8b5a16]">Fila @row.RowNumber</div>
+                            <div class="mt-1 text-xs text-slate-500">@GetRowSummary(row)</div>
+                        </div>
+                        <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">@row.Errors.Count error(es)</span>
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        @foreach (var badge in GetRowBadges(row))
+                        {
+                            <span class="rounded-full bg-white px-2 py-1 text-[11px] font-semibold text-slate-600">@badge</span>
+                        }
+                    </div>
+                </button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<BulkImportRowPreviewDto> ErrorRows { get; set; } = Array.Empty<BulkImportRowPreviewDto>();
+    [Parameter] public IReadOnlyList<BulkImportRowPreviewDto> FilteredErrorRows { get; set; } = Array.Empty<BulkImportRowPreviewDto>();
+    [Parameter] public int CorrectionResolvedRows { get; set; }
+    [Parameter] public string SearchTerm { get; set; } = string.Empty;
+    [Parameter] public string SortMode { get; set; } = "row";
+    [Parameter] public string Focus { get; set; } = "all";
+    [Parameter] public IReadOnlyList<CorrectionErrorGroupItem> ErrorGroups { get; set; } = Array.Empty<CorrectionErrorGroupItem>();
+    [Parameter] public Func<BulkImportRowPreviewDto, string>? RowSummarySelector { get; set; }
+    [Parameter] public Func<BulkImportRowPreviewDto, IReadOnlyList<string>>? RowBadgesSelector { get; set; }
+    [Parameter] public EventCallback OnOpenNextError { get; set; }
+    [Parameter] public EventCallback<string> OnSearchChanged { get; set; }
+    [Parameter] public EventCallback<string> OnSortChanged { get; set; }
+    [Parameter] public EventCallback<string> OnFocusChanged { get; set; }
+    [Parameter] public EventCallback OnClearFocus { get; set; }
+    [Parameter] public EventCallback<BulkImportRowPreviewDto> OnOpenRow { get; set; }
+
+    private Task HandleSearchChanged(ChangeEventArgs args)
+        => OnSearchChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    private Task HandleSortChanged(ChangeEventArgs args)
+        => OnSortChanged.InvokeAsync(args.Value?.ToString() ?? "row");
+
+    private string GetRowSummary(BulkImportRowPreviewDto row)
+        => RowSummarySelector?.Invoke(row) ?? string.Empty;
+
+    private IReadOnlyList<string> GetRowBadges(BulkImportRowPreviewDto row)
+        => RowBadgesSelector?.Invoke(row) ?? Array.Empty<string>();
+}

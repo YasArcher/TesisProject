@@ -1,0 +1,217 @@
+﻿@using Microsoft.AspNetCore.Components
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.DTOs.Project.Response
+@using tesisproject.shared.DTOs.Project.Request
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+
+<section class="h-full min-h-0 flex flex-col bg-background border-2 border-border rounded-3xl shadow-sm overflow-hidden">
+    <div class="shrink-0 flex items-center justify-between gap-4 px-6 py-5 border-b-2 border-border">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-1 h-6 bg-primary rounded-full shrink-0"></div>
+            <h3 class="text-base font-bold text-foreground tracking-tight truncate">
+                Categorías de investigación
+            </h3>
+        </div>
+
+        <ActionButton Execute="OnSaveClicked"
+                      Text="Guardar"
+                      Variant="ButtonVariant.Filled"
+                      Intent="ButtonIntent.Success"
+                      Disabled="@(IsLoading || IsSaving || Project is null || _selectedIds.Count == 0)"
+                      ConfirmBeforeExecute="true"
+                      ConfirmTitle="Guardar categorías"
+                      ConfirmMessage="¿Confirmas guardar los cambios de categorías de investigación?"
+                      ConfirmButtonText="Guardar"
+                      CancelButtonText="Cancelar" />
+    </div>
+
+    <div class="flex-1 min-h-0 overflow-y-auto p-6">
+        @if (IsLoading)
+        {
+            <div class="h-full min-h-0 flex items-center justify-center">
+                <div class="flex items-center justify-center gap-4 p-8 bg-primary-subtle rounded-xl border border-primary/20">
+                    <div class="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full"></div>
+                    <div class="text-primary font-medium">Cargando catálogos...</div>
+                </div>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="p-4 rounded-2xl border border-error/20 bg-error/10 text-error">
+                @ErrorMessage
+            </div>
+        }
+        else if (Project is null)
+        {
+            <div class="p-4 rounded-2xl border border-border bg-background text-muted">
+                No se encontró el proyecto.
+            </div>
+        }
+        else
+        {
+            <div class="rounded-lg border border-border bg-background p-4 min-w-0">
+                <p class="text-xs text-muted mb-3">
+                    Selecciona categorías por grupo. Se guardarán exactamente los IDs seleccionados.
+                </p>
+
+                <div class="space-y-4 min-w-0">
+                    @if (ResearchCategoryGroups is not null && ResearchCategoryGroups.Any())
+                    {
+                        @foreach (var group in ResearchCategoryGroups)
+                        {
+                            <div class="border border-border rounded-2xl p-3 bg-background/60 min-w-0 overflow-hidden">
+                                <ResearchCategoryMultiLevelSelector Title="@group.Name"
+                                                                    ResearchCategoryGroupId="@group.Id"
+                                                                    Categories="@ResearchCategoryTree"
+                                                                    CategoryTypes="@ResearchCategoryTypes"
+                                                                    SelectedCategoryIds="@((IReadOnlyCollection<int>)GetSelectedIdsForGroup(group.Id).ToArray())"
+                                                                    OnSelectionChanged="(selection) => HandleGroupSelectionChanged(group.Id, selection)" />
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <ResearchCategoryMultiLevelSelector Categories="@ResearchCategoryTree"
+                                                            CategoryTypes="@ResearchCategoryTypes"
+                                                            SelectedCategoryIds="@((IReadOnlyCollection<int>)(Project.ResearchCategoryIds?.ToArray() ?? Array.Empty<int>()))"
+                                                            OnSelectionChanged="HandleGlobalSelectionChanged"
+                                                            Title="Categorías de investigación" />
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public ProjectDetailResponseDTO? Project { get; set; }
+
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+
+    [Parameter] public IReadOnlyList<ResearchCategoryTreeItemDTO> ResearchCategoryTree { get; set; } = Array.Empty<ResearchCategoryTreeItemDTO>();
+    [Parameter] public IReadOnlyList<ResearchCategoryTypeListItemDTO> ResearchCategoryTypes { get; set; } = Array.Empty<ResearchCategoryTypeListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> ResearchCategoryGroups { get; set; } = Array.Empty<CatalogListItemDTO>();
+
+    [Parameter] public EventCallback<UpdateProjectResearchCategoriesRequestDTO> OnSaveRequested { get; set; }
+
+    // ✅ selección final a guardar (exactamente lo seleccionado)
+    private List<int> _selectedIds = new();
+
+    // selección interna por grupo (groupId -> selección devuelta por el selector)
+    private readonly Dictionary<int, List<ResearchCategoryTreeItemDTO>> _selectionByGroup = new();
+
+    // índices para preselección por grupo
+    private readonly Dictionary<int, ResearchCategoryTreeItemDTO> _categoryById = new();
+    private readonly Dictionary<int, int> _typeToGroup = new(); // typeId -> groupId
+    private readonly Dictionary<int, List<int>> _selectedIdsByGroup = new(); // groupId -> ids
+
+    protected override void OnParametersSet()
+    {
+        if (Project is null) return;
+
+        BuildIndexes();
+
+        // ✅ Inicial: lo que venga desde BD se toma tal cual (pueden ser hojas o no)
+        _selectedIds = (Project.ResearchCategoryIds ?? new List<int>())
+            .Distinct()
+            .ToList();
+
+        // para preselección por grupo
+        BuildSelectedIdsByGroupFromProject();
+    }
+
+    private Task OnSaveClicked()
+        => OnSaveRequested.InvokeAsync(new UpdateProjectResearchCategoriesRequestDTO
+        {
+            ResearchCategoryIds = _selectedIds.Distinct().ToList()
+        });
+
+    // ========= HANDLERS =========
+
+    private async Task HandleGlobalSelectionChanged(List<ResearchCategoryTreeItemDTO> selection)
+    {
+        _selectionByGroup.Clear();
+
+        _selectedIds = (selection ?? new())
+            .Select(x => x.Id)
+            .Distinct()
+            .ToList();
+
+        await Task.CompletedTask;
+    }
+
+    private async Task HandleGroupSelectionChanged(int groupId, List<ResearchCategoryTreeItemDTO> selection)
+    {
+        _selectionByGroup[groupId] = selection ?? new();
+
+        _selectedIds = _selectionByGroup.Values
+            .SelectMany(x => x)
+            .Select(x => x.Id)
+            .Distinct()
+            .ToList();
+
+        await Task.CompletedTask;
+    }
+
+    // ========= PRESELECCIÓN POR GRUPO =========
+
+    private IEnumerable<int> GetSelectedIdsForGroup(int groupId)
+    {
+        if (_selectedIdsByGroup.TryGetValue(groupId, out var ids))
+            return ids;
+
+        return Array.Empty<int>();
+    }
+
+    private void BuildSelectedIdsByGroupFromProject()
+    {
+        _selectedIdsByGroup.Clear();
+
+        var ids = Project?.ResearchCategoryIds ?? new List<int>();
+        foreach (var id in ids)
+        {
+            if (!_categoryById.TryGetValue(id, out var node))
+                continue;
+
+            if (!_typeToGroup.TryGetValue(node.ResearchCategoryTypeId, out var groupId))
+                continue;
+
+            if (!_selectedIdsByGroup.TryGetValue(groupId, out var list))
+            {
+                list = new List<int>();
+                _selectedIdsByGroup[groupId] = list;
+            }
+
+            if (!list.Contains(id))
+                list.Add(id);
+        }
+    }
+
+    private void BuildIndexes()
+    {
+        _categoryById.Clear();
+        _typeToGroup.Clear();
+
+        foreach (var t in ResearchCategoryTypes)
+        {
+            _typeToGroup[t.Id] = t.ResearchCategoryGroupId;
+        }
+
+        foreach (var root in ResearchCategoryTree)
+            IndexTree(root);
+    }
+
+    private void IndexTree(ResearchCategoryTreeItemDTO node)
+    {
+        if (!_categoryById.ContainsKey(node.Id))
+            _categoryById[node.Id] = node;
+
+        foreach (var child in node.Children)
+            IndexTree(child);
+    }
+}

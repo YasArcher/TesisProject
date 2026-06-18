@@ -1,0 +1,24 @@
+﻿@using Microsoft.AspNetCore.Components
+@using tesisproject.shared.DTOs.Algorithms.Response
+
+<div class="w-full min-w-0">
+    <ObjectivesActivitiesEditor Objectives="DideModel.Objectives"
+                                ObjectivesChanged="HandleObjectivesChanged" />
+</div>
+
+@code {
+    [Parameter] public EventCallback OnObjectivesChanged { get; set; }
+    [Parameter] public DideProjectFormInfo DideModel { get; set; } = new();
+
+    protected override void OnParametersSet()
+    {
+        DideModel.Objectives ??= new List<DideObjectiveInfo>();
+    }
+
+    private Task HandleObjectivesChanged()
+    {
+        return OnObjectivesChanged.HasDelegate
+            ? OnObjectivesChanged.InvokeAsync()
+            : Task.CompletedTask;
+    }
+}

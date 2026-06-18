@@ -1,0 +1,213 @@
+.bulk-import-page ::deep(.text-[#12343b]),
+.bulk-import-page ::deep(.text-[#2f4858]),
+.bulk-import-page ::deep(.text-[#8b5a16]),
+.bulk-import-page ::deep(.text-[#c17c2f]) {
+    color: #313647 !important;
+}
+
+.bulk-import-page {
+    --bulk-ink: #313647;
+    --bulk-charcoal: #45474b;
+    --bulk-blue: #435663;
+    --bulk-green: #2f5249;
+    --bulk-sage: #a3b087;
+    --bulk-gold: #f4ce14;
+    --bulk-cream: #fff8d4;
+    --bulk-soft: #f5f7f8;
+    color: var(--bulk-ink);
+    background:
+        radial-gradient(circle at 8% 4%, rgba(244, 206, 20, 0.16), transparent 25rem),
+        linear-gradient(145deg, #f5f7f8 0%, #fff8d4 52%, #f5f7f8 100%);
+    border-radius: 2rem;
+    min-height: calc(100vh - 96px);
+}
+
+.bulk-import-page--review {
+    min-height: auto;
+    border-radius: 1.2rem;
+    background:
+        radial-gradient(circle at 8% 4%, rgba(244, 206, 20, 0.1), transparent 18rem),
+        linear-gradient(145deg, rgba(245, 247, 248, 0.98), rgba(255, 248, 212, 0.48));
+}
+
+.bulk-review-strip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+    border: 1px solid rgba(67, 86, 99, 0.14);
+    border-radius: 1.1rem;
+    background: rgba(255, 255, 255, 0.82);
+    padding: 0.85rem 1rem;
+    box-shadow: 0 12px 26px rgba(49, 54, 71, 0.08);
+}
+
+.bulk-review-strip span,
+.bulk-review-strip small {
+    color: #667078;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.bulk-review-strip strong {
+    display: block;
+    margin: 0.12rem 0;
+    color: #313647;
+    font-size: 1rem;
+    font-weight: 950;
+}
+
+.bulk-review-strip__metrics {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.45rem;
+    flex: 0 0 auto;
+}
+
+.bulk-review-strip__metrics span {
+    border-radius: 999px;
+    border: 1px solid rgba(67, 86, 99, 0.12);
+    background: #fff;
+    padding: 0.42rem 0.64rem;
+    color: #435663;
+}
+
+.bulk-review-strip__metric--danger {
+    border-color: rgba(140, 16, 7, 0.18) !important;
+    background: rgba(140, 16, 7, 0.08) !important;
+    color: #660b05 !important;
+}
+
+.bulk-review-strip__metric--ok {
+    border-color: rgba(47, 82, 73, 0.18) !important;
+    background: rgba(47, 82, 73, 0.1) !important;
+    color: #2f5249 !important;
+}
+
+.bulk-import-page ::deep(.bg-[#eef5f6]),
+.bulk-import-page ::deep(.bg-[#f4f8f9]),
+.bulk-import-page ::deep(.bg-[#f8fbfc]) {
+    background: linear-gradient(180deg, rgba(245, 247, 248, 0.98), rgba(163, 176, 135, 0.16)) !important;
+}
+
+.bulk-import-page ::deep(.bg-[#fffdf8]),
+.bulk-import-page ::deep(.bg-[#fff4e4]),
+.bulk-import-page ::deep(.bg-[#fff3de]),
+.bulk-import-page ::deep(.bg-[#fffaf2]) {
+    background: rgba(244, 206, 20, 0.13) !important;
+}
+
+.bulk-import-page ::deep(.border-[#d9e5e8]),
+.bulk-import-page ::deep(.border-[#c7d6da]),
+.bulk-import-page ::deep(.border-[#ead8bd]),
+.bulk-import-page ::deep(.border-[#e1d1b0]),
+.bulk-import-page ::deep(.border-[#e2c695]) {
+    border-color: rgba(67, 86, 99, 0.16) !important;
+}
+
+.bulk-import-page ::deep(.bg-gradient-to-r.from-[#12343b].to-[#2f4858]),
+.bulk-import-page ::deep(.bg-gradient-to-r.from-[#c17c2f].to-[#d08d46]),
+.bulk-import-page ::deep(.bg-gradient-to-r.from-[#12343b].via-[#2f4858].to-[#c17c2f]) {
+    background: linear-gradient(135deg, #313647, #435663, #2f5249) !important;
+    color: #fff8d4 !important;
+    box-shadow: 0 16px 28px rgba(49, 54, 71, 0.18);
+}
+
+.bulk-import-page ::deep(.bg-[#fff1d6]) {
+    background: rgba(244, 206, 20, 0.16) !important;
+}
+
+.bulk-import-page ::deep(.app-table-wrap table thead th) {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: #45474b;
+    color: #fff8d4;
+}
+
+.bulk-import-page ::deep(.app-module-hero) {
+    background:
+        linear-gradient(135deg, rgba(49, 54, 71, 0.98), rgba(67, 86, 99, 0.94), rgba(47, 82, 73, 0.94)) !important;
+}
+
+.bulk-import-hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 248, 212, 0.22);
+}
+
+.bulk-import-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto -4rem -8rem auto;
+    width: 18rem;
+    height: 18rem;
+    border-radius: 999px;
+    background: rgba(244, 206, 20, 0.2);
+}
+
+.bulk-import-hero__icon {
+    display: grid;
+    place-items: center;
+    width: 3.4rem;
+    height: 3.4rem;
+    flex: 0 0 auto;
+    border-radius: 1.15rem;
+    border: 1px solid rgba(255, 248, 212, 0.22);
+    background: rgba(255, 255, 255, 0.12);
+    color: #f4ce14;
+    font-size: 1.45rem;
+}
+
+.bulk-import-hero__meta {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.6rem;
+    max-width: 34rem;
+}
+
+.bulk-import-hero__meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 248, 212, 0.2);
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.48rem 0.78rem;
+    color: rgba(255, 255, 255, 0.86);
+    font-size: 0.74rem;
+    font-weight: 800;
+    backdrop-filter: blur(10px);
+}
+
+.bulk-import-page ::deep(.rounded-\[1\.7rem\]),
+.bulk-import-page ::deep(.rounded-\[2rem\]),
+.bulk-import-page ::deep(.rounded-\[1\.6rem\]),
+.bulk-import-page ::deep(.rounded-3xl),
+.bulk-import-page ::deep(.rounded-2xl) {
+    box-shadow: 0 16px 30px rgba(49, 54, 71, 0.08);
+}
+
+.bulk-import-page ::deep(.text-slate-500),
+.bulk-import-page ::deep(.text-slate-600),
+.bulk-import-page ::deep(.text-slate-700) {
+    color: #5f676c !important;
+}
+
+.bulk-import-page ::deep(input),
+.bulk-import-page ::deep(select),
+.bulk-import-page ::deep(textarea) {
+    border-color: rgba(67, 86, 99, 0.18) !important;
+    background: rgba(255, 255, 255, 0.9) !important;
+}
+
+@media (max-width: 768px) {
+    .bulk-import-hero__meta {
+        justify-content: flex-start;
+    }
+}

@@ -1,0 +1,271 @@
+﻿@page "/groups"
+
+@using tesisproject.frontend.Features.Groups.Components
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.Group.Request
+@using tesisproject.shared.DTOs.Group.Response
+@using tesisproject.shared.DTOs.AppUser
+@using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
+
+@inject IToastService Toast
+@inject IGroupService GroupService
+@inject IExternalUserService ExternalUserService
+@inject IMemberRoleTypeClientService MemberRoleTypeService
+
+<div class="flex flex-col h-full min-h-0 gap-4 overflow-hidden">
+    <!-- Header -->
+    <div class="rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm shrink-0">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div class="space-y-2">
+                <h1 class="text-2xl font-bold text-foreground">
+                    Grupos de investigación
+                </h1>
+            </div>
+
+            <div class="lg:shrink-0">
+                <ActionButton Text="Crear"
+                              Execute="OnCreateClick"
+                              Intent="ButtonIntent.Add"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Sm">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 9a.75.75 0 0 0-1.5 0v2.25H9a.75.75 0 0 0 0 1.5h2.25V15a.75.75 0 0 0 1.5 0v-2.25H15a.75.75 0 0 0 0-1.5h-2.25V9Z" clip-rule="evenodd" />
+                        </svg>
+                    </Icon>
+                </ActionButton>
+            </div>
+        </div>
+    </div>
+
+    <!-- Content -->
+    <div class="flex-1 min-h-0 overflow-hidden">
+        <GroupTabContent Groups="@groups"
+                         SelectedGroupId="@selectedGroupId"
+                         OnGroupSelected="HandleGroupSelected"
+                         GroupMembers="@members"
+                         IsLoading="@isLoading"
+                         IsLoadingMembers="@isLoadingMembers"
+                         OnReloadGroups="ReloadAfterMemberChange"
+                         OnRequestAddMember="HandleAddMember"
+                         OnRequestUpdateGroup="HandleUpdateGroup"
+                         OnRequestRemoveMember="HandleRemoveMember"
+                         OnAskCandidates="HandleAskCandidates"
+                         MemberRoles="@_memberRoleTypes" />
+    </div>
+</div>
+
+<GroupCreateModal @key="_modalKey"
+                  ModalId="group-create-modal"
+                  IsEdit="false"
+                  GroupTypeId="2"
+                  @bind-IsOpen="_openCreate"
+                  OnCreate="HandleCreate"
+                  OnCancel="HandleCancel" />
+
+@code {
+    private bool _openCreate;
+    private int _modalKey;
+
+    private List<GroupResponseDTO> groups = new();
+    private int? selectedGroupId;
+    private List<ResolvedUserProfileDTO> members = new();
+
+    private bool isLoading;
+    private bool isLoadingMembers;
+
+    private List<MemberRoleTypeDetailDTO> _memberRoleTypes = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadMemberRolesAsync();
+        await LoadGroupsAsync();
+        await EnsureDefaultSelection();
+    }
+
+    private void OnCreateClick()
+    {
+        _modalKey++;
+        _openCreate = true;
+    }
+
+    private async Task HandleCreate(AddGroupRequestDTO dto)
+    {
+        try
+        {
+            var response = await GroupService.CreateAsync(dto);
+
+            if (response.Success)
+            {
+                Toast.ShowSuccess(response.ToSuccessMessage("Grupo creado exitosamente."));
+                var createdId = response.Data?.GroupId;
+
+                _openCreate = false;
+
+                await LoadGroupsAsync();
+
+                if (createdId.HasValue)
+                    await HandleGroupSelected(createdId.Value);
+
+                return;
+            }
+
+            Toast.ShowError(response.ToErrorMessage("Error al crear el grupo."));
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Excepción al crear el grupo: {ex.Message}");
+        }
+    }
+
+    private Task HandleCancel()
+    {
+        _openCreate = false;
+        return Task.CompletedTask;
+    }
+
+    private async Task LoadGroupsAsync()
+    {
+        isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var response = await GroupService.GetListAsync(2);
+            groups = response.Success
+                ? response.Data ?? new()
+                : new();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task EnsureDefaultSelection()
+    {
+        if (selectedGroupId is null)
+        {
+            var first = groups.FirstOrDefault();
+            if (first is not null)
+                await HandleGroupSelected(first.GroupId);
+        }
+    }
+
+    private async Task HandleGroupSelected(int groupId)
+    {
+        selectedGroupId = groupId;
+        await LoadMembersFor(groupId);
+    }
+
+    private async Task LoadMembersFor(int groupId)
+    {
+        isLoadingMembers = true;
+        StateHasChanged();
+
+        try
+        {
+            var response = await GroupService.GetMembersByGroupIdAsync(groupId);
+            members = response.Success
+                ? response.Data ?? new()
+                : new();
+        }
+        finally
+        {
+            isLoadingMembers = false;
+        }
+    }
+
+    private async Task ReloadAfterMemberChange()
+    {
+        if (selectedGroupId is int groupId)
+            await LoadMembersFor(groupId);
+    }
+
+    private async Task HandleAddMember(AddGroupMemberRequestDTO dto)
+    {
+        var response = await GroupService.AddMemberAsync(dto);
+        if (!response.Success)
+        {
+            Toast.ShowError(response.ToErrorMessage("No se pudo agregar el miembro."));
+            return;
+        }
+
+        Toast.ShowSuccess(response.ToSuccessMessage("Miembro agregado."));
+        await ReloadAfterMemberChange();
+    }
+
+    private async Task HandleUpdateGroup(UpdateGroupRequestDTO dto)
+    {
+        var response = await GroupService.UpdateAsync(dto);
+        if (!response.Success)
+        {
+            Toast.ShowError(response.ToErrorMessage("No se pudo actualizar el grupo."));
+            return;
+        }
+
+        Toast.ShowSuccess(response.ToSuccessMessage("Grupo actualizado."));
+        await LoadGroupsAsync();
+        await ReloadAfterMemberChange();
+    }
+
+    private async Task HandleRemoveMember(int userGroupId)
+    {
+        _ = userGroupId;
+
+        // TODO: reemplazar por tu endpoint real cuando exista
+        Toast.ShowInfo("Miembro eliminado");
+        await Task.CompletedTask;
+    }
+
+    private async Task<List<ResolvedUserProfileDTO>> HandleAskCandidates(int groupId)
+    {
+        _ = groupId;
+
+        var response = await ExternalUserService.GetListAsync();
+        if (!response.Success)
+        {
+            Toast.ShowError(response.ToErrorMessage("No se pudieron cargar usuarios."));
+            return new();
+        }
+
+        var existingIds = new HashSet<int>(members.Select(m => m.UserId));
+
+        return (response.Data ?? new())
+            .Where(user => !existingIds.Contains(user.UserId))
+            .OrderBy(user => user.FullName)
+            .ToList();
+    }
+
+    private async Task LoadMemberRolesAsync()
+    {
+        try
+        {
+            var response = await MemberRoleTypeService.GetListAsync(onlyActives: true);
+            if (!response.Success || response.Data is null)
+            {
+                Toast.ShowError(response.ToErrorMessage("No se pudieron cargar los roles de miembro."));
+                _memberRoleTypes = new();
+                return;
+            }
+
+            _memberRoleTypes = response.Data
+                .Where(role => role.Flag == 2)
+                .Select(role => new MemberRoleTypeDetailDTO
+                {
+                    Id = role.Id,
+                    Name = role.Name,
+                    IsActive = role.IsActive,
+                    Flag = role.Flag
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al cargar roles de miembro: {ex.Message}");
+            _memberRoleTypes = new();
+        }
+    }
+}

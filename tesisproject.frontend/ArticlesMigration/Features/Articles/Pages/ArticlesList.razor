@@ -1,0 +1,639 @@
+@page "/articulos/listado"
+@page "/scientific-production/articles"
+@attribute [Authorize(Roles = "Admin,Analyst,DirectArticleSaveUser,ReportingViewer,ReportingExporter,ReportingAdvancedUser,WorkflowReviewerAreaTecnica,WorkflowProcessorAreaTecnica")]
+
+@using System.Linq
+@using tesisproject.shared.DTOs.Articles
+@using tesisproject.shared.DTOs.Catalogs
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.Features.Articles.Components
+@using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.Services.Errors
+
+@inject IArticlesClient ArticlesClient
+@inject ICatalogsService CatalogsService
+@inject NavigationManager Nav
+
+<PageTitle>Artículos registrados</PageTitle>
+
+<div class="article-list-page min-h-[calc(100vh-80px)]">
+    <div class="mx-auto max-w-[1400px] px-4 pb-10 pt-4">
+
+        <section class="article-list-hero mb-5">
+            <div class="article-list-hero__content">
+                <div class="article-list-hero__icon">
+                    <i class="bi bi-journal-text"></i>
+                </div>
+                <div>
+                    <div class="text-xs font-semibold uppercase tracking-[0.24em] text-white/70">Repositorio institucional</div>
+                    <h1 class="mt-1 text-2xl font-black tracking-tight text-white md:text-3xl">
+                        Artículos registrados
+                    </h1>
+                    <p class="mt-2 max-w-3xl text-sm leading-6 text-white/78">
+                        Consulta y revisa los artículos almacenados en la DIDE. La edición queda disponible solo para perfiles autorizados.
+                    </p>
+                </div>
+            </div>
+
+            @if (!_isLoading && _totalCount > 0)
+            {
+                <div class="article-list-kpis">
+                    <div class="article-list-kpi">
+                        <span>Registros encontrados</span>
+                        <strong>@_totalCount</strong>
+                        <small>Según filtros activos</small>
+                    </div>
+                    <div class="article-list-kpi article-list-kpi--gold">
+                        <span>Página actual</span>
+                        <strong>@_page</strong>
+                        <small>De @TotalPages páginas</small>
+                    </div>
+                    <div class="article-list-kpi article-list-kpi--sage">
+                        <span>Mostrados</span>
+                        <strong>@_articles.Count</strong>
+                        <small>En esta página</small>
+                    </div>
+                    <div class="article-list-kpi article-list-kpi--muted">
+                        <span>Modo</span>
+                        <strong>@(_view == ViewMode.Table ? "Tabla" : "Vista")</strong>
+                        <small>Consulta paginada</small>
+                    </div>
+                </div>
+            }
+        </section>
+
+        <section class="article-list-status-panel mb-4">
+            <div>
+                <div class="article-list-section-eyebrow">Segmentación rápida</div>
+                <h2>Estados de publicación</h2>
+            </div>
+            <div class="article-list-status-panel__filters">
+                <ArticleStatusFilterBar StatusOptions="@StatusOptions"
+                                        @bind-SelectedStatus="StatusFilter" />
+            </div>
+        </section>
+
+        <section class="article-list-filter-panel mb-4">
+            <div class="article-list-filter-panel__header">
+                <div>
+                    <div class="article-list-section-eyebrow">Filtros de consulta</div>
+                    <h2>Segmentación del listado</h2>
+                </div>
+                <button type="button"
+                        class="article-list-filter-clear"
+                        disabled="@_isLoading"
+                        @onclick="ClearAdvancedFiltersAsync">
+                    Limpiar filtros
+                </button>
+            </div>
+
+            <div class="article-list-filter-grid">
+                <label>
+                    <span>Año</span>
+                    <input type="number"
+                           min="1900"
+                           max="2100"
+                           placeholder="Todos"
+                           @bind="_yearFilter" />
+                </label>
+
+                <label>
+                    <span>Facultad</span>
+                    <select @bind="_facultyIdFilter">
+                        <option value="">Todas</option>
+                        @foreach (var item in _faculties)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                </label>
+
+                <label>
+                    <span>Línea de investigación</span>
+                    <select @bind="_researchLineIdFilter">
+                        <option value="">Todas</option>
+                        @foreach (var item in _researchLines)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                </label>
+
+                <label>
+                    <span>Fuente de indexación</span>
+                    <select @bind="_indexingSourceIdFilter">
+                        <option value="">Todas</option>
+                        @foreach (var item in _indexingSources)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                </label>
+
+                <button type="button"
+                        class="article-list-filter-apply"
+                        disabled="@_isLoading"
+                        @onclick="ApplyAdvancedFiltersAsync">
+                    Aplicar filtros
+                </button>
+            </div>
+
+            @if (HasActiveFilters)
+            {
+                <div class="article-list-active-filters">
+                    <span>Filtros activos</span>
+                    @foreach (var filter in ActiveFilterLabels)
+                    {
+                        <strong>@filter</strong>
+                    }
+                </div>
+            }
+        </section>
+
+        <!-- MENSAJES DE ESTADO / CONTENIDO -->
+        <AppStatusModal Visible="@_showStatusModal"
+                        Variant="@_statusVariant"
+                        Eyebrow="Artículos"
+                        Title="@_statusTitle"
+                        Message="@_statusMessage"
+                        OnClose="CloseStatusModal" />
+
+        @if (!string.IsNullOrWhiteSpace(_errorMessage))
+        {
+            <div class="rounded-2xl border border-rose-200 bg-rose-50/40 px-4 py-3 text-sm text-rose-700 shadow-sm">
+                Ocurrió un problema al cargar el listado.
+            </div>
+        }
+        else if (_isLoading)
+        {
+            <div class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm">
+                Cargando artículos…
+            </div>
+        }
+        else if (_articles.Count == 0)
+        {
+            <div class="article-list-empty-state">
+                <div class="article-list-empty-state__icon">
+                    <i class="bi bi-search"></i>
+                </div>
+                <p class="text-sm font-bold text-slate-800">
+                    No se encontraron artículos con los criterios seleccionados.
+                </p>
+                <p class="mt-1 text-xs leading-5 text-slate-500">
+                    Ajusta la búsqueda o limpia los filtros para volver a consultar el repositorio institucional.
+                </p>
+                @if (HasActiveFilters)
+                {
+                    <div class="mt-3 flex flex-wrap justify-center gap-2">
+                        @foreach (var filter in ActiveFilterLabels)
+                        {
+                            <span class="article-list-empty-state__chip">@filter</span>
+                        }
+                    </div>
+                }
+                <button type="button"
+                        class="article-list-empty-state__button"
+                        disabled="@_isLoading"
+                        @onclick="ClearAdvancedFiltersAsync">
+                    Limpiar filtros
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="article-list-control-panel mb-4">
+                <div class="article-list-control-panel__toolbar">
+                    <ArticleListToolbar Title=""
+                                        Subtitle=""
+                                        @bind-SearchText="SearchText"
+                                        @bind-IsCardsView="IsCardsView"
+                                        OnReload="ReloadAsync"
+                                        OnNew="GoToNew"
+                                        IsBusy="@_isLoading"
+                                        CanCreate="@_canEditArticles"
+                                        SearchPlaceholder="Buscar por título, revista, DOI…" />
+                </div>
+            </div>
+
+            <div class="article-list-pagination-card">
+                <div class="article-list-pagination-card__copy">
+                    <span>
+                        Mostrando
+                        <strong>@PageStart</strong>–<strong>@PageEnd</strong>
+                        de
+                        <strong>@_totalCount</strong>
+                        artículos
+                    </span>
+                    @if (_view == ViewMode.Cards)
+                    {
+                        <small>Vista resumida con tarjetas de la página actual.</small>
+                    }
+                </div>
+
+                <div class="article-list-pagination-card__actions">
+                    <label>Por página</label>
+                    <select @bind="_pageSize"
+                            @bind:after="PageSizeChanged">
+                        @foreach (var s in _pageSizeOptions)
+                        {
+                            <option value="@s">@s</option>
+                        }
+                    </select>
+
+                    <AppPager Class="ml-2"
+                              Page="@_page"
+                              TotalPages="@TotalPages"
+                              OnPrev="PrevPage"
+                              OnNext="NextPage" />
+                </div>
+            </div>
+
+            <div class="article-list-content-card mt-4">
+                @if (_view == ViewMode.Cards)
+                {
+                    <ArticleKanbanBoard Items="@_articles"
+                                        OnViewMore="OpenDetails" />
+                }
+                else
+                {
+                    <ArticleListTable Items="@PagedItems"
+                                      OnViewMore="OpenDetails"
+                                      OnEdit="GoToEdit"
+                                      CanEdit="@_canEditArticles" />
+                }
+            </div>
+
+            @if (TotalPages > 1)
+            {
+                <AppPager Class="mt-4"
+                          Page="@_page"
+                          TotalPages="@TotalPages"
+                          OnPrev="PrevPage"
+                          OnNext="NextPage" />
+            }
+        }
+    </div>
+</div>
+
+<!-- MODAL DETALLES -->
+<ArticleDetailsModal Visible="@_isDetailsOpen"
+                     Summary="@_selectedArticle"
+                     Detail="@_selectedDetail"
+                     IsLoading="@_isDetailLoading"
+                     CanEdit="@_canEditArticles"
+                     OnClose="CloseDetails"
+                     OnOpenDocument="OpenDocumentAsync"
+                     OnEdit="@(() => { if (_selectedArticle is not null) GoToEdit(_selectedArticle.Id); })" />
+
+@code {
+    private enum ViewMode
+    {
+        Cards,
+        Table
+    }
+
+    private List<ArticleListItemDto> _articles = new();
+    private int _totalCount;
+
+    private bool _isLoading = true;
+    private string? _errorMessage;
+    private bool _showStatusModal;
+    private string _statusVariant = "info";
+    private string _statusTitle = string.Empty;
+    private string? _statusMessage;
+    private bool _canEditArticles;
+
+    // Filtros internos
+    private string? _searchText;
+    private string? _statusFilter;
+    private short? _yearFilter;
+    private int? _facultyIdFilter;
+    private int? _researchLineIdFilter;
+    private int? _indexingSourceIdFilter;
+    private List<CatalogItemDto> _faculties = new();
+    private List<CatalogItemDto> _researchLines = new();
+    private List<CatalogItemDto> _indexingSources = new();
+
+    // Bindings para toolbar y barra de estado
+    private string? SearchText
+    {
+        get => _searchText;
+        set
+        {
+            if (_searchText == value)
+                return;
+
+            _searchText = value;
+            _page = 1;
+            _ = LoadAsync();
+        }
+    }
+
+    private string? StatusFilter
+    {
+        get => _statusFilter;
+        set
+        {
+            if (_statusFilter == value)
+                return;
+
+            _statusFilter = value;
+            _page = 1;
+            _ = LoadAsync();
+        }
+    }
+
+    // Vista actual
+    private ViewMode _view = ViewMode.Cards;
+    private bool IsCardsView
+    {
+        get => _view == ViewMode.Cards;
+        set => _view = value ? ViewMode.Cards : ViewMode.Table;
+    }
+
+    private int _page = 1;
+    private int _pageSize = 12;
+    private readonly int[] _pageSizeOptions = new[] { 12, 24, 48, 96 };
+
+    private int TotalPages => Math.Max(1, (int)Math.Ceiling((double)_totalCount / _pageSize));
+    private int PageStart => _totalCount == 0 ? 0 : ((_page - 1) * _pageSize) + 1;
+    private int PageEnd => Math.Min(_totalCount, ((_page - 1) * _pageSize) + _articles.Count);
+
+    private IEnumerable<ArticleListItemDto> PagedItems => _articles;
+
+    // Modal detalle
+    private ArticleListItemDto? _selectedArticle;
+    private ArticleDetailDto? _selectedDetail;
+    private bool _isDetailsOpen;
+    private bool _isDetailLoading;
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPermissionsAsync();
+        await LoadFilterCatalogsAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadPermissionsAsync()
+    {
+        if (AuthenticationStateTask is null)
+        {
+            _canEditArticles = false;
+            return;
+        }
+
+        var state = await AuthenticationStateTask;
+        var user = state.User;
+        _canEditArticles = user.IsInRole("Admin")
+            || user.IsInRole("Analyst")
+            || user.IsInRole("DirectArticleSaveUser");
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var result = await ArticlesClient.GetListAsync(new ArticleListQuery
+            {
+                Page = _page,
+                PageSize = _pageSize,
+                Search = string.IsNullOrWhiteSpace(_searchText) ? null : _searchText.Trim(),
+                PublicationStatusKey = string.IsNullOrWhiteSpace(_statusFilter) ? null : _statusFilter,
+                Year = _yearFilter,
+                FacultyId = _facultyIdFilter,
+                ResearchLineId = _researchLineIdFilter,
+                IndexingSourceId = _indexingSourceIdFilter
+            });
+
+            _articles = result.Items?.ToList() ?? new List<ArticleListItemDto>();
+            _totalCount = result.TotalCount;
+
+            if (_page > TotalPages)
+            {
+                _page = TotalPages;
+                await LoadAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            var friendlyMessage = UserFacingErrorMapper.FromException(ex, "Actualiza la pantalla e inténtalo nuevamente.");
+            _errorMessage = friendlyMessage;
+            ShowStatus("error", "No pude cargar el listado", friendlyMessage);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadFilterCatalogsAsync()
+    {
+        try
+        {
+            var facultiesTask = CatalogsService.GetFacultiesAsync();
+            var researchLinesTask = CatalogsService.GetResearchLinesAsync();
+            var indexingSourcesTask = CatalogsService.GetIndexingSourcesAsync();
+
+            await Task.WhenAll(facultiesTask, researchLinesTask, indexingSourcesTask);
+
+            _faculties = facultiesTask.Result.OrderBy(x => x.Name).ToList();
+            _researchLines = researchLinesTask.Result.OrderBy(x => x.Name).ToList();
+            _indexingSources = indexingSourcesTask.Result.OrderBy(x => x.Name).ToList();
+        }
+        catch
+        {
+            _faculties = new();
+            _researchLines = new();
+            _indexingSources = new();
+        }
+    }
+
+    private async Task ApplyAdvancedFiltersAsync()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task ClearAdvancedFiltersAsync()
+    {
+        _yearFilter = null;
+        _facultyIdFilter = null;
+        _researchLineIdFilter = null;
+        _indexingSourceIdFilter = null;
+        _statusFilter = null;
+        _searchText = null;
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private bool HasActiveFilters =>
+        !string.IsNullOrWhiteSpace(_searchText)
+        || !string.IsNullOrWhiteSpace(_statusFilter)
+        || _yearFilter.HasValue
+        || _facultyIdFilter.HasValue
+        || _researchLineIdFilter.HasValue
+        || _indexingSourceIdFilter.HasValue;
+
+    private IEnumerable<string> ActiveFilterLabels
+    {
+        get
+        {
+            if (!string.IsNullOrWhiteSpace(_searchText))
+                yield return $"Búsqueda: {_searchText.Trim()}";
+
+            if (!string.IsNullOrWhiteSpace(_statusFilter))
+                yield return $"Estado: {_statusFilter}";
+
+            if (_yearFilter.HasValue)
+                yield return $"Año: {_yearFilter.Value}";
+
+            if (_facultyIdFilter.HasValue)
+                yield return $"Facultad: {GetCatalogName(_faculties, _facultyIdFilter.Value)}";
+
+            if (_researchLineIdFilter.HasValue)
+                yield return $"Línea: {GetCatalogName(_researchLines, _researchLineIdFilter.Value)}";
+
+            if (_indexingSourceIdFilter.HasValue)
+                yield return $"Indexación: {GetCatalogName(_indexingSources, _indexingSourceIdFilter.Value)}";
+        }
+    }
+
+    private static string GetCatalogName(IEnumerable<CatalogItemDto> items, int id)
+        => items.FirstOrDefault(x => x.Id == id)?.Name ?? id.ToString();
+
+    private IEnumerable<string> StatusOptions => new[] { "PUBLICADO", "ACEPTADO", "SIN ESTADO" };
+
+    // 🔹 Mapeo robusto del estado a clave lógica
+    private string GetStatusKey(ArticleListItemDto a)
+    {
+        var raw = (a.PublicationStatusName ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(raw))
+            return "SIN ESTADO";
+
+        var s = raw.ToUpperInvariant();
+
+        // Cualquier variante que contenga "PUBLICAD" o "PUBLISHED"
+        if (s == "PUBLICADO" || s == "PUBLICADA" ||
+            s.Contains("PUBLICAD") || s.Contains("PUBLISHED"))
+        {
+            return "PUBLICADO";
+        }
+
+        // Cualquier variante que contenga "ACEPT" / "ACCEPT"
+        if (s == "ACEPTADO" || s == "ACEPTADA" ||
+            s.Contains("ACEPT") || s.Contains("ACCEPT"))
+        {
+            return "ACEPTADO";
+        }
+
+        // Todo lo demás se considera sin estado definido
+        return "SIN ESTADO";
+    }
+
+    private async Task PrevPage()
+    {
+        if (_page > 1)
+        {
+            _page--;
+            await LoadAsync();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (_page < TotalPages)
+        {
+            _page++;
+            await LoadAsync();
+        }
+    }
+
+    private async Task PageSizeChanged()
+    {
+        _page = 1;
+        await LoadAsync();
+    }
+
+    private async Task ReloadAsync() => await LoadAsync();
+
+    private void GoToNew() => Nav.NavigateTo("/articulos/registrar");
+
+    private void OpenDetails(ArticleListItemDto item)
+    {
+        _selectedArticle = item;
+        _isDetailsOpen = true;
+        _ = LoadDetailAsync(item.Id);
+    }
+
+    private async Task LoadDetailAsync(int id)
+    {
+        _isDetailLoading = true;
+        _selectedDetail = null;
+
+        try
+        {
+            _selectedDetail = await ArticlesClient.GetByIdAsync(id);
+        }
+        finally
+        {
+            _isDetailLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void CloseDetails()
+    {
+        _isDetailsOpen = false;
+        _selectedArticle = null;
+        _selectedDetail = null;
+    }
+
+    private void GoToEdit(int id)
+    {
+        if (!_canEditArticles)
+        {
+            ShowStatus("warning", "Edición no disponible", "Tu perfil puede consultar artículos, pero no tiene habilitada la edición directa de registros.");
+            return;
+        }
+
+        Nav.NavigateTo($"/articulos/editar/{id}");
+    }
+
+    private async Task OpenDocumentAsync()
+    {
+        if (_selectedDetail is null && _selectedArticle is not null)
+        {
+            await LoadDetailAsync(_selectedArticle.Id);
+        }
+
+        var url = _selectedDetail?.EvidenceUrl
+                  ?? _selectedDetail?.PublicationUrl
+                  ?? _selectedDetail?.JournalUrl;
+
+        if (!string.IsNullOrWhiteSpace(url))
+        {
+            Nav.NavigateTo(url!, true);
+        }
+    }
+
+    private void ShowStatus(string variant, string title, string? message)
+    {
+        _statusVariant = variant;
+        _statusTitle = title;
+        _statusMessage = message;
+        _showStatusModal = true;
+    }
+
+    private Task CloseStatusModal()
+    {
+        _showStatusModal = false;
+        return Task.CompletedTask;
+    }
+}

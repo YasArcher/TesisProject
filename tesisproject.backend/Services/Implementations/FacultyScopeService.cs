@@ -1,0 +1,419 @@
+﻿using Microsoft.EntityFrameworkCore;
+using tesisproject.backend.Services.Interfaces;
+using tesisproject.backend.UnitOfWork.Interfaces;
+using tesisproject.shared.Auth;
+using tesisproject.shared.DTOs.FacultyScope.Request;
+using tesisproject.shared.DTOs.Auth;
+using tesisproject.shared.DTOs.FacultyScope.Response;
+using tesisproject.shared.Entities.Auth;
+using tesisproject.shared.Entities.Core;
+using tesisproject.shared.Responses;
+using tesisproject.shared.Errors;
+
+namespace tesisproject.backend.Services.Implementations
+{
+    public class FacultyScopeService : IFacultyScopeService
+    {
+        private readonly IUnitOfWork _uow;
+        private readonly IAppUserService _appUsers;
+        private readonly ICurrentUserService _currentUser;
+        private const string TemporaryPassword = "Temp123*";
+        private const string FacultyScopeIdRequiredMessage = "FacultyScopeId is required.";
+        private const string FacultyScopeNotFoundMessage = "Faculty scope not found.";
+        private const string RequestRequiredMessage = "Request is required.";
+        private const string NameRequiredMessage = "Name is required.";
+        private const string ScopeNameAlreadyExistsMessage = "A scope with the same name already exists.";
+        private const string InstitutionalEmailRequiredMessage = "Institutional email is required.";
+        private const string DocumentRequiredMessage = "Document is required.";
+        private const string FailedToEnsureAppUserMessage = "Failed to ensure AppUser.";
+        private const string UnableToResolveAppUserMessage = "Unable to resolve AppUser.";
+        private const string ScopeAssignedMessage = "Scope assigned.";
+        private const string IdentityUserIdRequiredMessage = "IdentityUserId is required.";
+        private const string AssignmentNotFoundMessage = "Assignment not found (already unassigned).";
+        private const string ScopeUnassignedMessage = "Scope unassigned.";
+        private const string UserNotFoundMessage = "User not found.";
+        private const string UserNotAuthenticatedMessage = "User not authenticated.";
+        private const string AuthUserNotAuthenticatedCode = "AUTH_USER_NOT_AUTHENTICATED";
+
+        public FacultyScopeService(
+            IUnitOfWork uow,
+            IAppUserService appUsers,
+            ICurrentUserService currentUser)
+        {
+            _uow = uow;
+            _appUsers = appUsers;
+            _currentUser = currentUser;
+        }
+
+        public async Task<ServiceResult<IReadOnlyList<FacultyScopeResponseDTO>>> GetAllAsync(
+            bool includeAssignments = false,
+            CancellationToken ct = default)
+        {
+            var q = _uow.FacultyScopes.QueryWithRefs(includeAssignments, asNoTracking: true);
+
+            var list = await q.ToListAsync(ct);
+            var mapped = list.Select(x => Map(x, includeAssignments)).ToList();
+
+            return ServiceResult<IReadOnlyList<FacultyScopeResponseDTO>>.Ok(mapped);
+        }
+
+        public async Task<ServiceResult<FacultyScopeResponseDTO>> GetByIdAsync(
+            int facultyScopeId,
+            bool includeAssignments = false,
+            CancellationToken ct = default)
+        {
+            if (facultyScopeId <= 0)
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+            var e = await _uow.FacultyScopes.GetByIdWithRefsAsync(facultyScopeId, includeAssignments, ct);
+            if (e is null)
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
+
+            return ServiceResult<FacultyScopeResponseDTO>.Ok(Map(e, includeAssignments));
+        }
+
+        public async Task<ServiceResult<FacultyScopeResponseDTO>> CreateAsync(
+            CreateFacultyScopeRequestDTO request,
+            CancellationToken ct = default)
+        {
+            if (request is null)
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+            var name = (request.Name ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(name))
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(NameRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+            var exists = await _uow.FacultyScopes.ExistsAsync(x => x.Name == name, ct);
+            if (exists)
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(ScopeNameAlreadyExistsMessage, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
+
+            var facultyIds = NormalizeFacultyIds(request.FacultyIds);
+            if (facultyIds.Invalid.Count > 0)
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(
+                    $"Invalid FacultyIds: {string.Join(", ", facultyIds.Invalid)}",
+                    ErrorType.Validation);
+
+            var scope = new FacultyScope
+            {
+                Name = name,
+                IsActive = true
+            };
+
+            await _uow.FacultyScopes.AddAsync(scope, ct);
+            await _uow.SaveChangesAsync(ct);
+
+            if (facultyIds.Ids.Count > 0)
+            {
+                var rows = facultyIds.Ids.Select(fid => new FacultyScopeFaculty
+                {
+                    FacultyScopeId = scope.FacultyScopeId,
+                    FacultyId = fid,
+                    IsActive = true
+                });
+
+                await _uow.FacultyScopeFaculties.AddRangeAsync(rows, ct);
+                await _uow.SaveChangesAsync(ct);
+            }
+
+            var refreshed = await _uow.FacultyScopes.GetByIdWithRefsAsync(
+                scope.FacultyScopeId,
+                includeAssignments: false,
+                ct);
+
+            return ServiceResult<FacultyScopeResponseDTO>.Ok(Map(refreshed!, includeAssignments: false));
+        }
+
+        public async Task<ServiceResult<FacultyScopeResponseDTO>> UpdateAsync(
+            int facultyScopeId,
+            UpdateFacultyScopeRequestDTO request,
+            CancellationToken ct = default)
+        {
+            if (facultyScopeId <= 0)
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+            if (request is null)
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+            var e = await _uow.FacultyScopes.GetByIdAsync(new object[] { facultyScopeId }, ct);
+            if (e is null)
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
+
+            var name = (request.Name ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(name))
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(NameRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+            if (!string.Equals(e.Name, name, StringComparison.Ordinal))
+            {
+                var exists = await _uow.FacultyScopes.ExistsAsync(x => x.Name == name, ct);
+                if (exists)
+                    return ServiceResult<FacultyScopeResponseDTO>.Fail(ScopeNameAlreadyExistsMessage, ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
+
+                e.Name = name;
+            }
+
+            if (request.IsActive.HasValue)
+                e.IsActive = request.IsActive.Value;
+
+            await _uow.SaveChangesAsync(ct);
+
+            var refreshed = await _uow.FacultyScopes.GetByIdWithRefsAsync(
+                facultyScopeId,
+                includeAssignments: false,
+                ct);
+
+            return ServiceResult<FacultyScopeResponseDTO>.Ok(Map(refreshed!, includeAssignments: false));
+        }
+
+        public async Task<ServiceResult<FacultyScopeResponseDTO>> SetFacultiesAsync(
+            int facultyScopeId,
+            SetFacultyScopeFacultiesRequestDTO request,
+            CancellationToken ct = default)
+        {
+            if (facultyScopeId <= 0)
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+            if (request is null)
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(RequestRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+            var scope = await _uow.FacultyScopes.GetByIdAsync(new object[] { facultyScopeId }, ct);
+            if (scope is null)
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(FacultyScopeNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
+
+            var normalized = NormalizeFacultyIds(request.FacultyIds);
+            if (normalized.Invalid.Count > 0)
+                return ServiceResult<FacultyScopeResponseDTO>.Fail(
+                    $"Invalid FacultyIds: {string.Join(", ", normalized.Invalid)}",
+                    ErrorType.Validation);
+
+            var target = normalized.Ids;
+
+            var existing = await _uow.FacultyScopeFaculties
+                .GetAllAsync(x => x.FacultyScopeId == facultyScopeId, ct);
+
+            var byId = existing.ToDictionary(x => x.FacultyId);
+
+            foreach (var fid in target)
+            {
+                if (byId.TryGetValue(fid, out var row))
+                {
+                    if (!row.IsActive) row.IsActive = true;
+                }
+                else
+                {
+                    await _uow.FacultyScopeFaculties.AddAsync(new FacultyScopeFaculty
+                    {
+                        FacultyScopeId = facultyScopeId,
+                        FacultyId = fid,
+                        IsActive = true
+                    }, ct);
+                }
+            }
+
+            var targetSet = new HashSet<int>(target);
+            foreach (var row in existing)
+            {
+                if (!targetSet.Contains(row.FacultyId) && row.IsActive)
+                    row.IsActive = false;
+            }
+
+            await _uow.SaveChangesAsync(ct);
+
+            var refreshed = await _uow.FacultyScopes.GetByIdWithRefsAsync(
+                facultyScopeId,
+                includeAssignments: false,
+                ct);
+
+            return ServiceResult<FacultyScopeResponseDTO>.Ok(Map(refreshed!, includeAssignments: false));
+        }
+
+        public async Task<ServiceResult<bool>> AssignScopeToUserAsync(
+            int facultyScopeId,
+            AssignFacultyScopeUserRequestDTO request,
+            CancellationToken ct = default)
+        {
+            try
+            {
+                if (facultyScopeId <= 0)
+                    return ServiceResult<bool>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+                if (request is null)
+                    return ServiceResult<bool>.Fail(RequestRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+                var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+                if (string.IsNullOrWhiteSpace(email))
+                    return ServiceResult<bool>.Fail(InstitutionalEmailRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+                var document = (request.Document ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(document))
+                    return ServiceResult<bool>.Fail(DocumentRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+                var scope = await _uow.FacultyScopes.GetByIdAsync(new object[] { facultyScopeId }, ct);
+                if (scope is null)
+                    return ServiceResult<bool>.Fail(FacultyScopeNotFoundMessage, ErrorType.NotFound, ErrorCodes.Common.NotFound);
+
+                var registerDto = new RegisterRequest
+                {
+                    Email = email,
+                    Username = document,
+                    Password = TemporaryPassword,
+                    AspUserId = request.AspUserId,
+                    Role = AppRoles.User
+                };
+
+                var ensureResult = await _appUsers.EnsureAppUserAsync(registerDto, ct);
+                if (!ensureResult.Success)
+                {
+                    return ServiceResult<bool>.Fail(
+                        ensureResult.Message ?? FailedToEnsureAppUserMessage,
+                        ensureResult.Error);
+                }
+
+                var appUserPk = ensureResult.Data;
+
+                var appUser = await _uow.AppUsers.GetByIdAsync(new object[] { appUserPk }, ct);
+                if (appUser is null)
+                    return ServiceResult<bool>.Fail(UnableToResolveAppUserMessage, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+
+                var identityUserId = appUser.IdUser;
+
+                var key = new object[] { identityUserId, facultyScopeId };
+                var existing = await _uow.UserFacultyScopeAssignments.GetByIdAsync(key, ct);
+
+                if (existing is null)
+                {
+                    await _uow.UserFacultyScopeAssignments.AddAsync(new UserFacultyScopeAssignment
+                    {
+                        IdentityUserId = identityUserId,
+                        FacultyScopeId = facultyScopeId,
+                        IsActive = true
+                    }, ct);
+                }
+                else
+                {
+                    existing.IsActive = true;
+                }
+
+                await _uow.SaveChangesAsync(ct);
+                return ServiceResult<bool>.Ok(true, ScopeAssignedMessage);
+            }
+            catch (DbUpdateException dbex)
+            {
+                return ServiceResult<bool>.Fail(
+                    dbex.InnerException?.Message ?? dbex.Message,
+                    ErrorType.Conflict, ErrorCodes.Common.PersistenceConflict);
+            }
+            catch (Exception ex)
+            {
+                return ServiceResult<bool>.Fail(ex.Message, ErrorType.Unexpected, ErrorCodes.Common.UnexpectedError);
+            }
+        }
+
+        public async Task<ServiceResult<bool>> UnassignScopeFromUserAsync(
+            int facultyScopeId,
+            int identityUserId,
+            CancellationToken ct = default)
+        {
+            if (facultyScopeId <= 0)
+                return ServiceResult<bool>.Fail(FacultyScopeIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+            if (identityUserId <= 0)
+                return ServiceResult<bool>.Fail(IdentityUserIdRequiredMessage, ErrorType.Validation, ErrorCodes.Common.InvalidRequest);
+
+            var key = new object[] { identityUserId, facultyScopeId };
+            var existing = await _uow.UserFacultyScopeAssignments.GetByIdAsync(key, ct);
+
+            if (existing is null)
+                return ServiceResult<bool>.Ok(true, AssignmentNotFoundMessage);
+
+            existing.IsActive = false;
+            await _uow.SaveChangesAsync(ct);
+
+            return ServiceResult<bool>.Ok(true, ScopeUnassignedMessage);
+        }
+
+        public async Task<ServiceResult<IReadOnlyList<int>>> GetAllowedFacultyIdsForUserAsync(
+            CancellationToken ct = default)
+        {
+            try
+            {
+                var actorUserId = await GetExistingActorUserIdAsync(ct);
+                if (!actorUserId.HasValue)
+                {
+                    return ServiceResult<IReadOnlyList<int>>.Fail(
+                        UserNotFoundMessage,
+                        ErrorType.NotFound, ErrorCodes.Common.NotFound);
+                }
+
+                var ids = await _uow.UserFacultyScopeAssignments
+                    .GetActiveFacultyIdsByUserAsync(actorUserId.Value, ct);
+
+                return ServiceResult<IReadOnlyList<int>>.Ok(ids);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return ServiceResult<IReadOnlyList<int>>.Fail(
+                    UserNotAuthenticatedMessage,
+                    ErrorType.Unauthorized,
+                    AuthUserNotAuthenticatedCode);
+            }
+        }
+
+        // ========================= Helpers =========================
+
+        private async Task<int?> GetExistingActorUserIdAsync(CancellationToken ct)
+        {
+            var currentUserId = _currentUser.GetRequiredUserId();
+            var user = await _uow.AppUsers.GetByIdUserAsync(currentUserId, ct);
+            return user?.IdUser;
+        }
+
+        private sealed record NormalizedFacultyIds(List<int> Ids, List<string> Invalid);
+
+        private static NormalizedFacultyIds NormalizeFacultyIds(IEnumerable<int>? raw)
+        {
+            var ids = new List<int>();
+            var invalid = new List<string>();
+
+            if (raw is null) return new NormalizedFacultyIds(ids, invalid);
+
+            foreach (var id in raw)
+            {
+                if (id > 0) ids.Add(id);
+                else invalid.Add(id.ToString());
+            }
+
+            ids = ids.Distinct().ToList();
+            return new NormalizedFacultyIds(ids, invalid);
+        }
+
+        private static FacultyScopeResponseDTO Map(FacultyScope e, bool includeAssignments)
+        {
+            var dto = new FacultyScopeResponseDTO
+            {
+                FacultyScopeId = e.FacultyScopeId,
+                Name = e.Name,
+                IsActive = e.IsActive,
+                Faculties = e.Faculties?
+                    .Select(f => new FacultyScopeFacultyItemDTO
+                    {
+                        FacultyId = f.FacultyId,
+                        IsActive = f.IsActive
+                    })
+                    .OrderBy(x => x.FacultyId)
+                    .ToList() ?? new List<FacultyScopeFacultyItemDTO>()
+            };
+
+            if (includeAssignments && e.UserAssignments is not null)
+            {
+                dto.AssignedUserIds = e.UserAssignments
+                    .Where(a => a.IsActive)
+                    .Select(a => a.IdentityUserId)
+                    .Distinct()
+                    .OrderBy(x => x)
+                    .ToList();
+            }
+
+            return dto;
+        }
+    }
+}

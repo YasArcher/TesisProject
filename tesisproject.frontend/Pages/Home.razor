@@ -1,0 +1,101 @@
+﻿@page "/theme"
+@layout MainLayout
+@inject IJSRuntime JSRuntime
+
+<div class="p-6 bg-background text-foreground min-h-screen">
+    <h1 class="text-3xl font-bold mb-6 text-primary">Prueba de Temas</h1>
+
+    <div class="mb-6 space-x-2 space-y-2 flex flex-wrap">
+        <button @onclick="@(() => SetTheme("corporate"))"
+                class="px-4 py-2 bg-primary text-white rounded hover:opacity-80">
+            Corporate
+        </button>
+        <button @onclick="@(() => SetTheme("dark"))"
+                class="px-4 py-2 bg-secondary text-white rounded hover:opacity-80">
+            Dark
+        </button>
+        <button @onclick="@(() => SetTheme("pastel"))"
+                class="px-4 py-2 bg-accent text-white rounded hover:opacity-80">
+            Pastel
+        </button>
+        <button @onclick="@(() => SetTheme("institucional"))"
+                class="px-4 py-2 bg-primary text-white rounded hover:opacity-80 font-sans">
+            Institucional
+        </button>
+        <button @onclick="@(() => SetTheme(""))"
+                class="px-4 py-2 border border-primary text-primary rounded hover:bg-primary hover:text-white">
+            Default
+        </button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="p-4 bg-primary text-white rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Color Primario</h3>
+            <p>Este es el color primario del tema actual</p>
+        </div>
+
+        <div class="p-4 bg-secondary text-white rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Color Secundario</h3>
+            <p>Este es el color secundario del tema actual</p>
+        </div>
+
+        <div class="p-4 bg-accent text-white rounded-lg">
+            <h3 class="text-lg font-semibold mb-2">Color Accent</h3>
+            <p>Este es el color de acento del tema actual</p>
+        </div>
+    </div>
+
+    <div class="mt-6 p-4 border border-primary rounded-lg">
+        <h3 class="text-lg font-semibold mb-2 text-primary">Información del Tema</h3>
+        <p class="text-foreground">
+            Tema actual: <strong>@currentTheme</strong><br>
+            Los colores cambian automáticamente según el tema seleccionado.
+        </p>
+    </div>
+
+    @if (currentTheme == "institucional")
+    {
+        <div class="mt-6 font-sans">
+            <div class="bg-primary text-white p-4 rounded-t-lg">
+                <h2 class="text-xl font-bold">Encabezado Institucional</h2>
+                <p>Color: #7A1E19 (Burgundy)</p>
+            </div>
+
+            <div class="bg-secondary text-white p-4">
+                <h3 class="font-semibold">Menú/Navegación</h3>
+                <p>Fondo: #6e6e6e (Gris medio)</p>
+                <ul class="list-disc list-inside mt-2 space-y-1">
+                    <li>Inicio</li>
+                    <li>Servicios</li>
+                    <li>Contacto</li>
+                </ul>
+            </div>
+
+            <div class="bg-background text-foreground p-6">
+                <h3 class="text-lg font-semibold mb-3">Contenido Principal</h3>
+                <p class="mb-4">Fondo de página: #E3E2E1 (Beige claro)</p>
+                <p class="font-sans">Tipografía: "Helvetica Neue", Helvetica, Arial, sans-serif</p>
+            </div>
+
+            <div class="bg-secondary text-accent p-4 rounded-b-lg">
+                <h3 class="font-semibold mb-2">Footer</h3>
+                <p class="text-sm">Fondo: #6e6e6e | Texto: #999999</p>
+                <p class="text-sm mt-1">© 2024 Institución. Todos los derechos reservados.</p>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private string currentTheme = "corporate";
+
+    private async Task SetTheme(string theme)
+    {
+        currentTheme = string.IsNullOrEmpty(theme) ? "default" : theme;
+
+        // Cambiar la clase del elemento HTML
+        await JSRuntime.InvokeVoidAsync("eval", $@"
+            document.documentElement.className = '{theme}';
+        ");
+    }
+}

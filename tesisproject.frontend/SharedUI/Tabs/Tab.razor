@@ -1,0 +1,34 @@
+﻿@code {
+    [CascadingParameter] internal Tabs? Owner { get; set; }
+
+    [Parameter, EditorRequired]
+    public string Key { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Optional icon fragment shown before the Title (e.g. a Heroicon SVG/component).
+    /// </summary>
+    [Parameter]
+    public RenderFragment? Icon { get; set; }
+
+    [Parameter, EditorRequired]
+    public RenderFragment? ChildContent { get; set; }
+
+    protected override void OnInitialized()
+    {
+        if (Owner is null)
+            throw new InvalidOperationException("<Tab> must be used inside <Tabs>.");
+
+        Owner.Register(new Tabs.TabItem
+        {
+            Key = Key,
+            Title = Title,
+            Content = ChildContent!,
+            Icon = Icon
+        });
+    }
+
+    // Tabs renders the active panel; this component does not render markup by itself.
+}

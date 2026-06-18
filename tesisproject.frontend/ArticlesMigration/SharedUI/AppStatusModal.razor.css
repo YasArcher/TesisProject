@@ -1,0 +1,141 @@
+.app-status-modal__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    background: rgba(49, 54, 71, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.app-status-modal {
+    width: min(100%, 32rem);
+    border-radius: 1.6rem;
+    background:
+        radial-gradient(circle at top right, rgba(244, 206, 20, 0.14), transparent 28%),
+        linear-gradient(180deg, #ffffff, rgba(245, 247, 248, 0.98));
+    border: 1px solid rgba(67, 86, 99, 0.14);
+    box-shadow: 0 26px 48px rgba(49, 54, 71, 0.18);
+    padding: 1.4rem;
+    text-align: center;
+}
+
+.app-status-modal__icon {
+    width: 3.6rem;
+    height: 3.6rem;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    font-size: 1.45rem;
+    font-weight: 900;
+}
+
+.app-status-modal__eyebrow {
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+}
+
+.app-status-modal__title {
+    margin-top: .45rem;
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #313647;
+}
+
+.app-status-modal__message {
+    margin-top: .65rem;
+    color: #435663;
+    line-height: 1.6;
+}
+
+.app-status-modal__content {
+    margin-top: 1rem;
+}
+
+.app-status-modal__actions {
+    margin-top: 1.2rem;
+}
+
+.app-status-modal__button {
+    min-width: 10rem;
+    border-radius: 1rem;
+    padding: .8rem 1rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.app-status-modal--info .app-status-modal__icon {
+    background: rgba(151, 176, 103, 0.18);
+    color: #437057;
+}
+
+.app-status-modal--info .app-status-modal__eyebrow {
+    color: #437057;
+}
+
+.app-status-modal--info .app-status-modal__button {
+    background: linear-gradient(135deg, #313647, #495E57);
+}
+
+.app-status-modal--success .app-status-modal__icon {
+    background: rgba(151, 176, 103, 0.2);
+    color: #437057;
+}
+
+.app-status-modal--success .app-status-modal__eyebrow {
+    color: #437057;
+}
+
+.app-status-modal--success .app-status-modal__button {
+    background: linear-gradient(135deg, #437057, #97B067);
+}
+
+.app-status-modal--warning .app-status-modal__icon {
+    background: rgba(244, 206, 20, 0.2);
+    color: #8a7410;
+}
+
+.app-status-modal--warning .app-status-modal__eyebrow {
+    color: #8a7410;
+}
+
+.app-status-modal--warning .app-status-modal__button {
+    background: linear-gradient(135deg, #F4CE14, #97B067);
+    color: #313647;
+}
+
+.app-status-modal--error .app-status-modal__icon {
+    background: rgba(244, 206, 20, 0.16);
+    color: #2F5249;
+}
+
+.app-status-modal--error .app-status-modal__eyebrow {
+    color: #2F5249;
+}
+
+.app-status-modal--error .app-status-modal__button {
+    background: linear-gradient(135deg, #2F5249, #313647);
+}
+
+@media (max-width: 767.98px) {
+    .app-status-modal__backdrop {
+        padding: .85rem;
+        align-items: flex-end;
+    }
+
+    .app-status-modal {
+        width: 100%;
+        border-radius: 1.25rem 1.25rem 0 0;
+        padding: 1.15rem 1rem 1rem;
+    }
+
+    .app-status-modal__button {
+        width: 100%;
+    }
+}

@@ -1,0 +1,49 @@
+﻿@using Microsoft.AspNetCore.Components
+
+<div class="@($"relative {Class}")" role="search">
+    <!-- Icon (prefix) -->
+    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+        @if (Prefix is not null)
+        {
+            @Prefix
+        }
+        else
+        {
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                <path fill-rule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z" clip-rule="evenodd" />
+            </svg>
+
+
+        }
+    </div>
+
+    <!-- Input -->
+    <input @ref="_inputRef"
+           type="text"
+           class="@($"w-full pl-10 pr-9 py-2 border border-border rounded-lg bg-background text-foreground placeholder-muted focus:ring-2 focus:ring-primary focus:border-transparent transition-colors {InputClass}")"
+           placeholder="@Placeholder"
+           aria-label="@AriaLabel"
+           value="@Value"
+           @oninput="OnInput" />
+
+    <!-- Clear (suffix) -->
+    @if (!string.IsNullOrWhiteSpace(Value))
+    {
+        <button type="button"
+                class="absolute inset-y-0 right-0 pr-2 flex items-center text-muted hover:text-foreground"
+                aria-label="Clear search"
+                @onclick="Clear">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    }
+
+    @if (Suffix is not null)
+    {
+        <div class="absolute inset-y-0 right-8 pr-2 flex items-center">
+            @Suffix
+        </div>
+    }
+</div>

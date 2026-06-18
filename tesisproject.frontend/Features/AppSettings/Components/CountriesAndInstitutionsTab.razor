@@ -1,0 +1,785 @@
+﻿@using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Catalog
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.Table
+@using tesisproject.frontend.SharedUI.SelectInput
+@using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.frontend.SharedUI.SearchInput
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.Catalog.Country.Request
+@using tesisproject.shared.DTOs.Catalog.Country.Response
+@using tesisproject.shared.DTOs.Institution.Request
+@using tesisproject.shared.DTOs.Institution.Response
+@using tesisproject.shared.DTOs.Filters
+@using System.Globalization
+@using System.Text
+
+@inject ICountryClientService CountryClient
+@inject IInstitutionClientService InstitutionClient
+@inject IToastService Toast
+
+<div class="h-full min-h-0 flex flex-col p-6 max-w-[1800px] mx-auto w-full gap-6">
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-6 flex-1 min-h-0">
+
+        <!-- LEFT SIDEBAR: Countries -->
+        <div class="min-h-0 h-full flex flex-col gap-4 overflow-hidden">
+            <!-- Countries Controls -->
+            <div class="rounded-xl border-2 border-border bg-background shadow-sm shrink-0 overflow-hidden">
+                <div class="p-4 border-b border-border bg-background/50">
+                    <SearchInput Value="@_countrySearchTerm"
+                                 ValueChanged="OnCountrySearchChanged"
+                                 Placeholder="Buscar países..."
+                                 Class="mb-3" />
+
+                    <ActionButton Execute="OpenCreateCountryModal"
+                                  Text="Nuevo País"
+                                  Intent="ButtonIntent.Add"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm"
+                                  Class="w-full" />
+                </div>
+            </div>
+
+            <!-- Countries List using Container -->
+            <div class="flex-1 min-h-0 overflow-hidden">
+                <Container TItem="CountryListItemDTO"
+                           Items="@_filteredCountries"
+                           Title="Países registrados"
+                           ShowItemCount="true"
+                           TotalCount="@_filteredCountries.Count"
+                           GridClasses="space-y-2"
+                           EnableScroll="true"
+                           MaxHeight="100%"
+                           ScrollbarType="ScrollbarType.Thin"
+                           IsLoading="@_loadingCountries"
+                           EmptyStateTitle="Aún no hay países"
+                           EmptyStateDescription="Crea tu primer país para comenzar.">
+                    <HeaderIcon>
+                        <svg class="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </HeaderIcon>
+
+                    <EmptyStateIcon>
+                        <svg class="w-full h-full text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </EmptyStateIcon>
+
+                    <EmptyStateAction>
+                        <ActionButton Execute="OpenCreateCountryModal"
+                                      Text="Crear País"
+                                      Intent="ButtonIntent.Add"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Sm" />
+                    </EmptyStateAction>
+                    <ChildContent Context="country">
+                        <SelectableCard TItem="CountryListItemDTO"
+                                        Item="country"
+                                        IsSelected="@(_selectedCountryId == country.Id)"
+                                        OnSelected="@(item => OnCountrySelected(item.Id))"
+                                        OnEditRequested="OpenEditCountryModal"
+                                        OnDeleteRequested="@(item => DeleteCountryAsync(item.Id))"
+                                        GetTitle="item => item.Name"
+                                        GetIsActive="item => item.IsActive"
+                                        GetDeleteConfirmMessage="@(item => $"¿Está seguro de que desea eliminar '{item.Name}'? Esto afectará a todas las instituciones asociadas.")">
+
+                            <ItemMeta Context="item">
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
+                                    @item.IsoCode
+                                </span>
+
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
+                                    @item.IsoAlpha3
+                                </span>
+
+                                @if (item.IsActive)
+                                {
+                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
+                                        Activo
+                                    </span>
+                                }
+                            </ItemMeta>
+                        </SelectableCard>
+                    </ChildContent>
+                </Container>
+            </div>
+        </div>
+
+        <!-- RIGHT PANEL: Institutions -->
+        <div class="min-h-0">
+            <div class="rounded-xl border-2 border-border bg-background shadow-sm h-full min-h-0 flex flex-col overflow-hidden">
+                <div class="p-5 border-b border-border bg-background/50 shrink-0">
+                    <div class="flex items-center justify-between">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                </svg>
+                                <h3 class="text-base font-semibold text-foreground">Instituciones</h3>
+                            </div>
+                            <p class="text-xs text-muted">
+                                @if (_selectedCountryId.HasValue)
+                                {
+                                    var selectedCountry = _countries.FirstOrDefault(c => c.Id == _selectedCountryId);
+                                    <text>Administrar instituciones de @selectedCountry?.Name</text>
+                                }
+                                else
+                                {
+                                    <text>Seleccione un país para ver y administrar sus instituciones</text>
+                                }
+                            </p>
+                        </div>
+
+                        <ActionButton Execute="OpenCreateInstitutionModal"
+                                      Text="Nueva Institución"
+                                      Intent="ButtonIntent.Add"
+                                      Variant="ButtonVariant.Outline"
+                                      Size="ButtonSize.Sm"
+                                      Disabled="@(!_selectedCountryId.HasValue)" />
+                    </div>
+                </div>
+
+                <div class="p-5 flex-1 min-h-0 overflow-y-auto">
+                    @if (!_selectedCountryId.HasValue)
+                    {
+                        <div class="text-center py-12">
+                            <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 19l-7-7 7-7" />
+                            </svg>
+                            <p class="mt-3 text-sm text-muted">Seleccione un país para ver sus instituciones</p>
+                        </div>
+                    }
+                    else if (_loadingInstitutions)
+                    {
+                        <div class="flex items-center justify-center py-12">
+                            <div class="text-center space-y-2">
+                                <div class="inline-block h-6 w-6 animate-spin rounded-full border-3 border-solid border-primary border-r-transparent"></div>
+                                <p class="text-xs text-muted">Cargando instituciones...</p>
+                            </div>
+                        </div>
+                    }
+                    else if (_institutions.Count == 0)
+                    {
+                        <div class="text-center py-12">
+                            <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            </svg>
+                            <p class="mt-3 text-sm font-medium text-muted">Aún no hay instituciones</p>
+                            <p class="mt-1 text-xs text-muted/70">Agregue instituciones a este país</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <SearchInput Value="@_institutionSearchTerm"
+                                     ValueChanged="OnInstitutionSearchChanged"
+                                     Placeholder="Buscar instituciones..."
+                                     Class="mb-4" />
+
+                        <DataTable TItem="InstitutionListItemDTO"
+                                   Items="@_filteredInstitutions"
+                                   PageSize="6"
+                                   Total="@_filteredInstitutions.Count"
+                                   Columns="@_institutionColumns"
+                                   EmptyText="No se encontraron instituciones">
+                            <RowTemplate>
+                                @{
+                                    var inst = context;
+                                }
+                                <td class="px-4 py-3 text-sm font-medium text-foreground">
+                                    @inst.Name
+                                </td>
+                                <td class="px-4 py-3 text-sm text-muted">
+                                    @inst.CountryName
+                                </td>
+                                <td class="px-4 py-3 text-center">
+                                    @if (inst.IsActive)
+                                    {
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-secondary/15 text-secondary border border-secondary/30">
+                                            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Activa
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-muted/15 text-muted border border-border">
+                                            <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Inactiva
+                                        </span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <div class="inline-flex items-center gap-2">
+                                        <ActionButton Execute="@(() => OpenEditInstitutionModal(inst.Id))"
+                                                      Intent="ButtonIntent.Neutral"
+                                                      Variant="ButtonVariant.Outline"
+                                                      Size="ButtonSize.Xs">
+                                            <Icon>
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                                    <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
+                                                    <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" />
+                                                </svg>
+                                            </Icon>
+                                        </ActionButton>
+                                        <ActionButton Execute="@(() => DeleteInstitutionAsync(inst.Id))"
+                                                      Intent="ButtonIntent.Delete"
+                                                      Variant="ButtonVariant.Outline"
+                                                      Size="ButtonSize.Xs"
+                                                      ConfirmBeforeExecute="true"
+                                                      ConfirmMessage="@($"¿Está seguro de que desea eliminar '{inst.Name}'?")">
+                                            <Icon>
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                                    <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
+                                                </svg>
+                                            </Icon>
+                                        </ActionButton>
+                                    </div>
+                                </td>
+                            </RowTemplate>
+                        </DataTable>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <!-- Country Modal -->
+    <Modal Id="country-modal"
+           IsOpen="@_countryModalOpen"
+           IsOpenChanged="v => _countryModalOpen = v"
+           Title="@(_isCountryEdit ? "Editar País" : "Nuevo País")"
+           Size="ModalSize.Md">
+        <ChildContent>
+            <div class="space-y-4">
+                <TextInput @bind-Value="_countryEditModel.Name"
+                           Label="Nombre del País"
+                           Placeholder="ej., Ecuador"
+                           Required="true" />
+
+                <div class="grid grid-cols-2 gap-4">
+                    <TextInput @bind-Value="_countryEditModel.IsoCode"
+                               Label="Código ISO (2 caracteres)"
+                               Placeholder="ej., EC"
+                               Required="true"
+                               MaxLength="2" />
+
+                    <TextInput @bind-Value="_countryEditModel.IsoAlpha3"
+                               Label="ISO Alpha-3 (3 caracteres)"
+                               Placeholder="ej., ECU"
+                               Required="true"
+                               MaxLength="3" />
+                </div>
+
+                @if (_isCountryEdit)
+                {
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox"
+                               class="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                               @bind="_countryEditModel.IsActive" />
+                        <span class="text-sm text-foreground">Activo</span>
+                    </label>
+                }
+
+                <div class="flex justify-end gap-2 pt-4 border-t border-border">
+                    <ActionButton Execute="CloseCountryModal"
+                                  Text="Cancelar"
+                                  Intent="ButtonIntent.Neutral"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm" />
+                    <ActionButton Execute="SaveCountryAsync"
+                                  Text="Guardar"
+                                  Intent="ButtonIntent.Accept"
+                                  Size="ButtonSize.Sm"
+                                  Disabled="@(!CanSaveCountry())" />
+                </div>
+            </div>
+        </ChildContent>
+    </Modal>
+
+    <!-- Institution Modal -->
+    <Modal Id="institution-modal"
+           IsOpen="@_institutionModalOpen"
+           IsOpenChanged="v => _institutionModalOpen = v"
+           Title="@(_isInstitutionEdit ? "Editar Institución" : "Nueva Institución")"
+           Size="ModalSize.Md">
+        <ChildContent>
+            <div class="space-y-4">
+                <TextInput @bind-Value="_institutionEditModel.Name"
+                           Label="Nombre de la Institución"
+                           Placeholder="ej., Universidad Nacional de Chimborazo"
+                           Required="true" />
+
+                <div class="space-y-2">
+                    <label class="text-sm font-medium text-foreground">
+                        País @(_selectedCountryId.HasValue ? "(Preseleccionado)" : "")
+                    </label>
+                    @if (_isInstitutionEdit || !_selectedCountryId.HasValue)
+                    {
+                        <SelectInput TItem="CountryListItemDTO"
+                                     Items="@_countries.Where(c => c.IsActive).ToList()"
+                                     @bind-Value="_selectedCountryForInstitution"
+                                     GetText="@(c => c.Name)"
+                                     GetKey="@(c => c.Id.ToString())"
+                                     Placeholder="-- Seleccionar país --"
+                                     Size="SelectSize.Md" />
+                    }
+                    else
+                    {
+                        <input type="text"
+                               class="w-full rounded-lg border border-border bg-muted/5 px-3 py-2 text-sm text-foreground cursor-not-allowed"
+                               value="@(_countries.FirstOrDefault(c => c.Id == _selectedCountryId)?.Name ?? "")"
+                               disabled />
+                        <p class="text-xs text-muted mt-1">
+                            El país fue preseleccionado desde la barra lateral.
+                        </p>
+                    }
+                </div>
+
+                @if (_isInstitutionEdit)
+                {
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox"
+                               class="h-4 w-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/30 cursor-pointer"
+                               @bind="_institutionEditModel.IsActive" />
+                        <span class="text-sm text-foreground">Activa</span>
+                    </label>
+                }
+
+                <div class="flex justify-end gap-2 pt-4 border-t border-border">
+                    <ActionButton Execute="CloseInstitutionModal"
+                                  Text="Cancelar"
+                                  Intent="ButtonIntent.Neutral"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm" />
+                    <ActionButton Execute="SaveInstitutionAsync"
+                                  Text="Guardar"
+                                  Intent="ButtonIntent.Accept"
+                                  Size="ButtonSize.Sm"
+                                  Disabled="@(!CanSaveInstitution())" />
+                </div>
+            </div>
+        </ChildContent>
+    </Modal>
+</div>
+
+@code {
+    // ===== Search terms =====
+    private string _countrySearchTerm = string.Empty;
+    private string _institutionSearchTerm = string.Empty;
+
+    // Countries
+    private bool _loadingCountries;
+    private List<CountryListItemDTO> _countries = new();
+    private List<CountryListItemDTO> _filteredCountries = new();
+    private int? _selectedCountryId;
+    private bool _countryModalOpen;
+    private bool _isCountryEdit;
+    private CountryDetailDTO _countryEditModel = new();
+
+    // Institutions
+    private bool _loadingInstitutions;
+    private List<InstitutionListItemDTO> _institutions = new();
+    private List<InstitutionListItemDTO> _filteredInstitutions = new();
+    private bool _institutionModalOpen;
+    private bool _isInstitutionEdit;
+    private InstitutionDetailDTO _institutionEditModel = new();
+    private CountryListItemDTO? _selectedCountryForInstitution;
+
+    // Table columns
+    private List<ColumnDef<InstitutionListItemDTO>> _institutionColumns = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        InitializeInstitutionColumns();
+        await LoadCountriesAsync();
+    }
+
+    private void InitializeInstitutionColumns()
+    {
+        _institutionColumns = new()
+        {
+            new("Nombre", i => i.Name, Sortable: true),
+            new("País", i => i.CountryName ?? "", Sortable: true, Width: "200px"),
+            new("Estado", i => i.IsActive ? "Activa" : "Inactiva", Sortable: true, Width: "120px"),
+            new("Acciones", i => "", Sortable: false, Width: "150px")
+        };
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_selectedCountryForInstitution != null && _selectedCountryForInstitution.Id != _institutionEditModel.CountryId)
+        {
+            _institutionEditModel.CountryId = _selectedCountryForInstitution.Id;
+        }
+    }
+
+    // ===== Normalización para búsqueda (sin acentos, minúsculas) =====
+    private static string NormalizeForSearch(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return string.Empty;
+
+        var normalized = input.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(normalized.Length);
+
+        foreach (var ch in normalized)
+        {
+            var uc = CharUnicodeInfo.GetUnicodeCategory(ch);
+            if (uc != UnicodeCategory.NonSpacingMark)
+            {
+                sb.Append(char.ToLowerInvariant(ch));
+            }
+        }
+
+        return sb.ToString();
+    }
+
+    // ===== Search handlers (conectados a SearchInput) =====
+    private Task OnCountrySearchChanged(string value)
+    {
+        _countrySearchTerm = value;
+        return OnCountrySearchRequested(value);
+    }
+
+    private Task OnInstitutionSearchChanged(string value)
+    {
+        _institutionSearchTerm = value;
+        return OnInstitutionSearchRequested(value);
+    }
+
+    private Task OnInstitutionSearchRequested(string term)
+    {
+        var normTerm = NormalizeForSearch(term?.Trim());
+
+        if (string.IsNullOrEmpty(normTerm))
+        {
+            _filteredInstitutions = _institutions.ToList();
+        }
+        else
+        {
+            _filteredInstitutions = _institutions
+                .Where(i =>
+                {
+                    var nameNorm = NormalizeForSearch(i.Name);
+                    var countryNorm = NormalizeForSearch(i.CountryName);
+
+                    return (!string.IsNullOrEmpty(nameNorm) && nameNorm.Contains(normTerm)) ||
+                           (!string.IsNullOrEmpty(countryNorm) && countryNorm.Contains(normTerm));
+                })
+                .OrderBy(i => i.Name)
+                .ToList();
+        }
+
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task OnCountrySearchRequested(string term)
+    {
+        var normTerm = NormalizeForSearch(term?.Trim());
+
+        if (string.IsNullOrEmpty(normTerm))
+        {
+            _filteredCountries = _countries.ToList();
+        }
+        else
+        {
+            _filteredCountries = _countries
+                .Where(c =>
+                {
+                    var nameNorm = NormalizeForSearch(c.Name);
+                    var iso2Norm = NormalizeForSearch(c.IsoCode);
+                    var iso3Norm = NormalizeForSearch(c.IsoAlpha3);
+
+                    return (!string.IsNullOrEmpty(nameNorm) && nameNorm.Contains(normTerm)) ||
+                           (!string.IsNullOrEmpty(iso2Norm) && iso2Norm.Contains(normTerm)) ||
+                           (!string.IsNullOrEmpty(iso3Norm) && iso3Norm.Contains(normTerm));
+                })
+                .OrderBy(c => c.Name)
+                .ToList();
+        }
+
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnCountrySelectedChanged(int? countryId)
+    {
+        if (!countryId.HasValue)
+            return;
+
+        await OnCountrySelected(countryId.Value);
+    }
+
+    // ===== COUNTRIES =====
+    private async Task LoadCountriesAsync()
+    {
+        _loadingCountries = true;
+        try
+        {
+            var result = await CountryClient.ListAsync(onlyActives: false);
+            if (!result.Success)
+            {
+                Toast.ShowError(result.ToErrorMessage("Error al cargar los países."));
+                _countries = new();
+                _filteredCountries = new();
+                return;
+            }
+
+            _countries = result.Data ?? new();
+            _filteredCountries = _countries.ToList();
+
+            if (!_selectedCountryId.HasValue && _countries.Count > 0)
+            {
+                _selectedCountryId = _countries.First().Id;
+                await LoadInstitutionsAsync();
+            }
+        }
+        finally
+        {
+            _loadingCountries = false;
+        }
+    }
+
+    private async Task OnCountrySelected(int countryId)
+    {
+        if (_selectedCountryId == countryId) return;
+        _selectedCountryId = countryId;
+        await LoadInstitutionsAsync();
+    }
+
+    private void OpenCreateCountryModal()
+    {
+        _isCountryEdit = false;
+        _countryEditModel = new CountryDetailDTO
+        {
+            IsActive = true,
+            IsoCode = "",
+            IsoAlpha3 = "",
+            Name = ""
+        };
+        _countryModalOpen = true;
+    }
+
+    private void OpenEditCountryModal(CountryListItemDTO country)
+    {
+        _isCountryEdit = true;
+        _countryEditModel = new CountryDetailDTO
+        {
+            Id = country.Id,
+            Name = country.Name,
+            IsoCode = country.IsoCode,
+            IsoAlpha3 = country.IsoAlpha3,
+            IsActive = country.IsActive
+        };
+        _countryModalOpen = true;
+    }
+
+    private void CloseCountryModal() => _countryModalOpen = false;
+
+    private bool CanSaveCountry()
+    {
+        return !string.IsNullOrWhiteSpace(_countryEditModel.Name) &&
+               !string.IsNullOrWhiteSpace(_countryEditModel.IsoCode) &&
+               _countryEditModel.IsoCode.Length == 2 &&
+               !string.IsNullOrWhiteSpace(_countryEditModel.IsoAlpha3) &&
+               _countryEditModel.IsoAlpha3.Length == 3;
+    }
+
+    private async Task SaveCountryAsync()
+    {
+        if (!CanSaveCountry())
+        {
+            Toast.ShowWarning("Por favor complete todos los campos requeridos correctamente.");
+            return;
+        }
+
+        if (_isCountryEdit)
+        {
+            var dto = new UpdateCountryRequestDTO
+            {
+                Id = _countryEditModel.Id,
+                Name = _countryEditModel.Name,
+                IsoCode = _countryEditModel.IsoCode.ToUpper(),
+                IsoAlpha3 = _countryEditModel.IsoAlpha3.ToUpper(),
+                IsActive = _countryEditModel.IsActive
+            };
+            var result = await CountryClient.UpdateAsync(dto);
+            if (!result.Success)
+            {
+                Toast.ShowError(result.ToErrorMessage("Error al actualizar el país."));
+                return;
+            }
+            Toast.ShowSuccess(result.ToSuccessMessage("País actualizado exitosamente."));
+        }
+        else
+        {
+            var dto = new AddCountryRequestDTO
+            {
+                Name = _countryEditModel.Name,
+                IsoCode = _countryEditModel.IsoCode.ToUpper(),
+                IsoAlpha3 = _countryEditModel.IsoAlpha3.ToUpper()
+            };
+            var result = await CountryClient.CreateAsync(dto);
+            if (!result.Success)
+            {
+                Toast.ShowError(result.ToErrorMessage("Error al crear el país."));
+                return;
+            }
+            Toast.ShowSuccess(result.ToSuccessMessage("País creado exitosamente."));
+            _selectedCountryId = result.Data?.Id;
+        }
+        _countryModalOpen = false;
+        await LoadCountriesAsync();
+        if (_selectedCountryId.HasValue)
+        {
+            await LoadInstitutionsAsync();
+        }
+    }
+
+    private async Task DeleteCountryAsync(int countryId)
+    {
+        // TODO: hook real delete when service esté listo
+    }
+
+    // ===== INSTITUTIONS =====
+    private async Task LoadInstitutionsAsync()
+    {
+        if (!_selectedCountryId.HasValue)
+        {
+            _institutions.Clear();
+            _filteredInstitutions.Clear();
+            return;
+        }
+
+        _loadingInstitutions = true;
+        try
+        {
+            var result = await InstitutionClient.ListAsync(onlyActives: false);
+            if (!result.Success)
+            {
+                Toast.ShowError(result.ToErrorMessage("Error al cargar las instituciones."));
+                _institutions = new();
+                _filteredInstitutions = new();
+                return;
+            }
+
+            var allInstitutions = result.Data ?? new();
+            _institutions = allInstitutions
+                .Where(i => i.CountryId == _selectedCountryId.Value)
+                .OrderBy(i => i.Name)
+                .ToList();
+
+            _filteredInstitutions = _institutions.ToList();
+        }
+        finally
+        {
+            _loadingInstitutions = false;
+        }
+    }
+
+    private void OpenCreateInstitutionModal()
+    {
+        if (!_selectedCountryId.HasValue)
+        {
+            Toast.ShowWarning("Seleccione un país primero.");
+            return;
+        }
+
+        _isInstitutionEdit = false;
+        _institutionEditModel = new InstitutionDetailDTO
+        {
+            Name = "",
+            IsActive = true,
+            CountryId = _selectedCountryId.Value
+        };
+        _selectedCountryForInstitution = _countries.FirstOrDefault(c => c.Id == _selectedCountryId.Value);
+        _institutionModalOpen = true;
+    }
+
+    private async Task OpenEditInstitutionModal(int institutionId)
+    {
+        _isInstitutionEdit = true;
+        var result = await InstitutionClient.GetByIdAsync(institutionId);
+        if (!result.Success || result.Data is null)
+        {
+            Toast.ShowError(result.ToErrorMessage("Error al cargar los detalles de la institución."));
+            return;
+        }
+        _institutionEditModel = result.Data;
+        _selectedCountryForInstitution = _countries.FirstOrDefault(c => c.Id == _institutionEditModel.CountryId);
+        _institutionModalOpen = true;
+    }
+
+    private void CloseInstitutionModal() => _institutionModalOpen = false;
+
+    private bool CanSaveInstitution()
+    {
+        return !string.IsNullOrWhiteSpace(_institutionEditModel.Name) &&
+               _institutionEditModel.CountryId.HasValue;
+    }
+
+    private async Task SaveInstitutionAsync()
+    {
+        if (!CanSaveInstitution())
+        {
+            Toast.ShowWarning("El nombre de la institución y el país son requeridos.");
+            return;
+        }
+
+        if (_isInstitutionEdit)
+        {
+            var dto = new UpdateInstitutionRequestDTO
+            {
+                Id = _institutionEditModel.Id,
+                Name = _institutionEditModel.Name,
+                CountryId = _institutionEditModel.CountryId,
+                IsActive = _institutionEditModel.IsActive
+            };
+            var result = await InstitutionClient.UpdateAsync(dto);
+            if (!result.Success)
+            {
+                Toast.ShowError(result.ToErrorMessage("Error al actualizar la institución."));
+                return;
+            }
+            Toast.ShowSuccess(result.ToSuccessMessage("Institución actualizada exitosamente."));
+        }
+        else
+        {
+            var dto = new AddInstitutionRequestDTO
+            {
+                Name = _institutionEditModel.Name,
+                CountryId = _institutionEditModel.CountryId
+            };
+            var result = await InstitutionClient.CreateAsync(dto);
+            if (!result.Success)
+            {
+                Toast.ShowError(result.ToErrorMessage("Error al crear la institución."));
+                return;
+            }
+            Toast.ShowSuccess(result.ToSuccessMessage("Institución creada exitosamente."));
+        }
+        _institutionModalOpen = false;
+        await LoadInstitutionsAsync();
+    }
+
+    private async Task DeleteInstitutionAsync(int institutionId)
+    {
+        // var result = await InstitutionClient.DeleteAsync(institutionId);
+        // if (!result.Success)
+        // {
+        //     Toast.ShowError("Error al eliminar la institución.");
+        //     return;
+        // }
+        Toast.ShowSuccess("Institución eliminada exitosamente.");
+        await LoadInstitutionsAsync();
+    }
+}

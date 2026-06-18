@@ -1,0 +1,259 @@
+﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Table
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+@using tesisproject.shared.DTOs.Visit.Response
+
+<section class="h-full min-h-0 flex flex-col bg-background border-2 border-border rounded-3xl shadow-sm overflow-hidden">
+    <div class="shrink-0 flex items-center justify-between gap-3 px-6 py-5 border-b-2 border-border">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-1 h-6 bg-primary rounded-full shrink-0"></div>
+            <h3 class="text-base font-bold text-foreground tracking-tight truncate">Visitas</h3>
+        </div>
+
+        <ActionButton Text="Nueva visita"
+                      Intent="ButtonIntent.Accept"
+                      Variant="ButtonVariant.Filled"
+                      Size="ButtonSize.Sm"
+                      Disabled="@(IsLoading)"
+                      Execute="OpenCreate" />
+    </div>
+
+    <div class="flex-1 min-h-0 overflow-y-auto p-6">
+        @if (IsLoading)
+        {
+            <div class="h-full min-h-0 flex items-center justify-center">
+                <div class="flex items-center justify-center gap-4 p-8 bg-primary-subtle rounded-xl border border-primary/20">
+                    <div class="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full"></div>
+                    <div class="text-primary font-medium">Cargando visitas...</div>
+                </div>
+            </div>
+        }
+        else if (!string.IsNullOrEmpty(ErrorMessage))
+        {
+            <div class="p-4 rounded-2xl border border-error/20 bg-error/10 text-error">
+                @ErrorMessage
+            </div>
+        }
+        else
+        {
+            <div class="space-y-6 min-w-0">
+                <div class="text-sm text-muted">
+                    Total: @(Items?.Count ?? 0) visitas
+                </div>
+
+                <div class="min-w-0 overflow-hidden">
+                    <DataTable TItem="VisitListResponseDTO"
+                               Items="Items"
+                               Columns="_columns"
+                               EmptyText="Este proyecto no tiene visitas registradas.">
+                        <RowTemplate Context="v">
+                            @{
+                                var visitId = v.VisitId;
+                                var currentStateId = v.VisitStateId;
+                                var selectedStateId = GetSelectedState(visitId, currentStateId);
+
+                                var isSavingRow = SavingVisitIds?.Contains(visitId) == true;
+                                var isDeletingRow = DeletingVisitIds?.Contains(visitId) == true;
+                                var changed = selectedStateId != currentStateId;
+                            }
+
+                            <td class="px-4 py-3 text-sm text-foreground align-middle font-mono">
+                                @visitId
+                            </td>
+
+                            <td class="px-4 py-3 text-sm text-foreground align-middle">
+                                @v.VisitStateName
+                            </td>
+
+                            <td class="px-4 py-3 text-sm text-foreground align-middle">
+                                <select class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm"
+                                        value="@selectedStateId"
+                                        disabled="@(isSavingRow || isDeletingRow)"
+                                        @onchange="(e) => OnSelectChanged(visitId, e)">
+                                    @if (VisitStates is not null)
+                                    {
+                                        @foreach (var s in VisitStates)
+                                        {
+                                            <option value="@s.Id">@s.Name</option>
+                                        }
+                                    }
+                                </select>
+                            </td>
+
+                            <td class="px-4 py-3 text-sm text-foreground align-middle text-right">
+                                <ActionButton Text="Guardar"
+                                              Intent="ButtonIntent.Info"
+                                              Variant="ButtonVariant.Filled"
+                                              Size="ButtonSize.Sm"
+                                              Disabled="@(isSavingRow || isDeletingRow || !changed)"
+                                              ConfirmBeforeExecute="true"
+                                              ConfirmTitle="Guardar cambios"
+                                              ConfirmMessage="¿Confirmas guardar el nuevo estado de esta visita?"
+                                              ConfirmButtonText="Guardar"
+                                              CancelButtonText="Cancelar"
+                                              Execute="@(() => RequestSaveAsync(visitId, selectedStateId))" />
+                            </td>
+
+                            <td class="px-4 py-3 text-sm text-foreground align-middle text-right">
+                                <ActionButton Text="Eliminar"
+                                              Intent="ButtonIntent.Delete"
+                                              Variant="ButtonVariant.Outline"
+                                              Size="ButtonSize.Sm"
+                                              Disabled="@(isSavingRow || isDeletingRow)"
+                                              ConfirmBeforeExecute="true"
+                                              ConfirmTitle="Eliminar visita"
+                                              ConfirmMessage="¿Seguro que deseas eliminar esta visita?"
+                                              ConfirmButtonText="Eliminar"
+                                              CancelButtonText="Cancelar"
+                                              Execute="@(() => RequestDeleteAsync(visitId))" />
+                            </td>
+                        </RowTemplate>
+                    </DataTable>
+                </div>
+
+                <div class="text-xs text-muted">
+                    Aquí se permite cambiar el estado de la visita y gestionar (crear/eliminar) visitas.
+                </div>
+
+                @if (_createOpen)
+                {
+                    <div class="border-2 border-border rounded-2xl p-4 bg-background space-y-4">
+                        <div class="flex items-center justify-between">
+                            <div class="font-semibold">Nueva visita</div>
+
+                            <ActionButton Text="Cerrar"
+                                          Intent="ButtonIntent.Neutral"
+                                          Variant="ButtonVariant.Ghost"
+                                          Size="ButtonSize.Sm"
+                                          Disabled="@(IsCreating)"
+                                          Execute="CloseCreate" />
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm text-muted">Fecha programada (opcional)</label>
+
+                            <InputDate class="w-full rounded-xl border-2 border-border bg-background px-3 py-2 text-sm"
+                                       @bind-Value="_newScheduledDate" />
+                        </div>
+
+                        <div class="flex justify-end gap-2">
+                            <ActionButton Text="Cancelar"
+                                          Intent="ButtonIntent.Neutral"
+                                          Variant="ButtonVariant.Outline"
+                                          Size="ButtonSize.Sm"
+                                          Disabled="@(IsCreating)"
+                                          Execute="CloseCreate" />
+
+                            <ActionButton Text="Crear"
+                                          Intent="ButtonIntent.Accept"
+                                          Variant="ButtonVariant.Filled"
+                                          Size="ButtonSize.Sm"
+                                          Disabled="@(IsCreating)"
+                                          Execute="RequestCreateAsync" />
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+
+    [Parameter] public List<VisitListResponseDTO> Items { get; set; } = new();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> VisitStates { get; set; } = Array.Empty<CatalogListItemDTO>();
+
+    // Locks
+    [Parameter] public HashSet<int> SavingVisitIds { get; set; } = new();
+    [Parameter] public HashSet<int> DeletingVisitIds { get; set; } = new();
+    [Parameter] public bool IsCreating { get; set; }
+
+    // Eventos hacia el padre
+    [Parameter] public EventCallback<(int visitId, int newStateId)> OnSaveRequested { get; set; }
+    [Parameter] public EventCallback<int> OnDeleteRequested { get; set; }
+    [Parameter] public EventCallback<DateTime?> OnCreateRequested { get; set; }
+
+    // Estado UI local
+    private readonly Dictionary<int, int> _selectedByVisitId = new();
+
+    // Create panel
+    private bool _createOpen;
+    private DateTime? _newScheduledDate;
+
+    // Definición de columnas para DataTable (headers + sorting)
+    private IReadOnlyList<ColumnDef<VisitListResponseDTO>> _columns = Array.Empty<ColumnDef<VisitListResponseDTO>>();
+
+    protected override void OnInitialized()
+    {
+        _columns = new List<ColumnDef<VisitListResponseDTO>>
+        {
+            new("VisitId", v => v.VisitId, Width: "120px", Sortable: true),
+            new("Estado actual", v => v.VisitStateName, Sortable: true),
+            // Para ordenar por nombre del estado "nuevo", usamos el mismo campo; el UI es el select.
+            new("Nuevo estado", v => v.VisitStateName, Sortable: false),
+            new("Guardar", v => v.VisitId, Width: "140px", Sortable: false),
+            new("Eliminar", v => v.VisitId, Width: "140px", Sortable: false),
+        };
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Items is null) return;
+
+        foreach (var v in Items)
+        {
+            if (!_selectedByVisitId.ContainsKey(v.VisitId))
+                _selectedByVisitId[v.VisitId] = v.VisitStateId;
+        }
+
+        // Limpieza si una visita ya no existe
+        var currentIds = Items.Select(x => x.VisitId).ToHashSet();
+        var toRemove = _selectedByVisitId.Keys.Where(id => !currentIds.Contains(id)).ToList();
+        foreach (var id in toRemove)
+            _selectedByVisitId.Remove(id);
+    }
+
+    private int GetSelectedState(int visitId, int fallback)
+        => _selectedByVisitId.TryGetValue(visitId, out var v) ? v : fallback;
+
+    private void OnSelectChanged(int visitId, ChangeEventArgs e)
+    {
+        if (e?.Value is null) return;
+
+        if (int.TryParse(e.Value.ToString(), out var newId))
+            _selectedByVisitId[visitId] = newId;
+    }
+
+    private Task RequestSaveAsync(int visitId, int selectedStateId)
+        => OnSaveRequested.InvokeAsync((visitId, selectedStateId));
+
+    private Task RequestDeleteAsync(int visitId)
+        => OnDeleteRequested.InvokeAsync(visitId);
+
+    private async Task RequestCreateAsync()
+    {
+        await OnCreateRequested.InvokeAsync(_newScheduledDate);
+
+        // UI-only
+        _createOpen = false;
+        _newScheduledDate = null;
+    }
+
+    private Task OpenCreate()
+    {
+        _createOpen = true;
+        _newScheduledDate = null;
+        return Task.CompletedTask;
+    }
+
+    private Task CloseCreate()
+    {
+        _createOpen = false;
+        _newScheduledDate = null;
+        return Task.CompletedTask;
+    }
+}

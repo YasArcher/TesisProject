@@ -1,0 +1,97 @@
+﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.frontend.SharedUI.FileUpload
+
+<div class="w-full flex flex-col gap-3">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+
+        <!-- Resolución -->
+        <div class="rounded-xl border border-border bg-background p-3 flex flex-col gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+                <svg class="w-4 h-4 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+
+                <h4 class="text-sm font-semibold text-foreground truncate">
+                    Resolución inicial
+                </h4>
+
+                <span class="ml-auto px-2 py-0.5 rounded text-[11px] font-medium bg-accent text-white whitespace-nowrap">
+                    Requerido
+                </span>
+            </div>
+
+            <FileUpload ContainerClass="w-full"
+                        UploadText="Seleccionar o arrastrar PDF"
+                        AcceptedTypes=".pdf"
+                        MaxFileSizeMB="10"
+                        AllowRemove="true"
+                        IsDisabled="@IsBusy"
+                        ShowProgress="false"
+                        OnFileSelected="HandleResolutionFileSelected" />
+        </div>
+
+        <!-- DIDE -->
+        <div class="rounded-xl border border-border bg-background p-3 flex flex-col gap-2">
+            <div class="flex items-center gap-2 min-w-0">
+                <svg class="w-4 h-4 flex-shrink-0 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+
+                <h4 class="text-sm font-semibold text-foreground truncate">
+                    Formulario DIDE
+                </h4>
+
+                <span class="ml-auto px-2 py-0.5 rounded text-[11px] font-medium bg-muted text-foreground whitespace-nowrap">
+                    Opcional
+                </span>
+            </div>
+
+            <FileUpload ContainerClass="w-full"
+                        UploadText="Seleccionar o arrastrar PDF"
+                        AcceptedTypes=".pdf"
+                        MaxFileSizeMB="10"
+                        AllowRemove="true"
+                        IsDisabled="@IsBusy"
+                        ShowProgress="false"
+                        OnFileSelected="HandleDideFileSelected" />
+        </div>
+    </div>
+
+    <p class="text-xs text-muted">
+        Solo archivos PDF, máximo 10 MB.
+    </p>
+</div>
+
+@code {
+    [Parameter] public bool IsBusy { get; set; }
+
+    [Parameter] public EventCallback<IBrowserFile> OnResolutionFileSelected { get; set; }
+
+    [Parameter] public EventCallback<IBrowserFile> OnDideFileSelected { get; set; }
+
+    [Parameter] public EventCallback<bool> OnResolutionFileStatusChanged { get; set; }
+
+    private async Task HandleResolutionFileSelected(IBrowserFile file)
+    {
+        if (OnResolutionFileSelected.HasDelegate)
+        {
+            await OnResolutionFileSelected.InvokeAsync(file);
+        }
+
+        if (OnResolutionFileStatusChanged.HasDelegate)
+        {
+            await OnResolutionFileStatusChanged.InvokeAsync(file is not null);
+        }
+    }
+
+    private async Task HandleDideFileSelected(IBrowserFile file)
+    {
+        if (OnDideFileSelected.HasDelegate)
+        {
+            await OnDideFileSelected.InvokeAsync(file);
+        }
+    }
+}

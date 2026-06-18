@@ -1,0 +1,9 @@
+﻿@using tesisproject.frontend.SharedUI.Catalog
+@using tesisproject.shared.DTOs.Group.Response
+
+<SelectableCard TItem="GroupResponseDTO"
+                Item="Item"
+                IsSelected="Selected"
+                OnSelected="HandleSelected"
+                GetTitle="@(item => item.Name)"
+                ShowActions="false" />

@@ -1,0 +1,551 @@
+﻿@using System.Globalization
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Table
+@using tesisproject.frontend.SharedUI.TextInput
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.shared.DTOs.Project.Response
+@using tesisproject.shared.DTOs.Budgets.Request
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+
+@inject IModalService ModalService
+
+<section class="h-full min-h-0 flex flex-col bg-background border-2 border-border rounded-3xl shadow-sm overflow-hidden">
+    <div class="shrink-0 flex items-center gap-3 px-6 py-5 border-b-2 border-border">
+        <div class="w-1 h-6 bg-primary rounded-full shrink-0"></div>
+        <h3 class="text-base font-bold text-foreground tracking-tight truncate">Presupuesto</h3>
+    </div>
+
+    <div class="flex-1 min-h-0 overflow-y-auto p-6">
+        @if (IsLoading)
+        {
+            <div class="h-full min-h-0 flex items-center justify-center">
+                <div class="flex items-center justify-center gap-4 p-8 bg-primary-subtle rounded-xl border border-primary/20">
+                    <div class="animate-spin h-6 w-6 border-3 border-primary border-t-transparent rounded-full"></div>
+                    <div class="text-primary font-medium">Cargando presupuesto...</div>
+                </div>
+            </div>
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+            {
+                <div class="p-4 rounded-2xl border border-error/20 bg-error/10 text-error text-sm mb-6">
+                    @ErrorMessage
+                </div>
+            }
+
+            <div class="space-y-6 min-w-0">
+                <!-- =========================
+                     CREAR NUEVO PRESUPUESTO
+                ========================== -->
+                <div class="rounded-2xl border-2 border-border bg-primary-subtle/20 p-5 space-y-4 min-w-0">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="text-sm font-bold text-foreground">Nuevo presupuesto</div>
+                    </div>
+
+                    <EditForm Model="@_createBudgetModel" OnValidSubmit="SubmitCreateBudgetAsync">
+                        <DataAnnotationsValidator />
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-end">
+                            <div class="w-full min-w-0">
+                                <label class="block text-sm font-medium text-foreground mb-1">
+                                    Tipo de financiamiento <span class="text-error">*</span>
+                                </label>
+                                <select class="w-full rounded-md border border-border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                                        @bind="_createBudgetModel.FundingTypeId"
+                                        disabled="@IsCreateBudgetBusy">
+                                    <option value="0">Seleccione...</option>
+                                    @foreach (var ft in FundingTypes ?? Array.Empty<CatalogListItemDTO>())
+                                    {
+                                        <option value="@ft.Id">@ft.Name</option>
+                                    }
+                                </select>
+                                @if (_createBudgetModel.FundingTypeId <= 0)
+                                {
+                                    <p class="mt-1 text-sm text-muted">Debes seleccionar un tipo.</p>
+                                }
+                            </div>
+
+                            <TextInput TValue="decimal"
+                                       Label="Monto (Presupuesto)"
+                                       InputType="number"
+                                       @bind-Value="_createBudgetModel.InitialAmount"
+                                       For="() => _createBudgetModel.InitialAmount"
+                                       Placeholder="0.00"
+                                       Disabled="@IsCreateBudgetBusy"
+                                       Required="true" />
+
+                            <div class="flex items-end justify-end">
+                                <ActionButton Text="Crear"
+                                              Execute="SubmitCreateBudgetAsync"
+                                              Intent="ButtonIntent.Add"
+                                              Variant="ButtonVariant.Filled"
+                                              Disabled="@(IsCreateBudgetBusy || _createBudgetModel.FundingTypeId <= 0)" />
+                            </div>
+                        </div>
+                    </EditForm>
+                </div>
+
+                <!-- =========================
+                     LISTA DE PRESUPUESTOS
+                ========================== -->
+                @if (Budgets is null || Budgets.Count == 0)
+                {
+                    <div class="p-4 rounded-2xl border border-border bg-background text-sm text-muted">
+                        Este proyecto no tiene presupuestos registrados.
+                    </div>
+                }
+                else
+                {
+                    <div class="text-sm text-muted">
+                        Presupuestos: <span class="font-semibold text-foreground">@Budgets.Count</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-6 min-w-0">
+                        @foreach (var b in Budgets.OrderBy(x => x.BudgetId))
+                        {
+                            var budgetId = b.BudgetId;
+                            var budgetModel = GetBudgetEditModel(b);
+
+                            var txCount = GetTxCount(budgetId);
+                            var canDeleteBudget = txCount == 0;
+                            var isDeletingBudget = DeletingBudgetIds?.Contains(budgetId) == true;
+
+                            <div class="border-2 border-border rounded-2xl p-5 bg-background shadow-sm space-y-5 min-w-0 overflow-hidden">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <div class="text-sm font-bold text-foreground truncate">
+                                            @(string.IsNullOrWhiteSpace(b.FundingTypeName) ? $"Presupuesto #{b.BudgetId}" : b.FundingTypeName)
+                                        </div>
+                                    </div>
+
+                                    <div class="flex items-center gap-2 shrink-0">
+                                        <ActionButton Text="Eliminar"
+                                                      Variant="ButtonVariant.Outline"
+                                                      Intent="ButtonIntent.Danger"
+                                                      ConfirmBeforeExecute="true"
+                                                      ConfirmTitle="Eliminar presupuesto"
+                                                      ConfirmMessage="¿Seguro que deseas eliminar este presupuesto? Esta acción no se puede deshacer."
+                                                      ConfirmButtonText="Eliminar"
+                                                      CancelButtonText="Cancelar"
+                                                      Execute="@(() => RequestDeleteBudgetAsync(budgetId))"
+                                                      Disabled="@(!canDeleteBudget || isDeletingBudget || IsBudgetBusy(budgetId))" />
+                                    </div>
+                                </div>
+
+                                @if (!canDeleteBudget)
+                                {
+                                    <div class="text-xs text-muted">
+                                        No se puede eliminar este presupuesto porque tiene transacciones registradas.
+                                    </div>
+                                }
+
+                                @if (isDeletingBudget)
+                                {
+                                    <div class="text-xs text-muted">
+                                        Eliminando presupuesto...
+                                    </div>
+                                }
+
+                                <!-- ========== EDITAR PRESUPUESTO (FundingType + InitialAmount) ========== -->
+                                <EditForm Model="@budgetModel" OnValidSubmit="@(() => SubmitBudgetAsync(budgetId))">
+                                    <DataAnnotationsValidator />
+
+                                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 items-end">
+                                        <div class="w-full min-w-0">
+                                            <label class="block text-sm font-medium text-foreground mb-1">
+                                                Tipo de financiamiento <span class="text-error">*</span>
+                                            </label>
+                                            <select class="w-full rounded-md border border-border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                                                    @bind="budgetModel.FundingTypeId"
+                                                    disabled="@(IsBudgetBusy(budgetId) || isDeletingBudget)">
+                                                <option value="0">Seleccione...</option>
+                                                @foreach (var ft in FundingTypes ?? Array.Empty<CatalogListItemDTO>())
+                                                {
+                                                    <option value="@ft.Id">@ft.Name</option>
+                                                }
+                                            </select>
+                                        </div>
+
+                                        <TextInput TValue="decimal"
+                                                   Label="Presupuesto"
+                                                   InputType="number"
+                                                   @bind-Value="budgetModel.InitialAmount"
+                                                   For="() => budgetModel.InitialAmount"
+                                                   Placeholder="0.00"
+                                                   Disabled="@(IsBudgetBusy(budgetId) || isDeletingBudget)"
+                                                   Required="true" />
+
+                                        <div class="flex items-end justify-end">
+                                            <ActionButton Text="Guardar"
+                                                          Execute="@(() => SubmitBudgetAsync(budgetId))"
+                                                          Intent="ButtonIntent.Accept"
+                                                          Variant="ButtonVariant.Filled"
+                                                          ConfirmBeforeExecute="true"
+                                                          ConfirmTitle="Confirmar guardado"
+                                                          ConfirmMessage="¿Deseas guardar los cambios de este presupuesto?"
+                                                          ConfirmButtonText="Guardar"
+                                                          CancelButtonText="Cancelar"
+                                                          Disabled="@(IsBudgetBusy(budgetId) || isDeletingBudget || budgetModel.FundingTypeId <= 0)" />
+                                        </div>
+                                    </div>
+
+                                    @if (IsBudgetBusy(budgetId))
+                                    {
+                                        <div class="text-xs text-muted pt-1">Guardando...</div>
+                                    }
+                                </EditForm>
+
+                                <!-- ========== TRANSACCIONES (solo edición) ========== -->
+                                <div class="pt-4 border-t border-border space-y-4 min-w-0 overflow-hidden">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div class="text-sm font-bold text-foreground">Transacciones</div>
+                                    </div>
+
+                                    <DataTable TItem="BudgetTransactionDTO"
+                                               Items="@GetTransactions(budgetId)"
+                                               Columns="@_txColumns"
+                                               EmptyText="No hay transacciones registradas."
+                                               RowTemplate="@(tx => RenderTransactionRow(budgetId, tx))" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</section>
+
+<!-- =========================
+     MODAL: EDITAR TRANSACCIÓN
+========================== -->
+<Modal Id="@TxEditModalId"
+       Title="@TxEditModalTitle"
+       Size="ModalSize.Lg"
+       OnClose="CloseTxEditModal">
+
+    <div class="space-y-4">
+        @if (_editingTxId is null)
+        {
+            <div class="text-sm text-muted">Seleccione una transacción para editar.</div>
+        }
+        else
+        {
+            <EditForm Model="@_txEditModel" OnValidSubmit="@(() => SubmitUpdateTxAsync(_editingTxId.Value))">
+                <DataAnnotationsValidator />
+
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-4">
+                    <div class="w-full">
+                        <label class="block text-sm font-medium text-foreground mb-1">Tipo</label>
+                        <select class="w-full rounded-md border border-border px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+                                @bind="_txEditModel.TransactionTypeId"
+                                disabled="@(UpdatingTransactionIds.Contains(_editingTxId.Value))">
+                            @foreach (var t in TransactionTypes ?? Array.Empty<CatalogListItemDTO>())
+                            {
+                                <option value="@t.Id">@t.Name</option>
+                            }
+                        </select>
+                    </div>
+
+                    <TextInput TValue="string"
+                               Label="Nombre"
+                               @bind-Value="_txEditModel.Name"
+                               For="() => _txEditModel.Name"
+                               Placeholder="Ingrese el nombre"
+                               Disabled="@(UpdatingTransactionIds.Contains(_editingTxId.Value))"
+                               Required="true"
+                               MaxLength="200" />
+
+                    <TextInput TValue="decimal"
+                               Label="Certificado"
+                               InputType="number"
+                               @bind-Value="_txEditModel.CertifiedAmount"
+                               For="() => _txEditModel.CertifiedAmount"
+                               Placeholder="0.00"
+                               Disabled="@(UpdatingTransactionIds.Contains(_editingTxId.Value))" />
+
+                    <TextInput TValue="decimal?"
+                               Label="Devengado"
+                               InputType="number"
+                               @bind-Value="_txEditModel.ExecutedAmount"
+                               For="() => _txEditModel.ExecutedAmount"
+                               Placeholder="0.00"
+                               Disabled="@(UpdatingTransactionIds.Contains(_editingTxId.Value))" />
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    <TextInput TValue="string"
+                               Label="BudgetItem"
+                               @bind-Value="_txEditModel.BudgetItem"
+                               For="() => _txEditModel.BudgetItem"
+                               Placeholder="Partida"
+                               Disabled="@(UpdatingTransactionIds.Contains(_editingTxId.Value))"
+                               MaxLength="200" />
+
+                    <TextInput TValue="string"
+                               Label="CUR"
+                               @bind-Value="_txEditModel.CURNumber"
+                               For="() => _txEditModel.CURNumber"
+                               Placeholder="CUR"
+                               Disabled="@(UpdatingTransactionIds.Contains(_editingTxId.Value))"
+                               MaxLength="100" />
+
+                    <TextInput TValue="string"
+                               Label="Descripción certificación"
+                               @bind-Value="_txEditModel.CertificationDescription"
+                               For="() => _txEditModel.CertificationDescription"
+                               Placeholder="Descripción"
+                               Disabled="@(UpdatingTransactionIds.Contains(_editingTxId.Value))"
+                               MaxLength="1000" />
+                </div>
+
+                <div class="grid grid-cols-1 gap-4">
+                    <TextInput TValue="string"
+                               Label="Descripción devengado"
+                               @bind-Value="_txEditModel.ExecutionDescription"
+                               For="() => _txEditModel.ExecutionDescription"
+                               Placeholder="Descripción"
+                               Disabled="@(UpdatingTransactionIds.Contains(_editingTxId.Value))"
+                               MaxLength="1000" />
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-2">
+                    <ActionButton Text="Cerrar"
+                                  Execute="CloseTxEditModal"
+                                  Variant="ButtonVariant.Ghost"
+                                  Intent="ButtonIntent.Neutral" />
+
+                    <ActionButton Text="Guardar cambios"
+                                  Execute="@(() => SubmitUpdateTxAsync(_editingTxId.Value))"
+                                  Intent="ButtonIntent.Accept"
+                                  Variant="ButtonVariant.Filled"
+                                  ConfirmBeforeExecute="true"
+                                  ConfirmTitle="Confirmar actualización"
+                                  ConfirmMessage="¿Deseas guardar los cambios de esta transacción?"
+                                  ConfirmButtonText="Guardar"
+                                  CancelButtonText="Cancelar"
+                                  Disabled="@(UpdatingTransactionIds.Contains(_editingTxId.Value))" />
+                </div>
+            </EditForm>
+        }
+    </div>
+</Modal>
+
+@code {
+    [Parameter] public int ProjectId { get; set; }
+    [Parameter] public ProjectDetailResponseDTO? Project { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+
+    [Parameter] public List<BudgetDTO> Budgets { get; set; } = new();
+    [Parameter] public Dictionary<int, List<BudgetTransactionDTO>> BudgetTransactionsByBudgetId { get; set; } = new();
+
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> TransactionTypes { get; set; } = Array.Empty<CatalogListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> FundingTypes { get; set; } = Array.Empty<CatalogListItemDTO>();
+
+    // Busy flags
+    [Parameter] public HashSet<int> SavingBudgetIds { get; set; } = new();
+    [Parameter] public HashSet<int> CreatingBudgetProjectIds { get; set; } = new();
+    [Parameter] public HashSet<int> UpdatingTransactionIds { get; set; } = new();
+
+    // ✅ NUEVO: deleting budgets
+    [Parameter] public HashSet<int> DeletingBudgetIds { get; set; } = new();
+
+    // Callbacks
+    [Parameter] public EventCallback<CreateBudgetRequestDTO> OnCreateBudgetRequested { get; set; }
+    [Parameter] public EventCallback<(int budgetId, UpdateBudgetRequestDTO dto)> OnSaveBudgetRequested { get; set; }
+    [Parameter] public EventCallback<(int transactionId, UpdateBudgetTransactionRequestDTO dto)> OnUpdateTransactionRequested { get; set; }
+
+    // ✅ NUEVO: delete budget callback
+    [Parameter] public EventCallback<int> OnDeleteBudgetRequested { get; set; }
+
+    // Local UI state
+    private readonly Dictionary<int, UpdateBudgetRequestDTO> _budgetEdits = new();
+    private CreateBudgetRequestDTO _createBudgetModel = new();
+
+    private IReadOnlyList<ColumnDef<BudgetTransactionDTO>> _txColumns = Array.Empty<ColumnDef<BudgetTransactionDTO>>();
+
+    // Modal state (editar transacción)
+    private string TxEditModalId => $"tx-edit-{ProjectId}";
+    private string TxEditModalTitle => _editingTxId is null
+        ? "Editar transacción"
+        : $"Editar transacción #{_editingTxId}";
+
+    private int? _editingTxId;
+    private UpdateBudgetTransactionRequestDTO _txEditModel = new();
+
+    protected override void OnInitialized()
+    {
+        _txColumns = new List<ColumnDef<BudgetTransactionDTO>>
+        {
+            new("Id", t => t.BudgetTransactionId, Width: "90px", Sortable: true),
+            new("Tipo", t => GetTxTypeName(t.TransactionTypeId), Width: "140px", Sortable: true),
+            new("Nombre", t => t.Name, Sortable: true),
+            new("Cert.", t => t.CertifiedAmount, Width: "120px", Sortable: true),
+            new("Dev.", t => t.ExecutedAmount, Width: "120px", Sortable: true),
+            new("F. Cert", t => t.CertifiedAt, Width: "120px", Sortable: true),
+            new("F. Dev", t => t.ExecutedAt, Width: "120px", Sortable: true),
+            new("Acciones", _ => null, Width: "160px", Sortable: false),
+        };
+    }
+
+    protected override void OnParametersSet()
+    {
+        _createBudgetModel.ProjectId = ProjectId;
+
+        if (_createBudgetModel.InitialAmount <= 0)
+            _createBudgetModel.InitialAmount = 0;
+
+        foreach (var b in Budgets ?? new())
+        {
+            if (!_budgetEdits.ContainsKey(b.BudgetId))
+            {
+                _budgetEdits[b.BudgetId] = new UpdateBudgetRequestDTO
+                {
+                    FundingTypeId = b.FundingTypeId,
+                    InitialAmount = b.InitialAmount,
+                    CertifiedAmount = b.CertifiedAmount,
+                    ExecutedAmount = b.ExecutedAmount,
+                    ApprovedAt = b.ApprovedAt
+                };
+            }
+        }
+    }
+
+    private bool IsCreateBudgetBusy => CreatingBudgetProjectIds?.Contains(ProjectId) == true;
+    private bool IsBudgetBusy(int budgetId) => SavingBudgetIds?.Contains(budgetId) == true;
+
+    private UpdateBudgetRequestDTO GetBudgetEditModel(BudgetDTO b)
+    {
+        if (!_budgetEdits.TryGetValue(b.BudgetId, out var model))
+        {
+            model = new UpdateBudgetRequestDTO
+            {
+                FundingTypeId = b.FundingTypeId,
+                InitialAmount = b.InitialAmount,
+                CertifiedAmount = b.CertifiedAmount,
+                ExecutedAmount = b.ExecutedAmount,
+                ApprovedAt = b.ApprovedAt
+            };
+            _budgetEdits[b.BudgetId] = model;
+        }
+        return model;
+    }
+
+    private IEnumerable<BudgetTransactionDTO> GetTransactions(int budgetId)
+    {
+        if (BudgetTransactionsByBudgetId is null) return Enumerable.Empty<BudgetTransactionDTO>();
+        if (!BudgetTransactionsByBudgetId.TryGetValue(budgetId, out var list) || list is null) return Enumerable.Empty<BudgetTransactionDTO>();
+        return list;
+    }
+
+    private int GetTxCount(int budgetId) => GetTransactions(budgetId).Count();
+
+    private async Task SubmitCreateBudgetAsync()
+    {
+        if (!OnCreateBudgetRequested.HasDelegate) return;
+        if (_createBudgetModel.FundingTypeId <= 0) return;
+
+        _createBudgetModel.ProjectId = ProjectId;
+        await OnCreateBudgetRequested.InvokeAsync(_createBudgetModel);
+
+        _createBudgetModel = new CreateBudgetRequestDTO { ProjectId = ProjectId };
+    }
+
+    private async Task SubmitBudgetAsync(int budgetId)
+    {
+        if (!OnSaveBudgetRequested.HasDelegate) return;
+        if (!_budgetEdits.TryGetValue(budgetId, out var dto)) return;
+        if (dto.FundingTypeId <= 0) return;
+
+        await OnSaveBudgetRequested.InvokeAsync((budgetId, dto));
+    }
+
+    private async Task RequestDeleteBudgetAsync(int budgetId)
+    {
+        if (!OnDeleteBudgetRequested.HasDelegate) return;
+        await OnDeleteBudgetRequested.InvokeAsync(budgetId);
+    }
+
+    // =========================
+    // Row rendering (transactions) - EDITAR (MODAL)
+    // =========================
+    private RenderFragment RenderTransactionRow(int budgetId, BudgetTransactionDTO tx) => builder =>
+    {
+        var seq = 0;
+
+        void Td(RenderFragment content)
+        {
+            builder.OpenElement(seq++, "td");
+            builder.AddAttribute(seq++, "class", "px-4 py-3 text-sm text-foreground align-middle");
+            builder.AddContent(seq++, content);
+            builder.CloseElement();
+        }
+
+        Td(b => b.AddContent(0, tx.BudgetTransactionId));
+        Td(b => b.AddContent(0, GetTxTypeName(tx.TransactionTypeId)));
+        Td(b => b.AddContent(0, tx.Name));
+        Td(b => b.AddContent(0, Money(tx.CertifiedAmount)));
+        Td(b => b.AddContent(0, Money(tx.ExecutedAmount)));
+        Td(b => b.AddContent(0, tx.CertifiedAt.ToString("yyyy-MM-dd")));
+        Td(b => b.AddContent(0, tx.ExecutedAt?.ToString("yyyy-MM-dd") ?? "-"));
+
+        Td(b =>
+        {
+            b.OpenElement(0, "div");
+            b.AddAttribute(1, "class", "flex items-center gap-2 justify-end");
+
+            b.OpenComponent<ActionButton>(2);
+            b.AddAttribute(3, "Text", "Editar");
+            b.AddAttribute(4, "Variant", ButtonVariant.Outline);
+            b.AddAttribute(5, "Intent", ButtonIntent.Info);
+            b.AddAttribute(6, "Disabled", UpdatingTransactionIds.Contains(tx.BudgetTransactionId));
+            b.AddAttribute(7, "Execute", EventCallback.Factory.Create(this, () => OpenEditTxModal(tx)));
+            b.CloseComponent();
+
+            b.CloseElement();
+        });
+    };
+
+    private void OpenEditTxModal(BudgetTransactionDTO tx)
+    {
+        _editingTxId = tx.BudgetTransactionId;
+
+        _txEditModel = new UpdateBudgetTransactionRequestDTO
+        {
+            TransactionTypeId = tx.TransactionTypeId,
+            Name = tx.Name ?? string.Empty,
+            CertifiedAmount = tx.CertifiedAmount,
+            ExecutedAmount = tx.ExecutedAmount,
+            BudgetItem = tx.BudgetItem ?? string.Empty,
+            CURNumber = tx.CURNumber,
+            CertificationDescription = tx.CertificationDescription ?? string.Empty,
+            ExecutionDescription = tx.ExecutionDescription
+        };
+
+        ModalService.Open(TxEditModalId);
+    }
+
+    private void CloseTxEditModal()
+    {
+        ModalService.Close(TxEditModalId);
+        _editingTxId = null;
+    }
+
+    private async Task SubmitUpdateTxAsync(int txId)
+    {
+        if (!OnUpdateTransactionRequested.HasDelegate) return;
+        await OnUpdateTransactionRequested.InvokeAsync((txId, _txEditModel));
+    }
+
+    private string GetTxTypeName(int id)
+    {
+        var t = TransactionTypes?.FirstOrDefault(x => x.Id == id);
+        return t?.Name ?? $"Tipo {id}";
+    }
+
+    private static string Money(decimal amount) => amount.ToString("N2", CultureInfo.InvariantCulture);
+}

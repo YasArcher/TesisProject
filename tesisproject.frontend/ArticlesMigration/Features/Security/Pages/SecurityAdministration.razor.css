@@ -1,0 +1,1138 @@
+.security-admin-summary__card,
+.security-admin-card {
+    border-radius: 1.5rem;
+}
+
+.security-admin-page {
+    --security-ink: #003638;
+    --security-teal: #055052;
+    --security-green: #285A48;
+    --security-mint: #408A71;
+    --security-sage: #628141;
+    --security-wine: #660B05;
+    --security-red: #8C1007;
+}
+
+.security-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 1.25rem 1.35rem;
+    border: 1px solid rgba(216, 240, 228, 0.24);
+    background:
+        radial-gradient(circle at 98% 8%, rgba(64, 138, 113, 0.28), transparent 24%),
+        radial-gradient(circle at 5% 105%, rgba(98, 129, 65, 0.22), transparent 30%),
+        linear-gradient(135deg, rgba(0, 54, 56, 0.98), rgba(5, 80, 82, 0.97), rgba(40, 90, 72, 0.95)) !important;
+    box-shadow: 0 26px 54px rgba(0, 54, 56, 0.18);
+}
+
+.security-hero::after {
+    content: "";
+    position: absolute;
+    right: -4.8rem;
+    bottom: -6.8rem;
+    width: 17rem;
+    height: 17rem;
+    border-radius: 999px;
+    background: rgba(216, 240, 228, 0.1);
+}
+
+.security-hero__layout {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1.25rem;
+    align-items: center;
+}
+
+.security-hero__content {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+}
+
+.security-hero__kicker {
+    color: rgba(216, 240, 228, 0.74);
+}
+
+.security-hero__title {
+    margin: 0;
+    color: #ffffff;
+    font-size: clamp(1.45rem, 2vw, 1.9rem);
+    font-weight: 900;
+    line-height: 1.05;
+}
+
+.security-hero__copy {
+    max-width: 42rem;
+    margin: 0.38rem 0 0;
+    color: rgba(255, 255, 255, 0.76);
+    font-size: 0.95rem;
+    line-height: 1.45;
+}
+
+.security-hero__side {
+    display: grid;
+    gap: 0.75rem;
+    justify-items: end;
+}
+
+.security-hero__badges,
+.security-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.55rem;
+}
+
+.security-hero__badges span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2rem;
+    border: 1px solid rgba(216, 240, 228, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.84);
+    padding: 0.36rem 0.68rem;
+    font-size: 0.74rem;
+    font-weight: 800;
+    backdrop-filter: blur(10px);
+}
+
+.security-hero-button {
+    min-height: 2.55rem;
+    border-radius: 999px;
+    border: 1px solid rgba(216, 240, 228, 0.2);
+    padding: 0.58rem 0.92rem;
+    font-size: 0.86rem;
+    font-weight: 900;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.security-hero-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 28px rgba(0, 54, 56, 0.18);
+}
+
+.security-hero-button:disabled {
+    cursor: wait;
+    opacity: 0.68;
+    transform: none;
+}
+
+.security-hero-button--primary {
+    border-color: rgba(255, 255, 255, 0.82);
+    background: #ffffff;
+    color: var(--security-ink);
+}
+
+.security-hero-button--soft {
+    background: rgba(216, 240, 228, 0.16);
+    color: #ffffff;
+}
+
+.security-hero-button--ghost {
+    background: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.92);
+}
+
+.security-command-center {
+    display: grid;
+    grid-template-columns: minmax(18rem, 0.75fr) minmax(22rem, 1.25fr) auto;
+    gap: 1rem;
+    align-items: stretch;
+    padding: 0.95rem;
+    border: 1px solid rgba(67, 86, 99, 0.12);
+    border-radius: 1.6rem;
+    background:
+        radial-gradient(circle at top right, rgba(244, 206, 20, 0.18), transparent 26%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 248, 0.94));
+    box-shadow: 0 18px 34px rgba(49, 54, 71, 0.07);
+}
+
+.security-command-center__stats,
+.security-command-center__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.security-command-center__actions {
+    justify-content: flex-end;
+}
+
+.security-flow-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 1rem;
+    align-items: center;
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid rgba(0, 54, 56, 0.12);
+    border-radius: 1.25rem;
+    background:
+        radial-gradient(circle at top right, rgba(64, 138, 113, 0.16), transparent 34%),
+        linear-gradient(135deg, #ffffff, rgba(238, 245, 246, 0.96));
+    box-shadow: 0 14px 24px rgba(49, 54, 71, 0.06);
+}
+
+.security-flow-panel__copy {
+    min-width: 0;
+}
+
+.security-flow-panel__kicker {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: #408A71;
+    font-size: 0.7rem;
+    font-weight: 900;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.security-flow-panel strong {
+    display: block;
+    color: #003638;
+    font-size: 1rem;
+    line-height: 1.2;
+}
+
+.security-flow-panel small {
+    display: block;
+    margin-top: 0.35rem;
+    color: #5b6770;
+    line-height: 1.45;
+}
+
+.security-flow-panel__controls {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.security-flow-select {
+    min-width: 14rem;
+    min-height: 2.55rem;
+    border: 1px solid rgba(67, 86, 99, 0.16);
+    border-radius: 999px;
+    background: #fff;
+    color: #313647;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.9rem;
+    font-weight: 800;
+    box-shadow: 0 10px 18px rgba(49, 54, 71, 0.05);
+}
+
+.security-mini-stat {
+    min-width: 9.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-radius: 1.2rem;
+    border: 1px solid rgba(67, 86, 99, 0.1);
+    background: linear-gradient(145deg, #fff, rgba(245, 247, 248, 0.95));
+}
+
+.security-mini-stat--warm {
+    background: linear-gradient(145deg, rgba(255, 248, 212, 0.96), rgba(255, 255, 255, 0.98));
+}
+
+.security-mini-stat__icon,
+.security-role-card__icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: 0.9rem;
+    background: linear-gradient(135deg, #313647, #495E57, #437057);
+    color: #fff8d4;
+    font-size: 0.82rem;
+    font-weight: 900;
+}
+
+.security-mini-stat strong {
+    display: block;
+    color: #313647;
+    font-size: 1.35rem;
+    font-weight: 900;
+    line-height: 1;
+}
+
+.security-mini-stat small {
+    display: block;
+    margin-top: 0.2rem;
+    color: #7a7a7a;
+    font-weight: 700;
+}
+
+.security-pill-action {
+    border: 1px solid rgba(67, 86, 99, 0.14);
+    border-radius: 999px;
+    background: #fff;
+    color: #313647;
+    font-weight: 800;
+    padding: 0.7rem 1rem;
+    box-shadow: 0 12px 22px rgba(49, 54, 71, 0.06);
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.security-pill-action:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 16px 28px rgba(49, 54, 71, 0.1);
+}
+
+.security-pill-action--primary {
+    border-color: rgba(151, 176, 103, 0.28);
+    background: linear-gradient(135deg, #313647, #495E57);
+    color: #fff;
+}
+
+.security-workspace {
+    border: 1px solid rgba(67, 86, 99, 0.12);
+    border-radius: 1.8rem;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 248, 0.98)),
+        radial-gradient(circle at left bottom, rgba(151, 176, 103, 0.12), transparent 28%);
+    box-shadow: 0 24px 48px rgba(49, 54, 71, 0.08);
+    overflow: hidden;
+}
+
+.security-workspace__tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.7rem;
+    background: linear-gradient(135deg, rgba(49, 54, 71, 0.06), rgba(255, 248, 212, 0.42));
+    border-bottom: 1px solid rgba(67, 86, 99, 0.1);
+}
+
+.security-workspace-tab {
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 0;
+    border-radius: 1.1rem;
+    background: transparent;
+    color: #495E57;
+    font-weight: 900;
+    padding: 0.9rem 1rem;
+}
+
+.security-workspace-tab small {
+    padding: 0.28rem 0.62rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.78);
+    color: #7a7a7a;
+    font-size: 0.72rem;
+}
+
+.security-workspace-tab--active {
+    background: linear-gradient(135deg, #fff, rgba(255, 248, 212, 0.72));
+    color: #313647;
+    box-shadow: 0 14px 26px rgba(49, 54, 71, 0.08);
+}
+
+.security-panel {
+    padding: 1.25rem;
+}
+
+.security-panel__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.security-context-note {
+    display: flex;
+    gap: 0.45rem;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+    border: 1px solid rgba(64, 138, 113, 0.18);
+    border-radius: 1rem;
+    background:
+        radial-gradient(circle at top right, rgba(64, 138, 113, 0.12), transparent 28%),
+        linear-gradient(135deg, rgba(238, 245, 246, 0.92), rgba(255, 255, 255, 0.98));
+    color: #4f5f61;
+    padding: 0.78rem 0.9rem;
+    font-size: 0.88rem;
+    line-height: 1.5;
+}
+
+.security-context-note strong {
+    color: #003638;
+    white-space: nowrap;
+}
+
+.security-context-note--compact {
+    margin-bottom: 0;
+    font-size: 0.84rem;
+}
+
+.security-filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    justify-content: flex-end;
+}
+
+.security-filter-input,
+.security-filter-select {
+    min-height: 2.7rem;
+    border: 1px solid rgba(67, 86, 99, 0.14);
+    border-radius: 1rem;
+    background: #fff;
+    color: #313647;
+    padding: 0.55rem 0.8rem;
+    box-shadow: 0 10px 18px rgba(49, 54, 71, 0.04);
+}
+
+.security-filter-input {
+    min-width: min(18rem, 100%);
+}
+
+.security-user-grid,
+.security-role-grid,
+.security-permission-grid {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.security-user-grid {
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    max-height: 34rem;
+    overflow: auto;
+    padding-right: 0.25rem;
+}
+
+.security-role-grid {
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.security-role-sections,
+.security-permission-sections {
+    display: grid;
+    gap: 1rem;
+}
+
+.security-group-tabs {
+    display: flex;
+    gap: 0.55rem;
+    margin-bottom: 1rem;
+    padding: 0.45rem;
+    overflow-x: auto;
+    border: 1px solid rgba(67, 86, 99, 0.1);
+    border-radius: 1.2rem;
+    background: linear-gradient(135deg, rgba(238, 245, 246, 0.88), rgba(255, 255, 255, 0.94));
+}
+
+.security-group-tabs--stacked {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin-bottom: 0.85rem;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(238, 245, 246, 0.96));
+}
+
+.security-group-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex: 0 0 auto;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: transparent;
+    color: #495E57;
+    font-size: 0.84rem;
+    font-weight: 900;
+    padding: 0.62rem 0.8rem;
+    transition: background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.security-group-tab:hover {
+    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.security-group-tab small {
+    min-width: 1.55rem;
+    border-radius: 999px;
+    background: rgba(49, 54, 71, 0.08);
+    color: #313647;
+    font-size: 0.7rem;
+    font-weight: 900;
+    padding: 0.2rem 0.45rem;
+}
+
+.security-group-tab--active {
+    border-color: rgba(64, 138, 113, 0.18);
+    background: linear-gradient(135deg, #003638, #285A48);
+    color: #fff;
+    box-shadow: 0 12px 22px rgba(0, 54, 56, 0.16);
+}
+
+.security-group-tab--active small {
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+}
+
+.security-role-section {
+    padding: 0.9rem;
+    border: 1px solid rgba(67, 86, 99, 0.1);
+    border-radius: 1.35rem;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(245, 247, 248, 0.9)),
+        radial-gradient(circle at left top, rgba(151, 176, 103, 0.1), transparent 28%);
+}
+
+.security-role-section--compact {
+    padding: 0.75rem;
+}
+
+.security-role-section__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.security-role-section__header h3 {
+    margin: 0;
+    color: #003638;
+    font-size: 1rem;
+    font-weight: 900;
+}
+
+.security-role-section__header > span {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: rgba(64, 138, 113, 0.1);
+    color: #285A48;
+    font-size: 0.72rem;
+    font-weight: 900;
+    padding: 0.35rem 0.65rem;
+}
+
+.security-user-avatar {
+    width: 2.65rem;
+    height: 2.65rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, #F4CE14, #97B067);
+    color: #313647;
+    font-size: 0.78rem;
+    font-weight: 900;
+    box-shadow: 0 12px 20px rgba(49, 54, 71, 0.1);
+}
+
+.security-user-avatar--large {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 1.3rem;
+    font-size: 1rem;
+}
+
+.security-user-card__identity {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.security-status-pill {
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: rgba(151, 176, 103, 0.16);
+    color: #437057;
+    font-size: 0.72rem;
+    font-weight: 900;
+    padding: 0.35rem 0.65rem;
+}
+
+.security-status-pill--danger {
+    background: rgba(109, 19, 19, 0.1);
+    color: #6d1313;
+}
+
+.security-role-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    background: rgba(67, 112, 87, 0.08);
+    color: #2F5249;
+    font-size: 0.74rem;
+    font-weight: 800;
+    padding: 0.34rem 0.62rem;
+}
+
+.security-role-chip--muted {
+    background: rgba(49, 54, 71, 0.08);
+    color: #313647;
+}
+
+.security-role-card__top {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.85rem;
+}
+
+.security-role-card__count {
+    border-radius: 999px;
+    background: #FFF8D4;
+    color: #495E57;
+    font-size: 0.74rem;
+    font-weight: 900;
+    padding: 0.35rem 0.65rem;
+}
+
+.security-panel--permissions {
+    min-height: 28rem;
+}
+
+.security-permission-layout {
+    display: grid;
+    grid-template-columns: minmax(16rem, 0.55fr) minmax(0, 1.45fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.security-permission-grid {
+    grid-template-columns: 1fr;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+}
+
+.security-permission-sections {
+    max-height: 34rem;
+    overflow: auto;
+    padding-right: 0.25rem;
+}
+
+.security-role-option__main {
+    display: flex;
+    gap: 0.85rem;
+    align-items: flex-start;
+}
+
+.security-empty-state {
+    grid-column: 1 / -1;
+    border: 1px dashed rgba(67, 86, 99, 0.2);
+    border-radius: 1.25rem;
+    background: rgba(255, 255, 255, 0.7);
+    color: #7a7a7a;
+    font-weight: 700;
+    padding: 1.3rem;
+    text-align: center;
+}
+
+.security-empty-state--large {
+    min-height: 18rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.security-admin-page {
+    background:
+        radial-gradient(circle at top right, rgba(244, 206, 20, 0.08), transparent 24%),
+        radial-gradient(circle at left bottom, rgba(151, 176, 103, 0.08), transparent 26%);
+}
+
+.security-admin-summary__card {
+    height: 100%;
+    padding: 1.35rem 1.4rem;
+    border: 1px solid var(--app-color-border);
+    background:
+        radial-gradient(circle at top right, rgba(244, 206, 20, 0.14), transparent 30%),
+        linear-gradient(180deg, #ffffff, rgba(245, 247, 248, 0.96));
+    box-shadow: var(--app-shadow-sm);
+    position: relative;
+    overflow: hidden;
+}
+
+.security-admin-summary__icon {
+    width: 2.4rem;
+    height: 2.4rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: .95rem;
+    background: linear-gradient(145deg, rgba(49, 54, 71, 1), rgba(73, 94, 87, 0.94));
+    color: #fff8d4;
+    font-size: 1rem;
+    box-shadow: 0 12px 22px rgba(49, 54, 71, 0.12);
+}
+
+.security-admin-summary__label {
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--app-color-text-muted);
+}
+
+.security-admin-summary__value {
+    margin-top: 0.55rem;
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--app-color-heading);
+}
+
+.security-admin-summary__note {
+    margin-top: 0.45rem;
+    color: var(--app-color-text-muted);
+    line-height: 1.6;
+}
+
+.security-admin-card {
+    border: 1px solid var(--app-color-border) !important;
+    box-shadow: var(--app-shadow-sm);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 248, 0.96));
+}
+
+.security-admin-card__eyebrow {
+    margin-bottom: 0.45rem;
+    font-size: 0.76rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--app-color-text-muted);
+}
+
+.security-admin-role-create {
+    min-width: min(100%, 24rem);
+}
+
+.security-admin-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.security-admin-actions__button {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    width: 100%;
+    padding: 1rem 1.05rem;
+    border: 1px solid var(--app-color-border);
+    border-radius: 1.2rem;
+    background: linear-gradient(180deg, #ffffff, rgba(245, 247, 248, 0.96));
+    text-align: left;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.security-admin-actions__button:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--app-shadow-sm);
+    border-color: rgba(151, 176, 103, 0.38);
+}
+
+.security-admin-actions__button--primary {
+    border-color: rgba(151, 176, 103, 0.24);
+    background: linear-gradient(180deg, rgba(151, 176, 103, 0.14), rgba(244, 206, 20, 0.08));
+}
+
+.security-admin-actions__icon {
+    width: 2.35rem;
+    height: 2.35rem;
+    border-radius: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #313647, #495E57, #437057);
+    color: var(--app-color-white);
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.security-admin-actions__title {
+    display: block;
+    font-weight: 800;
+    color: var(--app-color-heading);
+}
+
+.security-admin-actions__description {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--app-color-text-muted);
+}
+
+.security-role-card {
+    height: 100%;
+    padding: 1rem 1rem 0.95rem;
+    border-radius: 1.2rem;
+    border: 1px solid var(--app-color-border);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 248, 0.96));
+}
+
+.security-role-card__title {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--app-color-heading);
+}
+
+.security-role-card__code {
+    margin-top: 0.18rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #2F5249;
+}
+
+.security-role-card__description {
+    margin-top: 0.7rem;
+    font-size: 0.92rem;
+    line-height: 1.65;
+    color: var(--app-color-text-muted);
+}
+
+.security-capability-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.42rem;
+    margin-top: 0.85rem;
+}
+
+.security-capability-list--inline {
+    margin-top: 0.6rem;
+}
+
+.security-capability-list--compact {
+    margin-top: 0.45rem;
+}
+
+.security-capability {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.32rem;
+    border: 1px solid rgba(67, 86, 99, 0.1);
+    border-radius: 999px;
+    background: rgba(245, 247, 248, 0.88);
+    color: #313647;
+    padding: 0.34rem 0.58rem;
+    font-size: 0.72rem;
+    font-weight: 850;
+    line-height: 1;
+}
+
+.security-capability i {
+    font-size: 0.78rem;
+}
+
+.security-capability--analysis {
+    border-color: rgba(0, 54, 56, 0.14);
+    background: rgba(64, 138, 113, 0.1);
+    color: #003638;
+}
+
+.security-capability--capture {
+    border-color: rgba(98, 129, 65, 0.18);
+    background: rgba(151, 176, 103, 0.14);
+    color: #285A48;
+}
+
+.security-capability--workflow {
+    border-color: rgba(244, 206, 20, 0.24);
+    background: rgba(255, 248, 212, 0.78);
+    color: #665400;
+}
+
+.security-capability--strong {
+    border-color: rgba(67, 86, 99, 0.16);
+    background: rgba(49, 54, 71, 0.08);
+    color: #313647;
+}
+
+.security-capability--danger {
+    border-color: rgba(140, 16, 7, 0.16);
+    background: rgba(140, 16, 7, 0.08);
+    color: #660B05;
+}
+
+.security-role-card__foot {
+    margin-top: 0.8rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--app-color-heading);
+}
+
+.security-user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.security-user-card {
+    width: 100%;
+    border: 1px solid var(--app-color-border);
+    border-radius: 1.2rem;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 248, 0.96));
+    padding: 1rem;
+    text-align: left;
+    transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.security-user-card:hover,
+.security-user-card--selected {
+    border-color: rgba(151, 176, 103, 0.42);
+    box-shadow: var(--app-shadow-sm);
+    transform: translateY(-1px);
+}
+
+.security-user-card__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.security-user-card__name {
+    font-weight: 800;
+    color: var(--app-color-heading);
+}
+
+.security-user-card__email {
+    margin-top: 0.18rem;
+    color: var(--app-color-text-muted);
+    font-size: 0.92rem;
+}
+
+.security-user-card__roles {
+    margin-top: 0.85rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.security-selected-user {
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border-radius: 1.15rem;
+    background: linear-gradient(180deg, rgba(151, 176, 103, 0.08), #ffffff);
+    border: 1px solid var(--app-color-border);
+}
+
+.security-selected-user__name {
+    font-weight: 800;
+    color: var(--app-color-heading);
+}
+
+.security-selected-user__email {
+    margin-top: 0.25rem;
+    color: var(--app-color-text-muted);
+    font-size: 0.92rem;
+}
+
+.security-selected-user__capabilities {
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid rgba(67, 86, 99, 0.1);
+}
+
+.security-selected-user__capabilities small {
+    display: block;
+    color: #7a7a7a;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.security-role-option {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 0.95rem 1rem;
+    border: 1px solid var(--app-color-border);
+    border-radius: 1.1rem;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 247, 248, 0.96));
+}
+
+.security-role-option:hover {
+    border-color: rgba(151, 176, 103, 0.3);
+    box-shadow: 0 10px 22px rgba(49, 54, 71, 0.06);
+}
+
+.security-role-option__title {
+    font-weight: 800;
+    color: var(--app-color-heading);
+}
+
+.security-role-option__description {
+    margin-top: 0.2rem;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--app-color-text-muted);
+}
+
+.security-admin-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1400;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: rgba(49, 54, 71, 0.46);
+    backdrop-filter: blur(6px);
+}
+
+.security-admin-modal {
+    width: min(100%, 58rem);
+    max-height: calc(100vh - 3rem);
+    overflow-y: auto;
+    border-radius: 1.6rem;
+    background: linear-gradient(180deg, rgba(255,255,255,1), rgba(245,247,248,.98));
+    border: 1px solid var(--app-color-border);
+    box-shadow: var(--app-shadow-lg);
+    padding: 1.45rem;
+}
+
+.security-admin-modal--compact {
+    width: min(100%, 36rem);
+}
+
+.security-admin-modal__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.security-admin-modal__close {
+    width: 2.2rem;
+    height: 2.2rem;
+    border: 1px solid var(--app-color-border);
+    border-radius: 999px;
+    background: linear-gradient(145deg, rgba(255,248,212,.86), rgba(255,255,255,1));
+    color: var(--app-color-heading);
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+.security-admin-modal__actions {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+}
+
+.security-modal-alert {
+    display: grid;
+    gap: 0.2rem;
+    margin-bottom: 1rem;
+    border-radius: 1rem;
+    padding: 0.85rem 1rem;
+    line-height: 1.45;
+}
+
+.security-modal-alert strong {
+    font-size: 0.88rem;
+}
+
+.security-modal-alert span {
+    font-size: 0.86rem;
+}
+
+.security-modal-alert--error {
+    border: 1px solid rgba(140, 16, 7, 0.18);
+    background: linear-gradient(135deg, rgba(140, 16, 7, 0.08), rgba(255, 255, 255, 0.94));
+    color: #660b05;
+}
+
+.security-modal-role-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.security-admin-note {
+    padding: 0.95rem 1rem;
+    border-radius: 1rem;
+    background: linear-gradient(180deg, rgba(151, 176, 103, 0.08), rgba(255, 248, 212, 0.46));
+    border: 1px solid var(--app-color-border);
+    color: var(--app-color-text-muted);
+    line-height: 1.6;
+}
+
+.security-hero__icon {
+    width: 3.35rem;
+    height: 3.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    border-radius: 1.05rem;
+    background: linear-gradient(145deg, rgba(255,255,255,.16), rgba(64,138,113,.18));
+    border: 1px solid rgba(216,240,228,.24);
+    color: #d8f0e4;
+    font-size: 1.2rem;
+    box-shadow: 0 14px 28px rgba(0,0,0,.14);
+}
+
+@media (max-width: 768px) {
+    .security-hero__layout {
+        grid-template-columns: 1fr;
+    }
+
+    .security-hero__side,
+    .security-hero__badges,
+    .security-hero__actions {
+        justify-items: stretch;
+        justify-content: flex-start;
+    }
+
+    .security-hero-button {
+        flex: 1 1 10rem;
+    }
+
+    .security-command-center,
+    .security-flow-panel {
+        grid-template-columns: 1fr;
+    }
+
+    .security-flow-panel__controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .security-flow-select {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .security-permission-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .security-user-card__header,
+    .security-role-option,
+    .security-admin-modal__header,
+    .security-admin-modal__actions {
+        flex-direction: column;
+    }
+
+    .security-modal-role-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .security-admin-modal {
+        padding: 1.1rem;
+    }
+}

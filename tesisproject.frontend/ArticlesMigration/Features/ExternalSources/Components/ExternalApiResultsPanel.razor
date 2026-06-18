@@ -1,0 +1,758 @@
+@using System.Text.Json
+@using tesisproject.shared.DTOs.ExternalApis
+
+<section class="space-y-6">
+    <div class="rounded-[1.6rem] border border-[#dbe6ef] bg-white p-4 shadow-sm">
+        <div class="mb-4 flex items-center justify-between gap-3">
+            <div>
+                <h2 class="text-base font-black text-[#102642] md:text-lg">Resultados externos</h2>
+                <p class="mt-1 text-xs text-slate-500">Revisa y actúa.</p>
+            </div>
+            @if (Result is not null)
+            {
+                <span class="rounded-full px-3 py-1 text-xs font-semibold @(Result.Success ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700")">@(Result.Success ? "Respuesta útil" : "Con observaciones")</span>
+            }
+        </div>
+
+        @if (Result is null)
+        {
+            <AppEmptyState Title="Aún no hay consultas" Message="Ejecuta una búsqueda para ver resultados." />
+        }
+        else
+        {
+            <div class="external-api-result-kpis mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+                <div class="external-api-result-kpis__card">
+                    <small>Proveedor</small>
+                    <strong>@Result.ProviderName</strong>
+                    <p>Fuente utilizada.</p>
+                </div>
+                <div class="external-api-result-kpis__card">
+                    <small>Respuesta HTTP</small>
+                    <strong>@Result.StatusCode</strong>
+                    <p>Estado recibido.</p>
+                </div>
+                <div class="external-api-result-kpis__card">
+                    <small>Artículos detectados</small>
+                    <strong>@EffectiveArticles.Count</strong>
+                    <p>Resultados disponibles.</p>
+                </div>
+                <div class="external-api-result-kpis__card">
+                    <small>Modo usado</small>
+                    <strong>@GetFriendlyModeLabel(QueryMode)</strong>
+                    <p>Consulta ejecutada.</p>
+                </div>
+            </div>
+
+            <div class="mb-4 rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3 text-sm text-slate-600">
+                <div class="font-semibold text-[#102642]">Criterio enviado</div>
+                <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                    @foreach (var chip in BuildRequestSummaryChips())
+                    {
+                        <span class="rounded-full bg-[#f5f9fc] px-3 py-1.5 font-semibold text-[#295173]">@chip</span>
+                    }
+                </div>
+            </div>
+
+            <div class="mb-4 rounded-2xl border border-[#dbe6ef] bg-[#f9fbfd] px-4 py-3 text-sm text-slate-600">
+                <div class="font-semibold text-[#102642]">URL final</div>
+                <div class="mt-2 overflow-x-auto font-mono text-xs text-slate-700">@Result.FinalRequestUrl</div>
+            </div>
+
+            <div class="external-api-results-tabs mb-4">
+                <button class="external-api-results-tabs__item @GetTabClass("articles")"
+                        type="button"
+                        @onclick='() => SetActiveTab("articles")'>
+                    <i class="bi bi-table"></i>
+                            <span>
+                            <strong>Artículos</strong>
+                            <small>@EffectiveArticles.Count resultado(s)</small>
+                        </span>
+                    </button>
+                @if (Result.ResolutionDebug is not null && HasResolutionDebug(Result.ResolutionDebug))
+                {
+                    <button class="external-api-results-tabs__item @GetTabClass("resolution")"
+                            type="button"
+                            @onclick='() => SetActiveTab("resolution")'>
+                        <i class="bi bi-person-badge"></i>
+                        <span>
+                            <strong>Resolución</strong>
+                            <small>Coincidencias de autor o filiación</small>
+                        </span>
+                    </button>
+                }
+                <button class="external-api-results-tabs__item @GetTabClass("json")"
+                        type="button"
+                        @onclick='() => SetActiveTab("json")'>
+                    <i class="bi bi-braces"></i>
+                    <span>
+                        <strong>JSON auditable</strong>
+                        <small>Respuesta cruda</small>
+                    </span>
+                </button>
+            </div>
+
+            @if (_activeTab == "articles")
+            {
+                <div class="mb-4 rounded-3xl border border-[#dbe6ef] bg-white p-4">
+                    <div class="grid grid-cols-1 gap-3 lg:grid-cols-[1.2fr_auto_auto]">
+                        <label class="block">
+                            <span class="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Filtrar resultados</span>
+                            <input class="w-full rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2.5 text-sm text-slate-700 outline-none transition focus:border-[#5a7ea6] focus:ring-2 focus:ring-[#d7e9fb]"
+                                   value="@ResultsSearchText"
+                                   @oninput="HandleResultsSearchInputAsync"
+                                   placeholder="Busca por título, DOI, revista, autor o editorial" />
+                        </label>
+                        <label class="inline-flex items-center gap-2 rounded-2xl border border-[#dbe6ef] bg-[#fbfdff] px-3 py-2 text-sm font-semibold text-[#102642]">
+                            <input type="checkbox"
+                                   checked="@FilterOnlyWithDoi"
+                                   @onchange="HandleOnlyWithDoiChangedAsync" />
+                            Solo con DOI
+                        </label>
+                        <label class="inline-flex items-center gap-2 rounded-2xl border border-[#dbe6ef] bg-[#fbfdff] px-3 py-2 text-sm font-semibold text-[#102642]">
+                            <input type="checkbox"
+                                   checked="@FilterOnlyOpenAccess"
+                                   @onchange="HandleOnlyOpenAccessChangedAsync" />
+                            Solo open access
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mb-4 rounded-3xl border border-[#dbe6ef] bg-[#f9fbfd] p-4">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <div class="text-sm font-bold text-[#102642]">Selección para staging</div>
+                            <div class="text-xs text-slate-500">@SelectedArticles.Count artículo(s) elegidos</div>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] disabled:opacity-50"
+                                    disabled="@(!SelectedArticles.Any())"
+                                    @onclick="OnClearSelectedArticles">
+                                Limpiar selección
+                            </button>
+                            <button class="rounded-xl bg-[#102642] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                                    disabled="@(!SelectedArticles.Any() || IsSendingSelectionToStaging)"
+                                    @onclick="OnSendSelectedToStaging">
+                                @(IsSendingSelectionToStaging ? "Enviando selección..." : "Enviar selección a staging")
+                            </button>
+                        </div>
+                    </div>
+                    @if (SelectedArticles.Any())
+                    {
+                        <div class="mt-3 flex max-h-[7.5rem] flex-wrap gap-2 overflow-y-auto pr-1">
+                            @foreach (var selected in SelectedArticles)
+                            {
+                                <span class="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#295173] shadow-sm">
+                                    <span class="max-w-[16rem] truncate">@selected.Value.Title</span>
+                                    <button class="text-rose-600" @onclick="() => OnRemoveSelectedArticle.InvokeAsync(selected.Key)">×</button>
+                                </span>
+                            }
+                        </div>
+                    }
+                </div>
+
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                    <div class="text-xs text-slate-500">
+                        Mostrando <span class="font-semibold text-[#102642]">@EffectiveCurrentResults.Count</span> de <span class="font-semibold text-[#102642]">@EffectiveFilteredResultsCount</span>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <label class="text-xs font-semibold text-slate-500">Por página</label>
+                        <select class="rounded-xl border border-[#c9d7e3] bg-[#f9fbfd] px-3 py-2 text-xs"
+                                value="@ResultsPageSize"
+                                @onchange="OnResultsPageSizeChanged">
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="15">15</option>
+                            <option value="20">20</option>
+                        </select>
+                        <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] disabled:opacity-50"
+                                disabled="@(ResultsPage <= 1)"
+                                @onclick="OnPreviousPage">
+                            Anterior
+                        </button>
+                        <span class="text-xs font-semibold text-slate-600">Página @ResultsPage de @TotalResultsPages</span>
+                        <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] disabled:opacity-50"
+                                disabled="@(ResultsPage >= TotalResultsPages)"
+                                @onclick="OnNextPage">
+                            Siguiente
+                        </button>
+                    </div>
+                </div>
+
+                <div class="app-table-wrap max-h-[38rem] overflow-auto rounded-3xl border border-[#dbe6ef]">
+                    <table class="app-table-compact divide-y divide-[#e6eef4] text-sm">
+                        <thead class="bg-[#f5f9fc]">
+                            <tr>
+                                <th class="px-4 py-3 text-left font-semibold text-[#102642]">Selección</th>
+                                <th class="px-4 py-3 text-left font-semibold text-[#102642]">Título</th>
+                                <th class="px-4 py-3 text-left font-semibold text-[#102642]">DOI</th>
+                                <th class="px-4 py-3 text-left font-semibold text-[#102642]">Revista</th>
+                                <th class="px-4 py-3 text-left font-semibold text-[#102642]">Año</th>
+                                <th class="px-4 py-3 text-left font-semibold text-[#102642]">Autores</th>
+                                <th class="px-4 py-3 text-left font-semibold text-[#102642]">Metadatos</th>
+                                <th class="px-4 py-3 text-left font-semibold text-[#102642]">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[#eef3f6] bg-white">
+                            @if (!EffectiveCurrentResults.Any())
+                            {
+                                <tr>
+                                    <td colspan="8" class="px-4 py-8 text-center text-slate-500">
+                                        @(EffectiveArticles.Count > 0
+                                            ? "Se recibieron artículos, pero esta tabla no logró materializarlos correctamente."
+                                            : "No encontré artículos mapeables en esta consulta.")
+                                    </td>
+                                </tr>
+                            }
+                            else
+                            {
+                                @foreach (var article in EffectiveCurrentResults)
+                                {
+                                    <tr class="align-top" @key="GetArticleKey(article)">
+                                        <td class="px-4 py-3">
+                                            <input type="checkbox"
+                                                   checked="@IsSelected(article)"
+                                                   @onchange="e => ToggleSelection(article, e)" />
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="font-semibold text-[#102642]">@article.Title</div>
+                                            @if (!string.IsNullOrWhiteSpace(article.DocumentType))
+                                            {
+                                                <div class="mt-1 text-xs text-slate-500">@article.DocumentType</div>
+                                            }
+                                        </td>
+                                        <td class="break-all px-4 py-3 text-slate-600">@(!string.IsNullOrWhiteSpace(article.Doi) ? article.Doi : "Sin DOI")</td>
+                                        <td class="px-4 py-3 text-slate-600">@article.JournalName</td>
+                                        <td class="px-4 py-3 text-slate-600">@article.PublicationYear</td>
+                                        <td class="px-4 py-3 text-slate-600">@article.Authors</td>
+                                        <td class="px-4 py-3">
+                                            <div class="flex flex-wrap gap-2 text-[11px]">
+                                                @if (!string.IsNullOrWhiteSpace(article.IssnCode))
+                                                {
+                                                    <span class="rounded-full bg-[#eef6ff] px-2 py-1 font-semibold text-[#295173]">ISSN: @article.IssnCode</span>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(article.EIssnCode))
+                                                {
+                                                    <span class="rounded-full bg-[#eef6ff] px-2 py-1 font-semibold text-[#295173]">E-ISSN: @article.EIssnCode</span>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(article.Publisher))
+                                                {
+                                                    <span class="rounded-full bg-[#fff4e4] px-2 py-1 font-semibold text-[#8b5a16]">@article.Publisher</span>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(article.Volume) || !string.IsNullOrWhiteSpace(article.Issue))
+                                                {
+                                                    <span class="rounded-full bg-slate-100 px-2 py-1 font-semibold text-slate-600">Vol. @article.Volume / N.º @article.Issue</span>
+                                                }
+                                                @if (article.CitationCount.HasValue)
+                                                {
+                                                    <span class="rounded-full bg-[#f3ecff] px-2 py-1 font-semibold text-[#6e46a1]">@article.CitationCount cita(s)</span>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(article.PublicationDate))
+                                                {
+                                                    <span class="rounded-full bg-[#f5f9fc] px-2 py-1 font-semibold text-slate-600">@article.PublicationDate</span>
+                                                }
+                                                @if (!string.IsNullOrWhiteSpace(article.Language))
+                                                {
+                                                    <span class="rounded-full bg-[#f5f9fc] px-2 py-1 font-semibold text-slate-600">@article.Language</span>
+                                                }
+                                                @if (article.IsOpenAccess.HasValue)
+                                                {
+                                                    <span class="rounded-full px-2 py-1 font-semibold @(article.IsOpenAccess == true ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-600")">@GetOpenAccessLabel(article)</span>
+                                                }
+                                                @if (article.SubjectAreas.Any())
+                                                {
+                                                    <span class="rounded-full bg-[#eaf7ee] px-2 py-1 font-semibold text-emerald-700">@article.SubjectAreas.Count área(s)</span>
+                                                }
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="external-api-table-actions">
+                                                <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] hover:bg-[#eef6ff]"
+                                                        @onclick="() => OnOpenDetail.InvokeAsync(article)">
+                                                    Ver detalle
+                                                </button>
+                                                <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] hover:bg-[#eef6ff]"
+                                                        @onclick="() => OnSendToRegister.InvokeAsync(article)">
+                                                    Llevar a registro
+                                                </button>
+                                                <button class="rounded-xl border border-[#c9d7e3] bg-white px-3 py-2 text-xs font-semibold text-[#102642] hover:bg-[#eef6ff] disabled:opacity-60"
+                                                        disabled="@IsSendingToStaging"
+                                                        @onclick="() => OnSendToStaging.InvokeAsync(article)">
+                                                    @(IsSendingToStaging ? "Enviando..." : "Enviar a staging")
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else if (_activeTab == "resolution")
+            {
+                @if (Result.ResolutionDebug is not null && HasResolutionDebug(Result.ResolutionDebug))
+                {
+                    <div class="mb-4 rounded-2xl border border-[#dbe6ef] bg-white px-4 py-4 text-sm text-slate-600">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <div class="font-semibold text-[#102642]">Resolución Scopus</div>
+                                <div class="text-xs text-slate-500">Candidatos detectados.</div>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-semibold text-[#295173]">@Result.ResolutionDebug.Mode</span>
+                                <span class="rounded-full px-3 py-1 text-xs font-semibold @(HasManualResolutionSelection ? "bg-[#fff4e4] text-[#8b5a16]" : "bg-[#eaf7ee] text-emerald-700")">
+                                    @(HasManualResolutionSelection ? "Selección manual activa" : "Resolución automática")
+                                </span>
+                                @if (HasManualResolutionSelection)
+                                {
+                                    <button class="rounded-full border border-[#c9d7e3] bg-white px-3 py-1 text-xs font-semibold text-[#102642] hover:bg-[#eef6ff]"
+                                            type="button"
+                                            @onclick="OnClearResolutionSelection">
+                                        Volver a automático
+                                    </button>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="external-api-resolution-summary mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                            @foreach (var summary in BuildResolutionSummaries(Result.ResolutionDebug))
+                            {
+                                <div class="external-api-resolution-summary__card">
+                                    <small>@summary.Label</small>
+                                    <strong>@summary.Title</strong>
+                                    <p>@summary.Description</p>
+                                </div>
+                            }
+                        </div>
+
+                        @if (HasResolutionComparison(Result.ResolutionDebug))
+                        {
+                            <div class="external-api-resolution-compare mt-4 rounded-2xl border border-[#dbe6ef] bg-[#fbfdff] p-4">
+                                <div class="flex flex-wrap items-center justify-between gap-3">
+                                        <div>
+                                            <div class="font-semibold text-[#102642]">Comparativo rápido de coincidencias</div>
+                                        <div class="text-xs text-slate-500">Comparación rápida.</div>
+                                    </div>
+                                    <span class="rounded-full bg-[#eef5fb] px-3 py-1 text-xs font-semibold text-[#295173]">Top 2 por grupo</span>
+                                </div>
+
+                                <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
+                                    @if (Result.ResolutionDebug.AuthorCandidates.Any())
+                                    {
+                                        <div class="external-api-resolution-compare__group">
+                                            <div class="external-api-resolution-compare__title">Autor principal</div>
+                                            @foreach (var candidate in Result.ResolutionDebug.AuthorCandidates.Take(2))
+                                            {
+                                                <div class="external-api-resolution-compare__item @(string.Equals(SelectedAuthorId, candidate.Id, StringComparison.OrdinalIgnoreCase) || (string.IsNullOrWhiteSpace(SelectedAuthorId) && IsPrimaryCandidate(Result.ResolutionDebug.AuthorCandidates, candidate)) ? "external-api-resolution-compare__item--selected" : string.Empty)">
+                                                    <strong>@candidate.DisplayName</strong>
+                                                    <span>ID: @candidate.Id</span>
+                                                    <span>Score: @candidate.Score</span>
+                                                    <span>Docs: @candidate.DocumentCount</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+
+                                    @if (Result.ResolutionDebug.AffiliationCandidates.Any())
+                                    {
+                                        <div class="external-api-resolution-compare__group">
+                                            <div class="external-api-resolution-compare__title">Filiación</div>
+                                            @foreach (var candidate in Result.ResolutionDebug.AffiliationCandidates.Take(2))
+                                            {
+                                                <div class="external-api-resolution-compare__item @(string.Equals(SelectedAffiliationId, candidate.Id, StringComparison.OrdinalIgnoreCase) || (string.IsNullOrWhiteSpace(SelectedAffiliationId) && IsPrimaryCandidate(Result.ResolutionDebug.AffiliationCandidates, candidate)) ? "external-api-resolution-compare__item--selected" : string.Empty)">
+                                                    <strong>@candidate.DisplayName</strong>
+                                                    <span>ID: @candidate.Id</span>
+                                                    <span>Score: @candidate.Score</span>
+                                                    <span>Docs: @candidate.DocumentCount</span>
+                                                </div>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        <div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+                            @if (Result.ResolutionDebug.ResolvedAuthorIds.Any())
+                            {
+                                <div class="rounded-2xl bg-[#f5f9fc] px-4 py-3">
+                                    <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Author IDs</div>
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        @foreach (var id in Result.ResolutionDebug.ResolvedAuthorIds)
+                                        {
+                                            <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#102642] shadow-sm">@id</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+
+                            @if (Result.ResolutionDebug.ResolvedAffiliationIds.Any())
+                            {
+                                <div class="rounded-2xl bg-[#f5f9fc] px-4 py-3">
+                                    <div class="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Affiliation IDs</div>
+                                    <div class="mt-2 flex flex-wrap gap-2">
+                                        @foreach (var id in Result.ResolutionDebug.ResolvedAffiliationIds)
+                                        {
+                                            <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#102642] shadow-sm">@id</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+
+                        @if (Result.ResolutionDebug.AuthorCandidates.Any())
+                        {
+                            <div class="mt-4">
+                                <div class="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Candidatos de autor</div>
+                                <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                                    @foreach (var candidate in Result.ResolutionDebug.AuthorCandidates)
+                                    {
+                                        <div class="external-api-resolution-candidate rounded-2xl border border-[#e5edf4] bg-[#fbfdff] px-4 py-3 @(IsPrimaryCandidate(Result.ResolutionDebug.AuthorCandidates, candidate) ? "external-api-resolution-candidate--best" : string.Empty)">
+                                            <div class="font-semibold text-[#102642]">@candidate.DisplayName</div>
+                                            <div class="mt-1 text-xs text-slate-500">ID: @candidate.Id</div>
+                                            @if (!string.IsNullOrWhiteSpace(candidate.SecondaryText))
+                                            {
+                                                <div class="mt-1 text-xs text-slate-500">@candidate.SecondaryText</div>
+                                            }
+                                            <div class="mt-2 flex flex-wrap gap-2 text-[11px]">
+                                                <span class="rounded-full bg-[#eaf7ee] px-2 py-1 font-semibold text-emerald-700">@GetCandidateRankLabel(Result.ResolutionDebug.AuthorCandidates, candidate)</span>
+                                                <span class="rounded-full bg-[#eef6ff] px-2 py-1 font-semibold text-[#295173]">Score: @candidate.Score</span>
+                                                <span class="rounded-full bg-[#fff4e4] px-2 py-1 font-semibold text-[#8b5a16]">Docs: @candidate.DocumentCount</span>
+                                            </div>
+                                            <div class="mt-3 flex flex-wrap gap-2">
+                                                <button class="rounded-full border border-[#c9d7e3] bg-white px-3 py-1.5 text-[11px] font-semibold text-[#102642] hover:bg-[#eef6ff]"
+                                                        type="button"
+                                                        @onclick='() => SelectResolutionCandidateAsync("author", candidate)'>
+                                                    @(string.Equals(SelectedAuthorId, candidate.Id, StringComparison.OrdinalIgnoreCase) ? "Coincidencia aplicada" : "Usar esta coincidencia")
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+
+                        @if (Result.ResolutionDebug.AffiliationCandidates.Any())
+                        {
+                            <div class="mt-4">
+                                <div class="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Candidatos de filiación</div>
+                                <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                                    @foreach (var candidate in Result.ResolutionDebug.AffiliationCandidates)
+                                    {
+                                        <div class="external-api-resolution-candidate rounded-2xl border border-[#e5edf4] bg-[#fbfdff] px-4 py-3 @(IsPrimaryCandidate(Result.ResolutionDebug.AffiliationCandidates, candidate) ? "external-api-resolution-candidate--best" : string.Empty)">
+                                            <div class="font-semibold text-[#102642]">@candidate.DisplayName</div>
+                                            <div class="mt-1 text-xs text-slate-500">ID: @candidate.Id</div>
+                                            @if (!string.IsNullOrWhiteSpace(candidate.SecondaryText))
+                                            {
+                                                <div class="mt-1 text-xs text-slate-500">@candidate.SecondaryText</div>
+                                            }
+                                            <div class="mt-2 flex flex-wrap gap-2 text-[11px]">
+                                                <span class="rounded-full bg-[#eaf7ee] px-2 py-1 font-semibold text-emerald-700">@GetCandidateRankLabel(Result.ResolutionDebug.AffiliationCandidates, candidate)</span>
+                                                <span class="rounded-full bg-[#eef6ff] px-2 py-1 font-semibold text-[#295173]">Score: @candidate.Score</span>
+                                                <span class="rounded-full bg-[#fff4e4] px-2 py-1 font-semibold text-[#8b5a16]">Docs: @candidate.DocumentCount</span>
+                                            </div>
+                                            <div class="mt-3 flex flex-wrap gap-2">
+                                                <button class="rounded-full border border-[#c9d7e3] bg-white px-3 py-1.5 text-[11px] font-semibold text-[#102642] hover:bg-[#eef6ff]"
+                                                        type="button"
+                                                        @onclick='() => SelectResolutionCandidateAsync("affiliation", candidate)'>
+                                                    @(string.Equals(SelectedAffiliationId, candidate.Id, StringComparison.OrdinalIgnoreCase) ? "Coincidencia aplicada" : "Usar esta coincidencia")
+                                                </button>
+                                            </div>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <AppEmptyState Title="No hay resolución técnica disponible" Message="Esta consulta no necesitó o no generó candidatos internos de autor o filiación." />
+                }
+            }
+            else
+            {
+                <div class="mt-4 rounded-[2rem] border border-[#dbe6ef] bg-[#0d1b2a] p-5 text-slate-100 shadow-inner">
+                    <div class="mb-3 flex items-center justify-between gap-3">
+                        <div>
+                            <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Raw payload</div>
+                            <div class="font-semibold">Vista previa JSON</div>
+                        </div>
+                        <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-200">@Result.ExecutedAtUtc.ToLocalTime()</span>
+                    </div>
+                    <pre class="max-h-[24rem] overflow-auto whitespace-pre-wrap break-words rounded-2xl border border-white/10 bg-[#08121d] p-4 text-xs text-slate-200">@FormattedJsonPreview</pre>
+                </div>
+            }
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public ExternalApiQueryResultDto? Result { get; set; }
+    [Parameter] public string QueryMode { get; set; } = string.Empty;
+    [Parameter] public string QueryText { get; set; } = string.Empty;
+    [Parameter] public string PrimaryAuthor { get; set; } = string.Empty;
+    [Parameter] public string InstitutionName { get; set; } = string.Empty;
+    [Parameter] public string? SelectedAuthorId { get; set; }
+    [Parameter] public string? SelectedAffiliationId { get; set; }
+    [Parameter] public bool HasManualResolutionSelection { get; set; }
+    [Parameter] public string ResultsSearchText { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> ResultsSearchTextChanged { get; set; }
+    [Parameter] public bool FilterOnlyWithDoi { get; set; }
+    [Parameter] public EventCallback<bool> FilterOnlyWithDoiChanged { get; set; }
+    [Parameter] public bool FilterOnlyOpenAccess { get; set; }
+    [Parameter] public EventCallback<bool> FilterOnlyOpenAccessChanged { get; set; }
+    [Parameter] public IReadOnlyList<ExternalArticlePreviewDto> CurrentResults { get; set; } = [];
+    [Parameter] public int TotalFilteredResultsCount { get; set; }
+    [Parameter] public int ResultsPage { get; set; }
+    [Parameter] public int TotalResultsPages { get; set; } = 1;
+    [Parameter] public int ResultsPageSize { get; set; } = 10;
+    [Parameter] public EventCallback<int> ResultsPageSizeChanged { get; set; }
+    [Parameter] public EventCallback OnPreviousPage { get; set; }
+    [Parameter] public EventCallback OnNextPage { get; set; }
+    [Parameter] public IReadOnlyDictionary<string, ExternalArticlePreviewDto> SelectedArticles { get; set; } = new Dictionary<string, ExternalArticlePreviewDto>();
+    [Parameter] public Func<ExternalArticlePreviewDto, bool>? IsArticleSelected { get; set; }
+    [Parameter] public EventCallback<(ExternalArticlePreviewDto Article, bool IsSelected)> OnToggleSelection { get; set; }
+    [Parameter] public EventCallback<string> OnRemoveSelectedArticle { get; set; }
+    [Parameter] public EventCallback OnClearSelectedArticles { get; set; }
+    [Parameter] public EventCallback OnSendSelectedToStaging { get; set; }
+    [Parameter] public bool IsSendingSelectionToStaging { get; set; }
+    [Parameter] public EventCallback<ExternalArticlePreviewDto> OnOpenDetail { get; set; }
+    [Parameter] public EventCallback<ExternalArticlePreviewDto> OnSendToRegister { get; set; }
+    [Parameter] public EventCallback<ExternalArticlePreviewDto> OnSendToStaging { get; set; }
+    [Parameter] public bool IsSendingToStaging { get; set; }
+    [Parameter] public string FormattedJsonPreview { get; set; } = string.Empty;
+    [Parameter] public EventCallback<ExternalApiResolutionSelectionRequest> OnSelectResolutionCandidate { get; set; }
+    [Parameter] public EventCallback OnClearResolutionSelection { get; set; }
+
+    private string _activeTab = "articles";
+    private string? _resultToken;
+    private IReadOnlyList<ExternalArticlePreviewDto> EffectiveArticles => BuildEffectiveArticles(Result);
+    private IReadOnlyList<ExternalArticlePreviewDto> EffectiveCurrentResults => CurrentResults;
+    private int EffectiveFilteredResultsCount =>
+        TotalFilteredResultsCount > 0 ? TotalFilteredResultsCount : EffectiveArticles.Count;
+
+    protected override void OnParametersSet()
+    {
+        var nextToken = Result is null
+            ? null
+            : $"{Result.ProviderKey}|{Result.ExecutedAtUtc:o}|{Result.FinalRequestUrl}";
+
+        if (!string.Equals(_resultToken, nextToken, StringComparison.Ordinal))
+        {
+            _resultToken = nextToken;
+            _activeTab = "articles";
+        }
+    }
+
+    private static string GetOpenAccessLabel(ExternalArticlePreviewDto article)
+    {
+        if (!string.IsNullOrWhiteSpace(article.OpenAccessStatus))
+        {
+            return article.OpenAccessStatus;
+        }
+
+        return article.IsOpenAccess switch
+        {
+            true => "Open access",
+            false => "Acceso restringido",
+            _ => "Sin dato"
+        };
+    }
+
+    private bool IsSelected(ExternalArticlePreviewDto article)
+        => IsArticleSelected?.Invoke(article) == true;
+
+    private IEnumerable<string> BuildRequestSummaryChips()
+    {
+        yield return $"Modo: {QueryMode}";
+
+        if (!string.IsNullOrWhiteSpace(QueryText))
+        {
+            yield return $"Consulta: {QueryText}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(PrimaryAuthor))
+        {
+            yield return $"Autor: {PrimaryAuthor}";
+        }
+
+        if (!string.IsNullOrWhiteSpace(InstitutionName))
+        {
+            yield return $"Filiación: {InstitutionName}";
+        }
+    }
+
+    private static bool HasResolutionDebug(ExternalApiResolutionDebugDto debug)
+        => debug.ResolvedAuthorIds.Any()
+           || debug.ResolvedAffiliationIds.Any()
+           || debug.AuthorCandidates.Any()
+           || debug.AffiliationCandidates.Any();
+
+    private static bool HasResolutionComparison(ExternalApiResolutionDebugDto debug)
+        => debug.AuthorCandidates.Any()
+           || debug.AffiliationCandidates.Any();
+
+    private static bool IsPrimaryCandidate(IReadOnlyList<ExternalApiResolutionCandidateDto> candidates, ExternalApiResolutionCandidateDto candidate)
+        => candidates.FirstOrDefault() == candidate;
+
+    private static string GetCandidateRankLabel(IReadOnlyList<ExternalApiResolutionCandidateDto> candidates, ExternalApiResolutionCandidateDto candidate)
+        => candidates.FirstOrDefault() == candidate ? "Mejor coincidencia" : "Alternativa";
+
+    private IEnumerable<ResolutionSummaryItem> BuildResolutionSummaries(ExternalApiResolutionDebugDto debug)
+    {
+        if (debug.AuthorCandidates.Any())
+        {
+            var top = debug.AuthorCandidates[0];
+            yield return new ResolutionSummaryItem("Autor principal", top.DisplayName, $"Score {top.Score} · {top.DocumentCount} documento(s) asociado(s)");
+        }
+
+        if (debug.AffiliationCandidates.Any())
+        {
+            var top = debug.AffiliationCandidates[0];
+            yield return new ResolutionSummaryItem("Filiación", top.DisplayName, $"Score {top.Score} · {top.DocumentCount} documento(s) asociado(s)");
+        }
+    }
+
+    private void SetActiveTab(string tab)
+    {
+        _activeTab = tab;
+    }
+
+    private string GetTabClass(string tab)
+        => string.Equals(_activeTab, tab, StringComparison.OrdinalIgnoreCase)
+            ? "external-api-results-tabs__item--active"
+            : string.Empty;
+
+    private static string GetArticleKey(ExternalArticlePreviewDto article)
+        => !string.IsNullOrWhiteSpace(article.ExternalId)
+            ? article.ExternalId
+            : !string.IsNullOrWhiteSpace(article.Doi)
+                ? article.Doi
+                : $"{article.Title}|{article.PublicationYear}|{article.JournalName}";
+
+    private static IReadOnlyList<ExternalArticlePreviewDto> BuildEffectiveArticles(ExternalApiQueryResultDto? result)
+    {
+        if (result is null)
+        {
+            return [];
+        }
+
+        var directArticles = result.Articles
+            .Where(IsMeaningfulArticle)
+            .ToList();
+        if (directArticles.Any())
+        {
+            return directArticles;
+        }
+
+        if (string.IsNullOrWhiteSpace(result.RawResponsePreview))
+        {
+            return [];
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(result.RawResponsePreview);
+            if (document.RootElement.TryGetProperty("search-results", out var searchResults)
+                && searchResults.TryGetProperty("entry", out var entries)
+                && entries.ValueKind == JsonValueKind.Array)
+            {
+                return entries.EnumerateArray()
+                    .Select(entry => new ExternalArticlePreviewDto
+                    {
+                        Title = entry.TryGetProperty("dc:title", out var title) ? title.GetString() ?? "(sin título)" : "(sin título)",
+                        Doi = entry.TryGetProperty("prism:doi", out var doi) ? doi.GetString() : null,
+                        JournalName = entry.TryGetProperty("prism:publicationName", out var journal) ? journal.GetString() : null,
+                        PublicationYear = TryExtractYear(entry.TryGetProperty("prism:coverDate", out var coverDate) ? coverDate.GetString() : null),
+                        PublicationDate = entry.TryGetProperty("prism:coverDate", out var coverDateValue) ? coverDateValue.GetString() : null,
+                        Authors = entry.TryGetProperty("dc:creator", out var creator) ? creator.GetString() : null
+                    })
+                    .Where(IsMeaningfulArticle)
+                    .ToList();
+            }
+        }
+        catch
+        {
+        }
+
+        return [];
+    }
+
+    private static bool HasMeaningfulArticleContent(IReadOnlyList<ExternalArticlePreviewDto> articles)
+        => articles.Any(IsMeaningfulArticle);
+
+    private static bool IsMeaningfulArticle(ExternalArticlePreviewDto article)
+        => !string.IsNullOrWhiteSpace(article.Title)
+           && !string.Equals(article.Title, "(sin título)", StringComparison.OrdinalIgnoreCase);
+
+    private static int? TryExtractYear(string? dateValue)
+    {
+        if (string.IsNullOrWhiteSpace(dateValue) || dateValue.Length < 4)
+        {
+            return null;
+        }
+
+        return int.TryParse(dateValue[..4], out var year) ? year : null;
+    }
+
+    private static string GetFriendlyModeLabel(string mode)
+        => mode switch
+        {
+            "doi" => "DOI exacto",
+            "author" => "Autor",
+            "affiliation" => "Filiación UTA",
+            _ => "Texto libre"
+        };
+
+    private string GetModeInsight()
+        => QueryMode switch
+        {
+            "doi" => "Precisión alta para publicaciones puntuales.",
+            "author" => "Útil cuando conoces el nombre del investigador.",
+            "affiliation" => "Ideal para revisar producción institucional.",
+            _ => "Exploración más abierta sobre el proveedor."
+        };
+
+    private Task ToggleSelection(ExternalArticlePreviewDto article, ChangeEventArgs args)
+    {
+        var isSelected = args.Value is bool value && value;
+        return OnToggleSelection.InvokeAsync((article, isSelected));
+    }
+
+    private Task OnResultsPageSizeChanged(ChangeEventArgs args)
+    {
+        if (int.TryParse(Convert.ToString(args.Value), out var pageSize))
+        {
+            return ResultsPageSizeChanged.InvokeAsync(pageSize);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task HandleResultsSearchInputAsync(ChangeEventArgs args)
+        => ResultsSearchTextChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    private Task HandleOnlyWithDoiChangedAsync(ChangeEventArgs args)
+        => FilterOnlyWithDoiChanged.InvokeAsync(args.Value is bool value && value);
+
+    private Task HandleOnlyOpenAccessChangedAsync(ChangeEventArgs args)
+        => FilterOnlyOpenAccessChanged.InvokeAsync(args.Value is bool value && value);
+
+    private Task SelectResolutionCandidateAsync(string target, ExternalApiResolutionCandidateDto candidate)
+        => OnSelectResolutionCandidate.InvokeAsync(new ExternalApiResolutionSelectionRequest
+        {
+            Target = target,
+            CandidateId = candidate.Id,
+            DisplayName = candidate.DisplayName
+        });
+
+    private sealed record ResolutionSummaryItem(string Label, string Title, string Description);
+
+    public sealed class ExternalApiResolutionSelectionRequest
+    {
+        public string Target { get; set; } = string.Empty;
+        public string CandidateId { get; set; } = string.Empty;
+        public string? DisplayName { get; set; }
+    }
+}

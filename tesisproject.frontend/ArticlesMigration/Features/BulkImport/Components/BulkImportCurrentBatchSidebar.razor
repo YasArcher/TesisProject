@@ -1,0 +1,181 @@
+@using tesisproject.shared.DTOs.Imports
+
+<div class="bulk-stage-sidebar rounded-[1.6rem] border border-[#dce7ea] bg-gradient-to-b from-[#f7fbfc] via-white to-[#fffdf9] p-3.5 shadow-lg ring-1 ring-[#dce7ea]">
+    <div class="mb-3 flex items-center justify-between gap-3">
+        <h2 class="text-base font-black text-[#12343b] md:text-lg">@Title</h2>
+        @if (Batch is not null)
+        {
+            <div class="flex flex-wrap gap-2">
+                @if (CanPrepareNextLoad)
+                {
+                    <button class="rounded-xl border border-[#e1d1b0] bg-[#fffaf2] px-3 py-2 text-sm font-semibold text-[#8b5a16]" @onclick="OnPrepareNextLoad">Nueva carga</button>
+                }
+                @if (CanRefresh)
+                {
+                    <button class="rounded-xl border border-[#c7d6da] bg-white px-3 py-2 text-sm font-semibold text-[#12343b]" @onclick="OnRefresh">Refrescar</button>
+                }
+            </div>
+        }
+    </div>
+
+    @if (Batch is null)
+    {
+        <AppEmptyState Title="Sin lote abierto" Message="Abre o crea un lote." />
+    }
+    else
+    {
+        <div class="space-y-2.5 text-sm">
+            <div class="rounded-2xl bg-[#16324f] px-4 py-3 text-white">
+                <div class="text-[11px] uppercase tracking-wide text-white/70">Código</div>
+                <div class="mt-1 font-semibold">@Batch.Summary.BatchCode</div>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <div class="rounded-2xl bg-[#eef5f6] px-3 py-2.5">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Estado</div>
+                    <div class="mt-1 text-base font-black text-[#2f4858]">@Batch.Summary.Status</div>
+                </div>
+                <div class="rounded-2xl bg-[#fff4e4] px-3 py-2.5">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Filas</div>
+                    <div class="mt-1 text-base font-black text-[#c17c2f]">@Batch.Summary.TotalRows</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-2">
+                <div class="rounded-2xl border border-[#d9e5e8] bg-white px-3 py-2.5">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Siguiente paso</div>
+                    <div class="mt-1 text-sm font-bold text-[#12343b]">@BatchReviewHint</div>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(RequiredContractSummary))
+                {
+                    <div class="rounded-2xl border border-[#d6e4ea] bg-[#f7fbfc] px-3 py-2.5">
+                        <div class="text-xs uppercase tracking-wide text-slate-500">Contrato mínimo del lote</div>
+                        <div class="mt-1 text-sm font-bold text-[#12343b]">@RequiredContractSummary</div>
+                        @if (RequiredContractFields.Any())
+                        {
+                            <div class="mt-2 flex flex-wrap gap-2">
+                                @foreach (var field in RequiredContractFields)
+                                {
+                                    <span class="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-[#2f4858]">@field</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(MissingRequiredSummary))
+                {
+                    <div class="rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2.5">
+                        <div class="text-xs uppercase tracking-wide text-rose-600">Faltantes obligatorios</div>
+                        <div class="mt-1 text-sm font-bold text-rose-700">@MissingRequiredSummary</div>
+                    </div>
+                }
+                <div class="rounded-2xl border border-[#ead8bd] bg-[#fffdf8] px-3 py-2.5">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Ventana de revisión</div>
+                    <div class="mt-1 text-sm font-bold text-[#8b5a16]">@PreviewWindowLabel</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="rounded-2xl border border-[#d9e5e8] bg-white px-2 py-2.5">
+                    <div class="text-xs text-slate-500">Valid</div>
+                    <div class="text-base font-black text-emerald-700">@Batch.Summary.ValidRows</div>
+                </div>
+                <div class="rounded-2xl border border-[#d9e5e8] bg-white px-2 py-2.5">
+                    <div class="text-xs text-slate-500">Error</div>
+                    <div class="text-base font-black text-rose-700">@Batch.Summary.ErrorRows</div>
+                </div>
+                <div class="rounded-2xl border border-[#d9e5e8] bg-white px-2 py-2.5">
+                    <div class="text-xs text-slate-500">Processed</div>
+                    <div class="text-base font-black text-[#12343b]">@Batch.Summary.ProcessedRows</div>
+                </div>
+            </div>
+            <div class="rounded-3xl border border-[#d9e5e8] bg-[#f8fbfc] p-3">
+                <div class="mb-2 flex items-center justify-between gap-3">
+                    <div class="text-sm font-bold text-[#12343b]">Ruta del lote</div>
+                    <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#2f4858]">@CurrentStageLabel</span>
+                </div>
+                <div class="grid grid-cols-1 gap-2">
+                    @foreach (var stage in StageCards)
+                    {
+                        <div class="rounded-2xl border px-3 py-2.5 @stage.CardClass">
+                            <div class="flex items-center justify-between gap-3">
+                                <div class="font-semibold">@stage.Label</div>
+                                <span class="rounded-full px-2 py-0.5 text-[11px] font-semibold @stage.BadgeClass">@stage.StatusText</span>
+                            </div>
+                            <div class="mt-2 text-xs opacity-80">@stage.Helper</div>
+                        </div>
+                    }
+                </div>
+            </div>
+            <div class="rounded-3xl border border-[#d9e5e8] bg-[#fcfefe] p-3">
+                <div class="mb-2 flex items-center justify-between gap-3">
+                    <div class="text-sm font-bold text-[#12343b]">Estado operativo</div>
+                    <span class="@OperationStatusBadgeClass">@OperationStatusLabel</span>
+                </div>
+                <div class="text-xs text-slate-500">@OperationStatusDetail</div>
+            </div>
+        </div>
+
+        @if (IsAuthorCorrectionMode)
+        {
+            <div class="mt-4 rounded-2xl border border-[#d9e5e8] bg-white px-3 py-3">
+                <div class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Cierre de corrección</div>
+                <div class="mt-1 text-sm text-slate-600">Cuando termines de corregir, vuelve al workflow para reenviar el caso a UODIDE.</div>
+                <button class="mt-3 w-full rounded-xl bg-gradient-to-r from-[#003638] to-[#408a71] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+                        disabled="@(IsValidatingBatch || IsSavingCorrections)"
+                        @onclick="OnFinishCorrection">
+                    @(IsSavingCorrections ? "Guardando corrección..." : "Finalizar corrección")
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="mt-4 flex flex-col gap-2.5">
+                @if (CanShowDownloadTemplate)
+                {
+                    <button class="rounded-xl border border-[#d7c19c] bg-[#fff4e4] px-4 py-2.5 text-sm font-semibold text-[#8b5a16] disabled:opacity-60" disabled="@(!CanDownloadTemplate || IsGeneratingTemplate)" @onclick="OnDownloadTemplate">@(IsGeneratingTemplate ? "Generando..." : "Descargar plantilla")</button>
+                }
+                @if (CanShowValidate)
+                {
+                    <button class="rounded-xl border border-[#c7d6da] bg-white px-4 py-2.5 text-sm font-semibold text-[#12343b] disabled:opacity-60" disabled="@IsValidatingBatch" @onclick="OnValidate">@(IsValidatingBatch ? "Validando..." : "Validar lote")</button>
+                }
+                @if (CanShowProcess)
+                {
+                    <button class="rounded-xl bg-gradient-to-r from-[#12343b] to-[#2f4858] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60" disabled="@(!CanProcess || IsProcessingBatch)" @onclick="OnProcess">@(IsProcessingBatch ? "Procesando..." : "Procesar lote")</button>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public BulkImportBatchDetailDto? Batch { get; set; }
+    [Parameter] public string Title { get; set; } = "Lote actual";
+    [Parameter] public string BatchReviewHint { get; set; } = string.Empty;
+    [Parameter] public string OperationalGuidance { get; set; } = string.Empty;
+    [Parameter] public string RequiredContractSummary { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<string> RequiredContractFields { get; set; } = Array.Empty<string>();
+    [Parameter] public string MissingRequiredSummary { get; set; } = string.Empty;
+    [Parameter] public string PreviewWindowLabel { get; set; } = string.Empty;
+    [Parameter] public string PreviewWindowSummary { get; set; } = string.Empty;
+    [Parameter] public string CurrentStageLabel { get; set; } = string.Empty;
+    [Parameter] public string OperationStatusBadgeClass { get; set; } = string.Empty;
+    [Parameter] public string OperationStatusLabel { get; set; } = string.Empty;
+    [Parameter] public string OperationStatusDetail { get; set; } = string.Empty;
+    [Parameter] public bool IsGeneratingTemplate { get; set; }
+    [Parameter] public bool IsValidatingBatch { get; set; }
+    [Parameter] public bool IsProcessingBatch { get; set; }
+    [Parameter] public bool IsSavingCorrections { get; set; }
+    [Parameter] public bool CanDownloadTemplate { get; set; }
+    [Parameter] public bool CanProcess { get; set; }
+    [Parameter] public bool CanPrepareNextLoad { get; set; } = true;
+    [Parameter] public bool CanRefresh { get; set; } = true;
+    [Parameter] public bool CanShowDownloadTemplate { get; set; } = true;
+    [Parameter] public bool CanShowValidate { get; set; } = true;
+    [Parameter] public bool CanShowProcess { get; set; } = true;
+    [Parameter] public bool IsAuthorCorrectionMode { get; set; }
+    [Parameter] public IReadOnlyList<tesisproject.frontend.Features.BulkImport.Components.BatchStageCardItem> StageCards { get; set; } = new List<tesisproject.frontend.Features.BulkImport.Components.BatchStageCardItem>();
+    [Parameter] public EventCallback OnPrepareNextLoad { get; set; }
+    [Parameter] public EventCallback OnRefresh { get; set; }
+    [Parameter] public EventCallback OnDownloadTemplate { get; set; }
+    [Parameter] public EventCallback OnValidate { get; set; }
+    [Parameter] public EventCallback OnProcess { get; set; }
+    [Parameter] public EventCallback OnFinishCorrection { get; set; }
+}

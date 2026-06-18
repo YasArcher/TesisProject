@@ -1,0 +1,294 @@
+@page "/perfilview"
+@attribute [Authorize]
+
+@using System.IdentityModel.Tokens.Jwt
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
+@using tesisproject.frontend.Services.Implementations
+@using tesisproject.frontend.Services.Interfaces
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IAuthClient AuthClient
+@inject ITokenStore TokenStore
+@inject NavigationManager NavManager
+
+<PageTitle>Perfil</PageTitle>
+
+<div class="app-page-shell profile-page py-4">
+    <AppStatusModal Visible="@IsPasswordSupportModalVisible"
+                    Variant="info"
+                    Eyebrow="Soporte DITIC"
+                    Title="Restablecimiento de contraseña"
+                    Message="Por seguridad institucional, este sistema no restablece contraseñas directamente. Para recuperar o cambiar tu contraseña debes comunicarte con DITIC."
+                    CloseText="Entendido"
+                    OnClose="ClosePasswordSupportModal">
+        <div class="profile-support-modal">
+            <div class="profile-support-modal__row">
+                <span class="profile-support-modal__label">Teléfono de soporte</span>
+                <span class="profile-support-modal__value">032-000-000 ext. 0000</span>
+            </div>
+            <div class="profile-support-modal__row">
+                <span class="profile-support-modal__label">Correo de soporte</span>
+                <span class="profile-support-modal__value">soporte.ditic@uta.edu.ec</span>
+            </div>
+            <div class="profile-support-modal__hint">Estos datos son referenciales y pueden reemplazarse por el canal oficial de la institución.</div>
+        </div>
+    </AppStatusModal>
+
+    <section class="profile-hero">
+        <div class="profile-hero__inner">
+            <div>
+                <div class="profile-hero__kicker">Cuenta institucional</div>
+                <div class="flex items-center gap-3">
+                    <span class="profile-hero__icon"><i class="bi bi-person-badge"></i></span>
+                    <h1 class="profile-hero__title">Perfil de usuario</h1>
+                </div>
+                <div class="profile-hero__copy">Información básica de tu cuenta institucional y accesos habilitados dentro del sistema.</div>
+            </div>
+            <div class="profile-hero__actions">
+                <button class="profile-hero__support"
+                        @onclick="OpenPasswordSupportModal">
+                    <i class="bi bi-key"></i>
+                    Restablecer contraseña
+                </button>
+                <button class="profile-hero__logout"
+                        @onclick="LogoutAsync">
+                    <i class="bi bi-box-arrow-right"></i>
+                    Cerrar sesión
+                </button>
+            </div>
+        </div>
+    </section>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="profile-alert profile-alert--error">
+            @ErrorMessage
+        </div>
+    }
+
+    <div class="profile-grid">
+        <section class="profile-card">
+            <div class="profile-card__identity">
+                <div class="profile-card__avatar">
+                    @Initials
+                </div>
+                <div>
+                    <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon"><i class="bi bi-shield-check"></i></span><span>Usuario autenticado</span></div>
+                    <div class="profile-card__title">@FullName</div>
+                    <div class="profile-card__subtle">@Email</div>
+                </div>
+            </div>
+
+            <div class="profile-card__stats">
+                <article class="profile-mini-card">
+                    <div class="profile-mini-card__label">Sesión</div>
+                    <div class="profile-mini-card__value">@(IsAuthenticated ? "Activa" : "No autenticada")</div>
+                </article>
+                <article class="profile-mini-card">
+                    <div class="profile-mini-card__label">Correo</div>
+                    <div class="profile-mini-card__value">@Email</div>
+                </article>
+            </div>
+        </section>
+
+        <section class="profile-card">
+            <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon"><i class="bi bi-key"></i></span><span>Accesos habilitados</span></div>
+            @if (Roles.Count == 0)
+            {
+                <div class="profile-card__subtle mt-3">Tu cuenta no tiene accesos especiales asignados por el momento.</div>
+            }
+            else
+            {
+                <div class="profile-card__subtle mt-3">Estos accesos determinan las páginas y acciones disponibles para tu cuenta.</div>
+                <div class="profile-role-list">
+                    @foreach (var role in Roles)
+                    {
+                        <span class="profile-role-pill">@GetUserFriendlyRole(role)</span>
+                    }
+                </div>
+            }
+        </section>
+
+        <section class="profile-card profile-card--agreement">
+            <div class="profile-card__eyebrow flex items-center gap-2"><span class="profile-inline-icon"><i class="bi bi-file-earmark-check"></i></span><span>Acuerdo de información</span></div>
+            <div class="profile-agreement">
+                <div class="profile-agreement__icon"><i class="@AgreementIcon"></i></div>
+                <div>
+                    <div class="profile-agreement__title">@AgreementTitle</div>
+                    <div class="profile-card__subtle">@AgreementDescription</div>
+                </div>
+            </div>
+
+            <div class="profile-agreement__details">
+                <article class="profile-mini-card">
+                    <div class="profile-mini-card__label">Estado</div>
+                    <div class="profile-mini-card__value">@AgreementStatus</div>
+                </article>
+                <article class="profile-mini-card">
+                    <div class="profile-mini-card__label">Fecha</div>
+                    <div class="profile-mini-card__value">@AgreementDate</div>
+                </article>
+                <article class="profile-mini-card">
+                    <div class="profile-mini-card__label">Versión</div>
+                    <div class="profile-mini-card__value">@AgreementVersion</div>
+                </article>
+            </div>
+        </section>
+    </div>
+</div>
+
+@code {
+    private bool IsAuthenticated { get; set; }
+    private string Email { get; set; } = "Sin correo";
+    private string FullName { get; set; } = "Usuario";
+    private string Initials { get; set; } = "U";
+    private string? ErrorMessage { get; set; }
+    private List<string> Roles { get; set; } = [];
+    private bool HasAcceptedTerms { get; set; }
+    private DateTime? TermsAcceptedAt { get; set; }
+    private string? TermsVersion { get; set; }
+    private bool IsAuthor => Roles.Any(IsAuthorRole);
+    private string AgreementIcon => !IsAuthor ? "bi bi-info-lg" : HasAcceptedTerms ? "bi bi-check2" : "bi bi-exclamation-lg";
+    private string AgreementTitle => !IsAuthor
+        ? "Acuerdo no requerido para este rol"
+        : HasAcceptedTerms
+            ? "Acuerdo aceptado"
+            : "Acuerdo pendiente";
+    private string AgreementDescription => !IsAuthor
+        ? "Tu perfil no requiere aceptación previa para registrar artículos como autor."
+        : HasAcceptedTerms
+            ? "Puedes registrar y enviar artículos a revisión con normalidad."
+            : "Para registrar y enviar artículos, primero debes aceptar el manejo institucional de información.";
+    private string AgreementStatus => !IsAuthor ? "No requerido" : HasAcceptedTerms ? "Aceptado" : "Pendiente";
+    private string AgreementDate => TermsAcceptedAt?.ToLocalTime().ToString("dd/MM/yyyy HH:mm") ?? "Sin registro";
+    private string AgreementVersion => string.IsNullOrWhiteSpace(TermsVersion) ? "Sin versión" : TermsVersion;
+    private bool IsPasswordSupportModalVisible { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfileAsync();
+    }
+
+    private async Task LoadProfileAsync()
+    {
+        ErrorMessage = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            IsAuthenticated = user.Identity?.IsAuthenticated == true;
+            if (!IsAuthenticated)
+            {
+                NavManager.NavigateTo("/login", forceLoad: false);
+                return;
+            }
+
+            Email = user.FindFirst(ClaimTypes.Email)?.Value ?? "Sin correo";
+            FullName = user.FindFirst("fullName")?.Value
+                ?? user.FindFirst(ClaimTypes.GivenName)?.Value
+                ?? user.FindFirst(ClaimTypes.Name)?.Value
+                ?? Email;
+
+            Initials = BuildInitials(FullName);
+            Roles = user.Claims
+                .Where(x => x.Type == ClaimTypes.Role)
+                .Select(x => x.Value)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(x => x)
+                .ToList();
+
+            var me = await AuthClient.GetCurrentAsync();
+            if (me is not null)
+            {
+                Email = string.IsNullOrWhiteSpace(me.Email) ? Email : me.Email;
+                FullName = string.IsNullOrWhiteSpace(me.FullName) ? FullName : me.FullName;
+                Initials = BuildInitials(FullName);
+                HasAcceptedTerms = me.HasAcceptedTerms;
+                TermsAcceptedAt = me.TermsAcceptedAt;
+                TermsVersion = me.TermsVersion;
+
+                if (me.Roles?.Length > 0)
+                {
+                    Roles = me.Roles
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(x => x)
+                        .ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"No pude cargar el perfil autenticado: {ex.Message}";
+        }
+    }
+
+    private async Task LogoutAsync()
+    {
+        await TokenStore.ClearAsync();
+        if (AuthStateProvider is JwtAuthStateProvider jwt)
+        {
+            jwt.NotifyUserChanged();
+        }
+
+        NavManager.NavigateTo("/login", forceLoad: false);
+    }
+
+    private void OpenPasswordSupportModal()
+    {
+        IsPasswordSupportModalVisible = true;
+    }
+
+    private Task ClosePasswordSupportModal()
+    {
+        IsPasswordSupportModalVisible = false;
+        return Task.CompletedTask;
+    }
+
+    private static string BuildInitials(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "U";
+        }
+
+        var parts = value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant()
+            : parts[0][0].ToString().ToUpperInvariant();
+    }
+
+    private static string GetUserFriendlyRole(string role)
+        => role switch
+        {
+            "Admin" => "Administrador",
+            "Autor" => "Autor",
+            "UODIDE" => "Revisor UODIDE",
+            "AreaTecnica" => "Área Técnica",
+            "WorkflowReviewerUodide" => "Revisor UODIDE",
+            "WorkflowReviewerAreaTecnica" => "Área Técnica",
+            "WorkflowProcessorAreaTecnica" => "Área Técnica",
+            "ExternalApiUser" => "APIs externas",
+            "ArticleRegistrationUser" => "Registro de artículos",
+            "RegistrationMatrixUser" => "Matriz de registro",
+            "DirectArticleSaveUser" => "Guardado directo",
+            "BulkImportUser" => "Carga masiva",
+            "ReportingViewer" => "Reportería",
+            "ReportingExporter" => "Exportación de reportes",
+            "ReportingAdvancedUser" => "Reportería avanzada",
+            "IntelligenceViewer" => "Inteligencia IA",
+            "IntelligenceTrainer" => "Entrenamiento IA",
+            "ConfigurationManager" => "Configuración",
+            "CatalogManager" => "Catálogos",
+            "WorkflowTrackingUser" => "Seguimiento workflow",
+            "SecurityAdministrator" => "Seguridad",
+            "RoleManager" => "Gestión de roles",
+            _ => role
+        };
+
+    private static bool IsAuthorRole(string role)
+        => string.Equals(role, "Autor", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(role, "Author", StringComparison.OrdinalIgnoreCase);
+}

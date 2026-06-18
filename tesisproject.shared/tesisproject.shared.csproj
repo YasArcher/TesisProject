@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="DTOs\Algorithms\Request\" />
+    <Folder Include="DTOs\Budgets\Response\" />
+    <Folder Include="DTOs\Matrices\Request\" />
+    <Folder Include="Validations\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Http.Features" Version="5.0.17" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="9.0.8" />
+  </ItemGroup>
+
+  <!-- [ARTICLES-MIGRATION] Copia pasiva para analisis; no se compila ni publica. -->
+  <ItemGroup>
+    <Compile Remove="ArticlesMigration\**\*.cs" />
+    <Content Remove="ArticlesMigration\**" />
+    <EmbeddedResource Remove="ArticlesMigration\**" />
+    <None Remove="ArticlesMigration\**" />
+  </ItemGroup>
+</Project>

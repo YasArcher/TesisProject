@@ -1,0 +1,1929 @@
+﻿@page "/projects/{ProjectId:int}"
+
+@using tesisproject.frontend.Features.Components
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.SharedUI
+@using tesisproject.frontend.SharedUI.Tabs
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+@using tesisproject.shared.DTOs.Catalog.MemberRoleType.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategoryType.Response
+@using tesisproject.shared.DTOs.Group.Request
+@using tesisproject.shared.DTOs.ObjectiveActivity.Request
+@using tesisproject.shared.DTOs.Project.Response
+@using tesisproject.frontend.Features.Projects.Components
+@using tesisproject.shared.DTOs.Budgets.Request
+@using tesisproject.shared.DTOs.ProjectExtensions.Response
+@using tesisproject.shared.DTOs.Visit.Request
+@using tesisproject.shared.DTOs.Visit.Response
+@using tesisproject.shared.DTOs.External
+@using tesisproject.shared.DTOs.AppUser
+@using tesisproject.shared.DTOs.VisitIssues.Request
+@using tesisproject.shared.DTOs.VisitIssues.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+@using tesisproject.shared.DTOs.ProjectObjective.Response
+@using tesisproject.shared.DTOs.ObjectiveActivity.Response
+@using tesisproject.shared.DTOs.ExternalResearcherProject.Response
+@using tesisproject.shared.DTOs.ExternalResearcher.Request
+@using tesisproject.shared.DTOs.ExternalResearcher.Response
+@using tesisproject.shared.DTOs.Institution.Response
+@using tesisproject.shared.DTOs.ExternalResearcherProject.Request
+@using tesisproject.shared.DTOs.Products.Product.Response
+
+@inject IProductClientService ProductService
+@inject IExternalResearcherClientService ExternalResearcherClient
+@inject IInstitutionClientService InstitutionClient
+@inject IVisitClientService VisitService
+@inject IProjectClientService ProjectService
+@inject IBudgetClientService BudgetService
+@inject IProjectExtensionClientService ProjectExtensionService
+@inject IExternalAcademicsClientService ExternalAcademicsService
+@inject IGroupService GroupService
+@inject NavigationManager Nav
+@inject IToastService Toast
+@inject IObjectiveActivityClientService ObjectiveActivityService
+@inject IExternalUserService ExternalUserService
+@inject IVisitIssueClientService VisitIssueService
+@inject IMemberRoleTypeClientService MemberRoleTypeService
+@inject IResearchCategoryClientService ResearchCategoryService
+@inject IResearchCategoryTypeClientService ResearchCategoryTypeService
+@inject IResearchCategoryGroupClientService ResearchCategoryGroupService
+@inject ITransactionTypeClientService TransactionTypeService
+@inject IProjectObjectiveClientService ProjectObjectiveService
+@inject IExternalResearcherProjectClientService ExternalResearcherProjectService
+@inject IProjectExtensionTypeClientService ProjectExtensionTypeService
+
+<div class="h-full min-h-0 flex flex-col overflow-hidden">
+    <!-- Header -->
+    <div class="sticky top-0 z-10 rounded-2xl border border-border p-6 bg-primary-subtle/50 backdrop-blur-sm shrink-0">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+            <!-- Izquierda -->
+            <div class="space-y-3 min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="inline-flex items-center px-3 py-1 text-sm font-bold rounded-full bg-primary text-white shrink-0">
+                        #@_project?.ProjectId
+                    </span>
+
+                    @if (!string.IsNullOrEmpty(_project?.ProjectCode))
+                    {
+                        <span class="text-sm text-muted font-mono bg-muted/20 px-2 py-1 rounded max-w-full truncate">
+                            @_project?.ProjectCode
+                        </span>
+                    }
+                </div>
+
+                <h1 class="text-2xl lg:text-3xl font-bold text-foreground leading-tight break-words text-balance">
+                    @(string.IsNullOrEmpty(_project?.ProjectName) ? "Proyecto Sin Nombre" : _project?.ProjectName)
+                </h1>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-primary-subtle text-primary border border-primary/20">
+                        @(_project?.ProjectTypeName ?? "Sin tipo")
+                    </span>
+
+                    <span class="inline-flex items-center px-3 py-1 text-sm font-medium rounded-full bg-secondary-subtle text-secondary border border-secondary/20">
+                        @(_project?.ProjectStateName ?? "Sin estado")
+                    </span>
+                </div>
+            </div>
+
+            <!-- Derecha -->
+            <div class="lg:text-right space-y-3 shrink-0">
+                <div class="flex lg:justify-end">
+                    <ActionButton Execute="GoToEdit"
+                                  Text="Editar"
+                                  Intent="ButtonIntent.Info"
+                                  Variant="ButtonVariant.Filled"
+                                  Size="ButtonSize.Md" />
+                </div>
+
+                <div class="text-sm font-medium text-muted">Progreso del Proyecto</div>
+                <div class="flex items-center gap-4 lg:justify-end">
+                    <div class="w-32 bg-border rounded-full h-3 relative overflow-hidden">
+                        <div class="bg-secondary h-3 rounded-full transition-all duration-500"
+                             style="width:@((_project?.ExecutionPercentage ?? 0).ToString("F1"))%"></div>
+                    </div>
+                    <span class="text-2xl font-bold text-secondary">
+                        @((_project?.ExecutionPercentage ?? 0).ToString("F1"))%
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex-1 min-h-0 overflow-hidden">
+        <div class="h-full min-h-0 flex flex-col overflow-hidden">
+            <Tabs ActiveKey="@_activeTab" OnChange="OnTabChanged">
+
+                <Tab Key="overview" Title="Detalles">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                            <path d="M11.625 16.5a1.875 1.875 0 1 0 0-3.75 1.875 1.875 0 0 0 0 3.75Z" />
+                            <path fill-rule="evenodd" d="M5.625 1.5H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375c0-1.036.84-1.875 1.875-1.875Zm6 16.5c.66 0 1.277-.19 1.797-.518l1.048 1.048a.75.75 0 0 0 1.06-1.06l-1.047-1.048A3.375 3.375 0 1 0 11.625 18Z" clip-rule="evenodd" />
+                            <path d="M14.25 5.25a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25Z" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>
+                        <ProjectOverviewTab Item="_project"
+                                            IsLoading="@_loadingOverview"
+                                            ResearchCategoryTree="_researchCategoryTree"
+                                            ResearchCategoryTypes="_researchCategoryTypes"
+                                            ResearchCategoryGroups="_researchCategoryGroups"
+                                            OnViewDocument="HandleViewDocument" />
+                    </ChildContent>
+                </Tab>
+
+                <Tab Key="members" Title="Miembros">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                            <path fill-rule="evenodd" d="M8.25 6.75a3.75 3.75 0 1 1 7.5 0 3.75 3.75 0 0 1-7.5 0ZM15.75 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM2.25 9.75a3 3 0 1 1 6 0 3 3 0 0 1-6 0ZM6.31 15.117A6.745 6.745 0 0 1 12 12a6.745 6.745 0 0 1 6.709 7.498.75.75 0 0 1-.372.568A12.696 12.696 0 0 1 12 21.75c-2.305 0-4.47-.612-6.337-1.684a.75.75 0 0 1-.372-.568 6.787 6.787 0 0 1 1.019-4.38Z" clip-rule="evenodd" />
+                            <path d="M5.082 14.254a8.287 8.287 0 0 0-1.308 5.135 9.687 9.687 0 0 1-1.764-.44l-.115-.04a.563.563 0 0 1-.373-.487l-.01-.121a3.75 3.75 0 0 1 3.57-4.047ZM20.226 19.389a8.287 8.287 0 0 0-1.308-5.135 3.75 3.75 0 0 1 3.57 4.047l-.01.121a.563.563 0 0 1-.373.486l-.115.04c-.567.2-1.156.349-1.764.441Z" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>
+                        <ProjectMembersTab Members="_members"
+                                           Faculties="_faculties"
+                                           IsLoading="@_loadingMembers"
+                                           ExternalResearchersProjects="_externalResearchers"
+                                           IsLoadingExternalResearchers="@_loadingExternalResearchers"
+                                           OnInviteMember="HandleInviteMember"
+                                           OnRemoveMember="HandleRemoveMember"
+                                           OnAddExternalResearcher="HandleOpenExternalResearcherPicker"
+                                           OnRemoveExternalResearcher="HandleRemoveExternalResearcher" />
+                    </ChildContent>
+                </Tab>
+
+                <Tab Key="visits" Title="Visitas">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                            <path fill-rule="evenodd" d="M7.502 6h7.128A3.375 3.375 0 0 1 18 9.375v9.375a3 3 0 0 0 3-3V6.108c0-1.505-1.125-2.811-2.664-2.94a48.972 48.972 0 0 0-.673-.05A3 3 0 0 0 15 1.5h-1.5a3 3 0 0 0-2.663 1.618c-.225.015-.45.032-.673.05C8.662 3.295 7.554 4.542 7.502 6ZM13.5 3A1.5 1.5 0 0 0 12 4.5h4.5A1.5 1.5 0 0 0 15 3h-1.5Z" clip-rule="evenodd" />
+                            <path fill-rule="evenodd" d="M3 9.375C3 8.339 3.84 7.5 4.875 7.5h9.75c1.036 0 1.875.84 1.875 1.875v11.25c0 1.035-.84 1.875-1.875 1.875h-9.75A1.875 1.875 0 0 1 3 20.625V9.375ZM6 12a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V12Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75ZM6 15a.75.75 0 0 1 .75-.75h.008a.75.75 0 0 1 .75.75v.008a.75.75 0 0 1-.75.75H6.75a.75.75 0 0 1-.75-.75V15Zm2.25 0a.75.75 0 0 1 .75-.75h3.75a.75.75 0 0 1 0 1.5H9a.75.75 0 0 1-.75-.75Z" clip-rule="evenodd" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>
+                        @if (_openVisitId is int vid)
+                        {
+                            <VisitDetailPanel @key="vid"
+                                              ProjectId="@ProjectId"
+                                              VisitId="@vid"
+                                              Value="@_visitDetail"
+                                              VisitIssues="@_visitIssues"
+                                              IsLoading="@_loadingVisitDetail"
+                                              ErrorMessage="@_visitDetailError"
+                                              ProjectObjectives="@_projectObjectives"
+                                              Products="@_visitProducts"
+                                              IsLoadingProducts="@_loadingProducts"
+                                              ProductsError="@_productsError"
+                                              OnProductCreated="HandleProductCreated"
+                                              OnSaveActivityRequested="HandleSaveSingleActivityAsync"
+                                              OnBack="HandleCloseVisit"
+                                              OnAddIssue="HandleAddIssue"
+                                              OnEditIssue="HandleEditIssue"
+                                              OnDeleteIssue="HandleDeleteIssue"
+                                              OnChangeVisitState="HandleChangeVisitStateAsync" />
+                        }
+                        else
+                        {
+                            <ProjectVisitsTab Items="@_visits"
+                                              IsLoading="@_loadingVisits"
+                                              OnOpenVisit="HandleOpenVisit" />
+                        }
+                    </ChildContent>
+                </Tab>
+
+                <Tab Key="financial" Title="Presupuesto">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                            <path fill-rule="evenodd" d="M3.75 3.375c0-1.036.84-1.875 1.875-1.875H9a3.75 3.75 0 0 1 3.75 3.75v1.875c0 1.036.84 1.875 1.875 1.875H16.5a3.75 3.75 0 0 1 3.75 3.75v7.875c0 1.035-.84 1.875-1.875 1.875H5.625a1.875 1.875 0 0 1-1.875-1.875V3.375Zm10.5 1.875a5.23 5.23 0 0 0-1.279-3.434 9.768 9.768 0 0 1 6.963 6.963A5.23 5.23 0 0 0 16.5 7.5h-1.875a.375.375 0 0 1-.375-.375V5.25ZM12 10.5a.75.75 0 0 1 .75.75v.028a9.727 9.727 0 0 1 1.687.28.75.75 0 1 1-.374 1.452 8.207 8.207 0 0 0-1.313-.226v1.68l.969.332c.67.23 1.281.85 1.281 1.704 0 .158-.007.314-.02.468-.083.931-.83 1.582-1.669 1.695a9.776 9.776 0 0 1-.561.059v.028a.75.75 0 0 1-1.5 0v-.029a9.724 9.724 0 0 1-1.687-.278.75.75 0 0 1 .374-1.453c.425.11.864.186 1.313.226v-1.68l-.968-.332C9.612 14.974 9 14.354 9 13.5c0-.158.007-.314.02-.468.083-.931.831-1.582 1.67-1.694.185-.025.372-.045.56-.06v-.028a.75.75 0 0 1 .75-.75Zm-1.11 2.324c.119-.016.239-.03.36-.04v1.166l-.482-.165c-.208-.072-.268-.211-.268-.285 0-.113.005-.225.015-.336.013-.146.14-.309.374-.34Zm1.86 4.392V16.05l.482.165c.208.072.268.211.268.285 0 .113-.005.225.015.336-.012.146-.14.309-.374.34-.12.016-.24.03-.361.04Z" clip-rule="evenodd" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>
+                        <ProjectFinancialTab @key="_budgetRefreshToken"
+                                             Budgets="_budgets"
+                                             BudgetTransactionsByBudgetId="_budgetTransactions"
+                                             IsLoading="_loadingBudget"
+                                             TransactionTypes="_transactionTypes"
+                                             OnAddCertification="HandleAddCertification"
+                                             OnExecuteDevengado="HandleExecuteDevengado"
+                                             OnCancelTransaction="HandleCancelTransaction"
+                                             TransactionPageSize="15" />
+                    </ChildContent>
+                </Tab>
+
+                <Tab Key="extensions" Title="Prórrogas">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                            <path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM12.75 6a.75.75 0 0 0-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 0 0 0-1.5h-3.75V6Z" clip-rule="evenodd" />
+                        </svg>
+                    </Icon>
+                    <ChildContent>
+                        <ProjectExtensionsTab Items="_extensions"
+                                              IsLoading="_loadingExtensions"
+                                              OnRequestNew="HandleRequestExtension"
+                                              OnOpen="HandleOpenExtension" />
+                    </ChildContent>
+                </Tab>
+
+                @if (CanShowFinalizationTab)
+                {
+                    <Tab Key="finalization" Title="Finalización">
+                        <Icon>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path fill-rule="evenodd" d="M2.25 12a9.75 9.75 0 1 1 19.5 0 9.75 9.75 0 0 1-19.5 0Zm14.03-2.47a.75.75 0 0 0-1.06-1.06l-4.97 4.97-1.97-1.97a.75.75 0 1 0-1.06 1.06l2.5 2.5a.75.75 0 0 0 1.06 0l5.5-5.5Z" clip-rule="evenodd" />
+                            </svg>
+                        </Icon>
+
+                        <ChildContent>
+                            <ProjectFinalizationTab Project="_project"
+                                                    Budgets="_budgets"
+                                                    Products="_projectProducts"
+                                                    IsLoading="@_loadingFinalization"
+                                                    ErrorMessage="@_finalizationError"
+                                                    OnRefresh="HandleRefreshFinalization" />
+                        </ChildContent>
+                    </Tab>
+                }
+
+            </Tabs>
+        </div>
+    </div>
+</div>
+
+<ProjectCertificationModal IsOpen="@_certModalOpen"
+                           IsOpenChanged="v => _certModalOpen = v"
+                           Value="@_certSeed"
+                           IsSaving="@_savingCert"
+                           OnSubmit="OnSubmitCertification"
+                           OnCancel="OnCancelCertification" />
+
+<ProjectAccrualModal IsOpen="@_accrualModalOpen"
+                     IsOpenChanged="v => _accrualModalOpen = v"
+                     Value="@_accrualSeed"
+                     IsSaving="@_savingAccrual"
+                     OnSubmit="OnSubmitAccrual"
+                     OnCancel="OnCancelAccrual" />
+
+<UserPickerModal ModalId="project-user-picker"
+                 IsOpen="@_showUserPicker"
+                 IsOpenChanged="(bool v) => _showUserPicker = v"
+                 Users="@_memberCandidates"
+                 InitialSelectedUserId="@_preselectedUserId"
+                 OnSubmit="HandleUserPickedAsync"
+                 OnCancel="() => _showUserPicker = false"
+                 Roles="_memberRoles"
+                 @bind-SelectedRoleId="_selectedRoleIdForProject" />
+
+<VisitIssueFormModal Id="visit-issue-modal"
+                     IsOpen="@_issueModalOpen"
+                     IsOpenChanged="v => _issueModalOpen = v"
+                     IsSaving="@_savingIssue"
+                     ErrorMessage="@_issueError"
+                     IssueId="@_editingIssueId"
+                     VisitId="@(_openVisitId ?? 0)"
+                     InitialValues="@_issueInitialValues"
+                     OnSubmit="HandleSubmitIssue"
+                     OnCancel="HandleCancelIssue" />
+
+<ExternalResearcherPickerModal ModalId="project-external-researcher-picker"
+                               IsOpen="@_showExternalResearcherPicker"
+                               IsOpenChanged="v => _showExternalResearcherPicker = v"
+                               Researchers="@_externalResearcherCandidates"
+                               OnSubmit="HandleExternalResearcherPickedAsync"
+                               OnCancel="() => _showExternalResearcherPicker = false"
+                               OnCreateNewRequested="HandleOpenExternalResearcherCreateModal" />
+
+<ExternalResearcherCreateModal ModalId="project-external-researcher-create"
+                               IsOpen="@_showExternalResearcherCreateModal"
+                               IsOpenChanged="v => _showExternalResearcherCreateModal = v"
+                               OnSave="HandleExternalResearcherCreatedAsync"
+                               OnCancel="HandleExternalResearcherCreateCanceled"
+                               InstitutionSuggestions="@_institutionSuggestions"
+                               OnInstitutionSearchRequested="HandleInstitutionSearchAsync" />
+
+<DocumentViewerModal Id="document-viewer-modal"
+                     Title="Documento inicial del Proyecto"
+                     DocumentId="@_selectedDocumentId"
+                     IsOpen="@_docViewerOpen"
+                     IsOpenChanged="v => _docViewerOpen = v" />
+
+<CreateProjectExtensionModal @bind-IsOpen="_showCreateExtensionModal"
+                             ProjectId="@ProjectId"
+                             ExtensionTypes="@(_extensionTypes ?? new())"
+                             OnExtensionCreated="HandleExtensionCreated" />
+
+@code {
+    private bool _docViewerOpen;
+    private int _selectedDocumentId;
+
+    private List<ProductListItemResponseDTO> _projectProducts = new();
+    private List<ProductListItemResponseDTO> _visitProducts = new();
+    private bool _loadingProducts;
+    private string? _productsError;
+
+    private IReadOnlyList<ResearchCategoryTreeItemDTO> _researchCategoryTree = Array.Empty<ResearchCategoryTreeItemDTO>();
+    private bool _loadingResearchCategories;
+    private string? _researchCategoriesError;
+    [Parameter] public int ProjectId { get; set; }
+
+    private ProjectDetailResponseDTO? _project;
+    private string _activeTab = "overview";
+    private bool _loadingOverview;
+    private string? _error;
+    private int? _objectivesLoadedForVisitId;
+
+    private IReadOnlyList<ProjectObjectiveWithActivitiesDTO> _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
+    private bool _loadingObjectives;
+    private string? _objectivesError;
+
+    private List<ResolvedUserProfileDTO>? _members;
+    private bool _loadingMembers;
+    private string? _membersError;
+
+    private List<ExternalResearcherProjectListItemDTO>? _externalResearchers;
+    private bool _loadingExternalResearchers;
+    private string? _externalResearchersError;
+
+    private List<VisitListResponseDTO>? _visits;
+    private bool _loadingVisits;
+    private string? _visitsError;
+
+    private int? _openVisitId;
+    private VisitDetailResponseDTO? _visitDetail;
+    private bool _loadingVisitDetail;
+    private string? _visitDetailError;
+    private List<VisitIssueResponseDTO>? _visitIssues;
+    private bool _loadingIssues;
+    private bool _issueModalOpen;
+    private bool _savingIssue;
+    private string? _issueError;
+    private int? _editingIssueId;
+    private VisitIssueFormModal.VisitIssueFormModel? _issueInitialValues;
+
+    private IReadOnlyList<CatalogListItemDTO> _transactionTypes = Array.Empty<CatalogListItemDTO>();
+    private bool _loadingTransactionTypes;
+    private string? _transactionTypesError;
+
+    private List<BudgetDTO> _budgets = new();
+    private Dictionary<int, List<BudgetTransactionDTO>> _budgetTransactions = new();
+    private bool _loadingBudget;
+    private string? _budgetError;
+    private int _budgetRefreshToken = 0;
+
+    private int? _selectedBudgetIdForAccrual;
+
+    private bool _certModalOpen;
+    private bool _savingCert;
+    private AddCertificationRequestDTO _certSeed = new();
+
+    private List<ProjectExtensionListResponseDTO>? _extensions;
+    private bool _loadingExtensions;
+    private string? _extensionsError;
+    private bool _showCreateExtensionModal;
+
+    private bool _loadingFinalization;
+    private string? _finalizationError;
+
+    private Task HandleRequestExtension()
+    {
+        _showCreateExtensionModal = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleExtensionCreated()
+    {
+        _showCreateExtensionModal = false;
+        await LoadProjectExtensions();
+        StateHasChanged();
+    }
+
+    private bool CanShowFinalizationTab
+    {
+        get
+        {
+            var p = _project?.ExecutionPercentage ?? 0;
+            return p == 100;
+        }
+    }
+
+    private List<CatalogListItemDTO>? _extensionTypes;
+    private bool _loadingExtensionTypes;
+    private string? _extensionTypesError;
+
+    private bool _accrualModalOpen;
+    private bool _savingAccrual;
+    private ExecuteDevengadoRequestDTO _accrualSeed = new();
+
+    private bool _showUserPicker;
+    private List<ResolvedUserProfileDTO> _memberCandidates = new();
+    private int? _preselectedUserId;
+
+    private List<ExternalFacultyDTO> _faculties = new();
+    private bool _loadingFaculties;
+    private string? _facultiesError;
+
+    private IEnumerable<MemberRoleTypeDetailDTO>? _memberRoles;
+    private int? _selectedRoleIdForProject;
+
+    private IReadOnlyList<ResearchCategoryTypeListItemDTO> _researchCategoryTypes = Array.Empty<ResearchCategoryTypeListItemDTO>();
+    private string? _researchCategoryTypesError;
+    private bool _loadingResearchCategoryTypes;
+
+    private IReadOnlyList<CatalogListItemDTO> _researchCategoryGroups = Array.Empty<CatalogListItemDTO>();
+    private bool _loadingResearchCategoryGroups;
+    private string? _researchCategoryGroupsError;
+
+    private bool _showExternalResearcherPicker;
+    private bool _showExternalResearcherCreateModal;
+
+    private List<ExternalResearcherListItemDTO> _externalResearcherCandidates = new();
+    private List<InstitutionListItemDTO> _institutionSuggestions = new();
+    private List<InstitutionListItemDTO> _allInstitutions = new();
+
+    private Task GoToEdit()
+    {
+        Nav.NavigateTo($"/projects/{ProjectId}/edit");
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleOpenExternalResearcherPicker()
+    {
+        try
+        {
+            var result = await ExternalResearcherClient.ListAsync(
+                term: null,
+                institutionId: null,
+                ct: CancellationToken.None);
+
+            if (!result.Success || result.Data is null)
+            {
+                Toast.ShowError(result.ToErrorMessage("No se pudieron cargar los investigadores externos."));
+                return;
+            }
+
+            var existingIds = new HashSet<int>(_externalResearchers?.Select(er => er.ExternalResearcherId) ?? Enumerable.Empty<int>());
+
+            _externalResearcherCandidates = result.Data
+                .Where(r => !existingIds.Contains(r.Id))
+                .OrderBy(r => r.FullName)
+                .ToList();
+
+            if (_externalResearcherCandidates.Count == 0)
+            {
+                Toast.ShowInfo("No hay investigadores externos disponibles para agregar.");
+            }
+
+            _showExternalResearcherPicker = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al cargar investigadores externos: {ex.Message}");
+        }
+    }
+
+    private async Task LoadExtensionTypes()
+    {
+        _loadingExtensionTypes = true;
+        _extensionTypesError = null;
+
+        try
+        {
+            var res = await ProjectExtensionTypeService.GetListAsync(onlyActives: true, CancellationToken.None);
+            if (res.Success && res.Data is not null)
+            {
+                _extensionTypes = res.Data;
+            }
+            else
+            {
+                _extensionTypes = new List<CatalogListItemDTO>();
+                _extensionTypesError = res.ToErrorMessage("No se pudieron cargar los tipos de prórroga.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _extensionTypes = new List<CatalogListItemDTO>();
+            _extensionTypesError = $"Error al cargar los tipos de prórroga: {ex.Message}";
+        }
+        finally
+        {
+            _loadingExtensionTypes = false;
+        }
+    }
+
+    private async Task LoadProjectExtensions()
+    {
+        _loadingExtensions = true;
+        _extensionsError = null;
+
+        try
+        {
+            var res = await ProjectExtensionService.ListByProjectAsync(ProjectId, CancellationToken.None);
+            if (res.Success && res.Data is not null)
+            {
+                _extensions = res.Data;
+            }
+            else
+            {
+                _extensions = new List<ProjectExtensionListResponseDTO>();
+                _extensionsError = res.ToErrorMessage("No se pudieron cargar las prórrogas.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _extensions = new List<ProjectExtensionListResponseDTO>();
+            _extensionsError = $"Error al cargar las prórrogas: {ex.Message}";
+        }
+        finally
+        {
+            _loadingExtensions = false;
+        }
+    }
+
+    private async Task HandleProductCreated(int visitId)
+    {
+        await LoadVisitProductsAsync(visitId);
+    }
+
+    private async Task LoadVisitProductsAsync(int visitId)
+    {
+        try
+        {
+            _loadingProducts = true;
+            _productsError = null;
+
+            var productsRes = await ProductService.ListByProjectAsync(ProjectId, CancellationToken.None);
+
+            if (productsRes.Success && productsRes.Data is not null)
+            {
+                _projectProducts = productsRes.Data.ToList();
+                _visitProducts = _projectProducts
+                    .Where(p => p.VisitId == visitId)
+                    .OrderByDescending(p => p.CreatedAt)
+                    .ToList();
+            }
+            else
+            {
+                _projectProducts = new();
+                _visitProducts = new();
+                _productsError = productsRes.ToErrorMessage("No se pudieron cargar los productos del proyecto.");
+                Toast.ShowWarning(_productsError);
+            }
+        }
+        catch (Exception ex)
+        {
+            _projectProducts = new();
+            _visitProducts = new();
+            _productsError = $"Error recargando productos: {ex.Message}";
+            Toast.ShowError(_productsError);
+        }
+        finally
+        {
+            _loadingProducts = false;
+        }
+    }
+
+    private void HandleOpenExternalResearcherCreateModal()
+    {
+        _showExternalResearcherPicker = false;
+        _showExternalResearcherCreateModal = true;
+    }
+
+    private void HandleExternalResearcherCreateCanceled()
+    {
+        _showExternalResearcherCreateModal = false;
+    }
+
+    private async Task HandleExternalResearcherCreatedAsync(ExternalResearcherCreateRequestDTO dto)
+    {
+        try
+        {
+            var result = await ExternalResearcherClient.CreateAsync(dto, CancellationToken.None);
+
+            if (!result.Success)
+            {
+                Toast.ShowError(result.ToErrorMessage("No se pudo crear el investigador externo."));
+                return;
+            }
+
+            Toast.ShowSuccess(result.ToSuccessMessage("Investigador externo creado correctamente."));
+
+            _showExternalResearcherCreateModal = false;
+
+            await HandleOpenExternalResearcherPicker();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al crear investigador externo: {ex.Message}");
+        }
+    }
+
+    private async Task EnsureInstitutionsLoadedAsync()
+    {
+        if (_allInstitutions.Count > 0)
+            return;
+
+        var result = await InstitutionClient.ListAsync(
+            onlyActives: true,
+            ct: CancellationToken.None);
+
+        if (result.Success && result.Data is not null)
+        {
+            _allInstitutions = result.Data;
+        }
+        else if (!result.Success)
+        {
+            Toast.ShowWarning(result.ToErrorMessage("No se pudieron cargar las instituciones."));
+        }
+    }
+
+    private async Task HandleInstitutionSearchAsync(string searchTerm)
+    {
+        await EnsureInstitutionsLoadedAsync();
+
+        if (_allInstitutions.Count == 0)
+        {
+            _institutionSuggestions = new List<InstitutionListItemDTO>();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            _institutionSuggestions = _allInstitutions
+                .OrderBy(i => i.Name)
+                .Take(20)
+                .ToList();
+        }
+        else
+        {
+            var term = searchTerm.Trim();
+
+            _institutionSuggestions = _allInstitutions
+                .Where(i =>
+                    (!string.IsNullOrWhiteSpace(i.Name) &&
+                     i.Name.Contains(term, StringComparison.OrdinalIgnoreCase))
+                    || (!string.IsNullOrWhiteSpace(i.CountryName) &&
+                        i.CountryName.Contains(term, StringComparison.OrdinalIgnoreCase)))
+                .OrderBy(i => i.Name)
+                .Take(20)
+                .ToList();
+        }
+    }
+
+    private async Task HandleExternalResearcherPickedAsync(int externalResearcherId)
+    {
+        var researcher = _externalResearcherCandidates
+            .FirstOrDefault(r => r.Id == externalResearcherId);
+
+        if (researcher is null)
+        {
+            Toast.ShowError("No se encontró el investigador externo seleccionado.");
+            _showExternalResearcherPicker = false;
+            return;
+        }
+
+        try
+        {
+            var createDto = new ExternalResearcherProjectCreateRequestDTO
+            {
+                ExternalResearcherId = researcher.Id,
+                ProjectId = ProjectId,
+                Role = "Investigador"
+            };
+
+            var res = await ExternalResearcherProjectService.CreateAsync(createDto, CancellationToken.None);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo asociar el investigador externo al proyecto."));
+                return;
+            }
+
+            Toast.ShowSuccess(res.ToSuccessMessage($"Investigador externo '{researcher.FullName}' agregado al proyecto."));
+            _showExternalResearcherPicker = false;
+
+            await EnsureTabDataAsync("members");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al asociar investigador externo: {ex.Message}");
+        }
+    }
+
+    private async Task HandleRemoveExternalResearcher(int externalResearcherProjectId)
+    {
+        try
+        {
+            var existingRes = await ExternalResearcherProjectService.GetByIdAsync(
+                externalResearcherProjectId,
+                CancellationToken.None);
+
+            if (!existingRes.Success || existingRes.Data is null)
+            {
+                Toast.ShowError(existingRes.ToErrorMessage("No se pudo obtener el registro del investigador externo."));
+                return;
+            }
+
+            var existing = existingRes.Data;
+
+            var dto = new ExternalResearcherProjectUpdateRequestDTO
+            {
+                Id = existing.Id,
+                ExternalResearcherId = existing.ExternalResearcherId,
+                ProjectId = existing.ProjectId,
+                Role = existing.Role,
+                ExitDate = DateTime.UtcNow
+            };
+
+            var res = await ExternalResearcherProjectService.UpdateAsync(dto, CancellationToken.None);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo desvincular al investigador externo."));
+                return;
+            }
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Investigador externo desvinculado del proyecto."));
+
+            await EnsureTabDataAsync("members");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al desvincular investigador externo: {ex.Message}");
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await EnsureFacultiesAsync();
+        await EnsureResearchCategoryGroupsAsync();
+        await EnsureResearchCategoryTypesAsync();
+        await EnsureResearchCategoryTreeAsync();
+        await EnsureTabDataAsync(_activeTab);
+        await EnsureTransactionTypesAsync();
+        await LoadProjectExtensions();
+        await LoadExtensionTypes();
+    }
+
+    private async Task OnTabChanged(string newKey)
+    {
+        _activeTab = newKey;
+        await EnsureTabDataAsync(newKey);
+        StateHasChanged();
+    }
+
+    private async Task EnsureResearchCategoryTreeAsync()
+    {
+        if (_researchCategoryTree is { Count: > 0 })
+            return;
+
+        try
+        {
+            _loadingResearchCategories = true;
+            _researchCategoriesError = null;
+
+            var res = await ResearchCategoryService.GetTreeAsync();
+
+            if (res.Success && res.Data is not null)
+                _researchCategoryTree = res.Data;
+            else
+            {
+                _researchCategoryTree = Array.Empty<ResearchCategoryTreeItemDTO>();
+                _researchCategoriesError = res.ToErrorMessage("No se pudo cargar el árbol de categorías.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _researchCategoryTree = Array.Empty<ResearchCategoryTreeItemDTO>();
+            _researchCategoriesError = $"Error al cargar categorías: {ex.Message}";
+        }
+        finally
+        {
+            _loadingResearchCategories = false;
+        }
+    }
+
+    private async Task EnsureResearchCategoryGroupsAsync()
+    {
+        if (_researchCategoryGroups is { Count: > 0 })
+            return;
+
+        try
+        {
+            _loadingResearchCategoryGroups = true;
+            _researchCategoryGroupsError = null;
+
+            var res = await ResearchCategoryGroupService.GetListAsync(onlyActives: true);
+
+            if (res.Success && res.Data is not null)
+            {
+                _researchCategoryGroups = res.Data;
+            }
+            else
+            {
+                _researchCategoryGroups = Array.Empty<CatalogListItemDTO>();
+                _researchCategoryGroupsError = res.ToErrorMessage("No se pudieron cargar las agrupaciones de categorías.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _researchCategoryGroups = Array.Empty<CatalogListItemDTO>();
+            _researchCategoryGroupsError = $"Error al cargar agrupaciones: {ex.Message}";
+        }
+        finally
+        {
+            _loadingResearchCategoryGroups = false;
+        }
+    }
+
+    private async Task EnsureFacultiesAsync()
+    {
+        if (_faculties.Count > 0) return;
+
+        try
+        {
+            _loadingFaculties = true;
+            _facultiesError = null;
+
+            var res = await ExternalAcademicsService.GetFacultiesWithProgramsAsync();
+
+            if (res.Success)
+            {
+                _faculties = res.Data ?? new();
+            }
+            else
+            {
+                _faculties = new();
+                _facultiesError = res.ToErrorMessage("No se pudieron cargar las facultades.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _faculties = new();
+            _facultiesError = $"Error de conexión al directorio académico: {ex.Message}";
+        }
+        finally
+        {
+            _loadingFaculties = false;
+        }
+    }
+
+    private Task HandleViewDocument(int documentId)
+    {
+        _selectedDocumentId = documentId;
+        _docViewerOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task EnsureTabDataAsync(string tabKey)
+    {
+        switch (tabKey)
+        {
+            case "overview":
+                _loadingOverview = true;
+                _error = null;
+                try
+                {
+                    var detail = await ProjectService.GetDetailAsync(ProjectId);
+                    if (detail.Success)
+                        _project = detail.Data;
+                    else
+                    {
+                        _project = null;
+                        _error = detail.ToErrorMessage("No se pudo cargar el proyecto.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _project = null;
+                    _error = $"Error de conexión: {ex.Message}";
+                }
+                finally
+                {
+                    _loadingOverview = false;
+                }
+                break;
+
+            case "members":
+                _loadingMembers = true;
+                _membersError = null;
+                _loadingExternalResearchers = true;
+                _externalResearchersError = null;
+
+                try
+                {
+                    await EnsureProjectDetailIfNeeded();
+
+                    if (_project?.ProjectGroupId is null or 0)
+                    {
+                        _members = new();
+                        _membersError = "Este proyecto no tiene un grupo asignado.";
+                    }
+                    else
+                    {
+                        var res = await GroupService.GetMembersByGroupIdAsync(_project.ProjectGroupId);
+                        if (res.Success)
+                            _members = res.Data ?? new();
+                        else
+                        {
+                            _members = new();
+                            _membersError = res.ToErrorMessage("No se pudieron cargar los miembros.");
+                        }
+                    }
+
+                    var extRes = await ExternalResearcherProjectService.GetByProjectAsync(ProjectId);
+
+                    if (extRes.Success && extRes.Data is not null)
+                    {
+                        _externalResearchers = extRes.Data;
+                    }
+                    else
+                    {
+                        _externalResearchers = new();
+                        _externalResearchersError = extRes.ToErrorMessage("No se pudieron cargar los investigadores externos.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _members = new();
+                    _membersError ??= $"Error de conexión: {ex.Message}";
+
+                    _externalResearchers = new();
+                    _externalResearchersError ??= $"Error de conexión al cargar investigadores externos: {ex.Message}";
+                }
+                finally
+                {
+                    _loadingMembers = false;
+                    _loadingExternalResearchers = false;
+                }
+                break;
+
+            case "extensions":
+                _loadingExtensions = true;
+                _extensionsError = null;
+                try
+                {
+                    var res = await ProjectExtensionService.ListByProjectAsync(ProjectId);
+                    if (res.Success)
+                        _extensions = res.Data ?? new();
+                    else
+                    {
+                        _extensions = new();
+                        _extensionsError = res.ToErrorMessage("No se pudieron cargar las prórrogas.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _extensions = new();
+                    _extensionsError = $"Error de conexión: {ex.Message}";
+                }
+                finally
+                {
+                    _loadingExtensions = false;
+                }
+                break;
+
+            case "visits":
+                _loadingVisits = true;
+                _visitsError = null;
+                try
+                {
+                    var res = await VisitService.GetByProjectAsync(ProjectId);
+                    if (res.Success)
+                        _visits = res.Data?.ToList() ?? new();
+                    else
+                    {
+                        _visits = new();
+                        _visitsError = res.ToErrorMessage("No se pudieron cargar las visitas.");
+                    }
+                    await EnsureProjectObjectivesAsync();
+                }
+                catch (Exception ex)
+                {
+                    _visits = new();
+                    _visitsError = $"Error de conexión: {ex.Message}";
+                }
+                finally
+                {
+                    _loadingVisits = false;
+                }
+                break;
+
+            case "financial":
+                _loadingBudget = true;
+                _budgetError = null;
+
+                try
+                {
+                    var b = await BudgetService.GetProjectBudgetsAsync(ProjectId);
+
+                    if (b.Success)
+                    {
+                        var budgets = b.Data ?? new();
+
+                        _budgets = budgets;
+                        _budgetTransactions = new();
+
+                        if (_budgets.Count > 0)
+                        {
+                            foreach (var budget in _budgets)
+                            {
+                                try
+                                {
+                                    var tr = await BudgetService.GetListBudgetTransactionAsync(budget.BudgetId);
+
+                                    if (tr.Success && tr.Data is not null)
+                                    {
+                                        _budgetTransactions[budget.BudgetId] = tr.Data.ToList();
+                                    }
+                                    else
+                                    {
+                                        _budgetTransactions[budget.BudgetId] = new List<BudgetTransactionDTO>();
+                                        _budgetError ??= tr.ToErrorMessage("No se pudieron cargar las transacciones.");
+                                    }
+                                }
+                                catch (Exception exInner)
+                                {
+                                    _budgetTransactions[budget.BudgetId] = new List<BudgetTransactionDTO>();
+                                    _budgetError ??= $"Error al cargar transacciones: {exInner.Message}";
+                                }
+                            }
+                        }
+                        else
+                        {
+                            _budgetError = "El proyecto no tiene presupuestos registrados.";
+                        }
+                    }
+                    else
+                    {
+                        _budgets = new();
+                        _budgetTransactions = new();
+                        _budgetError = b.ToErrorMessage("No se pudo cargar el presupuesto.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _budgets = new();
+                    _budgetTransactions = new();
+                    _budgetError = $"Error de conexión: {ex.Message}";
+                }
+                finally
+                {
+                    _loadingBudget = false;
+                }
+                break;
+
+            case "finalization":
+                _loadingFinalization = true;
+                _finalizationError = null;
+
+                try
+                {
+                    await EnsureProjectDetailIfNeeded();
+
+                    if (!CanShowFinalizationTab)
+                    {
+                        _finalizationError = "Este proyecto aún no está al 100% de avance.";
+                        break;
+                    }
+
+                    if (_members is null)
+                        await EnsureTabDataAsync("members");
+
+                    if (_visits is null)
+                        await EnsureTabDataAsync("visits");
+
+                    if (_budgets.Count == 0)
+                        await EnsureTabDataAsync("financial");
+
+                    if (_projectProducts.Count == 0)
+                    {
+                        var productsRes = await ProductService.ListByProjectAsync(ProjectId, CancellationToken.None);
+                        if (productsRes.Success && productsRes.Data is not null)
+                            _projectProducts = productsRes.Data.ToList();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _finalizationError = $"Error al cargar la finalización: {ex.Message}";
+                }
+                finally
+                {
+                    _loadingFinalization = false;
+                }
+                break;
+        }
+    }
+
+    private async Task HandleRefreshFinalization()
+    {
+        await EnsureTabDataAsync("overview");
+        await EnsureTabDataAsync("members");
+        await EnsureTabDataAsync("visits");
+        await EnsureTabDataAsync("financial");
+
+        var productsRes = await ProductService.ListByProjectAsync(ProjectId, CancellationToken.None);
+        if (productsRes.Success && productsRes.Data is not null)
+            _projectProducts = productsRes.Data.ToList();
+
+        StateHasChanged();
+    }
+
+    private async Task EnsureProjectObjectivesAsync(bool forceRefresh = false)
+    {
+        if (!_openVisitId.HasValue || _openVisitId.Value <= 0)
+        {
+            _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
+            _objectivesLoadedForVisitId = null;
+            return;
+        }
+
+        if (!forceRefresh
+            && _objectivesLoadedForVisitId == _openVisitId.Value
+            && _projectObjectives is { Count: > 0 })
+            return;
+
+        try
+        {
+            _loadingObjectives = true;
+            _objectivesError = null;
+
+            var res = await ProjectObjectiveService.GetByVisitWithActivitiesAsync(
+                ProjectId,
+                _openVisitId.Value,
+                ct: CancellationToken.None);
+
+            if (res.Success && res.Data is not null)
+            {
+                _projectObjectives = res.Data;
+                _objectivesLoadedForVisitId = _openVisitId.Value;
+            }
+            else
+            {
+                _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
+                _objectivesLoadedForVisitId = null;
+                _objectivesError = res.ToErrorMessage("No se pudieron cargar los objetivos/actividades de la visita.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _projectObjectives = Array.Empty<ProjectObjectiveWithActivitiesDTO>();
+            _objectivesLoadedForVisitId = null;
+            _objectivesError = $"Error al cargar objetivos: {ex.Message}";
+        }
+        finally
+        {
+            _loadingObjectives = false;
+        }
+    }
+
+    private async Task HandleSaveSingleActivityAsync(ObjectiveActivityListItemDTO a)
+    {
+        try
+        {
+            if (!_openVisitId.HasValue || _openVisitId.Value <= 0)
+            {
+                Toast.ShowError("No hay una visita abierta para guardar el progreso.");
+                return;
+            }
+
+            var dto = new UpdateObjectiveActivityRequestDTO
+            {
+                ObjectiveActivityId = a.ObjectiveActivityId,
+                ObjectiveId = a.ObjectiveId,
+                ActionText = a.ActionText ?? string.Empty,
+                ActivityResult = a.ActivityResult,
+            };
+
+            var updateRes = await ObjectiveActivityService.UpdateAsync(
+                a.ObjectiveActivityId,
+                dto,
+                CancellationToken.None);
+
+            if (!updateRes.Success)
+            {
+                Toast.ShowError(updateRes.ToErrorMessage("No se pudo guardar la actividad."));
+                return;
+            }
+
+            var progress = Math.Min(100, Math.Max(0, a.ProgressPercentage));
+
+            var progressRes = await ObjectiveActivityService.SetProgressAsync(
+                a.ObjectiveActivityId,
+                _openVisitId.Value,
+                progress,
+                CancellationToken.None);
+
+            if (!progressRes.Success)
+            {
+                Toast.ShowError(progressRes.ToErrorMessage("Se guardó la actividad, pero no se pudo guardar el progreso."));
+                return;
+            }
+
+            Toast.ShowSuccess(progressRes.ToSuccessMessage("Actividad y progreso guardados."));
+            await RefreshVisitsTabAsync(refreshVisitList: false, refreshVisitDetail: false);
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al guardar actividad: {ex.Message}");
+        }
+    }
+
+    private async Task RefreshVisitsTabAsync(bool refreshVisitList = false, bool refreshVisitDetail = false)
+    {
+        await EnsureProjectObjectivesAsync(forceRefresh: true);
+        await RefreshProjectHeaderAsync();
+
+        if (refreshVisitList)
+        {
+            var res = await VisitService.GetByProjectAsync(ProjectId);
+            if (res.Success)
+                _visits = res.Data?.ToList() ?? new();
+        }
+
+        if (refreshVisitDetail && _openVisitId is int vid)
+        {
+            var detailRes = await VisitService.GetVisitDetailAsync(vid);
+            if (detailRes.Success)
+                _visitDetail = detailRes.Data;
+        }
+
+        StateHasChanged();
+    }
+
+    private async Task RefreshProjectHeaderAsync()
+    {
+        var detail = await ProjectService.GetDetailAsync(ProjectId);
+        if (detail.Success)
+            _project = detail.Data;
+    }
+
+    private async Task HandleInviteMember()
+    {
+        await EnsureProjectDetailIfNeeded();
+
+        if (_project?.ProjectGroupId is null or 0)
+        {
+            Toast.ShowWarning("Este proyecto no tiene un grupo asignado.");
+            return;
+        }
+
+        await EnsureMemberRolesAsync();
+
+        var all = await ExternalUserService.GetListAsync();
+        if (!all.Success)
+        {
+            Toast.ShowError(all.ToErrorMessage("No se pudieron cargar los usuarios."));
+            return;
+        }
+
+        var existingIds = new HashSet<int>((_members ?? new()).Select(m => m.UserId));
+        _memberCandidates = (all.Data ?? new())
+            .Where(u => !existingIds.Contains(u.UserId))
+            .OrderBy(u => u.FullName)
+            .ToList();
+
+        if (_memberCandidates.Count == 0)
+        {
+            Toast.ShowInfo("No hay usuarios disponibles para agregar.");
+            return;
+        }
+
+        _preselectedUserId = null;
+        _showUserPicker = true;
+        StateHasChanged();
+    }
+
+    private async Task HandleRemoveMember(int userGroupId)
+    {
+        await EnsureProjectDetailIfNeeded();
+
+        if (_project?.ProjectGroupId is null or 0)
+        {
+            Toast.ShowWarning("Este proyecto no tiene un grupo asignado.");
+            return;
+        }
+
+        try
+        {
+            var res = await GroupService.RemoveMemberAsync(_project.ProjectGroupId, userGroupId);
+            if (!res.Success)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo remover el miembro."));
+                return;
+            }
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Miembro removido."));
+            await EnsureTabDataAsync("members");
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al remover miembro: {ex.Message}");
+        }
+    }
+
+    private Task HandleAddCertification(int budgetId)
+    {
+        var targetBudget = _budgets.FirstOrDefault(b => b.BudgetId == budgetId);
+        if (targetBudget is null)
+            return Task.CompletedTask;
+
+        _savingCert = false;
+
+        _certSeed = new AddCertificationRequestDTO
+        {
+            BudgetId = targetBudget.BudgetId,
+            Name = string.Empty,
+            CertifiedAmount = 0,
+            BudgetItem = string.Empty,
+            CertificationDescription = string.Empty,
+            CertifiedAt = null
+        };
+
+        _certModalOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task HandleExecuteDevengado(int budgetTransactionId)
+    {
+        int? budgetId = null;
+
+        foreach (var kvp in _budgetTransactions)
+        {
+            var txList = kvp.Value;
+            if (txList is not null && txList.Any(t => t.BudgetTransactionId == budgetTransactionId))
+            {
+                budgetId = kvp.Key;
+                break;
+            }
+        }
+
+        if (!budgetId.HasValue)
+        {
+            Toast.ShowError("No se pudo identificar el presupuesto de esta transacción.");
+            return Task.CompletedTask;
+        }
+
+        _selectedBudgetIdForAccrual = budgetId.Value;
+        _savingAccrual = false;
+
+        _accrualSeed = new ExecuteDevengadoRequestDTO
+        {
+            BudgetTransactionId = budgetTransactionId,
+            ExecutedAmount = 0,
+            CURNumber = string.Empty,
+            ExecutionDescription = string.Empty,
+            ExecutedAt = null
+        };
+
+        _accrualModalOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task OnSubmitCertification(AddCertificationRequestDTO dto)
+    {
+        try
+        {
+            _savingCert = true;
+
+            var res = await BudgetService.CreateCertificationAsync(dto.BudgetId, dto);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo crear la certificación."));
+                return;
+            }
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Certificación creada correctamente."));
+            _certModalOpen = false;
+
+            await ReloadBudgetTabAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error inesperado: {ex.Message}");
+        }
+        finally
+        {
+            _savingCert = false;
+        }
+    }
+
+    private async Task OnSubmitAccrual(ExecuteDevengadoRequestDTO dto)
+    {
+        if (!_selectedBudgetIdForAccrual.HasValue)
+        {
+            Toast.ShowError("No se pudo determinar el presupuesto asociado al devengo.");
+            return;
+        }
+
+        try
+        {
+            _savingAccrual = true;
+
+            var res = await BudgetService.ExecuteAccrualAsync(_selectedBudgetIdForAccrual.Value, dto);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo ejecutar el devengo."));
+                return;
+            }
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Devengo ejecutado correctamente."));
+
+            _accrualModalOpen = false;
+            _selectedBudgetIdForAccrual = null;
+
+            await ReloadBudgetTabAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error inesperado al ejecutar el devengo: {ex.Message}");
+        }
+        finally
+        {
+            _savingAccrual = false;
+        }
+    }
+
+    private Task OnCancelCertification()
+    {
+        _certModalOpen = false;
+        return Task.CompletedTask;
+    }
+
+    private Task OnCancelAccrual()
+    {
+        _accrualModalOpen = false;
+        _selectedBudgetIdForAccrual = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleChangeVisitStateAsync((int visitId, int newStateId) e)
+    {
+        var (visitId, newStateId) = e;
+
+        try
+        {
+            var req = new UpdateVisitRequestDTO
+            {
+                VisitId = visitId,
+                ProjectId = ProjectId,
+                VisitStateId = newStateId
+            };
+
+            var resp = await VisitService.UpdateAsync(req);
+
+            if (resp.Success && resp.Data is VisitListResponseDTO updated && _visits is not null)
+            {
+                var local = _visits.FirstOrDefault(x => x.VisitId == updated.VisitId);
+                if (local is not null)
+                {
+                    local.VisitStateId = updated.VisitStateId;
+                    local.VisitStateName = updated.VisitStateName;
+                }
+                StateHasChanged();
+            }
+            else
+            {
+                _visitsError = resp.ToErrorMessage("No se pudo actualizar el estado de la visita.");
+                await EnsureTabDataAsync("visits");
+            }
+        }
+        catch (Exception ex)
+        {
+            _visitsError = $"Error de conexión: {ex.Message}";
+            await EnsureTabDataAsync("visits");
+        }
+    }
+
+    private async Task ReloadBudgetTabAsync()
+    {
+        await EnsureTabDataAsync("financial");
+        _budgetRefreshToken++;
+        StateHasChanged();
+    }
+
+    private async Task HandleOpenVisit(int visitId)
+    {
+        _openVisitId = visitId;
+        _loadingVisitDetail = true;
+        _visitDetailError = null;
+        _productsError = null;
+
+        await EnsureProjectObjectivesAsync(forceRefresh: true);
+
+        try
+        {
+            var detailTask = VisitService.GetVisitDetailAsync(visitId);
+            var issuesTask = VisitIssueService.ListByVisitAsync(visitId);
+            var productsTask = LoadVisitProductsAsync(visitId);
+
+            await Task.WhenAll(detailTask, issuesTask, productsTask);
+
+            var detailRes = await detailTask;
+            var issuesRes = await issuesTask;
+
+            if (detailRes.Success)
+                _visitDetail = detailRes.Data;
+            else
+            {
+                _visitDetail = null;
+                _visitDetailError = detailRes.ToErrorMessage("No se pudo cargar el detalle de la visita.");
+            }
+
+            if (issuesRes.Success)
+                _visitIssues = issuesRes.Data?.ToList() ?? new();
+            else
+                _visitIssues = new();
+        }
+        catch (Exception ex)
+        {
+            _visitDetail = null;
+            _visitIssues = new();
+            _projectProducts = new();
+            _visitProducts = new();
+            _visitDetailError = $"Error de conexión: {ex.Message}";
+        }
+        finally
+        {
+            _loadingVisitDetail = false;
+        }
+    }
+
+    private async Task HandleCloseVisit()
+    {
+        _openVisitId = null;
+        _visitDetail = null;
+        _visitDetailError = null;
+        _visitIssues = null;
+        await EnsureTabDataAsync("visits");
+        StateHasChanged();
+    }
+
+    private Task HandleAddIssue()
+    {
+        if (!_openVisitId.HasValue) return Task.CompletedTask;
+
+        _editingIssueId = null;
+        _issueInitialValues = null;
+        _issueError = null;
+        _savingIssue = false;
+        _issueModalOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task HandleEditIssue((int issueId, VisitIssueResponseDTO issue) data)
+    {
+        _editingIssueId = data.issueId;
+        _issueInitialValues = new VisitIssueFormModal.VisitIssueFormModel
+        {
+            Description = data.issue.Description,
+        };
+        _issueError = null;
+        _savingIssue = false;
+        _issueModalOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task HandleDeleteIssue(int issueId)
+    {
+        try
+        {
+            var res = await VisitIssueService.DeleteAsync(issueId);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo eliminar el problema."));
+                return;
+            }
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Problema eliminado correctamente."));
+
+            if (_openVisitId.HasValue)
+            {
+                await ReloadVisitIssuesAsync(_openVisitId.Value);
+            }
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al eliminar: {ex.Message}");
+        }
+    }
+
+    private async Task HandleSubmitIssue(VisitIssueFormModal.VisitIssueFormModel form)
+    {
+        if (!_openVisitId.HasValue) return;
+
+        try
+        {
+            _savingIssue = true;
+            _issueError = null;
+            StateHasChanged();
+
+            if (_editingIssueId.HasValue)
+            {
+                var updateDto = new VisitIssueUpdateRequestDTO
+                {
+                    Description = form.Description
+                };
+
+                var res = await VisitIssueService.UpdateAsync(_editingIssueId.Value, updateDto);
+
+                if (!res.Success)
+                {
+                    _issueError = res.ToErrorMessage("No se pudo actualizar el problema.");
+                    return;
+                }
+
+                Toast.ShowSuccess(res.ToSuccessMessage("Problema actualizado correctamente."));
+            }
+            else
+            {
+                var createDto = new VisitIssueCreateRequestDTO
+                {
+                    VisitId = _openVisitId.Value,
+                    Description = form.Description,
+                };
+
+                var res = await VisitIssueService.CreateAsync(createDto);
+
+                if (!res.Success)
+                {
+                    _issueError = res.ToErrorMessage("No se pudo crear el problema.");
+                    return;
+                }
+
+                Toast.ShowSuccess(res.ToSuccessMessage("Problema registrado correctamente."));
+            }
+
+            _issueModalOpen = false;
+            await ReloadVisitIssuesAsync(_openVisitId.Value);
+        }
+        catch (Exception ex)
+        {
+            _issueError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _savingIssue = false;
+            StateHasChanged();
+        }
+    }
+
+    private Task HandleCancelIssue()
+    {
+        _issueModalOpen = false;
+        _issueError = null;
+        _editingIssueId = null;
+        _issueInitialValues = null;
+        return Task.CompletedTask;
+    }
+
+    private async Task ReloadVisitIssuesAsync(int visitId)
+    {
+        try
+        {
+            _loadingIssues = true;
+            var res = await VisitIssueService.ListByVisitAsync(visitId);
+
+            if (res.Success)
+                _visitIssues = res.Data?.ToList() ?? new();
+            else
+                Toast.ShowWarning(res.ToErrorMessage("No se pudieron recargar los problemas."));
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al recargar: {ex.Message}");
+        }
+        finally
+        {
+            _loadingIssues = false;
+            StateHasChanged();
+        }
+    }
+
+    private Task HandleOpenExtension(int projectExtensionId) => Task.CompletedTask;
+
+    private async Task EnsureProjectDetailIfNeeded()
+    {
+        if (_project is null)
+        {
+            var detail = await ProjectService.GetDetailAsync(ProjectId);
+            if (detail.Success) _project = detail.Data;
+        }
+    }
+
+    private async Task HandleUserPickedAsync(int userId)
+    {
+        await EnsureProjectDetailIfNeeded();
+
+        if (_project?.ProjectGroupId is null or 0)
+        {
+            Toast.ShowWarning("Este proyecto no tiene un grupo asignado.");
+            _showUserPicker = false;
+            return;
+        }
+        if (_selectedRoleIdForProject is null || _selectedRoleIdForProject <= 0)
+        {
+            Toast.ShowWarning("Seleccione un rol para el miembro.");
+            return;
+        }
+
+        var selectedRole = _memberRoles?.FirstOrDefault(r => r.Id == _selectedRoleIdForProject.Value);
+        if (selectedRole is null)
+        {
+            Toast.ShowError("No se pudo identificar el rol seleccionado.");
+            return;
+        }
+
+        if (IsCoordinatorRole(selectedRole.Name) && ProjectAlreadyHasRole(selectedRole.Id))
+        {
+            Toast.ShowWarning($"Ya existe un miembro con el rol '{selectedRole.Name}' en este proyecto.");
+            return;
+        }
+
+        var selected = _memberCandidates.FirstOrDefault(u => u.UserId == userId);
+        if (selected is null)
+        {
+            Toast.ShowError("No se encontró el usuario seleccionado.");
+            _showUserPicker = false;
+            return;
+        }
+
+        var req = new AddGroupMemberRequestDTO
+        {
+            GroupId = _project.ProjectGroupId,
+            MemberRole = _selectedRoleIdForProject.Value,
+            Email = selected.Email,
+            Document = selected.Document,
+            AspUserId = selected.AspNetUserId,
+            FacultyId = selected.FacultyCareerId
+        };
+
+        var res = await GroupService.AddMemberAsync(req);
+        if (!res.Success)
+        {
+            Toast.ShowError(res.ToErrorMessage("No se pudo agregar el miembro."));
+            return;
+        }
+
+        Toast.ShowSuccess(res.ToSuccessMessage("Miembro agregado."));
+        _showUserPicker = false;
+
+        await EnsureTabDataAsync("members");
+        StateHasChanged();
+    }
+
+    private async Task EnsureMemberRolesAsync()
+    {
+        if (_memberRoles is not null && _memberRoles.Any())
+            return;
+
+        try
+        {
+            var res = await MemberRoleTypeService.GetListAsync(onlyActives: true);
+
+            if (!res.Success || res.Data is null)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudieron cargar los roles."));
+                _memberRoles = Array.Empty<MemberRoleTypeDetailDTO>();
+                return;
+            }
+
+            var allRoles = res.Data;
+
+            _memberRoles = allRoles
+                .Where(r => r.Flag == 1)
+                .Select(r => new MemberRoleTypeDetailDTO
+                {
+                    Id = r.Id,
+                    Name = r.Name,
+                    IsActive = r.IsActive,
+                    Flag = r.Flag
+                })
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"No se pudieron cargar los roles: {ex.Message}");
+            _memberRoles = Array.Empty<MemberRoleTypeDetailDTO>();
+        }
+    }
+
+    private static bool IsCoordinatorRole(string roleName)
+    {
+        if (string.IsNullOrWhiteSpace(roleName))
+            return false;
+
+        var name = roleName.Trim();
+
+        return name.Contains("coordinador", StringComparison.OrdinalIgnoreCase)
+            && (name.Contains("principal", StringComparison.OrdinalIgnoreCase)
+                || name.Contains("subrogante", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private async Task EnsureTransactionTypesAsync()
+    {
+        if (_transactionTypes is { Count: > 0 })
+            return;
+
+        try
+        {
+            _loadingTransactionTypes = true;
+            _transactionTypesError = null;
+
+            var res = await TransactionTypeService.GetListAsync(onlyActives: true);
+
+            if (res.Success && res.Data is not null)
+            {
+                _transactionTypes = res.Data;
+            }
+            else
+            {
+                _transactionTypes = Array.Empty<CatalogListItemDTO>();
+                _transactionTypesError = res.ToErrorMessage("No se pudieron cargar los tipos de transacción.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _transactionTypes = Array.Empty<CatalogListItemDTO>();
+            _transactionTypesError = $"Error al cargar tipos de transacción: {ex.Message}";
+        }
+        finally
+        {
+            _loadingTransactionTypes = false;
+        }
+    }
+
+    private bool ProjectAlreadyHasRole(int roleId)
+    {
+        if (_members is null || _members.Count == 0)
+            return false;
+        return _members.Any(m => m.MemberRoleId == roleId);
+    }
+
+    private async Task EnsureResearchCategoryTypesAsync()
+    {
+        if (_researchCategoryTypes is { Count: > 0 })
+            return;
+
+        try
+        {
+            _loadingResearchCategoryTypes = true;
+            _researchCategoryTypesError = null;
+
+            var res = await ResearchCategoryTypeService.ListAsync(onlyActives: true);
+
+            if (res.Success && res.Data is not null)
+            {
+                _researchCategoryTypes = res.Data;
+            }
+            else
+            {
+                _researchCategoryTypes = Array.Empty<ResearchCategoryTypeListItemDTO>();
+                _researchCategoryTypesError = res.ToErrorMessage("No se pudieron cargar los tipos de categoría.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _researchCategoryTypes = Array.Empty<ResearchCategoryTypeListItemDTO>();
+            _researchCategoryTypesError = $"Error al cargar tipos de categoría: {ex.Message}";
+        }
+        finally
+        {
+            _loadingResearchCategoryTypes = false;
+        }
+    }
+
+    private async Task HandleCancelTransaction(int budgetTransactionId)
+    {
+        try
+        {
+            var res = await BudgetService.CancelTransactionAsync(budgetTransactionId);
+
+            if (!res.Success)
+            {
+                Toast.ShowError(res.ToErrorMessage("No se pudo cancelar la transacción."));
+                return;
+            }
+
+            Toast.ShowSuccess(res.ToSuccessMessage("Transacción cancelada correctamente."));
+            await ReloadBudgetTabAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError($"Error al cancelar la transacción: {ex.Message}");
+        }
+    }
+}

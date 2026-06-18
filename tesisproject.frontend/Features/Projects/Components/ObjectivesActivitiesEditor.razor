@@ -1,0 +1,458 @@
+﻿@using tesisproject.shared.DTOs.Algorithms.Response
+@using tesisproject.frontend.SharedUI.ActionButton
+
+<div class="w-full min-w-0 flex flex-col gap-3">
+    <div class="grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] gap-3 min-w-0">
+
+        <!-- Columna izquierda -->
+        <section class="min-w-0 flex flex-col gap-3 rounded-xl border border-border bg-background p-3 shadow-sm">
+            <!-- Objetivo general -->
+            <div class="flex flex-col gap-2">
+                <div class="flex items-center gap-2">
+                    <div class="w-1 h-5 bg-primary rounded-full"></div>
+                    <h3 class="text-sm font-semibold text-foreground">
+                        Objetivo general
+                    </h3>
+                </div>
+
+                @if (GeneralObjective is not null)
+                {
+                    <textarea class="w-full min-h-[72px] rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary resize-y"
+                              value="@GeneralObjective.ObjectiveText"
+                              @oninput="OnGeneralObjectiveTextChanged"
+                              placeholder="Escriba el objetivo general..."></textarea>
+
+                    <textarea class="w-full min-h-[72px] rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary resize-y"
+                              value="@GeneralObjective.ObjetiveResult"
+                              @oninput="OnGeneralObjectiveResultChanged"
+                              placeholder="Resultado esperado..."></textarea>
+                }
+                else
+                {
+                    <div class="rounded-lg border border-accent/30 bg-accent/10 px-3 py-2">
+                        <p class="text-xs text-muted">
+                            No se encontró el objetivo general.
+                        </p>
+                    </div>
+                }
+            </div>
+
+            <!-- Objetivos específicos -->
+            <div class="flex items-center justify-between gap-2 pt-1">
+                <div class="flex items-center gap-2 min-w-0">
+                    <div class="w-1 h-5 bg-secondary rounded-full"></div>
+                    <h4 class="text-sm font-semibold text-foreground truncate">
+                        Específicos
+                    </h4>
+                    <span class="px-2 py-0.5 text-[11px] font-medium rounded-full bg-secondary text-white whitespace-nowrap">
+                        @SpecificObjectives.Count
+                    </span>
+                </div>
+
+                <ActionButton Text="Agregar"
+                              Intent="ButtonIntent.Add"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Sm"
+                              Execute="AddSpecificObjective">
+                    <Icon>
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </Icon>
+                </ActionButton>
+            </div>
+
+            @if (SpecificObjectives.Count > 0)
+            {
+                <div class="space-y-2">
+                    @foreach (var objective in SpecificObjectives)
+                    {
+                        var isSelected = ReferenceEquals(objective, _selectedObjective);
+
+                        <button type="button"
+                                class="@GetObjectiveItemClass(isSelected)"
+                                @onclick="@(() => SelectObjective(objective))">
+                            <div class="flex flex-col items-start gap-1.5 w-full min-w-0">
+                                <span class="text-sm font-medium text-foreground text-left line-clamp-2">
+                                    @Shorten(objective.ObjectiveText, 80)
+                                </span>
+
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="text-[11px] text-muted">
+                                        @objective.Activities.Count actividad(es)
+                                    </span>
+
+                                    <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-semibold border border-primary/20">
+                                        @objective.ObjetivePercentage%
+                                    </span>
+                                </div>
+                            </div>
+                        </button>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="rounded-lg border border-dashed border-border bg-background/50 px-3 py-4 text-center">
+                    <p class="text-xs text-muted">
+                        No hay objetivos específicos.
+                    </p>
+                </div>
+            }
+
+            <div class="rounded-lg border border-border/60 bg-muted/10 px-3 py-2">
+                <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-medium text-muted">Porcentaje total</span>
+                    <span class="text-sm font-bold @(TotalSpecificPercentage > 100 ? "text-error" : "text-secondary")">
+                        @TotalSpecificPercentage%
+                    </span>
+                </div>
+
+                @if (TotalSpecificPercentage > 100)
+                {
+                    <p class="mt-1 text-[11px] text-error">
+                        El total no debe exceder 100%.
+                    </p>
+                }
+                else if (TotalSpecificPercentage == 100 && SpecificObjectives.Count > 0)
+                {
+                    <p class="mt-1 text-[11px] text-secondary">
+                        Total completo.
+                    </p>
+                }
+            </div>
+        </section>
+
+        <!-- Columna derecha -->
+        <section class="min-w-0 flex flex-col gap-3 rounded-xl border border-border bg-background p-3 shadow-sm">
+            @if (_selectedObjective is null)
+            {
+                <div class="flex flex-col items-center justify-center gap-3 text-center rounded-lg border border-dashed border-border bg-background/50 px-4 py-8">
+                    <div class="w-12 h-12 rounded-full bg-muted/20 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                    </div>
+
+                    <div>
+                        <p class="text-sm font-medium text-foreground">Ningún objetivo seleccionado</p>
+                        <p class="text-xs text-muted mt-1">
+                            Selecciona uno del panel izquierdo.
+                        </p>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div class="w-1 h-5 bg-secondary rounded-full"></div>
+                        <h3 class="text-sm font-semibold text-foreground truncate">
+                            Objetivo seleccionado
+                        </h3>
+                    </div>
+
+                    <ActionButton Text="Eliminar"
+                                  Intent="ButtonIntent.Delete"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Xs"
+                                  ConfirmBeforeExecute="true"
+                                  ConfirmTitle="Eliminar objetivo"
+                                  ConfirmMessage="¿Está seguro de que desea eliminar este objetivo específico?"
+                                  Execute="RemoveSelectedObjective">
+                        <Icon>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </Icon>
+                    </ActionButton>
+                </div>
+
+                <textarea class="w-full min-h-[88px] rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary resize-y"
+                          value="@_selectedObjective.ObjectiveText"
+                          @oninput="OnSelectedObjectiveTextChanged"
+                          placeholder="Escriba aquí el objetivo específico..."></textarea>
+
+                <div class="grid grid-cols-1 md:grid-cols-[120px_minmax(0,1fr)] gap-3">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-medium text-foreground">Porcentaje</label>
+                        <input type="number"
+                               min="0"
+                               max="100"
+                               class="w-full rounded-lg border border-border px-3 py-2 text-sm font-semibold bg-background text-primary focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                               value="@_selectedObjective.ObjetivePercentage"
+                               @oninput="OnSelectedObjectivePercentageChanged" />
+                    </div>
+
+                    <div class="flex flex-col gap-1">
+                        <label class="text-xs font-medium text-foreground">Resultado esperado</label>
+                        <textarea class="w-full min-h-[88px] rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary resize-y"
+                                  value="@_selectedObjective.ObjetiveResult"
+                                  @oninput="OnSelectedObjectiveResultChanged"
+                                  placeholder="Describa el resultado esperado..."></textarea>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between gap-2 pt-1">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <div class="w-1 h-5 bg-accent rounded-full"></div>
+                        <h4 class="text-sm font-semibold text-foreground truncate">Actividades</h4>
+                        <span class="px-2 py-0.5 text-[11px] font-medium rounded-full bg-accent/15 text-accent border border-accent/20 whitespace-nowrap">
+                            @_selectedObjective.Activities.Count
+                        </span>
+                    </div>
+
+                    <ActionButton Text="Agregar"
+                                  Intent="ButtonIntent.Add"
+                                  Variant="ButtonVariant.Outline"
+                                  Size="ButtonSize.Sm"
+                                  Execute="AddActivity">
+                        <Icon>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                            </svg>
+                        </Icon>
+                    </ActionButton>
+                </div>
+
+                @if (_selectedObjective.Activities.Any())
+                {
+                    <div class="space-y-2">
+                        @foreach (var activity in _selectedObjective.Activities)
+                        {
+                            <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,2fr)_auto] gap-2 items-start p-2 bg-background border border-border rounded-lg" @key="activity">
+                                <textarea class="w-full min-h-[72px] rounded-lg border border-border bg-background px-2 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent resize-y"
+                                          value="@activity.ActivityText"
+                                          @oninput="@(e => OnActivityTextChanged(activity, e))"
+                                          placeholder="Actividad..."></textarea>
+
+                                <textarea class="w-full min-h-[72px] rounded-lg border border-border bg-background px-2 py-2 text-xs text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent resize-y"
+                                          value="@activity.ActivityResult"
+                                          @oninput="@(e => OnActivityResultChanged(activity, e))"
+                                          placeholder="Resultado esperado..."></textarea>
+
+                                <div class="flex justify-end lg:justify-start">
+                                    <ActionButton Text="Eliminar"
+                                                  Intent="ButtonIntent.Delete"
+                                                  Variant="ButtonVariant.Outline"
+                                                  Size="ButtonSize.Xs"
+                                                  ConfirmBeforeExecute="true"
+                                                  ConfirmMessage="¿Está seguro de que desea eliminar esta actividad?"
+                                                  ConfirmTitle="Eliminar actividad"
+                                                  Execute="@(() => RemoveActivity(activity))">
+                                        <Icon>
+                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                            </svg>
+                                        </Icon>
+                                    </ActionButton>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="rounded-lg border border-dashed border-border bg-background/50 px-3 py-5 text-center">
+                        <p class="text-xs text-muted">
+                            No hay actividades aún.
+                        </p>
+                    </div>
+                }
+            }
+        </section>
+    </div>
+</div>
+
+@code {
+    [Parameter] public List<DideObjectiveInfo> Objectives { get; set; } = new();
+    [Parameter] public EventCallback ObjectivesChanged { get; set; }
+
+    private DideObjectiveInfo? GeneralObjective =>
+        Objectives.FirstOrDefault(o => o.ObjectiveType == 1);
+
+    private List<DideObjectiveInfo> SpecificObjectives =>
+        Objectives.Where(o => o.ObjectiveType != 1).ToList();
+
+    private DideObjectiveInfo? _selectedObjective;
+
+    private int TotalSpecificPercentage =>
+        SpecificObjectives.Sum(o => o.ObjetivePercentage);
+
+    protected override void OnParametersSet()
+    {
+        Objectives ??= new List<DideObjectiveInfo>();
+
+        foreach (var obj in Objectives)
+        {
+            obj.Activities ??= new List<DideObjectiveActivityInfo>();
+        }
+
+        if (GeneralObjective is null)
+        {
+            Objectives.Insert(0, new DideObjectiveInfo
+            {
+                ObjectiveType = 1,
+                ObjectiveText = string.Empty,
+                ObjetivePercentage = 0,
+                ObjetiveResult = string.Empty,
+                Activities = new List<DideObjectiveActivityInfo>()
+            });
+        }
+
+        if (_selectedObjective is null || !SpecificObjectives.Contains(_selectedObjective))
+        {
+            _selectedObjective = SpecificObjectives.FirstOrDefault();
+        }
+    }
+
+    private Task NotifyObjectivesChanged()
+    {
+        return ObjectivesChanged.HasDelegate
+            ? ObjectivesChanged.InvokeAsync()
+            : Task.CompletedTask;
+    }
+
+    private async Task OnGeneralObjectiveTextChanged(ChangeEventArgs e)
+    {
+        if (GeneralObjective is null)
+            return;
+
+        GeneralObjective.ObjectiveText = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
+    }
+
+    private async Task OnGeneralObjectiveResultChanged(ChangeEventArgs e)
+    {
+        if (GeneralObjective is null)
+            return;
+
+        GeneralObjective.ObjetiveResult = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
+    }
+
+    private async Task OnSelectedObjectiveTextChanged(ChangeEventArgs e)
+    {
+        if (_selectedObjective is null)
+            return;
+
+        _selectedObjective.ObjectiveText = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
+    }
+
+    private async Task OnSelectedObjectivePercentageChanged(ChangeEventArgs e)
+    {
+        if (_selectedObjective is null)
+            return;
+
+        if (int.TryParse(e.Value?.ToString(), out var value))
+            _selectedObjective.ObjetivePercentage = Math.Clamp(value, 0, 100);
+        else
+            _selectedObjective.ObjetivePercentage = 0;
+
+        await NotifyObjectivesChanged();
+    }
+
+    private async Task OnSelectedObjectiveResultChanged(ChangeEventArgs e)
+    {
+        if (_selectedObjective is null)
+            return;
+
+        _selectedObjective.ObjetiveResult = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
+    }
+
+    private async Task OnActivityTextChanged(DideObjectiveActivityInfo activity, ChangeEventArgs e)
+    {
+        activity.ActivityText = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
+    }
+
+    private async Task OnActivityResultChanged(DideObjectiveActivityInfo activity, ChangeEventArgs e)
+    {
+        activity.ActivityResult = e.Value?.ToString() ?? string.Empty;
+        await NotifyObjectivesChanged();
+    }
+
+    private void SelectObjective(DideObjectiveInfo objective)
+    {
+        _selectedObjective = objective;
+    }
+
+    private async Task AddSpecificObjective()
+    {
+        var newObjective = new DideObjectiveInfo
+        {
+            ObjectiveText = string.Empty,
+            ObjectiveType = 2,
+            ObjetivePercentage = 0,
+            ObjetiveResult = string.Empty,
+            Activities = new List<DideObjectiveActivityInfo>()
+        };
+
+        Objectives.Add(newObjective);
+        _selectedObjective = newObjective;
+
+        await NotifyObjectivesChanged();
+    }
+
+    private async Task AddActivity()
+    {
+        if (_selectedObjective is null)
+            return;
+
+        _selectedObjective.Activities.Add(new DideObjectiveActivityInfo
+        {
+            ActivityText = string.Empty,
+            ActivityResult = string.Empty
+        });
+
+        await NotifyObjectivesChanged();
+    }
+
+    private async Task RemoveActivity(DideObjectiveActivityInfo activity)
+    {
+        if (_selectedObjective is null)
+            return;
+
+        _selectedObjective.Activities.Remove(activity);
+        await NotifyObjectivesChanged();
+    }
+
+    private async Task RemoveSelectedObjective()
+    {
+        if (_selectedObjective is null || _selectedObjective.ObjectiveType == 1)
+            return;
+
+        Objectives.Remove(_selectedObjective);
+        _selectedObjective = SpecificObjectives.FirstOrDefault();
+
+        await NotifyObjectivesChanged();
+    }
+
+    private static string Shorten(string? text, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "(Objetivo vacío)";
+
+        if (text.Length <= maxLength)
+            return text;
+
+        return text[..maxLength] + "…";
+    }
+
+    private string GetObjectiveItemClass(bool isSelected)
+    {
+        var baseClass =
+            "w-full text-left rounded-lg border px-3 py-2 transition-all duration-200 " +
+            "flex items-start justify-between gap-2";
+
+        if (isSelected)
+            return baseClass + " border-secondary bg-secondary/10 ring-2 ring-secondary/20";
+
+        return baseClass + " border-border bg-background hover:bg-background/60 hover:border-secondary/40";
+    }
+}

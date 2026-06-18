@@ -1,0 +1,44 @@
+.app-alert-banner {
+    border-radius: 1.15rem;
+    border: 1px solid;
+    padding: .9rem 1rem;
+    background: #ffffff;
+    box-shadow: 0 6px 14px rgba(49, 54, 71, 0.04);
+}
+
+.app-alert-banner__title {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .18em;
+}
+
+.app-alert-banner__message {
+    margin-top: .3rem;
+    font-size: .9rem;
+    line-height: 1.5;
+}
+
+.app-alert-banner--success {
+    background: rgba(151, 176, 103, 0.12);
+    border-color: rgba(151, 176, 103, 0.28);
+    color: #437057;
+}
+
+.app-alert-banner--error {
+    background: rgba(47, 82, 73, 0.1);
+    border-color: rgba(47, 82, 73, 0.24);
+    color: #2F5249;
+}
+
+.app-alert-banner--warning {
+    background: rgba(255, 248, 212, 0.92);
+    border-color: rgba(244, 206, 20, 0.28);
+    color: #8a7410;
+}
+
+.app-alert-banner--info {
+    background: rgba(245, 247, 248, 1);
+    border-color: rgba(67, 86, 99, 0.2);
+    color: #313647;
+}

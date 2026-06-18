@@ -1,0 +1,90 @@
+@using tesisproject.shared.DTOs.Articles
+@namespace tesisproject.frontend.Features.Articles.Components
+
+<div class="article-card-board">
+    <header class="article-card-board__header">
+        <div>
+            <span>Resumen operativo</span>
+            <h3>Artículos de la página actual</h3>
+        </div>
+        <small>@VisibleItems.Count artículo(s)</small>
+    </header>
+
+    <div class="article-card-board__summary">
+        @foreach (var column in Columns)
+        {
+            var count = VisibleItems.Count(a => GetStatusKey(a) == column.Key);
+            <div class="@SummaryClasses(column.Key)">
+                <span>@column.Title</span>
+                <strong>@count</strong>
+            </div>
+        }
+    </div>
+
+    <div class="article-card-board__grid">
+        @foreach (var item in VisibleItems)
+        {
+            <ArticleCard Item="item"
+                         OnViewMore="OnViewMore" />
+        }
+    </div>
+</div>
+
+@code {
+    private record KanbanColumn(string Key, string Title);
+
+    private readonly KanbanColumn[] Columns = new[]
+    {
+        new KanbanColumn("PUBLICADO", "Publicado"),
+        new KanbanColumn("ACEPTADO",  "Aceptado"),
+        new KanbanColumn("SIN ESTADO","Sin estado")
+    };
+
+    [Parameter] public IEnumerable<ArticleListItemDto> Items { get; set; } = Enumerable.Empty<ArticleListItemDto>();
+    [Parameter] public EventCallback<ArticleListItemDto> OnViewMore { get; set; }
+
+    private List<ArticleListItemDto> VisibleItems =>
+        Items
+            .OrderByDescending(a => a.Year)
+            .ThenBy(a => a.Title)
+            .ToList();
+
+    private static string GetStatusKey(ArticleListItemDto a)
+    {
+        var raw = (a.PublicationStatusName ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(raw))
+            return "SIN ESTADO";
+
+        var s = raw.ToUpperInvariant();
+
+        // Cualquier variante que contenga "PUBLICAD" o "PUBLISHED"
+        if (s == "PUBLICADO" || s == "PUBLICADA" ||
+            s.Contains("PUBLICAD") || s.Contains("PUBLISHED"))
+        {
+            return "PUBLICADO";
+        }
+
+        // Cualquier variante que contenga "ACEPT" / "ACCEPT"
+        if (s == "ACEPTADO" || s == "ACEPTADA" ||
+            s.Contains("ACEPT") || s.Contains("ACCEPT"))
+        {
+            return "ACEPTADO";
+        }
+
+        // Todo lo demás se considera sin estado definido
+        return "SIN ESTADO";
+    }
+
+    private string SummaryClasses(string key)
+    {
+        var baseCls = "article-card-board__metric ";
+
+        return key switch
+        {
+            "PUBLICADO" => baseCls + "article-card-board__metric--published",
+            "ACEPTADO" => baseCls + "article-card-board__metric--accepted",
+            _ => baseCls + "article-card-board__metric--unset"
+        };
+    }
+}

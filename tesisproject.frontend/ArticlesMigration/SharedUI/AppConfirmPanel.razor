@@ -1,0 +1,72 @@
+@namespace tesisproject.frontend.SharedUI
+
+@if (Visible)
+{
+    <div class="app-confirm-panel__backdrop" @onclick="HandleBackdropClickAsync">
+        <div class="app-confirm-panel app-confirm-panel--modal @GetSizeClass() @Class" @onclick:stopPropagation="true">
+            <div class="app-confirm-panel__body">
+                <div class="app-confirm-panel__header">
+                    <div>
+                        @if (!string.IsNullOrWhiteSpace(Eyebrow))
+                        {
+                            <div class="app-confirm-panel__eyebrow">@Eyebrow</div>
+                        }
+                        <div class="app-confirm-panel__title">@Title</div>
+                    </div>
+                    <button type="button" class="app-confirm-panel__close" @onclick="OnCancel" aria-label="Cerrar">×</button>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(Message))
+                {
+                    <div class="app-confirm-panel__message">@Message</div>
+                }
+
+                @if (ChildContent is not null)
+                {
+                    <div class="app-confirm-panel__content">
+                        @ChildContent
+                    </div>
+                }
+            </div>
+
+            <div class="app-confirm-panel__actions">
+                @if (CancelText != string.Empty)
+                {
+                    <button class="app-confirm-panel__button app-confirm-panel__button--secondary" @onclick="OnCancel">@(CancelText ?? "Cancelar")</button>
+                }
+                <button class="app-confirm-panel__button app-confirm-panel__button--primary" @onclick="OnConfirm">@(ConfirmText ?? "Confirmar")</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Eyebrow { get; set; } = "Confirmación requerida";
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public string? ConfirmText { get; set; }
+    [Parameter] public string? CancelText { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public string? Class { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string Size { get; set; } = "md";
+
+    private string GetSizeClass()
+        => Size?.ToLowerInvariant() switch
+        {
+            "sm" => "app-confirm-panel--sm",
+            "lg" => "app-confirm-panel--lg",
+            "xl" => "app-confirm-panel--xl",
+            _ => "app-confirm-panel--md"
+        };
+
+    private async Task HandleBackdropClickAsync()
+    {
+        if (OnCancel.HasDelegate)
+        {
+            await OnCancel.InvokeAsync();
+        }
+    }
+}

@@ -1,0 +1,11 @@
+@page "/management/area-tecnica-review-staging"
+@page "/scientific-production/area-tecnica-review-staging"
+@attribute [Authorize(Roles = "Admin,WorkflowReviewerAreaTecnica,WorkflowProcessorAreaTecnica")]
+
+<tesisproject.frontend.Features.BulkImport.Components.ReviewStagingHost BatchId="@BatchId"
+                                                                       ContextKey="area-tecnica" />
+
+@code {
+    [SupplyParameterFromQuery(Name = "batchId")]
+    public int? BatchId { get; set; }
+}

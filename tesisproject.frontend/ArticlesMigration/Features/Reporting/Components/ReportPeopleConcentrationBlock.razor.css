@@ -1,0 +1,126 @@
+.reports-dw-concentration-block {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 0.72rem;
+    padding: 0.78rem;
+    border: 1px solid rgba(0, 54, 56, 0.1);
+    border-radius: 1rem;
+    background:
+        linear-gradient(135deg, rgba(49, 54, 71, 0.045), rgba(64, 138, 113, 0.055)),
+        rgba(255, 255, 255, 0.62);
+}
+
+.reports-dw-concentration-block__heading {
+    margin: 0;
+}
+
+.reports-dw-concentration-block__note {
+    width: fit-content;
+    max-width: 100%;
+    margin: -0.12rem 0 0;
+}
+
+.reports-dw-concentration-block__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.72rem;
+    align-items: stretch;
+}
+
+.reports-dw-concentration-card {
+    min-height: 17rem;
+    padding: 0.82rem;
+    border-radius: 0.88rem;
+}
+
+.reports-dw-concentration-card--fields {
+    grid-column: 1 / -1;
+    min-height: 19rem;
+}
+
+.reports-dw-scroll-panel {
+    min-height: 0;
+    max-height: 13.2rem;
+    overflow: auto;
+    padding-right: 0.16rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(5, 80, 82, 0.42) rgba(245, 247, 248, 0.8);
+}
+
+.reports-dw-scroll-panel::-webkit-scrollbar,
+.reports-dw-table-wrap--scrollable::-webkit-scrollbar {
+    width: 0.48rem;
+    height: 0.48rem;
+}
+
+.reports-dw-scroll-panel::-webkit-scrollbar-thumb,
+.reports-dw-table-wrap--scrollable::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(5, 80, 82, 0.42);
+}
+
+.reports-dw-scroll-panel::-webkit-scrollbar-track,
+.reports-dw-table-wrap--scrollable::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: rgba(245, 247, 248, 0.8);
+}
+
+.reports-dw-table-wrap--scrollable {
+    max-height: 15.5rem;
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(5, 80, 82, 0.42) rgba(245, 247, 248, 0.8);
+}
+
+::deep .reports-dw-concentration-card .reports-dw-chart-card__header {
+    gap: 0.62rem;
+    margin-bottom: 0.55rem;
+}
+
+::deep .reports-dw-concentration-card .reports-dw-chart-card__header > span {
+    width: 2.05rem;
+    height: 2.05rem;
+    border-radius: 0.72rem;
+}
+
+::deep .reports-dw-concentration-card h2 {
+    font-size: 0.98rem;
+}
+
+::deep .reports-dw-concentration-card p {
+    font-size: 0.72rem;
+    line-height: 1.36;
+}
+
+::deep .reports-dw-concentration-card .reports-dw-bars {
+    gap: 0.52rem;
+}
+
+::deep .reports-dw-concentration-card .reports-dw-bar-row {
+    grid-template-columns: minmax(8rem, 13rem) minmax(8rem, 1fr) 3.2rem;
+    min-height: 2rem;
+}
+
+@media (max-width: 1100px) {
+    .reports-dw-concentration-block__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .reports-dw-concentration-card--fields {
+        grid-column: auto;
+    }
+}
+
+@media (max-width: 700px) {
+    .reports-dw-concentration-block {
+        padding: 0.62rem;
+    }
+
+    .reports-dw-scroll-panel {
+        max-height: 14rem;
+    }
+
+    ::deep .reports-dw-concentration-card .reports-dw-bar-row {
+        grid-template-columns: minmax(7rem, 1fr) minmax(7rem, 1fr) 3rem;
+    }
+}

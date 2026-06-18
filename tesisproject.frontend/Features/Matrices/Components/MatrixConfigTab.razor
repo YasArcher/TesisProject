@@ -1,0 +1,523 @@
+﻿@using Microsoft.AspNetCore.Components
+@using System.Linq
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Table
+@using tesisproject.shared.DTOs.Matrices.Response
+@using tesisproject.shared.DTOs.Catalog.ResearchCategory.Response
+
+<div class="w-full h-full min-h-0 flex flex-col gap-4 p-6 overflow-hidden">
+    <div class="border-b border-primary pb-3 shrink-0">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div class="flex items-start gap-3 min-w-0">
+                <div class="rounded-lg bg-primary-subtle p-2 shrink-0">
+                    <svg class="h-5 w-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                </div>
+
+                <div class="min-w-0">
+                    <h3 class="text-lg font-bold text-foreground">Informe plano</h3>
+                    <p class="mt-1 text-xs text-muted">
+                        Vista resumida de cómo se interpreta la matriz de proyectos.
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 shrink-0">
+                <ActionButton Text="Recargar informe"
+                              Execute="HandleReloadClick"
+                              Intent="ButtonIntent.Info"
+                              Variant="ButtonVariant.Filled"
+                              Size="ButtonSize.Sm"
+                              Disabled="@IsLoading" />
+
+                @if (IsLoading)
+                {
+                    <div class="flex items-center gap-2 rounded-lg border border-primary-light bg-primary-subtle px-3 py-2">
+                        <div class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-primary border-r-transparent"></div>
+                        <span class="text-xs font-medium text-primary">Cargando...</span>
+                    </div>
+                }
+
+                @if (CategoryTree is not null && CategoryTree.Count > 0)
+                {
+                    <div class="flex items-center gap-2 rounded-lg border border-secondary/20 bg-secondary-subtle px-3 py-2">
+                        <svg class="h-4 w-4 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                        </svg>
+                        <span class="text-xs text-foreground">
+                            <strong class="font-semibold text-secondary">@CategoryTree.Count</strong>
+                            <span class="text-muted">categorías raíz</span>
+                        </span>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="rounded-xl border border-error bg-error-subtle p-4 shrink-0">
+            <div class="flex items-start gap-3">
+                <div class="shrink-0 rounded-lg bg-error p-2">
+                    <svg class="h-5 w-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                              clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-semibold text-error">Error al cargar datos</p>
+                    <p class="text-sm text-foreground/80">@ErrorMessage</p>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (IsLoading && (Projects is null || Projects.Count == 0))
+    {
+        <div class="rounded-xl border border-dashed border-primary bg-background p-10 flex-1 min-h-0 flex items-center justify-center">
+            <div class="flex flex-col items-center justify-center gap-4 text-center">
+                <div class="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+                <div>
+                    <p class="text-base font-semibold text-foreground">Cargando informe</p>
+                    <p class="text-sm text-muted">Procesando información de la matriz...</p>
+                </div>
+            </div>
+        </div>
+    }
+    else if (!IsLoading && (Projects is null || Projects.Count == 0) && string.IsNullOrWhiteSpace(ErrorMessage))
+    {
+        <div class="rounded-xl border border-dashed border-border bg-background p-10 text-center flex-1 min-h-0 flex items-center justify-center">
+            <div class="space-y-3">
+                <div class="inline-flex rounded-full bg-muted/10 p-4">
+                    <svg class="h-12 w-12 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-lg font-semibold text-foreground">No hay datos disponibles</p>
+                    <p class="text-sm text-muted">Recarga el informe para visualizar los proyectos.</p>
+                </div>
+            </div>
+        </div>
+    }
+    else if (Projects is not null && Projects.Count > 0)
+    {
+        <div class="overflow-hidden rounded-xl border border-border bg-background shadow-sm flex-1 min-h-0 flex flex-col">
+            <div class="border-b border-border bg-primary-subtle px-4 py-3 shrink-0">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-2 min-w-0">
+                        <svg class="h-5 w-5 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <h4 class="text-sm font-semibold text-foreground">Datos de proyectos</h4>
+                    </div>
+
+                    <div class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-background text-foreground border border-border shrink-0">
+                        @Projects.Count @(Projects.Count == 1 ? "proyecto" : "proyectos")
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 flex-1 min-h-0 overflow-hidden">
+                <div class="w-full h-full min-h-0 overflow-auto">
+                    <DataTable TItem="ProjectFlatReportDTO"
+                               Items="Projects"
+                               Columns="@_columns"
+                               PageSize="1"
+                               Total="@(Projects?.Count ?? 0)"
+                               EmptyText="No hay proyectos en el informe plano." />
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public IReadOnlyList<ProjectFlatReportDTO>? Projects { get; set; }
+    [Parameter] public IReadOnlyList<ResearchCategoryTreeItemDTO>? CategoryTree { get; set; }
+
+    [Parameter, EditorRequired]
+    public EventCallback OnReloadRequested { get; set; }
+
+    private readonly Dictionary<int, ResearchCategoryTreeItemDTO> _categoryById = new();
+    private readonly List<ColumnDef<ProjectFlatReportDTO>> _baseColumns = new();
+    private IReadOnlyList<ColumnDef<ProjectFlatReportDTO>> _columns = Array.Empty<ColumnDef<ProjectFlatReportDTO>>();
+
+    protected override void OnInitialized()
+    {
+        _baseColumns.AddRange(new[]
+        {
+            new ColumnDef<ProjectFlatReportDTO>("Código",              p => p.ProjectCode,                       Width: "120px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("Proyecto",            p => p.ProjectName,                       Width: "260px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("Tipo",                p => p.ProjectTypeName ?? string.Empty,  Width: "160px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("Estado",              p => p.ProjectStateName ?? string.Empty, Width: "140px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("Convocatoria",        p => p.ConvocationName ?? string.Empty,  Width: "200px", Sortable: true),
+
+            new ColumnDef<ProjectFlatReportDTO>("F. Aprobación",       p => FormatDate(p.ApprovalDate),         Width: "120px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("F. Inicio",           p => FormatDate(p.StartDate),            Width: "120px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("Duración (m)",        p => p.DurationInMonths,                 Width: "90px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("F. Tentativa Fin",    p => FormatDate(p.TentativeEndDate),     Width: "140px", Sortable: true),
+            new ColumnDef<ProjectFlatReportDTO>("F. Real Fin",         p => FormatDate(p.RealEndDate),          Width: "140px", Sortable: true),
+
+            new ColumnDef<ProjectFlatReportDTO>("Facultad",            p => p.FacultyName ?? string.Empty,      Width: "220px", Sortable: true),
+
+            new ColumnDef<ProjectFlatReportDTO>("Coordinador",         p => p.CoordinatorName ?? string.Empty,  Width: "220px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Email Coord.",        p => p.CoordinatorEmail ?? string.Empty, Width: "220px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Teléfono Coord.",     p => p.CoordinatorPhone ?? string.Empty, Width: "160px", Sortable: false),
+
+            new ColumnDef<ProjectFlatReportDTO>("Presup. Inicial",     p => GetBudgetInitialSummary(p),         Width: "180px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Tipo Financiamiento", p => GetBudgetFundingTypesSummary(p),    Width: "200px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Presup. Certificado", p => GetBudgetCertifiedSummary(p),       Width: "180px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Presup. Ejecutado",   p => GetBudgetExecutedSummary(p),        Width: "180px", Sortable: false),
+
+            new ColumnDef<ProjectFlatReportDTO>("Productos (Títulos)", p => GetProductTitlesSummary(p),         Width: "220px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Productos (Tipos)",   p => GetProductTypesSummary(p),          Width: "200px", Sortable: false),
+
+            new ColumnDef<ProjectFlatReportDTO>("Nombres Externos",       p => GetExternalNamesSummary(p),        Width: "220px", Sortable: false),
+            new ColumnDef<ProjectFlatReportDTO>("Instituciones Externas", p => GetExternalInstitutionsSummary(p), Width: "220px", Sortable: false),
+
+            new ColumnDef<ProjectFlatReportDTO>("Investigadores SENESCYT", p => GetSenescytNamesSummary(p),     Width: "260px", Sortable: false)
+        });
+
+        _columns = _baseColumns.ToList();
+    }
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        BuildCategoryLookups();
+
+        var dynamicCategoryColumns = BuildCategoryColumns().ToList();
+        var dynamicObjectiveColumns = BuildObjectiveColumns().ToList();
+
+        var allColumns = new List<ColumnDef<ProjectFlatReportDTO>>(_baseColumns);
+        allColumns.AddRange(dynamicCategoryColumns);
+        allColumns.AddRange(dynamicObjectiveColumns);
+
+        _columns = allColumns;
+    }
+
+    private async Task HandleReloadClick()
+    {
+        if (OnReloadRequested.HasDelegate)
+            await OnReloadRequested.InvokeAsync();
+    }
+
+    private void BuildCategoryLookups()
+    {
+        _categoryById.Clear();
+
+        if (CategoryTree is null || CategoryTree.Count == 0)
+            return;
+
+        foreach (var root in CategoryTree)
+        {
+            BuildCategoryMapsRecursive(root);
+        }
+    }
+
+    private void BuildCategoryMapsRecursive(ResearchCategoryTreeItemDTO node)
+    {
+        _categoryById[node.Id] = node;
+
+        if (node.Children is null)
+            return;
+
+        foreach (var child in node.Children)
+        {
+            BuildCategoryMapsRecursive(child);
+        }
+    }
+
+    private IEnumerable<ColumnDef<ProjectFlatReportDTO>> BuildCategoryColumns()
+    {
+        if (_categoryById.Count == 0)
+            yield break;
+
+        var typeInfos = _categoryById.Values
+            .GroupBy(n => n.ResearchCategoryTypeId)
+            .Select(g => new
+            {
+                TypeId = g.Key,
+                TypeName = g.First().ResearchCategoryTypeName
+            })
+            .OrderBy(x => x.TypeId);
+
+        foreach (var type in typeInfos)
+        {
+            var localTypeId = type.TypeId;
+            var header = string.IsNullOrWhiteSpace(type.TypeName)
+                ? $"Tipo {localTypeId}"
+                : type.TypeName;
+
+            yield return new ColumnDef<ProjectFlatReportDTO>(
+                header,
+                p => GetCategoriesForTypeSummary(p, localTypeId),
+                Width: "260px",
+                Sortable: false
+            );
+        }
+    }
+
+    private string GetCategoriesForTypeSummary(ProjectFlatReportDTO project, int typeId)
+    {
+        if (project.ResearchCategories is null || project.ResearchCategories.Count == 0)
+            return "-";
+
+        var categoryIds = project.ResearchCategories
+            .Select(rc => rc.ResearchCategoryId)
+            .Distinct()
+            .ToList();
+
+        if (categoryIds.Count == 0)
+            return "-";
+
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var id in categoryIds)
+        {
+            if (!_categoryById.TryGetValue(id, out var leaf))
+                continue;
+
+            foreach (var node in GetCategoryPathToRoot(leaf))
+            {
+                if (node.ResearchCategoryTypeId == typeId &&
+                    !string.IsNullOrWhiteSpace(node.Name))
+                {
+                    names.Add(node.Name);
+                }
+            }
+        }
+
+        return names.Count == 0 ? "-" : string.Join(", ", names);
+    }
+
+    private IEnumerable<ColumnDef<ProjectFlatReportDTO>> BuildObjectiveColumns()
+    {
+        if (Projects is null || Projects.Count == 0)
+            yield break;
+
+        var objectiveTypes = Projects
+            .Where(p => p.Objectives is not null && p.Objectives.Count > 0)
+            .SelectMany(p => p.Objectives!)
+            .GroupBy(o => new { o.ObjectiveTypeId, o.ObjectiveTypeName })
+            .Select(g =>
+            {
+                var typeId = g.Key.ObjectiveTypeId;
+
+                var maxCountForType = Projects
+                    .Where(p => p.Objectives is not null)
+                    .Select(p => p.Objectives!.Count(o => o.ObjectiveTypeId == typeId))
+                    .DefaultIfEmpty(0)
+                    .Max();
+
+                return new
+                {
+                    TypeId = typeId,
+                    TypeName = g.Key.ObjectiveTypeName,
+                    MaxCount = maxCountForType
+                };
+            })
+            .Where(x => x.MaxCount > 0)
+            .OrderBy(x => x.TypeId)
+            .ToList();
+
+        foreach (var objectiveType in objectiveTypes)
+        {
+            var baseLabel = GetObjectiveTypeLabel(objectiveType.TypeId, objectiveType.TypeName);
+
+            for (var idx = 1; idx <= objectiveType.MaxCount; idx++)
+            {
+                var header = $"{baseLabel} {idx}";
+                var localTypeId = objectiveType.TypeId;
+                var localIndex = idx;
+
+                yield return new ColumnDef<ProjectFlatReportDTO>(
+                    header,
+                    p => GetObjectiveText(p, localTypeId, localIndex),
+                    Width: "260px",
+                    Sortable: false
+                );
+            }
+        }
+    }
+
+    private static string GetObjectiveTypeLabel(int typeId, string? defaultName) =>
+        typeId switch
+        {
+            1 => "Objetivo general",
+            2 => "Objetivo específico",
+            _ => string.IsNullOrWhiteSpace(defaultName) ? $"Tipo {typeId}" : defaultName!
+        };
+
+    private string GetObjectiveText(ProjectFlatReportDTO project, int typeId, int index)
+    {
+        if (project.Objectives is null || project.Objectives.Count == 0)
+            return "-";
+
+        var objectives = project.Objectives
+            .Where(o => o.ObjectiveTypeId == typeId)
+            .OrderBy(o => o.ObjectiveId)
+            .ToList();
+
+        if (index <= 0 || index > objectives.Count)
+            return "-";
+
+        var objective = objectives[index - 1];
+        return string.IsNullOrWhiteSpace(objective.Objective) ? "-" : objective.Objective;
+    }
+
+    private static string GetBudgetInitialSummary(ProjectFlatReportDTO project)
+    {
+        if (project.Budgets is null || project.Budgets.Count == 0)
+            return "-";
+
+        var values = project.Budgets
+            .Select(b => b.InitialAmount)
+            .ToList();
+
+        return values.Count == 0
+            ? "-"
+            : string.Join(" | ", values.Select(v => v.ToString("N2")));
+    }
+
+    private static string GetBudgetFundingTypesSummary(ProjectFlatReportDTO project)
+    {
+        if (project.Budgets is null || project.Budgets.Count == 0)
+            return "-";
+
+        var names = project.Budgets
+            .Select(b => b.FundingTypeName ?? string.Empty)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct()
+            .ToList();
+
+        return names.Count == 0 ? "-" : string.Join(" | ", names);
+    }
+
+    private static string GetBudgetCertifiedSummary(ProjectFlatReportDTO project)
+    {
+        if (project.Budgets is null || project.Budgets.Count == 0)
+            return "-";
+
+        var values = project.Budgets
+            .Select(b => b.CertifiedAmount)
+            .ToList();
+
+        return values.Count == 0
+            ? "-"
+            : string.Join(" | ", values.Select(v => v.ToString("N2")));
+    }
+
+    private static string GetBudgetExecutedSummary(ProjectFlatReportDTO project)
+    {
+        if (project.Budgets is null || project.Budgets.Count == 0)
+            return "-";
+
+        var values = project.Budgets
+            .Select(b => b.ExecutedAmount)
+            .ToList();
+
+        return values.Count == 0
+            ? "-"
+            : string.Join(" | ", values.Select(v => v.ToString("N2")));
+    }
+
+    private static string GetProductTitlesSummary(ProjectFlatReportDTO project)
+    {
+        if (project.Products is null || project.Products.Count == 0)
+            return "-";
+
+        var titles = project.Products
+            .Select(p => p.Title)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .ToList();
+
+        return titles.Count == 0 ? "-" : string.Join(" | ", titles);
+    }
+
+    private static string GetProductTypesSummary(ProjectFlatReportDTO project)
+    {
+        if (project.Products is null || project.Products.Count == 0)
+            return "-";
+
+        var types = project.Products
+            .Select(p => p.ProductTypeName ?? string.Empty)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Distinct()
+            .ToList();
+
+        return types.Count == 0 ? "-" : string.Join(" | ", types);
+    }
+
+    private static string GetExternalNamesSummary(ProjectFlatReportDTO project)
+    {
+        if (project.ExternalResearchers is null || project.ExternalResearchers.Count == 0)
+            return "-";
+
+        var names = project.ExternalResearchers
+            .Select(r => r.FullName)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .ToList();
+
+        return names.Count == 0 ? "-" : string.Join(" | ", names);
+    }
+
+    private static string GetExternalInstitutionsSummary(ProjectFlatReportDTO project)
+    {
+        if (project.ExternalResearchers is null || project.ExternalResearchers.Count == 0)
+            return "-";
+
+        var institutions = project.ExternalResearchers
+            .Select(r => r.InstitutionName ?? string.Empty)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct()
+            .ToList();
+
+        return institutions.Count == 0 ? "-" : string.Join(" | ", institutions);
+    }
+
+    private static string GetSenescytNamesSummary(ProjectFlatReportDTO project)
+    {
+        if (project.SenescytMembers is null || project.SenescytMembers.Count == 0)
+            return "-";
+
+        var names = project.SenescytMembers
+            .Select(m => m.FullName)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct()
+            .ToList();
+
+        return names.Count == 0 ? "-" : string.Join(" | ", names);
+    }
+
+    private static string FormatDate(DateTime? date) =>
+        date.HasValue ? date.Value.ToString("yyyy-MM-dd") : "-";
+
+    private IEnumerable<ResearchCategoryTreeItemDTO> GetCategoryPathToRoot(ResearchCategoryTreeItemDTO leaf)
+    {
+        var current = leaf;
+
+        while (current is not null)
+        {
+            yield return current;
+
+            if (current.ParentCategoryId is null)
+                break;
+
+            if (!_categoryById.TryGetValue(current.ParentCategoryId.Value, out var parent))
+                break;
+
+            current = parent;
+        }
+    }
+}

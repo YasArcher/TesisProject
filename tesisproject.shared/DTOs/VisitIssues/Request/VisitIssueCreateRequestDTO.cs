@@ -1,0 +1,21 @@
+﻿using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using tesisproject.shared.Enums;
+
+namespace tesisproject.shared.DTOs.VisitIssues.Request
+{
+    /// <summary>
+    /// Payload to create a new VisitIssue.
+    /// </summary>
+    public class VisitIssueCreateRequestDTO
+    {
+        [Required]
+        public int VisitId { get; set; }
+        [StringLength(4000)]
+        public string? Description { get; set; }
+    }
+}

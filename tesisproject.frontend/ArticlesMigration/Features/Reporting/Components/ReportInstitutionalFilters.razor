@@ -1,0 +1,539 @@
+@using tesisproject.shared.DTOs.Reports
+
+<section class="reports-dw-filter-panel">
+        <div class="reports-dw-filter-panel__header">
+            <div class="reports-dw-filter-panel__headline">
+                <p>Filtros</p>
+                <h2>Segmentación del tablero</h2>
+                <span class="reports-dw-filter-panel__hint">Periodo, contexto, calidad y autoría.</span>
+            </div>
+        </div>
+
+    <div class="reports-dw-filter-health reports-dw-filter-health--drawer">
+        <span>
+            <i class="bi bi-funnel"></i>
+            @ScopeLabel
+        </span>
+        <span>
+            <i class="bi bi-journals"></i>
+            @((Dashboard?.ScientificProduction.TotalArticles ?? 0).ToString("N0")) artículos
+        </span>
+        <span>
+            <i class="bi bi-database"></i>
+            @((Dashboard?.ParticipationSummary.TotalIndexingLinks ?? 0).ToString("N0")) vínculos de indexación
+        </span>
+        <span>
+            <i class="bi bi-clock-history"></i>
+            @LastLoadedLabel
+        </span>
+    </div>
+
+    @if (ShowFilters)
+    {
+        <div class="reports-dw-filter-sections">
+            <details class="reports-dw-filter-section">
+                <summary class="reports-dw-filter-section-title">
+                    <i class="bi bi-search"></i>
+                    <div>
+                        <strong>Búsqueda directa</strong>
+                        <small>Título, DOI y proyecto</small>
+                    </div>
+                    <span class="reports-dw-filter-section-chevron"><i class="bi bi-chevron-down"></i></span>
+                </summary>
+                <div class="reports-dw-filter-grid">
+                    <label>
+                        <span>Título del artículo</span>
+                        <input type="search"
+                               placeholder="Buscar por título"
+                               @bind="_draft.ArticleTitle" />
+                    </label>
+                    <label>
+                        <span>DOI</span>
+                        <input type="search"
+                               placeholder="10.xxxx/..."
+                               @bind="_draft.ArticleDoi" />
+                    </label>
+                    <label>
+                        <span>Nombre de proyecto</span>
+                        <input type="search"
+                               placeholder="Disponible cuando el DW exponga proyecto"
+                               @bind="_draft.ProjectName"
+                               disabled />
+                    </label>
+                </div>
+            </details>
+
+            <details class="reports-dw-filter-section">
+                <summary class="reports-dw-filter-section-title">
+                    <i class="bi bi-calendar-range"></i>
+                    <div>
+                        <strong>Periodo de análisis</strong>
+                        <small>Rango y referencia temporal</small>
+                    </div>
+                    <span class="reports-dw-filter-section-chevron"><i class="bi bi-chevron-down"></i></span>
+                </summary>
+                <div class="reports-dw-filter-grid">
+                    <label>
+                        <span>Referencia temporal de series</span>
+                        <select @bind="_draft.PeriodDateType">
+                            <option value="published">Fecha de publicación</option>
+                            <option value="created">Fecha de registro</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Creación desde</span>
+                        <input type="date" @bind="_draft.CreatedFrom" @bind:format="yyyy-MM-dd" />
+                    </label>
+                    <label>
+                        <span>Creación hasta</span>
+                        <input type="date" @bind="_draft.CreatedTo" @bind:format="yyyy-MM-dd" />
+                    </label>
+                    <label>
+                        <span>Publicación desde</span>
+                        <input type="date" @bind="_draft.PublishedFrom" @bind:format="yyyy-MM-dd" />
+                    </label>
+                    <label>
+                        <span>Publicación hasta</span>
+                        <input type="date" @bind="_draft.PublishedTo" @bind:format="yyyy-MM-dd" />
+                    </label>
+                </div>
+            </details>
+
+            <details class="reports-dw-filter-section">
+                <summary class="reports-dw-filter-section-title">
+                    <i class="bi bi-mortarboard"></i>
+                    <div>
+                        <strong>Contexto institucional</strong>
+                        <small>Estado, línea, facultad y base</small>
+                    </div>
+                    <span class="reports-dw-filter-section-chevron"><i class="bi bi-chevron-down"></i></span>
+                </summary>
+                <div class="reports-dw-filter-grid">
+                    <label>
+                        <span>Periodo académico</span>
+                        <select @bind="_draft.AcademicTerm">
+                            <option value="">Todos</option>
+                            @foreach (var item in Dashboard?.FilterOptions.AcademicTerms ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Estado</span>
+                        <select @bind="_draft.PublicationStatus">
+                            <option value="">Todos</option>
+                            @foreach (var item in Dashboard?.FilterOptions.PublicationStatuses ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Línea de investigación</span>
+                        <select @bind="_draft.ResearchLine">
+                            <option value="">Todas</option>
+                            @foreach (var item in Dashboard?.FilterOptions.ResearchLines ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Facultad</span>
+                        <select @bind="_draft.Faculty">
+                            <option value="">Todas</option>
+                            @foreach (var item in Dashboard?.FilterOptions.Faculties ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Base de datos</span>
+                        <select @bind="_draft.IndexingSource">
+                            <option value="">Todas</option>
+                            @foreach (var item in Dashboard?.FilterOptions.IndexingSources ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                </div>
+            </details>
+
+            <details class="reports-dw-filter-section">
+                <summary class="reports-dw-filter-section-title">
+                    <i class="bi bi-diagram-3"></i>
+                    <div>
+                        <strong>Campos de conocimiento</strong>
+                        <small>Amplio, específico y detallado</small>
+                    </div>
+                    <span class="reports-dw-filter-section-chevron"><i class="bi bi-chevron-down"></i></span>
+                </summary>
+                <div class="reports-dw-filter-grid">
+                    <label>
+                        <span>Campo amplio</span>
+                        <select @bind="_draft.BroadField">
+                            <option value="">Todas</option>
+                            @foreach (var item in Dashboard?.FilterOptions.BroadFields ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Campo específico</span>
+                        <select @bind="_draft.SpecificField">
+                            <option value="">Todas</option>
+                            @foreach (var item in Dashboard?.FilterOptions.SpecificFields ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Campo detallado</span>
+                        <select @bind="_draft.DetailedField">
+                            <option value="">Todas</option>
+                            @foreach (var item in Dashboard?.FilterOptions.DetailedFields ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                </div>
+            </details>
+
+            <details class="reports-dw-filter-section">
+                <summary class="reports-dw-filter-section-title">
+                    <i class="bi bi-journal-richtext"></i>
+                    <div>
+                        <strong>Revista y calidad editorial</strong>
+                        <small>Revista, cuartil y acceso abierto</small>
+                    </div>
+                    <span class="reports-dw-filter-section-chevron"><i class="bi bi-chevron-down"></i></span>
+                </summary>
+                <div class="reports-dw-filter-grid">
+                    <label>
+                        <span>Revista</span>
+                        <select @bind="_draft.VenueName">
+                            <option value="">Todos</option>
+                            @foreach (var item in Dashboard?.FilterOptions.Venues ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Tipo de publicación</span>
+                        <select @bind="_draft.VenueType">
+                            <option value="">Todos</option>
+                            @foreach (var item in Dashboard?.FilterOptions.VenueTypes ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Año artículo</span>
+                        <select @bind="_draft.ArticleYear">
+                            <option value="">Todos</option>
+                            @foreach (var item in Dashboard?.FilterOptions.ArticleYears ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Mes</span>
+                        <select @bind="_draft.ArticleMonth">
+                            <option value="">Todos</option>
+                            @foreach (var item in Dashboard?.FilterOptions.ArticleMonths ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Cuartil</span>
+                        <select @bind="_draft.Quartile">
+                            <option value="">Todos</option>
+                            @foreach (var item in Dashboard?.FilterOptions.Quartiles ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Acceso abierto</span>
+                        <select @bind="_draft.IsOpenAccess">
+                            <option value="">Todos</option>
+                            <option value="true">Open Access</option>
+                            <option value="false">No Open Access</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Resultado de proyecto</span>
+                        <select @bind="_draft.IsProjectResult">
+                            <option value="">Todos</option>
+                            <option value="true">Solo resultado de proyecto</option>
+                            <option value="false">Excluir resultado de proyecto</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Interculturalidad</span>
+                        <select @bind="_draft.HasInterculturalComponent">
+                            <option value="">Todos</option>
+                            <option value="true">Con componente intercultural</option>
+                            <option value="false">Sin componente intercultural</option>
+                        </select>
+                    </label>
+                </div>
+            </details>
+
+            <details class="reports-dw-filter-section">
+                <summary class="reports-dw-filter-section-title">
+                    <i class="bi bi-people"></i>
+                    <div>
+                        <strong>Participación autoral</strong>
+                        <small>Filtra toda la reportería por autor, coautor, filiación o rol</small>
+                    </div>
+                    <span class="reports-dw-filter-section-chevron"><i class="bi bi-chevron-down"></i></span>
+                </summary>
+                <div class="reports-dw-filter-grid">
+                    <label>
+                        <span>Autor en el reporte</span>
+                        <input type="search"
+                               list="reports-author-options"
+                               placeholder="Nombre del autor"
+                               @bind="_draft.AuthorName" />
+                    </label>
+                    <label>
+                        <span>Coautor relacionado</span>
+                        <input type="search"
+                               list="reports-author-options"
+                               placeholder="Nombre del coautor"
+                               @bind="_draft.CoauthorName" />
+                    </label>
+                    <label>
+                        <span>Filiación institucional</span>
+                        <select @bind="_draft.AuthorAffiliation">
+                            <option value="">Todas</option>
+                            @foreach (var item in Dashboard?.FilterOptions.Affiliations ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>Tipo de participación</span>
+                        <select @bind="_draft.ParticipantType">
+                            <option value="">Todos</option>
+                            @foreach (var item in Dashboard?.FilterOptions.ParticipantTypes ?? new())
+                            {
+                                <option value="@item">@item</option>
+                            }
+                        </select>
+                    </label>
+                    <label>
+                        <span>ORCID</span>
+                        <select @bind="_draft.HasOrcid">
+                            <option value="">Todos</option>
+                            <option value="true">Con ORCID</option>
+                            <option value="false">Sin ORCID</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>Alcance de autoría</span>
+                        <select @bind="_draft.OnlyPrimaryAuthors">
+                            <option value="">Todos los roles</option>
+                            <option value="true">Solo autor principal</option>
+                        </select>
+                    </label>
+                </div>
+
+                @if ((Dashboard?.FilterOptions.Authors?.Count ?? 0) > 0)
+                {
+                    <datalist id="reports-author-options">
+                        @foreach (var item in Dashboard?.FilterOptions.Authors ?? new())
+                        {
+                            <option value="@item"></option>
+                        }
+                    </datalist>
+                }
+            </details>
+        </div>
+
+        <div class="reports-dw-filter-panel__actions reports-dw-filter-panel__actions--footer">
+            <button class="reports-dw-filter-button reports-dw-filter-button--ghost" type="button" @onclick="OnToggleFilters" disabled="@IsBusy">
+                <i class="bi bi-sliders"></i>
+                Cerrar
+            </button>
+            <button class="reports-dw-filter-button reports-dw-filter-button--ghost" type="button" @onclick="ClearFiltersAsync" disabled="@IsBusy">
+                <i class="bi bi-eraser"></i>
+                Limpiar
+            </button>
+            <button class="reports-dw-filter-button" type="button" @onclick="ApplyFiltersAsync" disabled="@IsBusy">
+                <i class="@(IsRefreshing ? "bi bi-arrow-repeat" : "bi bi-funnel")"></i>
+                @(IsRefreshing ? "Aplicando..." : "Aplicar filtros")
+            </button>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public InstitutionalReportingFilterDto Filter { get; set; } = new();
+    [Parameter] public InstitutionalReportingDashboardDto? Dashboard { get; set; }
+    [Parameter] public bool ShowFilters { get; set; }
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public bool IsRefreshing { get; set; }
+    [Parameter] public string ScopeLabel { get; set; } = "Vista general institucional";
+    [Parameter] public string DataPulseLabel { get; set; } = string.Empty;
+    [Parameter] public string LastLoadedLabel { get; set; } = "Sin lectura reciente";
+    [Parameter] public EventCallback OnToggleFilters { get; set; }
+    [Parameter] public EventCallback OnClearFilters { get; set; }
+    [Parameter] public EventCallback OnApplyFilters { get; set; }
+
+    private InstitutionalReportingFilterDto _draft = new();
+    private string? _lastFilterSnapshot;
+
+    protected override void OnParametersSet()
+    {
+        var snapshot = BuildFilterSnapshot(Filter);
+        if (string.Equals(snapshot, _lastFilterSnapshot, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _lastFilterSnapshot = snapshot;
+        _draft = CloneFilter(Filter);
+    }
+
+    private async Task ApplyFiltersAsync()
+    {
+        SyncDraftToFilter();
+        await OnApplyFilters.InvokeAsync();
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        _draft = new InstitutionalReportingFilterDto();
+        SyncDraftToFilter();
+        await OnClearFilters.InvokeAsync();
+    }
+
+    private void SyncDraftToFilter()
+    {
+        Filter.CreatedFrom = _draft.CreatedFrom;
+        Filter.CreatedTo = _draft.CreatedTo;
+        Filter.PublishedFrom = _draft.PublishedFrom;
+        Filter.PublishedTo = _draft.PublishedTo;
+        Filter.ArticleTitle = Normalize(_draft.ArticleTitle);
+        Filter.ArticleDoi = Normalize(_draft.ArticleDoi);
+        Filter.ProjectName = Normalize(_draft.ProjectName);
+        Filter.AcademicTerm = Normalize(_draft.AcademicTerm);
+        Filter.PublicationStatus = Normalize(_draft.PublicationStatus);
+        Filter.ResearchLine = Normalize(_draft.ResearchLine);
+        Filter.Faculty = Normalize(_draft.Faculty);
+        Filter.IndexingSource = Normalize(_draft.IndexingSource);
+        Filter.BroadField = Normalize(_draft.BroadField);
+        Filter.SpecificField = Normalize(_draft.SpecificField);
+        Filter.DetailedField = Normalize(_draft.DetailedField);
+        Filter.VenueName = Normalize(_draft.VenueName);
+        Filter.VenueType = Normalize(_draft.VenueType);
+        Filter.ArticleYear = _draft.ArticleYear;
+        Filter.ArticleMonth = Normalize(_draft.ArticleMonth);
+        Filter.Quartile = Normalize(_draft.Quartile);
+        Filter.IsOpenAccess = _draft.IsOpenAccess;
+        Filter.IsProjectResult = _draft.IsProjectResult;
+        Filter.HasInterculturalComponent = _draft.HasInterculturalComponent;
+        Filter.PeriodDateType = NormalizePeriodDateType(_draft.PeriodDateType);
+        Filter.AuthorName = Normalize(_draft.AuthorName);
+        Filter.AuthorAffiliation = Normalize(_draft.AuthorAffiliation);
+        Filter.ParticipantType = Normalize(_draft.ParticipantType);
+        Filter.HasOrcid = _draft.HasOrcid;
+        Filter.OnlyPrimaryAuthors = NormalizePrimaryAuthorFilter(_draft.OnlyPrimaryAuthors);
+        Filter.CoauthorName = Normalize(_draft.CoauthorName);
+        _lastFilterSnapshot = BuildFilterSnapshot(Filter);
+    }
+
+    private static InstitutionalReportingFilterDto CloneFilter(InstitutionalReportingFilterDto source)
+    {
+        return new InstitutionalReportingFilterDto
+        {
+            CreatedFrom = source.CreatedFrom,
+            CreatedTo = source.CreatedTo,
+            PublishedFrom = source.PublishedFrom,
+            PublishedTo = source.PublishedTo,
+            ArticleTitle = source.ArticleTitle,
+            ArticleDoi = source.ArticleDoi,
+            ProjectName = source.ProjectName,
+            AcademicTerm = source.AcademicTerm,
+            PublicationStatus = source.PublicationStatus,
+            ResearchLine = source.ResearchLine,
+            Faculty = source.Faculty,
+            IndexingSource = source.IndexingSource,
+            BroadField = source.BroadField,
+            SpecificField = source.SpecificField,
+            DetailedField = source.DetailedField,
+            VenueName = source.VenueName,
+            VenueType = source.VenueType,
+            ArticleYear = source.ArticleYear,
+            ArticleMonth = source.ArticleMonth,
+            Quartile = source.Quartile,
+            IsOpenAccess = source.IsOpenAccess,
+            IsProjectResult = source.IsProjectResult,
+            HasInterculturalComponent = source.HasInterculturalComponent,
+            PeriodDateType = NormalizePeriodDateType(source.PeriodDateType),
+            AuthorName = source.AuthorName,
+            AuthorAffiliation = source.AuthorAffiliation,
+            ParticipantType = source.ParticipantType,
+            HasOrcid = source.HasOrcid,
+            OnlyPrimaryAuthors = source.OnlyPrimaryAuthors,
+            CoauthorName = source.CoauthorName
+        };
+    }
+
+    private static string? Normalize(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string NormalizePeriodDateType(string? value)
+        => string.Equals(value, "created", StringComparison.OrdinalIgnoreCase) ? "created" : "published";
+
+    private static bool? NormalizePrimaryAuthorFilter(bool? value)
+        => value == true ? true : null;
+
+    private static string BuildFilterSnapshot(InstitutionalReportingFilterDto filter)
+        => string.Join("|",
+            filter.CreatedFrom?.ToString("yyyy-MM-dd"),
+            filter.CreatedTo?.ToString("yyyy-MM-dd"),
+            filter.PublishedFrom?.ToString("yyyy-MM-dd"),
+            filter.PublishedTo?.ToString("yyyy-MM-dd"),
+            filter.ArticleTitle,
+            filter.ArticleDoi,
+            filter.ProjectName,
+            filter.AcademicTerm,
+            filter.PublicationStatus,
+            filter.ResearchLine,
+            filter.Faculty,
+            filter.IndexingSource,
+            filter.BroadField,
+            filter.SpecificField,
+            filter.DetailedField,
+            filter.VenueName,
+            filter.VenueType,
+            filter.ArticleYear?.ToString(),
+            filter.ArticleMonth,
+            filter.Quartile,
+            filter.IsOpenAccess?.ToString(),
+            filter.IsProjectResult?.ToString(),
+            filter.HasInterculturalComponent?.ToString(),
+            filter.PeriodDateType,
+            filter.AuthorName,
+            filter.AuthorAffiliation,
+            filter.ParticipantType,
+            filter.HasOrcid?.ToString(),
+            filter.OnlyPrimaryAuthors?.ToString(),
+            filter.CoauthorName);
+}

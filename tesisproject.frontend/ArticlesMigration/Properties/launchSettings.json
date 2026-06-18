@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "tesisproject.frontend": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": true,
+      "launchUrl": "login",
+      "applicationUrl": "http://localhost:5189;https://localhost:7189",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

@@ -1,0 +1,61 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using tesisproject.backend.Identity;
+using tesisproject.backend.Services.Interfaces;
+using tesisproject.shared.DTOs.Auth;
+
+namespace tesisproject.backend.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController : ControllerBase
+{
+    private readonly IAuthService _auth;
+
+    public AuthController(IAuthService auth)
+    {
+        _auth = auth;
+    }
+
+    [Authorize(Policy = AppPolicies.SecurityAdministration)]
+    [HttpPost("register")]
+    public async Task<ActionResult<LoguinResponse>> Register(RegisterUserRequest dto)
+        => Ok(await _auth.RegisterAsync(dto));
+
+    [AllowAnonymous]
+    [HttpPost("login")]
+    public async Task<ActionResult<LoguinResponse>> Login(LoguinRequest dto)
+        => Ok(await _auth.LoginAsync(dto));
+
+    [Authorize(Policy = AppPolicies.AuthenticatedUser)]
+    [HttpGet("me")]
+    public async Task<IActionResult> Me()
+    {
+        try
+        {
+            return Ok(await _auth.MeAsync(User));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized(new { message = "La sesión actual no es válida o no está autenticada." });
+        }
+    }
+
+    [Authorize(Policy = AppPolicies.AuthenticatedUser)]
+    [HttpPost("accept-terms")]
+    public async Task<IActionResult> AcceptTerms([FromBody] AcceptTermsRequest request, CancellationToken ct)
+    {
+        try
+        {
+            return Ok(await _auth.AcceptTermsAsync(User, request, ct));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Unauthorized(new { message = "La sesión actual no es válida o no está autenticada." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+}

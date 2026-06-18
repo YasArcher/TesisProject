@@ -1,0 +1,132 @@
+@using tesisproject.frontend.SharedUI.Charts
+
+<section class="@CardClass">
+    <div class="reports-dw-chart-card__header">
+        <span><i class="@IconClass"></i></span>
+        <div>
+            <small class="reports-dw-chart-card__eyebrow">@Eyebrow</small>
+            <h2>@Title</h2>
+            @if (!string.IsNullOrWhiteSpace(Description))
+            {
+                <p>@Description</p>
+            }
+        </div>
+
+        <div class="reports-dw-chart-card__actions">
+            @if (ShouldRenderChart)
+            {
+                <button type="button"
+                        class="reports-dw-chart-card__expand"
+                        title="Ampliar gráfico"
+                        aria-label="Ampliar gráfico"
+                        @onclick="OpenExpandedView">
+                    <i class="bi bi-arrows-fullscreen"></i>
+                </button>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(Tooltip))
+            {
+                <button type="button"
+                        class="reports-dw-card-tooltip group"
+                        aria-label="Información del gráfico">
+                    <i class="bi bi-info-circle"></i>
+                    <span class="reports-dw-card-tooltip__content">
+                        @Tooltip
+                    </span>
+                </button>
+            }
+        </div>
+    </div>
+
+    @if (!ShouldRenderChart)
+    {
+        <p class="text-xs text-slate-400">@EmptyMessage</p>
+    }
+    else
+    {
+        <div class="reports-dw-chart-card__canvas">
+            <EChart Id="@ChartId"
+                    Height="@Height"
+                    Option="@Option" />
+        </div>
+    }
+</section>
+
+@if (_isExpanded && ShouldRenderChart)
+{
+    <div class="reports-dw-chart-expanded" role="dialog" aria-modal="true" aria-labelledby="@ExpandedTitleId">
+        <button type="button"
+                class="reports-dw-chart-expanded__backdrop"
+                aria-label="Cerrar vista ampliada"
+                @onclick="CloseExpandedView"></button>
+        <section class="reports-dw-chart-expanded__surface">
+            <header>
+                <div>
+                    <small>@Eyebrow</small>
+                    <h2 id="@ExpandedTitleId">@Title</h2>
+                    @if (!string.IsNullOrWhiteSpace(Description))
+                    {
+                        <p>@Description</p>
+                    }
+                </div>
+                <button type="button"
+                        title="Cerrar"
+                        aria-label="Cerrar vista ampliada"
+                        @onclick="CloseExpandedView">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </header>
+
+            <div class="reports-dw-chart-expanded__canvas">
+                <EChart Id="@ExpandedChartId"
+                        Height="68vh"
+                        Option="@Option" />
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter] public string IconClass { get; set; } = "bi bi-bar-chart";
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string Description { get; set; } = string.Empty;
+    [Parameter] public string Tooltip { get; set; } = string.Empty;
+    [Parameter] public bool HasData { get; set; }
+    [Parameter] public string EmptyMessage { get; set; } = "No hay datos disponibles.";
+    [Parameter] public string ChartId { get; set; } = string.Empty;
+    [Parameter] public string Height { get; set; } = "260px";
+    [Parameter] public object? Option { get; set; }
+    [Parameter] public string Accent { get; set; } = "default";
+    [Parameter] public string Density { get; set; } = "standard";
+
+    private bool _isExpanded;
+
+    private string CardClass =>
+        $"reports-dw-chart-card reports-dw-chart-card--chart reports-dw-chart-card--{Accent} reports-dw-chart-card--{Density}";
+
+    private string ExpandedChartId =>
+        string.IsNullOrWhiteSpace(ChartId)
+            ? $"expanded-echart-{GetHashCode()}"
+            : $"{ChartId}-expanded";
+
+    private string ExpandedTitleId =>
+        string.IsNullOrWhiteSpace(ChartId)
+            ? $"expanded-title-{GetHashCode()}"
+            : $"{ChartId}-expanded-title";
+
+    private string Eyebrow => Accent switch
+    {
+        "blue" => "Tendencia",
+        "gold" => "Distribución",
+        "sage" => "Comparativo",
+        "green" => "Cobertura",
+        "ink" => "Resumen",
+        _ => "Visualización"
+    };
+
+    private bool ShouldRenderChart => HasData || Option is not null;
+
+    private void OpenExpandedView() => _isExpanded = true;
+
+    private void CloseExpandedView() => _isExpanded = false;
+}

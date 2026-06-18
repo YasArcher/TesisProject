@@ -1,0 +1,226 @@
+﻿@using Microsoft.AspNetCore.Components
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Table
+@using tesisproject.frontend.SharedUI.SearchInput
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.ExternalResearcher.Response
+
+<Modal Id="@ModalId"
+       Title="Seleccionar externo"
+       IsOpen="@IsOpen"
+       IsOpenChanged="IsOpenChanged"
+       ShowCloseButton="true"
+       CloseOnBackdrop="true"
+       CloseOnEscape="true"
+       Size="ModalSize.Lg"
+       OnClose="HandleClose">
+
+    <ChildContent>
+        <div class="space-y-3">
+            <!-- Search + action -->
+            <div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2 items-start">
+                <SearchInput Value="@search"
+                             ValueChanged="OnSearchChanged"
+                             Placeholder="Buscar por nombre, correo o institución"
+                             AriaLabel="Buscar investigador externo"
+                             Class="w-full"
+                             DebounceMs="150" />
+
+                <ActionButton Text="Nuevo investigador"
+                              Variant="ButtonVariant.Soft"
+                              Size="ButtonSize.Sm"
+                              Class="w-full sm:w-auto inline-flex items-center justify-center rounded-xl px-3 py-2"
+                              Execute="OnCreateNewClicked">
+                    <Icon>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="size-4" viewBox="0 0 24 24" fill="currentColor">
+                            <path fill-rule="evenodd" d="M11 4.5a.75.75 0 0 1 .75.75V11h5.75a.75.75 0 0 1 0 1.5H11.75v5.75a.75.75 0 0 1-1.5 0V12.5H4.5a.75.75 0 0 1 0-1.5h5.75V5.25A.75.75 0 0 1 11 4.5Z" clip-rule="evenodd" />
+                        </svg>
+                    </Icon>
+                </ActionButton>
+            </div>
+
+            <!-- Researchers table -->
+            <div class="max-h-[320px] overflow-y-auto pr-1 border border-border rounded-xl">
+                <DataTable TItem="ExternalResearcherListItemDTO"
+                           Items="FilteredResearchers ?? Enumerable.Empty<ExternalResearcherListItemDTO>()"
+                           Columns="@ResearcherColumns"
+                           RowTemplate="ResearcherRowTemplate"
+                           PageSize="5"
+                           Total="@(FilteredResearchers?.Count() ?? 0)"
+                           EmptyText="No se encontraron investigadores." />
+            </div>
+
+            @if (ShowSelectionValidation && SelectedResearcherId is null)
+            {
+                <p class="text-sm text-[color:var(--color-error)]">
+                    Por favor seleccione un investigador.
+                </p>
+            }
+        </div>
+    </ChildContent>
+
+    <Footer>
+        <div class="flex items-center justify-end gap-2">
+            <ActionButton Text="Cancelar"
+                          Execute="OnCancelClicked"
+                          Intent="ButtonIntent.Neutral"
+                          Variant="ButtonVariant.Ghost"
+                          Size="ButtonSize.Sm"
+                          Class="inline-flex items-center justify-center rounded-xl px-4 py-2" />
+
+            <ActionButton Text="Agregar"
+                          Execute="Submit"
+                          Intent="ButtonIntent.Accept"
+                          Variant="ButtonVariant.Soft"
+                          Size="ButtonSize.Sm"
+                          Class="btn-primary inline-flex items-center justify-center rounded-xl px-4 py-2">
+                <Icon>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="size-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path fill-rule="evenodd"
+                              d="M11 4.5a.75.75 0 0 1 .75.75V11h5.75a.75.75 0 0 1 0 1.5H11.75v5.75a.75.75 0 0 1-1.5 0V12.5H4.5a.75.75 0 0 1 0-1.5h5.75V5.25A.75.75 0 0 1 11 4.5Z"
+                              clip-rule="evenodd" />
+                    </svg>
+                </Icon>
+            </ActionButton>
+        </div>
+    </Footer>
+</Modal>
+
+@code {
+    [Parameter] public string ModalId { get; set; } = "external-researcher-picker-modal";
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    [Parameter] public IEnumerable<ExternalResearcherListItemDTO>? Researchers { get; set; }
+    [Parameter] public EventCallback<int> OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public EventCallback OnCreateNewRequested { get; set; }
+    [Parameter] public int? InitialSelectedResearcherId { get; set; }
+
+    private int? SelectedResearcherId;
+    private string search = string.Empty;
+    private bool ShowSelectionValidation;
+
+    private static readonly IReadOnlyList<ColumnDef<ExternalResearcherListItemDTO>> ResearcherColumns =
+        new[]
+        {
+            new ColumnDef<ExternalResearcherListItemDTO>("", r => r.Id, "3rem", Sortable: false),
+            new ColumnDef<ExternalResearcherListItemDTO>("Nombre", r => r.FullName ?? string.Empty, "16rem"),
+            new ColumnDef<ExternalResearcherListItemDTO>("Correo", r => r.Email ?? string.Empty, "18rem"),
+            new ColumnDef<ExternalResearcherListItemDTO>("Institución", r => r.InstitutionName ?? string.Empty, "18rem"),
+        };
+
+    private IEnumerable<ExternalResearcherListItemDTO>? FilteredResearchers
+    {
+        get
+        {
+            if (Researchers is null)
+                return null;
+
+            if (string.IsNullOrWhiteSpace(search))
+                return Researchers;
+
+            var q = Normalizers.NormalizeForSearch(search);
+
+            return Researchers.Where(r =>
+            {
+                var name = Normalizers.NormalizeForSearch(r.FullName);
+                var email = Normalizers.NormalizeForSearch(r.Email);
+                var inst = Normalizers.NormalizeForSearch(r.InstitutionName);
+
+                return name.Contains(q) || email.Contains(q) || inst.Contains(q);
+            });
+        }
+    }
+
+    private RenderFragment<ExternalResearcherListItemDTO> ResearcherRowTemplate => researcher => @<text>
+        @{
+            var selected = SelectedResearcherId == researcher.Id;
+            var baseCell = "px-4 py-3 text-sm align-middle";
+            var selectedBg = selected ? " bg-primary-subtle" : string.Empty;
+            var cellClass = baseCell + selectedBg;
+        }
+
+        <td class="@cellClass">
+            <button type="button"
+                    class="inline-flex items-center justify-center rounded-full border border-border w-5 h-5 @(selected ? " bg-primary-subtle text-[color:var(--color-uta-header)]" : " bg-background")"
+                    aria-pressed="@selected"
+                    @onclick="() => SelectResearcher(researcher.Id)">
+                @if (selected)
+                {
+                    <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none">
+                        <path stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                              d="M20 6 9 17l-5-5" />
+                    </svg>
+                }
+            </button>
+        </td>
+
+        <td class="@cellClass">
+            @researcher.FullName
+        </td>
+
+        <td class="@($"{cellClass} text-muted")">
+            @researcher.Email
+        </td>
+
+        <td class="@cellClass">
+            @(!string.IsNullOrWhiteSpace(researcher.InstitutionName) ? researcher.InstitutionName : "-")
+        </td>
+    </text>;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen && SelectedResearcherId is null && InitialSelectedResearcherId is not null)
+            SelectedResearcherId = InitialSelectedResearcherId;
+    }
+
+    private void ResetTransientState()
+    {
+        search = string.Empty;
+        ShowSelectionValidation = false;
+        SelectedResearcherId = InitialSelectedResearcherId;
+    }
+
+    private void SelectResearcher(int id)
+    {
+        SelectedResearcherId = id;
+        ShowSelectionValidation = false;
+        StateHasChanged();
+    }
+
+    private Task OnSearchChanged(string value)
+    {
+        search = value;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private async Task Submit()
+    {
+        if (SelectedResearcherId is null)
+        {
+            ShowSelectionValidation = true;
+            return;
+        }
+
+        ShowSelectionValidation = false;
+        await OnSubmit.InvokeAsync(SelectedResearcherId.Value);
+    }
+
+    private async Task OnCancelClicked()
+    {
+        ResetTransientState();
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task HandleClose()
+    {
+        ResetTransientState();
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task OnCreateNewClicked()
+        => await OnCreateNewRequested.InvokeAsync();
+}

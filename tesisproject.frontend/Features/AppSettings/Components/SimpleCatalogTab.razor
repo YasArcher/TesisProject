@@ -1,0 +1,400 @@
+﻿@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.shared.DTOs.Catalog.Common.Response
+
+<div class="h-full min-h-0 flex flex-col p-6 max-w-7xl mx-auto w-full">
+    @if (Loading)
+    {
+        <div class="flex-1 min-h-0 flex items-center justify-center py-12">
+            <div class="text-center space-y-3">
+                <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+                <p class="text-sm text-muted">Cargando catálogos...</p>
+            </div>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(Error))
+    {
+        <div class="shrink-0 rounded-lg border-2 border-error bg-error/5 p-4">
+            <div class="flex items-start gap-3">
+                <svg class="h-5 w-5 text-error flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div class="flex-1">
+                    <h3 class="text-sm font-semibold text-error mb-1">Error al cargar datos</h3>
+                    <p class="text-sm text-error/80">@Error</p>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="flex-1 min-h-0 overflow-y-auto pr-1">
+            <div class="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 items-start">
+                <div class="min-h-0">
+                    <CatalogCard Items="DocumentTypes"
+                                 Title="Tipos de Documento"
+                                 Description="Tipos de documentos asociados a proyectos, visitas y procesos."
+                                 NewButtonText=""
+                                 CountLabelSingular="tipo"
+                                 CountLabelPlural="tipos"
+                                 EmptyTitle="Aún no hay tipos de documento"
+                                 EmptySubtitle="Cree tipos de documento para clasificar los documentos del sistema."
+                                 DeleteConfirmTitle="Eliminar tipo de documento"
+                                 DeleteConfirmMessage="¿Está seguro de que desea eliminar este tipo de documento?"
+                                 DeleteConfirmButtonText="Eliminar"
+                                 DeleteCancelButtonText="Cancelar"
+                                 OnNewRequested="OnNewDocumentTypeRequested"
+                                 OnEditRequested="OnEditDocumentTypeRequested"
+                                 OnDeleteRequested="OnDeleteDocumentTypeRequested">
+
+                        <Icon>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5H5.625Z" />
+                                <path d="M12.971 1.816A5.23 5.23 0 0 1 14.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 0 1 3.434 1.279 9.768 9.768 0 0 0-6.963-6.963Z" />
+                            </svg>
+                        </Icon>
+
+                        <EmptyIcon>
+                            <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </EmptyIcon>
+
+                        <EditIcon>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-pen-icon lucide-file-pen">
+                                <path d="M12.659 22H18a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v9.34" />
+                                <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+                                <path d="M10.378 12.622a1 1 0 0 1 3 3.003L8.36 20.637a2 2 0 0 1-.854.506l-2.867.837a.5.5 0 0 1-.62-.62l.836-2.869a2 2 0 0 1 .506-.853z" />
+                            </svg>
+                        </EditIcon>
+
+                        <DeleteIcon>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-xcorner-icon lucide-file-x-corner">
+                                <path d="M11 22H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v5" />
+                                <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+                                <path d="m15 17 5 5" />
+                                <path d="m20 17-5 5" />
+                            </svg>
+                        </DeleteIcon>
+                    </CatalogCard>
+                </div>
+
+                <div class="min-h-0">
+                    <CatalogCard Items="FundingTypes"
+                                 Title="Tipos de Financiamiento"
+                                 Description="Tipos de financiamiento utilizados para clasificar los presupuestos de proyectos."
+                                 NewButtonText=""
+                                 CountLabelSingular="tipo"
+                                 CountLabelPlural="tipos"
+                                 EmptyTitle="Aún no hay tipos de financiamiento"
+                                 EmptySubtitle="Defina tipos de financiamiento para categorizar la financiación de proyectos."
+                                 DeleteConfirmTitle="Eliminar tipo de financiamiento"
+                                 DeleteConfirmMessage="¿Está seguro de que desea eliminar este tipo de financiamiento?"
+                                 DeleteConfirmButtonText="Eliminar"
+                                 DeleteCancelButtonText="Cancelar"
+                                 OnNewRequested="OnNewFundingTypeRequested"
+                                 OnEditRequested="OnEditFundingTypeRequested"
+                                 OnDeleteRequested="OnDeleteFundingTypeRequested">
+
+                        <Icon>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
+                            </svg>
+                        </Icon>
+
+                        <EmptyIcon>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-icon lucide-file">
+                                <path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z" />
+                                <path d="M14 2v5a1 1 0 0 0 1 1h5" />
+                            </svg>
+                        </EmptyIcon>
+
+                        <EditIcon>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
+                                <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" />
+                            </svg>
+                        </EditIcon>
+
+                        <DeleteIcon>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
+                            </svg>
+                        </DeleteIcon>
+                    </CatalogCard>
+                </div>
+
+                <div class="min-h-0">
+                    <CatalogCard Items="ObjectiveTypes"
+                                 Title="Tipos de Objetivo"
+                                 Description="Tipos de objetivos utilizados en la planificación y seguimiento de proyectos."
+                                 NewButtonText=""
+                                 CountLabelSingular="tipo"
+                                 CountLabelPlural="tipos"
+                                 EmptyTitle="Aún no hay tipos de objetivo"
+                                 EmptySubtitle="Defina tipos de objetivos para estandarizar la planificación de proyectos."
+                                 DeleteConfirmTitle="Eliminar tipo de objetivo"
+                                 DeleteConfirmMessage="¿Está seguro de que desea eliminar este tipo de objetivo?"
+                                 DeleteConfirmButtonText="Eliminar"
+                                 DeleteCancelButtonText="Cancelar"
+                                 OnNewRequested="OnNewObjectiveTypeRequested"
+                                 OnEditRequested="OnEditObjectiveTypeRequested"
+                                 OnDeleteRequested="OnDeleteObjectiveTypeRequested">
+
+                        <Icon>
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6l-8 4 8 4 8-4-8-4z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 14l8 4 8-4" />
+                            </svg>
+                        </Icon>
+
+                        <EmptyIcon>
+                            <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 6l-8 4 8 4 8-4-8-4z" />
+                            </svg>
+                        </EmptyIcon>
+
+                        <EditIcon>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
+                                <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" />
+                            </svg>
+                        </EditIcon>
+
+                        <DeleteIcon>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
+                            </svg>
+                        </DeleteIcon>
+                    </CatalogCard>
+                </div>
+
+                <div class="min-h-0">
+                    <CatalogCard Items="ProjectTypes"
+                                 Title="Tipos de Proyecto"
+                                 Description="Tipos utilizados para clasificar proyectos de investigación e innovación."
+                                 NewButtonText=""
+                                 CountLabelSingular="tipo"
+                                 CountLabelPlural="tipos"
+                                 EmptyTitle="Aún no hay tipos de proyecto"
+                                 EmptySubtitle="Defina tipos de proyectos para clasificar iniciativas de investigación."
+                                 DeleteConfirmTitle="Eliminar tipo de proyecto"
+                                 DeleteConfirmMessage="¿Está seguro de que desea eliminar este tipo de proyecto?"
+                                 DeleteConfirmButtonText="Eliminar"
+                                 DeleteCancelButtonText="Cancelar"
+                                 OnNewRequested="OnNewProjectTypeRequested"
+                                 OnEditRequested="OnEditProjectTypeRequested"
+                                 OnDeleteRequested="OnDeleteProjectTypeRequested">
+
+                        <Icon>
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h4l2-2h6l2 2h4v12H3z" />
+                            </svg>
+                        </Icon>
+
+                        <EmptyIcon>
+                            <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7h4l2-2h6l2 2h4v12H3z" />
+                            </svg>
+                        </EmptyIcon>
+
+                        <EditIcon>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
+                                <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5V8.25a1.5 1.5 0 0 1 1.5-1.5h5.25a.75.75 0 0 0 0-1.5H5.25Z" />
+                            </svg>
+                        </EditIcon>
+
+                        <DeleteIcon>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
+                            </svg>
+                        </DeleteIcon>
+                    </CatalogCard>
+                </div>
+
+                <div class="min-h-0">
+                    <CatalogCard Items="TransactionTypes"
+                                 Title="Tipos de Transacción"
+                                 Description="Tipos de transacciones financieras o administrativas en el sistema."
+                                 NewButtonText=""
+                                 CountLabelSingular="tipo"
+                                 CountLabelPlural="tipos"
+                                 EmptyTitle="Aún no hay tipos de transacción"
+                                 EmptySubtitle="Defina tipos de transacción para presupuestos y seguimiento financiero."
+                                 DeleteConfirmTitle="Eliminar tipo de transacción"
+                                 DeleteConfirmMessage="¿Está seguro de que desea eliminar este tipo de transacción?"
+                                 DeleteConfirmButtonText="Eliminar"
+                                 DeleteCancelButtonText="Cancelar"
+                                 OnNewRequested="OnNewTransactionTypeRequested"
+                                 OnEditRequested="OnEditTransactionTypeRequested"
+                                 OnDeleteRequested="OnDeleteTransactionTypeRequested">
+
+                        <Icon>
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h10" />
+                            </svg>
+                        </Icon>
+
+                        <EmptyIcon>
+                            <svg class="mx-auto h-12 w-12 text-muted/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7h16M4 12h16M4 17h10" />
+                            </svg>
+                        </EmptyIcon>
+
+                        <EditIcon>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path d="M21.731 2.269a2.625 2.625 0 0 0-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 0 0 0-3.712ZM19.513 8.199l-3.712-3.712-8.4 8.4a5.25 5.25 0 0 0-1.32 2.214l-.8 2.685a.75.75 0 0 0 .933.933l2.685-.8a5.25 5.25 0 0 0 2.214-1.32l8.4-8.4Z" />
+                                <path d="M5.25 5.25a3 3 0 0 0-3 3v10.5a3 3 0 0 0 3 3h10.5a3 3 0 0 0 3-3V13.5a.75.75 0 0 0-1.5 0v5.25a1.5 1.5 0 0 1-1.5 1.5H5.25a3 3 0 0 1-3-3V8.25a3 3 0 0 1 3-3h5.25a.75.75 0 0 0 0-1.5H5.25Z" />
+                            </svg>
+                        </EditIcon>
+
+                        <DeleteIcon>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="size-6">
+                                <path fill-rule="evenodd" d="M16.5 4.478v.227a48.816 48.816 0 0 1 3.878.512.75.75 0 1 1-.256 1.478l-.209-.035-1.005 13.07a3 3 0 0 1-2.991 2.77H8.084a3 3 0 0 1-2.991-2.77L4.087 6.66l-.209.035a.75.75 0 0 1-.256-1.478A48.567 48.567 0 0 1 7.5 4.705v-.227c0-1.564 1.213-2.9 2.816-2.951a52.662 52.662 0 0 1 3.369 0c1.603.051 2.815 1.387 2.815 2.951Zm-6.136-1.452a51.196 51.196 0 0 1 3.273 0C14.39 3.05 15 3.684 15 4.478v.113a49.488 49.488 0 0 0-6 0v-.113c0-.794.609-1.428 1.364-1.452Zm-.355 5.945a.75.75 0 1 0-1.5.058l.347 9a.75.75 0 1 0 1.499-.058l-.346-9Zm5.48.058a.75.75 0 1 0-1.498-.058l-.347 9a.75.75 0 0 0 1.5.058l.345-9Z" clip-rule="evenodd" />
+                            </svg>
+                        </DeleteIcon>
+                    </CatalogCard>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@* ===== MODALS (reutilizando CatalogEditModal) ===== *@
+
+<CatalogEditModal Id="document-type-modal"
+                  IsOpen="@DocumentTypeModalOpen"
+                  IsOpenChanged="DocumentTypeModalOpenChanged"
+                  IsEditMode="@IsDocumentTypeEditMode"
+                  IsSaving="@SavingDocumentType"
+                  Error="@DocumentTypeError"
+                  Model="@DocumentTypeEditModel"
+                  NewTitle="Nuevo tipo de documento"
+                  EditTitle="Editar tipo de documento"
+                  OnCancel="OnDocumentTypeCancelRequested"
+                  OnSave="OnDocumentTypeSaveRequested" />
+
+<CatalogEditModal Id="funding-type-modal"
+                  IsOpen="@FundingTypeModalOpen"
+                  IsOpenChanged="FundingTypeModalOpenChanged"
+                  IsEditMode="@IsFundingTypeEditMode"
+                  IsSaving="@SavingFundingType"
+                  Error="@FundingTypeError"
+                  Model="@FundingTypeEditModel"
+                  NewTitle="Nuevo tipo de financiamiento"
+                  EditTitle="Editar tipo de financiamiento"
+                  OnCancel="OnFundingTypeCancelRequested"
+                  OnSave="OnFundingTypeSaveRequested" />
+
+<CatalogEditModal Id="objective-type-modal"
+                  IsOpen="@ObjectiveTypeModalOpen"
+                  IsOpenChanged="ObjectiveTypeModalOpenChanged"
+                  IsEditMode="@IsObjectiveTypeEditMode"
+                  IsSaving="@SavingObjectiveType"
+                  Error="@ObjectiveTypeError"
+                  Model="@ObjectiveTypeEditModel"
+                  NewTitle="Nuevo tipo de objetivo"
+                  EditTitle="Editar tipo de objetivo"
+                  OnCancel="OnObjectiveTypeCancelRequested"
+                  OnSave="OnObjectiveTypeSaveRequested" />
+
+<CatalogEditModal Id="project-type-modal"
+                  IsOpen="@ProjectTypeModalOpen"
+                  IsOpenChanged="ProjectTypeModalOpenChanged"
+                  IsEditMode="@IsProjectTypeEditMode"
+                  IsSaving="@SavingProjectType"
+                  Error="@ProjectTypeError"
+                  Model="@ProjectTypeEditModel"
+                  NewTitle="Nuevo tipo de proyecto"
+                  EditTitle="Editar tipo de proyecto"
+                  OnCancel="OnProjectTypeCancelRequested"
+                  OnSave="OnProjectTypeSaveRequested" />
+
+<CatalogEditModal Id="transaction-type-modal"
+                  IsOpen="@TransactionTypeModalOpen"
+                  IsOpenChanged="TransactionTypeModalOpenChanged"
+                  IsEditMode="@IsTransactionTypeEditMode"
+                  IsSaving="@SavingTransactionType"
+                  Error="@TransactionTypeError"
+                  Model="@TransactionTypeEditModel"
+                  NewTitle="Nuevo tipo de transacción"
+                  EditTitle="Editar tipo de transacción"
+                  OnCancel="OnTransactionTypeCancelRequested"
+                  OnSave="OnTransactionTypeSaveRequested" />
+
+@code {
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string? Error { get; set; }
+
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> DocumentTypes { get; set; } = new List<CatalogListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> FundingTypes { get; set; } = new List<CatalogListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> ObjectiveTypes { get; set; } = new List<CatalogListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> ProjectTypes { get; set; } = new List<CatalogListItemDTO>();
+    [Parameter] public IReadOnlyList<CatalogListItemDTO> TransactionTypes { get; set; } = new List<CatalogListItemDTO>();
+
+    [Parameter] public bool DocumentTypeModalOpen { get; set; }
+    [Parameter] public EventCallback<bool> DocumentTypeModalOpenChanged { get; set; }
+    [Parameter] public bool IsDocumentTypeEditMode { get; set; }
+    [Parameter] public bool SavingDocumentType { get; set; }
+    [Parameter] public string? DocumentTypeError { get; set; }
+    [Parameter] public CatalogDetailDTO DocumentTypeEditModel { get; set; } = new();
+
+    [Parameter] public bool FundingTypeModalOpen { get; set; }
+    [Parameter] public EventCallback<bool> FundingTypeModalOpenChanged { get; set; }
+    [Parameter] public bool IsFundingTypeEditMode { get; set; }
+    [Parameter] public bool SavingFundingType { get; set; }
+    [Parameter] public string? FundingTypeError { get; set; }
+    [Parameter] public CatalogDetailDTO FundingTypeEditModel { get; set; } = new();
+
+    [Parameter] public bool ObjectiveTypeModalOpen { get; set; }
+    [Parameter] public EventCallback<bool> ObjectiveTypeModalOpenChanged { get; set; }
+    [Parameter] public bool IsObjectiveTypeEditMode { get; set; }
+    [Parameter] public bool SavingObjectiveType { get; set; }
+    [Parameter] public string? ObjectiveTypeError { get; set; }
+    [Parameter] public CatalogDetailDTO ObjectiveTypeEditModel { get; set; } = new();
+
+    [Parameter] public bool ProjectTypeModalOpen { get; set; }
+    [Parameter] public EventCallback<bool> ProjectTypeModalOpenChanged { get; set; }
+    [Parameter] public bool IsProjectTypeEditMode { get; set; }
+    [Parameter] public bool SavingProjectType { get; set; }
+    [Parameter] public string? ProjectTypeError { get; set; }
+    [Parameter] public CatalogDetailDTO ProjectTypeEditModel { get; set; } = new();
+
+    [Parameter] public bool TransactionTypeModalOpen { get; set; }
+    [Parameter] public EventCallback<bool> TransactionTypeModalOpenChanged { get; set; }
+    [Parameter] public bool IsTransactionTypeEditMode { get; set; }
+    [Parameter] public bool SavingTransactionType { get; set; }
+    [Parameter] public string? TransactionTypeError { get; set; }
+    [Parameter] public CatalogDetailDTO TransactionTypeEditModel { get; set; } = new();
+
+    [Parameter] public EventCallback OnNewDocumentTypeRequested { get; set; }
+    [Parameter] public EventCallback<int> OnEditDocumentTypeRequested { get; set; }
+    [Parameter] public EventCallback OnDocumentTypeCancelRequested { get; set; }
+    [Parameter] public EventCallback OnDocumentTypeSaveRequested { get; set; }
+    [Parameter] public EventCallback<int> OnDeleteDocumentTypeRequested { get; set; }
+
+    [Parameter] public EventCallback OnNewFundingTypeRequested { get; set; }
+    [Parameter] public EventCallback<int> OnEditFundingTypeRequested { get; set; }
+    [Parameter] public EventCallback OnFundingTypeCancelRequested { get; set; }
+    [Parameter] public EventCallback OnFundingTypeSaveRequested { get; set; }
+    [Parameter] public EventCallback<int> OnDeleteFundingTypeRequested { get; set; }
+
+    [Parameter] public EventCallback OnNewObjectiveTypeRequested { get; set; }
+    [Parameter] public EventCallback<int> OnEditObjectiveTypeRequested { get; set; }
+    [Parameter] public EventCallback OnObjectiveTypeCancelRequested { get; set; }
+    [Parameter] public EventCallback OnObjectiveTypeSaveRequested { get; set; }
+    [Parameter] public EventCallback<int> OnDeleteObjectiveTypeRequested { get; set; }
+
+    [Parameter] public EventCallback OnNewProjectTypeRequested { get; set; }
+    [Parameter] public EventCallback<int> OnEditProjectTypeRequested { get; set; }
+    [Parameter] public EventCallback OnProjectTypeCancelRequested { get; set; }
+    [Parameter] public EventCallback OnProjectTypeSaveRequested { get; set; }
+    [Parameter] public EventCallback<int> OnDeleteProjectTypeRequested { get; set; }
+
+    [Parameter] public EventCallback OnNewTransactionTypeRequested { get; set; }
+    [Parameter] public EventCallback<int> OnEditTransactionTypeRequested { get; set; }
+    [Parameter] public EventCallback OnTransactionTypeCancelRequested { get; set; }
+    [Parameter] public EventCallback OnTransactionTypeSaveRequested { get; set; }
+    [Parameter] public EventCallback<int> OnDeleteTransactionTypeRequested { get; set; }
+}

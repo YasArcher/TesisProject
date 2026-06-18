@@ -1,0 +1,644 @@
+﻿@page "/visits/planner"
+@page "/visits/planner/{Mode}"
+
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.frontend.SharedUI.FilterBar
+@using tesisproject.frontend.SharedUI.SelectInput
+@using tesisproject.frontend.SharedUI.Table
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.DateInput
+@using tesisproject.frontend.Utils
+@using tesisproject.shared.DTOs.Filters
+@using tesisproject.shared.DTOs.Visit.Request
+@using tesisproject.shared.DTOs.Visit.Response
+@using tesisproject.shared.DTOs.External
+
+@inject IVisitClientService VisitService
+@inject IExternalAcademicsClientService ExternalAcademics
+@inject IToastService Toast
+
+<div class="h-full min-h-0 w-full flex flex-col gap-4 p-4 planner-table overflow-hidden">
+
+    <!-- Filtros + Selector / Acciones -->
+    <section class="shrink-0 min-w-0 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div class="flex-1 min-w-[280px]">
+            <FilterBar Config="@_filterConfig"
+                       OnApply="@HandleApplyFilters"
+                       OnClear="@HandleClearFilters"
+                       OnSearchInstant="@HandleSearchInstant" />
+        </div>
+
+        <div class="shrink-0 flex flex-wrap items-center gap-2">
+            @if (IsPendingMode)
+            {
+                <span class="text-xs font-semibold text-muted whitespace-nowrap">Modo: Editor</span>
+            }
+            else
+            {
+                <div class="w-[220px]">
+                    <DateInput Label="Hasta la fecha"
+                               Value="@_filterExecutionDate"
+                               ValueChanged="@OnFilterExecutionDateChanged"
+                               Required="false" />
+                </div>
+
+                <span class="text-xs text-muted whitespace-nowrap">
+                    @(_filterExecutionDate is null ? "Mostrando hasta hoy" : "")
+                </span>
+            }
+
+            <div class="text-xs text-muted whitespace-nowrap">
+                Sel: <span class="font-semibold text-foreground">@_selectedProjectIds.Count</span>
+            </div>
+
+            <ActionButton Text="@(IsPendingMode ? "Replanificar" : "Planificar")"
+                          Execute="@OpenPlanModal"
+                          Intent="ButtonIntent.Accept"
+                          Variant="ButtonVariant.Filled"
+                          Size="ButtonSize.Sm"
+                          Disabled="@(isLoading || _selectedProjectIds.Count == 0)" />
+
+            <ActionButton Text="Limpiar"
+                          Execute="@ClearSelection"
+                          Intent="ButtonIntent.Accept"
+                          Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Sm"
+                          Disabled="@(isLoading || _selectedProjectIds.Count == 0)" />
+        </div>
+    </section>
+
+    <!-- Tabla -->
+    <div class="flex-1 min-h-0 min-w-0 rounded-lg border border-border bg-background overflow-hidden">
+        <div class="h-full min-h-0 min-w-0 overflow-auto">
+            <DataTable TItem="VisitPlannedForExecutionListDTO"
+                       Items="filteredItems"
+                       Columns="columns"
+                       PageSize="_pageSize"
+                       Total="filteredItems.Count"
+                       CurrentPage="_page"
+                       OnPageChanged="OnPageChanged"
+                       EmptyText="@GetEmptyStateDescription()">
+
+                <RowTemplate Context="v">
+                    @{
+                        var selected = _selectedProjectIds.Contains(v.ProjectId);
+                        var selCls = selected ? "row-selected" : "";
+                    }
+
+                    <!-- Sel -->
+                    <td class="cell cell-sel @selCls">
+                        <input type="checkbox"
+                               checked="@selected"
+                               @onclick:stopPropagation="true"
+                               @onchange="@(_ => ToggleSelected(v.ProjectId))" />
+                    </td>
+
+                    <!-- # -->
+                    <td class="cell cell-num @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                        @GetRowNumberForCurrentPage(v)
+                    </td>
+
+                    <!-- Código -->
+                    <td class="cell cell-code @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                        @v.ProjectCode
+                    </td>
+
+                    <!-- Proyecto -->
+                    <td class="cell cell-proj @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                        <span class="truncate block" title="@v.ProjectName">
+                            @v.ProjectName
+                        </span>
+                    </td>
+
+                    <!-- N° visita -->
+                    <td class="cell cell-visit @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                        @v.VisitNumber
+                    </td>
+
+                    <!-- Facultad -->
+                    <td class="cell cell-fac @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                        <span class="truncate block" title="@GetFacultyName(v.FacultyId)">
+                            @GetFacultyName(v.FacultyId)
+                        </span>
+                    </td>
+
+                    @if (IsPendingMode)
+                    {
+                        <!-- Fecha -->
+                        <td class="cell cell-date @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                            @(v.VisitDate?.ToString("yyyy-MM-dd") ?? "-")
+                        </td>
+
+                        <!-- Estado -->
+                        <td class="cell cell-state @selCls" @onclick="@(() => ToggleSelected(v.ProjectId))">
+                            <span class="truncate block" title="@v.VisitStateName">
+                                @v.VisitStateName
+                            </span>
+                        </td>
+                    }
+                </RowTemplate>
+            </DataTable>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Planificar -->
+<Modal Id="@_planModalId"
+       Title="Planificar visitas"
+       IsOpen="@_isPlanModalOpen"
+       IsOpenChanged="@OnPlanModalOpenChanged"
+       Size="ModalSize.Md"
+       CloseOnBackdrop="true"
+       CloseOnEscape="true">
+
+    <ChildContent>
+        <div class="space-y-4">
+            <div class="text-sm text-muted">
+                Se planificarán <span class="font-semibold text-foreground">@_selectedProjectIds.Count</span> visitas.
+            </div>
+
+            <DateInput Label="Fecha de ejecución"
+                       Value="@_plannedDate"
+                       ValueChanged="@((DateOnly? v) => _plannedDate = v)"
+                       Required="true" />
+
+            @if (!string.IsNullOrWhiteSpace(_planValidationError))
+            {
+                <div class="text-sm text-error">@_planValidationError</div>
+            }
+        </div>
+    </ChildContent>
+
+    <Footer>
+        <div class="flex items-center justify-end gap-2">
+            <ActionButton Text="Cancelar"
+                          Execute="@ClosePlanModal"
+                          Intent="ButtonIntent.Accept"
+                          Variant="ButtonVariant.Outline"
+                          Size="ButtonSize.Sm" />
+
+            <ActionButton Text="Guardar"
+                          Execute="@SubmitPlanAsync"
+                          Intent="ButtonIntent.Add"
+                          Variant="ButtonVariant.Filled"
+                          Size="ButtonSize.Sm"
+                          Disabled="@(_isSubmittingPlan || _selectedProjectIds.Count == 0 || _plannedDate is null)"
+                          ConfirmBeforeExecute="true"
+                          ConfirmTitle="Confirmar planificación"
+                          ConfirmMessage="@BuildConfirmMessage()"
+                          ConfirmButtonText="Sí, guardar"
+                          CancelButtonText="Cancelar" />
+        </div>
+    </Footer>
+</Modal>
+
+@code {
+    // =========================
+    //   ROUTE MODE
+    // =========================
+    [Parameter] public string? Mode { get; set; }
+
+    private string _mode = "plan"; // "plan" | "pending"
+    private bool _initialized;
+
+    private const int PendingStateId = 2;
+
+    private bool IsPendingMode => string.Equals(_mode, "pending", StringComparison.OrdinalIgnoreCase);
+    private bool IsPlanMode => !IsPendingMode;
+
+    private string NormalizeMode(string? mode)
+    {
+        var m = (mode ?? "plan").Trim().ToLowerInvariant();
+        return (m == "pending" || m == "plan") ? m : "plan";
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _mode = NormalizeMode(Mode);
+
+        await LoadFacultiesAsync();
+        BuildFilterConfig();
+        BuildColumns();
+
+        await LoadVisitsAsync();
+        _initialized = true;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var next = NormalizeMode(Mode);
+        if (string.Equals(next, _mode, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        _mode = next;
+        BuildColumns();
+
+        _selectedProjectIds.Clear();
+        _page = 1;
+
+        if (_initialized)
+            await LoadVisitsAsync();
+    }
+
+    // =========================
+    //   Paging
+    // =========================
+    private int _page = 1;
+    private int _pageSize = 13;
+    private bool isLoading = true;
+
+    // =========================
+    //   Selection
+    // =========================
+    private readonly HashSet<int> _selectedProjectIds = new();
+
+    private DateOnly? _filterExecutionDate;
+
+    private async Task OnFilterExecutionDateChanged(DateOnly? value)
+    {
+        _filterExecutionDate = value;
+        _selectedProjectIds.Clear();
+        _page = 1;
+
+        await LoadVisitsAsync();
+    }
+
+    private void ToggleSelected(int projectId)
+    {
+        if (projectId <= 0) return;
+
+        if (_selectedProjectIds.Contains(projectId))
+            _selectedProjectIds.Remove(projectId);
+        else
+            _selectedProjectIds.Add(projectId);
+
+        StateHasChanged();
+    }
+
+    private Task ClearSelection()
+    {
+        _selectedProjectIds.Clear();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    // =========================
+    //   Modal Planificar
+    // =========================
+    private readonly string _planModalId = "plan-visits-modal";
+    private bool _isPlanModalOpen = false;
+    private bool _isSubmittingPlan = false;
+
+    private DateOnly? _plannedDate;
+    private string? _planValidationError;
+
+    private Task OnPlanModalOpenChanged(bool isOpen)
+    {
+        _isPlanModalOpen = isOpen;
+
+        if (!isOpen)
+        {
+            _planValidationError = null;
+            _plannedDate = null;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task OpenPlanModal()
+    {
+        _planValidationError = null;
+        _isPlanModalOpen = true;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task ClosePlanModal()
+    {
+        _isPlanModalOpen = false;
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    // =========================
+    //   Data
+    // =========================
+    private List<VisitPlannedForExecutionListDTO> allItems = new();
+    private List<VisitPlannedForExecutionListDTO> filteredItems = new();
+
+    private List<ExternalFacultyDTO> _faculties = new();
+    private Dictionary<int, string> _facultyNameById = new();
+
+    private FilterQuery? currentFilters;
+    private string? currentSearch;
+
+    private FilterBarConfig _filterConfig = new()
+    {
+        SearchPlaceholder = "Buscar por nombre o código de proyecto...",
+        DebounceMs = 400,
+        ShowChips = true,
+        Items = new List<FilterItemDescriptor>()
+    };
+
+    private IReadOnlyList<ColumnDef<VisitPlannedForExecutionListDTO>> columns
+        = Array.Empty<ColumnDef<VisitPlannedForExecutionListDTO>>();
+
+    private async Task LoadFacultiesAsync()
+    {
+        try
+        {
+            var resp = await ExternalAcademics.GetFacultiesWithProgramsAsync();
+
+            _faculties = (resp.Success && resp.Data != null)
+                ? resp.Data
+                : new List<ExternalFacultyDTO>();
+
+            _facultyNameById = _faculties
+                .GroupBy(f => f.FacultyId)
+                .ToDictionary(g => g.Key, g => g.First().Name);
+        }
+        catch
+        {
+            _faculties = new();
+            _facultyNameById = new();
+        }
+    }
+
+    private async Task LoadVisitsAsync()
+    {
+        isLoading = true;
+
+        try
+        {
+            if (IsPendingMode)
+            {
+                var resp = await VisitService.GetByStateAsync(PendingStateId);
+
+                allItems = (resp.Success && resp.Data != null)
+                    ? resp.Data
+                    : new List<VisitPlannedForExecutionListDTO>();
+            }
+            else
+            {
+                var resp = await VisitService.GetPlannedForExecutionAsync(_filterExecutionDate);
+
+                allItems = (resp.Success && resp.Data != null)
+                    ? resp.Data
+                    : new List<VisitPlannedForExecutionListDTO>();
+            }
+
+            _page = 1;
+            ApplyFilters();
+        }
+        catch
+        {
+            allItems = new();
+            filteredItems = new();
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    // =========================
+    //   FilterBar handlers
+    // =========================
+    private Task HandleApplyFilters(FilterQuery query)
+    {
+        currentFilters = query;
+        currentFilters.Search = null;
+        _page = 1;
+
+        ApplyFilters();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task HandleClearFilters()
+    {
+        currentFilters = null;
+        _page = 1;
+
+        ApplyFilters();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private Task HandleSearchInstant(string? text)
+    {
+        currentSearch = string.IsNullOrWhiteSpace(text) ? null : text;
+        _page = 1;
+
+        ApplyFilters();
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void ApplyFilters()
+    {
+        var query = (allItems ?? new List<VisitPlannedForExecutionListDTO>()).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(currentSearch))
+        {
+            var term = currentSearch.Trim().ToLowerInvariant();
+            query = query.Where(x =>
+                (x.ProjectName ?? string.Empty).ToLowerInvariant().Contains(term) ||
+                (x.ProjectCode ?? string.Empty).ToLowerInvariant().Contains(term));
+        }
+
+        foreach (var filter in currentFilters?.Filters ?? new())
+        {
+            if (filter.Field == "FacultyId"
+                && filter.Value is string facultyStr
+                && int.TryParse(facultyStr, out var facultyId))
+            {
+                query = query.Where(x => x.FacultyId == facultyId);
+            }
+        }
+
+        filteredItems = query.ToList();
+    }
+
+    private Task OnPageChanged(int page)
+    {
+        _page = page;
+        return Task.CompletedTask;
+    }
+
+    // =========================
+    //   Columns / Helpers
+    // =========================
+    private void BuildColumns()
+    {
+        var cols = new List<ColumnDef<VisitPlannedForExecutionListDTO>>
+        {
+            new("Sel", _ => string.Empty, "3rem", Sortable: false),
+            new("#", _ => string.Empty, "2.5rem", Sortable: false),
+            new("Cod", x => x.ProjectCode, "5.5rem", Sortable: true),
+            new("Proyecto", x => x.ProjectName, "14rem", Sortable: true),
+            new("# Vis", x => x.VisitNumber, "3.5rem", Sortable: true),
+            new("Facultad", x => GetFacultyName(x.FacultyId), "9rem", Sortable: true),
+        };
+
+        AddIf(cols, IsPendingMode, new("Fecha", x => x.VisitDate, "6.2rem", Sortable: true));
+        AddIf(cols, IsPendingMode, new("Estado", x => x.VisitStateName, "7.5rem", Sortable: true));
+
+        columns = cols;
+    }
+
+    private static void AddIf<T>(List<T> list, bool condition, T item)
+    {
+        if (condition) list.Add(item);
+    }
+
+    private int GetRowNumberForCurrentPage(VisitPlannedForExecutionListDTO item)
+    {
+        var idx = filteredItems.IndexOf(item);
+        if (idx < 0) return 0;
+        return idx + 1;
+    }
+
+    private string GetFacultyName(int facultyId)
+        => _facultyNameById.TryGetValue(facultyId, out var name) ? name : $"Facultad {facultyId}";
+
+    private void BuildFilterConfig()
+    {
+        _filterConfig.Items = new List<FilterItemDescriptor>();
+
+        if (_faculties?.Any() == true)
+        {
+            _filterConfig.Items.Add(new()
+            {
+                Key = "faculty",
+                Label = "Facultad",
+                Type = "select",
+                EntityField = "FacultyId",
+                Placeholder = "Todas las facultades",
+                Options = _faculties
+                    .OrderBy(f => f.Name)
+                    .Select(f => new OptionItem
+                    {
+                        Value = f.FacultyId.ToString(),
+                        Label = f.Name
+                    })
+                    .ToList()
+            });
+        }
+    }
+
+    private string GetEmptyStateDescription()
+    {
+        var hasFilters = currentFilters?.Filters?.Any() == true;
+        var hasSearch = !string.IsNullOrWhiteSpace(currentSearch);
+
+        if (hasFilters || hasSearch)
+            return "No se encontraron registros que coincidan con la búsqueda o filtros.";
+
+        if (IsPendingMode)
+            return "No hay visitas pendientes para planificar.";
+
+        return "No hay visitas planificables para ejecución.";
+    }
+
+    // =========================
+    //   Confirm message
+    // =========================
+    private string BuildConfirmMessage()
+    {
+        if (_plannedDate is null)
+            return "Seleccione una fecha para continuar.";
+
+        var selected = GetSelectedItemsSnapshot();
+        if (selected.Count == 0)
+            return "No hay visitas seleccionadas.";
+
+        var grouped = selected
+            .GroupBy(x => x.ProjectId)
+            .Select(g => new
+            {
+                ProjectCode = g.First().ProjectCode,
+                ProjectName = g.First().ProjectName,
+                Count = g.Count()
+            })
+            .OrderBy(x => x.ProjectCode)
+            .ThenBy(x => x.ProjectName)
+            .ToList();
+
+        var lines = grouped
+            .Select(p => $"• {p.ProjectCode} - {p.ProjectName} ({p.Count})")
+            .ToList();
+
+        var dateStr = _plannedDate.Value.ToString("yyyy-MM-dd");
+
+        return
+            $"Se planificarán {selected.Count} visita(s) con fecha {dateStr} para:\n\n" +
+            string.Join("\n", lines);
+    }
+
+    private List<VisitPlannedForExecutionListDTO> GetSelectedItemsSnapshot()
+    {
+        if (allItems is null || allItems.Count == 0) return new();
+        return allItems.Where(x => _selectedProjectIds.Contains(x.ProjectId)).ToList();
+    }
+
+    // =========================
+    //   Submit Plan
+    // =========================
+    private async Task SubmitPlanAsync()
+    {
+        _planValidationError = null;
+
+        if (_selectedProjectIds.Count == 0)
+        {
+            _planValidationError = "Seleccione al menos una visita.";
+            return;
+        }
+
+        if (_plannedDate is null)
+        {
+            _planValidationError = "Seleccione una fecha.";
+            return;
+        }
+
+        var ids = _selectedProjectIds.ToList();
+        var scheduledDate = _plannedDate.Value.ToDateTime(TimeOnly.MinValue);
+
+        try
+        {
+            _isSubmittingPlan = true;
+
+            var request = new BulkScheduleVisitsRequestDTO
+            {
+                ScheduledDate = scheduledDate,
+                ProjectIds = ids
+            };
+
+            var resp = await VisitService.BulkScheduleAsync(request);
+
+            if (!resp.Success)
+            {
+                Toast.ShowError(resp.ToErrorMessage("No se pudo planificar las visitas."));
+                return;
+            }
+
+            Toast.ShowSuccess(resp.ToSuccessMessage("Planificación guardada correctamente."));
+
+            _selectedProjectIds.Clear();
+            await ClosePlanModal();
+
+            await LoadVisitsAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.ShowError("Error al planificar: " + ex.Message);
+        }
+        finally
+        {
+            _isSubmittingPlan = false;
+            StateHasChanged();
+        }
+    }
+}

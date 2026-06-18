@@ -1,0 +1,44 @@
+@namespace tesisproject.frontend.SharedUI
+
+<div class="@($"flex items-center justify-center gap-2 {Class}")">
+    <button class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs sm:text-sm bg-white hover:bg-slate-50 disabled:opacity-40 shadow-sm"
+            disabled="@(Page <= 1)"
+            @onclick="HandlePrev">
+        Anterior
+    </button>
+
+    <span class="text-xs sm:text-sm text-[#332222]">
+        Página <strong>@Page</strong> de <strong>@TotalPages</strong>
+    </span>
+
+    <button class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs sm:text-sm bg-white hover:bg-slate-50 disabled:opacity-40 shadow-sm"
+            disabled="@(Page >= TotalPages)"
+            @onclick="HandleNext">
+        Siguiente
+    </button>
+</div>
+
+@code {
+    [Parameter] public int Page { get; set; }
+    [Parameter] public int TotalPages { get; set; }
+    [Parameter] public EventCallback OnPrev { get; set; }
+    [Parameter] public EventCallback OnNext { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private async Task HandlePrev()
+    {
+        if (Page > 1)
+        {
+            await OnPrev.InvokeAsync();
+        }
+    }
+
+    private async Task HandleNext()
+    {
+        if (Page < TotalPages)
+        {
+            await OnNext.InvokeAsync();
+        }
+    }
+}

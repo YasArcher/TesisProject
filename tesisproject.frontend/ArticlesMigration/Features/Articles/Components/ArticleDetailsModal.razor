@@ -1,0 +1,648 @@
+@using System.Linq
+@using tesisproject.shared.DTOs.Articles
+@using tesisproject.shared.DTOs.Catalogs
+@using tesisproject.frontend.Services.Interfaces
+@namespace tesisproject.frontend.Features.Articles.Components
+
+@inject ICatalogsService CatalogsService
+
+@if (Visible)
+{
+    <div class="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
+        <div class="max-w-5xl w-full mx-4 rounded-3xl bg-[#f9f5f4] border border-[#e2d7d5] overflow-hidden flex flex-col max-h-[90vh] shadow-2xl shadow-black/40">
+
+            <!-- HEADER -->
+            <header class="bg-gradient-to-r from-[#1a2b2b] via-[#4d1a1a] to-[#800909] px-6 py-4 flex items-start justify-between gap-3">
+                <div class="space-y-1.5">
+                    <div class="inline-flex items-center gap-2 rounded-full bg-black/25 px-2.5 py-0.5">
+                        <span class="text-[11px] uppercase tracking-[0.16em] text-amber-100 font-semibold">
+                            Detalle de artículo
+                        </span>
+                        @if (Summary is not null && !string.IsNullOrWhiteSpace(Summary.PublicationStatusName))
+                        {
+                            <span class="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold text-white">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-300"></span>
+                                @Summary.PublicationStatusName
+                            </span>
+                        }
+                    </div>
+
+                    <h2 class="text-lg md:text-xl font-extrabold tracking-tight text-white line-clamp-3">
+                        @TitleText
+                    </h2>
+
+                    <div class="flex flex-wrap items-center gap-2 text-[11px] text-white/85">
+                        @if (Summary?.Year is not null)
+                        {
+                            <span class="inline-flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5">
+                                <i class="bi bi-calendar-event"></i>
+                                Año: <strong>@Summary.Year</strong>
+                            </span>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(Summary?.VenueName))
+                        {
+                            <span class="inline-flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5">
+                                <i class="bi bi-journal-text"></i>
+                                @Summary.VenueName
+                            </span>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(Summary?.Doi))
+                        {
+                            <span class="inline-flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5">
+                                <i class="bi bi-link-45deg"></i>
+                                DOI: @Summary.Doi
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <button type="button"
+                        class="rounded-full bg-black/20 p-1.5 text-white/80 hover:bg-black/30 hover:text-white transition"
+                        @onclick="OnClose">
+                    <i class="bi bi-x-lg text-sm"></i>
+                </button>
+            </header>
+
+            <!-- CONTENIDO -->
+            <div class="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+
+                @if (IsLoading || Detail is null)
+                {
+                    <!-- Estado de carga -->
+                    <div class="rounded-2xl border border-slate-200 bg-white/90 px-4 py-6 text-sm text-slate-600 shadow-sm">
+                        Cargando detalles del artículo…
+                    </div>
+                }
+                else
+                {
+                    var detail = Detail;
+                    <!-- RESUMEN GENERAL -->
+                    <section class="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm space-y-2">
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div class="space-y-1">
+                                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    Resumen general
+                                </p>
+                                <p class="text-sm text-slate-700 line-clamp-3">
+                                    @detail.Title
+                                </p>
+                            </div>
+
+                            <div class="flex max-w-full flex-wrap justify-start gap-1.5 text-[11px] md:justify-end">
+                                @if (!string.IsNullOrWhiteSpace(detail.Doi))
+                                {
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">
+                                        <i class="bi bi-link-45deg"></i> DOI
+                                    </span>
+                                }
+                                @if (detail.IsProjectResult)
+                                {
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800 font-medium">
+                                        <i class="bi bi-diagram-3"></i> Resultado de proyecto
+                                    </span>
+                                }
+                                @if (detail.HasInterculturalComponent)
+                                {
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-amber-800 font-medium">
+                                        <i class="bi bi-people"></i> Componente intercultural
+                                    </span>
+                                }
+                                @if (detail.IsOpenAccess)
+                                {
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-purple-800 font-medium">
+                                        <i class="bi bi-unlock"></i> Open Access
+                                    </span>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 border-t border-slate-100 pt-2 text-[11px] md:grid-cols-4">
+                            <div class="rounded-xl bg-[#f8fbfa] px-3 py-2">
+                                <span class="block font-semibold uppercase tracking-wide text-slate-500">Autores</span>
+                                <strong class="mt-0.5 block text-sm text-[#1a2b2b]">@((detail.Participants?.Count ?? 0).ToString("N0"))</strong>
+                            </div>
+                            <div class="rounded-xl bg-[#f8fbfa] px-3 py-2">
+                                <span class="block font-semibold uppercase tracking-wide text-slate-500">Indexación</span>
+                                <strong class="mt-0.5 block text-sm text-[#1a2b2b]">@((detail.Indexings?.Count ?? 0).ToString("N0"))</strong>
+                            </div>
+                            <div class="rounded-xl bg-[#f8fbfa] px-3 py-2">
+                                <span class="block font-semibold uppercase tracking-wide text-slate-500">Campos extra</span>
+                                <strong class="mt-0.5 block text-sm text-[#1a2b2b]">@((detail.DynamicFields?.Count ?? 0).ToString("N0"))</strong>
+                            </div>
+                            <div class="rounded-xl bg-[#f8fbfa] px-3 py-2">
+                                <span class="block font-semibold uppercase tracking-wide text-slate-500">Acceso</span>
+                                <strong class="mt-0.5 block text-sm text-[#1a2b2b]">@(detail.IsOpenAccess ? "Abierto" : "No indicado")</strong>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- GRID PRINCIPAL: BIBLIOGRÁFICO / ACADÉMICO -->
+                    <section class="grid grid-cols-1 gap-4 md:grid-cols-2">
+
+                        <!-- DATOS BIBLIOGRÁFICOS -->
+                        <div class="rounded-2xl bg-white/95 border border-[#e2d7d5] px-4 py-3 space-y-1.5 shadow-sm">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#4d1a1a]">
+                                Datos bibliográficos
+                            </p>
+
+                            <div class="space-y-1.5 text-xs text-slate-700">
+                                @if (!string.IsNullOrWhiteSpace(detail.VenueName))
+                                {
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-[11px] text-slate-500">Revista / Evento</span>
+                                        <span class="font-medium text-right line-clamp-2">@detail.VenueName</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(detail.IssnCode))
+                                {
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-[11px] text-slate-500">ISSN</span>
+                                        <span class="font-medium text-right">@detail.IssnCode</span>
+                                    </div>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(detail.Doi))
+                                {
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-[11px] text-slate-500">DOI</span>
+                                        <span class="font-mono text-[11px] text-right">@detail.Doi</span>
+                                    </div>
+                                }
+
+                                @if (detail.Year.HasValue)
+                                {
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-[11px] text-slate-500">Año</span>
+                                        <span class="font-medium text-right">@detail.Year</span>
+                                    </div>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(Detail.VolumeNumber))
+                                {
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-[11px] text-slate-500">Volumen</span>
+                                        <span class="font-medium text-right">@Detail.VolumeNumber</span>
+                                    </div>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(Detail.IssueNumber))
+                                {
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-[11px] text-slate-500">Número</span>
+                                        <span class="font-medium text-right">@Detail.IssueNumber</span>
+                                    </div>
+                                }
+
+                                @if (Detail.PageCount.HasValue)
+                                {
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-[11px] text-slate-500">Páginas</span>
+                                        <span class="font-medium text-right">@Detail.PageCount</span>
+                                    </div>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(Detail.ProceedingsName))
+                                {
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-[11px] text-slate-500">Actas / Proceedings</span>
+                                        <span class="font-medium text-right line-clamp-2">
+                                            @Detail.ProceedingsName
+                                        </span>
+                                    </div>
+                                }
+
+                                @if (!string.IsNullOrWhiteSpace(Detail.EventName))
+                                {
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-[11px] text-slate-500">Evento</span>
+                                        <span class="font-medium text-right line-clamp-2">
+                                            @Detail.EventName
+                                        </span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- CONTEXTO ACADÉMICO -->
+                        <div class="rounded-2xl bg-white/95 border border-[#e2d7d5] px-4 py-3 space-y-1.5 shadow-sm">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#4d1a1a]">
+                                Contexto académico
+                            </p>
+
+                            <div class="space-y-1.5 text-xs text-slate-700">
+                                @* Período académico: solo nombre *@
+                                @if (!string.IsNullOrWhiteSpace(Summary?.AcademicTermName))
+                                {
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-[11px] text-slate-500">Período académico</span>
+                                        <span class="font-medium text-right">@Summary.AcademicTermName</span>
+                                    </div>
+                                }
+
+                                @* Estado de publicación: solo nombre *@
+                                @if (!string.IsNullOrWhiteSpace(Summary?.PublicationStatusName))
+                                {
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-[11px] text-slate-500">Estado de publicación</span>
+                                        <span class="font-medium text-right">@Summary.PublicationStatusName</span>
+                                    </div>
+                                }
+
+                                @* Línea de investigación: solo nombre *@
+                                @if (!string.IsNullOrWhiteSpace(Summary?.ResearchLineName))
+                                {
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-[11px] text-slate-500">Línea de investigación</span>
+                                        <span class="font-medium text-right line-clamp-2">
+                                            @Summary.ResearchLineName
+                                        </span>
+                                    </div>
+                                }
+
+                                @* Grupo articulado *@
+                                @if (!string.IsNullOrWhiteSpace(Detail.GroupName))
+                                {
+                                    <div class="flex justify-between gap-2">
+                                        <span class="text-[11px] text-slate-500">Grupo articulado</span>
+                                        <span class="font-medium text-right line-clamp-2">
+                                            @Detail.GroupName
+                                        </span>
+                                    </div>
+                                }
+
+                                @* Clasificación OCDE con nombres (si se pudieron resolver) *@
+                                @if (Detail.BroadFieldId.HasValue || Detail.SpecificFieldId.HasValue || Detail.DetailedFieldId.HasValue)
+                                {
+                                    <div class="pt-1 border-t border-slate-200 mt-1">
+                                        <p class="text-[11px] font-semibold text-slate-700 mb-1">
+                                            Clasificación OCDE
+                                        </p>
+                                        <div class="space-y-0.5">
+                                            @if (Detail.BroadFieldId.HasValue)
+                                            {
+                                                <div class="flex justify-between gap-2">
+                                                    <span class="text-[11px] text-slate-500">Campo amplio</span>
+                                                    <span class="text-right text-[11px]">
+                                                        @if (!string.IsNullOrWhiteSpace(_broadFieldName))
+                                                        {
+                                                            @_broadFieldName
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-slate-400">Catálogo no disponible</span>
+                                                        }
+                                                    </span>
+                                                </div>
+                                            }
+                                            @if (Detail.SpecificFieldId.HasValue)
+                                            {
+                                                <div class="flex justify-between gap-2">
+                                                    <span class="text-[11px] text-slate-500">Campo específico</span>
+                                                    <span class="text-right text-[11px]">
+                                                        @if (!string.IsNullOrWhiteSpace(_specificFieldName))
+                                                        {
+                                                            @_specificFieldName
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-slate-400">Catálogo no disponible</span>
+                                                        }
+                                                    </span>
+                                                </div>
+                                            }
+                                            @if (Detail.DetailedFieldId.HasValue)
+                                            {
+                                                <div class="flex justify-between gap-2">
+                                                    <span class="text-[11px] text-slate-500">Campo detallado</span>
+                                                    <span class="text-right text-[11px]">
+                                                        @if (!string.IsNullOrWhiteSpace(_detailedFieldName))
+                                                        {
+                                                            @_detailedFieldName
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="text-slate-400">Catálogo no disponible</span>
+                                                        }
+                                                    </span>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- CAMPOS DINÁMICOS -->
+                    @if (Detail.DynamicFields is not null && Detail.DynamicFields.Count > 0)
+                    {
+                        <section class="rounded-2xl border border-[#d8e4df] bg-white/95 px-4 py-3 shadow-sm">
+                            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                <div>
+                                    <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#1a2b2b]">
+                                        Campos adicionales
+                                    </p>
+                                    <p class="mt-0.5 text-[11px] text-slate-500">
+                                        Información extensible asociada al artículo.
+                                    </p>
+                                </div>
+                                <span class="rounded-full bg-[#408A71]/10 px-2 py-0.5 text-[11px] font-semibold text-[#285A48]">
+                                    @Detail.DynamicFields.Count campo(s)
+                                </span>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                @foreach (var field in Detail.DynamicFields)
+                                {
+                                    <div class="rounded-xl border border-slate-100 bg-[#f8fbfa] px-3 py-2">
+                                        <div class="flex items-start justify-between gap-2">
+                                            <span class="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                                                @field.FieldLabel
+                                            </span>
+                                            @if (field.IsFilterable)
+                                            {
+                                                <span class="rounded-full bg-[#003638]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#003638]">
+                                                    Filtrable
+                                                </span>
+                                            }
+                                        </div>
+                                        <p class="mt-1 break-words text-xs font-medium text-slate-800">
+                                            @field.DisplayValue
+                                        </p>
+                                        @if (!string.IsNullOrWhiteSpace(field.HelpText))
+                                        {
+                                            <p class="mt-1 text-[11px] leading-4 text-slate-500">
+                                                @field.HelpText
+                                            </p>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </section>
+                    }
+
+                    <!-- INDEXACIÓN -->
+                    @if (Detail.Indexings is not null && Detail.Indexings.Count > 0)
+                    {
+                        <section class="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#1a2b2b] mb-1">
+                                Fuentes de indexación
+                            </p>
+                            <div class="flex flex-wrap gap-1.5 text-[11px]">
+                                @foreach (var idx in Detail.Indexings)
+                                {
+                                    <span class="inline-flex items-center rounded-full bg-[#348e91]/10 px-2 py-0.5 font-medium text-[#1c5052]">
+                                        <i class="bi bi-check2-circle mr-1 text-[10px]"></i>
+                                        @idx.IndexingSourceName
+                                    </span>
+                                }
+                            </div>
+                        </section>
+                    }
+
+                    <!-- MÉTRICAS DE IMPACTO (SJR / CUARTIL) -->
+                    @if (Detail.Sjr.HasValue || !string.IsNullOrWhiteSpace(Detail.Quartile))
+                    {
+                        <section class="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#1a2b2b] mb-1">
+                                Métricas de impacto
+                            </p>
+                            <div class="flex flex-wrap gap-1.5 text-[11px]">
+                                @if (Detail.Sjr.HasValue)
+                                {
+                                    <span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-800">
+                                        <i class="bi bi-bar-chart-line mr-1 text-[10px]"></i>
+                                        SJR: @Detail.Sjr
+                                    </span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(Detail.Quartile))
+                                {
+                                    <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 font-medium text-emerald-800">
+                                        <i class="bi bi-grid-1x2 mr-1 text-[10px]"></i>
+                                        Cuartil: @Detail.Quartile
+                                    </span>
+                                }
+                            </div>
+                        </section>
+                    }
+
+                    <!-- PARTICIPANTES -->
+                    @if (Detail.Participants is not null && Detail.Participants.Count > 0)
+                    {
+                        <section class="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm">
+                            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                                <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#1a2b2b]">
+                                    Autores y participantes
+                                </p>
+                                <span class="rounded-full bg-[#003638]/10 px-2 py-0.5 text-[11px] font-semibold text-[#003638]">
+                                    @Detail.Participants.Count persona(s)
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+                                @foreach (var p in Detail.Participants)
+                                {
+                                    <div class="rounded-xl border border-slate-100 bg-[#f8fbfa] px-3 py-2 text-xs text-slate-700">
+                                        <div class="flex items-start justify-between gap-2">
+                                            <span class="font-semibold text-slate-800">@p.Nombre</span>
+                                            <span class="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+                                                Orden @p.Index
+                                            </span>
+                                        </div>
+                                        <div class="mt-1 flex flex-wrap gap-1.5 text-[11px]">
+                                            @if (!string.IsNullOrWhiteSpace(p.Participacion))
+                                            {
+                                                <span class="rounded-full bg-[#408A71]/10 px-2 py-0.5 font-medium text-[#285A48]">@p.Participacion</span>
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(p.Identificacion))
+                                            {
+                                                <span class="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-500">Identificación registrada</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </section>
+                    }
+
+                    <!-- ENLACES Y ARCHIVOS -->
+                    @if (HasAnyLink)
+                    {
+                        <section class="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm space-y-2 text-xs text-slate-700">
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#1a2b2b]">
+                                Enlaces y archivos
+                            </p>
+
+                            @if (!string.IsNullOrWhiteSpace(Detail.PublicationUrl))
+                            {
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-[11px] text-slate-500">Enlace a la publicación</span>
+                                    <button type="button"
+                                            class="inline-flex items-center gap-1 rounded-full bg-slate-900 text-white px-2.5 py-1 text-[11px] shadow-sm hover:bg-black"
+                                            @onclick="OnOpenDocument">
+                                        <i class="bi bi-box-arrow-up-right"></i>
+                                        Abrir
+                                    </button>
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(Detail.EvidenceUrl))
+                            {
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-[11px] text-slate-500">Documento de evidencia</span>
+                                    <button type="button"
+                                            class="inline-flex items-center gap-1 rounded-full bg-slate-900 text-white px-2.5 py-1 text-[11px] shadow-sm hover:bg-black"
+                                            @onclick="OnOpenDocument">
+                                        <i class="bi bi-file-earmark-pdf"></i>
+                                        Ver documento
+                                    </button>
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(Detail.JournalUrl))
+                            {
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="text-[11px] text-slate-500">Sitio de la revista / evento</span>
+                                    <button type="button"
+                                            class="inline-flex items-center gap-1 rounded-full bg-slate-900 text-white px-2.5 py-1 text-[11px] shadow-sm hover:bg-black"
+                                            @onclick="OnOpenDocument">
+                                        <i class="bi bi-globe2"></i>
+                                        Abrir sitio
+                                    </button>
+                                </div>
+                            }
+                        </section>
+                    }
+                }
+            </div>
+
+            <!-- FOOTER: ACCIONES -->
+            <footer class="flex flex-wrap items-center justify-between gap-3 border-t border-[#e2d7d5] bg-white/95 px-5 py-3">
+                <div class="flex flex-wrap gap-2 text-[11px] text-slate-500">
+                    <span>Vista de consulta</span>
+                    @if (CanEdit)
+                    {
+                        <span>Edición directa habilitada</span>
+                    }
+                </div>
+
+                <div class="flex flex-wrap gap-2 justify-end">
+                    <button type="button"
+                            class="inline-flex items-center gap-1 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                            @onclick="OnClose">
+                        <i class="bi bi-x-lg text-[11px]"></i>
+                        Cerrar
+                    </button>
+
+                    @if (CanEdit)
+                    {
+                        <button type="button"
+                                class="inline-flex items-center gap-1 rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 shadow-sm hover:bg-amber-100"
+                                @onclick="OnEdit">
+                            <i class="bi bi-pencil-square text-[12px]"></i>
+                            Editar
+                        </button>
+                    }
+                </div>
+            </footer>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public ArticleListItemDto? Summary { get; set; }
+    [Parameter] public ArticleDetailDto? Detail { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+    [Parameter] public bool CanEdit { get; set; }
+
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnOpenDocument { get; set; }
+    [Parameter] public EventCallback OnEdit { get; set; }
+
+    private string? _broadFieldName;
+    private string? _specificFieldName;
+    private string? _detailedFieldName;
+
+    private int? _loadedBroadFieldId;
+    private int? _loadedSpecificFieldId;
+    private int? _loadedDetailedFieldId;
+    private int? _loadedArticleId;
+
+    private string TitleText =>
+        Detail?.Title
+        ?? Summary?.Title
+        ?? "Artículo";
+
+    private bool HasAnyLink =>
+        !string.IsNullOrWhiteSpace(Detail?.PublicationUrl)
+        || !string.IsNullOrWhiteSpace(Detail?.EvidenceUrl)
+        || !string.IsNullOrWhiteSpace(Detail?.JournalUrl);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        ResetOcdeNamesIfArticleChanged();
+        await EnsureOcdeNamesAsync();
+    }
+
+    private void ResetOcdeNamesIfArticleChanged()
+    {
+        if (Detail?.Id == _loadedArticleId)
+            return;
+
+        _loadedArticleId = Detail?.Id;
+        _broadFieldName = null;
+        _specificFieldName = null;
+        _detailedFieldName = null;
+        _loadedBroadFieldId = null;
+        _loadedSpecificFieldId = null;
+        _loadedDetailedFieldId = null;
+    }
+
+    private async Task EnsureOcdeNamesAsync()
+    {
+        if (Detail is null)
+            return;
+
+        try
+        {
+            // Campo amplio
+            if (Detail.BroadFieldId.HasValue && Detail.BroadFieldId != _loadedBroadFieldId)
+            {
+                var broadFields = await CatalogsService.GetBroadFieldsAsync();
+                _broadFieldName = broadFields
+                    .FirstOrDefault(f => f.Id == Detail.BroadFieldId.Value)
+                    ?.Name;
+
+                _loadedBroadFieldId = Detail.BroadFieldId;
+            }
+
+            // Campo específico (usa BroadFieldId para cargar solo los específicos de ese campo)
+            if (Detail.SpecificFieldId.HasValue && Detail.SpecificFieldId != _loadedSpecificFieldId)
+            {
+                var specificFields = await CatalogsService.GetSpecificFieldsAsync(Detail.BroadFieldId);
+                _specificFieldName = specificFields
+                    .FirstOrDefault(f => f.Id == Detail.SpecificFieldId.Value)
+                    ?.Name;
+
+                _loadedSpecificFieldId = Detail.SpecificFieldId;
+            }
+
+            // Campo detallado (usa SpecificFieldId)
+            if (Detail.DetailedFieldId.HasValue && Detail.DetailedFieldId != _loadedDetailedFieldId)
+            {
+                var detailedFields = await CatalogsService.GetDetailedFieldsAsync(Detail.SpecificFieldId);
+                _detailedFieldName = detailedFields
+                    .FirstOrDefault(f => f.Id == Detail.DetailedFieldId.Value)
+                    ?.Name;
+
+                _loadedDetailedFieldId = Detail.DetailedFieldId;
+            }
+        }
+        catch
+        {
+            // Si algo falla, simplemente se mostrará el ID como fallback
+        }
+    }
+}

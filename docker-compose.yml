@@ -1,0 +1,71 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: ./tesisproject.backend/Dockerfile
+    container_name: tesisproject_api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+
+      # Storage dentro del contenedor
+      Storage__RootPath: /app/files
+
+      # =========================
+      # WINDOWS
+      # Docker Desktop en Windows suele resolver host.docker.internal sin extra_hosts
+      # =========================
+      ConnectionStrings__DefaultConnection: >
+        Server=${DB_HOST},${DB_PORT};
+        Database=${DB_NAME};
+        User Id=${DB_USER};
+        Password=${DB_PASS};
+        TrustServerCertificate=True;
+
+      # [ARTICLES-MIGRATION] Bases OLTP y OLAP independientes del sistema de proyectos.
+      ArticlesModule__Enabled: ${ARTICLES_MODULE_ENABLED:-false}
+      ConnectionStrings__ArticlesOltpConnection: >
+        Server=${ARTICLES_DB_HOST:-host.docker.internal},${ARTICLES_DB_PORT:-1433};
+        Database=${ARTICLES_OLTP_DB_NAME:-TesisDB_Extensible};
+        User Id=${ARTICLES_DB_USER:-sa};
+        Password=${ARTICLES_DB_PASS:-};
+        TrustServerCertificate=True;
+      ConnectionStrings__ArticlesOlapConnection: >
+        Server=${ARTICLES_DB_HOST:-host.docker.internal},${ARTICLES_DB_PORT:-1433};
+        Database=${ARTICLES_OLAP_DB_NAME:-TesisDW_Extensible};
+        User Id=${ARTICLES_DB_USER:-sa};
+        Password=${ARTICLES_DB_PASS:-};
+        TrustServerCertificate=True;
+      # =========================
+      # LINUX
+      # =========================
+      # ConnectionStrings__DefaultConnection: >
+      #   Server=${DB_HOST},${DB_PORT};
+      #   Database=${DB_NAME};
+      #   User Id=${DB_USER};
+      #   Password=${DB_PASS};
+      #   TrustServerCertificate=True;
+
+    volumes:
+      - type: bind
+        source: ${STORAGE_HOST_PATH}
+        target: /app/files
+
+    # =========================
+    # LINUX
+    # =========================
+    # extra_hosts:
+    #   - "host.docker.internal:host-gateway"
+
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: ./tesisproject.frontend/Dockerfile
+    container_name: tesisproject_web
+    depends_on:
+      - api
+    ports:
+      - "${WEB_HOST_PORT}:80"
+    restart: unless-stopped

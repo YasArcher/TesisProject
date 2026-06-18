@@ -1,0 +1,538 @@
+﻿/* =========================================================
+   TesisProject UI Theme
+   Paleta y tipografía:
+   - Header:          #7A1E19
+   - Fondo página:    #E3E2E1
+   - Menú & Footer:   #6e6e6e
+   - Texto Footer:    #999999 (opcional)
+   - Font stack:      "Helvetica Neue", Helvetica, Arial, sans-serif
+   ========================================================= */
+
+/* ---------------- Variables de tema ---------------- */
+:root {
+    --brand-header: #b88a1a; /* encabezado y acentos */
+    --page-bg: #f8f1de; /* fondo de página */
+    --menu-bg: #16324f; /* menú lateral y footer */
+    --footer-text: #6e6e6e; /* texto del footer */
+    --font-stack: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    /* Integra con Bootstrap (colores principales) */
+    --bs-primary: #b88a1a;
+    --bs-link-color: #b88a1a;
+    --bs-link-hover-color: #8f6c14;
+    --bg-surface: #fbf5e7;
+    --bg-card: #FFFFFF;
+    --ink: #1F2937;
+    --ink-soft: #475569;
+    --brand: #b88a1a;
+    --accent-navy: #16324f;
+    --accent-steel: #436b8c;
+    --accent-cream: #f8f1de;
+    --accent-bronze: #8f6c14;
+    --accent-gray: #6e6e6e;
+    --accent-wine: #7A1E19;
+}
+
+/* ---------------- Base ---------------- */
+html, body {
+    height: 100%;
+}
+/* Botón compacto coherente con la paleta (#7A1E19) */
+.btn-mini {
+    --btn-bg: #b88a1a;
+    --btn-bg-hover: #c49728;
+    --btn-ink: #fff;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .3rem .55rem;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: .45rem;
+    border: 1px solid rgba(0,0,0,.06);
+    background: var(--btn-bg);
+    color: var(--btn-ink);
+    transition: background-color .15s ease, box-shadow .15s ease;
+}
+
+    .btn-mini:hover {
+        background: var(--btn-bg-hover);
+    }
+
+body {
+    background: var(--bg-surface);
+    color: var(--ink);
+    font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+*[class*="bg-"] {
+    backdrop-filter: none !important;
+}
+/* Asegura que la app use todo el alto */
+.container-fluid, .min-vh-100 {
+    min-height: 100vh;
+}
+
+/* ---------------- Encabezado ---------------- */
+.brand-header {
+    background-color: var(--brand-header) !important;
+    color: #fff;
+}
+
+/* ---------------- Menú lateral ---------------- */
+.menu-bg {
+    background-color: var(--menu-bg) !important;
+    color: #fff;
+}
+
+    .menu-bg .nav {
+        --bs-nav-link-padding-x: .75rem;
+        --bs-nav-link-padding-y: .5rem;
+    }
+
+    .menu-bg .nav-link {
+        color: rgba(255,255,255,.9);
+        border-radius: .5rem;
+    }
+
+        .menu-bg .nav-link:hover {
+            background: rgba(255,255,255,.15);
+            color: #fff;
+        }
+
+        .menu-bg .nav-link.active,
+        .menu-bg .nav-pills .nav-link.active {
+            background: rgba(255,255,255,.20) !important;
+            color: #fff !important;
+        }
+
+/* ---------------- Footer ---------------- */
+.app-footer {
+    background-color: var(--menu-bg);
+    color: var(--footer-text);
+}
+
+/* ---------------- Tabs (formulario) ---------------- */
+.nav-tabs {
+    gap: .25rem;
+    border-bottom: 1px solid rgba(0,0,0,.08);
+}
+
+    .nav-tabs .nav-link {
+        border: none;
+        color: #6c757d;
+    }
+
+        .nav-tabs .nav-link.active {
+            border-bottom: 2px solid var(--brand-header);
+            color: var(--brand-header);
+            font-weight: 600;
+        }
+
+/* ---------------- Botones primarios (Bootstrap) ---------------- */
+.btn-primary {
+    --bs-btn-bg: var(--bs-primary);
+    --bs-btn-border-color: var(--bs-primary);
+    --bs-btn-hover-bg: #9e7716;
+    --bs-btn-hover-border-color: #9e7716;
+    --bs-btn-active-bg: #8c6913;
+    --bs-btn-active-border-color: #8c6913;
+    --bs-btn-disabled-bg: #b88a1a;
+    --bs-btn-disabled-border-color: #b88a1a;
+}
+
+/* ---------------- Controles de formulario ---------------- */
+.form-control:focus, .form-select:focus {
+    border-color: var(--brand-header);
+    box-shadow: 0 0 0 .20rem rgba(184,138,26,.18);
+}
+
+.form-check-input:checked {
+    background-color: var(--brand-header);
+    border-color: var(--brand-header);
+}
+
+/* ---------------- Utilidades visuales ---------------- */
+.rounded-2xl {
+    border-radius: 1rem;
+}
+
+.shadow-soft {
+    box-shadow: 0 8px 24px rgba(0,0,0,.08);
+}
+
+/* Fallbacks de utilidades (por si Tailwind tarda en cargar) */
+.text-white\/90 {
+    color: rgba(255,255,255,.9);
+}
+
+.bg-white\/0 {
+    background-color: transparent;
+}
+
+.bg-white\/10 {
+    background-color: rgba(255,255,255,.10);
+}
+
+.bg-white\/20 {
+    background-color: rgba(255,255,255,.20) !important;
+}
+
+.border-white\/20 {
+    border-color: rgba(255,255,255,.20) !important;
+}
+
+/* Si aún usas estas clases en vistas antiguas, mapeamos a tu tema */
+.bg-gray-100 {
+    background-color: var(--page-bg) !important;
+}
+/* área de contenido */
+.bg-gray-700 {
+    background-color: #2f2f2f !important;
+}
+/* opcional */
+.bg-red-800 {
+    background-color: var(--brand-header) !important;
+}
+/* compat */
+
+/* ---------------- Helpers de layout ---------------- */
+.app-shell {
+    display: flex;
+    min-height: 100vh;
+}
+
+    .app-shell .app-main {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+    }
+
+/* ---------------- Tipografía y enlaces ---------------- */
+a {
+    text-decoration: none;
+}
+
+    a:hover {
+        text-decoration: underline;
+    }
+
+/* ---------------- Tablas/Cartas pequeñas ---------------- */
+.card.rounded-2xl {
+    border: 0;
+}
+*[class*="bg-"] {
+    backdrop-filter: none !important;
+}
+
+/* Utilidades pequeñas */
+.card-solid {
+    background: var(--bg-card);
+    border: 1px solid rgba(15,23,42,0.06);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    border-radius: 14px;
+}
+/* ---------------- Estados vacíos/errores ---------------- */
+.empty-state {
+    padding: 2rem;
+    border: 1px dashed rgba(0,0,0,.15);
+    border-radius: .75rem;
+    background: rgba(255,255,255,.6);
+}
+/* ===== Secciones modernas ===== */
+.app-section-card .section-head {
+    background: #fcf4df;
+    border-left: 4px solid var(--brand-header);
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+    padding-top: .75rem;
+    padding-bottom: .75rem;
+}
+
+.app-section-card .section-icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: .5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(184,138,26,.12);
+}
+
+/* ===== Badges suaves (para Resumen) ===== */
+.badge-soft-primary {
+    background: rgba(184,138,26,.15);
+    color: var(--brand-header);
+}
+
+.badge-soft-success {
+    background: rgba(25,135,84,.15);
+    color: #198754;
+}
+
+.badge-soft-warning {
+    background: rgba(255,193,7,.18);
+    color: #a07800;
+}
+
+.badge-soft-danger {
+    background: rgba(220,53,69,.15);
+    color: #dc3545;
+}
+
+.badge-soft-dark {
+    background: rgba(0,0,0,.12);
+    color: #2b2b2b;
+}
+.dot-success {
+    background: #059669
+}
+
+.dot-warning {
+    background: #D97706
+}
+
+.dot-danger {
+    background: #DC2626
+}
+
+.dot-primary {
+    background: #2563EB
+}
+
+/* ===== Aside sticky ===== */
+.sticky-aside {
+    position: sticky;
+    top: 1rem;
+}
+/* ===== Hero header moderno ===== */
+.hero-header {
+    background: var(--brand-header);
+}
+
+.hero-overlay {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(1200px 300px at -10% -20%, rgba(255,255,255,.15), transparent), radial-gradient(1200px 300px at 120% 120%, rgba(255,255,255,.12), transparent);
+    opacity: .8;
+}
+
+.hero-content {
+    color: #fff;
+}
+
+.hero-title {
+    font-weight: 700;
+    letter-spacing: .3px;
+}
+
+.hero-sub {
+    opacity: .9;
+}
+
+/* ===== Tabs tipo píldora ===== */
+.app-pill-tabs {
+    gap: .5rem;
+}
+
+.app-pill-tabs .nav-link {
+        background: #ffffff;
+        color: #4a4a4a;
+        border-radius: 50rem;
+        padding: .5rem .9rem;
+        border: 1px solid rgba(110,110,110,.18);
+    }
+
+        .app-pill-tabs .nav-link.active {
+            background: var(--brand-header);
+            color: #fff;
+            border-color: transparent;
+        }
+
+/* ===== Glass card ===== */
+.app-glass-card {
+    background: rgba(255,255,255,.85);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(0,0,0,.06);
+}
+
+.app-glass-head {
+    background: #fcf4df;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+}
+
+.app-glass-icon {
+    width: 1.6rem;
+    height: 1.6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(184,138,26,.18);
+    color: #b88a1a;
+    border-radius: .5rem;
+    font-size: .95rem;
+}
+
+/* ===== Aside resumido ===== */
+.summary-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .3rem .6rem;
+    border-radius: 999px;
+    font-size: .8rem;
+    background: rgba(0,0,0,.06);
+}
+
+    .summary-chip .dot {
+        width: .45rem;
+        height: .45rem;
+        border-radius: 999px;
+        display: inline-block;
+    }
+
+.dot-success {
+    background: #059669
+}
+
+.dot-warning {
+    background: #D97706
+}
+
+.dot-danger {
+    background: #DC2626
+}
+
+.dot-primary {
+    background: #2563EB
+}
+
+/* ===== Sticky elementos ===== */
+.sticky-aside {
+    position: sticky;
+    top: 1rem;
+}
+
+.form-actions-sticky {
+    position: sticky;
+    bottom: .25rem;
+    z-index: 5;
+    background: rgba(248,241,222,.95);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(110,110,110,.12);
+    border-radius: .75rem;
+    padding: .5rem .75rem;
+}
+
+.app-page-shell {
+    width: 100%;
+    max-width: none;
+    margin-inline: auto;
+    padding-inline: .65rem;
+    padding-block: 1rem 1.25rem;
+}
+
+.app-panel {
+    border-radius: 1.75rem;
+    border: 1px solid rgba(110, 110, 110, 0.12);
+    background: #fff;
+    box-shadow: 0 10px 24px rgba(110, 110, 110, 0.06);
+}
+
+.app-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.app-table-wrap table {
+    min-width: 720px;
+}
+
+.app-table-compact th,
+.app-table-compact td {
+    padding: .7rem .85rem !important;
+    vertical-align: top;
+}
+
+.app-table-compact thead th {
+    font-size: .78rem;
+    letter-spacing: .01em;
+    background: #f5f9fc;
+    color: #16324f;
+    border-bottom: 1px solid rgba(67, 107, 140, 0.14);
+}
+
+.app-table-compact tbody td {
+    font-size: .84rem;
+}
+
+.app-table-compact tbody tr:nth-child(even) {
+    background: rgba(67, 107, 140, 0.03);
+}
+
+.app-table-compact tbody tr:hover {
+    background: rgba(184, 138, 26, 0.05);
+}
+
+.app-mobile-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+}
+
+.app-mobile-stack > * {
+    min-width: 0;
+}
+
+.app-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+@media (max-width: 991.98px) {
+    .sticky-aside,
+    .xl\:sticky {
+        position: static !important;
+        top: auto !important;
+    }
+
+    .app-page-shell {
+        padding-inline: .75rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .app-page-shell {
+        padding-inline: .6rem;
+        padding-block: .85rem 1.1rem;
+    }
+
+    .app-panel {
+        border-radius: 1.3rem;
+    }
+
+    .app-table-wrap table {
+        min-width: 640px;
+    }
+
+    .app-table-compact th,
+    .app-table-compact td {
+        padding: .62rem .72rem !important;
+    }
+
+    .form-actions-sticky {
+        position: static;
+        bottom: auto;
+        padding: .75rem;
+    }
+
+    .nav-tabs,
+    .app-pill-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        padding-bottom: .25rem;
+    }
+}

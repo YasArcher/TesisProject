@@ -1,0 +1,296 @@
+@using Microsoft.AspNetCore.Components
+@using tesisproject.frontend.SharedUI
+@using tesisproject.shared.DTOs.Imports
+
+<div class="bulk-stage-preview rounded-[2rem] border border-[#d9e5e8] bg-white p-5 shadow-sm">
+    <div class="mb-4 flex items-center justify-between gap-3">
+        <div>
+            <h2 class="text-base font-black text-[#12343b] md:text-lg">Previsualización del lote</h2>
+        </div>
+        <span class="rounded-full bg-[#eef5f6] px-3 py-1 text-xs font-semibold text-[#2f4858]">@FilteredPreviewCount filas visibles</span>
+    </div>
+
+    @if (!HasRows)
+    {
+        <AppEmptyState Title="Sin filas cargadas" Message="No hay datos para mostrar." />
+    }
+    else
+    {
+        <div class="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-[1.1fr_0.65fr_0.75fr_0.7fr_0.7fr]">
+            <input class="rounded-xl border border-[#c9d7db] bg-[#f7fafb] px-3 py-2 text-sm"
+                   placeholder="Buscar valor, campo o contenido dentro del preview"
+                   value="@PreviewSearchTerm"
+                   @oninput="HandleSearchChanged" />
+            <select class="rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm"
+                    value="@PreviewStatusFilter"
+                    @onchange="HandleStatusChanged">
+                <option value="all">Todos los estados</option>
+                <option value="pending">Pending</option>
+                <option value="valid">Valid</option>
+                <option value="processed">Processed</option>
+                <option value="error">Error</option>
+            </select>
+            <label class="inline-flex items-center gap-2 rounded-xl border border-[#d9e5e8] bg-white px-3 py-2 text-sm text-slate-700">
+                <input type="checkbox" checked="@PreviewErrorsOnly" @onchange="HandleErrorsOnlyChanged" />
+                Solo filas con errores
+            </label>
+            <label class="inline-flex items-center gap-2 rounded-xl border border-[#d9e5e8] bg-white px-3 py-2 text-sm text-slate-700">
+                <input type="checkbox" checked="@ShowNormalizedValues" @onchange="HandleShowNormalizedChanged" />
+                Ver normalizados
+            </label>
+            <select class="rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm"
+                    value="@CurrentPreviewRows"
+                    @onchange="HandlePreviewRowsChanged">
+                @foreach (var option in PreviewRowOptions)
+                {
+                    <option value="@option">@GetPreviewRowOptionLabel(option)</option>
+                }
+            </select>
+        </div>
+
+        <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+            <div class="rounded-2xl bg-[#f4f8f9] px-4 py-3 text-sm text-slate-600">
+                Columnas visibles: <span class="font-bold text-[#12343b]">@OrderedPreviewHeaders.Count</span>
+            </div>
+            <div class="rounded-2xl bg-[#fff4e4] px-4 py-3 text-sm text-slate-600">
+                Modo de celda: <span class="font-bold text-[#8b5a16]">@(ShowNormalizedValues ? "Normalizado" : "Raw")</span>
+            </div>
+            <div class="rounded-2xl bg-[#eef5f6] px-4 py-3 text-sm text-slate-600">
+                Revisión rápida: <span class="font-bold text-[#2f4858]">@BatchReviewHint</span>
+            </div>
+            <div class="rounded-2xl bg-white px-4 py-3 text-sm text-slate-600">
+                Página: <span class="font-bold text-[#12343b]">@NormalizedPreviewCurrentPage / @PreviewTotalPages</span>
+            </div>
+        </div>
+
+        @if (ShowTemplateSummary)
+        {
+            <div class="mb-4 rounded-3xl border border-[#d9e5e8] bg-[#fcfefe] p-4">
+                <div class="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                        <div class="font-bold text-[#12343b]">Cómo interpreta esta plantilla</div>
+                    </div>
+                    <span class="rounded-full bg-[#eef5f6] px-3 py-1 text-xs font-semibold text-[#2f4858]">@TemplateFieldCount columnas en plantilla</span>
+                </div>
+                <div class="app-table-wrap rounded-2xl border border-[#e6eef0]">
+                    <table class="app-table-compact min-w-full divide-y divide-[#e6eef0] text-sm">
+                        <thead class="bg-[#f4f8f9]">
+                            <tr>
+                                <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Campo</th>
+                                <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Encabezado</th>
+                                <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Tipo</th>
+                                <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Lectura sugerida</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-[#eef3f5] bg-white">
+                            @foreach (var templateField in TemplateFieldPreviewItems)
+                            {
+                                <tr>
+                                    <td class="px-4 py-3">
+                                        <div class="font-semibold text-[#12343b]">@templateField.FieldLabel</div>
+                                        <div class="text-xs text-slate-500">@templateField.EntityName.@templateField.FieldKey</div>
+                                    </td>
+                                    <td class="px-4 py-3 font-mono text-xs text-slate-700">@templateField.HeaderKey</td>
+                                    <td class="px-4 py-3 text-slate-600">@templateField.DataType</td>
+                                    <td class="px-4 py-3 text-slate-600">@GetTemplateFieldInterpretation(templateField)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        @if (!HasFilteredRows)
+        {
+            <AppEmptyState Title="Sin coincidencias" Message="Ajusta los filtros." />
+        }
+        else
+        {
+            <div class="mb-4 flex flex-col gap-3 rounded-3xl border border-[#d9e5e8] bg-[#fcfefe] p-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                    <div class="text-sm font-bold text-[#12343b]">Navegación del preview</div>
+                    <div class="text-xs text-slate-500">@PreviewPaginationSummary</div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <select class="rounded-xl border border-[#c9d7db] bg-white px-3 py-2 text-sm"
+                            value="@PreviewPageSize"
+                            @onchange="HandlePreviewPageSizeChanged">
+                        @foreach (var option in PreviewPageSizeOptions)
+                        {
+                            <option value="@option">@GetPreviewPageSizeOptionLabel(option)</option>
+                        }
+                    </select>
+                    <button class="rounded-xl border border-[#c7d6da] bg-white px-3 py-2 text-sm font-semibold text-[#12343b] disabled:opacity-50"
+                            disabled="@(NormalizedPreviewCurrentPage <= 1)"
+                            @onclick="OnGoToPreviousPage">
+                        Anterior
+                    </button>
+                    <button class="rounded-xl border border-[#c7d6da] bg-white px-3 py-2 text-sm font-semibold text-[#12343b] disabled:opacity-50"
+                            disabled="@(NormalizedPreviewCurrentPage >= PreviewTotalPages)"
+                            @onclick="OnGoToNextPage">
+                        Siguiente
+                    </button>
+                </div>
+            </div>
+            <div class="app-table-wrap rounded-3xl border border-[#d9e5e8]">
+                <table class="app-table-compact min-w-full divide-y divide-[#d9e5e8] text-sm">
+                    <thead class="bg-[#f4f8f9]">
+                        <tr>
+                            <th class="sticky left-0 z-10 bg-[#f4f8f9] px-4 py-3 text-left font-semibold text-[#12343b]">Fila</th>
+                            <th class="sticky left-[4.5rem] z-10 bg-[#f4f8f9] px-4 py-3 text-left font-semibold text-[#12343b]">Estado</th>
+                            @foreach (var header in OrderedPreviewHeaders)
+                            {
+                                <th class="px-4 py-3 text-left font-semibold text-[#12343b]">@header</th>
+                            }
+                            <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Errores</th>
+                            <th class="px-4 py-3 text-left font-semibold text-[#12343b]">Detalle</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#eef3f5] bg-white">
+                        @foreach (var row in PagedPreviewRows)
+                        {
+                            <tr class="align-top">
+                                <td class="sticky left-0 bg-white px-4 py-3 font-semibold text-slate-700">@row.RowNumber</td>
+                                <td class="sticky left-[4.5rem] bg-white px-4 py-3">
+                                    <span class="@GetRowStatusBadgeClass(row)">@row.RowStatus</span>
+                                </td>
+                                @foreach (var header in OrderedPreviewHeaders)
+                                {
+                                    var cell = FindCell(row, header);
+                                    <td class="@GetPreviewCellClass(cell)">
+                                        @if (cell is null)
+                                        {
+                                            <span class="text-slate-300">-</span>
+                                        }
+                                        else
+                                        {
+                                            <div class="truncate font-medium @(cell.IsValid ? "text-slate-700" : "text-rose-700")" title="@(ShowNormalizedValues ? cell.NormalizedValue : cell.RawValue)">
+                                                @(ShowNormalizedValues ? GetNormalizedDisplayValue(cell) : GetDisplayValue(cell))
+                                            </div>
+                                            @if (!cell.IsValid && !string.IsNullOrWhiteSpace(cell.ValidationMessage))
+                                            {
+                                                <div class="mt-1 text-[11px] text-rose-600">@cell.ValidationMessage</div>
+                                            }
+                                        }
+                                    </td>
+                                }
+                                <td class="px-4 py-3">
+                                    @if (row.Errors.Any())
+                                    {
+                                        <span class="rounded-full bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700">@row.Errors.Count error(es)</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">Sin errores</span>
+                                    }
+                                </td>
+                                <td class="px-4 py-3">
+                                    <div class="flex flex-wrap gap-2">
+                                        <button class="rounded-xl border border-[#c7d6da] bg-white px-3 py-2 text-xs font-semibold text-[#12343b]"
+                                                @onclick="() => OnOpenRow.InvokeAsync(row)">
+                                            Ver fila
+                                        </button>
+                                        @if (row.Errors.Any())
+                                        {
+                                            <button class="rounded-xl border border-[#e7c690] bg-[#fff4e4] px-3 py-2 text-xs font-semibold text-[#8b5a16]"
+                                                    @onclick="() => OnCorrectRow.InvokeAsync(row)">
+                                                Corregir
+                                            </button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public bool HasRows { get; set; }
+    [Parameter] public int FilteredPreviewCount { get; set; }
+    [Parameter] public string PreviewSearchTerm { get; set; } = string.Empty;
+    [Parameter] public string PreviewStatusFilter { get; set; } = "all";
+    [Parameter] public bool PreviewErrorsOnly { get; set; }
+    [Parameter] public bool ShowNormalizedValues { get; set; }
+    [Parameter] public int CurrentPreviewRows { get; set; }
+    [Parameter] public IReadOnlyList<int> PreviewRowOptions { get; set; } = Array.Empty<int>();
+    [Parameter] public IReadOnlyList<int> PreviewPageSizeOptions { get; set; } = Array.Empty<int>();
+    [Parameter] public int PreviewPageSize { get; set; }
+    [Parameter] public int PreviewTotalPages { get; set; }
+    [Parameter] public int NormalizedPreviewCurrentPage { get; set; }
+    [Parameter] public string BatchReviewHint { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<string> OrderedPreviewHeaders { get; set; } = Array.Empty<string>();
+    [Parameter] public bool ShowTemplateSummary { get; set; }
+    [Parameter] public int TemplateFieldCount { get; set; }
+    [Parameter] public IReadOnlyList<BulkImportTemplateFieldDto> TemplateFieldPreviewItems { get; set; } = Array.Empty<BulkImportTemplateFieldDto>();
+    [Parameter] public bool HasFilteredRows { get; set; }
+    [Parameter] public string PreviewPaginationSummary { get; set; } = string.Empty;
+    [Parameter] public IReadOnlyList<BulkImportRowPreviewDto> PagedPreviewRows { get; set; } = Array.Empty<BulkImportRowPreviewDto>();
+    [Parameter] public Func<int, string>? PreviewRowOptionLabelSelector { get; set; }
+    [Parameter] public Func<int, string>? PreviewPageSizeOptionLabelSelector { get; set; }
+    [Parameter] public Func<BulkImportTemplateFieldDto, string>? TemplateFieldInterpretationSelector { get; set; }
+    [Parameter] public Func<BulkImportRowPreviewDto, string, BulkImportRowCellDto?>? FindCellSelector { get; set; }
+    [Parameter] public Func<BulkImportRowCellDto?, string>? PreviewCellClassSelector { get; set; }
+    [Parameter] public Func<BulkImportRowCellDto, string>? DisplayValueSelector { get; set; }
+    [Parameter] public Func<BulkImportRowCellDto, string>? NormalizedDisplayValueSelector { get; set; }
+    [Parameter] public Func<string, string>? RowStatusBadgeClassSelector { get; set; }
+    [Parameter] public EventCallback<string> OnPreviewSearchChanged { get; set; }
+    [Parameter] public EventCallback<string> OnPreviewStatusChanged { get; set; }
+    [Parameter] public EventCallback<bool> OnPreviewErrorsOnlyChanged { get; set; }
+    [Parameter] public EventCallback<bool> OnShowNormalizedValuesChanged { get; set; }
+    [Parameter] public EventCallback<int> OnPreviewRowsChanged { get; set; }
+    [Parameter] public EventCallback<int> OnPreviewPageSizeChanged { get; set; }
+    [Parameter] public EventCallback OnGoToPreviousPage { get; set; }
+    [Parameter] public EventCallback OnGoToNextPage { get; set; }
+    [Parameter] public EventCallback<BulkImportRowPreviewDto> OnOpenRow { get; set; }
+    [Parameter] public EventCallback<BulkImportRowPreviewDto> OnCorrectRow { get; set; }
+
+    private Task HandleSearchChanged(ChangeEventArgs args)
+        => OnPreviewSearchChanged.InvokeAsync(args.Value?.ToString() ?? string.Empty);
+
+    private Task HandleStatusChanged(ChangeEventArgs args)
+        => OnPreviewStatusChanged.InvokeAsync(args.Value?.ToString() ?? "all");
+
+    private Task HandleErrorsOnlyChanged(ChangeEventArgs args)
+        => OnPreviewErrorsOnlyChanged.InvokeAsync(args.Value is bool value && value);
+
+    private Task HandleShowNormalizedChanged(ChangeEventArgs args)
+        => OnShowNormalizedValuesChanged.InvokeAsync(args.Value is bool value && value);
+
+    private Task HandlePreviewRowsChanged(ChangeEventArgs args)
+        => OnPreviewRowsChanged.InvokeAsync(ParseInt(args.Value, CurrentPreviewRows));
+
+    private Task HandlePreviewPageSizeChanged(ChangeEventArgs args)
+        => OnPreviewPageSizeChanged.InvokeAsync(ParseInt(args.Value, PreviewPageSize));
+
+    private string GetPreviewRowOptionLabel(int option)
+        => PreviewRowOptionLabelSelector?.Invoke(option) ?? option.ToString();
+
+    private string GetPreviewPageSizeOptionLabel(int option)
+        => PreviewPageSizeOptionLabelSelector?.Invoke(option) ?? option.ToString();
+
+    private string GetTemplateFieldInterpretation(BulkImportTemplateFieldDto field)
+        => TemplateFieldInterpretationSelector?.Invoke(field) ?? string.Empty;
+
+    private BulkImportRowCellDto? FindCell(BulkImportRowPreviewDto row, string header)
+        => FindCellSelector?.Invoke(row, header);
+
+    private string GetPreviewCellClass(BulkImportRowCellDto? cell)
+        => PreviewCellClassSelector?.Invoke(cell) ?? string.Empty;
+
+    private string GetDisplayValue(BulkImportRowCellDto cell)
+        => DisplayValueSelector?.Invoke(cell) ?? string.Empty;
+
+    private string GetNormalizedDisplayValue(BulkImportRowCellDto cell)
+        => NormalizedDisplayValueSelector?.Invoke(cell) ?? string.Empty;
+
+    private string GetRowStatusBadgeClass(BulkImportRowPreviewDto row)
+        => RowStatusBadgeClassSelector?.Invoke(row.RowStatus) ?? string.Empty;
+
+    private static int ParseInt(object? value, int fallback)
+        => int.TryParse(value?.ToString(), out var parsed) ? parsed : fallback;
+}

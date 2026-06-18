@@ -1,0 +1,166 @@
+﻿@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@using tesisproject.frontend.SharedUI.Modal
+@using tesisproject.frontend.SharedUI.ActionButton
+@using tesisproject.shared.Enums
+
+@inherits ModalBase
+
+@if (IsOpen)
+{
+    <div class="fixed inset-0 z-50" tabindex="0" @ref="_keyTarget" @onkeydown="HandleKeyDown">
+        <!-- Backdrop -->
+        <div class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" @onclick="OnBackdropClick"></div>
+
+        <!-- Dialog -->
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+            <div class="bg-background rounded-2xl shadow-2xl border border-border w-full overflow-hidden @DialogMaxWidth"
+                 style="max-height: 90vh;">
+
+                <!-- Header -->
+                <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+                    <h3 class="text-lg font-semibold text-foreground">
+                        @(IsEditMode ? "Editar problema" : "Registrar problema")
+                    </h3>
+                    @if (ShowCloseButton)
+                    {
+                        <ActionButton Execute="HandleClose"
+                                      Variant="ButtonVariant.Ghost"
+                                      Size="ButtonSize.Sm"
+                                      Class="btn-primary-ghost inline-flex items-center justify-center rounded-xl px-2 py-2">
+                            <Icon>
+                                <span class="sr-only">Close</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                                     fill="currentColor" class="size-5">
+                                    <path fill-rule="evenodd"
+                                          d="M5.47 5.47a.75.75 0 011.06 0L12 10.94l5.47-5.47a.75.75 0 111.06 1.06L13.06 12l5.47 5.47a.75.75 0 11-1.06 1.06L12 13.06l-5.47 5.47a.75.75 0 11-1.06-1.06L10.94 12 5.47 6.53a.75.75 0 010-1.06z"
+                                          clip-rule="evenodd" />
+                                </svg>
+                            </Icon>
+                        </ActionButton>
+                    }
+                </div>
+
+                <!-- Body -->
+                <div class="px-6 py-5 overflow-auto" style="max-height: calc(90vh - 7.5rem);">
+                    <EditForm Model="@form" OnValidSubmit="HandleValidSubmit">
+                        <DataAnnotationsValidator />
+
+                        <div class="space-y-4">
+                            <!-- Descripción -->
+                            <div>
+                                <label class="block text-sm font-medium text-foreground mb-1">
+                                    Descripción del problema <span class="text-error">*</span>
+                                </label>
+                                <InputTextArea @bind-Value="form.Description"
+                                               class="w-full rounded-lg border border-border bg-background p-3 focus:outline-none focus:ring-2 focus:ring-primary"
+                                               rows="4"
+                                               placeholder="Describe el problema encontrado durante la visita..." />
+                                <ValidationMessage For="() => form.Description" class="text-sm text-error mt-1" />
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                            {
+                                <div class="rounded-lg bg-error/10 border border-error/20 p-3">
+                                    <p class="text-sm text-error">@ErrorMessage</p>
+                                </div>
+                            }
+                        </div>
+                    </EditForm>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-6 py-4 border-t border-border bg-primary-subtle">
+                    <div class="flex items-center justify-end gap-2">
+                        <ActionButton Text="Cancelar"
+                                      Execute="HandleClose"
+                                      Variant="ButtonVariant.Ghost"
+                                      Size="ButtonSize.Sm"
+                                      Disabled="@IsSaving"
+                                      Class="inline-flex items-center justify-center rounded-xl px-4 py-2" />
+
+                        <ActionButton Text="@(IsEditMode ? "Guardar cambios" : "Registrar problema")"
+                                      Execute="HandleValidSubmit"
+                                      Intent="@(IsEditMode ? ButtonIntent.Accept : ButtonIntent.Add)"
+                                      Variant="ButtonVariant.Soft"
+                                      Size="ButtonSize.Sm"
+                                      Disabled="@IsSaving"
+                                      Class="inline-flex items-center justify-center rounded-xl px-4 py-2">
+                            <Icon>
+                                @if (IsSaving)
+                                {
+                                    <div class="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                                }
+                                else
+                                {
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="size-5" viewBox="0 0 24 24" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M19.916 4.626a.75.75 0 0 1 .208 1.04l-9 13.5a.75.75 0 0 1-1.154.114l-6-6a.75.75 0 0 1 1.06-1.06l5.353 5.353 8.493-12.74a.75.75 0 0 1 1.04-.207Z" clip-rule="evenodd" />
+                                    </svg>
+                                }
+                            </Icon>
+                        </ActionButton>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    /* ========== Parámetros adicionales a ModalBase ========== */
+    [Parameter] public bool IsSaving { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+
+    /// <summary>Si tiene valor, estamos editando. Si es null, estamos creando.</summary>
+    [Parameter] public int? IssueId { get; set; }
+
+    /// <summary>VisitId requerido para crear nuevos issues.</summary>
+    [Parameter] public int VisitId { get; set; }
+
+    /// <summary>Valores iniciales para prellenar el form (en modo edición).</summary>
+    [Parameter] public VisitIssueFormModel? InitialValues { get; set; }
+
+    [Parameter] public EventCallback<VisitIssueFormModel> OnSubmit { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    /* ========== Estado local ========== */
+    private VisitIssueFormModel form = new();
+    private bool IsEditMode => IssueId.HasValue;
+
+    protected override void OnParametersSet()
+    {
+        base.OnParametersSet();
+
+        if (IsOpen)
+        {
+            if (InitialValues is not null)
+            {
+                form = new VisitIssueFormModel
+                {
+                    Description = InitialValues.Description
+                };
+            }
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (OnSubmit.HasDelegate)
+            await OnSubmit.InvokeAsync(form);
+    }
+
+    private async Task HandleClose()
+    {
+        if (OnCancel.HasDelegate)
+            await OnCancel.InvokeAsync();
+
+        await Close();
+    }
+
+    /* ========== Modelo del formulario ========== */
+    public class VisitIssueFormModel
+    {
+        [Required(ErrorMessage = "La descripción del problema es requerida.")]
+        [StringLength(4000, ErrorMessage = "La descripción no puede exceder 4000 caracteres.")]
+        public string? Description { get; set; }
+    }
+}

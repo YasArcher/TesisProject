@@ -1,0 +1,211 @@
+@using tesisproject.frontend.SharedUI
+@using tesisproject.shared.DTOs.ExternalApis
+
+<AppConfirmPanel
+                 Visible="@(Article is not null)"
+                 Size="xl"
+                 Eyebrow="Detalle externo"
+                 Title="Detalle del artículo externo"
+                 Message=""
+                 ConfirmText="Cerrar"
+                 CancelText=""
+                 OnConfirm="OnClose"
+                 OnCancel="OnClose">
+    @if (Article is not null)
+    {
+        <div class="grid grid-cols-1 gap-4 text-sm md:grid-cols-2 xl:grid-cols-3">
+            <div class="rounded-2xl bg-[#f5f9fc] px-4 py-3 md:col-span-2 xl:col-span-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Título</div>
+                <div class="mt-1 font-semibold text-[#102642]">@Article.Title</div>
+            </div>
+            <div class="rounded-2xl bg-[#f5f9fc] px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Proveedor</div>
+                <div class="mt-1 font-semibold text-[#102642]">@Article.ExternalSource</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Revista</div>
+                <div class="mt-1 text-slate-700">@Article.JournalName</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">DOI</div>
+                <div class="mt-1 break-all font-mono text-slate-700">@Article.Doi</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">ISSN / E-ISSN</div>
+                <div class="mt-1 text-slate-700">@Article.IssnCode @(string.IsNullOrWhiteSpace(Article.EIssnCode) ? "" : $"/ {Article.EIssnCode}")</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Volumen / Número / Páginas</div>
+                <div class="mt-1 text-slate-700">@Article.Volume / @Article.Issue / @Article.PageRange</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Publisher / Tipo</div>
+                <div class="mt-1 text-slate-700">@Article.Publisher / @Article.DocumentType</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Año</div>
+                <div class="mt-1 text-slate-700">@Article.PublicationYear</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Fecha de publicación</div>
+                <div class="mt-1 text-slate-700">@(!string.IsNullOrWhiteSpace(Article.PublicationDate) ? Article.PublicationDate : "Sin dato")</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Idioma</div>
+                <div class="mt-1 text-slate-700">@(!string.IsNullOrWhiteSpace(Article.Language) ? Article.Language : "Sin dato")</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Identificador externo</div>
+                <div class="mt-1 break-all font-mono text-slate-700">@(!string.IsNullOrWhiteSpace(Article.ExternalId) ? Article.ExternalId : "Sin dato")</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Scopus ID</div>
+                <div class="mt-1 break-all font-mono text-slate-700">@(!string.IsNullOrWhiteSpace(Article.ScopusId) ? Article.ScopusId : "Sin dato")</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Citas detectadas</div>
+                <div class="mt-1 text-slate-700">@(Article.CitationCount?.ToString() ?? "Sin dato")</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Acceso abierto</div>
+                <div class="mt-1 text-slate-700">@GetOpenAccessLabel(Article)</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Enlace del proveedor</div>
+                @if (!string.IsNullOrWhiteSpace(Article.SourceUrl))
+                {
+                    <a class="mt-1 inline-flex break-all text-[#295173] underline" href="@Article.SourceUrl" target="_blank" rel="noopener noreferrer">@Article.SourceUrl</a>
+                }
+                else
+                {
+                    <div class="mt-1 text-slate-500">Sin enlace disponible.</div>
+                }
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Enlace de la revista</div>
+                @if (!string.IsNullOrWhiteSpace(Article.JournalUrl))
+                {
+                    <a class="mt-1 inline-flex break-all text-[#295173] underline" href="@Article.JournalUrl" target="_blank" rel="noopener noreferrer">@Article.JournalUrl</a>
+                }
+                else
+                {
+                    <div class="mt-1 text-slate-500">Sin enlace disponible.</div>
+                }
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Autores detectados</div>
+                <div class="mt-1 text-slate-700">@Article.AuthorNames.Count</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Keywords detectadas</div>
+                <div class="mt-1 text-slate-700">@Article.Keywords.Count</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Áreas temáticas</div>
+                <div class="mt-1 text-slate-700">@Article.SubjectAreas.Count</div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3 md:col-span-2">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Autores</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @if (Article.AuthorNames.Any())
+                    {
+                        @foreach (var author in Article.AuthorNames)
+                        {
+                            <span class="rounded-full bg-[#eef6ff] px-3 py-1 text-xs font-semibold text-[#295173]">@author</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="text-slate-500">Sin autores detallados.</span>
+                    }
+                </div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3 md:col-span-2">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Afiliaciones detectadas</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @if (Article.AuthorAffiliations.Any())
+                    {
+                        @foreach (var affiliation in Article.AuthorAffiliations)
+                        {
+                            <span class="rounded-full bg-[#eef5fb] px-3 py-1 text-xs font-semibold text-[#295173]">@affiliation</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="text-slate-500">Sin afiliaciones disponibles.</span>
+                    }
+                </div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3 md:col-span-2">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Palabras clave</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @if (Article.Keywords.Any())
+                    {
+                        @foreach (var keyword in Article.Keywords)
+                        {
+                            <span class="rounded-full bg-[#fff4e4] px-3 py-1 text-xs font-semibold text-[#8b5a16]">@keyword</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="text-slate-500">Sin keywords detectadas.</span>
+                    }
+                </div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3 md:col-span-2">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Áreas temáticas</div>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    @if (Article.SubjectAreas.Any())
+                    {
+                        @foreach (var area in Article.SubjectAreas)
+                        {
+                            <span class="rounded-full bg-[#eaf7ee] px-3 py-1 text-xs font-semibold text-emerald-700">@area</span>
+                        }
+                    }
+                    else
+                    {
+                        <span class="text-slate-500">Sin áreas temáticas detectadas.</span>
+                    }
+                </div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3 md:col-span-2">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Licencia / acceso abierto</div>
+                <div class="mt-2 space-y-2 text-slate-700">
+                    <div>@GetOpenAccessLabel(Article)</div>
+                    @if (!string.IsNullOrWhiteSpace(Article.LicenseUrl))
+                    {
+                        <a class="inline-flex break-all text-[#295173] underline" href="@Article.LicenseUrl" target="_blank" rel="noopener noreferrer">@Article.LicenseUrl</a>
+                    }
+                    else
+                    {
+                        <div class="text-slate-500">Sin licencia visible.</div>
+                    }
+                </div>
+            </div>
+            <div class="rounded-2xl border border-[#dbe6ef] bg-white px-4 py-3 md:col-span-2">
+                <div class="text-xs uppercase tracking-wide text-slate-500">Resumen</div>
+                <div class="mt-1 whitespace-pre-wrap text-slate-700">@(!string.IsNullOrWhiteSpace(Article.ArticleAbstract) ? Article.ArticleAbstract : "Sin resumen disponible.")</div>
+            </div>
+        </div>
+    }
+</AppConfirmPanel>
+
+@code {
+    [Parameter] public ExternalArticlePreviewDto? Article { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private static string GetOpenAccessLabel(ExternalArticlePreviewDto article)
+    {
+        if (!string.IsNullOrWhiteSpace(article.OpenAccessStatus))
+        {
+            return article.OpenAccessStatus;
+        }
+
+        return article.IsOpenAccess switch
+        {
+            true => "Open access",
+            false => "Acceso restringido",
+            _ => "Sin dato"
+        };
+    }
+}

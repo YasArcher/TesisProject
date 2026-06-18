@@ -1,0 +1,8 @@
+﻿<div class="inline-flex items-center gap-3" role="status" aria-live="polite" aria-busy="true">
+    <span class="inline-block border-4 border-border border-t-primary rounded-full animate-spin"
+          style="width:@SizePx;height:@SizePx"></span>
+    @if (!string.IsNullOrWhiteSpace(Label))
+    {
+        <span class="text-sm text-muted">@Label</span>
+    }
+</div>

@@ -1,0 +1,147 @@
+.app-confirm-panel__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.25rem;
+    background: rgba(49, 54, 71, 0.48);
+    backdrop-filter: blur(4px);
+}
+
+.app-confirm-panel {
+    width: min(100%, 42rem);
+    max-height: min(90vh, 54rem);
+    overflow: hidden;
+    border-radius: 1.5rem;
+    border: 1px solid rgba(67, 86, 99, 0.14);
+    background:
+        radial-gradient(circle at top right, rgba(244, 206, 20, 0.14), transparent 28%),
+        linear-gradient(180deg, #ffffff, rgba(245, 247, 248, 0.98));
+    box-shadow: 0 24px 48px rgba(49, 54, 71, 0.16);
+}
+
+.app-confirm-panel--sm {
+    width: min(100%, 30rem);
+}
+
+.app-confirm-panel--md {
+    width: min(100%, 42rem);
+}
+
+.app-confirm-panel--lg {
+    width: min(100%, 56rem);
+}
+
+.app-confirm-panel--xl {
+    width: min(100%, 74rem);
+}
+
+.app-confirm-panel__body {
+    padding: 1.15rem 1.2rem 0;
+    overflow-y: auto;
+    max-height: calc(min(90vh, 54rem) - 5.75rem);
+}
+
+.app-confirm-panel__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.app-confirm-panel__close {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+    border: 1px solid rgba(67, 86, 99, 0.16);
+    background: linear-gradient(145deg, rgba(255,248,212,.8), rgba(255,255,255,1));
+    color: #313647;
+    font-size: 1.2rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.app-confirm-panel__eyebrow {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .18em;
+    color: #437057;
+}
+
+.app-confirm-panel__title {
+    margin-top: .25rem;
+    font-size: .95rem;
+    font-weight: 700;
+    color: #313647;
+}
+
+.app-confirm-panel__message {
+    margin-top: .35rem;
+    font-size: .9rem;
+    color: #435663;
+    line-height: 1.5;
+}
+
+.app-confirm-panel__content {
+    margin-top: .85rem;
+}
+
+.app-confirm-panel__actions {
+    display: flex;
+    gap: .75rem;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 1rem 1.2rem 1.2rem;
+    border-top: 1px solid rgba(67, 86, 99, 0.12);
+    background: linear-gradient(180deg, rgba(255,248,212,.36), rgba(255,255,255,1));
+}
+
+.app-confirm-panel__button {
+    border-radius: .9rem;
+    padding: .65rem .95rem;
+    font-size: .88rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+}
+
+.app-confirm-panel__button--secondary {
+    background: #ffffff;
+    border-color: rgba(67, 86, 99, 0.18);
+    color: #313647;
+}
+
+.app-confirm-panel__button--primary {
+    background: linear-gradient(135deg, #313647, #495E57, #437057);
+    color: #ffffff;
+}
+
+@media (max-width: 767.98px) {
+    .app-confirm-panel__backdrop {
+        padding: .75rem;
+        align-items: flex-end;
+    }
+
+    .app-confirm-panel {
+        width: 100%;
+        max-height: 92vh;
+        border-radius: 1.25rem 1.25rem 0 0;
+    }
+
+    .app-confirm-panel__body {
+        max-height: calc(92vh - 5.75rem);
+        padding: 1rem 1rem 0;
+    }
+
+    .app-confirm-panel__actions {
+        width: 100%;
+        flex-direction: column;
+        padding: .9rem 1rem 1rem;
+    }
+
+    .app-confirm-panel__button {
+        width: 100%;
+    }
+}
