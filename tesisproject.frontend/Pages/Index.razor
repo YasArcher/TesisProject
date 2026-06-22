@@ -37,7 +37,9 @@
                 <article class="rounded-lg border border-border bg-background p-5 shadow-sm">
                     <div class="mb-4 flex items-start justify-between gap-4">
                         <div>
-                            <p class="text-xs font-bold uppercase text-primary">Disponible</p>
+                            <p class="text-xs font-bold uppercase @(_canOpenProjects ? "text-primary" : "text-muted")">
+                                @(_canOpenProjects ? "Disponible" : "Sin acceso")
+                            </p>
                             <h2 class="mt-1 text-xl font-bold text-foreground">Gestión de proyectos</h2>
                         </div>
                         <span class="rounded-lg bg-primary-subtle px-3 py-2 text-sm font-semibold text-primary">Proyectos</span>
@@ -46,9 +48,10 @@
                         Administra proyectos, grupos, presupuestos, productos, matrices, visitas y seguimiento institucional.
                     </p>
                     <button type="button"
-                            class="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+                            class="w-full rounded-lg px-4 py-3 text-sm font-semibold transition @ProjectButtonClass"
+                            disabled="@(!_canOpenProjects)"
                             @onclick="OpenProjects">
-                        Ingresar a proyectos
+                        @(_canOpenProjects ? "Ingresar a proyectos" : "Módulo no disponible")
                     </button>
                 </article>
 
@@ -79,6 +82,7 @@
 
 @code {
     private bool _loading = true;
+    private bool _canOpenProjects;
     private bool _canOpenArticles;
     private bool _articlesEnabled;
     private string? _message;
@@ -91,16 +95,28 @@
             ? "bg-primary text-white hover:opacity-90"
             : "cursor-not-allowed bg-border text-muted";
 
+    private string ProjectButtonClass
+        => _canOpenProjects
+            ? "bg-primary text-white hover:opacity-90"
+            : "cursor-not-allowed bg-border text-muted";
+
     protected override async Task OnInitializedAsync()
     {
         var result = await AuthClient.GetCurrentSessionAsync();
 
         if (result.Success && result.Data is not null)
         {
+            _canOpenProjects = result.Data.Roles.Any(role =>
+                role.Equals("coordinador", StringComparison.OrdinalIgnoreCase) ||
+                role.Equals("technical", StringComparison.OrdinalIgnoreCase) ||
+                role.Equals("admin", StringComparison.OrdinalIgnoreCase) ||
+                role.Equals("superadmin", StringComparison.OrdinalIgnoreCase));
             _articlesEnabled = result.Data.Articles.Enabled;
             _canOpenArticles = result.Data.Articles.CanAccess || result.Data.Articles.CanList;
 
-            if (_articlesEnabled && !_canOpenArticles)
+            if (!_canOpenProjects && !_canOpenArticles)
+                _message = "Tu cuenta inició sesión correctamente, pero todavía no tiene un rol operativo asignado.";
+            else if (_articlesEnabled && !_canOpenArticles)
                 _message = "Tu cuenta no tiene permisos asignados para consultar producción científica.";
         }
         else
