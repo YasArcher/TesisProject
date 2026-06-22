@@ -1,10 +1,116 @@
-﻿@page "/"
+@page "/"
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Auth
+@inject IAuthClientService AuthClient
 @inject NavigationManager Nav
 
+@* [ARTICLES-MIGRATION] Entrada unificada; conserva Proyectos como modulo base. *@
+<div class="h-full overflow-y-auto bg-page-bg">
+    <div class="mx-auto w-full max-w-6xl p-4 md:p-6">
+        <header class="mb-6 border-b border-border pb-4">
+            <p class="text-sm font-semibold text-primary">Sistema integrado de investigación</p>
+            <h1 class="mt-1 text-2xl font-bold text-foreground">Selecciona el módulo de trabajo</h1>
+            <p class="mt-2 max-w-3xl text-sm text-muted">
+                Tu sesión institucional determina las funciones disponibles. Puedes volver a esta pantalla desde el menú principal.
+            </p>
+        </header>
+
+        @if (_loading)
+        {
+            <div class="flex items-center justify-center" style="min-height: 16rem;">
+                <div class="text-center">
+                    <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+                    <p class="mt-3 text-sm text-muted">Consultando accesos...</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(_message))
+            {
+                <div class="mb-4 rounded-lg border border-border bg-background p-4 text-sm text-muted">
+                    @_message
+                </div>
+            }
+
+            <section class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <article class="rounded-lg border border-border bg-background p-5 shadow-sm">
+                    <div class="mb-4 flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-bold uppercase text-primary">Disponible</p>
+                            <h2 class="mt-1 text-xl font-bold text-foreground">Gestión de proyectos</h2>
+                        </div>
+                        <span class="rounded-lg bg-primary-subtle px-3 py-2 text-sm font-semibold text-primary">Proyectos</span>
+                    </div>
+                    <p class="mb-5 text-sm text-muted">
+                        Administra proyectos, grupos, presupuestos, productos, matrices, visitas y seguimiento institucional.
+                    </p>
+                    <button type="button"
+                            class="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+                            @onclick="OpenProjects">
+                        Ingresar a proyectos
+                    </button>
+                </article>
+
+                <article class="rounded-lg border border-border bg-background p-5 shadow-sm">
+                    <div class="mb-4 flex items-start justify-between gap-4">
+                        <div>
+                            <p class="text-xs font-bold uppercase @(_canOpenArticles ? "text-primary" : "text-muted")">
+                                @ArticleAvailabilityLabel
+                            </p>
+                            <h2 class="mt-1 text-xl font-bold text-foreground">Producción científica</h2>
+                        </div>
+                        <span class="rounded-lg bg-muted/20 px-3 py-2 text-sm font-semibold text-foreground">Artículos</span>
+                    </div>
+                    <p class="mb-5 text-sm text-muted">
+                        Consulta artículos científicos y prepara la integración progresiva de registro, workflow, reportería e IA.
+                    </p>
+                    <button type="button"
+                            class="w-full rounded-lg px-4 py-3 text-sm font-semibold transition @ArticleButtonClass"
+                            disabled="@(!_canOpenArticles)"
+                            @onclick="OpenArticles">
+                        @(_canOpenArticles ? "Ingresar a artículos" : "Módulo no disponible")
+                    </button>
+                </article>
+            </section>
+        }
+    </div>
+</div>
+
 @code {
-    protected override void OnInitialized()
+    private bool _loading = true;
+    private bool _canOpenArticles;
+    private bool _articlesEnabled;
+    private string? _message;
+
+    private string ArticleAvailabilityLabel
+        => !_articlesEnabled ? "En preparación" : _canOpenArticles ? "Disponible" : "Sin acceso";
+
+    private string ArticleButtonClass
+        => _canOpenArticles
+            ? "bg-primary text-white hover:opacity-90"
+            : "cursor-not-allowed bg-border text-muted";
+
+    protected override async Task OnInitializedAsync()
     {
-        // Cambia la ruta de destino
-        Nav.NavigateTo("/projects/home", true);
+        var result = await AuthClient.GetCurrentSessionAsync();
+
+        if (result.Success && result.Data is not null)
+        {
+            _articlesEnabled = result.Data.Articles.Enabled;
+            _canOpenArticles = result.Data.Articles.CanAccess || result.Data.Articles.CanList;
+
+            if (_articlesEnabled && !_canOpenArticles)
+                _message = "Tu cuenta no tiene permisos asignados para consultar producción científica.";
+        }
+        else
+        {
+            _message = "No fue posible consultar los accesos de artículos. La gestión de proyectos continúa disponible.";
+        }
+
+        _loading = false;
     }
+
+    private void OpenProjects() => Nav.NavigateTo("/projects/home");
+    private void OpenArticles() => Nav.NavigateTo("/articles");
 }

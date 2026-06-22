@@ -1,0 +1,299 @@
+@page "/articles"
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Articles
+@inject IArticleClientService ArticlesClient
+
+@* [ARTICLES-MIGRATION] Primera pagina funcional de articulos dentro de la arquitectura base. *@
+<div class="h-full min-h-0 overflow-y-auto bg-page-bg">
+    <div class="mx-auto w-full max-w-7xl p-4 md:p-6">
+        <header class="mb-4 flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-end md:justify-between">
+            <div>
+                <p class="text-sm font-semibold text-primary">Producción científica</p>
+                <h1 class="mt-1 text-2xl font-bold text-foreground">Artículos registrados</h1>
+                <p class="mt-1 text-sm text-muted">Consulta inicial de la base transaccional de artículos.</p>
+            </div>
+            <button type="button"
+                    class="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle"
+                    @onclick="ReloadAsync"
+                    disabled="@_loading">
+                Actualizar
+            </button>
+        </header>
+
+        <section class="mb-4 grid grid-cols-1 gap-3 rounded-lg border border-border bg-background p-4 md:grid-cols-2">
+            <label class="block md:col-span-1">
+                <span class="mb-1 block text-xs font-semibold text-muted">Buscar</span>
+                <input class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                       placeholder="Título, DOI o revista"
+                       @bind="_search"
+                       @onkeydown="HandleSearchKeyDown" />
+            </label>
+            <label class="block">
+                <span class="mb-1 block text-xs font-semibold text-muted">Año</span>
+                <input class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+                       type="number"
+                       min="1900"
+                       max="@DateTime.Today.Year"
+                       @bind="_year" />
+            </label>
+            <button type="button"
+                    class="self-end rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
+                    @onclick="ApplyFiltersAsync"
+                    disabled="@_loading">
+                Buscar
+            </button>
+        </section>
+
+        @if (_loading)
+        {
+            <div class="flex items-center justify-center rounded-lg border border-border bg-background" style="min-height: 16rem;">
+                <div class="text-center">
+                    <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+                    <p class="mt-3 text-sm text-muted">Cargando artículos...</p>
+                </div>
+            </div>
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <section class="rounded-lg border border-border bg-background p-6">
+                <h2 class="text-lg font-bold text-foreground">No fue posible cargar los artículos</h2>
+                <p class="mt-2 text-sm text-muted">@_error</p>
+                <button type="button"
+                        class="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white"
+                        @onclick="ReloadAsync">
+                    Intentar nuevamente
+                </button>
+            </section>
+        }
+        else if (_page.Items.Count == 0)
+        {
+            <section class="rounded-lg border border-border bg-background p-8 text-center">
+                <h2 class="text-lg font-bold text-foreground">No se encontraron artículos</h2>
+                <p class="mt-2 text-sm text-muted">Ajusta los filtros o verifica que el módulo tenga información registrada.</p>
+            </section>
+        }
+        else
+        {
+            <section class="overflow-hidden rounded-lg border border-border bg-background">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left" style="min-width: 760px;">
+                        <thead class="border-b border-border bg-primary-subtle">
+                            <tr class="text-xs uppercase text-muted">
+                                <th class="px-4 py-3">Artículo</th>
+                                <th class="px-4 py-3">Año</th>
+                                <th class="px-4 py-3">Revista</th>
+                                <th class="px-4 py-3">Indexación</th>
+                                <th class="px-4 py-3 text-right">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-border">
+                            @foreach (var article in _page.Items)
+                            {
+                                <tr @key="article.Id" class="hover:bg-primary-subtle">
+                                    <td class="px-4 py-3">
+                                        <div class="max-w-xl font-semibold text-foreground">@Display(article.Title)</div>
+                                        <div class="mt-1 text-xs text-muted">DOI: @Display(article.Doi)</div>
+                                    </td>
+                                    <td class="px-4 py-3 text-sm text-foreground">@Display(article.Year)</td>
+                                    <td class="px-4 py-3 text-sm text-foreground">@Display(article.VenueName)</td>
+                                    <td class="px-4 py-3 text-sm text-foreground">@Display(article.IndexingSourceName)</td>
+                                    <td class="px-4 py-3 text-right">
+                                        <button type="button"
+                                                class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-primary-subtle"
+                                                @onclick="() => OpenDetailAsync(article.Id)">
+                                            Ver detalle
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                <footer class="flex flex-col gap-3 border-t border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p class="text-xs text-muted">
+                        Página @_page.Page de @Math.Max(1, _page.TotalPages) · @_page.TotalCount registro(s)
+                    </p>
+                    <div class="flex gap-2">
+                        <button type="button"
+                                class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled="@(_page.Page <= 1)"
+                                @onclick="PreviousPageAsync">
+                            Anterior
+                        </button>
+                        <button type="button"
+                                class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled="@(_page.Page >= _page.TotalPages)"
+                                @onclick="NextPageAsync">
+                            Siguiente
+                        </button>
+                    </div>
+                </footer>
+            </section>
+        }
+    </div>
+</div>
+
+@if (_detailOpen)
+{
+    <div class="fixed inset-0 z-50 flex items-center justify-center p-4"
+         style="background-color: rgba(0, 0, 0, 0.5);"
+         @onclick="CloseDetail">
+        <section class="w-full max-w-3xl overflow-y-auto rounded-lg bg-background shadow-2xl"
+                 style="max-height: 85vh;"
+                 role="dialog"
+                 aria-modal="true"
+                 aria-labelledby="article-detail-title"
+                 @onclick:stopPropagation="true">
+            <header class="flex items-start justify-between gap-4 border-b border-border p-5">
+                <div>
+                    <p class="text-sm font-semibold text-primary">Detalle del artículo</p>
+                    <h2 id="article-detail-title" class="mt-1 text-xl font-bold text-foreground">
+                        @(_detailLoading ? "Consultando..." : Display(_detail?.Title))
+                    </h2>
+                </div>
+                <button type="button"
+                        class="rounded-lg border border-border px-3 py-2 text-sm font-semibold text-foreground"
+                        @onclick="CloseDetail">
+                    Cerrar
+                </button>
+            </header>
+
+            <div class="p-5">
+                @if (_detailLoading)
+                {
+                    <p class="text-sm text-muted">Cargando información...</p>
+                }
+                else if (!string.IsNullOrWhiteSpace(_detailError))
+                {
+                    <p class="text-sm text-muted">@_detailError</p>
+                }
+                else if (_detail is not null)
+                {
+                    <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div><dt class="text-xs font-semibold text-muted">DOI</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.Doi)</dd></div>
+                        <div><dt class="text-xs font-semibold text-muted">Fecha de publicación</dt><dd class="mt-1 text-sm text-foreground">@DisplayDate(_detail.PublishedAt)</dd></div>
+                        <div><dt class="text-xs font-semibold text-muted">Revista</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.VenueName)</dd></div>
+                        <div><dt class="text-xs font-semibold text-muted">ISSN</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.IssnCode)</dd></div>
+                        <div><dt class="text-xs font-semibold text-muted">Cuartil</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.Quartile)</dd></div>
+                        <div><dt class="text-xs font-semibold text-muted">Filiación</dt><dd class="mt-1 text-sm text-foreground">@Display(_detail.Filiacion)</dd></div>
+                    </dl>
+
+                    <div class="mt-5 border-t border-border pt-4">
+                        <h3 class="text-sm font-bold text-foreground">Participantes</h3>
+                        <p class="mt-2 text-sm text-muted">
+                            @(_detail.Participants is { Count: > 0 }
+                                ? string.Join(", ", _detail.Participants.OrderBy(x => x.Index).Select(x => x.Nombre))
+                                : "Sin participantes informados")
+                        </p>
+                    </div>
+
+                    @if (_detail.DynamicFields.Count > 0)
+                    {
+                        <div class="mt-5 border-t border-border pt-4">
+                            <h3 class="text-sm font-bold text-foreground">Información adicional</h3>
+                            <dl class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                @foreach (var field in _detail.DynamicFields)
+                                {
+                                    <div>
+                                        <dt class="text-xs font-semibold text-muted">@field.FieldLabel</dt>
+                                        <dd class="mt-1 text-sm text-foreground">@Display(field.DisplayValue)</dd>
+                                    </div>
+                                }
+                            </dl>
+                        </div>
+                    }
+                }
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    private const int PageSize = 12;
+    private ArticlePageDto _page = new();
+    private string? _search;
+    private int? _year;
+    private bool _loading = true;
+    private string? _error;
+    private bool _detailOpen;
+    private bool _detailLoading;
+    private string? _detailError;
+    private ArticleDetailDto? _detail;
+
+    protected override Task OnInitializedAsync() => LoadPageAsync(1);
+
+    private async Task LoadPageAsync(int page)
+    {
+        _loading = true;
+        _error = null;
+
+        var result = await ArticlesClient.GetPageAsync(new ArticleListQuery
+        {
+            Search = _search,
+            Year = ToShortYear(_year),
+            Page = page,
+            PageSize = PageSize,
+            SortBy = "PublishedAt",
+            SortDesc = true
+        });
+
+        if (result.Success && result.Data is not null)
+            _page = result.Data;
+        else
+            _error = FriendlyError(result.ErrorCode, result.Message);
+
+        _loading = false;
+    }
+
+    private Task ReloadAsync() => LoadPageAsync(Math.Max(1, _page.Page));
+    private Task ApplyFiltersAsync() => LoadPageAsync(1);
+    private Task PreviousPageAsync() => LoadPageAsync(Math.Max(1, _page.Page - 1));
+    private Task NextPageAsync() => LoadPageAsync(Math.Min(_page.TotalPages, _page.Page + 1));
+
+    private async Task HandleSearchKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter")
+            await ApplyFiltersAsync();
+    }
+
+    private async Task OpenDetailAsync(int articleId)
+    {
+        _detailOpen = true;
+        _detailLoading = true;
+        _detailError = null;
+        _detail = null;
+
+        var result = await ArticlesClient.GetDetailAsync(articleId);
+        if (result.Success && result.Data is not null)
+            _detail = result.Data;
+        else
+            _detailError = FriendlyError(result.ErrorCode, result.Message);
+
+        _detailLoading = false;
+    }
+
+    private void CloseDetail()
+    {
+        _detailOpen = false;
+        _detail = null;
+        _detailError = null;
+    }
+
+    private static short? ToShortYear(int? year)
+        => year is >= 1900 and <= short.MaxValue ? (short)year.Value : null;
+
+    private static string Display(object? value)
+        => string.IsNullOrWhiteSpace(value?.ToString()) ? "No informado" : value.ToString()!;
+
+    private static string DisplayDate(DateTime? value)
+        => value?.ToString("dd/MM/yyyy") ?? "No informada";
+
+    private static string FriendlyError(string? code, string? message)
+        => code switch
+        {
+            "ARTICLES_MODULE_DISABLED" => "El módulo de artículos todavía no está habilitado en este entorno.",
+            _ when !string.IsNullOrWhiteSpace(message) => message,
+            _ => "Ocurrió un problema al consultar la información. Inténtalo nuevamente."
+        };
+}

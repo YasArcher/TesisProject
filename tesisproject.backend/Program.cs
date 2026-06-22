@@ -46,7 +46,15 @@ ExcelPackage.License.SetNonCommercialOrganization("Universidad Técnica de Ambato
 var app = builder.Build();
 
 // 1) Migraciones primero (para que existan tablas, incluyendo Identity)
-await ApplyMigrationsAsync(app);
+// [ARTICLES-MIGRATION] Permite validar la fusion sin modificar el esquema base; por defecto conserva el comportamiento original.
+if (app.Configuration.GetValue("DatabaseBootstrap:ApplyMigrations", true))
+{
+    await ApplyMigrationsAsync(app);
+}
+else
+{
+    app.Logger.LogWarning("Database migrations were skipped by configuration.");
+}
 
 // 2) Seed de roles después de migrar
 var identityRoles = new List<string> { "admin", "financial", "technical", "superadmin", "coordinador", "user" };

@@ -37,5 +37,15 @@ namespace tesisproject.frontend.Services.Implementations
                 ct
             );
         }
+
+        // [ARTICLES-MIGRATION] Capacidades de modulos asociadas a la sesion Identity actual.
+        public Task<HttpResponseWrapper<CurrentSessionResponse?>> GetCurrentSessionAsync(
+            CancellationToken ct = default)
+        {
+            return _api.GetAsync<CurrentSessionResponse>(
+                $"{_baseUrl}/me",
+                ct
+            );
+        }
     }
 }
