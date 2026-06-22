@@ -32,6 +32,8 @@ public partial class SideBar
     private string? _etlError;
     private HashSet<string> _roles = new(StringComparer.OrdinalIgnoreCase);
     private bool _articlesAccess;
+    private bool _projectsAccess;
+    private bool _sessionLoaded;
 
     private readonly HashSet<string> _expanded = new();
 
@@ -58,7 +60,7 @@ public partial class SideBar
         ) == true;
     }
 
-    private readonly MenuItem[] _items =
+    private readonly MenuItem[] _projectItems =
     [
         // [ARTICLES-MIGRATION] Entrada comun y primera ruta activa del modulo de articulos.
         new MenuItem("Módulos", "/", true, null,
@@ -131,12 +133,48 @@ public partial class SideBar
         ),
     ];
 
+    // [ARTICLES-MIGRATION] Mapa completo visible del sistema de produccion cientifica.
+    private readonly MenuItem[] _articleItems =
+    [
+        new MenuItem("Portal de artículos", "/articles", true, "Producción científica",
+            @"<svg xmlns=""http://www.w3.org/2000/svg"" viewBox=""0 0 24 24"" fill=""currentColor"" class=""w-5 h-5"">
+                <path d=""M3 3h7.5v7.5H3V3Zm10.5 0H21v7.5h-7.5V3ZM3 13.5h7.5V21H3v-7.5Zm10.5 0H21V21h-7.5v-7.5Z"" />
+              </svg>"),
+        new MenuItem("Listado de artículos", "/articles", true, "Artículos"),
+        new MenuItem("Registrar artículo", "/articles/module/register", false, "Artículos"),
+        new MenuItem("Revisión de envíos", "/articles/module/workflow", false, "Artículos"),
+        new MenuItem("Configuración", "/articles/module/configuration", false, "Artículos"),
+        new MenuItem("Matriz de registro", "/articles/module/registration-matrix", false, "Captura e importación"),
+        new MenuItem("Carga masiva", "/articles/module/bulk-import", false, "Captura e importación"),
+        new MenuItem("APIs externas", "/articles/module/external-apis", false, "Captura e importación"),
+        new MenuItem("Ingesta externa", "/articles/module/external-ingestion", false, "Captura e importación"),
+        new MenuItem("Reportería", "/articles/module/reporting", false, "Reportes y análisis"),
+        new MenuItem("Inteligencia Artificial", "/articles/module/intelligence", false, "Reportes y análisis"),
+        new MenuItem("Usuarios y roles", "/articles/module/security", false, "Administración"),
+        new MenuItem("Centro de ayuda", "/articles/module/support", false, "Soporte y cuenta"),
+        new MenuItem("Manual de usuario", "/articles/module/manual", false, "Soporte y cuenta"),
+        new MenuItem("Perfil", "/articles/module/profile", false, "Soporte y cuenta")
+    ];
+
     private IEnumerable<IGrouping<string?, MenuItem>> GroupedItems =>
-        _items
+        ActiveItems
             .Where(IsVisible)
             .GroupBy(i => i.Section);
 
-    private bool CanUsePowerBi => _roles.Contains("superadmin");
+    private IEnumerable<MenuItem> ActiveItems
+        => IsArticlePortal ? _articleItems : _projectItems;
+
+    private bool IsArticlePortal
+    {
+        get
+        {
+            var path = "/" + Nav.ToBaseRelativePath(Nav.Uri);
+            return path.StartsWith("/articles", StringComparison.OrdinalIgnoreCase) ||
+                   (_sessionLoaded && _articlesAccess && !_projectsAccess);
+        }
+    }
+
+    private bool CanUsePowerBi => !IsArticlePortal && _roles.Contains("superadmin");
 
     protected override async Task OnInitializedAsync()
     {
@@ -147,10 +185,15 @@ public partial class SideBar
         _roles = session.Data.Roles.ToHashSet(StringComparer.OrdinalIgnoreCase);
         _articlesAccess = session.Data.Articles.Enabled &&
             (session.Data.Articles.CanAccess || session.Data.Articles.CanList);
+        _projectsAccess = _roles.Overlaps(["coordinador", "technical", "admin", "superadmin"]);
+        _sessionLoaded = true;
     }
 
     private bool IsVisible(MenuItem item)
     {
+        if (IsArticlePortal)
+            return true;
+
         if (item.RequiresArticlesAccess && !_articlesAccess)
             return false;
 

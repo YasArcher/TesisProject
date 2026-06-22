@@ -1,0 +1,75 @@
+@page "/articles/module/{ModuleKey}"
+@inject NavigationManager Nav
+
+@* [ARTICLES-MIGRATION] Representa modulos existentes que aun permanecen en la copia pasiva. *@
+<div class="h-full overflow-y-auto bg-page-bg">
+    <div class="mx-auto w-full max-w-5xl p-4 md:p-6">
+        <header class="border-b border-border pb-4">
+            <p class="text-sm font-semibold text-primary">Producción científica</p>
+            <h1 class="mt-1 text-2xl font-bold text-foreground">@ModuleTitle</h1>
+            <p class="mt-2 text-sm text-muted">
+                Este módulo forma parte del sistema de artículos y está identificado para su integración progresiva.
+            </p>
+        </header>
+
+        <section class="mt-5 rounded-lg border border-border bg-background p-6">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <span class="inline-block rounded-lg bg-primary-subtle px-3 py-2 text-xs font-bold uppercase text-primary">
+                        En integración
+                    </span>
+                    <h2 class="mt-4 text-lg font-bold text-foreground">Funcionalidad preservada</h2>
+                    <p class="mt-2 max-w-2xl text-sm text-muted">
+                        El código original se conserva dentro de <strong>ArticlesMigration</strong>. Todavía no está activo
+                        porque debe adaptarse a la autenticación, servicios y arquitectura del sistema de Proyectos.
+                    </p>
+                </div>
+
+                <button type="button"
+                        class="rounded-lg border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle"
+                        @onclick="BackToArticles">
+                    Volver a artículos
+                </button>
+            </div>
+
+            <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                <div class="rounded-lg border border-border p-4">
+                    <div class="text-xs font-semibold text-muted">Estado</div>
+                    <div class="mt-1 font-bold text-foreground">Preservado</div>
+                </div>
+                <div class="rounded-lg border border-border p-4">
+                    <div class="text-xs font-semibold text-muted">Acceso</div>
+                    <div class="mt-1 font-bold text-foreground">Visible por rol</div>
+                </div>
+                <div class="rounded-lg border border-border p-4">
+                    <div class="text-xs font-semibold text-muted">Siguiente fase</div>
+                    <div class="mt-1 font-bold text-foreground">Activación funcional</div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string ModuleKey { get; set; } = string.Empty;
+
+    private string ModuleTitle => ModuleKey.ToLowerInvariant() switch
+    {
+        "register" => "Registrar artículo",
+        "workflow" => "Revisión de envíos",
+        "configuration" => "Configuración de formularios",
+        "registration-matrix" => "Matriz de registro",
+        "bulk-import" => "Carga masiva",
+        "external-apis" => "APIs externas",
+        "external-ingestion" => "Ingesta externa",
+        "reporting" => "Reportería institucional",
+        "intelligence" => "Inteligencia Artificial",
+        "security" => "Usuarios y roles",
+        "support" => "Centro de ayuda",
+        "manual" => "Manual de usuario",
+        "profile" => "Perfil",
+        _ => "Módulo de artículos"
+    };
+
+    private void BackToArticles() => Nav.NavigateTo("/articles");
+}

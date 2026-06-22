@@ -24,7 +24,8 @@ namespace tesisproject.frontend.Pages
 
             if (user?.Identity?.IsAuthenticated == true)
             {
-                Navigation.NavigateTo("/", replace: true);
+                var session = await AuthClient.GetCurrentSessionAsync();
+                Navigation.NavigateTo(GetLandingRoute(session.Data), replace: true);
             }
         }
 
@@ -43,7 +44,9 @@ namespace tesisproject.frontend.Pages
                 await AuthStateProvider.SetTokenAsync(result.Data.AccessToken);
 
                 Toast.ShowSuccess(result.ToSuccessMessage("Acceso correcto"));
-                Navigation.NavigateTo("/", replace: true);
+                // [ARTICLES-MIGRATION] El mismo login dirige al portal permitido por la sesion.
+                var session = await AuthClient.GetCurrentSessionAsync();
+                Navigation.NavigateTo(GetLandingRoute(session.Data), replace: true);
             }
             else
             {
@@ -51,6 +54,29 @@ namespace tesisproject.frontend.Pages
                 Toast.ShowError(errorMessage);
                 Console.WriteLine(errorMessage);
             }
+        }
+
+        private static string GetLandingRoute(CurrentSessionResponse? session)
+        {
+            if (session is null)
+                return "/";
+
+            var projectAccess = session.Roles.Any(role =>
+                role.Equals("coordinador", StringComparison.OrdinalIgnoreCase) ||
+                role.Equals("technical", StringComparison.OrdinalIgnoreCase) ||
+                role.Equals("admin", StringComparison.OrdinalIgnoreCase) ||
+                role.Equals("superadmin", StringComparison.OrdinalIgnoreCase));
+
+            var articleAccess = session.Articles.Enabled &&
+                (session.Articles.CanAccess || session.Articles.CanList);
+
+            if (articleAccess && !projectAccess)
+                return "/articles";
+
+            if (projectAccess && !articleAccess)
+                return "/projects/home";
+
+            return "/";
         }
     }
 
