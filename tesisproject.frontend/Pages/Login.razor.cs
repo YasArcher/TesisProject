@@ -11,6 +11,9 @@ namespace tesisproject.frontend.Pages
     public partial class Login
     {
         public LoginModel LoginModel { get; set; } = new();
+        protected bool ShowPassword { get; set; }
+        private bool _busy;
+        private string? _error;
 
         [Inject] public IAuthClientService AuthClient { get; set; } = null!;
         [Inject] public CustomAuthStateProvider AuthStateProvider { get; set; } = null!;
@@ -31,29 +34,50 @@ namespace tesisproject.frontend.Pages
 
         protected async Task HandleLogin()
         {
-            var request = new LoginRequest
+            if (_busy)
+                return;
+
+            _error = null;
+            _busy = true;
+
+            try
             {
-                Email = LoginModel.Email,
-                Password = LoginModel.Password
-            };
+                var request = new LoginRequest
+                {
+                    Email = LoginModel.Email,
+                    Password = LoginModel.Password
+                };
 
-            var result = await AuthClient.LoginAsync(request);
+                var result = await AuthClient.LoginAsync(request);
 
-            if (result.Success && result.Data is not null)
-            {
-                await AuthStateProvider.SetTokenAsync(result.Data.AccessToken);
+                if (result.Success && result.Data is not null)
+                {
+                    await AuthStateProvider.SetTokenAsync(result.Data.AccessToken);
 
-                Toast.ShowSuccess(result.ToSuccessMessage("Acceso correcto"));
-                // [ARTICLES-MIGRATION] El mismo login dirige al portal permitido por la sesion.
-                var session = await AuthClient.GetCurrentSessionAsync();
-                Navigation.NavigateTo(GetLandingRoute(session.Data), replace: true);
+                    Toast.ShowSuccess(result.ToSuccessMessage("Acceso correcto"));
+                    // [ARTICLES-MIGRATION] El mismo login dirige al portal permitido por la sesion.
+                    var session = await AuthClient.GetCurrentSessionAsync();
+                    Navigation.NavigateTo(GetLandingRoute(session.Data), replace: true);
+                    return;
+                }
+
+                _error = result.ToErrorMessage("Credenciales no validas");
+                Toast.ShowError(_error);
             }
-            else
+            catch
             {
-                var errorMessage = result.ToErrorMessage("Credenciales no válidas");
-                Toast.ShowError(errorMessage);
-                Console.WriteLine(errorMessage);
+                _error = "No fue posible contactar al servidor. Verifica la conexion e intentalo nuevamente.";
+                Toast.ShowError(_error);
             }
+            finally
+            {
+                _busy = false;
+            }
+        }
+
+        protected void TogglePassword()
+        {
+            ShowPassword = !ShowPassword;
         }
 
         private static string GetLandingRoute(CurrentSessionResponse? session)

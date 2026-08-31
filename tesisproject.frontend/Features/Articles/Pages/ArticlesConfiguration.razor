@@ -1,0 +1,270 @@
+﻿@page "/articles/module/configuration"
+@using tesisproject.frontend.Services.Interfaces
+@using tesisproject.shared.DTOs.Configuration
+@inject IFormConfigurationClient FormConfigurationClient
+@inject NavigationManager Nav
+
+@* [ARTICLES-MIGRATION] Configuracion de articulos conectada en modo lectura para validar la fusion sin modificar datos. *@
+<div class="h-full min-h-0 overflow-y-auto bg-page-bg">
+    <div class="mx-auto w-full max-w-7xl p-4 md:p-6">
+        <header class="mb-5 flex flex-col gap-3 border-b border-border pb-4 md:flex-row md:items-end md:justify-between">
+            <div>
+                <p class="text-sm font-semibold text-primary">Administración de artículos</p>
+                <h1 class="mt-1 text-2xl font-bold text-foreground">Configuración de formularios</h1>
+                <p class="mt-1 max-w-3xl text-sm text-muted">
+                    Lectura integrada de formularios, campos, catálogos y reglas del módulo de artículos. Las acciones de escritura siguen bloqueadas durante esta fase de fusión.
+                </p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button type="button"
+                        class="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle"
+                        @onclick="LoadAsync"
+                        disabled="@_loading">
+                    Actualizar
+                </button>
+                <button type="button"
+                        class="rounded-lg border border-border bg-background px-4 py-2 text-sm font-semibold text-foreground hover:bg-primary-subtle"
+                        @onclick="BackToArticles">
+                    Volver a artículos
+                </button>
+            </div>
+        </header>
+
+        @if (_loading)
+        {
+            <section class="rounded-lg border border-border bg-background p-8 text-center">
+                <div class="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+                <p class="mt-3 text-sm text-muted">Cargando configuración...</p>
+            </section>
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <section class="rounded-lg border border-border bg-background p-6">
+                <h2 class="text-lg font-bold text-foreground">No fue posible cargar la configuración</h2>
+                <p class="mt-2 text-sm text-muted">@_error</p>
+                <button type="button" class="mt-4 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white" @onclick="LoadAsync">
+                    Intentar nuevamente
+                </button>
+            </section>
+        }
+        else
+        {
+            <section class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-4">
+                @foreach (var item in SummaryItems)
+                {
+                    <article class="rounded-lg border border-border bg-background p-4">
+                        <p class="text-xs font-semibold text-muted">@item.Label</p>
+                        <p class="mt-1 text-lg font-bold text-foreground">@item.Value</p>
+                        <p class="mt-1 text-xs text-muted">@item.Detail</p>
+                    </article>
+                }
+            </section>
+
+            <section class="rounded-lg border border-border bg-background">
+                <div class="flex flex-wrap gap-2 border-b border-border p-3">
+                    @foreach (var tab in Tabs)
+                    {
+                        <button type="button"
+                                class="rounded-lg px-4 py-2 text-sm font-semibold transition @(ActiveTab == tab.Key ? "bg-primary text-white" : "border border-border text-foreground hover:bg-primary-subtle")"
+                                @onclick="() => ActiveTab = tab.Key">
+                            @tab.Label
+                        </button>
+                    }
+                </div>
+
+                <div class="p-5">
+                    @switch (ActiveTab)
+                    {
+                        case "forms":
+                            <article>
+                                <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                    <div>
+                                        <h2 class="text-lg font-bold text-foreground">Formularios activos y disponibles</h2>
+                                        <p class="mt-1 text-sm text-muted">Se muestran los formularios registrados para artículos y participantes.</p>
+                                    </div>
+                                    <span class="rounded-lg bg-primary-subtle px-3 py-2 text-xs font-bold text-primary">Solo lectura</span>
+                                </div>
+
+                                <div class="mt-4 overflow-hidden rounded-lg border border-border">
+                                    <table class="w-full text-left text-sm" style="min-width: 760px;">
+                                        <thead class="bg-primary-subtle text-xs uppercase text-muted">
+                                            <tr><th class="px-4 py-3">Formulario</th><th class="px-4 py-3">Entidad</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Campos</th></tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-border">
+                                            @foreach (var form in _forms)
+                                            {
+                                                <tr class="hover:bg-primary-subtle/70">
+                                                    <td class="px-4 py-3"><span class="font-semibold text-foreground">@Display(form.FormName)</span><div class="text-xs text-muted">@Display(form.FormKey)</div></td>
+                                                    <td class="px-4 py-3 text-muted">@Display(form.EntityName)</td>
+                                                    <td class="px-4 py-3"><span class="rounded-lg px-2 py-1 text-xs font-bold @(form.IsActive ? "bg-primary-subtle text-primary" : "bg-page-bg text-muted")">@(form.IsActive ? "Activo" : "Inactivo")</span></td>
+                                                    <td class="px-4 py-3 text-muted">@GetFieldCount(form.FormId)</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </article>
+                            break;
+                        case "fields":
+                            <article>
+                                <h2 class="text-lg font-bold text-foreground">Campos configurados</h2>
+                                <p class="mt-1 text-sm text-muted">Lectura combinada de campos de Article y ArticleParticipant.</p>
+                                <div class="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
+                                    @foreach (var group in _fields.GroupBy(x => x.EntityName).OrderBy(x => x.Key))
+                                    {
+                                        <section class="rounded-lg border border-border p-4">
+                                            <h3 class="font-bold text-foreground">@group.Key</h3>
+                                            <div class="mt-3 space-y-2">
+                                                @foreach (var field in group.OrderBy(x => x.DisplayOrder).Take(18))
+                                                {
+                                                    <div class="rounded-lg border border-border bg-page-bg p-3">
+                                                        <div class="flex items-start justify-between gap-3">
+                                                            <div>
+                                                                <p class="font-semibold text-foreground">@field.FieldLabel</p>
+                                                                <p class="text-xs text-muted">@field.FieldKey · @field.DataType</p>
+                                                            </div>
+                                                            <span class="rounded-lg px-2 py-1 text-xs font-bold @(field.IsActive ? "bg-primary-subtle text-primary" : "bg-background text-muted")">@(field.IsActive ? "Activo" : "Inactivo")</span>
+                                                        </div>
+                                                        <div class="mt-2 flex flex-wrap gap-2 text-xs">
+                                                            <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsDynamic ? "Dinámico" : "Sistema")</span>
+                                                            <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsVisible ? "Visible" : "No visible")</span>
+                                                            <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsRequired ? "Requerido" : "Opcional")</span>
+                                                            <span class="rounded-lg bg-background px-2 py-1 text-muted">@(field.IsEditable ? "Editable" : "Bloqueado")</span>
+                                                        </div>
+                                                    </div>
+                                                }
+                                            </div>
+                                            @if (group.Count() > 18)
+                                            {
+                                                <p class="mt-3 text-xs text-muted">Se muestran 18 de @group.Count() campo(s).</p>
+                                            }
+                                        </section>
+                                    }
+                                </div>
+                            </article>
+                            break;
+                        case "catalogs":
+                            <article>
+                                <h2 class="text-lg font-bold text-foreground">Catálogos principales</h2>
+                                <p class="mt-1 text-sm text-muted">Resumen de catálogos usados por formularios y registro de artículos.</p>
+                                <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                    @foreach (var catalog in _catalogSummaries)
+                                    {
+                                        <div class="rounded-lg border border-border p-4">
+                                            <p class="text-xs font-semibold text-muted">@catalog.Label</p>
+                                            <p class="mt-1 text-2xl font-bold text-foreground">@catalog.Count</p>
+                                            <p class="mt-1 text-xs text-muted">@catalog.Detail</p>
+                                        </div>
+                                    }
+                                </div>
+                            </article>
+                            break;
+                        default:
+                            <article>
+                                <h2 class="text-lg font-bold text-foreground">Validaciones detectadas</h2>
+                                <p class="mt-1 text-sm text-muted">Campos con reglas de validación configuradas desde el catálogo dinámico.</p>
+                                <div class="mt-4 overflow-hidden rounded-lg border border-border">
+                                    <table class="w-full text-left text-sm">
+                                        <thead class="bg-primary-subtle text-xs uppercase text-muted"><tr><th class="px-4 py-3">Campo</th><th class="px-4 py-3">Entidad</th><th class="px-4 py-3">Regla</th></tr></thead>
+                                        <tbody class="divide-y divide-border">
+                                            @foreach (var field in _fields.Where(x => !string.IsNullOrWhiteSpace(x.ValidationRule)).OrderBy(x => x.EntityName).ThenBy(x => x.DisplayOrder))
+                                            {
+                                                <tr><td class="px-4 py-3 font-semibold text-foreground">@field.FieldLabel</td><td class="px-4 py-3 text-muted">@field.EntityName</td><td class="px-4 py-3 text-muted">@field.ValidationRule</td></tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                                @if (!_fields.Any(x => !string.IsNullOrWhiteSpace(x.ValidationRule)))
+                                {
+                                    <p class="mt-3 rounded-lg border border-border bg-page-bg p-4 text-sm text-muted">No se encontraron reglas de validación configuradas.</p>
+                                }
+                            </article>
+                            break;
+                    }
+                </div>
+            </section>
+        }
+    </div>
+</div>
+
+@code {
+    private string ActiveTab { get; set; } = "forms";
+    private bool _loading = true;
+    private string? _error;
+    private List<FormSummaryDto> _forms = [];
+    private List<FieldCatalogItemDto> _fields = [];
+    private readonly Dictionary<int, int> _formFieldCounts = [];
+    private List<(string Label, int Count, string Detail)> _catalogSummaries = [];
+
+    private IEnumerable<(string Label, string Value, string Detail)> SummaryItems =>
+    [
+        ("Formularios", _forms.Count.ToString(), $"{_forms.Count(x => x.IsActive)} activo(s)"),
+        ("Campos", _fields.Count.ToString(), $"{_fields.Count(x => x.IsDynamic)} dinámico(s)"),
+        ("Visibles", _fields.Count(x => x.IsVisible && x.IsActive).ToString(), "Disponibles para registro"),
+        ("Validaciones", _fields.Count(x => !string.IsNullOrWhiteSpace(x.ValidationRule)).ToString(), "Reglas configuradas")
+    ];
+
+    private static readonly (string Key, string Label)[] Tabs =
+    [
+        ("forms", "Formularios"),
+        ("fields", "Campos"),
+        ("catalogs", "Catálogos"),
+        ("rules", "Validaciones")
+    ];
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+
+        var formsResult = await FormConfigurationClient.GetFormsAsync();
+        var articleFieldsResult = await FormConfigurationClient.GetFieldsAsync("Article");
+        var participantFieldsResult = await FormConfigurationClient.GetFieldsAsync("ArticleParticipant");
+
+        if (!formsResult.Success || !articleFieldsResult.Success || !participantFieldsResult.Success)
+        {
+            _error = formsResult.Message ?? articleFieldsResult.Message ?? participantFieldsResult.Message ?? "La configuración no está disponible.";
+            _loading = false;
+            return;
+        }
+
+        _forms = formsResult.Data ?? [];
+        _fields = [.. (articleFieldsResult.Data ?? []), .. (participantFieldsResult.Data ?? [])];
+        _formFieldCounts.Clear();
+
+        foreach (var form in _forms)
+        {
+            var fieldsResult = await FormConfigurationClient.GetFormFieldsAsync(form.FormId);
+            _formFieldCounts[form.FormId] = fieldsResult.Success ? fieldsResult.Data?.Count ?? 0 : 0;
+        }
+
+        await LoadCatalogSummariesAsync();
+        _loading = false;
+    }
+
+    private async Task LoadCatalogSummariesAsync()
+    {
+        var definitions = new (string Key, string Label, string Detail)[]
+        {
+            ("faculties", "Facultades", "Estructura institucional"),
+            ("research-lines", "Líneas", "Líneas de investigación"),
+            ("indexing-sources", "Indexaciones", "Fuentes de indexación"),
+            ("publication-statuses", "Estados", "Estados de publicación")
+        };
+
+        var summaries = new List<(string Label, int Count, string Detail)>();
+        foreach (var item in definitions)
+        {
+            var result = await FormConfigurationClient.GetAdminCatalogAsync(item.Key);
+            summaries.Add((item.Label, result.Success ? result.Data?.Count ?? 0 : 0, item.Detail));
+        }
+
+        _catalogSummaries = summaries;
+    }
+
+    private int GetFieldCount(int formId) => _formFieldCounts.TryGetValue(formId, out var count) ? count : 0;
+    private void BackToArticles() => Nav.NavigateTo("/articles");
+    private static string Display(string? value) => string.IsNullOrWhiteSpace(value) ? "No informado" : value;
+}

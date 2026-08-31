@@ -1,6 +1,28 @@
 ﻿@inherits LayoutComponentBase
-<div class="min-h-screen bg-page-bg text-foreground font-sans">
-    <main class="h-full bg-background">
-        @Body
+
+<div class="auth-layout-shell">
+    <div class="auth-layout-shell__backdrop"></div>
+
+    <section class="auth-layout-shell__hero">
+        <div class="auth-layout-shell__hero-content">
+            <div class="auth-layout-shell__kicker">Universidad Tecnica de Ambato</div>
+            <h1 class="auth-layout-shell__title">Sistema integrado de investigacion institucional</h1>
+            <p class="auth-layout-shell__copy">
+                Acceso unificado para gestion de proyectos, articulos cientificos, reportería e inteligencia institucional.
+            </p>
+
+            <div class="auth-layout-shell__badges" aria-label="Capacidades principales">
+                <span>Autenticacion segura</span>
+                <span>Gestion de proyectos</span>
+                <span>Produccion cientifica</span>
+                <span>BI e IA</span>
+            </div>
+        </div>
+    </section>
+
+    <main class="auth-layout-shell__content">
+        <div class="auth-layout-shell__content-inner">
+            @Body
+        </div>
     </main>
 </div>

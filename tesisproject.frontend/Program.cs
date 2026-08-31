@@ -77,6 +77,7 @@ builder.Services.AddScoped<IVisitClientService, VisitClientService>();
 builder.Services.AddScoped<IAuthClientService, AuthClientService>();
 // [ARTICLES-MIGRATION] Primera superficie activa de consulta de articulos.
 builder.Services.AddScoped<IArticleClientService, ArticleClientService>();
+builder.Services.AddScoped<IFormConfigurationClient, FormConfigurationClient>();
 builder.Services.AddScoped<IDocumentRecognitionClientService, DocumentRecognitionClientService>();
 builder.Services.AddScoped<IProjectTypeClientService, ProjectTypeClientService>();
 builder.Services.AddScoped<IMemberRoleTypeClientService, MemberRoleTypeClientService>();
@@ -170,3 +171,4 @@ static string NormalizeBaseUrl(string baseUrl)
 
     return baseUrl;
 }
+
