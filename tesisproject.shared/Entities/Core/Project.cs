@@ -89,6 +89,8 @@ namespace tesisproject.shared.Entities.Core
         public ICollection<ProjectDocument> ProjectDocuments { get; set; } = new List<ProjectDocument>();
         public ICollection<ProjectExtension> ProjectExtensions { get; set; }
     = new List<ProjectExtension>();
+        public ICollection<ProjectFacultyHistory> FacultyHistory { get; set; }
+            = new List<ProjectFacultyHistory>();
 
 
     }

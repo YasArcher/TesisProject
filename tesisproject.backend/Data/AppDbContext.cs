@@ -28,6 +28,7 @@ namespace tesisproject.backend.Data
         public DbSet<GroupMember> GroupMembers => Set<GroupMember>();
         public DbSet<ObjectiveActivity> ObjectiveActivities => Set<ObjectiveActivity>();
         public DbSet<Project> Projects => Set<Project>();
+        public DbSet<ProjectFacultyHistory> ProjectFacultyHistories => Set<ProjectFacultyHistory>();
         public DbSet<ProjectExtension> ProjectExtensions => Set<ProjectExtension>();
         public DbSet<ProjectObjective> ProjectObjectives => Set<ProjectObjective>();
         public DbSet<Visit> Visits => Set<Visit>();
@@ -98,6 +99,7 @@ namespace tesisproject.backend.Data
             ConfigureInstitution(builder);
             ConfigureDocument(builder);
             ConfigureProjectBudget(builder);
+            ConfigureProjectFacultyHistory(builder);
             ConfigureVisitIssue(builder);
             ConfigureProducts(builder);
             ConfigureConvocations(builder);
@@ -235,6 +237,27 @@ namespace tesisproject.backend.Data
                  .OnDelete(DeleteBehavior.NoAction);
             });
         }
+
+        private static void ConfigureProjectFacultyHistory(ModelBuilder builder)
+        {
+            builder.Entity<ProjectFacultyHistory>(b =>
+            {
+                b.HasKey(x => x.Id);
+
+                b.Property(x => x.OldValue);
+                b.Property(x => x.NewValue);
+                b.Property(x => x.CreatedAtUtc)
+                    .HasColumnType("datetime2");
+
+                b.HasIndex(x => x.ProjectId);
+                b.HasIndex(x => x.CreatedAtUtc);
+
+                b.HasOne(x => x.Project)
+                    .WithMany(x => x.FacultyHistory)
+                    .HasForeignKey(x => x.ProjectId)
+                    .OnDelete(DeleteBehavior.NoAction);
+            });
+        }
         private static void MapUserFK<TEntity, TProp>(
             ModelBuilder mb,
             Expression<Func<TEntity, TProp>> fkExpr,
@@ -369,6 +392,9 @@ namespace tesisproject.backend.Data
 
             // Project → CreatedByUserId
             MapUserFK<Project, int>(builder, p => p.CreatedByUserId);
+
+            // ProjectFacultyHistory → CreatedByUserId
+            MapUserFK<ProjectFacultyHistory, int?>(builder, h => h.CreatedByUserId);
 
             // Visit → PerformedByUserId
             MapUserFK<Visit, int?>(builder, v => v.PerformedByUserId);
